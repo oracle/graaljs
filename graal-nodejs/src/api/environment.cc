@@ -349,6 +349,9 @@ MaybeLocal<Object> GetPerContextExports(Local<Context> context) {
   return handle_scope.Escape(exports);
 }
 
+// Any initialization logic should be performed in
+// InitializeContext, because embedders don't necessarily
+// call NewContext and so they will experience breakages.
 Local<Context> NewContext(Isolate* isolate,
                           Local<ObjectTemplate> object_template) {
   auto context = Context::New(isolate, nullptr, object_template);
@@ -357,10 +360,41 @@ Local<Context> NewContext(Isolate* isolate,
   if (!InitializeContext(context)) {
     return Local<Context>();
   }
+
   return context;
 }
 
-bool InitializeContext(Local<Context> context) {
+// This runs at runtime, regardless of whether the context
+// is created from a snapshot.
+void InitializeContextRuntime(Local<Context> context) {
+  Isolate* isolate = context->GetIsolate();
+  HandleScope handle_scope(isolate);
+
+  // Delete `Intl.v8BreakIterator`
+  // https://github.com/nodejs/node/issues/14909
+  Local<String> intl_string = FIXED_ONE_BYTE_STRING(isolate, "Intl");
+  Local<String> break_iter_string =
+    FIXED_ONE_BYTE_STRING(isolate, "v8BreakIterator");
+  Local<Value> intl_v;
+  if (context->Global()->Get(context, intl_string).ToLocal(&intl_v) &&
+      intl_v->IsObject()) {
+    Local<Object> intl = intl_v.As<Object>();
+    intl->Delete(context, break_iter_string).FromJust();
+  }
+
+  // Delete `Atomics.wake`
+  // https://github.com/nodejs/node/issues/21219
+  Local<String> atomics_string = FIXED_ONE_BYTE_STRING(isolate, "Atomics");
+  Local<String> wake_string = FIXED_ONE_BYTE_STRING(isolate, "wake");
+  Local<Value> atomics_v;
+  if (context->Global()->Get(context, atomics_string).ToLocal(&atomics_v) &&
+      atomics_v->IsObject()) {
+    Local<Object> atomics = atomics_v.As<Object>();
+    atomics->Delete(context, wake_string).FromJust();
+  }
+}
+
+bool InitializeContextForSnapshot(Local<Context> context) {
   Isolate* isolate = context->GetIsolate();
   HandleScope handle_scope(isolate);
 
@@ -386,7 +420,6 @@ bool InitializeContext(Local<Context> context) {
     }
 
     static const char* context_files[] = {"internal/per_context/primordials",
-                                          "internal/per_context/setup",
                                           "internal/per_context/domexception",
                                           nullptr};
 
@@ -412,6 +445,15 @@ bool InitializeContext(Local<Context> context) {
     }
   }
 
+  return true;
+}
+
+bool InitializeContext(Local<Context> context) {
+  if (!InitializeContextForSnapshot(context)) {
+    return false;
+  }
+
+  InitializeContextRuntime(context);
   return true;
 }
 

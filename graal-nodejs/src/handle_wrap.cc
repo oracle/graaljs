@@ -72,15 +72,26 @@ void HandleWrap::Close(Local<Value> close_callback) {
   if (state_ != kInitialized)
     return;
 
-  CHECK_EQ(false, persistent().IsEmpty());
   uv_close(handle_, OnClose);
   state_ = kClosing;
 
-  if (!close_callback.IsEmpty() && close_callback->IsFunction()) {
+  if (!close_callback.IsEmpty() && close_callback->IsFunction() &&
+      !persistent().IsEmpty()) {
     object()->Set(env()->context(),
                   env()->handle_onclose_symbol(),
                   close_callback).Check();
   }
+}
+
+
+void HandleWrap::MakeWeak() {
+  persistent().SetWeak(
+      this,
+      [](const v8::WeakCallbackInfo<HandleWrap>& data) {
+        HandleWrap* handle_wrap = data.GetParameter();
+        handle_wrap->persistent().Reset();
+        handle_wrap->Close();
+      }, v8::WeakCallbackType::kParameter);
 }
 
 
@@ -115,15 +126,14 @@ void HandleWrap::OnClose(uv_handle_t* handle) {
   HandleScope scope(env->isolate());
   Context::Scope context_scope(env->context());
 
-  // The wrap object should still be there.
-  CHECK_EQ(wrap->persistent().IsEmpty(), false);
   CHECK_EQ(wrap->state_, kClosing);
 
   wrap->state_ = kClosed;
 
   wrap->OnClose();
 
-  if (wrap->object()->Has(env->context(), env->handle_onclose_symbol())
+  if (!wrap->persistent().IsEmpty() &&
+      wrap->object()->Has(env->context(), env->handle_onclose_symbol())
       .FromMaybe(false)) {
     wrap->MakeCallback(env->handle_onclose_symbol(), 0, nullptr);
   }

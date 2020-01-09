@@ -64,6 +64,7 @@
 #include "set.cc"
 #include "stacktrace.cc"
 #include "string.cc"
+#include "symbol.cc"
 #include "try_catch.cc"
 #include "undefined.cc"
 #include "value.cc"

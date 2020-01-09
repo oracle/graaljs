@@ -100,8 +100,7 @@ exports.createSecureContext = function createSecureContext(options) {
   var i;
   var val;
 
-  // NOTE: It's important to add CA before the cert to be able to load
-  // cert's issuer in C++ code.
+  // Add CA before the cert to be able to load cert's issuer in C++ code.
   const { ca } = options;
   if (ca) {
     if (Array.isArray(ca)) {
@@ -132,7 +131,7 @@ exports.createSecureContext = function createSecureContext(options) {
     }
   }
 
-  // NOTE: It is important to set the key after the cert.
+  // Set the key after the cert.
   // `ssl_set_pkey` returns `0` when the key does not match the cert, but
   // `ssl_set_cert` returns `1` and nullifies the key in the SSL structure
   // which leads to the crash later on.
@@ -150,6 +149,49 @@ exports.createSecureContext = function createSecureContext(options) {
     } else {
       validateKeyOrCertOption('key', key);
       c.context.setKey(key, passphrase);
+    }
+  }
+
+  const sigalgs = options.sigalgs;
+  if (sigalgs !== undefined) {
+    if (typeof sigalgs !== 'string') {
+      throw new ERR_INVALID_ARG_TYPE('options.sigalgs', 'string', sigalgs);
+    }
+
+    if (sigalgs === '') {
+      throw new ERR_INVALID_OPT_VALUE('sigalgs', sigalgs);
+    }
+
+    c.context.setSigalgs(sigalgs);
+  }
+
+  const { privateKeyIdentifier, privateKeyEngine } = options;
+  if (privateKeyIdentifier !== undefined) {
+    if (privateKeyEngine === undefined) {
+      // Engine is required when privateKeyIdentifier is present
+      throw new ERR_INVALID_OPT_VALUE('privateKeyEngine',
+                                      privateKeyEngine);
+    }
+    if (key) {
+      // Both data key and engine key can't be set at the same time
+      throw new ERR_INVALID_OPT_VALUE('privateKeyIdentifier',
+                                      privateKeyIdentifier);
+    }
+
+    if (typeof privateKeyIdentifier === 'string' &&
+        typeof privateKeyEngine === 'string') {
+      if (c.context.setEngineKey)
+        c.context.setEngineKey(privateKeyIdentifier, privateKeyEngine);
+      else
+        throw new ERR_CRYPTO_CUSTOM_ENGINE_NOT_SUPPORTED();
+    } else if (typeof privateKeyIdentifier !== 'string') {
+      throw new ERR_INVALID_ARG_TYPE('options.privateKeyIdentifier',
+                                     ['string', 'undefined'],
+                                     privateKeyIdentifier);
+    } else {
+      throw new ERR_INVALID_ARG_TYPE('options.privateKeyEngine',
+                                     ['string', 'undefined'],
+                                     privateKeyEngine);
     }
   }
 

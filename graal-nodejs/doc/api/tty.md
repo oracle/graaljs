@@ -65,7 +65,7 @@ added: v0.7.7
   raw device. If `false`, configures the `tty.ReadStream` to operate in its
   default mode. The `readStream.isRaw` property will be set to the resulting
   mode.
-* Returns: {this} - the read stream instance.
+* Returns: {this} The read stream instance.
 
 Allows configuration of `tty.ReadStream` so that it operates as a raw device.
 
@@ -102,7 +102,7 @@ process.stdout.on('resize', () => {
 });
 ```
 
-### writeStream.clearLine(dir[, callback])
+### writeStream.clearLine(dir\[, callback\])
 <!-- YAML
 added: v0.7.7
 changes:
@@ -112,9 +112,9 @@ changes:
 -->
 
 * `dir` {number}
-  * `-1` - to the left from cursor
-  * `1` - to the right from cursor
-  * `0` - the entire line
+  * `-1`: to the left from cursor
+  * `1`: to the right from cursor
+  * `0`: the entire line
 * `callback` {Function} Invoked once the operation completes.
 * Returns: {boolean} `false` if the stream wishes for the calling code to wait
   for the `'drain'` event to be emitted before continuing to write additional
@@ -123,7 +123,7 @@ changes:
 `writeStream.clearLine()` clears the current line of this `WriteStream` in a
 direction identified by `dir`.
 
-### writeStream.clearScreenDown([callback])
+### writeStream.clearScreenDown(\[callback\])
 <!-- YAML
 added: v0.7.7
 changes:
@@ -148,7 +148,7 @@ added: v0.7.7
 A `number` specifying the number of columns the TTY currently has. This property
 is updated whenever the `'resize'` event is emitted.
 
-### writeStream.cursorTo(x[, y][, callback])
+### writeStream.cursorTo(x\[, y\]\[, callback\])
 <!-- YAML
 added: v0.7.7
 changes:
@@ -167,7 +167,7 @@ changes:
 `writeStream.cursorTo()` moves this `WriteStream`'s cursor to the specified
 position.
 
-### writeStream.getColorDepth([env])
+### writeStream.getColorDepth(\[env\])
 <!-- YAML
 added: v9.9.0
 -->
@@ -178,6 +178,7 @@ added: v9.9.0
 * Returns: {number}
 
 Returns:
+
 * `1` for 2,
 * `4` for 16,
 * `8` for 256,
@@ -205,6 +206,7 @@ Disabling color support is also possible by using the `NO_COLOR` and
 <!-- YAML
 added: v0.7.7
 -->
+
 * Returns: {number[]}
 
 `writeStream.getWindowSize()` returns the size of the [TTY](tty.html)
@@ -212,7 +214,7 @@ corresponding to this `WriteStream`. The array is of the type
 `[numColumns, numRows]` where `numColumns` and `numRows` represent the number
 of columns and rows in the corresponding [TTY](tty.html).
 
-### writeStream.hasColors([count][, env])
+### writeStream.hasColors(\[count\]\[, env\])
 <!-- YAML
 added: v11.13.0
 -->
@@ -248,7 +250,7 @@ added: v0.5.8
 
 A `boolean` that is always `true`.
 
-### writeStream.moveCursor(dx, dy[, callback])
+### writeStream.moveCursor(dx, dy\[, callback\])
 <!-- YAML
 added: v0.7.7
 changes:

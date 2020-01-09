@@ -119,7 +119,7 @@ FOO-BAR 3257: hi there, it's foo-bar [2333]
 Multiple comma-separated `section` names may be specified in the `NODE_DEBUG`
 environment variable: `NODE_DEBUG=fs,net,tls`.
 
-## util.deprecate(fn, msg[, code])
+## util.deprecate(fn, msg\[, code\])
 <!-- YAML
 added: v0.8.0
 changes:
@@ -181,10 +181,13 @@ The `--throw-deprecation` command line flag and `process.throwDeprecation`
 property take precedence over `--trace-deprecation` and
 `process.traceDeprecation`.
 
-## util.format(format[, ...args])
+## util.format(format\[, ...args\])
 <!-- YAML
 added: v0.5.3
 changes:
+  - version: v12.11.0
+    pr-url: https://github.com/nodejs/node/pull/29606
+    description: The `%c` specifier is ignored now.
   - version: v11.4.0
     pr-url: https://github.com/nodejs/node/pull/23708
     description: The `%d`, `%f` and `%i` specifiers now support Symbols
@@ -222,25 +225,27 @@ as a `printf`-like format string which can contain zero or more format
 specifiers. Each specifier is replaced with the converted value from the
 corresponding argument. Supported specifiers are:
 
-* `%s` - `String` will be used to convert all values except `BigInt`, `Object`
+* `%s`: `String` will be used to convert all values except `BigInt`, `Object`
   and `-0`. `BigInt` values will be represented with an `n` and Objects that
   have no user defined `toString` function are inspected using `util.inspect()`
   with options `{ depth: 0, colors: false, compact: 3 }`.
-* `%d` - `Number` will be used to convert all values except `BigInt` and
+* `%d`: `Number` will be used to convert all values except `BigInt` and
   `Symbol`.
-* `%i` - `parseInt(value, 10)` is used for all values except `BigInt` and
+* `%i`: `parseInt(value, 10)` is used for all values except `BigInt` and
   `Symbol`.
-* `%f` - `parseFloat(value)` is used for all values expect `Symbol`.
-* `%j` - JSON. Replaced with the string `'[Circular]'` if the argument contains
+* `%f`: `parseFloat(value)` is used for all values expect `Symbol`.
+* `%j`: JSON. Replaced with the string `'[Circular]'` if the argument contains
   circular references.
-* `%o` - `Object`. A string representation of an object with generic JavaScript
+* `%o`: `Object`. A string representation of an object with generic JavaScript
   object formatting. Similar to `util.inspect()` with options
   `{ showHidden: true, showProxy: true }`. This will show the full object
   including non-enumerable properties and proxies.
-* `%O` - `Object`. A string representation of an object with generic JavaScript
+* `%O`: `Object`. A string representation of an object with generic JavaScript
   object formatting. Similar to `util.inspect()` without options. This will show
   the full object not including non-enumerable properties and proxies.
-* `%%` - single percent sign (`'%'`). This does not consume an argument.
+* `%c`: `CSS`. This specifier is currently ignored, and will skip any CSS
+  passed in.
+* `%%`: single percent sign (`'%'`). This does not consume an argument.
 * Returns: {string} The formatted string
 
 If a specifier does not have a corresponding argument, it is not replaced:
@@ -282,7 +287,7 @@ util.format('%% %s');
 Some input values can have a significant performance overhead that can block the
 event loop. Use this function with care and never in a hot code path.
 
-## util.formatWithOptions(inspectOptions, format[, ...args])
+## util.formatWithOptions(inspectOptions, format\[, ...args\])
 <!-- YAML
 added: v10.0.0
 -->
@@ -388,8 +393,8 @@ stream.on('data', (data) => {
 stream.write('With ES6');
 ```
 
-## util.inspect(object[, options])
-## util.inspect(object[, showHidden[, depth[, colors]]])
+## util.inspect(object\[, options\])
+## util.inspect(object\[, showHidden\[, depth\[, colors\]\]\])
 <!-- YAML
 added: v0.3.0
 changes:
@@ -515,6 +520,24 @@ util.inspect(new Bar()); // 'Bar {}'
 util.inspect(baz);       // '[foo] {}'
 ```
 
+Circular references are marked as `'[Circular]'`:
+
+```js
+const { inspect } = require('util');
+
+const obj = {};
+obj.a = [obj];
+obj.b = {};
+obj.b.inner = obj.b;
+obj.b.obj = obj;
+
+console.log(inspect(obj));
+// {
+//   a: [ [Circular] ],
+//   b: { inner: [Circular], obj: [Circular] }
+// }
+```
+
 The following example inspects all properties of the `util` object:
 
 ```js
@@ -537,8 +560,6 @@ const o = {
   b: new Map([['za', 1], ['zb', 'test']])
 };
 console.log(util.inspect(o, { compact: true, depth: 5, breakLength: 80 }));
-
-// This will print
 
 // { a:
 //   [ 1,
@@ -641,18 +662,18 @@ via the `util.inspect.styles` and `util.inspect.colors` properties.
 
 The default styles and associated colors are:
 
-* `bigint` - `yellow`
-* `boolean` - `yellow`
-* `date` - `magenta`
-* `module` - `underline`
-* `name` - (no styling)
-* `null` - `bold`
-* `number` - `yellow`
-* `regexp` - `red`
-* `special` - `cyan` (e.g., `Proxies`)
-* `string` - `green`
-* `symbol` - `green`
-* `undefined` - `grey`
+* `bigint`: `yellow`
+* `boolean`: `yellow`
+* `date`: `magenta`
+* `module`: `underline`
+* `name`: (no styling)
+* `null`: `bold`
+* `number`: `yellow`
+* `regexp`: `red`
+* `special`: `cyan` (e.g., `Proxies`)
+* `string`: `green`
+* `symbol`: `green`
+* `undefined`: `grey`
 
 The predefined color codes are: `white`, `grey`, `black`, `blue`, `cyan`,
 `green`, `magenta`, `red` and `yellow`. There are also `bold`, `italic`,
@@ -969,7 +990,7 @@ with ICU and using the full ICU data (see [Internationalization][]).
 The `'iso-8859-16'` encoding listed in the [WHATWG Encoding Standard][]
 is not supported.
 
-### new TextDecoder([encoding[, options]])
+### new TextDecoder(\[encoding\[, options\]\])
 <!-- YAML
 added: v8.3.0
 changes:
@@ -994,7 +1015,7 @@ supported encodings or an alias.
 
 The `TextDecoder` class is also available on the global object.
 
-### textDecoder.decode([input[, options]])
+### textDecoder.decode(\[input\[, options\]\])
 
 * `input` {ArrayBuffer|DataView|TypedArray} An `ArrayBuffer`, `DataView` or
   `TypedArray` instance containing the encoded data.
@@ -1049,13 +1070,31 @@ const uint8array = encoder.encode('this is some data');
 
 The `TextEncoder` class is also available on the global object.
 
-### textEncoder.encode([input])
+### textEncoder.encode(\[input\])
 
 * `input` {string} The text to encode. **Default:** an empty string.
 * Returns: {Uint8Array}
 
 UTF-8 encodes the `input` string and returns a `Uint8Array` containing the
 encoded bytes.
+
+### textEncoder.encodeInto(src, dest)
+
+* `src` {string} The text to encode.
+* `dest` {Uint8Array} The array to hold the encode result.
+* Returns: {Object}
+  * `read` {number} The read Unicode code units of src.
+  * `written` {number} The written UTF-8 bytes of dest.
+
+UTF-8 encodes the `src` string to the `dest` Uint8Array and returns an object
+containing the read Unicode code units and written UTF-8 bytes.
+
+```js
+const encoder = new TextEncoder();
+const src = 'this is some data';
+const dest = new Uint8Array(10);
+const { read, written } = encoder.encodeInto(src, dest);
+```
 
 ### textEncoder.encoding
 
@@ -1068,11 +1107,10 @@ The encoding supported by the `TextEncoder` instance. Always set to `'utf-8'`.
 added: v10.0.0
 -->
 
-`util.types` provides a number of type checks for different kinds of built-in
-objects. Unlike `instanceof` or `Object.prototype.toString.call(value)`,
-these checks do not inspect properties of the object that are accessible from
-JavaScript (like their prototype), and usually have the overhead of
-calling into C++.
+`util.types` provides type checks for different kinds of built-in objects.
+Unlike `instanceof` or `Object.prototype.toString.call(value)`, these checks do
+not inspect properties of the object that are accessible from JavaScript (like
+their prototype), and usually have the overhead of calling into C++.
 
 The result generally does not make any guarantees about what kinds of
 properties or behavior a value exposes in JavaScript. They are primarily
@@ -1726,16 +1764,17 @@ applications and modules should be updated to find alternative approaches.
 added: v0.7.5
 deprecated: v6.0.0
 -->
+
+> Stability: 0 - Deprecated: Use [`Object.assign()`][] instead.
+
 * `target` {Object}
 * `source` {Object}
-
-> Stability: 0 - Deprecated: Use [`Object.assign()`] instead.
 
 The `util._extend()` method was never intended to be used outside of internal
 Node.js modules. The community found and used it anyway.
 
 It is deprecated and should not be used in new code. JavaScript comes with very
-similar built-in functionality through [`Object.assign()`].
+similar built-in functionality through [`Object.assign()`][].
 
 ### util.isArray(object)
 <!-- YAML

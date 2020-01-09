@@ -87,6 +87,7 @@ import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -117,6 +118,9 @@ import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -155,6 +159,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.PrepareStackTraceCallback;
 import com.oracle.truffle.js.runtime.PromiseHook;
 import com.oracle.truffle.js.runtime.PromiseRejectionTracker;
 import com.oracle.truffle.js.runtime.RegexCompilerInterface;
@@ -1283,6 +1288,10 @@ public final class GraalJSAccess {
         return ((Symbol) symbol).getDescription();
     }
 
+    public Object symbolGetIterator() {
+        return Symbol.SYMBOL_ITERATOR;
+    }
+
     public Object functionNewInstance(Object function, Object[] arguments) {
         DynamicObject functionObject = (DynamicObject) function;
         JSFunctionData functionData = JSFunction.getFunctionData(functionObject);
@@ -1860,7 +1869,7 @@ public final class GraalJSAccess {
         if (NIO_BUFFER_MODULE_NAME.equals(moduleName)) {
             // NIO-based buffer APIs in internal/graal/buffer.js are initialized by passing one
             // extra argument to the module loading function.
-            extraArgument = USE_NIO_BUFFER ? NIOBufferObject.createInitFunction(context) : Undefined.instance;
+            extraArgument = USE_NIO_BUFFER ? NIOBufferObject.createInitFunction(context) : Null.instance;
         } else if ("internal/graal/debug.js".equals(moduleName)) {
             CallTarget setBreakPointCallTarget = Truffle.getRuntime().createCallTarget(new SetBreakPointNode(this));
             JSFunctionData setBreakPointData = JSFunctionData.createCallOnly(context, setBreakPointCallTarget, 3, SetBreakPointNode.NAME);
@@ -1871,7 +1880,7 @@ public final class GraalJSAccess {
             extraArgument = SharedMemMessagingBindings.createInitFunction(this, context);
         } else if ("inspector.js".equals(moduleName)) {
             TruffleObject inspector = lookupInstrument("inspect", TruffleObject.class);
-            extraArgument = (inspector == null) ? Undefined.instance : inspector;
+            extraArgument = (inspector == null) ? Null.instance : inspector;
         }
         return extraArgument;
     }
@@ -2729,6 +2738,16 @@ public final class GraalJSAccess {
         mainJSContext.setImportModuleDynamicallyCallback(callback);
     }
 
+    public void isolateEnablePrepareStackTraceCallback(boolean enable) {
+        PrepareStackTraceCallback callback = enable ? new PrepareStackTraceCallback() {
+            @Override
+            public Object prepareStackTrace(JSRealm realm, DynamicObject error, DynamicObject structuredStackTrace) {
+                return NativeAccess.executePrepareStackTraceCallback(realm, error, structuredStackTrace);
+            }
+        } : null;
+        mainJSContext.setPrepareStackTraceCallback(callback);
+    }
+
     private void exit(int status) {
         evaluator.close();
         System.exit(status);
@@ -3090,6 +3109,65 @@ public final class GraalJSAccess {
 
     public int moduleGetIdentityHash(Object module) {
         return System.identityHashCode(module);
+    }
+
+    /**
+     * Exports of synthetic modules that were set before the evaluation of the module started (and
+     * the storage for the exports was created).
+     */
+    private Map<JSModuleRecord, Map<String, Object>> earlySyntheticModuleExports = new WeakHashMap<>();
+
+    public Object moduleCreateSyntheticModule(String moduleName, Object[] exportNames, final long evaluationStepsCallback) {
+        FrameDescriptor frameDescriptor = new FrameDescriptor(Undefined.instance);
+        List<Module.ExportEntry> localExportEntries = new ArrayList<>();
+        for (Object exportName : exportNames) {
+            frameDescriptor.addFrameSlot(exportName);
+            localExportEntries.add(Module.ExportEntry.exportSpecifier((String) exportName));
+        }
+        Module module = new Module(Collections.emptyList(), Collections.emptyList(), localExportEntries, Collections.emptyList(), Collections.emptyList(), null, null);
+        Source source = Source.newBuilder(JavaScriptLanguage.ID, "<unavailable>", moduleName).build();
+        final JSModuleRecord moduleRecord = new JSModuleRecord(module, mainJSContext, getModuleLoader(), source, () -> {
+        });
+        moduleRecord.setFrameDescriptor(frameDescriptor);
+        JavaScriptRootNode rootNode = new JavaScriptRootNode(null, null, frameDescriptor) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                moduleRecord.setEnvironment(frame.materialize());
+                return invokeEvaluationStepsCallback(mainJSContext.getRealm());
+            }
+
+            @TruffleBoundary
+            private Object invokeEvaluationStepsCallback(JSRealm realm) {
+                Map<String, Object> map = earlySyntheticModuleExports.get(moduleRecord);
+                if (map != null) {
+                    for (Map.Entry<String, Object> entry : map.entrySet()) {
+                        moduleSetSyntheticModuleExport(moduleRecord, entry.getKey(), entry.getValue());
+                    }
+                }
+                return NativeAccess.syntheticModuleEvaluationSteps(evaluationStepsCallback, realm, moduleRecord);
+            }
+        };
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        JSFunctionData functionData = JSFunctionData.createCallOnly(mainJSContext, callTarget, 0, moduleName);
+        moduleRecord.setFunctionData(functionData);
+        return moduleRecord;
+    }
+
+    public void moduleSetSyntheticModuleExport(Object module, String exportName, Object exportValue) {
+        JSModuleRecord moduleRecord = (JSModuleRecord) module;
+        FrameDescriptor frameDescriptor = moduleRecord.getFrameDescriptor();
+        FrameSlot frameSlot = frameDescriptor.findFrameSlot(exportName);
+        MaterializedFrame frame = moduleRecord.getEnvironment();
+        if (frame == null) {
+            Map<String, Object> map = earlySyntheticModuleExports.get(module);
+            if (map == null) {
+                map = new HashMap<>();
+                earlySyntheticModuleExports.put(moduleRecord, map);
+            }
+            map.put(exportName, exportValue);
+        } else {
+            frame.setObject(frameSlot, exportValue);
+        }
     }
 
     public String scriptOrModuleGetResourceName(Object scriptOrModule) {

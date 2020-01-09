@@ -89,6 +89,7 @@ added: v8.1.0
   * `before` {Function} The [`before` callback][].
   * `after` {Function} The [`after` callback][].
   * `destroy` {Function} The [`destroy` callback][].
+  * `promiseResolve` {Function} The [`promiseResolve` callback][].
 * Returns: {AsyncHook} Instance used for disabling and enabling hooks
 
 Registers functions to be called for different lifetime events of each async
@@ -614,7 +615,7 @@ asyncResource.asyncId();
 asyncResource.triggerAsyncId();
 ```
 
-#### new AsyncResource(type[, options])
+#### new AsyncResource(type\[, options\])
 
 * `type` {string} The type of async event.
 * `options` {Object}
@@ -648,7 +649,7 @@ class DBQuery extends AsyncResource {
 }
 ```
 
-#### asyncResource.runInAsyncScope(fn[, thisArg, ...args])
+#### asyncResource.runInAsyncScope(fn\[, thisArg, ...args\])
 <!-- YAML
 added: v9.6.0
 -->
@@ -685,6 +686,7 @@ never be called.
 [`before` callback]: #async_hooks_before_asyncid
 [`destroy` callback]: #async_hooks_destroy_asyncid
 [`init` callback]: #async_hooks_init_asyncid_type_triggerasyncid_resource
+[`promiseResolve` callback]: #async_hooks_promiseresolve_asyncid
 [Hook Callbacks]: #async_hooks_hook_callbacks
 [PromiseHooks]: https://docs.google.com/document/d/1rda3yKGHimKIhg5YeoAmCOtyURgsbTH_qaYR79FELlk/edit
 [`Worker`]: worker_threads.html#worker_threads_class_worker

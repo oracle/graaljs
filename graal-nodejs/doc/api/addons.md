@@ -11,40 +11,37 @@ provide an interface between JavaScript running in Node.js and C/C++ libraries.
 There are three options for implementing Addons: N-API, nan, or direct
 use of internal V8, libuv and Node.js libraries. Unless you need direct
 access to functionality which is not exposed by N-API, use N-API.
-Refer to the section [C/C++ Addons - N-API](n-api.html)
-for more information on N-API.
+Refer to [C/C++ Addons with N-API](n-api.html) for more information on N-API.
 
 When not using N-API, implementing Addons is complicated,
 involving knowledge of several components and APIs:
 
- - V8: the C++ library Node.js currently uses to provide the
-   JavaScript implementation. V8 provides the mechanisms for creating objects,
-   calling functions, etc. V8's API is documented mostly in the
-   `v8.h` header file (`deps/v8/include/v8.h` in the Node.js source
-   tree), which is also available [online][v8-docs].
+* V8: the C++ library Node.js currently uses to provide the
+  JavaScript implementation. V8 provides the mechanisms for creating objects,
+  calling functions, etc. V8's API is documented mostly in the
+  `v8.h` header file (`deps/v8/include/v8.h` in the Node.js source
+  tree), which is also available [online][v8-docs].
 
- - [libuv][]: The C library that implements the Node.js event loop, its worker
-   threads and all of the asynchronous behaviors of the platform. It also
-   serves as a cross-platform abstraction library, giving easy, POSIX-like
-   access across all major operating systems to many common system tasks, such
-   as interacting with the filesystem, sockets, timers, and system events. libuv
-   also provides a pthreads-like threading abstraction that may be used to
-   power more sophisticated asynchronous Addons that need to move beyond the
-   standard event loop. Addon authors are encouraged to think about how to
-   avoid blocking the event loop with I/O or other time-intensive tasks by
-   off-loading work via libuv to non-blocking system operations, worker threads
-   or a custom use of libuv's threads.
+* [libuv][]: The C library that implements the Node.js event loop, its worker
+  threads and all of the asynchronous behaviors of the platform. It also
+  serves as a cross-platform abstraction library, giving easy, POSIX-like
+  access across all major operating systems to many common system tasks, such
+  as interacting with the filesystem, sockets, timers, and system events. libuv
+  also provides a pthreads-like threading abstraction that may be used to
+  power more sophisticated asynchronous Addons that need to move beyond the
+  standard event loop. Addon authors are encouraged to think about how to
+  avoid blocking the event loop with I/O or other time-intensive tasks by
+  off-loading work via libuv to non-blocking system operations, worker threads
+  or a custom use of libuv's threads.
 
- - Internal Node.js libraries. Node.js itself exports a number of C++ APIs
-   that Addons can use &mdash; the most important of which is the
-   `node::ObjectWrap` class.
+* Internal Node.js libraries. Node.js itself exports C++ APIs that Addons can
+  use, the most important of which is the `node::ObjectWrap` class.
 
- - Node.js includes a number of other statically linked libraries including
-   OpenSSL. These other libraries are located in the `deps/` directory in the
-   Node.js source tree. Only the libuv, OpenSSL, V8 and zlib symbols are
-   purposefully re-exported by Node.js and may be used to various extents by
-   Addons.
-   See [Linking to Node.js' own dependencies][] for additional information.
+* Node.js includes other statically linked libraries including OpenSSL. These
+  other libraries are located in the `deps/` directory in the Node.js source
+  tree. Only the libuv, OpenSSL, V8 and zlib symbols are purposefully
+  re-exported by Node.js and may be used to various extents by Addons. See
+  [Linking to Node.js' own dependencies][] for additional information.
 
 All of the following examples are available for [download][] and may
 be used as the starting-point for an Addon.
@@ -143,6 +140,7 @@ followed by a function body.
 
 The following three variables may be used inside the function body following an
 invocation of `NODE_MODULE_INIT()`:
+
 * `Local<Object> exports`,
 * `Local<Value> module`, and
 * `Local<Context> context`
@@ -158,6 +156,7 @@ they were created.
 
 The context-aware addon can be structured to avoid global static data by
 performing the following steps:
+
 * defining a class which will hold per-addon-instance data. Such
 a class should include a `v8::Persistent<v8::Object>` which will hold a weak
 reference to the addon's `exports` object. The callback associated with the weak
@@ -259,8 +258,9 @@ signature.
 
 In order to be loaded from multiple Node.js environments,
 such as a main thread and a Worker thread, an add-on needs to either:
-- Be an N-API addon, or
-- Be declared as context-aware using `NODE_MODULE_INIT()` as described above
+
+* Be an N-API addon, or
+* Be declared as context-aware using `NODE_MODULE_INIT()` as described above
 
 ### Building
 
@@ -329,12 +329,12 @@ try {
 
 ### Linking to Node.js' own dependencies
 
-Node.js uses a number of statically linked libraries such as V8, libuv and
-OpenSSL. All Addons are required to link to V8 and may link to any of the
-other dependencies as well. Typically, this is as simple as including
-the appropriate `#include <...>` statements (e.g. `#include <v8.h>`) and
-`node-gyp` will locate the appropriate headers automatically. However, there
-are a few caveats to be aware of:
+Node.js uses statically linked libraries such as V8, libuv and OpenSSL. All
+Addons are required to link to V8 and may link to any of the other dependencies
+as well. Typically, this is as simple as including the appropriate
+`#include <...>` statements (e.g. `#include <v8.h>`) and `node-gyp` will locate
+the appropriate headers automatically. However, there are a few caveats to be
+aware of:
 
 * When `node-gyp` runs, it will detect the specific release version of Node.js
 and download either the full source tarball or just the headers. If the full
@@ -364,13 +364,12 @@ and load it instead.
 ## Native Abstractions for Node.js
 
 Each of the examples illustrated in this document make direct use of the
-Node.js and V8 APIs for implementing Addons. It is important to understand
-that the V8 API can, and has, changed dramatically from one V8 release to the
-next (and one major Node.js release to the next). With each change, Addons may
-need to be updated and recompiled in order to continue functioning. The Node.js
-release schedule is designed to minimize the frequency and impact of such
-changes but there is little that Node.js can do currently to ensure stability
-of the V8 APIs.
+Node.js and V8 APIs for implementing Addons. The V8 API can, and has, changed
+dramatically from one V8 release to the next (and one major Node.js release to
+the next). With each change, Addons may need to be updated and recompiled in
+order to continue functioning. The Node.js release schedule is designed to
+minimize the frequency and impact of such changes but there is little that
+Node.js can do currently to ensure stability of the V8 APIs.
 
 The [Native Abstractions for Node.js][] (or `nan`) provide a set of tools that
 Addon developers are recommended to use to keep compatibility between past and
@@ -432,8 +431,8 @@ NAPI_MODULE(NODE_GYP_MODULE_NAME, init)
 }  // namespace demo
 ```
 
-The functions available and how to use them are documented in the
-section titled [C/C++ Addons - N-API](n-api.html).
+The functions available and how to use them are documented in
+[C/C++ Addons with N-API](n-api.html).
 
 ## Addon examples
 

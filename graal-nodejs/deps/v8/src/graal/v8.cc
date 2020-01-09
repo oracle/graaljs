@@ -1036,8 +1036,13 @@ namespace v8 {
         return true;
     }
 
-    void V8::InitializePlatform(Platform*) {
-        TRACE
+    static v8::Platform* platform_ = nullptr;
+    void V8::InitializePlatform(Platform* platform) {
+        platform_ = platform;
+    }
+
+    void V8::ShutdownPlatform() {
+        platform_ = nullptr;
     }
 
     void V8::MakeWeak(internal::Address* global_handle, void* data,
@@ -2120,6 +2125,10 @@ namespace v8 {
         return reinterpret_cast<const GraalSymbol*> (this)->Name();
     }
 
+    Local<Symbol> Symbol::GetIterator(Isolate* isolate) {
+        return GraalSymbol::GetIterator(isolate);
+    }
+
     Local<Private> Private::New(Isolate* isolate, Local<String> name) {
         return reinterpret_cast<Private*> (*name);
     }
@@ -2186,6 +2195,17 @@ namespace v8 {
 
     Local<String> Module::GetModuleRequest(int i) const {
         return reinterpret_cast<const GraalModule*> (this)->GetModuleRequest(i);
+    }
+
+    Local<Module> Module::CreateSyntheticModule(
+            Isolate* isolate, Local<String> module_name,
+            const std::vector<Local<String>>&export_names,
+            SyntheticModuleEvaluationSteps evaluation_steps) {
+        return GraalModule::CreateSyntheticModule(isolate, module_name, export_names, evaluation_steps);
+    }
+
+    void Module::SetSyntheticModuleExport(Local<String> export_name, Local<Value> export_value) {
+        reinterpret_cast<GraalModule*> (this)->SetSyntheticModuleExport(export_name, export_value);
     }
 
     MaybeLocal<Module> ScriptCompiler::CompileModule(Isolate* isolate, Source* source,
@@ -2677,10 +2697,6 @@ namespace v8 {
         TRACE
     }
 
-    void V8::ShutdownPlatform() {
-        TRACE
-    }
-
     void String::VerifyExternalStringResource(ExternalStringResource* val) const {
         TRACE
     }
@@ -3052,6 +3068,10 @@ namespace v8 {
 
     void Isolate::Initialize(Isolate* isolate, const CreateParams& params) {
         GraalIsolate::New(params, isolate);
+        // We don't need this reference (i.e. we don't use it) by now.
+        // Unfortunately, PerIsolatePlatformData::Shutdown()
+        // assumes that someone holds the reference (V8 does so).
+        reinterpret_cast<GraalIsolate*> (isolate)->task_runner_ = platform_->GetForegroundTaskRunner(isolate);
     }
 
     internal::Address* Isolate::GetDataFromSnapshotOnce(size_t index) {
@@ -3064,7 +3084,7 @@ namespace v8 {
     }
 
     void Isolate::SetPrepareStackTraceCallback(PrepareStackTraceCallback callback) {
-        TRACE
+        reinterpret_cast<GraalIsolate*> (this)->SetPrepareStackTraceCallback(callback);
     }
 
     bool Isolate::AddMessageListenerWithErrorLevel(MessageCallback callback, int message_levels, Local<Value> data) {
@@ -3212,6 +3232,10 @@ namespace v8 {
     bool StartupData::CanBeRehashed() const {
         TRACE
         return false;
+    }
+
+    void MicrotasksScope::PerformCheckpoint(Isolate* isolate) {
+        isolate->RunMicrotasks();
     }
 
     void Object::CheckCast(v8::Value* obj) {}

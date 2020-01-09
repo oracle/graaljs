@@ -58,9 +58,9 @@ local common = import '../common.jsonnet';
   local mavenDeployDryRun = {
     run+: [
       ['mx', 'build'],
-      ['mx', '-v', 'maven-deploy', '--validate', 'full', '--licenses', 'UPL,MIT', '--dry-run', 'ossrh', 'https://this-is-only-a-test'],
+      ['mx', '-v', 'maven-deploy', '--suppress-javadoc', '--validate', 'full', '--licenses', 'UPL,MIT', '--dry-run', 'ossrh', 'https://this-is-only-a-test'],
       ['mx', '--dynamicimports', '/tools,/compiler', 'build'],
-      ['mx', '--dynamicimports', '/tools,/regex,/compiler,/truffle,/sdk', 'maven-deploy', '--all-suites', '--all-distribution-types', '--version-string', 'GATE'],
+      ['mx', '--dynamicimports', '/tools,/regex,/compiler,/truffle,/sdk', 'maven-deploy', '--suppress-javadoc', '--all-suites', '--all-distribution-types', '--version-string', 'GATE'],
       ['git', 'clone', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/graalvm/graal-js-jdk11-maven-demo.git'], 'graal-js-jdk11-maven-demo'],
       ['cd', 'graal-js-jdk11-maven-demo'],
       ['mvn', '-Dgraalvm.version=GATE', 'package'],
