@@ -62,7 +62,7 @@ import java.util.Map;
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 
 import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_CWD_NAME;
-import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_GLOBAL_BUILTINS_NAME;
+import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_CORE_MODULES_REPLACEMENTS_NAME;
 import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_GLOBAL_PROPERTIES_NAME;
 import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_NAME;
 import static com.oracle.truffle.js.runtime.JSContextOptions.GLOBAL_PROPERTY_NAME;
@@ -383,7 +383,7 @@ public class CommonJSRequireTest {
         options.put(COMMONJS_REQUIRE_NAME, "true");
         options.put(COMMONJS_REQUIRE_CWD_NAME, root.toAbsolutePath().toString());
         // requiring the 'fs' and 'path' built-in modules will resolve `module.js`
-        options.put(COMMONJS_REQUIRE_GLOBAL_BUILTINS_NAME, "path:./module,fs:./module.js");
+        options.put(COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, "path:./module,fs:./module.js");
         try (Context cx = testContext(options)) {
             Value js = cx.eval(ID, "require('path').foo + require('fs').foo;");
             Assert.assertEquals(84, js.asInt());

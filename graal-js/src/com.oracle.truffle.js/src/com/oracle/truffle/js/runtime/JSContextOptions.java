@@ -248,19 +248,19 @@ public final class JSContextOptions {
     @Option(name = LOAD_FROM_CLASSPATH_NAME, category = OptionCategory.USER, help = "Allow 'load' to access 'classpath:' URLs. Do not use with untrusted code.") //
     public static final OptionKey<Boolean> LOAD_FROM_CLASSPATH = new OptionKey<>(false);
 
-    public static final String COMMONJS_REQUIRE_NAME = JS_OPTION_PREFIX + "cjs-require";
+    public static final String COMMONJS_REQUIRE_NAME = JS_OPTION_PREFIX + "commonjs-require";
     @Option(name = COMMONJS_REQUIRE_NAME, category = OptionCategory.USER, help = "Enable CommonJS require emulation.") //
     public static final OptionKey<Boolean> COMMONJS_REQUIRE = new OptionKey<>(false);
     @CompilationFinal private boolean commonJSRequire;
 
-    public static final String COMMONJS_REQUIRE_CWD_NAME = JS_OPTION_PREFIX + "cjs-require-cwd";
+    public static final String COMMONJS_REQUIRE_CWD_NAME = JS_OPTION_PREFIX + "commonjs-require-cwd";
     @Option(name = COMMONJS_REQUIRE_CWD_NAME, category = OptionCategory.USER, help = "CommonJS default current working directory.") //
     public static final OptionKey<String> COMMONJS_REQUIRE_CWD = new OptionKey<>("");
 
-    public static final String COMMONJS_REQUIRE_GLOBAL_BUILTINS_NAME = JS_OPTION_PREFIX + "cjs-global-builtins";
-    @Option(name = COMMONJS_REQUIRE_GLOBAL_BUILTINS_NAME, category = OptionCategory.USER, help = "Npm packages used to replace global Node.js builtins. Syntax: name1:module1,name2:module2,...") //
-    public static final OptionKey<Map<String, String>> COMMONJS_REQUIRE_GLOBAL_BUILTINS = new OptionKey<>(Collections.emptyMap(), new OptionType<>(
-                    "cjs-require-globals",
+    public static final String COMMONJS_CORE_MODULES_REPLACEMENTS_NAME = JS_OPTION_PREFIX + "commonjs-core-modules-replacements";
+    @Option(name = COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, category = OptionCategory.USER, help = "Npm packages used to replace global Node.js builtins. Syntax: name1:module1,name2:module2,...") //
+    public static final OptionKey<Map<String, String>> COMMONJS_CORE_MODULES_REPLACEMENTS = new OptionKey<>(Collections.emptyMap(), new OptionType<>(
+                    "commonjs-require-globals",
                     new Function<String, Map<String, String>>() {
                         @Override
                         public Map<String, String> apply(String value) {
@@ -282,7 +282,7 @@ public final class JSContextOptions {
                         }
                     }));
 
-    public static final String COMMONJS_REQUIRE_GLOBAL_PROPERTIES_NAME = JS_OPTION_PREFIX + "cjs-global-properties";
+    public static final String COMMONJS_REQUIRE_GLOBAL_PROPERTIES_NAME = JS_OPTION_PREFIX + "commonjs-global-properties";
     @Option(name = COMMONJS_REQUIRE_GLOBAL_PROPERTIES_NAME, category = OptionCategory.USER, help = "Npm package used to populate Node.js global object.") //
     public static final OptionKey<String> COMMONJS_REQUIRE_GLOBAL_PROPERTIES = new OptionKey<>("");
 
@@ -652,7 +652,7 @@ public final class JSContextOptions {
 
     public Map<String, String> getCommonJSRequireBuiltins() {
         CompilerAsserts.neverPartOfCompilation("Context patchable option load was assumed not to be accessed in compiled code.");
-        return COMMONJS_REQUIRE_GLOBAL_BUILTINS.getValue(optionValues);
+        return COMMONJS_CORE_MODULES_REPLACEMENTS.getValue(optionValues);
     }
 
     public String getCommonJSRequireGlobals() {
