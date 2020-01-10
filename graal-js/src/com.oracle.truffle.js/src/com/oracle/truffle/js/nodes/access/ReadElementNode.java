@@ -69,6 +69,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
+import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementTag;
@@ -1474,6 +1475,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Child private InteropLibrary getterInterop;
         @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
         @Child private ReadElementNode readFromPrototypeNode;
+        @Child private JSToStringNode toStringNode;
 
         TruffleObjectReadElementTypeCacheNode(Class<? extends TruffleObject> targetClass, ReadElementTypeCacheNode next) {
             super(next);
@@ -1482,6 +1484,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             this.toJSTypeNode = JSForeignToJSTypeNodeGen.create();
             this.interop = InteropLibrary.getFactory().createDispatched(3);
             this.keyInterop = InteropLibrary.getFactory().createDispatched(3);
+            this.toStringNode = JSToStringNode.create();
         }
 
         @Override
@@ -1495,13 +1498,14 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 return Undefined.instance;
             }
             Object foreignResult;
-            if (keyInterop.isString(exportedKey)) {
-                String stringKey;
+            if (interop.hasArrayElements(truffleObject) && keyInterop.fitsInLong(exportedKey)) {
                 try {
-                    stringKey = keyInterop.asString(exportedKey);
-                } catch (UnsupportedMessageException e) {
-                    throw Errors.createTypeErrorInteropException(truffleObject, e, "asString", this);
+                    foreignResult = interop.readArrayElement(truffleObject, keyInterop.asLong(exportedKey));
+                } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
+                    return Undefined.instance;
                 }
+            } else {
+                String stringKey = toStringNode.executeString(exportedKey);
                 try {
                     foreignResult = interop.readMember(truffleObject, stringKey);
                 } catch (UnknownIdentifierException e) {
@@ -1515,14 +1519,6 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 } catch (UnsupportedMessageException e) {
                     return maybeReadFromPrototype(truffleObject, stringKey, root.context);
                 }
-            } else if (keyInterop.fitsInLong(exportedKey)) {
-                try {
-                    foreignResult = interop.readArrayElement(truffleObject, keyInterop.asLong(exportedKey));
-                } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
-                    return Undefined.instance;
-                }
-            } else {
-                return Undefined.instance;
             }
             return toJSType(foreignResult);
         }
