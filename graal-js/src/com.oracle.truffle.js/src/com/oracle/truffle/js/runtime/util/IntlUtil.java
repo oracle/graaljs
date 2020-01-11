@@ -42,10 +42,12 @@ package com.oracle.truffle.js.runtime.util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.IllformedLocaleException;
 import java.util.List;
 import java.util.Locale;
 import java.util.MissingResourceException;
+import java.util.Set;
 
 import com.ibm.icu.text.CaseMap;
 import com.ibm.icu.text.CaseMap.Lower;
@@ -56,7 +58,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
@@ -213,47 +214,38 @@ public final class IntlUtil {
 
     private static boolean lookupMatch(JSContext ctx, Locale locale, boolean stripIt) {
         Locale lookForLocale = stripIt ? locale.stripExtensions() : locale;
+        Set<Locale> availableLocales = getAvailableLocales();
+        if (availableLocales.contains(lookForLocale)) {
+            return true;
+        }
+
         // default locale might be missing in the available locale list
-        return getAvailableLocales().contains(lookForLocale) || ctx.getLocale().equals(lookForLocale);
-    }
-
-    private static final LazyValue<List<Locale>> availableLocales = new LazyValue<>(IntlUtil::initAvailableLocales);
-
-    private static List<Locale> getAvailableLocales() {
-        return availableLocales.get();
-    }
-
-    private static void addIfMissing(List<Locale> locales, Locale locale) {
-        if (!locales.contains(locale)) {
-            locales.add(locale);
+        if (ctx.getLocale().equals(lookForLocale)) {
+            return true;
         }
+
+        // Check if the locale is among the available ones when we add likely sub-tags
+        ULocale ulocale = ULocale.forLocale(lookForLocale);
+        ulocale = ULocale.addLikelySubtags(ulocale);
+        return availableLocales.contains(ulocale.toLocale());
     }
 
-    private static List<Locale> initAvailableLocales() {
-        List<Locale> result = new ArrayList<>();
+    private static final LazyValue<Set<Locale>> AVAILABLE_LOCALES = new LazyValue<>(IntlUtil::initAvailableLocales);
 
-        if (JSTruffleOptions.SubstrateVM) {
-            try {
-                // GR-6347 (Locale.getAvailableLocales() support is missing in SVM)
-                ULocale[] localesAvailable = ULocale.getAvailableLocales();
-                Locale[] javaLocalesAvailable = new Locale[localesAvailable.length];
-                int i = 0;
-                for (ULocale ul : localesAvailable) {
-                    javaLocalesAvailable[i++] = ul.toLocale();
-                }
-                result.addAll(Arrays.asList(javaLocalesAvailable));
-            } catch (MissingResourceException e) {
-                throw Errors.createICU4JDataError(e);
+    private static Set<Locale> getAvailableLocales() {
+        return AVAILABLE_LOCALES.get();
+    }
+
+    private static Set<Locale> initAvailableLocales() {
+        Set<Locale> result = new HashSet<>();
+
+        try {
+            for (ULocale ul : ULocale.getAvailableLocales()) {
+                result.add(ul.toLocale());
             }
-        } else {
-            result.addAll(Arrays.asList(Locale.getAvailableLocales()));
+        } catch (MissingResourceException e) {
+            throw Errors.createICU4JDataError(e);
         }
-
-        // As of Unicode 10.0, the availableLocales list
-        // contains the elements "az", "lt", and "tr".
-        addIfMissing(result, Locale.forLanguageTag("az"));
-        addIfMissing(result, Locale.forLanguageTag("lt"));
-        addIfMissing(result, Locale.forLanguageTag("tr"));
 
         return result;
     }
