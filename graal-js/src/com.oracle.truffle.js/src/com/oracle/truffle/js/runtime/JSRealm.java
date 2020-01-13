@@ -130,6 +130,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSTest262;
 import com.oracle.truffle.js.runtime.builtins.JSTestV8;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
 import com.oracle.truffle.js.runtime.builtins.SIMDType;
@@ -230,6 +231,8 @@ public class JSRealm {
     private final DynamicObject mapPrototype;
     private final DynamicObject setConstructor;
     private final DynamicObject setPrototype;
+    private final DynamicObject weakRefConstructor;
+    private final DynamicObject weakRefPrototype;
     private final DynamicObject weakMapConstructor;
     private final DynamicObject weakMapPrototype;
     private final DynamicObject weakSetConstructor;
@@ -437,6 +440,11 @@ public class JSRealm {
             ctor = JSSet.createConstructor(this);
             this.setConstructor = ctor.getFunctionObject();
             this.setPrototype = ctor.getPrototype();
+
+            ctor = JSWeakRef.createConstructor(this);
+            this.weakRefConstructor = ctor.getFunctionObject();
+            this.weakRefPrototype = ctor.getPrototype();
+
             ctor = JSWeakMap.createConstructor(this);
             this.weakMapConstructor = ctor.getFunctionObject();
             this.weakMapPrototype = ctor.getPrototype();
@@ -456,6 +464,8 @@ public class JSRealm {
             this.mapPrototype = null;
             this.setConstructor = null;
             this.setPrototype = null;
+            this.weakRefConstructor = null;
+            this.weakRefPrototype = null;
             this.weakMapConstructor = null;
             this.weakMapPrototype = null;
             this.weakSetConstructor = null;
@@ -819,6 +829,14 @@ public class JSRealm {
         return setPrototype;
     }
 
+    public final DynamicObject getWeakRefConstructor() {
+        return weakRefConstructor;
+    }
+
+    public final DynamicObject getWeakRefPrototype() {
+        return weakRefPrototype;
+    }
+
     public final DynamicObject getWeakMapConstructor() {
         return weakMapConstructor;
     }
@@ -1161,6 +1179,9 @@ public class JSRealm {
         }
         if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019) {
             putGlobalProperty("globalThis", global);
+        }
+        if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2020) {
+            putGlobalProperty(JSWeakRef.CLASS_NAME, getWeakRefConstructor());
         }
         if (context.getContextOptions().isGraalBuiltin()) {
             putGraalObject();

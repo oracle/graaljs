@@ -112,6 +112,7 @@ import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
+import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.builtins.SIMDType;
@@ -345,6 +346,7 @@ public class JSContext {
     private final JSObjectFactory symbolFactory;
     private final JSObjectFactory mapFactory;
     private final JSObjectFactory setFactory;
+    private final JSObjectFactory weakRefFactory;
     private final JSObjectFactory weakMapFactory;
     private final JSObjectFactory weakSetFactory;
     private final JSObjectFactory proxyFactory;
@@ -464,6 +466,7 @@ public class JSContext {
         this.symbolFactory = builder.create(JSSymbol.INSTANCE);
         this.mapFactory = builder.create(JSMap.INSTANCE);
         this.setFactory = builder.create(JSSet.INSTANCE);
+        this.weakRefFactory = builder.create(JSWeakRef.INSTANCE);
         this.weakMapFactory = builder.create(JSWeakMap.INSTANCE);
         this.weakSetFactory = builder.create(JSWeakSet.INSTANCE);
         this.proxyFactory = builder.create(JSProxy.INSTANCE);
@@ -769,6 +772,10 @@ public class JSContext {
 
     public final JSObjectFactory getMapFactory() {
         return mapFactory;
+    }
+
+    public final JSObjectFactory getWeakRefFactory() {
+        return weakRefFactory;
     }
 
     public final JSObjectFactory getWeakMapFactory() {
