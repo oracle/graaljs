@@ -144,8 +144,8 @@ public final class Scope {
         return new Scope(parent, BLOCK_SCOPE | CLASS_SCOPE);
     }
 
-    public static Scope createEval(Scope parent) {
-        return new Scope(parent, FUNCTION_BODY_SCOPE | EVAL_SCOPE);
+    public static Scope createEval(Scope parent, boolean strict) {
+        return new Scope(parent, EVAL_SCOPE | (strict ? FUNCTION_BODY_SCOPE : 0));
     }
 
     public Scope getParent() {
@@ -319,11 +319,11 @@ public final class Scope {
             String varName = functionDecl.getName().getName();
             for (Scope current = functionDeclScope.getParent(); current != null; current = current.getParent()) {
                 Symbol existing = current.getExistingSymbol(varName);
-                if (existing != null && ((existing.isBlockScoped() && !existing.isCatchParameter()) || existing.isParam())) {
-                    // lexical declaration or parameter found, do not hoist
+                if (existing != null && (existing.isBlockScoped() && !existing.isCatchParameter())) {
+                    // lexical declaration found, do not hoist
                     continue next;
                 }
-                if (current.isFunctionTopScope()) {
+                if (current.isFunctionBodyScope()) {
                     break;
                 }
             }
@@ -424,6 +424,8 @@ public final class Scope {
             return "Switch";
         } else if (isClassScope()) {
             return "Class";
+        } else if (isEvalScope()) {
+            return "Eval";
         }
         return "";
     }

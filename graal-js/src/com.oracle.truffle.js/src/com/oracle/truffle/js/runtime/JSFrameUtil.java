@@ -61,6 +61,7 @@ public final class JSFrameUtil {
     private static final int IS_CONST = Symbol.IS_CONST;
     private static final int HAS_TDZ = IS_LET | IS_CONST;
     private static final int IS_HOISTABLE_DECLARATION = Symbol.IS_HOISTABLE_DECLARATION;
+    public static final int SYMBOL_FLAG_MASK = HAS_TDZ | IS_HOISTABLE_DECLARATION;
 
     private JSFrameUtil() {
         // this utility class should not be instantiated

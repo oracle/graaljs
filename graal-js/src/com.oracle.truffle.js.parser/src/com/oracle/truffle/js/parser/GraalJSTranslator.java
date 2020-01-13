@@ -1326,7 +1326,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
              * the function has parameter expressions, then the function body gets a separate scope
              * and we populate the env with parameter vars (cf. FunctionDeclarationInstantiation).
              */
-            if (scope.isFunctionTopScope()) {
+            if (scope.isFunctionTopScope() || scope.isEvalScope()) {
                 assert environment instanceof FunctionEnvironment;
                 boolean onlyBlockScoped = currentFunction().isCallerContextEval();
                 environment.addFrameSlotsFromSymbols(scope.getSymbols(), onlyBlockScoped);

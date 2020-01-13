@@ -1020,7 +1020,7 @@ public class Parser extends AbstractParser {
         // directive and switch into strict mode (in which case we replace the scope).
         assert (parseFlags & PARSE_EVAL) != 0;
         if ((isStrictMode || (parseFlags & PARSE_FUNCTION_CONTEXT_EVAL) != 0)) {
-            return Scope.createEval(parentScope);
+            return Scope.createEval(parentScope, isStrictMode);
         } else {
             return Scope.createGlobal();
         }
@@ -1157,7 +1157,7 @@ public class Parser extends AbstractParser {
         ParserContextBlockNode body = lc.getCurrentBlock();
         assert body.getScope().getSymbolCount() == 0;
         if (body.getScope().isGlobalScope()) {
-            Scope evalScope = Scope.createEval(null);
+            Scope evalScope = Scope.createEval(body.getScope(), true);
             body.setScope(evalScope);
             ParserContextFunctionNode function = lc.getCurrentFunction();
             function.replaceBodyScope(evalScope);
@@ -2081,7 +2081,6 @@ public class Parser extends AbstractParser {
             // var declarations are added to the function body scope (a.k.a. VariableEnvironment).
             ParserContextFunctionNode function = lc.getCurrentFunction();
             Scope varScope = function.getBodyScope();
-            assert varScope.isFunctionBodyScope();
             int symbolFlags = varNode.getSymbolFlags() |
                             (varNode.isHoistableDeclaration() ? Symbol.IS_HOISTABLE_DECLARATION : 0) |
                             (varScope.isGlobalScope() ? Symbol.IS_GLOBAL : 0);

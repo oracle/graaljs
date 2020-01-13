@@ -47,7 +47,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
-import com.oracle.js.parser.ir.Symbol;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -560,7 +559,7 @@ public abstract class Environment {
         // Frame slot may already exist for simple parameters and "arguments".
         assert !getBlockFrameDescriptor().getIdentifiers().contains(symbol.getName()) || this instanceof FunctionEnvironment;
         // other bits not needed
-        int flags = symbol.getFlags() & (Symbol.KINDMASK | Symbol.IS_HOISTABLE_DECLARATION);
+        int flags = symbol.getFlags() & JSFrameUtil.SYMBOL_FLAG_MASK;
         getBlockFrameDescriptor().findOrAddFrameSlot(symbol.getName(), FrameSlotFlags.of(flags), FrameSlotKind.Illegal);
     }
 
