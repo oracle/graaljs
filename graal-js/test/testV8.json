@@ -1733,9 +1733,6 @@
     "status" : "SKIP",
     "comment" : "stack overflow, recursion"
   }, {
-    "filePath" : "mjsunit/regress/regress-crbug-658528.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/regress/regress-crbug-669850.js",
     "status" : "PASS",
     "statusOverrides" : {
