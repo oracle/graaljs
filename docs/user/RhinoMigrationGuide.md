@@ -1,9 +1,9 @@
-# Migration guide from Rhino to GraalVM JavaScript
+# Migration Guide from Rhino to GraalVM JavaScript
 
 This document serves as migration guide for code previously targeted to the Rhino engine.
 See the [JavaInterop.md](JavaInterop.md) for an overview of supported Java interoperability features.
 
-## Overview
+### Overview
 Both Rhino and GraalVM JavaScript support a similar set of syntax and semantics for Java interoperability.
 The most important differences relevant for migration are listed here.
 
@@ -29,4 +29,3 @@ For instance, you can query the `length` property (of JavaScript) but you cannot
 
 ### JavaImporter
 The `JavaImporter` feature is available only in Nashorn compatibility mode (`js.nashorn-compat` option).
-

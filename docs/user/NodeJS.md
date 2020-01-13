@@ -1,9 +1,9 @@
-# GraalVM JavaScript Node.js runtime
+# GraalVM JavaScript Node.js Runtime
 
 GraalVM can run unmodified Node.js applications.
 Applications can freely import and use Npm packages, including native ones.
 
-## Running Node.js applications
+## Running Node.js Applications
 
 To run Node.js-based applications, use the `node` binary executable in the GraalVM distribution:
 ```
@@ -15,10 +15,10 @@ GraalVM's Node.js is based on a recent version of Node.js, and runs the GraalVM 
 The `node` executable is largely compatible with Node.js, and features additional GraalVM-specific functionalities (e.g., interoperability with Java and all other GraalVM languages).
 A list of available options can be obtained with `node --help`.
 
-## Installing packages using `npm`
+## Installing Packages Using `npm`
 
 To install a Node.js package, you can use the `npm` executable in the `$GRAALVM_HOME/bin` folder of GraalVM.
-The `npm` executable is equivalent to the default Npm command, and supports most of its options. 
+The `npm` executable is equivalent to the default Npm command, and supports most of its options.
 
 An Npm package can be installed with:
 ```

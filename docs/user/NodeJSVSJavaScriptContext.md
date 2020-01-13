@@ -1,4 +1,4 @@
-# Differences between Node.js and Java embeddings in GraalVM JavaScript
+# Differences Between Node.js and Java Embeddings in GraalVM JavaScript
 
 GraalVM's JavaScript engine is a fully-compliant ECMA2020 language runtime.
 As such, it can run JavaScript code in a variety of embedding scenarios, including the Oracle [RDBMS](https://www.graalvm.org/docs/examples/mle-oracle/), any Java-based application, and Node.js.
@@ -9,8 +9,7 @@ Conversely, JavaScript code embedded in a Java application has access to limited
 
 In this document we focus on the main differences between a Node.js application and a GraalVM JavaScript application embedded in Java.
 
-
-## Context creation
+## Context Creation
 
 JavaScript code in GraalVM can be executed using a GraalVM execution _Context_.
 
@@ -23,7 +22,7 @@ In a Node.js application, the GraalVM `Context` executing the application is pre
 In this scenario, Java classes can be exposed to the Node.js application by using the `--vm.cp=` command line option of the `bin/node` command, as described below.
 
 
-## Java interoperability
+## Java Interoperability
 
 JavaScript applications can interact with Java classes using the `Java` built-in object.
 The object is not available by default, and can be enabled in the following way:
@@ -48,7 +47,7 @@ As long as a context is not accessed by two threads at the same time, parallel e
 More details on parallel execution in GraalVM JavaScript are available in [this blog post](https://medium.com/graalvm/multi-threaded-java-javascript-language-interoperability-in-graalvm-2f19c1f9c37b).
 
 
-## Java libraries
+## Java Libraries
 
 Java libraries can be accessed from JavaScript in GraalVM through the `Java` built-in object.
 In order for a Java library to be accessible from a `Context`, its `jar` files need to be added to the GraalVM class path.
@@ -60,7 +59,7 @@ This can be done in the following way:
 More details on GraalVM command line options are available in [docs/user/Options.md](https://github.com/graalvm/graaljs/blob/master/docs/user/Options.md).
 
 
-## JavaScript modules
+## JavaScript Modules
 
 Many popular JavaScript modules such as those available on the `npm` package registry can be used from Node.js as well as from Java.
 GraalVM JavaScript is compatible with the latest ECMA standard, and supports ECMAScript modules (ECM).

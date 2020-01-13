@@ -1,4 +1,4 @@
-# GraalVM JavaScript to Java interoperability
+# GraalVM JavaScript to Java Interoperability
 
 GraalVM JavaScript is a JavaScript (ECMAScript) language execution runtime.
 It allows interoperability with Java code.
@@ -7,7 +7,7 @@ This document describes the features and usage of this JavaScript to Java intero
 For a reference of GraalVM JavaScript's public API, see [JavaScriptCompatibility.md](JavaScriptCompatibility.md).
 Migration guides for [Rhino](RhinoMigrationGuide.md) and [Nashorn](NashornMigrationGuide.md) are available.
 
-## Launching GraalVM JavaScript
+### Launching GraalVM JavaScript
 Depending on how you build GraalVM JavaScript, it is started in different ways.
 GraalVM CE or EE by default ships with a `js` and `node` native launcher.
 The following examples assume this setup is used.
@@ -51,7 +51,7 @@ Invocable inv = (Invocable) eng;
 Object result = inv.invokeMethod(fn, "call", fn);
 ```
 
-## Java interoperability features
+## Java Interoperability Features
 Rhino, Nashorn and GraalVM JavaScript provide a set of features to allow interoperability from `JavaScript` to `Java`.
 While the overall feature set is mostly comparable, the engines differ in exact syntax, and partly, semantics.
 
