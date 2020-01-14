@@ -86,7 +86,7 @@
 
   windows: common + {
     packages+: {
-      "msvc": "==10.0",
+      "devkit:VS2017-15.5.5+1": "==0",
       "pip:ninja_syntax": "==1.7.2",
     },
     downloads+: {
