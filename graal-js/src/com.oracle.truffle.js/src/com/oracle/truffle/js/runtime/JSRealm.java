@@ -54,6 +54,8 @@ import java.util.SplittableRandom;
 import java.util.TimeZone;
 import java.util.WeakHashMap;
 
+import com.oracle.truffle.js.builtins.commonjs.CommonJSRequireBuiltin;
+import com.oracle.truffle.js.builtins.commonjs.GlobalCommonJSRequireBuiltins;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -143,6 +145,7 @@ import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -245,6 +248,9 @@ public class JSRealm {
     private Object callFunctionObject;
     private Object reflectApplyFunctionObject;
     private Object reflectConstructFunctionObject;
+    private Object commonJSRequireFunctionObject;
+    private Map<String, DynamicObject> commonJSPreLoadedBuiltins;
+    private Object jsonParseFunctionObject;
 
     private final DynamicObject arrayBufferConstructor;
     private final DynamicObject arrayBufferPrototype;
@@ -378,6 +384,11 @@ public class JSRealm {
      * Used to the pass call site source location for caller sensitive built-in functions.
      */
     private JavaScriptNode callNode;
+
+    /**
+     * Per-realm CommonJs `require` cache.
+     */
+    private final Map<TruffleFile, DynamicObject> commonJSRequireCache;
 
     public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
@@ -609,6 +620,12 @@ public class JSRealm {
         this.outputWriter = new PrintWriterWrapper(outputStream, true);
         this.errorWriter = new PrintWriterWrapper(errorStream, true);
         this.consoleUtil = new JSConsoleUtil();
+
+        if (context.getContextOptions().isCommonJSRequire()) {
+            this.commonJSRequireCache = new HashMap<>();
+        } else {
+            this.commonJSRequireCache = null;
+        }
     }
 
     private void initializeTypedArrayConstructors() {
@@ -998,6 +1015,14 @@ public class JSRealm {
         return reflectConstructFunctionObject;
     }
 
+    public final Object getCommonJSRequireFunctionObject() {
+        return commonJSRequireFunctionObject;
+    }
+
+    public final Object getJsonParseFunctionObject() {
+        return jsonParseFunctionObject;
+    }
+
     private static void putProtoAccessorProperty(final JSRealm realm) {
         JSContext context = realm.getContext();
         DynamicObject getProto = JSFunction.create(realm, context.protoGetterFunctionData);
@@ -1105,6 +1130,8 @@ public class JSRealm {
         this.evalFunctionObject = JSObject.get(global, JSGlobalObject.EVAL_NAME);
         this.applyFunctionObject = JSObject.get(getFunctionPrototype(), "apply");
         this.callFunctionObject = JSObject.get(getFunctionPrototype(), "call");
+        DynamicObject jsonBuiltin = (DynamicObject) JSObject.get(global, "JSON");
+        this.jsonParseFunctionObject = JSObject.get(jsonBuiltin, "parse");
 
         for (JSErrorType type : JSErrorType.errorTypes()) {
             putGlobalProperty(type.name(), getErrorConstructor(type));
@@ -1207,6 +1234,52 @@ public class JSRealm {
         }
     }
 
+    @TruffleBoundary
+    private void addCommonJSGlobals() {
+        if (getContext().getContextOptions().isCommonJSRequire()) {
+            String cwdOption = getContext().getContextOptions().getRequireCwd();
+            TruffleFile cwdFile = getEnv().getPublicTruffleFile(cwdOption);
+            try {
+                if (cwdOption != null && !cwdFile.exists()) {
+                    throw Errors.createError("Invalid CommonJS root folder: " + cwdOption);
+                }
+            } catch (SecurityException se) {
+                throw Errors.createError("Access denied to CommonJS root folder: " + cwdOption);
+            }
+            // Define `require` and other globals in global scope.
+            DynamicObject requireFunction = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, CommonJSRequireBuiltin.REQUIRE_PROPERTY_NAME);
+            DynamicObject resolveFunction = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, CommonJSRequireBuiltin.RESOLVE_PROPERTY_NAME);
+            JSObject.set(requireFunction, CommonJSRequireBuiltin.RESOLVE_PROPERTY_NAME, resolveFunction);
+            putGlobalProperty(CommonJSRequireBuiltin.REQUIRE_PROPERTY_NAME, requireFunction);
+            DynamicObject dirnameGetter = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, GlobalCommonJSRequireBuiltins.GlobalRequire.dirnameGetter.getName());
+            JSObject.defineOwnProperty(getGlobalObject(), CommonJSRequireBuiltin.DIRNAME_VAR_NAME, PropertyDescriptor.createAccessor(dirnameGetter, Undefined.instance, false, false));
+            DynamicObject filenameGetter = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, GlobalCommonJSRequireBuiltins.GlobalRequire.filenameGetter.getName());
+            JSObject.defineOwnProperty(getGlobalObject(), CommonJSRequireBuiltin.FILENAME_VAR_NAME, PropertyDescriptor.createAccessor(filenameGetter, Undefined.instance, false, false));
+            DynamicObject moduleGetter = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, GlobalCommonJSRequireBuiltins.GlobalRequire.globalModuleGetter.getName());
+            JSObject.defineOwnProperty(getGlobalObject(), CommonJSRequireBuiltin.MODULE_PROPERTY_NAME, PropertyDescriptor.createAccessor(moduleGetter, Undefined.instance, false, false));
+            DynamicObject exportsGetter = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, GlobalCommonJSRequireBuiltins.GlobalRequire.globalExportsGetter.getName());
+            JSObject.defineOwnProperty(getGlobalObject(), CommonJSRequireBuiltin.EXPORTS_PROPERTY_NAME, PropertyDescriptor.createAccessor(exportsGetter, Undefined.instance, false, false));
+            this.commonJSRequireFunctionObject = requireFunction;
+            // Load an (optional) bootstrap module. Can be used to define global properties (e.g.,
+            // Node.js builtin mock-ups).
+            String commonJSRequireGlobals = getContext().getContextOptions().getCommonJSRequireGlobals();
+            if (commonJSRequireGlobals != null && !commonJSRequireGlobals.isEmpty()) {
+                // `require()` the module. Result is discarded and exceptions are propagated.
+                JSFunction.call(JSArguments.create(commonJSRequireFunctionObject, commonJSRequireFunctionObject, commonJSRequireGlobals));
+            }
+            // Configure an (optional) mapping from reserved module names (e.g., 'buffer') to
+            // arbitrary Npm modules. Can be used to provide user-specific implementations of the JS
+            // builtins.
+            Map<String, String> commonJSRequireBuiltins = getContext().getContextOptions().getCommonJSRequireBuiltins();
+            this.commonJSPreLoadedBuiltins = new HashMap<>();
+            for (Map.Entry<String, String> entry : commonJSRequireBuiltins.entrySet()) {
+                String builtinModule = entry.getValue();
+                DynamicObject obj = (DynamicObject) JSFunction.call(JSArguments.create(commonJSRequireFunctionObject, commonJSRequireFunctionObject, builtinModule));
+                this.commonJSPreLoadedBuiltins.put(entry.getKey(), obj);
+            }
+        }
+    }
+
     private void addLoadGlobals() {
         if (getContext().getContextOptions().isLoad()) {
             putGlobalProperty("load", lookupFunction(GlobalBuiltins.GLOBAL_LOAD, "load"));
@@ -1234,6 +1307,7 @@ public class JSRealm {
         addConsoleGlobals();
         addPrintGlobals();
         addPerformanceGlobal();
+        addCommonJSGlobals();
 
         if (isJavaInteropEnabled()) {
             setupJavaInterop();
@@ -2027,6 +2101,11 @@ public class JSRealm {
             }
             return realm;
         }
+    }
+
+    public final Map<TruffleFile, DynamicObject> getCommonJSRequireCache() {
+        assert context.getContextOptions().isCommonJSRequire();
+        return commonJSRequireCache;
     }
 
 }

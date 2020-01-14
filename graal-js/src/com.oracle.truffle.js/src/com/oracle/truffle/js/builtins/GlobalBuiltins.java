@@ -100,6 +100,7 @@ import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadBufferNo
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadFullyNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadLineNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalUnEscapeNodeGen;
+import com.oracle.truffle.js.builtins.commonjs.GlobalCommonJSRequireBuiltins;
 import com.oracle.truffle.js.builtins.helper.FloatParser;
 import com.oracle.truffle.js.builtins.helper.StringEscape;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -153,6 +154,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
     public static final JSBuiltinsContainer GLOBAL_NASHORN_EXTENSIONS = new GlobalNashornScriptingBuiltins();
     public static final JSBuiltinsContainer GLOBAL_PRINT = new GlobalPrintBuiltins();
     public static final JSBuiltinsContainer GLOBAL_LOAD = new GlobalLoadBuiltins();
+    public static final JSBuiltinsContainer GLOBAL_COMMONJS_REQUIRE_EXTENSIONS = new GlobalCommonJSRequireBuiltins();
 
     protected GlobalBuiltins() {
         super(Global.class);
@@ -505,10 +507,49 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
     }
 
+    public abstract static class JSFileLoadingOperation extends JSGlobalOperation {
+
+        protected JSFileLoadingOperation(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @TruffleBoundary(transferToInterpreterOnException = false)
+        protected Source sourceFromPath(String path, JSRealm realm) {
+            Source source = null;
+            try {
+                TruffleFile file = resolveRelativeFilePath(path, realm.getEnv());
+                if (file.isRegularFile()) {
+                    source = sourceFromTruffleFile(file);
+                }
+            } catch (SecurityException e) {
+                throw Errors.createErrorFromException(e);
+            }
+            if (source == null) {
+                throw cannotLoadScript(path);
+            }
+            return source;
+        }
+
+        @TruffleBoundary(transferToInterpreterOnException = false)
+        protected static JSException cannotLoadScript(Object script) {
+            return Errors.createTypeError("Cannot load script: " + JSRuntime.safeToString(script));
+        }
+
+        @TruffleBoundary
+        protected final Source sourceFromTruffleFile(TruffleFile file) {
+            try {
+                return Source.newBuilder(JavaScriptLanguage.ID, file).build();
+            } catch (IOException | SecurityException e) {
+                throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
+            }
+        }
+
+    }
+
     /**
      * @throws SecurityException
      */
-    static TruffleFile resolveRelativeFilePath(String path, TruffleLanguage.Env env) {
+    public static TruffleFile resolveRelativeFilePath(String path, TruffleLanguage.Env env) {
         CompilerAsserts.neverPartOfCompilation();
         TruffleFile file = env.getPublicTruffleFile(path);
         if (!file.isAbsolute() && !file.exists()) {
@@ -541,7 +582,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         return null;
     }
 
-    public abstract static class JSLoadOperation extends JSGlobalOperation {
+    public abstract static class JSLoadOperation extends JSFileLoadingOperation {
         public JSLoadOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
@@ -602,19 +643,11 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @TruffleBoundary
-        protected final Source sourceFromTruffleFile(TruffleFile file) {
-            try {
-                return Source.newBuilder(JavaScriptLanguage.ID, file).build();
-            } catch (IOException | SecurityException e) {
-                throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
-            }
-        }
-
-        @TruffleBoundary
         protected static final String fileGetPath(File file) {
             return file.getPath();
         }
 
+        @Override
         @TruffleBoundary(transferToInterpreterOnException = false)
         protected Source sourceFromPath(String path, JSRealm realm) {
             Source source = null;
@@ -694,11 +727,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 }
             }
             return null;
-        }
-
-        @TruffleBoundary(transferToInterpreterOnException = false)
-        protected static JSException cannotLoadScript(Object script) {
-            return Errors.createTypeError("Cannot load script: " + JSRuntime.safeToString(script));
         }
     }
 

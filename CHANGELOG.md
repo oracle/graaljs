@@ -10,6 +10,7 @@ The main focus is on user-observable behavior of the engine.
 * Implemented the [String.prototype.replaceAll](https://github.com/tc39/proposal-string-replaceall) proposal. It is available in ECMAScript 2020 mode (`--js.ecmascript-version=2020`).
 * Added `js.load-from-classpath` option to allow loading files from the classpath via `classpath:` pseudo URLs (disabled by default). Do not use with untrusted code.
 * Added option `js.bind-member-functions` for the implicit binding of unbound functions returned by [Value.getMember](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#getMember-java.lang.String-) to the receiver. The preferred way of calling members is using [Value.invokeMember](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#invokeMember-java.lang.String-java.lang.Object...-).
+* Added option `js.commonjs-require` to load Npm-compatible CommonJS modules from plain JavaScript. This is an experimental feature. See [NodeJSVSJavaScriptContext.md](https://github.com/graalvm/graaljs/blob/master/docs/user/NodeJSVSJavaScriptContext.md) for details.
 
 ## Version 19.3.0
 * Implemented the [Promise.allSettled](https://github.com/tc39/proposal-promise-allSettled) proposal. It is available in ECMAScript 2020 mode (`--js.ecmascript-version=2020`).
