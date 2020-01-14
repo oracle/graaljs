@@ -78,7 +78,6 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -560,7 +559,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             int counter = 0;
             do {
                 counter++;
-                if (counter > JSTruffleOptions.MaxExpectedPrototypeChainLength) {
+                if (counter > getContext().getContextOptions().getMaxPrototypeChainLength()) {
                     throw Errors.createRangeError("prototype chain length exceeded");
                 }
                 pobj = JSObject.getPrototype(pobj);

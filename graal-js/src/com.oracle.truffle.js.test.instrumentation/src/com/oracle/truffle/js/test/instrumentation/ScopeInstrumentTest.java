@@ -76,7 +76,7 @@ public class ScopeInstrumentTest {
 
     @Before
     public void setup() {
-        context = Context.create(ID);
+        context = TestUtil.newContextBuilder().build();
     }
 
     @After

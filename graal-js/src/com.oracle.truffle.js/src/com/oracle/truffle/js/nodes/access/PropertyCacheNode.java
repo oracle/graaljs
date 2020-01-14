@@ -62,9 +62,9 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
@@ -505,7 +505,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     /**
      * Checks that the object is constant and the shape by assumption (valid and unchanged).
      *
-     * @see JSTruffleOptions#SkipFinalShapeCheck
+     * @see JSConfig#SkipFinalShapeCheck
      */
     protected static final class ConstantObjectAssumptionShapeCheckNode extends AbstractAssumptionShapeCheckNode implements ConstantObjectReceiverCheck {
 
@@ -565,7 +565,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      * Checks that the object is constant and all the shapes of the prototype chain up to the given
      * depth by assumption (valid and unchanged).
      *
-     * @see JSTruffleOptions#SkipFinalShapeCheck
+     * @see JSConfig#SkipFinalShapeCheck
      */
     protected static final class ConstantObjectPrototypeChainShapeCheckNode extends AbstractAssumptionShapeCheckNode implements ConstantObjectReceiverCheck {
 
@@ -655,7 +655,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      * Checks that the object is constant and the shape of the object and its immediate prototype by
      * assumption (valid and unchanged).
      *
-     * @see JSTruffleOptions#SkipFinalShapeCheck
+     * @see JSConfig#SkipFinalShapeCheck
      */
     protected static final class ConstantObjectPrototypeShapeCheckNode extends AbstractAssumptionShapeCheckNode implements ConstantObjectReceiverCheck {
 
@@ -743,7 +743,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      *
      * This class actually traverses the prototype chain and checks each prototype shape's identity.
      *
-     * @see JSTruffleOptions#SkipPrototypeShapeCheck
+     * @see JSConfig#SkipPrototypeShapeCheck
      */
     protected static final class TraversePrototypeChainShapeCheckNode extends AbstractShapeCheckNode {
 
@@ -824,7 +824,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      *
      * This class actually reads the prototype and checks the prototype shape's identity.
      *
-     * @see JSTruffleOptions#SkipPrototypeShapeCheck
+     * @see JSConfig#SkipPrototypeShapeCheck
      */
     protected static final class TraversePrototypeShapeCheckNode extends AbstractShapeCheckNode {
 
@@ -932,7 +932,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      *
      * This class actually traverses the prototype chain and checks each prototype shape's identity.
      *
-     * @see JSTruffleOptions#SkipPrototypeShapeCheck
+     * @see JSConfig#SkipPrototypeShapeCheck
      */
     protected static final class TraversePrototypeChainCheckNode extends AbstractShapeCheckNode {
         private final JSContext context;
@@ -1214,12 +1214,12 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
             Shape cacheShape = store.getShape();
 
-            if (JSTruffleOptions.DictionaryObject && JSDictionaryObject.isJSDictionaryObject(store)) {
+            if (JSConfig.DictionaryObject && JSDictionaryObject.isJSDictionaryObject(store)) {
                 // TODO: could probably specialize on shape as well.
                 return rewriteToGeneric(currentHead, "dictionary object");
             }
 
-            if (JSTruffleOptions.MergeShapes && cachedCount > 0) {
+            if (JSConfig.MergeShapes && cachedCount > 0) {
                 // check if we're creating unnecessary polymorphism due to compatible types
                 synchronized (store.getShape().getMutex()) {
                     if (tryMergeShapes(cacheShape, currentHead)) {
@@ -1249,7 +1249,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             }
         }
 
-        if (cachedCount >= JSTruffleOptions.PropertyCacheLimit || (specialized != null && specialized.isGeneric())) {
+        if (cachedCount >= context.getPropertyCacheLimit() || (specialized != null && specialized.isGeneric())) {
             return rewriteToGeneric(currentHead, "cache limit reached");
         }
 
@@ -1311,7 +1311,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         specialized.setNext(currentHead);
         this.cacheNode = specialized;
         traceRewriteInsert(specialized, cachedCount);
-        if (JSTruffleOptions.TracePolymorphicPropertyAccess && cachedCount > 0) {
+        if (JSConfig.TracePolymorphicPropertyAccess && cachedCount > 0) {
             System.out.printf("POLYMORPHIC PROPERTY ACCESS key='%s' %s\n%s\n---\n", key, getEncapsulatingSourceSection(), specialized.debugString());
         }
         return specialized;
@@ -1319,7 +1319,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
     protected T rewriteToGeneric(T currentHead, String reason) {
         megamorphicCount.inc();
-        if (JSTruffleOptions.TraceMegamorphicPropertyAccess) {
+        if (JSConfig.TraceMegamorphicPropertyAccess) {
             System.out.printf("MEGAMORPHIC PROPERTY ACCESS key='%s' %s\n%s\n---\n", key, getEncapsulatingSourceSection(), currentHead.debugString());
         }
 
@@ -1425,7 +1425,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
     private AbstractShapeCheckNode createShapeCheckNodeDepth0(Shape shape, DynamicObject thisObj, boolean isConstantObjectFinal, boolean isDefine) {
         // if isDefine is true, shape change is imminent, so don't use assumption
-        if (isGlobal() && JSTruffleOptions.SkipGlobalShapeCheck && !isDefine && isPropertyAssumptionCheckEnabled() && JSShape.getPropertyAssumption(shape, key).isValid()) {
+        if (isGlobal() && JSConfig.SkipGlobalShapeCheck && !isDefine && isPropertyAssumptionCheckEnabled() && JSShape.getPropertyAssumption(shape, key).isValid()) {
             return new AssumptionShapeCheckNode(shape, key, getContext());
         } else if (isConstantObjectFinal) {
             assert !isDefine;
@@ -1442,7 +1442,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
     private AbstractShapeCheckNode createShapeCheckNodeDepth1(Shape shape, DynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
         assert depth == 1;
-        if (JSTruffleOptions.SkipPrototypeShapeCheck && prototypesInShape(thisObj, depth) && propertyAssumptionsValid(thisObj, depth, isConstantObjectFinal)) {
+        if (JSConfig.SkipPrototypeShapeCheck && prototypesInShape(thisObj, depth) && propertyAssumptionsValid(thisObj, depth, isConstantObjectFinal)) {
             return isConstantObjectFinal
                             ? new ConstantObjectPrototypeShapeCheckNode(shape, thisObj, key, getContext())
                             : new PrototypeShapeCheckNode(shape, thisObj, key, getContext());
@@ -1454,7 +1454,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
     private AbstractShapeCheckNode createShapeCheckNodeDeeper(Shape shape, DynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
         assert depth > 1;
-        if (JSTruffleOptions.SkipPrototypeShapeCheck && prototypesInShape(thisObj, depth) && propertyAssumptionsValid(thisObj, depth, isConstantObjectFinal)) {
+        if (JSConfig.SkipPrototypeShapeCheck && prototypesInShape(thisObj, depth) && propertyAssumptionsValid(thisObj, depth, isConstantObjectFinal)) {
             return isConstantObjectFinal
                             ? new ConstantObjectPrototypeChainShapeCheckNode(shape, thisObj, key, depth, getContext())
                             : new PrototypeChainShapeCheckNode(shape, thisObj, key, depth, getContext());
@@ -1504,7 +1504,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             assert JSRuntime.isJSPrimitive(thisObj);
             DynamicObject wrapped = wrapPrimitive(thisObj, context);
             AbstractShapeCheckNode prototypeShapeCheck;
-            if (JSTruffleOptions.SkipPrototypeShapeCheck && prototypesInShape(wrapped, depth) && propertyAssumptionsValid(wrapped, depth, false)) {
+            if (JSConfig.SkipPrototypeShapeCheck && prototypesInShape(wrapped, depth) && propertyAssumptionsValid(wrapped, depth, false)) {
                 prototypeShapeCheck = new PrototypeChainCheckNode(wrapped.getShape(), wrapped, key, depth, context);
             } else {
                 prototypeShapeCheck = new TraversePrototypeChainCheckNode(wrapped.getShape(), wrapped, depth, JSObject.getJSClass(wrapped), context);
@@ -1574,14 +1574,14 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     private void traceRewriteInsert(Node newNode, int cacheDepth) {
         if (TruffleOptions.TraceRewrites) {
             PrintStream out = System.out;
-            out.printf("[truffle]   rewrite %-50s |Property %s |Node %s (%d/%d)%n", this, key, newNode, cacheDepth, JSTruffleOptions.PropertyCacheLimit);
+            out.printf("[truffle]   rewrite %-50s |Property %s |Node %s (%d/%d)%n", this, key, newNode, cacheDepth, getContext().getPropertyCacheLimit());
         }
     }
 
     private void traceRewriteMegamorphic(Node newNode, String reason) {
         if (TruffleOptions.TraceRewrites) {
             PrintStream out = System.out;
-            out.printf("[truffle]   rewrite %-50s |Property %s |Node %s |Reason %s (limit %d)%n", this, key, newNode, reason, JSTruffleOptions.PropertyCacheLimit);
+            out.printf("[truffle]   rewrite %-50s |Property %s |Node %s |Reason %s (limit %d)%n", this, key, newNode, reason, getContext().getPropertyCacheLimit());
         }
     }
 

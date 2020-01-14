@@ -64,7 +64,6 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractConstantArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantEmptyArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantObjectArray;
@@ -387,6 +386,7 @@ public abstract class ScriptArray {
             return null;
         });
         nodeStream = StreamSupport.stream(stackTrace.spliterator(), false).filter(fi -> fi.getCallNode() != null).map(fi -> fi.getCallNode());
+        int stackTraceLimit = JavaScriptLanguage.getCurrentJSRealm().getContext().getContextOptions().getStackTraceLimit();
         StackTraceElement[] array = nodeStream.filter(n -> n.getEncapsulatingSourceSection() != null).map(node -> {
             SourceSection callNodeSourceSection = node.getEncapsulatingSourceSection();
             String declaringClass = "js";
@@ -394,7 +394,7 @@ public abstract class ScriptArray {
             String fileName = callNodeSourceSection.isAvailable() ? callNodeSourceSection.getSource().getName() : "<unknown>";
             int startLine = callNodeSourceSection.getStartLine();
             return new StackTraceElement(declaringClass, methodName != null ? methodName : "<unknown>", fileName, startLine);
-        }).limit(JSTruffleOptions.StackTraceLimit).toArray(StackTraceElement[]::new);
+        }).limit(stackTraceLimit).toArray(StackTraceElement[]::new);
 
         System.out.printf("[js]      array transition %-48s |index %5s |value %-20s |caller %5s\n", access, index, value, array[0]);
     }

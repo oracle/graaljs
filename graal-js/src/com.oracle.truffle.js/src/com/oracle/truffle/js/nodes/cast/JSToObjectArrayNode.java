@@ -64,7 +64,6 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 
 /**
@@ -123,11 +122,11 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"isJSObject(obj)"})
-    protected static Object[] toArray(DynamicObject obj,
+    protected Object[] toArray(DynamicObject obj,
                     @Cached("create(context)") JSGetLengthNode getLengthNode,
                     @Cached("create(context)") ReadElementNode readNode) {
         long len = getLengthNode.executeLong(obj);
-        if (len > JSTruffleOptions.MaxApplyArgumentLength) {
+        if (len > context.getContextOptions().getMaxApplyArgumentLength()) {
             CompilerDirectives.transferToInterpreter();
             throw Errors.createRangeErrorTooManyArguments();
         }
@@ -188,8 +187,8 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected static Object[] passArray(Object[] array) {
-        if (array.length > JSTruffleOptions.MaxApplyArgumentLength) {
+    protected Object[] passArray(Object[] array) {
+        if (array.length > context.getContextOptions().getMaxApplyArgumentLength()) {
             CompilerDirectives.transferToInterpreter();
             throw Errors.createRangeErrorTooManyArguments();
         }
@@ -198,9 +197,9 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
 
     @TruffleBoundary
     @Specialization(guards = "isList(value)")
-    protected static Object[] doList(Object value) {
+    protected Object[] doList(Object value) {
         List<?> list = ((List<?>) value);
-        if (list.size() > JSTruffleOptions.MaxApplyArgumentLength) {
+        if (list.size() > context.getContextOptions().getMaxApplyArgumentLength()) {
             CompilerDirectives.transferToInterpreter();
             throw Errors.createRangeErrorTooManyArguments();
         }
@@ -208,7 +207,7 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"isForeignObject(obj)"}, limit = "5")
-    protected static Object[] doForeignObject(Object obj,
+    protected Object[] doForeignObject(Object obj,
                     @CachedLibrary("obj") InteropLibrary interop,
                     @Cached("create()") BranchProfile hasPropertiesBranch,
                     @Cached("create()") JSForeignToJSTypeNode foreignConvertNode) {
@@ -218,7 +217,7 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
             }
 
             long len = interop.getArraySize(obj);
-            if (len > JSTruffleOptions.MaxApplyArgumentLength) {
+            if (len > context.getContextOptions().getMaxApplyArgumentLength()) {
                 CompilerDirectives.transferToInterpreter();
                 throw Errors.createRangeErrorTooManyArguments();
             }

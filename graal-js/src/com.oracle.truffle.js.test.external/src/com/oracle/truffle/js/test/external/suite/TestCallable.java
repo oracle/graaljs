@@ -45,10 +45,11 @@ import java.io.OutputStream;
 import java.util.Collections;
 import java.util.Map;
 
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.JSContextOptions;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
+
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSContextOptions;
 
 public class TestCallable extends AbstractTestCallable {
 

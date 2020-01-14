@@ -48,7 +48,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArr
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 
 public abstract class AbstractObjectArray extends AbstractWritableArray {
@@ -108,7 +108,7 @@ public abstract class AbstractObjectArray extends AbstractWritableArray {
 
     public final void setInBounds(DynamicObject object, int index, Object value, boolean condition, ProfileHolder profile) {
         getArray(object, condition)[prepareInBounds(object, index, condition, profile)] = checkNonNull(value);
-        if (JSTruffleOptions.TraceArrayWrites) {
+        if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBounds", index, value);
         }
     }
@@ -117,7 +117,7 @@ public abstract class AbstractObjectArray extends AbstractWritableArray {
         int preparedIndex = prepareSupported(object, index, condition, ProfileHolder.empty());
 
         getArray(object, condition)[preparedIndex] = checkNonNull(value);
-        if (JSTruffleOptions.TraceArrayWrites) {
+        if (JSConfig.TraceArrayWrites) {
             traceWriteValue("Supported", index, value);
         }
     }
@@ -197,7 +197,7 @@ public abstract class AbstractObjectArray extends AbstractWritableArray {
     }
 
     protected Object castNonNull(Object value) {
-        if (JSTruffleOptions.MarkElementsNonNull && value == null) {
+        if (JSConfig.MarkElementsNonNull && value == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw Errors.shouldNotReachHere();
         }

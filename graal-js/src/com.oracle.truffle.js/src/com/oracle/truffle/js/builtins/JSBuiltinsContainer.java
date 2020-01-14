@@ -47,9 +47,9 @@ import org.graalvm.collections.EconomicMap;
 import com.oracle.truffle.js.nodes.function.BuiltinArgumentBuilder;
 import com.oracle.truffle.js.nodes.function.BuiltinNodeFactory;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 
@@ -150,7 +150,7 @@ public class JSBuiltinsContainer {
             super(name);
             this.enumType = enumType;
             for (E builtin : enumType.getEnumConstants()) {
-                if (builtin.isEnabled() && (!JSTruffleOptions.SubstrateVM || builtin.isAOTSupported())) {
+                if (builtin.isEnabled() && (!JSConfig.SubstrateVM || builtin.isAOTSupported())) {
                     loadBuiltin(builtin);
                 }
             }

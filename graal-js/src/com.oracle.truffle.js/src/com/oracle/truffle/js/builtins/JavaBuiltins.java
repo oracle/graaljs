@@ -85,11 +85,11 @@ import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -162,12 +162,12 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 return JavaAddToClasspathNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
 
             case extend:
-                if (!JSTruffleOptions.SubstrateVM) {
+                if (!JSConfig.SubstrateVM) {
                     return JavaExtendNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
                 }
                 break;
             case super_:
-                if (!JSTruffleOptions.SubstrateVM) {
+                if (!JSConfig.SubstrateVM) {
                     return JavaSuperNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                 }
                 break;
@@ -217,7 +217,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 case isScriptObject:
                     return JavaIsScriptObjectNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                 case synchronized_:
-                    if (!JSTruffleOptions.SubstrateVM) {
+                    if (!JSConfig.SubstrateVM) {
                         return JavaSynchronizedNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
                     }
                     break;
@@ -326,7 +326,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         @Specialization
         @TruffleBoundary(transferToInterpreterOnException = false)
         protected Object extend(Object[] arguments) {
-            if (JSTruffleOptions.SubstrateVM) {
+            if (JSConfig.SubstrateVM) {
                 throw Errors.unsupported("JavaAdapter");
             }
             if (arguments.length == 0) {

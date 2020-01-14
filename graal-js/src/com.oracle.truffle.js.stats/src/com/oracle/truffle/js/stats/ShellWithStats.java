@@ -49,12 +49,13 @@ import org.graalvm.options.OptionCategory;
 import org.graalvm.polyglot.Context;
 
 import com.oracle.truffle.js.builtins.helper.HeapDump;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.shell.RepeatingLauncher;
 import com.oracle.truffle.js.stats.heap.HeapDumpAnalyzer;
 
 public class ShellWithStats extends RepeatingLauncher {
-    private boolean heapDump = JSTruffleOptions.DumpHeapOnExit;
+    private boolean heapDump = false;
+    private String heapDumpFileName = null;
 
     public static void main(String[] args) {
         new ShellWithStats().launch(args);
@@ -64,6 +65,10 @@ public class ShellWithStats extends RepeatingLauncher {
     protected PreprocessResult preprocessArgument(String argument) {
         if (argument.equals("heap-dump")) {
             heapDump = true;
+            return Consumed;
+        }
+        if (argument.startsWith("heap-dump-file")) {
+            heapDumpFileName = argument.substring(argument.indexOf("=") + 1);
             return Consumed;
         }
         return super.preprocessArgument(argument);
@@ -78,9 +83,9 @@ public class ShellWithStats extends RepeatingLauncher {
     @Override
     protected int executeScripts(Context.Builder contextBuilder) {
         int result = super.executeScripts(contextBuilder);
-        if (!JSTruffleOptions.SubstrateVM && heapDump) {
+        if (!JSConfig.SubstrateVM && heapDump) {
             try {
-                String dumpName = JSTruffleOptions.HeapDumpFileName == null ? HeapDump.defaultDumpName() : JSTruffleOptions.HeapDumpFileName;
+                String dumpName = heapDumpFileName == null ? HeapDump.defaultDumpName() : heapDumpFileName;
                 deleteIfExists(dumpName);
                 System.out.println("Dumping the heap to: " + dumpName);
                 HeapDump.dump(dumpName, true);

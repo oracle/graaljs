@@ -59,8 +59,8 @@ import com.oracle.truffle.js.nodes.control.EmptyNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractConstantArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantByteArray;
@@ -557,7 +557,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         @ExplodeLoop
         @Override
         public DynamicObject executeDynamicObject(VirtualFrame frame) {
-            SimpleArrayList<Object> evaluatedElements = new SimpleArrayList<>(elements.length + JSTruffleOptions.SpreadArgumentPlaceholderCount);
+            SimpleArrayList<Object> evaluatedElements = new SimpleArrayList<>(elements.length + JSConfig.SpreadArgumentPlaceholderCount);
             int holeCount = 0;
             int arrayOffset = 0;
             int usedLength = 0;

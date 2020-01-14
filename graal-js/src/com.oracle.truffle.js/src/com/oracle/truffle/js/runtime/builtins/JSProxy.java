@@ -54,10 +54,10 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.ProxyFunctionBuiltins;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -405,7 +405,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             throw Errors.createTypeErrorConfigurableExpected();
         }
         JSContext context = JSObject.getJSContext(thisObj);
-        if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2020) {
+        if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2020) {
             boolean extensibleTarget = JSObject.isExtensible((DynamicObject) target);
             if (!extensibleTarget) {
                 throw Errors.createTypeErrorProxyTargetNotExtensible();
@@ -460,7 +460,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             if (settingConfigFalse && targetDesc.getConfigurable()) {
                 throw Errors.createTypeError("'defineProperty' on proxy: trap returned truish for defining non-configurable property which is configurable in the proxy target");
             }
-            if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2020 && targetDesc.isDataDescriptor() && !targetDesc.getConfigurable() && targetDesc.getWritable() && desc.hasWritable() &&
+            if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2020 && targetDesc.isDataDescriptor() && !targetDesc.getConfigurable() && targetDesc.getWritable() && desc.hasWritable() &&
                             !desc.getWritable()) {
                 throw Errors.createTypeError("'defineProperty' on proxy: trap returned truish for defining non-configurable property " +
                                 "which cannot be non-writable, unless there exists a corresponding non-configurable, non-writable own property of the proxy target");
@@ -693,7 +693,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             return uncheckedResultKeys;
         }
         JSContext context = JSObject.getJSContext(thisObj);
-        if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2018 && containsDuplicateEntries(trapResult)) {
+        if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2018 && containsDuplicateEntries(trapResult)) {
             throw Errors.createTypeError("trap result contains duplicate entries");
         }
         boolean extensibleTarget = JSObject.isExtensible((DynamicObject) target);
@@ -797,7 +797,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
                 throw Errors.createTypeErrorConfigurableExpected();
             }
             JSContext context = JSObject.getJSContext(thisObj);
-            if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2020 && resultDesc.hasWritable() && !resultDesc.getWritable() && targetDesc.getWritable()) {
+            if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2020 && resultDesc.hasWritable() && !resultDesc.getWritable() && targetDesc.getWritable()) {
                 throw Errors.createTypeError("target is missing the corresponding non-configurable and non-writable own property");
             }
         }

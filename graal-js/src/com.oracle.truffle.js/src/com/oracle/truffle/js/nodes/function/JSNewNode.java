@@ -70,9 +70,9 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -224,7 +224,7 @@ public abstract class JSNewNode extends JavaScriptNode {
             args[i] = convert.execute(args[i]);
         }
 
-        if (!JSTruffleOptions.SubstrateVM && context.isOptionNashornCompatibilityMode()) {
+        if (!JSConfig.SubstrateVM && context.isOptionNashornCompatibilityMode()) {
             TruffleLanguage.Env env = context.getRealm().getEnv();
             if (isHostClassProf.profile(count == 1 && env.isHostObject(target) && env.asHostObject(target) instanceof Class<?>)) {
                 Class<?> javaType = (Class<?>) env.asHostObject(target);
@@ -243,7 +243,7 @@ public abstract class JSNewNode extends JavaScriptNode {
 
     @TruffleBoundary
     private Object extend(Class<?> type, TruffleLanguage.Env env) {
-        assert !JSTruffleOptions.SubstrateVM;
+        assert !JSConfig.SubstrateVM;
         if (!Modifier.isPublic(type.getModifiers())) {
             throwCannotExtendError(type);
         }

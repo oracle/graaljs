@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -71,7 +72,8 @@ public final class UserScriptException extends GraalJSException {
 
     @TruffleBoundary
     public static UserScriptException create(Object exceptionObject, Node originatingNode) {
-        return fillInStackTrace(new UserScriptException(exceptionObject, originatingNode, JSTruffleOptions.StackTraceLimit), Undefined.instance, false);
+        int stackTraceLimit = JavaScriptLanguage.getCurrentJSRealm().getContext().getContextOptions().getStackTraceLimit();
+        return fillInStackTrace(new UserScriptException(exceptionObject, originatingNode, stackTraceLimit), Undefined.instance, false);
     }
 
     @TruffleBoundary
@@ -86,7 +88,8 @@ public final class UserScriptException extends GraalJSException {
 
     @TruffleBoundary
     public static UserScriptException createJavaException(Throwable exception, Node originatingNode) {
-        return fillInStackTrace(new UserScriptException(exception, originatingNode, JSTruffleOptions.StackTraceLimit), Undefined.instance, false);
+        int stackTraceLimit = JavaScriptLanguage.getCurrentJSRealm().getContext().getContextOptions().getStackTraceLimit();
+        return fillInStackTrace(new UserScriptException(exception, originatingNode, stackTraceLimit), Undefined.instance, false);
     }
 
     @Override

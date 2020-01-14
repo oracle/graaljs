@@ -64,12 +64,13 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.test.JSTest;
 
 public class JSONStringifyInteropTest {
 
     @Test
     public void testForeignExecutable() {
-        try (Context context = Context.newBuilder(ID).allowAllAccess(true).build()) {
+        try (Context context = JSTest.newContextBuilder().allowAllAccess(true).build()) {
             Value result = context.eval(ID, "JSON.stringify(java.lang.Class.forName) === undefined");
             assertTrue(result.isBoolean());
             assertTrue(result.asBoolean());
@@ -86,7 +87,7 @@ public class JSONStringifyInteropTest {
 
     @Test
     public void testNonReadableMembers() {
-        try (Context context = Context.newBuilder(ID).allowHostAccess(HostAccess.ALL).build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).build()) {
             context.getBindings(ID).putMember("myObj", new InvocableMemberObject(Collections.singletonMap("someKey", "someValue")));
             Value result = context.eval(ID, "JSON.stringify(myObj)");
             assertEquals("{}", result.asString());

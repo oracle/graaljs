@@ -60,6 +60,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.test.JSTest;
 
 /**
  * Various tests for accessing JavaScript Error in Java and accessing Java Exception in JavaScript.
@@ -83,7 +84,7 @@ public class ExceptionInteropTest {
         @HostAccess.Export
         public void methodThatThrowsJSException() throws IOException {
             // Host access must be the same for all contexts using the same engine
-            try (Context context = Context.newBuilder(ID).allowHostAccess(hostAccess).engine(engine).build()) {
+            try (Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).engine(engine).build()) {
                 context.eval(Source.newBuilder(ID, "\nisNotDefined.doesNotMakeSense = 1;\n", "nestedisnotdefined.js").build());
                 fail("PolyglotException not thrown");
             }
@@ -98,7 +99,7 @@ public class ExceptionInteropTest {
         @HostAccess.Export
         public void methodThatThrowsNestedJavaException() throws IOException {
             // Host access must be the same for all contexts using the same engine
-            try (Context context = Context.newBuilder(ID).allowHostAccess(hostAccess).engine(engine).build()) {
+            try (Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).engine(engine).build()) {
                 Value bindings = context.getBindings(ID);
                 bindings.putMember("objectFromJava", this);
                 context.eval(Source.newBuilder(ID, "\nobjectFromJava.methodThatThrowsException();\n",
@@ -125,7 +126,7 @@ public class ExceptionInteropTest {
     public static void initializeExceptionLineNumber() {
         HostAccess hostAccess = HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).build();
         int lineNumber = -1;
-        try (Engine graalEngine = Engine.newBuilder().build(); Context context = Context.newBuilder(ID).engine(graalEngine).allowHostAccess(hostAccess).build()) {
+        try (Engine graalEngine = JSTest.newEngineBuilder().build(); Context context = JSTest.newContextBuilder().engine(graalEngine).allowHostAccess(hostAccess).build()) {
             context.enter();
             context.initialize(ID);
             ToBePassedToJS toBePassedToJS = new ToBePassedToJS(null, null);
@@ -146,7 +147,7 @@ public class ExceptionInteropTest {
      */
     @Test
     public void testJSException() throws IOException {
-        try (Context context = Context.create(ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             context.eval(Source.newBuilder(ID, "\nisNotDefined.doesNotMakeSense = 1;\n", "isnotdefined.js").build());
             fail("PolyglotException not thrown");
         } catch (PolyglotException e) {
@@ -165,7 +166,7 @@ public class ExceptionInteropTest {
     @Test
     public void testNestedJSException() throws IOException {
         final HostAccess hostAccess = HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).build();
-        try (Engine graalEngine = Engine.newBuilder().build(); Context context = Context.newBuilder(ID).allowHostAccess(hostAccess).engine(graalEngine).build()) {
+        try (Engine graalEngine = JSTest.newEngineBuilder().build(); Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).engine(graalEngine).build()) {
             Value bindings = context.getBindings(ID);
             ToBePassedToJS objectFromJava = new ToBePassedToJS(graalEngine, hostAccess);
             bindings.putMember("objectFromJava", objectFromJava);
@@ -191,7 +192,7 @@ public class ExceptionInteropTest {
     @SuppressWarnings("RedundantOperationOnEmptyContainer")
     public void testCaughtJSException() throws IOException {
         final HostAccess hostAccess = HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).build();
-        try (Engine graalEngine = Engine.newBuilder().build(); Context context = Context.newBuilder(ID).allowHostAccess(hostAccess).engine(graalEngine).build()) {
+        try (Engine graalEngine = JSTest.newEngineBuilder().build(); Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).engine(graalEngine).build()) {
             Value bindings = context.getBindings(ID);
             ToBePassedToJS objectFromJava = new ToBePassedToJS(graalEngine, hostAccess);
             bindings.putMember("objectFromJava", objectFromJava);
@@ -236,7 +237,7 @@ public class ExceptionInteropTest {
     @Test
     public void testJavaExceptionThroughJS() throws IOException {
         final HostAccess hostAccess = HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).build();
-        try (Engine graalEngine = Engine.newBuilder().build(); Context context = Context.newBuilder(ID).allowHostAccess(hostAccess).engine(graalEngine).build()) {
+        try (Engine graalEngine = JSTest.newEngineBuilder().build(); Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).engine(graalEngine).build()) {
             Value bindings = context.getBindings(ID);
             ToBePassedToJS objectFromJava = new ToBePassedToJS(graalEngine, hostAccess);
             bindings.putMember("objectFromJava", objectFromJava);
@@ -267,7 +268,7 @@ public class ExceptionInteropTest {
     @Test
     public void testNestedJavaExceptionThroughJS() throws IOException {
         final HostAccess hostAccess = HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).build();
-        try (Engine graalEngine = Engine.newBuilder().build(); Context context = Context.newBuilder(ID).allowHostAccess(hostAccess).engine(graalEngine).build()) {
+        try (Engine graalEngine = JSTest.newEngineBuilder().build(); Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).engine(graalEngine).build()) {
             Value bindings = context.getBindings(ID);
             ToBePassedToJS objectFromJava = new ToBePassedToJS(graalEngine, hostAccess);
             bindings.putMember("objectFromJava", objectFromJava);
@@ -306,7 +307,7 @@ public class ExceptionInteropTest {
     public void testCaughtJavaException() throws IOException, NoSuchMethodException {
         final HostAccess hostAccess = HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).allowAccess(Throwable.class.getMethod("getMessage")).allowAccess(
                         Object.class.getMethod("getClass")).allowAccess(Class.class.getMethod("getName")).build();
-        try (Engine graalEngine = Engine.newBuilder().build(); Context context = Context.newBuilder(ID).allowHostAccess(hostAccess).engine(graalEngine).build()) {
+        try (Engine graalEngine = JSTest.newEngineBuilder().build(); Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).engine(graalEngine).build()) {
             Value bindings = context.getBindings(ID);
             ToBePassedToJS objectFromJava = new ToBePassedToJS(graalEngine, hostAccess);
             bindings.putMember("objectFromJava", objectFromJava);

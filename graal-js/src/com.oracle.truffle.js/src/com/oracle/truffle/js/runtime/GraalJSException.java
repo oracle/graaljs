@@ -105,7 +105,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         // We can only skip frames when capturing eagerly.
         assert capture || skipFramesUpTo == Undefined.instance;
         assert jsStackTrace == (stackTraceLimit == 0 ? EMPTY_STACK_TRACE : null);
-        if (capture || JSTruffleOptions.EagerStackTrace) {
+        if (capture || JSConfig.EagerStackTrace) {
             if (stackTraceLimit > 0) {
                 this.jsStackTrace = getJSStackTrace(skipFramesUpTo);
             }
@@ -157,7 +157,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
     @Override
     @TruffleBoundary
     public final Throwable fillInStackTrace() {
-        if (JSTruffleOptions.FillExceptionStack) {
+        if (JSConfig.FillExceptionStack) {
             return super.fillInStackTrace();
         } else {
             return null;
@@ -202,7 +202,8 @@ public abstract class GraalJSException extends RuntimeException implements Truff
 
     @TruffleBoundary
     public static JSStackTraceElement[] getJSStackTrace(Node originatingNode) {
-        return UserScriptException.createCapture("", originatingNode, JSTruffleOptions.StackTraceLimit, Undefined.instance).getJSStackTrace();
+        int stackTraceLimit = JavaScriptLanguage.getCurrentJSRealm().getContext().getContextOptions().getStackTraceLimit();
+        return UserScriptException.createCapture("", originatingNode, stackTraceLimit, Undefined.instance).getJSStackTrace();
     }
 
     private static final class FrameVisitorImpl {

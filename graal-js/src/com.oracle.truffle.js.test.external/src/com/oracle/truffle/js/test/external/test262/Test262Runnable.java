@@ -63,8 +63,8 @@ import java.util.stream.Stream;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContextOptions;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.test.external.suite.TestCallable;
 import com.oracle.truffle.js.test.external.suite.TestExtProcessCallable;
 import com.oracle.truffle.js.test.external.suite.TestFile;
@@ -272,13 +272,13 @@ public class Test262Runnable extends TestRunnable {
         Source[] harnessSources = ((Test262) suite).getHarnessSources(runStrict, asyncTest, getIncludes(scriptCodeList));
 
         boolean supported = true;
-        int featureVersion = JSTruffleOptions.LatestECMAScriptVersion;
+        int featureVersion = JSConfig.LatestECMAScriptVersion;
         for (String feature : features) {
             if (SUPPORTED_FEATURES.contains(feature)) {
                 if (ES2020_FEATURES.contains(feature)) {
-                    featureVersion = JSTruffleOptions.ECMAScript2020;
+                    featureVersion = JSConfig.ECMAScript2020;
                 } else if (ES2021_FEATURES.contains(feature)) {
-                    featureVersion = JSTruffleOptions.ECMAScript2021;
+                    featureVersion = JSConfig.ECMAScript2021;
                 }
             } else {
                 assert UNSUPPORTED_FEATURES.contains(feature) : feature;

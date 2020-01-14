@@ -51,11 +51,12 @@ import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.test.JSTest;
 
 public class StringKeysTest {
     @Test
     public void testNumericKeyOrder() {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).build()) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "var s = Object('abc'); s[5] = 'e'; s[4] = 'd'; Object.getOwnPropertyNames(s);");
             assertTrue(result.hasArrayElements());
             assertEquals(6, result.getArraySize());

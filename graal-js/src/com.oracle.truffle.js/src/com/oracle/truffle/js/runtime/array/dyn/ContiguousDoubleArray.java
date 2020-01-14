@@ -41,7 +41,7 @@
 package com.oracle.truffle.js.runtime.array.dyn;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 
 public final class ContiguousDoubleArray extends AbstractContiguousDoubleArray {
@@ -87,7 +87,7 @@ public final class ContiguousDoubleArray extends AbstractContiguousDoubleArray {
 
         Object[] doubleCopy = ArrayCopy.doubleToObject(array, arrayOffset, usedLength);
         ContiguousObjectArray newArray = ContiguousObjectArray.makeContiguousObjectArray(object, length, doubleCopy, indexOffset, arrayOffset, usedLength, integrityLevel);
-        if (JSTruffleOptions.TraceArrayTransitions) {
+        if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
         }
         return newArray;
@@ -101,7 +101,7 @@ public final class ContiguousDoubleArray extends AbstractContiguousDoubleArray {
         int length = lengthInt(object, condition);
         int usedLength = getUsedLength(object, condition);
         ZeroBasedDoubleArray newArray = ZeroBasedDoubleArray.makeZeroBasedDoubleArray(object, length, usedLength, array, integrityLevel);
-        if (JSTruffleOptions.TraceArrayTransitions) {
+        if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
         }
         return newArray;
@@ -116,7 +116,7 @@ public final class ContiguousDoubleArray extends AbstractContiguousDoubleArray {
         long indexOffset = getIndexOffset(object, condition);
 
         HolesDoubleArray newArray = HolesDoubleArray.makeHolesDoubleArray(object, length, array, indexOffset, arrayOffset, usedLength, 0, integrityLevel);
-        if (JSTruffleOptions.TraceArrayTransitions) {
+        if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
         }
         return newArray;

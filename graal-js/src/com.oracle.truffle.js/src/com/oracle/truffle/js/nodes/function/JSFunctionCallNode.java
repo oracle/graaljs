@@ -95,11 +95,11 @@ import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSNoSuchMethodAdapter;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptFunctionCallNode;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -264,7 +264,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 c = c.nextNode;
             }
             if (c == null) {
-                if (cachedCount < JSTruffleOptions.FunctionCacheLimit && !generic) {
+                if (cachedCount < JavaScriptLanguage.getCurrentJSRealm().getContext().getFunctionCacheLimit() && !generic) {
                     if (JSFunction.isJSFunction(function)) {
                         c = specializeDirectCall((DynamicObject) function, currentHead);
                     }
@@ -317,7 +317,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     private AbstractCacheNode specializeDirectCall(DynamicObject functionObj, AbstractCacheNode head) {
         assert JSFunction.isJSFunction(functionObj);
         final JSFunctionData functionData = JSFunction.getFunctionData(functionObj);
-        if (JSTruffleOptions.FunctionCacheOnInstance && !functionData.getContext().isMultiContext()) {
+        if (JSConfig.FunctionCacheOnInstance && !functionData.getContext().isMultiContext()) {
             return specializeDirectCallInstance(functionObj, functionData, head);
         } else {
             return specializeDirectCallShared(functionObj, functionData, head);
@@ -343,7 +343,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             JSFunctionCacheNode directCall = createCallableNode(functionObj, functionData, isNew(flags), isNewTarget(flags), true);
             return insertAtFront(directCall, head);
         } else {
-            if (JSTruffleOptions.TraceFunctionCache) {
+            if (JSConfig.TraceFunctionCache) {
                 System.out.printf("FUNCTION CACHE changed function instance to function data cache %s (depth=%d)\n", getEncapsulatingSourceSection(), getCachedCount(head));
             }
             JSFunctionCacheNode newNode;
@@ -457,7 +457,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     @ExplodeLoop
     protected static Object[] executeFillObjectArraySpread(JavaScriptNode[] arguments, VirtualFrame frame, Object[] args, int fixedArgumentsLength, BranchProfile growProfile) {
         // assume size that avoids growing
-        SimpleArrayList<Object> argList = SimpleArrayList.create(fixedArgumentsLength + arguments.length + JSTruffleOptions.SpreadArgumentPlaceholderCount);
+        SimpleArrayList<Object> argList = SimpleArrayList.create(fixedArgumentsLength + arguments.length + JSConfig.SpreadArgumentPlaceholderCount);
         for (int i = 0; i < fixedArgumentsLength; i++) {
             argList.addUnchecked(args[i]);
         }
@@ -967,7 +967,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     private static JSFunctionCacheNode tryInlineBuiltinFunctionCall(DynamicObject function, JSFunctionData functionData, CallTarget callTarget, boolean cacheOnInstance) {
-        if (!JSTruffleOptions.InlineTrivialBuiltins) {
+        if (!JSConfig.InlineTrivialBuiltins) {
             return null;
         }
         if (callTarget instanceof RootCallTarget) {

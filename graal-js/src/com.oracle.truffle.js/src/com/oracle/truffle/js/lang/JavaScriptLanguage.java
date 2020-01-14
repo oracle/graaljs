@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map.Entry;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -62,6 +63,7 @@ import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -103,12 +105,13 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSEngine;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -183,6 +186,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         JSContextOptions.describeOptions(options);
         OPTION_DESCRIPTORS = OptionDescriptors.create(options);
         ensureErrorClassesInitialized();
+        checkUnknownOptions();
     }
 
     public JavaScriptLanguage() {
@@ -338,11 +342,11 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @TruffleBoundary
     protected static ScriptNode parseInContext(Source code, JSContext context) {
-        long startTime = JSTruffleOptions.ProfileTime ? System.nanoTime() : 0L;
+        long startTime = context.getContextOptions().isProfileTime() ? System.nanoTime() : 0L;
         try {
             return context.getEvaluator().parseScriptNode(context, code);
         } finally {
-            if (JSTruffleOptions.ProfileTime) {
+            if (context.getContextOptions().isProfileTime()) {
                 context.getTimeProfiler().printElapsed(startTime, "parsing " + code.getName());
             }
         }
@@ -350,11 +354,11 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @TruffleBoundary
     protected static JavaScriptNode parseInline(Source code, JSContext context, MaterializedFrame lexicalContextFrame, boolean strict) {
-        long startTime = JSTruffleOptions.ProfileTime ? System.nanoTime() : 0L;
+        long startTime = context.getContextOptions().isProfileTime() ? System.nanoTime() : 0L;
         try {
             return context.getEvaluator().parseInlineScript(context, code, lexicalContextFrame, strict);
         } finally {
-            if (JSTruffleOptions.ProfileTime) {
+            if (context.getContextOptions().isProfileTime()) {
                 context.getTimeProfiler().printElapsed(startTime, "parsing " + code.getName());
             }
         }
@@ -608,11 +612,35 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     }
 
     private static void ensureErrorClassesInitialized() {
-        if (JSTruffleOptions.SubstrateVM) {
+        if (JSConfig.SubstrateVM) {
             return;
         }
         // Ensure error-related classes are initialized to avoid NoClassDefFoundError
         // during conversion of StackOverflowError to RangeError
-        TruffleStackTrace.getStackTrace(Errors.createRangeError(""));
+        try {
+            Class.forName(Errors.class.getName());
+            Class.forName(JSException.class.getName());
+            Class.forName(TruffleStackTrace.class.getName());
+            Class.forName(TruffleStackTraceElement.class.getName());
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    private static final String TRUFFLE_JS_OPTION_PREFIX = "truffle.js.";
+    private static final String PARSER_OPTION_PREFIX = "parser.";
+
+    private static void checkUnknownOptions() {
+        for (Entry<Object, Object> entry : System.getProperties().entrySet()) {
+            String strKey = entry.getKey().toString();
+            if (strKey.startsWith(TRUFFLE_JS_OPTION_PREFIX)) {
+                String key = strKey.substring(TRUFFLE_JS_OPTION_PREFIX.length());
+
+                if (key.startsWith(PARSER_OPTION_PREFIX)) {
+                    continue;
+                }
+                System.err.println("WARNING unknown option: " + TRUFFLE_JS_OPTION_PREFIX + key);
+            }
+        }
     }
 }

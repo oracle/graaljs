@@ -57,10 +57,10 @@ public class GithubRegression1942 {
     @Test
     public void testMultiThreadedExecution() throws InterruptedException {
         Source code = Source.create("js", "(async () => { return 1 })");
-        Engine engine = Engine.create();
+        Engine engine = TestUtil.newEngineBuilder().build();
         List<Thread> threads = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
-            Context context = Context.newBuilder().engine(engine).build();
+            Context context = TestUtil.newContextBuilder().engine(engine).build();
             Runnable runCode = () -> context.eval(code).execute();
             threads.add(new Thread(runCode));
         }

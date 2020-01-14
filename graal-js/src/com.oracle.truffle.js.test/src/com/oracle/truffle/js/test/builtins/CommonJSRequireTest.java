@@ -48,6 +48,8 @@ import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.js.test.JSTest;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -81,7 +83,7 @@ public class CommonJSRequireTest {
     }
 
     private static Context testContext(OutputStream out, OutputStream err, Map<String, String> options) {
-        return Context.newBuilder(ID).allowPolyglotAccess(PolyglotAccess.ALL).allowExperimentalOptions(true).options(options).out(out).err(err).allowIO(true).build();
+        return JSTest.newContextBuilder().allowPolyglotAccess(PolyglotAccess.ALL).options(options).out(out).err(err).allowIO(true).build();
     }
 
     private static Context testContext(Path tempFolder, OutputStream out, OutputStream err) {

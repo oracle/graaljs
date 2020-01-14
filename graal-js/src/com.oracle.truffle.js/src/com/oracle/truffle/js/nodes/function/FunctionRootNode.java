@@ -54,8 +54,8 @@ import com.oracle.truffle.js.nodes.FrameDescriptorProvider;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -81,7 +81,7 @@ public class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements
 
     public static FunctionRootNode create(AbstractBodyNode body, FrameDescriptor frameDescriptor, JSFunctionData functionData, SourceSection sourceSection, String internalFunctionName) {
         FunctionRootNode rootNode = new FunctionRootNode(body, frameDescriptor, functionData, sourceSection, internalFunctionName);
-        if (JSTruffleOptions.TestCloneUninitialized) {
+        if (functionData.getContext().getContextOptions().isTestCloneUninitialized()) {
             assert JSNodeUtil.hasExactlyOneRootBodyTag(body) : "Function does not have exactly one RootBodyTag";
             return (FunctionRootNode) rootNode.cloneUninitialized();
         } else {
@@ -113,7 +113,7 @@ public class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements
     }
 
     public boolean isSplitImmediately() {
-        if (JSTruffleOptions.RestrictForceSplittingBuiltins) {
+        if (JSConfig.RestrictForceSplittingBuiltins) {
             return false;
         }
         return functionData.isBuiltin();

@@ -41,7 +41,7 @@
 package com.oracle.truffle.js.test.interop;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -53,15 +53,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
-import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.JSTest;
 
 public class AsyncInteropTest {
 
@@ -70,9 +69,9 @@ public class AsyncInteropTest {
      */
     @Test
     public void testJavaThenable() {
-        Assume.assumeFalse(JSTruffleOptions.InteropCompletePromises);
         TestOutput out = new TestOutput();
-        try (Context context = Context.newBuilder(ID).allowHostAccess(HostAccess.ALL).out(out).allowExperimentalOptions(true).option(JSContextOptions.CONSOLE_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
+                        "false").build()) {
             Thenable then2 = (resolve, reject) -> resolve.executeVoid(42);
             Thenable then1 = (resolve, reject) -> resolve.executeVoid(then2);
             context.getBindings(ID).putMember("myJavaThenable", then1);
@@ -92,9 +91,9 @@ public class AsyncInteropTest {
      */
     @Test
     public void testJavaExecutor() {
-        Assume.assumeFalse(JSTruffleOptions.InteropCompletePromises);
         TestOutput out = new TestOutput();
-        try (Context context = Context.newBuilder(ID).allowHostAccess(HostAccess.ALL).out(out).allowExperimentalOptions(true).option(JSContextOptions.CONSOLE_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
+                        "false").build()) {
             Executable javaExecutable = (resolve, reject) -> resolve.execute(42);
             context.getBindings(ID).putMember("javaExecutable", javaExecutable);
             Value asyncFn = context.eval(ID, "new Promise(javaExecutable).then(x => console.log(x));");
@@ -109,9 +108,9 @@ public class AsyncInteropTest {
      */
     @Test
     public void testPromiseJavaThen() {
-        Assume.assumeFalse(JSTruffleOptions.InteropCompletePromises);
         TestOutput out = new TestOutput();
-        try (Context context = Context.newBuilder(ID).allowHostAccess(HostAccess.ALL).out(out).allowExperimentalOptions(true).option(JSContextOptions.CONSOLE_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
+                        "false").build()) {
             Value jsPromise = context.eval(ID, "Promise.resolve(42);");
             Consumer<Object> javaThen = (value) -> out.write("Resolved from JavaScript: " + value);
             jsPromise.invokeMember("then", javaThen);
@@ -124,9 +123,9 @@ public class AsyncInteropTest {
      */
     @Test
     public void testPromiseJavaThenAsync() {
-        Assume.assumeFalse(JSTruffleOptions.InteropCompletePromises);
         TestOutput out = new TestOutput();
-        try (Context context = Context.newBuilder(ID).allowHostAccess(HostAccess.ALL).out(out).allowExperimentalOptions(true).option(JSContextOptions.CONSOLE_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
+                        "false").build()) {
             Value asyncFn = context.eval(ID, "" +
                             "(async function () {" +
                             "  return await 42;" +
@@ -144,9 +143,9 @@ public class AsyncInteropTest {
      */
     @Test
     public void testPromiseJavaCatch() {
-        Assume.assumeFalse(JSTruffleOptions.InteropCompletePromises);
         TestOutput out = new TestOutput();
-        try (Context context = Context.newBuilder(ID).allowHostAccess(HostAccess.ALL).out(out).allowExperimentalOptions(true).option(JSContextOptions.CONSOLE_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
+                        "false").build()) {
             Value asyncFn = context.eval(ID, "" +
                             "(async function () {" +
                             "  throw 42;" +
@@ -164,9 +163,9 @@ public class AsyncInteropTest {
      */
     @Test
     public void testJavaCompletableFutureToPromise() {
-        Assume.assumeFalse(JSTruffleOptions.InteropCompletePromises);
         TestOutput out = new TestOutput();
-        try (Context context = Context.newBuilder(ID).allowHostAccess(HostAccess.ALL).out(out).allowExperimentalOptions(true).option(JSContextOptions.CONSOLE_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
+                        "false").build()) {
             CompletableFuture<String> javaFuture = new CompletableFuture<>();
             // Wrap Java future in a JS Promise
             Value jsPromise = wrapPromise(context, javaFuture);
@@ -190,9 +189,9 @@ public class AsyncInteropTest {
      */
     @Test
     public void testChainReactions() {
-        Assume.assumeFalse(JSTruffleOptions.InteropCompletePromises);
         TestOutput out = new TestOutput();
-        try (Context context = Context.newBuilder(ID).allowHostAccess(HostAccess.ALL).out(out).allowExperimentalOptions(true).option(JSContextOptions.CONSOLE_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
+                        "false").build()) {
             Function<Integer, Integer> incJava = i -> i + 1;
             Consumer<Object> print = (value) -> out.write("Final result: " + value);
             context.getBindings(ID).putMember("incJava", incJava);
@@ -212,8 +211,8 @@ public class AsyncInteropTest {
      */
     @Test
     public void testChainCompletableFuturePromises() throws ExecutionException, InterruptedException {
-        Assume.assumeFalse(JSTruffleOptions.InteropCompletePromises);
-        try (Context context = Context.newBuilder(ID).allowHostAccess(HostAccess.ALL).allowExperimentalOptions(true).option(JSContextOptions.CONSOLE_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
+                        "false").build()) {
             CompletableFuture<String> javaFuture = CompletableFuture.supplyAsync(() -> {
                 try {
                     TimeUnit.SECONDS.sleep(1);

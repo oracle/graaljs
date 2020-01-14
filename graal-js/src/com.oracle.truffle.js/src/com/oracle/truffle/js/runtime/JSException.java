@@ -89,7 +89,7 @@ public final class JSException extends GraalJSException {
 
     @TruffleBoundary
     public static JSException createCapture(JSErrorType type, String message, DynamicObject exceptionObj) {
-        return createCapture(type, message, exceptionObj, JSTruffleOptions.StackTraceLimit, Undefined.instance);
+        return createCapture(type, message, exceptionObj, getStackTraceLimit(), Undefined.instance);
     }
 
     public static JSException create(JSErrorType type, String message) {
@@ -97,15 +97,19 @@ public final class JSException extends GraalJSException {
     }
 
     public static JSException create(JSErrorType type, String message, Node originatingNode) {
-        return fillInStackTrace(new JSException(type, message, originatingNode, null, JSTruffleOptions.StackTraceLimit), Undefined.instance, false);
+        return fillInStackTrace(new JSException(type, message, originatingNode, null, getStackTraceLimit()), Undefined.instance, false);
     }
 
     public static JSException create(JSErrorType type, String message, Throwable cause, Node originatingNode) {
-        return fillInStackTrace(new JSException(type, message, cause, originatingNode, JSTruffleOptions.StackTraceLimit), Undefined.instance, false);
+        return fillInStackTrace(new JSException(type, message, cause, originatingNode, getStackTraceLimit()), Undefined.instance, false);
     }
 
     public static JSException create(JSErrorType type, String message, SourceSection sourceLocation, boolean isIncompleteSource) {
-        return fillInStackTrace(new JSException(type, message, sourceLocation, JSTruffleOptions.StackTraceLimit, isIncompleteSource), Undefined.instance, false);
+        return fillInStackTrace(new JSException(type, message, sourceLocation, getStackTraceLimit(), isIncompleteSource), Undefined.instance, false);
+    }
+
+    public static int getStackTraceLimit() {
+        return JavaScriptLanguage.getCurrentJSRealm().getContext().getContextOptions().getStackTraceLimit();
     }
 
     @Override

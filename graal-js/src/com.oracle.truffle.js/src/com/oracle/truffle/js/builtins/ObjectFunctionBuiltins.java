@@ -105,9 +105,9 @@ import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -183,9 +183,9 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             if (EnumSet.of(is, getOwnPropertySymbols, assign).contains(this)) {
                 return 6;
             } else if (EnumSet.of(getOwnPropertyDescriptors, values, entries).contains(this)) {
-                return JSTruffleOptions.ECMAScript2017;
+                return JSConfig.ECMAScript2017;
             } else if (this == fromEntries) {
-                return JSTruffleOptions.ECMAScript2019;
+                return JSConfig.ECMAScript2019;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }

@@ -53,13 +53,13 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.junit.Test;
 
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.test.JSTest;
 
 public class GR17114 {
 
     @Test
     public void rethrowHostException() {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).build()) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value jsFunction = context.eval("js", "(function(v) {try{v();} catch(e) {throw e;}})");
             try {
                 jsFunction.executeVoid((ProxyExecutable) arguments -> {

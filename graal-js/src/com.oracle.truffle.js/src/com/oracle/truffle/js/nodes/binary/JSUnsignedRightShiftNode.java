@@ -53,7 +53,7 @@ import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JSConfig;
 
 /**
  * 11.7.3 The Unsigned Right Shift Operator (>>>).
@@ -70,7 +70,7 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
         Truncatable.truncate(left);
         Truncatable.truncate(right);
-        if (JSTruffleOptions.UseSuperOperations && right instanceof JSConstantIntegerNode) {
+        if (JSConfig.UseSuperOperations && right instanceof JSConstantIntegerNode) {
             return JSUnsignedRightShiftConstantNode.create(left, right);
         }
         return JSUnsignedRightShiftNodeGen.create(left, right);

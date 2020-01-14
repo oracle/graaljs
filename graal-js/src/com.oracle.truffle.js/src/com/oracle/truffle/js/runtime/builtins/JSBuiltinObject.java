@@ -51,10 +51,10 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -158,7 +158,7 @@ public abstract class JSBuiltinObject extends JSClass {
 
     @TruffleBoundary
     protected static List<Object> ordinaryOwnPropertyKeys(DynamicObject thisObj, boolean strings, boolean symbols) {
-        if (JSTruffleOptions.FastOwnKeys) {
+        if (JSConfig.FastOwnKeys) {
             List<Object> all = IteratorUtil.convertList(JSShape.getProperties(thisObj.getShape()), Property::getKey);
             return filterOwnPropertyKeys(all, strings, symbols);
         } else {
@@ -390,7 +390,7 @@ public abstract class JSBuiltinObject extends JSClass {
             return false;
         }
 
-        if (JSTruffleOptions.DictionaryObject) {
+        if (JSConfig.DictionaryObject) {
             boolean isDictionaryObject = JSDictionaryObject.isJSDictionaryObject(thisObj);
             if (!isDictionaryObject && isDictionaryObjectCandidate(thisObj, isIndex)) {
                 JSDictionaryObject.makeDictionaryObject(thisObj, "set");
@@ -423,7 +423,7 @@ public abstract class JSBuiltinObject extends JSClass {
     }
 
     private static boolean isDictionaryObjectCandidate(DynamicObject thisObj, boolean isIndex) {
-        if (!JSTruffleOptions.DictionaryObject) {
+        if (!JSConfig.DictionaryObject) {
             return false;
         }
 
@@ -432,7 +432,7 @@ public abstract class JSBuiltinObject extends JSClass {
         }
 
         int count = thisObj.getShape().getPropertyCount();
-        return (count == 0 && isIndex) || (count == JSTruffleOptions.DictionaryObjectTransitionThreshold);
+        return (count == 0 && isIndex) || (count == JSConfig.DictionaryObjectTransitionThreshold);
     }
 
     @Override

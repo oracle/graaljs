@@ -52,11 +52,12 @@ import org.junit.Test;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.test.JSTest;
 
 public class GR15550 {
     @Test
     public void testDefinePropertyLengthGreaterThanInt32() {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).build()) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value arr = context.eval(JavaScriptLanguage.ID, "var arr = [1,2,3,6,7,8]; arr;");
             // Make it a "slow array"
             context.eval(JavaScriptLanguage.ID, "Object.defineProperty(arr, 3, { value: 55 });");

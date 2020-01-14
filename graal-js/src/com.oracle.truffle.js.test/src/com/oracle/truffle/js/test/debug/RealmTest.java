@@ -48,12 +48,13 @@ import org.graalvm.polyglot.Engine;
 import org.junit.Test;
 
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.JSTest;
 
 public class RealmTest {
     @Test
     public void test262Realm() {
-        Engine engine = Engine.create();
-        Context.Builder contextBuilder = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(JSContextOptions.TEST262_MODE_NAME, "true");
+        Engine engine = JSTest.newEngineBuilder().build();
+        Context.Builder contextBuilder = JSTest.newContextBuilder().engine(engine).option(JSContextOptions.TEST262_MODE_NAME, "true");
         try (Context context1 = contextBuilder.build()) {
             assertEquals(42, context1.eval("js", "6*7").asInt());
             try (Context context2 = contextBuilder.build()) {
@@ -65,8 +66,8 @@ public class RealmTest {
 
     @Test
     public void testV8Realm() {
-        Engine engine = Engine.create();
-        Context.Builder contextBuilder = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(JSContextOptions.V8_REALM_BUILTIN_NAME, "true");
+        Engine engine = JSTest.newEngineBuilder().build();
+        Context.Builder contextBuilder = JSTest.newContextBuilder().engine(engine).option(JSContextOptions.V8_REALM_BUILTIN_NAME, "true");
         try (Context context1 = contextBuilder.build()) {
             assertEquals(42, context1.eval("js", "6*7").asInt());
             try (Context context2 = contextBuilder.build()) {

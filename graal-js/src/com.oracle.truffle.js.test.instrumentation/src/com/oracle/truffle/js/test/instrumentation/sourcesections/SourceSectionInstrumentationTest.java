@@ -48,7 +48,6 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.stream.Collectors;
 
-import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.After;
 import org.junit.Before;
@@ -60,6 +59,7 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.js.test.instrumentation.FineGrainedAccessTest;
+import com.oracle.truffle.js.test.instrumentation.TestUtil;
 import com.oracle.truffle.js.test.instrumentation.TestingExecutionInstrument;
 
 public class SourceSectionInstrumentationTest extends FineGrainedAccessTest {
@@ -147,7 +147,7 @@ public class SourceSectionInstrumentationTest extends FineGrainedAccessTest {
     @Override
     @Before
     public void initTest() {
-        context = Context.create("js");
+        context = TestUtil.newContextBuilder().build();
 
         instrument = context.getEngine().getInstruments().get(TestingExecutionInstrument.ID).lookup(TestingExecutionInstrument.class);
         instrumenter = instrument.getEnvironment().getInstrumenter();

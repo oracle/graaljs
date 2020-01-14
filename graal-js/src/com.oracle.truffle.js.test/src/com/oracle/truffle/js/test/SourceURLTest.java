@@ -62,7 +62,7 @@ public class SourceURLTest {
 
     @Test
     public void testSourceURL() {
-        try (Context context = Context.create(JavaScriptLanguage.ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             context.eval(Source.newBuilder(JavaScriptLanguage.ID, "" +
                             "function dumpStack() { return new Error().stack; }\n" +
                             "function throwError() { throw new Error(); }",
@@ -93,7 +93,7 @@ public class SourceURLTest {
 
     @Test
     public void testSourceURLInternal() {
-        try (Context context = Context.create(JavaScriptLanguage.ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             context.eval(Source.newBuilder(JavaScriptLanguage.ID, "" +
                             "function dumpStack() { return new Error().stack; }\n" +
                             "function throwError() { throw new Error(); }",

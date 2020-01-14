@@ -47,12 +47,13 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.test.JSTest;
 
 public class RegExpBuiltinTest {
 
     @Test
     public void testUndefinedFlags() {
-        try (Context context = Context.create()) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value flags = context.eval(JavaScriptLanguage.ID, "new RegExp('.', Object('')).flags");
             Assert.assertTrue(flags.isString());
             Assert.assertEquals("", flags.asString());

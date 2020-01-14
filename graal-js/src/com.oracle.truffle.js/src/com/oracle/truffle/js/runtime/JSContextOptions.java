@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import static com.oracle.truffle.js.runtime.JSTruffleOptions.JS_OPTION_PREFIX;
-
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -65,13 +63,16 @@ import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
 
 public final class JSContextOptions {
+
+    public static final String JS_OPTION_PREFIX = "js.";
+
     @CompilationFinal private JSParserOptions parserOptions;
     @CompilationFinal private OptionValues optionValues;
 
     public static final String ECMASCRIPT_VERSION_NAME = JS_OPTION_PREFIX + "ecmascript-version";
     @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, help = "ECMAScript Version.") //
     public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(
-                    JSTruffleOptions.LatestECMAScriptVersion,
+                    JSConfig.LatestECMAScriptVersion,
                     new OptionType<>(
                                     "ecmascript-version",
                                     new Function<String, Integer>() {
@@ -81,14 +82,14 @@ public final class JSContextOptions {
                                             try {
                                                 int version = Integer.parseInt(t);
 
-                                                int minYearVersion = JSTruffleOptions.ECMAScript6 + JSTruffleOptions.ECMAScriptNumberYearDelta;
-                                                int maxYearVersion = JSTruffleOptions.MaxECMAScriptVersion + JSTruffleOptions.ECMAScriptNumberYearDelta;
+                                                int minYearVersion = JSConfig.ECMAScript6 + JSConfig.ECMAScriptNumberYearDelta;
+                                                int maxYearVersion = JSConfig.MaxECMAScriptVersion + JSConfig.ECMAScriptNumberYearDelta;
                                                 if (minYearVersion <= version && version <= maxYearVersion) {
-                                                    version -= JSTruffleOptions.ECMAScriptNumberYearDelta;
+                                                    version -= JSConfig.ECMAScriptNumberYearDelta;
                                                 }
-                                                if (version < 5 || version > JSTruffleOptions.MaxECMAScriptVersion) {
+                                                if (version < 5 || version > JSConfig.MaxECMAScriptVersion) {
                                                     throw new IllegalArgumentException(
-                                                                    "Supported values are 5 to " + JSTruffleOptions.MaxECMAScriptVersion + " or " + minYearVersion + " to " + maxYearVersion + ".");
+                                                                    "Supported values are 5 to " + JSConfig.MaxECMAScriptVersion + " or " + minYearVersion + " to " + maxYearVersion + ".");
                                                 }
                                                 return version;
                                             } catch (NumberFormatException e) {
@@ -100,7 +101,7 @@ public final class JSContextOptions {
 
     public static final String ANNEX_B_NAME = JS_OPTION_PREFIX + "annex-b";
     @Option(name = ANNEX_B_NAME, category = OptionCategory.USER, help = "Enable ECMAScript Annex B features.") //
-    public static final OptionKey<Boolean> ANNEX_B = new OptionKey<>(JSTruffleOptions.AnnexB);
+    public static final OptionKey<Boolean> ANNEX_B = new OptionKey<>(JSConfig.AnnexB);
     @CompilationFinal private boolean annexB;
 
     public static final String SYNTAX_EXTENSIONS_NAME = JS_OPTION_PREFIX + "syntax-extensions";
@@ -177,7 +178,8 @@ public final class JSContextOptions {
 
     public static final String STACK_TRACE_LIMIT_NAME = JS_OPTION_PREFIX + "stack-trace-limit";
     @Option(name = STACK_TRACE_LIMIT_NAME, category = OptionCategory.USER, help = "Number of stack frames to capture.") //
-    public static final OptionKey<Integer> STACK_TRACE_LIMIT = new OptionKey<>(JSTruffleOptions.StackTraceLimit);
+    public static final OptionKey<Integer> STACK_TRACE_LIMIT = new OptionKey<>(JSConfig.StackTraceLimit);
+    @CompilationFinal private int stackTraceLimit;
 
     public static final String DEBUG_BUILTIN_NAME = JS_OPTION_PREFIX + "debug-builtin";
     @Option(name = DEBUG_BUILTIN_NAME, category = OptionCategory.INTERNAL, help = "Provide a non-API Debug builtin. Behaviour will likely change. Don't depend on this in production code.") //
@@ -186,7 +188,7 @@ public final class JSContextOptions {
 
     public static final String DIRECT_BYTE_BUFFER_NAME = JS_OPTION_PREFIX + "direct-byte-buffer";
     @Option(name = DIRECT_BYTE_BUFFER_NAME, category = OptionCategory.USER, help = "Use direct (off-heap) byte buffer for typed arrays.") //
-    public static final OptionKey<Boolean> DIRECT_BYTE_BUFFER = new OptionKey<>(JSTruffleOptions.DirectByteBuffer);
+    public static final OptionKey<Boolean> DIRECT_BYTE_BUFFER = new OptionKey<>(false);
     private final CyclicAssumption directByteBufferCyclicAssumption = new CyclicAssumption("The " + DIRECT_BYTE_BUFFER_NAME + " option is stable.");
     @CompilationFinal private Assumption directByteBufferCurrentAssumption = directByteBufferCyclicAssumption.getAssumption();
     @CompilationFinal private boolean directByteBuffer;
@@ -324,7 +326,7 @@ public final class JSContextOptions {
     public static final String CLASS_FIELDS_NAME = JS_OPTION_PREFIX + "class-fields";
     @Option(name = CLASS_FIELDS_NAME, category = OptionCategory.USER, help = "Enable the class public and private fields proposal.") //
     public static final OptionKey<Boolean> CLASS_FIELDS = new OptionKey<>(false);
-    public static final int CLASS_FIELDS_ES_VERSION = JSTruffleOptions.ECMAScript2021;
+    public static final int CLASS_FIELDS_ES_VERSION = JSConfig.ECMAScript2021;
 
     public static final String REGEX_DUMP_AUTOMATA_NAME = JS_OPTION_PREFIX + "regex.dump-automata";
     @Option(name = REGEX_DUMP_AUTOMATA_NAME, category = OptionCategory.INTERNAL, help = "Produce ASTs and automata in JSON, DOT (GraphViz) and LaTeX formats.") //
@@ -390,13 +392,75 @@ public final class JSContextOptions {
 
     public static final String STRING_LENGTH_LIMIT_NAME = JS_OPTION_PREFIX + "string-length-limit";
     @Option(name = STRING_LENGTH_LIMIT_NAME, category = OptionCategory.EXPERT, help = "Maximum string length.") //
-    public static final OptionKey<Integer> STRING_LENGTH_LIMIT = new OptionKey<>(JSTruffleOptions.StringLengthLimit);
+    public static final OptionKey<Integer> STRING_LENGTH_LIMIT = new OptionKey<>(JSConfig.StringLengthLimit);
     @CompilationFinal private int stringLengthLimit;
 
     public static final String BIND_MEMBER_FUNCTIONS_NAME = JS_OPTION_PREFIX + "bind-member-functions";
     @Option(name = BIND_MEMBER_FUNCTIONS_NAME, category = OptionCategory.EXPERT, help = "Bind functions returned by Value.getMember to the receiver object.") //
     public static final OptionKey<Boolean> BIND_MEMBER_FUNCTIONS = new OptionKey<>(true);
     @CompilationFinal private boolean bindMemberFunctions;
+
+    public static final String USE_TREGEX_NAME = JS_OPTION_PREFIX + "use-tregex";
+    @Option(name = USE_TREGEX_NAME, category = OptionCategory.EXPERT, help = "Use TRegex as default RegEx engine.") //
+    public static final OptionKey<Boolean> USE_TREGEX = new OptionKey<>(true);
+    @CompilationFinal private boolean useTRegex;
+
+    public static final String REGEX_REGRESSION_TEST_MODE_NAME = JS_OPTION_PREFIX + "regex-regression-test-mode";
+    @Option(name = REGEX_REGRESSION_TEST_MODE_NAME, category = OptionCategory.INTERNAL, help = "Test mode for TRegex.") //
+    public static final OptionKey<Boolean> REGEX_REGRESSION_TEST_MODE = new OptionKey<>(false);
+    @CompilationFinal private boolean regexRegressionTestMode;
+
+    public static final String INTEROP_COMPLETE_PROMISES_NAME = JS_OPTION_PREFIX + "interop-complete-promises";
+    @Option(name = INTEROP_COMPLETE_PROMISES_NAME, category = OptionCategory.EXPERT, help = "Resolve promises when crossing a polyglot language boundary.") //
+    public static final OptionKey<Boolean> INTEROP_COMPLETE_PROMISES = new OptionKey<>(false);
+    @CompilationFinal private boolean interopCompletePromises;
+
+    public static final String DEBUG_PROPERTY_NAME_NAME = JS_OPTION_PREFIX + "debug-property-name";
+    @Option(name = DEBUG_PROPERTY_NAME_NAME, category = OptionCategory.EXPERT, help = "The name used for the Graal.js debug builtin.") //
+    public static final OptionKey<String> DEBUG_PROPERTY_NAME = new OptionKey<>(JSRealm.DEBUG_CLASS_NAME);
+
+    public static final String PROFILE_TIME_NAME = JS_OPTION_PREFIX + "profile-time";
+    @Option(name = PROFILE_TIME_NAME, category = OptionCategory.INTERNAL, help = "Enable time profiling.") //
+    public static final OptionKey<Boolean> PROFILE_TIME = new OptionKey<>(false);
+
+    public static final String PROFILE_TIME_PRINT_CUMULATIVE_NAME = JS_OPTION_PREFIX + "profile-time-print-cumulative";
+    @Option(name = PROFILE_TIME_PRINT_CUMULATIVE_NAME, category = OptionCategory.INTERNAL, help = "Print cumulative time when time profiling is enabled.") //
+    public static final OptionKey<Boolean> PROFILE_TIME_PRINT_CUMULATIVE = new OptionKey<>(false);
+
+    public static final String TEST_CLONE_UNINITIALIZED_NAME = JS_OPTION_PREFIX + "test-clone-uninitialized";
+    @Option(name = TEST_CLONE_UNINITIALIZED_NAME, category = OptionCategory.INTERNAL, help = "Test uninitialized cloning.") //
+    public static final OptionKey<Boolean> TEST_CLONE_UNINITIALIZED = new OptionKey<>(false);
+    @CompilationFinal private boolean testCloneUninitialized;
+
+    public static final String LAZY_TRANSLATION_NAME = JS_OPTION_PREFIX + "lazy-translation";
+    @Option(name = LAZY_TRANSLATION_NAME, category = OptionCategory.INTERNAL, help = "Translate function bodies lazily.") //
+    public static final OptionKey<Boolean> LAZY_TRANSLATION = new OptionKey<>(false);
+    @CompilationFinal private boolean lazyTranslation;
+
+    public static final String MAX_TYPED_ARRAY_LENGTH_NAME = JS_OPTION_PREFIX + "max-typed-array-length";
+    @Option(name = MAX_TYPED_ARRAY_LENGTH_NAME, category = OptionCategory.EXPERT, help = "Maximum allowed length for TypedArrays.") //
+    public static final OptionKey<Integer> MAX_TYPED_ARRAY_LENGTH = new OptionKey<>(JSConfig.MaxTypedArrayLength);
+    @CompilationFinal private int maxTypedArrayLength;
+
+    public static final String MAX_APPLY_ARGUMENT_LENGTH_NAME = JS_OPTION_PREFIX + "max-apply-argument-length";
+    @Option(name = MAX_APPLY_ARGUMENT_LENGTH_NAME, category = OptionCategory.EXPERT, help = "Maximum allowed number of arguments allowed in an apply function.") //
+    public static final OptionKey<Integer> MAX_APPLY_ARGUMENT_LENGTH = new OptionKey<>(JSConfig.MaxApplyArgumentLength);
+    @CompilationFinal private int maxApplyArgumentLength;
+
+    public static final String MAX_PROTOTYPE_CHAIN_LENGTH_NAME = JS_OPTION_PREFIX + "max-prototype-chain-length";
+    @Option(name = MAX_PROTOTYPE_CHAIN_LENGTH_NAME, category = OptionCategory.EXPERT, help = "Maximum allowed length of a prototype chain.") //
+    public static final OptionKey<Integer> MAX_PROTOTYPE_CHAIN_LENGTH = new OptionKey<>(JSConfig.MaxPrototypeChainLength);
+    @CompilationFinal private int maxPrototypeChainLength;
+
+    public static final String PROPERTY_CACHE_LIMIT_NAME = JS_OPTION_PREFIX + "property-cache-limit";
+    @Option(name = PROPERTY_CACHE_LIMIT_NAME, category = OptionCategory.INTERNAL, help = "Maximum allowed size of a property cache.") //
+    public static final OptionKey<Integer> PROPERTY_CACHE_LIMIT = new OptionKey<>(JSConfig.PropertyCacheLimit);
+    @CompilationFinal private int propertyCacheLimit;
+
+    public static final String FUNCTION_CACHE_LIMIT_NAME = JS_OPTION_PREFIX + "function-cache-limit";
+    @Option(name = FUNCTION_CACHE_LIMIT_NAME, category = OptionCategory.INTERNAL, help = "Maximum allowed size of a function cache.") //
+    public static final OptionKey<Integer> FUNCTION_CACHE_LIMIT = new OptionKey<>(JSConfig.FunctionCacheLimit);
+    @CompilationFinal private int functionCacheLimit;
 
     JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
@@ -468,6 +532,18 @@ public final class JSContextOptions {
         this.stringLengthLimit = readIntegerOption(STRING_LENGTH_LIMIT);
         this.bindMemberFunctions = readBooleanOption(BIND_MEMBER_FUNCTIONS);
         this.commonJSRequire = readBooleanOption(COMMONJS_REQUIRE);
+        this.useTRegex = readBooleanOption(USE_TREGEX);
+        this.regexRegressionTestMode = readBooleanOption(REGEX_REGRESSION_TEST_MODE);
+        this.interopCompletePromises = readBooleanOption(INTEROP_COMPLETE_PROMISES);
+        this.testCloneUninitialized = readBooleanOption(TEST_CLONE_UNINITIALIZED);
+        this.lazyTranslation = readBooleanOption(LAZY_TRANSLATION);
+        this.stackTraceLimit = readIntegerOption(STACK_TRACE_LIMIT);
+        this.maxTypedArrayLength = readIntegerOption(MAX_TYPED_ARRAY_LENGTH);
+        this.maxApplyArgumentLength = readIntegerOption(MAX_APPLY_ARGUMENT_LENGTH);
+        this.maxPrototypeChainLength = readIntegerOption(MAX_PROTOTYPE_CHAIN_LENGTH);
+
+        this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
+        this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
     }
 
     private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, Consumer<String> invalidate) {
@@ -714,7 +790,7 @@ public final class JSContextOptions {
     }
 
     public boolean isBigInt() {
-        if (getEcmaScriptVersion() < JSTruffleOptions.ECMAScript2019) {
+        if (getEcmaScriptVersion() < JSConfig.ECMAScript2019) {
             return false;
         }
         return BIGINT.getValue(optionValues);
@@ -752,6 +828,65 @@ public final class JSContextOptions {
         return bindMemberFunctions;
     }
 
+    public boolean useTRegex() {
+        return useTRegex;
+    }
+
+    public boolean isRegexRegressionTestMode() {
+        return regexRegressionTestMode;
+    }
+
+    public boolean interopCompletePromises() {
+        return interopCompletePromises;
+    }
+
+    public String getDebugPropertyName() {
+        CompilerAsserts.neverPartOfCompilation("Context patchable option debug-property-name was assumed not to be accessed in compiled code.");
+        return DEBUG_PROPERTY_NAME.getValue(optionValues);
+    }
+
+    public boolean isProfileTime() {
+        CompilerAsserts.neverPartOfCompilation("Context patchable option profile-time was assumed not to be accessed in compiled code.");
+        return PROFILE_TIME.getValue(optionValues);
+    }
+
+    public boolean isTestCloneUninitialized() {
+        return testCloneUninitialized;
+    }
+
+    public boolean isLazyTranslation() {
+        return lazyTranslation;
+    }
+
+    public boolean isProfileTimePrintCumulative() {
+        CompilerAsserts.neverPartOfCompilation("Context patchable option profile-time-print-cumulative was assumed not to be accessed in compiled code.");
+        return PROFILE_TIME_PRINT_CUMULATIVE.getValue(optionValues);
+    }
+
+    public int getStackTraceLimit() {
+        return stackTraceLimit;
+    }
+
+    public int getMaxTypedArrayLength() {
+        return maxTypedArrayLength;
+    }
+
+    public int getMaxApplyArgumentLength() {
+        return maxApplyArgumentLength;
+    }
+
+    public int getMaxPrototypeChainLength() {
+        return maxPrototypeChainLength;
+    }
+
+    public int getPropertyCacheLimit() {
+        return propertyCacheLimit;
+    }
+
+    public int getFunctionCacheLimit() {
+        return functionCacheLimit;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -787,6 +922,17 @@ public final class JSContextOptions {
         hash = 53 * hash + this.stringLengthLimit;
         hash = 53 * hash + (this.bindMemberFunctions ? 1 : 0);
         hash = 53 * hash + (this.commonJSRequire ? 1 : 0);
+        hash = 53 * hash + (this.useTRegex ? 1 : 0);
+        hash = 53 * hash + (this.regexRegressionTestMode ? 1 : 0);
+        hash = 53 * hash + (this.interopCompletePromises ? 1 : 0);
+        hash = 53 * hash + (this.testCloneUninitialized ? 1 : 0);
+        hash = 53 * hash + (this.lazyTranslation ? 1 : 0);
+        hash = 53 * hash + this.stackTraceLimit;
+        hash = 53 * hash + this.maxTypedArrayLength;
+        hash = 53 * hash + this.maxApplyArgumentLength;
+        hash = 53 * hash + this.maxPrototypeChainLength;
+        hash = 53 * hash + this.propertyCacheLimit;
+        hash = 53 * hash + this.functionCacheLimit;
         return hash;
     }
 
@@ -893,6 +1039,39 @@ public final class JSContextOptions {
             return false;
         }
         if (this.commonJSRequire != other.commonJSRequire) {
+            return false;
+        }
+        if (this.useTRegex != other.useTRegex) {
+            return false;
+        }
+        if (this.regexRegressionTestMode != other.regexRegressionTestMode) {
+            return false;
+        }
+        if (this.interopCompletePromises != other.interopCompletePromises) {
+            return false;
+        }
+        if (this.testCloneUninitialized != other.testCloneUninitialized) {
+            return false;
+        }
+        if (this.lazyTranslation != other.lazyTranslation) {
+            return false;
+        }
+        if (this.stackTraceLimit != other.stackTraceLimit) {
+            return false;
+        }
+        if (this.maxTypedArrayLength != other.maxTypedArrayLength) {
+            return false;
+        }
+        if (this.maxApplyArgumentLength != other.maxApplyArgumentLength) {
+            return false;
+        }
+        if (this.maxPrototypeChainLength != other.maxPrototypeChainLength) {
+            return false;
+        }
+        if (this.propertyCacheLimit != other.propertyCacheLimit) {
+            return false;
+        }
+        if (this.functionCacheLimit != other.functionCacheLimit) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

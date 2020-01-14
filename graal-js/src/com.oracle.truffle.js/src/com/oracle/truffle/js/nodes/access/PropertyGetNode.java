@@ -85,11 +85,11 @@ import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNodeGen;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSNoSuchMethodAdapter;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
@@ -358,7 +358,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
 
         protected final boolean assertFinalValue(Object finalValue, Object thisObj, PropertyGetNode root) {
-            if (!JSTruffleOptions.AssertFinalPropertySpecialization) {
+            if (!JSConfig.AssertFinalPropertySpecialization) {
                 return true;
             }
             int depth = ((AbstractShapeCheckNode) receiverCheck).getDepth();
@@ -1527,7 +1527,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
          * removed properties. For now, we have to be conservative.
          */
         return depth >= 1 ? (prototypesInShape(thisObj, depth) && propertyAssumptionsValid(thisObj, depth, isConstantObjectFinal))
-                        : (JSTruffleOptions.SkipFinalShapeCheck && isPropertyAssumptionCheckEnabled() && JSShape.getPropertyAssumption(cacheShape, key).isValid());
+                        : (JSConfig.SkipFinalShapeCheck && isPropertyAssumptionCheckEnabled() && JSShape.getPropertyAssumption(cacheShape, key).isValid());
     }
 
     private GetCacheNode createCachedPropertyNodeNotJSObject(Property property, Object thisObj, int depth) {
@@ -1627,7 +1627,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         } else if (JavaImporter.isJavaImporter(thisObj)) {
             return new UnspecializedPropertyGetNode(new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
         }
-        if (JSTruffleOptions.SubstrateVM) {
+        if (JSConfig.SubstrateVM) {
             return null;
         }
         if (context.isOptionNashornCompatibilityMode() && context.getRealm().isJavaInteropEnabled()) {

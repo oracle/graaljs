@@ -49,8 +49,8 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Boundaries;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -95,7 +95,7 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
     @Specialization
     protected UnmodifiableArrayList<? extends Object> enumerableOwnPropertyNames(DynamicObject thisObj) {
         JSClass jsclass = JSObject.getJSClass(thisObj);
-        if (hasFastShapesProfile.profile(keys && !values && JSTruffleOptions.FastOwnKeys && jsclass.hasOnlyShapeProperties(thisObj))) {
+        if (hasFastShapesProfile.profile(keys && !values && JSConfig.FastOwnKeys && jsclass.hasOnlyShapeProperties(thisObj))) {
             return JSShape.getEnumerablePropertyNames(thisObj.getShape());
         } else {
             boolean isProxy = JSProxy.isProxy(thisObj);

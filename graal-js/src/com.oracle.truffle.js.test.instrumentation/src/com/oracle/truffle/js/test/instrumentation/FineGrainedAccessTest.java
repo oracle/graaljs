@@ -53,9 +53,6 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import com.oracle.truffle.js.nodes.control.ReturnException;
-import com.oracle.truffle.js.nodes.control.YieldException;
-import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.junit.After;
@@ -77,6 +74,8 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.control.ReturnException;
+import com.oracle.truffle.js.nodes.control.YieldException;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.DeclareTag;
@@ -85,6 +84,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag.Type;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -401,7 +401,7 @@ public abstract class FineGrainedAccessTest {
     @Before
     public void initTest() {
         collecting = false;
-        context = Context.newBuilder("js").allowPolyglotAccess(PolyglotAccess.ALL).build();
+        context = TestUtil.newContextBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build();
         instrument = context.getEngine().getInstruments().get(TestingExecutionInstrument.ID).lookup(TestingExecutionInstrument.class);
         instrumenter = instrument.getEnvironment().getInstrumenter();
         events = new ArrayList<>();

@@ -48,6 +48,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.JSTest;
 
 public class BigIntBuiltinTest {
 
@@ -56,13 +57,13 @@ public class BigIntBuiltinTest {
     }
 
     protected static void testIntl(String sourceText, String expectedMessage) {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).option(JSContextOptions.BIGINT_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.BIGINT_NAME, "true").build()) {
             Value result = context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, "bigint-test").buildLiteral());
             Assert.assertTrue(result.isNumber());
             Assert.assertEquals(42, result.asInt());
         }
 
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).option(JSContextOptions.BIGINT_NAME, "false").build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.BIGINT_NAME, "false").build()) {
             context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, "bigint-test").buildLiteral());
             Assert.fail("should have thrown");
         } catch (Exception ex) {

@@ -46,7 +46,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetHol
 import java.util.List;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -103,7 +103,7 @@ public final class HolesIntArray extends AbstractContiguousIntArray {
 
     private void setInBoundyFastIntl(DynamicObject object, int index, int internalIndex, int value, boolean condition) {
         getArray(object, condition)[internalIndex] = value;
-        if (JSTruffleOptions.TraceArrayWrites) {
+        if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBoundsFast", index, value);
         }
     }
@@ -144,7 +144,7 @@ public final class HolesIntArray extends AbstractContiguousIntArray {
         } else {
             newArray = ContiguousIntArray.makeContiguousIntArray(object, length, array, indexOffset, arrayOffset, usedLength, integrityLevel);
         }
-        if (JSTruffleOptions.TraceArrayTransitions) {
+        if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
         }
         return newArray;
@@ -180,7 +180,7 @@ public final class HolesIntArray extends AbstractContiguousIntArray {
 
         double[] doubleCopy = ArrayCopy.intToDoubleHoles(array, arrayOffset, usedLength);
         HolesDoubleArray newArray = HolesDoubleArray.makeHolesDoubleArray(object, length, doubleCopy, indexOffset, arrayOffset, usedLength, holeCount, integrityLevel);
-        if (JSTruffleOptions.TraceArrayTransitions) {
+        if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
         }
         return newArray;
@@ -197,7 +197,7 @@ public final class HolesIntArray extends AbstractContiguousIntArray {
 
         Object[] objectCopy = ArrayCopy.intToObjectHoles(array, arrayOffset, usedLength);
         HolesObjectArray newArray = HolesObjectArray.makeHolesObjectArray(object, length, objectCopy, indexOffset, arrayOffset, usedLength, holeCount, integrityLevel);
-        if (JSTruffleOptions.TraceArrayTransitions) {
+        if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
         }
         return newArray;

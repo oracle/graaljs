@@ -83,10 +83,10 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -639,7 +639,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         private static ArrayWriteElementCacheNode purgeStaleCacheEntries(ArrayWriteElementCacheNode head, DynamicObject target) {
-            if (JSTruffleOptions.TrackArrayAllocationSites && head != null && JSArray.isJSArray(target)) {
+            if (JSConfig.TrackArrayAllocationSites && head != null && JSArray.isJSArray(target)) {
                 ArrayAllocationSite allocationSite = JSAbstractArray.arrayGetAllocationSite(target);
                 if (allocationSite != null && allocationSite.getInitialArrayType() != null) {
                     for (ArrayWriteElementCacheNode c = head, prev = null; c != null; prev = c, c = c.arrayCacheNext) {
@@ -649,7 +649,7 @@ public class WriteElementNode extends JSTargetableNode {
                             if (!(initialArrayType instanceof ConstantEmptyArray) && existingNode.getArrayType() instanceof ConstantEmptyArray) {
                                 // allocation site has been patched to not create an empty array;
                                 // purge existing empty array specialization in cache
-                                if (JSTruffleOptions.TraceArrayTransitions) {
+                                if (JSConfig.TraceArrayTransitions) {
                                     System.out.println("purging " + existingNode + ": " + existingNode.getArrayType() + " => " + JSAbstractArray.arrayGetArrayType(target));
                                 }
                                 if (prev == null) {

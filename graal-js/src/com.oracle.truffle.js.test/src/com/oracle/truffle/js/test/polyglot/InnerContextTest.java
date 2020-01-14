@@ -40,9 +40,15 @@
  */
 package com.oracle.truffle.js.test.polyglot;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.io.ByteArrayOutputStream;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -58,10 +64,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import java.io.ByteArrayOutputStream;
-import org.graalvm.polyglot.Value;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import com.oracle.truffle.js.test.JSTest;
 
 public class InnerContextTest {
     @Test
@@ -91,10 +94,10 @@ public class InnerContextTest {
                 });
             }
         })) {
-            try (Context context = Context.newBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+            try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
                 context.eval(Source.create(TestLanguage.ID, ""));
             }
-            try (Context context = Context.newBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+            try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
                 context.initialize(JavaScriptLanguage.ID);
                 context.eval(Source.create(TestLanguage.ID, ""));
             }
@@ -104,7 +107,7 @@ public class InnerContextTest {
     @Test
     public void innerParseSimpleExpression() throws Exception {
         try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new ProxyParsingLanguage("multiplier"))) {
-            try (Context context = Context.newBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+            try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
                 Value mul = context.eval(Source.create(TestLanguage.ID, "6 * multiplier"));
                 Value fourtyTwo = mul.execute(7);
                 assertEquals(42, fourtyTwo.asInt());
@@ -116,7 +119,7 @@ public class InnerContextTest {
     public void innerParseSingleStatement() throws Exception {
         try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new ProxyParsingLanguage("a", "b"))) {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
-            try (Context context = Context.newBuilder(JavaScriptLanguage.ID, TestLanguage.ID).out(out).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+            try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).out(out).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
                 Value mul = context.eval(Source.create(TestLanguage.ID,
                                 "print(a + ' * ' + b + ' = ' + (a * b));" //
                 ));
@@ -132,7 +135,7 @@ public class InnerContextTest {
     public void innerParseMultipleStatement() throws Exception {
         try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new ProxyParsingLanguage("a", "b"))) {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
-            try (Context context = Context.newBuilder(JavaScriptLanguage.ID, TestLanguage.ID).out(out).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+            try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).out(out).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
                 // @formatter:off
                 Value mul = context.eval(Source.create(TestLanguage.ID,
                     "print(a + ' + ' + b + ' = ' + (a + b));" +

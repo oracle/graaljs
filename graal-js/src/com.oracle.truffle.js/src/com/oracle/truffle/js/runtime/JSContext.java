@@ -425,7 +425,7 @@ public class JSContext {
 
         this.builtinFunctionData = new JSFunctionData[BuiltinFunctionKey.values().length];
 
-        this.timeProfiler = JSTruffleOptions.ProfileTime ? new TimeProfiler() : null;
+        this.timeProfiler = contextOptions.isProfileTime() ? new TimeProfiler(this) : null;
 
         this.singleRealmAssumption = Truffle.getRuntime().createAssumption("single realm");
         this.noChildRealmsAssumption = Truffle.getRuntime().createAssumption("no child realms");
@@ -517,7 +517,7 @@ public class JSContext {
             simdTypeFactories[factory.getFactoryIndex()] = builder.create(factory, (c, p) -> JSSIMD.makeInitialSIMDShape(c, p));
         }
 
-        this.dictionaryObjectFactory = JSTruffleOptions.DictionaryObject ? builder.create(objectPrototypeSupplier, JSDictionaryObject::makeDictionaryShape) : null;
+        this.dictionaryObjectFactory = JSConfig.DictionaryObject ? builder.create(objectPrototypeSupplier, JSDictionaryObject::makeDictionaryShape) : null;
 
         this.factoryCount = builder.finish();
     }
@@ -901,10 +901,10 @@ public class JSContext {
 
     private String createRegexEngineOptions() {
         StringBuilder options = new StringBuilder(30);
-        if (JSTruffleOptions.U180EWhitespace) {
+        if (JSConfig.U180EWhitespace) {
             options.append(REGEX_OPTION_U180E_WHITESPACE + "=true,");
         }
-        if (JSTruffleOptions.RegexRegressionTestMode) {
+        if (getContextOptions().isRegexRegressionTestMode()) {
             options.append(REGEX_OPTION_REGRESSION_TEST_MODE + "=true,");
         }
         if (getContextOptions().isRegexDumpAutomata()) {
@@ -938,7 +938,7 @@ public class JSContext {
 
     @TruffleBoundary
     private Object createRegexEngine() {
-        if (JSTruffleOptions.UseTRegex) {
+        if (getContextOptions().useTRegex()) {
             return getTRegexEngine();
         } else {
             return new JoniRegexEngine(null);
@@ -1123,8 +1123,16 @@ public class JSContext {
 
     public int getEcmaScriptVersion() {
         int version = contextOptions.getEcmaScriptVersion();
-        assert version >= 5 && version <= JSTruffleOptions.MaxECMAScriptVersion;
+        assert version >= 5 && version <= JSConfig.MaxECMAScriptVersion;
         return version;
+    }
+
+    public int getPropertyCacheLimit() {
+        return contextOptions.getPropertyCacheLimit();
+    }
+
+    public int getFunctionCacheLimit() {
+        return contextOptions.getFunctionCacheLimit();
     }
 
     void setAllocationReporter(TruffleLanguage.Env env) {
@@ -1432,7 +1440,7 @@ public class JSContext {
     }
 
     public Class<?> getJavaAdapterClassFor(Class<?> clazz) {
-        if (JSTruffleOptions.SubstrateVM) {
+        if (JSConfig.SubstrateVM) {
             throw Errors.unsupported("JavaAdapter");
         }
         if (javaAdapterClasses == null) {

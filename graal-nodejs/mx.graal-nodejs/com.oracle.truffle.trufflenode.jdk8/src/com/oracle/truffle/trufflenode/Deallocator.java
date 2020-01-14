@@ -48,7 +48,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JSConfig;
 
 /**
  * A class responsible for the deallocation of the external memory segments associated with Java
@@ -73,7 +73,7 @@ final class Deallocator {
     static {
         Class<?> clazz;
         Field field;
-        if (!JSTruffleOptions.SubstrateVM && USE_CLEANER) {
+        if (!JSConfig.SubstrateVM && USE_CLEANER) {
             try {
                 clazz = Class.forName("java.nio.DirectByteBuffer");
                 field = clazz.getDeclaredField("cleaner");

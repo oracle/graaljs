@@ -53,7 +53,7 @@ public class GR18957 {
 
     @Test
     public void testIt() throws InterruptedException {
-        final Context context = Context.newBuilder(JavaScriptLanguage.ID).build();
+        final Context context = TestUtil.newContextBuilder().build();
         context.eval(JavaScriptLanguage.ID, "typeof abc === 'undefined'");
         // Verify that the materialization of JSTypeofIdenticalNode does not
         // throw when it is triggered without an entered context.

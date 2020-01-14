@@ -95,8 +95,8 @@ public class GlobalBuiltinTest extends JSTest {
 
     @Test
     public void testQuitInPromiseJob() {
-        Engine engine = Engine.create();
-        try (Context context = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(JSContextOptions.SHELL_NAME, "true").build()) {
+        Engine engine = JSTest.newEngineBuilder().build();
+        try (Context context = JSTest.newContextBuilder().engine(engine).option(JSContextOptions.SHELL_NAME, "true").build()) {
             // Schedule a promise job that exits while the promise job queue is not empty.
             context.eval(JavaScriptLanguage.ID, "var promise = Promise.resolve(42); promise.then(x => quit()); promise.then(x => x*x)");
             fail("Exception expected");
@@ -106,7 +106,7 @@ public class GlobalBuiltinTest extends JSTest {
         // Create a new Context that shares JSContext with the original Context.
         // It should not attempt to execute the remaining promise jobs
         // (it would lead to IllegalStateException: The Context is already closed)
-        try (Context context2 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(JSContextOptions.SHELL_NAME, "true").build()) {
+        try (Context context2 = JSTest.newContextBuilder().engine(engine).option(JSContextOptions.SHELL_NAME, "true").build()) {
             Value result = context2.eval(JavaScriptLanguage.ID, "6*7");
             assertTrue(result.isNumber());
             assertEquals(42, result.asInt());

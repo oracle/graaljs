@@ -59,11 +59,10 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 /**
  * Mockup object for JavaScript objects. Used for testing purposes, to replace the existing
- * JavaScript object types. See {@link JSTruffleOptions}.TestForeignObject.
+ * JavaScript object types.
  *
  */
 @ExportLibrary(InteropLibrary.class)

@@ -60,8 +60,8 @@ public class ConcurrentAccess {
      */
     @Test
     public void concurrentEvalsTwoContexts() throws InterruptedException {
-        final Context cx1 = Context.create("js");
-        final Context cx2 = Context.create("js");
+        final Context cx1 = TestUtil.newContextBuilder().build();
+        final Context cx2 = TestUtil.newContextBuilder().build();
 
         final String jsonCode = "(function(x,y) { return JSON.stringify({x:x,y:y}); })";
         try {
@@ -98,7 +98,7 @@ public class ConcurrentAccess {
     public void javaInteropThread() throws InterruptedException {
         final CountDownLatch endGate = new CountDownLatch(1);
         final AtomicReference<Throwable> exception = new AtomicReference<>(null);
-        final Context context = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowHostClassLookup(s -> true).build();
+        final Context context = TestUtil.newContextBuilder().allowHostAccess(HostAccess.ALL).allowHostClassLookup(s -> true).build();
 
         context.getBindings("js").putMember("onThreadException", new Thread.UncaughtExceptionHandler() {
 
@@ -138,7 +138,7 @@ public class ConcurrentAccess {
         final CountDownLatch endGate = new CountDownLatch(1);
         final AtomicBoolean hadException = new AtomicBoolean(false);
 
-        final Context cx = Context.create("js");
+        final Context cx = TestUtil.newContextBuilder().build();
 
         Value json = cx.eval("js", "(function(x,y) { return JSON.stringify({x:x,y:y}); })");
 
@@ -195,7 +195,7 @@ public class ConcurrentAccess {
         final CountDownLatch endGate = new CountDownLatch(1);
         final AtomicBoolean hadException = new AtomicBoolean(false);
 
-        final Context cx = Context.create("js");
+        final Context cx = TestUtil.newContextBuilder().build();
 
         cx.enter();
         Value json = cx.eval("js", "(function(x,y) { return JSON.stringify({x:x,y:y}); })");

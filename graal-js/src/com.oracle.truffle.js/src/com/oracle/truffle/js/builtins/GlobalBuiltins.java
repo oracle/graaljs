@@ -122,13 +122,13 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.ExitException;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSConsoleUtil;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -613,11 +613,11 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         protected static ScriptNode loadStringImpl(JSContext ctxt, String name, String script) {
             CompilerAsserts.neverPartOfCompilation();
-            long startTime = JSTruffleOptions.ProfileTime ? System.nanoTime() : 0L;
+            long startTime = ctxt.getContextOptions().isProfileTime() ? System.nanoTime() : 0L;
             try {
                 return ctxt.getEvaluator().evalCompile(ctxt, script, name);
             } finally {
-                if (JSTruffleOptions.ProfileTime) {
+                if (ctxt.getContextOptions().isProfileTime()) {
                     ctxt.getTimeProfiler().printElapsed(startTime, "parsing " + name);
                 }
             }
@@ -676,7 +676,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         private Source sourceFromURI(String resource, JSRealm realm) {
             CompilerAsserts.neverPartOfCompilation();
-            if (JSTruffleOptions.SubstrateVM) {
+            if (JSConfig.SubstrateVM) {
                 return null;
             }
             if ((getContext().isOptionNashornCompatibilityMode() && (resource.startsWith(LOAD_NASHORN) || resource.startsWith(LOAD_CLASSPATH) || resource.startsWith(LOAD_FX))) ||
@@ -713,7 +713,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 if (resource.equals(NASHORN_PARSER_JS) || resource.equals(NASHORN_MOZILLA_COMPAT_JS)) {
                     stream = JSContext.class.getResourceAsStream(RESOURCES_PATH + resource.substring(LOAD_NASHORN.length()));
                 }
-            } else if (!JSTruffleOptions.SubstrateVM) {
+            } else if (!JSConfig.SubstrateVM) {
                 if (resource.startsWith(LOAD_CLASSPATH)) {
                     stream = ClassLoader.getSystemResourceAsStream(resource.substring(LOAD_CLASSPATH.length()));
                 } else if (resource.startsWith(LOAD_FX)) {

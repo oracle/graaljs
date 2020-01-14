@@ -45,8 +45,8 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
@@ -130,7 +130,7 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
         } else {
             newArray = createWritableIntContiguous(object, capacity, index, initialArray, profile);
         }
-        if (JSTruffleOptions.TraceArrayTransitions) {
+        if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
         }
         notifyAllocationSite(object, newArray);
@@ -150,11 +150,11 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
 
     private static int calcNewArraySize(int capacity, ProfileHolder profile) {
         if (CREATE_WRITABLE_PROFILE.lengthZero(profile, capacity == 0)) {
-            return JSTruffleOptions.InitialArraySize;
-        } else if (CREATE_WRITABLE_PROFILE.lengthBelowLimit(profile, capacity < JSTruffleOptions.MaxFlatArraySize)) {
+            return JSConfig.InitialArraySize;
+        } else if (CREATE_WRITABLE_PROFILE.lengthBelowLimit(profile, capacity < JSConfig.MaxFlatArraySize)) {
             return capacity;
         } else {
-            return JSTruffleOptions.InitialArraySize;
+            return JSConfig.InitialArraySize;
         }
     }
 
@@ -168,7 +168,7 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
         } else {
             newArray = createWritableDoubleContiguous(object, capacity, index, initialArray, profile);
         }
-        if (JSTruffleOptions.TraceArrayTransitions) {
+        if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
         }
         notifyAllocationSite(object, newArray);
@@ -196,7 +196,7 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
         } else {
             newArray = createWritableJSObjectContiguous(object, capacity, index, initialArray, profile);
         }
-        if (JSTruffleOptions.TraceArrayTransitions) {
+        if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
         }
         notifyAllocationSite(object, newArray);
@@ -224,7 +224,7 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
         } else {
             newArray = createWritableObjectContiguous(object, capacity, index, initialArray, profile);
         }
-        if (JSTruffleOptions.TraceArrayTransitions) {
+        if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
         }
         notifyAllocationSite(object, newArray);
@@ -258,7 +258,7 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
     }
 
     private void notifyAllocationSite(DynamicObject object, ScriptArray newArray) {
-        if (JSTruffleOptions.TrackArrayAllocationSites && CompilerDirectives.inInterpreter()) {
+        if (JSConfig.TrackArrayAllocationSites && CompilerDirectives.inInterpreter()) {
             ArrayAllocationSite site = JSAbstractArray.arrayGetAllocationSite(object);
             if (site != null) {
                 site.notifyArrayTransition(newArray, lengthInt(object));

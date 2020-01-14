@@ -80,14 +80,14 @@ public class FullExecutionTracerInstrument extends TruffleInstrument {
     private Env environment;
 
     public static void main(String[] args) throws IOException {
-        try (Context c = Context.create("js")) {
+        try (Context c = TestUtil.newContextBuilder().build()) {
             c.getEngine().getInstruments().get(ID).lookup(FullExecutionTracerInstrument.class);
             c.eval(Source.newBuilder("js", new File(args[0])).build());
         }
     }
 
     public static void trace(String code) {
-        try (Context c = Context.create("js")) {
+        try (Context c = TestUtil.newContextBuilder().build()) {
             c.getEngine().getInstruments().get(ID).lookup(FullExecutionTracerInstrument.class);
             c.eval(Source.create("js", code));
         }

@@ -60,9 +60,9 @@ import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseThenNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveNode;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunction.AsyncGeneratorState;
@@ -214,7 +214,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
     }
 
     private PromiseCapabilityRecord newThrowawayCapability() {
-        if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019) {
+        if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2019) {
             return null;
         }
         if (setPromiseIsHandledNode == null) {

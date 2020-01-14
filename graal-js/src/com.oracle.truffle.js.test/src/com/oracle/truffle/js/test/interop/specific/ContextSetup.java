@@ -40,15 +40,15 @@
  */
 package com.oracle.truffle.js.test.interop.specific;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.HostAccess;
-
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
+
+import com.oracle.truffle.js.test.JSTest;
 
 /**
  * Complex {@link Context} setup used for tests in this package.
@@ -67,9 +67,10 @@ public class ContextSetup {
         PRIMITIVE_TO_BOXED = Collections.unmodifiableMap(primitiveToBoxed);
     }
 
-    static final HostAccess HOST_ACCESS = enableStringCoercions(HostAccess.newBuilder()).allowPublicAccess(true).allowAllImplementations(true).allowArrayAccess(true).allowListAccess(true).build();
+    static final HostAccess HOST_ACCESS = enableStringCoercions(HostAccess.newBuilder()).allowPublicAccess(true).allowAllImplementations(true).allowArrayAccess(
+                    true).allowListAccess(true).build();
 
-    static final Context.Builder CONTEXT_BUILDER = Context.newBuilder(ID).allowHostAccess(ContextSetup.HOST_ACCESS).allowAllAccess(false);
+    static final Context.Builder CONTEXT_BUILDER = JSTest.newContextBuilder().allowHostAccess(ContextSetup.HOST_ACCESS).allowAllAccess(false);
 
     /**
      * Enables lossy coercions between number and string types.

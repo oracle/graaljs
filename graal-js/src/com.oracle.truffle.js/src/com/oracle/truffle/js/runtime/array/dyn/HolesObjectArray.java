@@ -46,7 +46,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetHol
 import java.util.List;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -102,7 +102,7 @@ public final class HolesObjectArray extends AbstractContiguousObjectArray {
 
     private void setInBoundsFastIntl(DynamicObject object, int index, int internalIndex, Object value, boolean condition) {
         getArray(object, condition)[internalIndex] = value;
-        if (JSTruffleOptions.TraceArrayWrites) {
+        if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBoundsFast", index, value);
         }
     }
@@ -128,7 +128,7 @@ public final class HolesObjectArray extends AbstractContiguousObjectArray {
         } else {
             newArray = ContiguousObjectArray.makeContiguousObjectArray(object, length, array, indexOffset, arrayOffset, usedLength, integrityLevel);
         }
-        if (JSTruffleOptions.TraceArrayTransitions) {
+        if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
         }
         return newArray;

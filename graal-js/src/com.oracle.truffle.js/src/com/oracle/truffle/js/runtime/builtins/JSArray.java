@@ -57,10 +57,10 @@ import com.oracle.truffle.js.builtins.ArrayFunctionBuiltins;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -220,7 +220,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         names.add("fill");
         names.add("find");
         names.add("findIndex");
-        if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019) {
+        if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2019) {
             names.add("flat");
             names.add("flatMap");
         }

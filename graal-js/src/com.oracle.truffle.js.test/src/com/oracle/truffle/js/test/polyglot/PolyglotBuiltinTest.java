@@ -74,7 +74,7 @@ public class PolyglotBuiltinTest extends JSTest {
     }
 
     private static String test(String sourceCode, String failedMessage, boolean allowAllAccess, Object arg, boolean nashornCompat) {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowAllAccess(allowAllAccess).allowExperimentalOptions(true).option(JSContextOptions.DEBUG_BUILTIN_NAME, "true").option(
+        try (Context context = JSTest.newContextBuilder().allowAllAccess(allowAllAccess).option(JSContextOptions.DEBUG_BUILTIN_NAME, "true").option(
                         JSContextOptions.NASHORN_COMPATIBILITY_MODE_NAME,
                         String.valueOf(nashornCompat)).build()) {
             if (arg != null) {
@@ -237,7 +237,7 @@ public class PolyglotBuiltinTest extends JSTest {
 
     @Test
     public void testDeniedExportImport() {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowExperimentalOptions(true).allowPolyglotAccess(
+        try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(
                         PolyglotAccess.newBuilder().allowEval(JavaScriptLanguage.ID, TestLanguage.ID).build()).option(JSContextOptions.POLYGLOT_BUILTIN_NAME, "true").build()) {
             context.getPolyglotBindings().putMember("fortyTwo", 42);
             try {
@@ -259,7 +259,7 @@ public class PolyglotBuiltinTest extends JSTest {
 
     @Test
     public void testEvalInternalLanguage() {
-        try (Context context = Context.newBuilder().allowExperimentalOptions(true).allowPolyglotAccess(PolyglotAccess.ALL).option(JSContextOptions.POLYGLOT_BUILTIN_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().allowPolyglotAccess(PolyglotAccess.ALL).option(JSContextOptions.POLYGLOT_BUILTIN_NAME, "true").build()) {
             try {
                 context.eval(Source.create(JavaScriptLanguage.ID, "Polyglot.eval('regex', 'sth');"));
                 fail("should have thrown");

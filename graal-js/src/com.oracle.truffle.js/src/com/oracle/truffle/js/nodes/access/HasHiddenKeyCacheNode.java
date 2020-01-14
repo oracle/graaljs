@@ -41,15 +41,13 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
-@ImportStatic(JSTruffleOptions.class)
 public abstract class HasHiddenKeyCacheNode extends JavaScriptBaseNode {
     protected final HiddenKey key;
 
@@ -63,11 +61,16 @@ public abstract class HasHiddenKeyCacheNode extends JavaScriptBaseNode {
 
     public abstract boolean executeHasHiddenKey(Object object);
 
-    @Specialization(guards = {"cachedShape.check(object)"}, assumptions = {"cachedShape.getValidAssumption()"}, limit = "PropertyCacheLimit")
+    @Specialization(guards = {"cachedShape.check(object)"}, assumptions = {"cachedShape.getValidAssumption()"}, limit = "cacheLimit")
     protected static boolean doCached(@SuppressWarnings("unused") DynamicObject object,
                     @SuppressWarnings("unused") @Cached("object.getShape()") Shape cachedShape,
-                    @Cached("doUncached(object)") boolean hasOwnProperty) {
+                    @Cached("doUncached(object)") boolean hasOwnProperty,
+                    @SuppressWarnings("unused") @Cached("getPropertyCacheLimit()") int cacheLimit) {
         return hasOwnProperty;
+    }
+
+    protected int getPropertyCacheLimit() {
+        return JavaScriptLanguage.getCurrentJSRealm().getContext().getPropertyCacheLimit();
     }
 
     @Specialization(guards = "isJSObject(object)", replaces = {"doCached"})

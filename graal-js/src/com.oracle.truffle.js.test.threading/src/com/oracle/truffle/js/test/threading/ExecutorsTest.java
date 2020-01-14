@@ -67,7 +67,7 @@ public class ExecutorsTest {
      */
     @Test
     public void fixedThreadPool() {
-        final Engine engine = Engine.create();
+        final Engine engine = TestUtil.newEngineBuilder().build();
         final ExecutorService pool = Executors.newFixedThreadPool(4);
 
         try {
@@ -75,7 +75,7 @@ public class ExecutorsTest {
 
                 @Override
                 public Context get() {
-                    return Context.newBuilder("js").engine(engine).build();
+                    return TestUtil.newContextBuilder().engine(engine).build();
                 }
             });
 

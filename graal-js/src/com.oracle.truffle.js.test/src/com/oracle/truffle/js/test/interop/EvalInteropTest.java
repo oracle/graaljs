@@ -48,13 +48,14 @@ import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.test.JSTest;
 import com.oracle.truffle.js.test.polyglot.ForeignBoxedObject;
 
 public class EvalInteropTest {
 
     @Test
     public void testDirectEvalOfBoxedString() {
-        try (Context context = Context.create(JavaScriptLanguage.ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value eval = context.eval(JavaScriptLanguage.ID, "(function(code) { return eval(code); })");
             Value result = eval.execute(ForeignBoxedObject.createNew("6*7"));
             assertTrue(result.isNumber());
@@ -65,7 +66,7 @@ public class EvalInteropTest {
 
     @Test
     public void testIndirectEvalOfBoxedString() {
-        try (Context context = Context.create(JavaScriptLanguage.ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value eval = context.eval(JavaScriptLanguage.ID, "(function(code) { return (0,eval)(code); })");
             Value result = eval.execute(ForeignBoxedObject.createNew("6*7"));
             assertTrue(result.isNumber());
@@ -76,14 +77,14 @@ public class EvalInteropTest {
 
     @Test
     public void testNestedContext() {
-        Context cx = Context.newBuilder("js").allowAllAccess(true).build();
+        Context cx = JSTest.newContextBuilder().allowAllAccess(true).build();
         Value v = cx.eval("js", "Java.type('com.oracle.truffle.js.test.interop.EvalInteropTest').nestedContextEval();");
         assertTrue(v.isNumber());
         assertEquals(42, v.asInt());
     }
 
     public static Object nestedContextEval() {
-        Context context = Context.newBuilder("js").build();
+        Context context = JSTest.newContextBuilder().build();
         return context.eval("js", "Number(42);");
     }
 

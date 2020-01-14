@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import static com.oracle.truffle.js.runtime.JSTruffleOptions.ECMAScript2017;
-import static com.oracle.truffle.js.runtime.JSTruffleOptions.ECMAScript2018;
-
 import java.nio.ByteBuffer;
 import java.util.EnumSet;
 import java.util.Map;
@@ -159,12 +156,12 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.PromiseHook;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -304,9 +301,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Override
         public int getECMAScriptVersion() {
             if (AsyncGeneratorFunction == this) {
-                return ECMAScript2018;
+                return JSConfig.ECMAScript2018;
             } else if (EnumSet.of(SharedArrayBuffer, AsyncFunction).contains(this)) {
-                return ECMAScript2017;
+                return JSConfig.ECMAScript2017;
             } else if (EnumSet.range(Map, Symbol).contains(this)) {
                 return 6;
             }
@@ -598,7 +595,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization(guards = "isOneIntegerArg(args)")
         protected DynamicObject constructArrayWithIntLength(DynamicObject newTarget, Object[] args) {
             int length = (int) args[0];
-            if (JSTruffleOptions.TrackArrayAllocationSites && arrayAllocationSite != null && arrayAllocationSite.isTyped()) {
+            if (JSConfig.TrackArrayAllocationSites && arrayAllocationSite != null && arrayAllocationSite.isTyped()) {
                 ScriptArray initialType = arrayAllocationSite.getInitialArrayType();
                 // help checker tool see this is always true, guarded by isTyped()
                 if (initialType != null) {
@@ -684,7 +681,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         private static ConstructArrayAllocationSite createAllocationSite() {
-            return JSTruffleOptions.TrackArrayAllocationSites ? new ConstructArrayAllocationSite() : null;
+            return JSConfig.TrackArrayAllocationSites ? new ConstructArrayAllocationSite() : null;
         }
 
         @Override
@@ -704,7 +701,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             @Override
             public void notifyArrayTransition(ScriptArray arrayType, int length) {
                 CompilerAsserts.neverPartOfCompilation("do not notify array transitions from compiled code");
-                assert JSTruffleOptions.TrackArrayAllocationSites;
+                assert JSConfig.TrackArrayAllocationSites;
                 if (arrayType instanceof AbstractWritableArray && length > 0) {
                     if (concreteArrayType == UNINIT_ARRAY_TYPE) {
                         concreteArrayType = arrayType;
@@ -1644,7 +1641,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 prototype = getPrototypeFromConstructorNode.executeWithConstructor(newTarget);
             }
 
-            if (badLengthCondition.profile(byteLength > JSTruffleOptions.MaxTypedArrayLength)) {
+            if (badLengthCondition.profile(byteLength > getContext().getContextOptions().getMaxTypedArrayLength())) {
                 throw Errors.createRangeError("Array buffer allocation failed");
             }
 

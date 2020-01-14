@@ -49,12 +49,13 @@ import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.test.JSTest;
 
 public class ArrayPrototypeBuiltins {
 
     @Test
     public void testUnshift() {
-        try (Context context = Context.newBuilder().build()) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             context.eval(JavaScriptLanguage.ID, "var o = Object.create({ length: 20000, 10: 'foo' }); Array.prototype.unshift.call(o, 'bar');");
 
             // inserted "bar"

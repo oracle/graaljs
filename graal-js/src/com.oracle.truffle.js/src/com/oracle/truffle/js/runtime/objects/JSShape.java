@@ -51,9 +51,9 @@ import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.object.Shape.Allocator;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
 
@@ -125,7 +125,7 @@ public final class JSShape {
 
     public static Assumption getPropertyAssumption(Shape shape, Object key, boolean prototype) {
         assert JSRuntime.isPropertyKey(key) || key instanceof HiddenKey;
-        if (prototype && JSTruffleOptions.LeafShapeAssumption) {
+        if (prototype && JSConfig.LeafShapeAssumption) {
             return shape.getLeafAssumption();
         }
         return getSharedData(shape).getPropertyAssumption(key);
@@ -187,17 +187,17 @@ public final class JSShape {
     }
 
     public static UnmodifiableArrayList<Property> getProperties(Shape shape) {
-        assert JSTruffleOptions.FastOwnKeys;
+        assert JSConfig.FastOwnKeys;
         return JSShapeData.getProperties(shape);
     }
 
     public static UnmodifiableArrayList<String> getEnumerablePropertyNames(Shape shape) {
-        assert JSTruffleOptions.FastOwnKeys;
+        assert JSConfig.FastOwnKeys;
         return JSShapeData.getEnumerablePropertyNames(shape);
     }
 
     public static UnmodifiableArrayList<Property> getPropertiesIfHasEnumerablePropertyNames(Shape shape) {
-        assert JSTruffleOptions.FastOwnKeys;
+        assert JSConfig.FastOwnKeys;
         return JSShapeData.getPropertiesIfHasEnumerablePropertyNames(shape);
     }
 

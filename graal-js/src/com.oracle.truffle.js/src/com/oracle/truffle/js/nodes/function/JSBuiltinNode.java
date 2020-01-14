@@ -51,8 +51,8 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 /**
  * Represents the body of a built-in function.
@@ -144,7 +144,7 @@ public abstract class JSBuiltinNode extends AbstractBodyNode {
         }
 
         private void verifyArgumentCount() {
-            assert !JSTruffleOptions.SubstrateVM;
+            assert !JSConfig.SubstrateVM;
             JSBuiltinNode builtinNode = createBuiltinNode();
             int argumentNodeCount = 0;
             Class<? extends JSBuiltinNode> nodeclass = builtinNode.getClass();

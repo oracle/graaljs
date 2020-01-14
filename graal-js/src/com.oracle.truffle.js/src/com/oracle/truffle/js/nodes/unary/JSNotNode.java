@@ -54,7 +54,7 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JSConfig;
 
 @NodeInfo(shortName = "!")
 public abstract class JSNotNode extends JSUnaryNode {
@@ -64,17 +64,17 @@ public abstract class JSNotNode extends JSUnaryNode {
     }
 
     public static JavaScriptNode create(JavaScriptNode operand) {
-        if (JSTruffleOptions.UseSuperOperations && operand instanceof JSNotNode) {
+        if (JSConfig.UseSuperOperations && operand instanceof JSNotNode) {
             // optimize "!!operand", but retain conversion to boolean if operand != boolean
             JSNotNode childNode = (JSNotNode) operand;
             JavaScriptNode childOperand = childNode.getOperand();
             if (childOperand.isResultAlwaysOfType(boolean.class)) {
                 return childOperand;
             }
-        } else if (JSTruffleOptions.UseSuperOperations && operand instanceof JSConstantBooleanNode) {
+        } else if (JSConfig.UseSuperOperations && operand instanceof JSConstantBooleanNode) {
             boolean value = (boolean) operand.execute(null);
             return JSConstantNode.createBoolean(!value);
-        } else if (JSTruffleOptions.UseSuperOperations && operand instanceof JSConstantIntegerNode) {
+        } else if (JSConfig.UseSuperOperations && operand instanceof JSConstantIntegerNode) {
             // used by minifiers, "!0" is shorter than "true"
             int value = (int) operand.execute(null);
             return JSConstantNode.createBoolean(value == 0); // negating it

@@ -50,7 +50,7 @@ import java.util.function.Predicate;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JSConfig;
 
 /**
  * All the information related to test file.
@@ -237,7 +237,7 @@ public final class TestFile {
     public static final class EcmaVersion {
 
         public static final int MIN_VERSION = 5;
-        public static final int MAX_VERSION = JSTruffleOptions.MaxECMAScriptVersion;
+        public static final int MAX_VERSION = JSConfig.MaxECMAScriptVersion;
 
         private final int[] allVersions;
         private final int[] versions;

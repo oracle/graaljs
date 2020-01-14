@@ -63,8 +63,8 @@ import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 
@@ -80,7 +80,7 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
     }
 
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right, boolean truncate) {
-        if (JSTruffleOptions.UseSuperOperations) {
+        if (JSConfig.UseSuperOperations) {
             if (left instanceof JSConstantIntegerNode) {
                 if (right instanceof JSConstantIntegerNode) {
                     int leftValue = ((JSConstantIntegerNode) left).executeInt(null);

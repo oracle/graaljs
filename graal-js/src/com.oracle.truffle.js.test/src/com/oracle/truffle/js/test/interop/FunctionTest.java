@@ -51,12 +51,13 @@ import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.JSTest;
 
 public class FunctionTest {
 
     @Test
     public void testInstantiate() {
-        try (Context context = Context.create(JavaScriptLanguage.ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value functionHolder = context.eval(JavaScriptLanguage.ID, "({ fn: function(arg) { this.arg = arg; } })");
             Value function = functionHolder.getMember("fn");
 
@@ -89,7 +90,7 @@ public class FunctionTest {
                         "ob\n",
                         "bindTest.js").build();
 
-        try (Context context = Context.newBuilder(ID).allowExperimentalOptions(true).option(JSContextOptions.BIND_MEMBER_FUNCTIONS_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.BIND_MEMBER_FUNCTIONS_NAME, "true").build()) {
             Value object = context.eval(source);
             object.getMember("f").execute(40);
             Value result = object.getMember("v");
@@ -97,7 +98,7 @@ public class FunctionTest {
             assertEquals(42, result.asInt());
         }
 
-        try (Context context = Context.newBuilder(ID).allowExperimentalOptions(true).option(JSContextOptions.BIND_MEMBER_FUNCTIONS_NAME, "false").build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.BIND_MEMBER_FUNCTIONS_NAME, "false").build()) {
             Value object = context.eval(source);
             object.getMember("f").execute(40);
             Value result = object.getMember("v");
@@ -109,7 +110,7 @@ public class FunctionTest {
         }
 
         // default
-        try (Context context = Context.newBuilder(ID).build()) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value object = context.eval(source);
             object.getMember("f").execute(40);
             Value result = object.getMember("v");

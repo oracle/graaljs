@@ -49,6 +49,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.test.JSTest;
 import com.oracle.truffle.js.test.polyglot.ForeignBoxedObject;
 import com.oracle.truffle.js.test.polyglot.ForeignDynamicObject;
 import com.oracle.truffle.js.test.polyglot.ForeignTestMap;
@@ -56,7 +57,7 @@ import com.oracle.truffle.js.test.polyglot.ForeignTestMap;
 public class CollectionsInteropTest {
 
     private static void checkNormalization(Object object, Object normalizedObject) {
-        try (Context context = Context.create(JavaScriptLanguage.ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value fn = context.eval(JavaScriptLanguage.ID, "" +
                             "(function(object, normalizedObject) {\n" +
                             "    var set = new Set();\n" +

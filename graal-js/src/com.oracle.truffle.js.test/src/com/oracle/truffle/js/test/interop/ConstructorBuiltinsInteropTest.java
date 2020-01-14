@@ -48,12 +48,13 @@ import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.test.JSTest;
 import com.oracle.truffle.js.test.polyglot.ForeignBoxedObject;
 
 public class ConstructorBuiltinsInteropTest {
 
     private static void checkArrayWithForeignArgument(Object foreignArgument, int expectedLength) {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).build()) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             context.getBindings(JavaScriptLanguage.ID).putMember("foreignArgument", foreignArgument);
             String code = "new Array(foreignArgument).length";
             Value result = context.eval(JavaScriptLanguage.ID, code);
@@ -74,7 +75,7 @@ public class ConstructorBuiltinsInteropTest {
     }
 
     private static void checkArrayWithForeignLengthOutOfBounds(Object foreignNumber) {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).build()) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             context.getBindings(JavaScriptLanguage.ID).putMember("foreignNumber", foreignNumber);
             String jscode = "var rangeErrorThrown = false;\n" +
                             "try {\n" +

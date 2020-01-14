@@ -47,11 +47,12 @@ import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.test.JSTest;
 
 public class GR17510 {
 
     private static void testRequireObjectCoercibleInMemberExpression(String target) {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).build()) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             String jscode = "var passed = true;\n" + //
                             "try {\n" + //
                             "  " + target + "[{ toString() { passed = false; } }];\n" + //

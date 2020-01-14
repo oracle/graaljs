@@ -56,6 +56,8 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
+import com.oracle.truffle.js.test.JSTest;
+
 /**
  * Various tests for accessing JavaScript array in Java and accessing appropriate Java objects as
  * JavaScript arrays in JavaScript.
@@ -67,7 +69,7 @@ public class InteropArrayTest {
      */
     @Test
     public void testArrayGetMembers() {
-        try (Context context = Context.create(ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value array = context.eval(ID, "[3, 4, 1, 5]");
             assertEquals(4, array.getArraySize());
             assertEquals(3, array.getMember("0").asInt());
@@ -84,7 +86,7 @@ public class InteropArrayTest {
      */
     @Test
     public void testSlowArrayGetMembers() {
-        try (Context context = Context.create(ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value array = context.eval(ID, "var a = [3, 4, 1, 5]; Object.defineProperty(a, 2, {get: function(){return" +
                             " 42;}}); a;");
             assertEquals(4, array.getArraySize());
@@ -102,7 +104,7 @@ public class InteropArrayTest {
      */
     @Test
     public void testSlowArrayWithIntKeyEnumerablePropertyGetMembers1() {
-        try (Context context = Context.create(ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value array = context.eval(ID, "var a = [3, 4, 1, 5]; Object.defineProperty(a, 2, {get: function(){return" +
                             " 42;}, enumerable: true}); a;");
             assertEquals(4, array.getArraySize());
@@ -120,7 +122,7 @@ public class InteropArrayTest {
      */
     @Test
     public void testSlowArrayWithIntKeyEnumerablePropertyGetMembers2() {
-        try (Context context = Context.create(ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value array = context.eval(ID, "var a = [3, 4, 1, 5]; Object.defineProperty(a, '2', {get: function()" +
                             "{return 42;}, enumerable: true}); a;");
             assertEquals(4, array.getArraySize());
@@ -137,7 +139,7 @@ public class InteropArrayTest {
      */
     @Test
     public void testSlowArrayWithStringKeyEnumerablePropertyGetMembers() {
-        try (Context context = Context.create(ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value array = context.eval(ID, "var a = [3, 4, 1, 5]; Object.defineProperty(a, 'x', {get: function()" +
                             "{return 42;}, enumerable: true}); a;");
             assertEquals(4, array.getArraySize());
@@ -155,7 +157,7 @@ public class InteropArrayTest {
      */
     @Test
     public void testTypedArrayGetMembers() {
-        try (Context context = Context.create(ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value array = context.eval(ID, "Int8Array.from([3, 4, 1, 5]);");
             assertEquals(4, array.getArraySize());
             assertEquals(3, array.getMember("0").asInt());
@@ -171,7 +173,7 @@ public class InteropArrayTest {
      */
     @Test
     public void testArgumentsObjectGetMembers() {
-        try (Context context = Context.create(ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value array = context.eval(ID, "(function(){return arguments;})(3, 4, 1, 5);");
             assertEquals(4, array.getArraySize());
             assertEquals(3, array.getMember("0").asInt());
@@ -216,7 +218,7 @@ public class InteropArrayTest {
      */
     @Test
     public void testArrayBasic() {
-        try (Context context = Context.create(ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value v = context.eval(ID, JS_ARRAY_STRING);
             commonCheck(v);
         }
@@ -246,7 +248,7 @@ public class InteropArrayTest {
      */
     private static void testArrayAsParameter(String methodName) {
         final HostAccess hostAccess = HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).build();
-        try (Context context = Context.newBuilder(ID).allowHostAccess(hostAccess).build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).build()) {
             Value bindings = context.getBindings(ID);
             ToBePassedToJS objectFromJava = new ToBePassedToJS();
             bindings.putMember("objectFromJava", objectFromJava);
@@ -263,7 +265,7 @@ public class InteropArrayTest {
     @Test
     public void testJavaArrayAsJSArray() {
         final HostAccess hostAccess = HostAccess.newBuilder().allowArrayAccess(true).build();
-        try (Context context = Context.newBuilder(ID).allowHostAccess(hostAccess).build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).build()) {
             Value bindings = context.getBindings(ID);
             bindings.putMember("arrayFromJava", JAVA_ARRAY);
             Value v = context.eval(ID, "var recreatedArray = [];" +
@@ -281,7 +283,7 @@ public class InteropArrayTest {
     @Test
     public void testJavaListAsJSArray() {
         final HostAccess hostAccess = HostAccess.newBuilder().allowListAccess(true).build();
-        try (Context context = Context.newBuilder(ID).allowHostAccess(hostAccess).build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).build()) {
             Value bindings = context.getBindings(ID);
             bindings.putMember("arrayFromJava", JAVA_LIST);
             Value v = context.eval(ID, "var recreatedArray = [];" +
@@ -310,7 +312,7 @@ public class InteropArrayTest {
         final HostAccess.Builder hostAccessBuilder = HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class);
         final HostAccess hostAccess = (isArray ? hostAccessBuilder.allowArrayAccess(true) : hostAccessBuilder.allowListAccess(true)).build();
         String methodName = isArray ? "methodThatReturnsArray" : "methodThatReturnsList";
-        try (Context context = Context.newBuilder(ID).allowHostAccess(hostAccess).build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).build()) {
             Value bindings = context.getBindings(ID);
             ToBePassedToJS objectFromJava = new ToBePassedToJS();
             bindings.putMember("objectFromJava", objectFromJava);

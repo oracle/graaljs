@@ -57,6 +57,8 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import com.oracle.truffle.js.test.JSTest;
+
 /**
  * Test conversion or objects in JavaScript scope to Java objects using
  * {@link HostAccess.Builder#targetTypeMapping}.
@@ -98,7 +100,7 @@ public class TargetTypeMappingTest {
         final HostAccess hostAccess = HostAccess.newBuilder().targetTypeMapping(Value.class, JsonObject.class,
                         (v) -> v.hasMembers() || v.hasArrayElements(),
                         JsonObject::new).allowAccessAnnotatedBy(HostAccess.Export.class).build();
-        try (Context context = Context.newBuilder(ID).allowHostAccess(hostAccess).build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).build()) {
             ToBePassedToJS objectFromJava = new ToBePassedToJS();
             context.getBindings(ID).putMember("objectFromJava", objectFromJava);
 
@@ -124,7 +126,7 @@ public class TargetTypeMappingTest {
     @Test
     public void testJSArrayToList() {
         final HostAccess hostAccess = HostAccess.newBuilder().targetTypeMapping(List.class, Collection.class, null, (v) -> v).targetTypeMapping(List.class, Object.class, null, (v) -> v).build();
-        try (Context context = Context.newBuilder(ID).allowHostAccess(hostAccess).build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).build()) {
             String jsArrayString = "[true, 'abc', 1, 1.034]";
             Value val = context.eval(ID, jsArrayString);
             // The following does not need any target type mapping, JS array converts to Java List
@@ -156,7 +158,7 @@ public class TargetTypeMappingTest {
      */
     @Test
     public void testJavaListToJavaList() {
-        try (Context context = Context.create(ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Object[] javaArray = new Object[]{true, "abc", 1, 1.034};
             List<Object> javaList = Arrays.asList(javaArray);
             Value bindings = context.getBindings(ID);
@@ -175,7 +177,7 @@ public class TargetTypeMappingTest {
     public void testJavaListToJavaArrayNegative() {
         expectedException.expect(ClassCastException.class);
         expectedException.expectMessage("Value must have array elements");
-        try (Context context = Context.create(ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Object[] javaArray = new Object[]{true, "abc", 1, 1.034};
             List<Object> javaList = Arrays.asList(javaArray);
             Value bindings = context.getBindings(ID);
@@ -192,7 +194,7 @@ public class TargetTypeMappingTest {
     @Test
     public void testJavaListToJavaArray() {
         final HostAccess hostAccess = HostAccess.newBuilder().targetTypeMapping(List.class, Object[].class, null, List::toArray).build();
-        try (Context context = Context.newBuilder(ID).allowHostAccess(hostAccess).build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).build()) {
             Object[] javaArray = new Object[]{true, "abc", 1, 1.034};
             List<Object> javaList = Arrays.asList(javaArray);
             Value bindings = context.getBindings(ID);
@@ -212,7 +214,7 @@ public class TargetTypeMappingTest {
         expectedException.expect(ClassCastException.class);
         expectedException.expectMessage("Invalid or lossy primitive coercion.");
 
-        try (Context context = Context.create(ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value val = context.eval(ID, "1");
             assertEquals("1", val.as(String.class));
         }
@@ -228,7 +230,7 @@ public class TargetTypeMappingTest {
         expectedException.expectMessage("Invalid coercion. You can ensure that the value can be converted using Value" +
                         ".isString().");
 
-        try (Context context = Context.create(ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value val = context.eval(ID, "1");
             assertEquals("1", val.asString());
         }
@@ -245,7 +247,7 @@ public class TargetTypeMappingTest {
                         ".isString().");
 
         final HostAccess hostAccess = HostAccess.newBuilder().targetTypeMapping(Integer.class, String.class, null, String::valueOf).build();
-        try (Context context = Context.newBuilder(ID).allowHostAccess(hostAccess).build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).build()) {
             Value val = context.eval(ID, "1");
             assertEquals("1", val.as(String.class)); // works because of the target type mapping
             assertEquals("1", val.asString()); // doesn't work, because the value is not string

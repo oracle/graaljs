@@ -42,16 +42,16 @@ package com.oracle.truffle.js.runtime.util;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JSContext;
 
 public final class TimeProfiler {
     private static final String CLASS_NAME = "[" + TimeProfiler.class.getSimpleName() + "] ";
     private final AtomicLong counter;
 
-    public TimeProfiler() {
+    public TimeProfiler(JSContext context) {
         counter = new AtomicLong();
 
-        if (JSTruffleOptions.PrintCumulativeTime) {
+        if (context.getContextOptions().isProfileTimePrintCumulative()) {
             Runtime.getRuntime().addShutdownHook(new Thread() {
                 @Override
                 public void run() {

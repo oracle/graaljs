@@ -48,10 +48,11 @@ import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.JSTest;
 
 public class NashornCompatibilityModeTests {
     private static boolean testIntl(String sourceText, boolean nashornCompatMode) {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).option(JSContextOptions.NASHORN_COMPATIBILITY_MODE_NAME,
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.NASHORN_COMPATIBILITY_MODE_NAME,
                         nashornCompatMode ? "true" : "false").build()) {
             Value result = context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, "nashorn-compat-mode-test").buildLiteral());
             Assert.assertTrue(result.isBoolean());

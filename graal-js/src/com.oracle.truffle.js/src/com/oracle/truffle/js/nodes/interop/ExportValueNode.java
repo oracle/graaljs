@@ -41,17 +41,18 @@
 package com.oracle.truffle.js.nodes.interop;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
@@ -65,7 +66,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
  *
  * @see JSRuntime#exportValue(Object)
  */
-@ImportStatic({JSTruffleOptions.class, JSFunction.class})
+@ImportStatic({JSGuards.class, JSFunction.class})
 @GenerateUncached
 public abstract class ExportValueNode extends JavaScriptBaseNode {
 
@@ -78,28 +79,37 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
 
     public abstract Object execute(Object value, Object thiz, boolean bindMemberFunctions);
 
-    @Specialization(guards = {"isJSFunction(function)", "!bindFunctions", "!InteropCompletePromises || !isAsyncFunction(function)"})
-    protected static DynamicObject doFunctionNoBind(DynamicObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
+    public static boolean isInteropCompletePromises(JavaScriptLanguage lang) {
+        return lang.getJSContext().getContextOptions().interopCompletePromises();
+    }
+
+    @Specialization(guards = {"isJSFunction(function)", "!bindFunctions", "!isInteropCompletePromises(language) || !isAsyncFunction(function)"})
+    protected static DynamicObject doFunctionNoBind(DynamicObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions,
+                    @CachedLanguage @SuppressWarnings("unused") JavaScriptLanguage language) {
         return function;
     }
 
-    @Specialization(guards = {"isJSFunction(function)", "bindFunctions", "isUndefined(thiz)", "!InteropCompletePromises || !isAsyncFunction(function)"})
-    protected static DynamicObject doFunctionUndefinedThis(DynamicObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
+    @Specialization(guards = {"isJSFunction(function)", "bindFunctions", "isUndefined(thiz)", "!isInteropCompletePromises(language) || !isAsyncFunction(function)"})
+    protected static DynamicObject doFunctionUndefinedThis(DynamicObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions,
+                    @CachedLanguage @SuppressWarnings("unused") JavaScriptLanguage language) {
         return function;
     }
 
-    @Specialization(guards = {"isJSFunction(function)", "bindFunctions", "!isUndefined(thiz)", "!isBoundJSFunction(function)", "!InteropCompletePromises || !isAsyncFunction(function)"})
-    protected static TruffleObject doBindUnboundFunction(DynamicObject function, Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
+    @Specialization(guards = {"isJSFunction(function)", "bindFunctions", "!isUndefined(thiz)", "!isBoundJSFunction(function)", "!isInteropCompletePromises(language) || !isAsyncFunction(function)"})
+    protected static TruffleObject doBindUnboundFunction(DynamicObject function, Object thiz, @SuppressWarnings("unused") boolean bindFunctions,
+                    @CachedLanguage @SuppressWarnings("unused") JavaScriptLanguage language) {
         return new InteropBoundFunction(function, thiz);
     }
 
-    @Specialization(guards = {"isJSFunction(function)", "bindFunctions", "isBoundJSFunction(function)", "!InteropCompletePromises || !isAsyncFunction(function)"})
-    protected static DynamicObject doBoundFunction(DynamicObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
+    @Specialization(guards = {"isJSFunction(function)", "bindFunctions", "isBoundJSFunction(function)", "!isInteropCompletePromises(language) || !isAsyncFunction(function)"})
+    protected static DynamicObject doBoundFunction(DynamicObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions,
+                    @CachedLanguage @SuppressWarnings("unused") JavaScriptLanguage language) {
         return function;
     }
 
-    @Specialization(guards = {"isJSFunction(function)", "InteropCompletePromises", "isAsyncFunction(function)"})
-    protected static TruffleObject doAsyncFunction(DynamicObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
+    @Specialization(guards = {"isJSFunction(function)", "isInteropCompletePromises(language)", "isAsyncFunction(function)"})
+    protected static TruffleObject doAsyncFunction(DynamicObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions,
+                    @CachedLanguage @SuppressWarnings("unused") JavaScriptLanguage language) {
         return new InteropAsyncFunction(function);
     }
 
@@ -149,8 +159,8 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    @Fallback
-    protected static final Object doOther(Object value, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
+    @Specialization(guards = {"!isTruffleObject(thiz)", "!isString(thiz)", "!isBoolean(thiz)", "!isNumberDouble(thiz)", "!isNumberLong(thiz)", "!isNumberInteger(thiz)"})
+    protected static Object doOther(Object value, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         throw Errors.createTypeErrorFormat("Cannot convert to TruffleObject: %s", value == null ? null : value.getClass().getSimpleName());
     }
 

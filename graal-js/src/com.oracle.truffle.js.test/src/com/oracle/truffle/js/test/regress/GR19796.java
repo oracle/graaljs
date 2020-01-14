@@ -47,13 +47,15 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
+import com.oracle.truffle.js.test.JSTest;
+
 import org.graalvm.polyglot.PolyglotException;
 
 public class GR19796 {
 
     @Test
     public void test() {
-        try (Context context = Context.newBuilder(ID).allowAllAccess(true).build()) {
+        try (Context context = JSTest.newContextBuilder().allowAllAccess(true).build()) {
             // Various objects with distinct InteropLibraries
             Value[] values = new Value[]{
                             context.eval(ID, "java.lang.Class"), // HostObject

@@ -55,8 +55,8 @@ public class SharedJavaObjects {
      */
     @Test(timeout = 30000)
     public void valueInTwoThreads() throws InterruptedException {
-        final Context cx1 = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).build();
-        final Context cx2 = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).build();
+        final Context cx1 = TestUtil.newContextBuilder().allowHostAccess(HostAccess.ALL).build();
+        final Context cx2 = TestUtil.newContextBuilder().allowHostAccess(HostAccess.ALL).build();
         final AtomicInteger counter = new AtomicInteger(200);
 
         try {

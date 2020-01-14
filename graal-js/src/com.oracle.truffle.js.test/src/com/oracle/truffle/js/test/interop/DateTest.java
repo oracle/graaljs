@@ -62,12 +62,14 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
+import com.oracle.truffle.js.test.JSTest;
+
 public class DateTest {
 
     @Test
     public void testDateValue() {
         for (ZoneId timeZone : new ZoneId[]{ZoneId.systemDefault(), ZoneId.of("UTC+9")}) {
-            try (Context context = Context.newBuilder(ID).timeZone(timeZone).build()) {
+            try (Context context = JSTest.newContextBuilder().timeZone(timeZone).build()) {
                 Value date = context.eval(ID, "new Date('2019-07-02 13:37');");
                 assertTrue(date.isInstant());
                 assertTrue(date.isDate());
@@ -85,7 +87,7 @@ public class DateTest {
     @Test
     public void testImportDate() {
         for (ZoneId timeZone : new ZoneId[]{ZoneId.systemDefault(), ZoneId.of("UTC+9")}) {
-            try (Context context = Context.newBuilder(ID).timeZone(timeZone).build()) {
+            try (Context context = JSTest.newContextBuilder().timeZone(timeZone).build()) {
                 Value toJSDate = context.eval(ID, "(date) => new Date(date);");
                 ZonedDateTime expected = ZonedDateTime.of(LocalDateTime.of(2019, Month.JULY, 2, 13, 37), timeZone);
                 for (int i = 0; i < 3; i++) {
@@ -115,7 +117,7 @@ public class DateTest {
     @Test
     public void testJavaInterop() {
         for (ZoneId timeZone : new ZoneId[]{ZoneId.systemDefault(), ZoneId.of("UTC+9")}) {
-            try (Context context = Context.newBuilder(ID).timeZone(timeZone).allowHostAccess(HostAccess.ALL).build()) {
+            try (Context context = JSTest.newContextBuilder().timeZone(timeZone).allowHostAccess(HostAccess.ALL).build()) {
                 DateConsumer consumer = new DateConsumer();
                 context.getBindings(ID).putMember("consumer", consumer);
                 context.eval(ID, "var date = new Date('2019-07-02 13:37');");
@@ -166,7 +168,7 @@ public class DateTest {
     public void testDatePrototypeBuiltins() {
         ZoneId utcTZ = ZoneId.of("UTC");
         ZoneId localTZ = ZoneId.of("UTC+2");
-        try (Context context = Context.newBuilder(ID).timeZone(localTZ).build()) {
+        try (Context context = JSTest.newContextBuilder().timeZone(localTZ).build()) {
             ZonedDateTime expected = ZonedDateTime.of(LocalDateTime.of(2019, Month.JULY, 2, 13, 37, 42, 211_000_000), localTZ);
             Instant instant = expected.toInstant();
             context.getBindings(ID).putMember("date", instant);

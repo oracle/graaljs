@@ -74,13 +74,13 @@ public final class JSParserOptions {
         this.strict = false;
         this.scripting = false;
         this.shebang = false;
-        this.ecmaScriptVersion = JSTruffleOptions.MaxECMAScriptVersion;
+        this.ecmaScriptVersion = JSConfig.MaxECMAScriptVersion;
         this.syntaxExtensions = false;
         this.constAsVar = false;
         this.functionStatementError = false;
         this.dumpOnError = false;
         this.emptyStatements = false;
-        this.annexB = JSTruffleOptions.AnnexB;
+        this.annexB = JSConfig.AnnexB;
         this.allowBigInt = true;
         this.classFields = true;
     }

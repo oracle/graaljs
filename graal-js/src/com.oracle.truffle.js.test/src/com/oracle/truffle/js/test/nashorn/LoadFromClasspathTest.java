@@ -52,13 +52,14 @@ import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.JSTest;
 
 public class LoadFromClasspathTest {
     private static final String SCRIPT_PATH = LoadFromClasspathTest.class.getName().substring(0, LoadFromClasspathTest.class.getName().lastIndexOf('.')).replace('.', '/') + "/classpath_test.js";
 
     @Test
     public void testLoadFromClasspath() {
-        try (Context context = Context.newBuilder(ID).allowExperimentalOptions(true).option(JSContextOptions.LOAD_FROM_CLASSPATH_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.LOAD_FROM_CLASSPATH_NAME, "true").build()) {
             Value result = context.eval(Source.newBuilder(ID, "load('classpath:" + SCRIPT_PATH + "');", "load-from-classpath.js").buildLiteral());
             assertTrue(result.fitsInInt());
             assertEquals(42, result.asInt());
@@ -67,7 +68,7 @@ public class LoadFromClasspathTest {
 
     @Test
     public void testLoadFromClasspathNashornCompat() {
-        try (Context context = Context.newBuilder(ID).allowExperimentalOptions(true).option(JSContextOptions.NASHORN_COMPATIBILITY_MODE_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.NASHORN_COMPATIBILITY_MODE_NAME, "true").build()) {
             Value result = context.eval(Source.newBuilder(ID, "load('classpath:" + SCRIPT_PATH + "');", "load-from-classpath.js").buildLiteral());
             assertTrue(result.fitsInInt());
             assertEquals(42, result.asInt());
@@ -76,7 +77,7 @@ public class LoadFromClasspathTest {
 
     @Test
     public void testLoadFromClasspathDenied() {
-        try (Context context = Context.newBuilder(ID).allowIO(true).build()) {
+        try (Context context = JSTest.newContextBuilder().allowIO(true).build()) {
             context.eval(Source.newBuilder(ID, "load('classpath:" + SCRIPT_PATH + "');", "load-from-classpath.js").buildLiteral());
             fail("did not throw");
         } catch (PolyglotException e) {
