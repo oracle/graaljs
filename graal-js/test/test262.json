@@ -2009,9 +2009,6 @@
     },
     "status" : "PASS"
   }, {
-    "filePath" : "language/eval-code/indirect/lex-env-heritage.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/expressions/arrow-function/scope-param-elem-var-close.js",
     "status" : "FAIL"
   }, {

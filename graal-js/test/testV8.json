@@ -400,10 +400,6 @@
     "status" : "FAIL",
     "comment" : "needs larger stack, at least 21m is needed"
   }, {
-    "filePath" : "mjsunit/compiler/regress-9017.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
     "filePath" : "mjsunit/compiler/string-add-try-catch.js",
     "runInIsolation" : true,
     "comment" : "memory intensive test"
@@ -703,10 +699,6 @@
     "filePath" : "mjsunit/es8/async-destructuring.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es8/async-function-try-finally.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
     "filePath" : "mjsunit/es8/object-get-own-property-descriptors.js",
     "status" : "FAIL"
   }, {
@@ -747,10 +739,6 @@
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
     "filePath" : "mjsunit/harmony/async-for-of-non-iterable.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/harmony/async-generators-basic.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
