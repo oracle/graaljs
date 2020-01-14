@@ -1310,10 +1310,22 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private EnvironmentCloseable enterBlockEnvironment(Block block) {
         // Global lexical environment is shared by scripts (but not eval).
-        if (block.isFunctionBody() && lc.getCurrentFunction().isScript() && !currentFunction().isEval()) {
-            GlobalEnvironment globalEnv = new GlobalEnvironment(environment, factory, context);
-            setupGlobalEnvironment(globalEnv, block);
-            return new EnvironmentCloseable(globalEnv);
+        // Note: indirect eval creates a new environment for lexically-scoped declarations.
+        if (block.isFunctionBody() && lc.getCurrentFunction().isScript()) {
+            FunctionEnvironment currentFunction = currentFunction();
+            if (!currentFunction.isEval()) {
+                GlobalEnvironment globalEnv = new GlobalEnvironment(environment, factory, context);
+                setupGlobalEnvironment(globalEnv, block);
+                return new EnvironmentCloseable(globalEnv);
+            } else if (currentFunction.isIndirectEval()) {
+                GlobalEnvironment globalEnv = new GlobalEnvironment(environment, factory, context);
+                BlockEnvironment blockEnv = new BlockEnvironment(globalEnv, factory, context);
+                blockEnv.addFrameSlotsFromSymbols(block.getScope().getSymbols());
+                return new EnvironmentCloseable(blockEnv);
+            } else {
+                assert currentFunction.isDirectEval();
+                // We already have a global environment.
+            }
         }
 
         return enterBlockEnvironment(block.getScope());
@@ -3134,7 +3146,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         @Override
         public void close() {
             assert environment == newEnv;
-            assert prevEnv == newEnv.getParent() || prevEnv == newEnv || prevEnv instanceof EvalEnvironment;
             assert newEnv == prevEnv || !(newEnv instanceof BlockEnvironment) || wrappedInBlockScopeNode == 1;
             environment = prevEnv;
         }
