@@ -3159,6 +3159,7 @@ namespace v8 {
 
     WasmModuleObject::TransferrableModule WasmModuleObject::GetTransferrableModule() {
         TRACE
+        return TransferrableModule(nullptr);
     }
 
     MaybeLocal<WasmModuleObject> WasmModuleObject::FromTransferrableModule(Isolate* isolate, const TransferrableModule&) {
@@ -3223,6 +3224,7 @@ namespace v8 {
 
     StartupData SnapshotCreator::CreateBlob(FunctionCodeHandling function_code_handling) {
         TRACE
+        return { nullptr, 0 };
     }
 
     size_t SnapshotCreator::AddContext(Local<Context> context, SerializeInternalFieldsCallback callback) {

@@ -89,7 +89,7 @@ int GraalMessage::GetEndColumn() const {
 
 v8::Maybe<int> GraalMessage::GetLineNumber() const {
     JNI_CALL(jint, line_number, Isolate(), GraalAccessMethod::message_get_line_number, Int, GetJavaObject());
-    return v8::Just(line_number);
+    return v8::Just((int) line_number);
 }
 
 v8::Local<v8::String> GraalMessage::Get() const {
