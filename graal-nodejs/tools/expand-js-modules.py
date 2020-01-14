@@ -49,14 +49,16 @@ import js2c
 import os
 import sys
 
+from os.path import join
+
 def WrapModule(module_path, module_code):
-    if module_path in ['lib/internal/per_context/primordials.js', 'lib/internal/per_context/setup.js', 'lib/internal/per_context/domexception.js']:
+    if module_path in [join('lib', 'internal', 'per_context', 'primordials.js'), join('lib', 'internal', 'per_context', 'setup.js'), join('lib', 'internal', 'per_context', 'domexception.js')]:
         return "(function (global, exports, primordials) {" + module_code + "\n});"
-    elif module_path in ['lib/internal/main/inspect.js', 'lib/internal/main/print_help.js', 'lib/internal/main/print_bash_completion.js', 'lib/internal/main/prof_process.js', 'lib/internal/main/eval_string.js', 'lib/internal/main/check_syntax.js', 'lib/internal/main/run_main_module.js', 'lib/internal/main/repl.js', 'lib/internal/main/eval_stdin.js']:
+    elif module_path in [join('lib', 'internal', 'main', 'inspect.js'), join('lib', 'internal', 'main', 'print_help.js'), join('lib', 'internal', 'main', 'print_bash_completion.js'), join('lib', 'internal', 'main', 'prof_process.js'), join('lib', 'internal', 'main', 'eval_string.js'), join('lib', 'internal', 'main', 'check_syntax.js'), join('lib', 'internal', 'main', 'run_main_module.js'), join('lib', 'internal', 'main', 'repl.js'), join('lib', 'internal', 'main', 'eval_stdin.js')]:
         return "(function (process, require, internalBinding, primordials, markBootstrapComplete) {" + module_code + "\n});"
-    elif module_path == 'lib/internal/bootstrap/node.js':
+    elif module_path == join('lib', 'internal', 'bootstrap', 'node.js'):
         return "(function (process, require, internalBinding, isMainThread, ownsProcessState, primordials) {" + module_code + "\n});"
-    elif module_path == 'lib/internal/bootstrap/loaders.js':
+    elif module_path == join('lib', 'internal', 'bootstrap', 'loaders.js'):
         return "(function (process, getLinkedBinding, getInternalBinding, primordials) {" + module_code + "\n});"
     else:
         return "(function (exports, require, module, process, internalBinding, primordials) {" + module_code + "\n});"
