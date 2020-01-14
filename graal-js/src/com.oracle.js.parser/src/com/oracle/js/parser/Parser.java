@@ -200,6 +200,8 @@ public class Parser extends AbstractParser {
     private static final String SWITCH_BINDING_NAME = ":switch";
     /** Function name for arrow functions. */
     private static final String ARROW_FUNCTION_NAME = ":=>";
+    /** Internal function name for class field initializer. */
+    private static final String INITIALIZER_FUNCTION_NAME = ":initializer";
 
     private static final String FUNCTION_PARAMETER_CONTEXT = "function parameter";
     private static final String CATCH_PARAMETER_CONTEXT = "catch parameter";
@@ -225,6 +227,7 @@ public class Parser extends AbstractParser {
     private static final boolean ES8_REST_SPREAD_PROPERTY = Options.getBooleanProperty("parser.rest.spread.property", true);
     private static final boolean ES8_FOR_AWAIT_OF = Options.getBooleanProperty("parser.for.await.of", true);
     private static final boolean ES2019_OPTIONAL_CATCH_BINDING = Options.getBooleanProperty("parser.optional.catch.binding", true);
+    private static final boolean ES2020_CLASS_FIELDS = Options.getBooleanProperty("parser.class.fields", true);
 
     private static final int REPARSE_IS_PROPERTY_ACCESSOR = 1 << 0;
     private static final int REPARSE_IS_METHOD = 1 << 1;
@@ -1510,8 +1513,11 @@ public class Parser extends AbstractParser {
     private ClassNode classTail(int classLineNumber, long classToken, IdentNode className, boolean yield, boolean await) {
         boolean oldStrictMode = isStrictMode;
         isStrictMode = true;
-        Scope scope = Scope.createClass(lc.getCurrentScope());
-        ParserContextClassNode classNode = new ParserContextClassNode(token, scope);
+        Scope classScope = Scope.createClass(lc.getCurrentScope());
+        if (className != null) {
+            classScope.putSymbol(new Symbol(className.getName(), Symbol.IS_CONST));
+        }
+        ParserContextClassNode classNode = new ParserContextClassNode(token, classScope);
         lc.push(classNode);
         try {
             Expression classHeritage = null;
@@ -1525,6 +1531,7 @@ public class Parser extends AbstractParser {
             PropertyNode constructor = null;
             ArrayList<PropertyNode> classElements = new ArrayList<>();
             Map<ClassElementKey, Integer> keyToIndexMap = new HashMap<>();
+            int instanceFieldCount = 0;
             for (;;) {
                 if (type == SEMICOLON) {
                     next();
@@ -1550,7 +1557,19 @@ public class Parser extends AbstractParser {
                     generator = true;
                     next();
                 }
-                PropertyNode classElement = methodDefinition(isStatic, classHeritage != null, generator, async, classElementToken, classElementLine, yield, await);
+
+                final TokenType nameTokenType = type;
+                final boolean computed = nameTokenType == LBRACKET;
+                final Expression propertyName = classElementName(yield, await);
+
+                PropertyNode classElement;
+                if (!generator && !async && !isStatic && isClassFieldDefinition(nameTokenType)) {
+                    classElement = fieldDefinition(propertyName, isStatic, classElementToken, computed);
+                    instanceFieldCount++;
+                } else {
+                    classElement = methodDefinition(propertyName, isStatic, classHeritage != null, generator, async, classElementToken, classElementLine, yield, await, nameTokenType, computed);
+                }
+
                 if (classElement.isComputed()) {
                     classElements.add(classElement);
                 } else if (!classElement.isStatic() && classElement.getKeyName().equals(CONSTRUCTOR_NAME)) {
@@ -1611,23 +1630,54 @@ public class Parser extends AbstractParser {
                                 ctor.getLength(), ctor.getNumOfParams(), ctor.getParameters(), flags, ctor.getBody(), ctor.getEndParserState(), ctor.getModule()));
             }
 
-            if (className != null) {
-                scope.putSymbol(new Symbol(className.getName(), Symbol.IS_CONST));
-            }
-            scope.close();
-            return new ClassNode(classToken, classFinish, className, classHeritage, constructor, classElements, scope);
+            classScope.close();
+            return new ClassNode(classToken, classFinish, className, classHeritage, constructor, classElements, classScope, instanceFieldCount);
         } finally {
             lc.pop(classNode);
             isStrictMode = oldStrictMode;
         }
     }
 
-    private PropertyNode createDefaultClassConstructor(int classLineNumber, long classToken, long lastToken, IdentNode className, boolean subclass) {
+    private Expression classElementName(boolean yield, boolean await) {
+        return propertyName(yield, await);
+    }
+
+    private boolean isClassFieldDefinition(final TokenType nameTokenType) {
+        if (!ES2020_CLASS_FIELDS || !isES2020()) {
+            return false;
+        }
+
+        switch (type) {
+            case ASSIGN:
+            case SEMICOLON:
+            case RBRACE:
+                // must be a field
+                return true;
+            case LPAREN:
+                // must be a method
+                return false;
+            default:
+                if (nameTokenType == GET || nameTokenType == SET) {
+                    // `get` or `set` not followed by `;`, `=`, or `}`, must be an accessor method
+                    return false;
+                }
+                // not a method, either a field or syntax error
+                if (last == EOL) {
+                    // field (automatic semicolon insertion)
+                    return true;
+                } else {
+                    // syntax error
+                    return false;
+                }
+        }
+    }
+
+    private PropertyNode createDefaultClassConstructor(int classLineNumber, long classToken, long lastToken, IdentNode className, boolean derived) {
         final int ctorFinish = finish;
         final List<Statement> statements;
         final List<IdentNode> parameters;
         final long identToken = Token.recast(classToken, TokenType.IDENT);
-        if (subclass) {
+        if (derived) {
             IdentNode superIdent = new IdentNode(identToken, ctorFinish, SUPER.getName()).setIsDirectSuper();
             IdentNode argsIdent = new IdentNode(identToken, ctorFinish, "args").setIsRestParameter();
             Expression spreadArgs = new UnaryNode(Token.recast(classToken, TokenType.SPREAD_ARGUMENT), argsIdent);
@@ -1647,7 +1697,7 @@ public class Parser extends AbstractParser {
         scope.close();
         Block body = new Block(classToken, ctorFinish, Block.IS_BODY, scope, statements);
 
-        if (subclass) {
+        if (derived) {
             function.setFlag(FunctionNode.IS_DERIVED_CONSTRUCTOR);
             function.setFlag(FunctionNode.HAS_DIRECT_SUPER);
         }
@@ -1657,37 +1707,35 @@ public class Parser extends AbstractParser {
 
         PropertyNode constructor = new PropertyNode(classToken, ctorFinish, ctorName,
                         createFunctionNode(function, classToken, ctorName, classLineNumber, body),
-                        null, null, false, false, false, false);
+                        null, null, false, false, false, false, false);
         return constructor;
     }
 
-    private PropertyNode methodDefinition(boolean isStatic, boolean subclass, boolean generator, boolean async, long methodToken, int methodLine, boolean yield, boolean await) {
-        final TokenType startTokenType = type;
-        final boolean computed = startTokenType == LBRACKET;
-        Expression propertyName = propertyName(yield, await);
+    private PropertyNode methodDefinition(Expression propertyName, boolean isStatic, boolean derived, boolean generator, boolean async, long startToken, int methodLine, boolean yield,
+                    boolean await, TokenType nameTokenType, boolean computed) {
         int flags = FunctionNode.IS_METHOD;
         if (!computed) {
             final String name = ((PropertyKey) propertyName).getPropertyName();
-            if (!generator && startTokenType == GET && type != LPAREN) {
-                PropertyFunction methodDefinition = propertyGetterFunction(methodToken, methodLine, yield, await);
+            if (!generator && nameTokenType == GET && type != LPAREN) {
+                PropertyFunction methodDefinition = propertyGetterFunction(startToken, methodLine, yield, await);
                 verifyAllowedMethodName(methodDefinition.key, isStatic, methodDefinition.computed, generator, true);
-                return new PropertyNode(methodToken, finish, methodDefinition.key, null, methodDefinition.functionNode, null, isStatic, methodDefinition.computed, false, false);
-            } else if (!generator && startTokenType == SET && type != LPAREN) {
-                PropertyFunction methodDefinition = propertySetterFunction(methodToken, methodLine, yield, await);
+                return new PropertyNode(startToken, finish, methodDefinition.key, null, methodDefinition.functionNode, null, isStatic, methodDefinition.computed, false, false, false);
+            } else if (!generator && nameTokenType == SET && type != LPAREN) {
+                PropertyFunction methodDefinition = propertySetterFunction(startToken, methodLine, yield, await);
                 verifyAllowedMethodName(methodDefinition.key, isStatic, methodDefinition.computed, generator, true);
-                return new PropertyNode(methodToken, finish, methodDefinition.key, null, null, methodDefinition.functionNode, isStatic, methodDefinition.computed, false, false);
+                return new PropertyNode(startToken, finish, methodDefinition.key, null, null, methodDefinition.functionNode, isStatic, methodDefinition.computed, false, false, false);
             } else {
                 if (!isStatic && !generator && name.equals(CONSTRUCTOR_NAME)) {
                     flags |= FunctionNode.IS_CLASS_CONSTRUCTOR;
-                    if (subclass) {
+                    if (derived) {
                         flags |= FunctionNode.IS_DERIVED_CONSTRUCTOR;
                     }
                 }
                 verifyAllowedMethodName(propertyName, isStatic, computed, generator, false);
             }
         }
-        PropertyFunction methodDefinition = propertyMethodFunction(propertyName, methodToken, methodLine, generator, flags, computed, async);
-        return new PropertyNode(methodToken, finish, methodDefinition.key, methodDefinition.functionNode, null, null, isStatic, computed, false, false);
+        PropertyFunction methodDefinition = propertyMethodFunction(propertyName, startToken, methodLine, generator, flags, computed, async);
+        return new PropertyNode(startToken, finish, methodDefinition.key, methodDefinition.functionNode, null, null, isStatic, computed, false, false, false);
     }
 
     /**
@@ -1705,6 +1753,46 @@ public class Parser extends AbstractParser {
                 throw error(AbstractParser.message("static.prototype.method"), key.getToken());
             }
         }
+    }
+
+    private PropertyNode fieldDefinition(Expression propertyName, boolean isStatic, long startToken, boolean computed) {
+        // "constructor" or #constructor is not allowed as an instance field name
+        if (propertyName instanceof PropertyKey && CONSTRUCTOR_NAME.equals(((PropertyKey) propertyName).getPropertyName())) {
+            throw error(AbstractParser.message("constructor.field"), startToken);
+        }
+
+        Expression initializer = null;
+        if (type == ASSIGN) {
+            next();
+
+            // Parse AssignmentExpression[In] in a function.
+            initializer = fieldInitializer(line, startToken, propertyName);
+
+            endOfLine(); // semicolon or end of line
+        }
+        return new PropertyNode(startToken, finish, propertyName, initializer, null, null, isStatic, computed, false, false, true);
+    }
+
+    private FunctionNode fieldInitializer(int lineNumber, long fieldToken, Expression propertyName) {
+        final IdentNode initName = propertyName instanceof IdentNode
+                        ? (IdentNode) propertyName
+                        : new IdentNode(Token.recast(fieldToken, TokenType.IDENT), propertyName.getFinish(), INITIALIZER_FUNCTION_NAME);
+        int functionFlags = FunctionNode.IS_METHOD;
+        ParserContextFunctionNode function = createParserContextFunctionNode(initName, fieldToken, functionFlags, lineNumber, Collections.emptyList(), 0);
+        lc.push(function);
+        ParserContextBlockNode body = newBlock(function.createBodyScope());
+        Expression initializer;
+        try {
+            initializer = assignmentExpression(true, false, false);
+        } finally {
+            restoreBlock(body);
+            lc.pop(function);
+        }
+
+        function.setLastToken(token);
+        final List<Statement> statements = Collections.singletonList(new ReturnNode(lineNumber, fieldToken, finish, initializer));
+        Block bodyBlock = new Block(fieldToken, finish, Block.IS_BODY | Block.IS_SYNTHETIC, body.getScope(), statements);
+        return createFunctionNode(function, fieldToken, initName, lineNumber, bodyBlock);
     }
 
     private boolean isPropertyName(long currentToken) {
@@ -3719,10 +3807,10 @@ public class Parser extends AbstractParser {
                 final long getOrSetToken = propertyToken;
                 if (getOrSet == GET) {
                     final PropertyFunction getter = propertyGetterFunction(getOrSetToken, functionLine, yield, await);
-                    return new PropertyNode(propertyToken, finish, getter.key, null, getter.functionNode, null, false, getter.computed, false, false);
+                    return new PropertyNode(propertyToken, finish, getter.key, null, getter.functionNode, null, false, getter.computed, false, false, false);
                 } else if (getOrSet == SET) {
                     final PropertyFunction setter = propertySetterFunction(getOrSetToken, functionLine, yield, await);
-                    return new PropertyNode(propertyToken, finish, setter.key, null, null, setter.functionNode, false, setter.computed, false, false);
+                    return new PropertyNode(propertyToken, finish, setter.key, null, null, setter.functionNode, false, setter.computed, false, false, false);
                 }
             }
 
@@ -3733,7 +3821,7 @@ public class Parser extends AbstractParser {
             next();
             Expression assignmentExpression = assignmentExpression(true, yield, await);
             Expression spread = new UnaryNode(spreadToken, assignmentExpression);
-            return new PropertyNode(propertyToken, finish, spread, null, null, null, false, false, false, false);
+            return new PropertyNode(propertyToken, finish, spread, null, null, null, false, false, false, false, false);
         } else {
             isIdentifier = false;
             propertyName = propertyName(yield, await);
@@ -3776,7 +3864,7 @@ public class Parser extends AbstractParser {
             }
         }
 
-        return new PropertyNode(propertyToken, finish, propertyName, propertyValue, null, null, false, computed, coverInitializedName, proto);
+        return new PropertyNode(propertyToken, finish, propertyName, propertyValue, null, null, false, computed, coverInitializedName, proto, false);
     }
 
     private PropertyFunction propertyGetterFunction(long getSetToken, int functionLine, boolean yield, boolean await) {

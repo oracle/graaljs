@@ -56,6 +56,7 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
     private final PropertyNode constructor;
     private final List<PropertyNode> classElements;
     private final Scope scope;
+    private final int instanceFieldCount;
 
     /**
      * Constructor.
@@ -64,13 +65,15 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
      * @param finish finish
      */
     public ClassNode(final long token, final int finish, final IdentNode ident, final Expression classHeritage, final PropertyNode constructor, final List<PropertyNode> classElements,
-                    final Scope scope) {
+                    final Scope scope, final int instanceFieldCount) {
         super(token, finish);
         this.ident = ident;
         this.classHeritage = classHeritage;
         this.constructor = constructor;
         this.classElements = classElements;
         this.scope = scope;
+        this.instanceFieldCount = instanceFieldCount;
+        assert instanceFieldCount == instanceFieldCount(classElements);
     }
 
     private ClassNode(final ClassNode classNode, final IdentNode ident, final Expression classHeritage, final PropertyNode constructor, final List<PropertyNode> classElements) {
@@ -80,6 +83,17 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         this.constructor = constructor;
         this.classElements = classElements;
         this.scope = classNode.scope;
+        this.instanceFieldCount = instanceFieldCount(classElements);
+    }
+
+    private static int instanceFieldCount(List<PropertyNode> classElements) {
+        int count = 0;
+        for (PropertyNode classElement : classElements) {
+            if (classElement.isClassField()) {
+                count++;
+            }
+        }
+        return count;
     }
 
     /**
@@ -159,6 +173,14 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
     @Override
     public Scope getScope() {
         return scope;
+    }
+
+    public boolean hasInstanceFields() {
+        return instanceFieldCount != 0;
+    }
+
+    public int getInstanceFieldCount() {
+        return instanceFieldCount;
     }
 
     @Override

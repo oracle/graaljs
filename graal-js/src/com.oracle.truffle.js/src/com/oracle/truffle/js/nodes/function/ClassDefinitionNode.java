@@ -47,6 +47,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -69,24 +70,30 @@ public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameH
     @Child private CreateMethodPropertyNode setConstructorNode;
     @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
     @Child private DefineMethodNode defineConstructorMethodNode;
+    @Child private PropertySetNode setFieldsNode;
 
     private final boolean hasName;
+    private final int instanceFieldCount;
 
-    protected ClassDefinitionNode(JSContext context, JSFunctionExpressionNode constructorFunctionNode, JavaScriptNode classHeritageNode, ObjectLiteralMemberNode[] memberNodes, boolean hasName) {
+    protected ClassDefinitionNode(JSContext context, JSFunctionExpressionNode constructorFunctionNode, JavaScriptNode classHeritageNode, ObjectLiteralMemberNode[] memberNodes, boolean hasName,
+                    int instanceFieldCount) {
         this.context = context;
         this.constructorFunctionNode = constructorFunctionNode;
         this.classHeritageNode = classHeritageNode;
         this.memberNodes = memberNodes;
         this.hasName = hasName;
+        this.instanceFieldCount = instanceFieldCount;
 
         this.getPrototypeNode = PropertyGetNode.create(JSObject.PROTOTYPE, false, context);
         this.setConstructorNode = CreateMethodPropertyNode.create(context, JSObject.CONSTRUCTOR);
         this.createObjectNode = CreateObjectNode.createWithPrototype(context, null);
         this.defineConstructorMethodNode = DefineMethodNode.create(context, constructorFunctionNode);
+        this.setFieldsNode = instanceFieldCount != 0 ? PropertySetNode.createSetHidden(JSFunction.CLASS_FIELDS_ID, context) : null;
     }
 
-    public static ClassDefinitionNode create(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members, boolean hasName) {
-        return new ClassDefinitionNode(context, constructorFunction, classHeritage, members, hasName);
+    public static ClassDefinitionNode create(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members, boolean hasName,
+                    int instanceFieldCount) {
+        return new ClassDefinitionNode(context, constructorFunction, classHeritage, members, hasName, instanceFieldCount);
     }
 
     @Override
@@ -135,16 +142,34 @@ public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameH
         /* Perform CreateMethodProperty(proto, "constructor", F). */
         setConstructorNode.executeVoid(proto, constructor);
 
-        initializeMembers(frame, proto, constructor);
+        Object[] fields = null;
+
+        if (hasFields()) {
+            fields = new Object[instanceFieldCount];
+        }
+
+        initializeMembers(frame, proto, constructor, fields);
+
+        if (hasFields()) {
+            setFieldsNode.setValue(constructor, fields);
+        }
 
         return constructor;
     }
 
     @ExplodeLoop
-    private void initializeMembers(VirtualFrame frame, DynamicObject proto, DynamicObject constructor) {
-        /* For each ClassElement m in order from NonConstructorMethodDefinitions of ClassBody */
+    private void initializeMembers(VirtualFrame frame, DynamicObject proto, DynamicObject constructor, Object[] fields) {
+        /* For each ClassElement e in order from NonConstructorMethodDefinitions of ClassBody */
+        int fieldIndex = 0;
         for (ObjectLiteralMemberNode memberNode : memberNodes) {
-            memberNode.executeVoid(frame, memberNode.isStatic() ? constructor : proto, context);
+            DynamicObject homeObject = memberNode.isStatic() ? constructor : proto;
+            if (memberNode.isField()) {
+                Object key = memberNode.executeKey(frame);
+                Object value = memberNode.executeValue(frame, homeObject);
+                fields[fieldIndex++] = new Object[]{key, value};
+            } else {
+                memberNode.executeVoid(frame, homeObject, context);
+            }
         }
     }
 
@@ -163,9 +188,13 @@ public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameH
         ((FunctionNameHolder) constructorFunctionNode).setFunctionName(name);
     }
 
+    private boolean hasFields() {
+        return setFieldsNode != null;
+    }
+
     @Override
     protected JavaScriptNode copyUninitialized() {
         return create(context, (JSFunctionExpressionNode) cloneUninitialized(constructorFunctionNode), cloneUninitialized(classHeritageNode), ObjectLiteralMemberNode.cloneUninitialized(memberNodes),
-                        hasName);
+                        hasName, instanceFieldCount);
     }
 }

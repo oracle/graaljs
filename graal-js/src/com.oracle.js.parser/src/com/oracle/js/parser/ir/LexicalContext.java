@@ -214,6 +214,14 @@ public class LexicalContext {
         return iterator.hasNext() ? iterator.next().getScope() : null;
     }
 
+    /**
+     * @return the innermost class in the context.
+     */
+    public ClassNode getCurrentClass() {
+        NodeIterator<ClassNode> iterator = new NodeIterator<>(ClassNode.class);
+        return iterator.hasNext() ? iterator.next() : null;
+    }
+
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder();

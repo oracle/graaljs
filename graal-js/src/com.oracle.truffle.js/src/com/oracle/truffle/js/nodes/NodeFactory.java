@@ -71,6 +71,7 @@ import com.oracle.truffle.js.nodes.access.GlobalObjectNode;
 import com.oracle.truffle.js.nodes.access.GlobalPropertyNode;
 import com.oracle.truffle.js.nodes.access.GlobalScopeNode;
 import com.oracle.truffle.js.nodes.access.GlobalScopeVarWrapperNode;
+import com.oracle.truffle.js.nodes.access.InitializeInstanceFieldsNode;
 import com.oracle.truffle.js.nodes.access.IteratorCompleteUnaryNode;
 import com.oracle.truffle.js.nodes.access.IteratorGetNextValueNode;
 import com.oracle.truffle.js.nodes.access.IteratorNextUnaryNode;
@@ -756,16 +757,16 @@ public class NodeFactory {
         return ObjectLiteralNode.newAccessorMember(keyName, isStatic, enumerable, getter, setter);
     }
 
-    public ObjectLiteralMemberNode createDataMember(String keyName, boolean isStatic, boolean enumerable, JavaScriptNode value) {
-        return ObjectLiteralNode.newDataMember(keyName, isStatic, enumerable, value);
+    public ObjectLiteralMemberNode createDataMember(String keyName, boolean isStatic, boolean enumerable, boolean isField, JavaScriptNode value) {
+        return ObjectLiteralNode.newDataMember(keyName, isStatic, enumerable, isField, value);
     }
 
     public ObjectLiteralMemberNode createProtoMember(String keyName, boolean isStatic, JavaScriptNode value) {
         return ObjectLiteralNode.newProtoMember(keyName, isStatic, value);
     }
 
-    public ObjectLiteralMemberNode createComputedDataMember(JavaScriptNode key, boolean isStatic, boolean enumerable, JavaScriptNode value) {
-        return ObjectLiteralNode.newComputedDataMember(key, isStatic, enumerable, value);
+    public ObjectLiteralMemberNode createComputedDataMember(JavaScriptNode key, boolean isStatic, boolean enumerable, boolean isField, JavaScriptNode value) {
+        return ObjectLiteralNode.newComputedDataMember(key, isStatic, enumerable, isField, value);
     }
 
     public ObjectLiteralMemberNode createComputedAccessorMember(JavaScriptNode key, boolean isStatic, boolean enumerable, JavaScriptNode getter, JavaScriptNode setter) {
@@ -776,11 +777,12 @@ public class NodeFactory {
         return ObjectLiteralNode.newSpreadObjectMember(isStatic, value);
     }
 
-    public JavaScriptNode createClassDefinition(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members, String className) {
+    public JavaScriptNode createClassDefinition(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members, String className,
+                    int instanceFieldCount) {
         if (className != null) {
             constructorFunction.setFunctionName(className);
         }
-        return ClassDefinitionNode.create(context, constructorFunction, classHeritage, members, className != null);
+        return ClassDefinitionNode.create(context, constructorFunction, classHeritage, members, className != null, instanceFieldCount);
     }
 
     public JavaScriptNode createMakeMethod(JSContext context, JavaScriptNode function) {
@@ -1160,6 +1162,14 @@ public class NodeFactory {
     public JavaScriptNode createRestObject(JSContext context, JavaScriptNode source, JavaScriptNode excludedNames) {
         JavaScriptNode restObj = ObjectLiteralNode.create(context, ObjectLiteralMemberNode.EMPTY);
         return RestObjectNode.create(context, restObj, source, excludedNames);
+    }
+
+    public JavaScriptNode createAccessClassFields(JSContext context, JavaScriptNode functionObject) {
+        return PropertyNode.createProperty(context, functionObject, JSFunction.CLASS_FIELDS_ID);
+    }
+
+    public JavaScriptNode createInitializeInstanceFields(JSContext context, JavaScriptNode target, JavaScriptNode source) {
+        return InitializeInstanceFieldsNode.create(context, target, source);
     }
 
     public JavaScriptNode createToPropertyKey(JavaScriptNode key) {
