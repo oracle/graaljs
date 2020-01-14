@@ -81,4 +81,8 @@ public final class JSInputGeneratingNodeWrapper extends JavaScriptNode {
     protected JavaScriptNode copyUninitialized() {
         return new JSInputGeneratingNodeWrapper(cloneUninitialized(delegate));
     }
+
+    public JavaScriptNode getDelegateNode() {
+        return delegate;
+    }
 }

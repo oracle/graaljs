@@ -53,6 +53,8 @@ import com.oracle.truffle.js.runtime.JSContext;
 
 import java.util.Set;
 
+import static com.oracle.truffle.js.nodes.JSNodeUtil.getWrappedNode;
+
 public class CallApplyArgumentsNode extends JavaScriptNode {
     private final JSContext context;
     @Child private JSFunctionCallNode.InvokeNode callNode;
@@ -88,7 +90,8 @@ public class CallApplyArgumentsNode extends JavaScriptNode {
 
     private void replaceWithOrdinaryCall() {
         atomic(() -> {
-            for (JavaScriptNode node : callNode.getArgumentNodes()) {
+            for (JavaScriptNode n : callNode.getArgumentNodes()) {
+                JavaScriptNode node = getWrappedNode(n);
                 if (node instanceof AccessArgumentsArrayDirectlyNode) {
                     ((AccessArgumentsArrayDirectlyNode) node).replaceWithDefaultArguments();
                 }
