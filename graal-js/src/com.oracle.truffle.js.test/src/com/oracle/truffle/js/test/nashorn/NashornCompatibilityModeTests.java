@@ -62,8 +62,9 @@ public class NashornCompatibilityModeTests {
     @Test
     public void testTypedArrayJoinNotAvailable() {
         Assert.assertTrue(testIntl("var a = new Int8Array(8); a.join()==='0,0,0,0,0,0,0,0';", false));
-        Assert.assertTrue(
-                        testIntl("function test() { var a = new Int8Array(8); try { a.join(); return false; } catch (e) { return e.message.indexOf('join is not a function') >= 0; }; }; test();",
-                                        true));
+        Assert.assertTrue(testIntl("function t() { var a = new Int8Array(8); " +
+                        "try { a.join(); return false; } " +
+                        "catch (e) { return e.message.indexOf('join is not a function') >= 0; }; }; t();",
+                        true));
     }
 }

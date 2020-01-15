@@ -55,6 +55,7 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.js.runtime.GraalJSException;
@@ -120,12 +121,23 @@ public class ExceptionInteropTest {
 
     private static int EXCEPTION_LINE_NUMBER;
 
-    static {
-        ToBePassedToJS toBePassedToJS = new ToBePassedToJS(null, null);
-        try {
-            toBePassedToJS.methodThatThrowsException();
-        } catch (UnsupportedOperationException e) {
-            EXCEPTION_LINE_NUMBER = e.getStackTrace()[0].getLineNumber();
+    @BeforeClass
+    public static void initializeExceptionLineNumber() {
+        HostAccess hostAccess = HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).build();
+        int lineNumber = -1;
+        try (Engine graalEngine = Engine.newBuilder().build(); Context context = Context.newBuilder(ID).engine(graalEngine).allowHostAccess(hostAccess).build()) {
+            context.enter();
+            context.initialize(ID);
+            ToBePassedToJS toBePassedToJS = new ToBePassedToJS(null, null);
+            try {
+                // This needs Context to be created already
+                toBePassedToJS.methodThatThrowsException();
+            } catch (UnsupportedOperationException e) {
+                lineNumber = e.getStackTrace()[0].getLineNumber();
+            }
+            context.leave();
+        } finally {
+            EXCEPTION_LINE_NUMBER = lineNumber;
         }
     }
 

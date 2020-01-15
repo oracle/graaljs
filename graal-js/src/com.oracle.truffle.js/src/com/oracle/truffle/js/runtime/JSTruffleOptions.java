@@ -141,7 +141,8 @@ public final class JSTruffleOptions {
     /** Enable Annex B "Additional ECMAScript Features for Web Browsers". */
     public static final boolean AnnexB = booleanOption("AnnexB", true);
 
-    public static final boolean U180EWhitespace = booleanOption("U180EWhitespace", MaxECMAScriptVersion <= 6);
+    /** Used to be an option, was only used by Nashorn. */
+    public static final boolean U180EWhitespace = false;
 
     // JSON options
     public static final boolean TruffleJSONParser = booleanOption("TruffleJSONParser", true);

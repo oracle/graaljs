@@ -195,7 +195,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
             super(context, builtin);
         }
 
-        @Specialization(assumptions = "getStaticResultUnusedAssumption()", guards = "getContext().isOptionNashornCompatibilityMode()")
+        @Specialization(guards = "getContext().isOptionNashornCompatibilityMode()")
         boolean getMultilineLazyNashorn() {
             return false;
         }
