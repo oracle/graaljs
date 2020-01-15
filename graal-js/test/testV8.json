@@ -274,6 +274,12 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
+    "filePath" : "intl/regress-8604.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "FAIL"
+    }
+  }, {
     "filePath" : "intl/regress-8657.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
@@ -365,6 +371,10 @@
     "filePath" : "mjsunit/array-constructor-feedback.js",
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
+  }, {
+    "filePath" : "mjsunit/array-isarray.js",
+    "status" : "SKIP",
+    "comment" : "Contains a suspicious RangeError (stack-overflow) check."
   }, {
     "filePath" : "mjsunit/array-join-invalid-string-length.js",
     "status" : "SKIP",
