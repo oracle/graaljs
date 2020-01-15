@@ -366,6 +366,10 @@
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
   }, {
+    "filePath" : "mjsunit/array-isarray.js",
+    "status" : "SKIP",
+    "comment" : "Contains a suspicious RangeError (stack-overflow) check."
+  }, {
     "filePath" : "mjsunit/array-join-invalid-string-length.js",
     "status" : "SKIP",
     "comment" : "Fails randomly with OutOfMemoryError"
