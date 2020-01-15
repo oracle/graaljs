@@ -274,6 +274,12 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
+    "filePath" : "intl/regress-8604.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "FAIL"
+    }
+  }, {
     "filePath" : "intl/regress-8657.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
