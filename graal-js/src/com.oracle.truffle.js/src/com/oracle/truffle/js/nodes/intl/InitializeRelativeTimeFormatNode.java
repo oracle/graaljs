@@ -59,6 +59,7 @@ public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNod
     @Child CreateOptionsObjectNode createOptionsNode;
 
     @Child GetStringOptionNode getLocaleMatcherOption;
+    @Child GetStringOptionNode getNumberingSystemOption;
 
     @Child GetStringOptionNode getStyleOption;
     @Child GetStringOptionNode getNumericOption;
@@ -71,6 +72,7 @@ public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNod
         this.getNumericOption = GetStringOptionNode.create(context, "numeric", new String[]{IntlUtil.ALWAYS, IntlUtil.AUTO}, IntlUtil.ALWAYS);
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER,
                         new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
+        this.getNumberingSystemOption = GetStringOptionNode.create(context, IntlUtil.NUMBERING_SYSTEM, null, null);
     }
 
     public abstract DynamicObject executeInit(DynamicObject collator, Object locales, Object options);
@@ -91,6 +93,12 @@ public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNod
             DynamicObject options = createOptionsNode.execute(optionsArg);
 
             getLocaleMatcherOption.executeValue(options);
+            String numberingSystemOpt = getNumberingSystemOption.executeValue(options);
+            if (numberingSystemOpt != null) {
+                IntlUtil.validateUnicodeLocaleIdentifierType(numberingSystemOpt);
+                numberingSystemOpt = IntlUtil.normalizeUnicodeLocaleIdentifierType(numberingSystemOpt);
+            }
+
             String optStyle = getStyleOption.executeValue(options);
             String optNumeric = getNumericOption.executeValue(options);
 
@@ -99,7 +107,7 @@ public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNod
             state.setStyle(optStyle);
             state.setNumeric(optNumeric);
 
-            JSNumberFormat.setLocaleAndNumberingSystem(context, state, locales);
+            JSNumberFormat.setLocaleAndNumberingSystem(context, state, locales, numberingSystemOpt);
             JSRelativeTimeFormat.setupInternalRelativeTimeFormatter(state);
 
         } catch (MissingResourceException e) {

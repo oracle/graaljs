@@ -494,7 +494,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     }
 
     @TruffleBoundary
-    public static void setLocaleAndNumberingSystem(JSContext ctx, BasicInternalState state, String[] locales) {
+    public static void setLocaleAndNumberingSystem(JSContext ctx, BasicInternalState state, String[] locales, String numberingSystemOpt) {
         String selectedTag = IntlUtil.selectedLocale(ctx, locales);
         Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : ctx.getLocale();
         Locale strippedLocale = selectedLocale.stripExtensions();
@@ -502,17 +502,27 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
             selectedLocale = ctx.getLocale();
             strippedLocale = selectedLocale.stripExtensions();
         }
-        if (selectedLocale.getUnicodeLocaleKeys().contains("nu")) {
-            String unicodeLocaleType = selectedLocale.getUnicodeLocaleType("nu");
-            if (IntlUtil.isSupportedNumberSystemKey(unicodeLocaleType)) {
-                state.numberingSystem = unicodeLocaleType;
-            } else {
-                selectedLocale = IntlUtil.withoutUnicodeExtension(selectedLocale, "nu");
-            }
+        Locale.Builder builder = new Locale.Builder();
+        builder.setLocale(strippedLocale);
+
+        String nuType = selectedLocale.getUnicodeLocaleType("nu");
+        if ((nuType != null) && IntlUtil.isValidNumberingSystem(nuType) && (numberingSystemOpt == null || numberingSystemOpt.equals(nuType))) {
+            state.numberingSystem = nuType;
+            builder.setUnicodeLocaleKeyword("nu", nuType);
         }
-        state.locale = strippedLocale.toLanguageTag();
-        // see https://tc39.github.io/ecma402/#sec-intl.numberformat-internal-slots (NOTE 1)
-        state.javaLocale = IntlUtil.withoutUnicodeExtension(selectedLocale, "cu");
+
+        state.locale = builder.build().toLanguageTag();
+
+        if (numberingSystemOpt != null && IntlUtil.isValidNumberingSystem(numberingSystemOpt)) {
+            state.numberingSystem = numberingSystemOpt;
+            builder.setUnicodeLocaleKeyword("nu", numberingSystemOpt);
+        }
+
+        state.javaLocale = builder.build();
+
+        if (state.numberingSystem == null) {
+            state.numberingSystem = IntlUtil.defaultNumberingSystemName(state.javaLocale);
+        }
     }
 
     @TruffleBoundary
@@ -635,7 +645,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         protected Locale javaLocale;
         protected String locale;
 
-        protected String numberingSystem = "latn";
+        protected String numberingSystem;
 
         protected int minimumIntegerDigits = 1;
         protected int minimumFractionDigits = 0;

@@ -114,7 +114,7 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
 
             state.setType(optType);
 
-            JSNumberFormat.setLocaleAndNumberingSystem(context, state, locales);
+            JSNumberFormat.setLocaleAndNumberingSystem(context, state, locales, null);
             JSPluralRules.setupInternalPluralRulesAndNumberFormat(state);
 
             int mnfdDefault = 0;

@@ -182,7 +182,9 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                     String minuteOpt,
                     String secondOpt,
                     String tzNameOpt,
-                    TimeZone timeZone) {
+                    TimeZone timeZone,
+                    String calendarOpt,
+                    String numberingSystemOpt) {
         String selectedTag = IntlUtil.selectedLocale(ctx, locales);
         Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : ctx.getLocale();
         Locale strippedLocale = selectedLocale.stripExtensions();
@@ -226,20 +228,53 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             state.second = secondOpt;
         }
 
+        Locale.Builder builder = new Locale.Builder();
+        builder.setLocale(strippedLocale);
+
+        String caType = selectedLocale.getUnicodeLocaleType("ca");
+        if (caType != null && (calendarOpt == null || calendarOpt.equals(caType))) {
+            state.calendar = caType;
+            builder.setUnicodeLocaleKeyword("ca", caType);
+        }
+
+        String nuType = selectedLocale.getUnicodeLocaleType("nu");
+        if ((nuType != null) && IntlUtil.isValidNumberingSystem(nuType) && (numberingSystemOpt == null || numberingSystemOpt.equals(nuType))) {
+            state.numberingSystem = nuType;
+            builder.setUnicodeLocaleKeyword("nu", nuType);
+        }
+
+        Locale resolvedLocale = builder.build();
+
         state.initialized = true;
 
-        SimpleDateFormat dateFormat = new SimpleDateFormat(bestPattern, strippedLocale);
-        state.dateFormat = dateFormat;
-        state.locale = strippedLocale.toLanguageTag();
+        if (calendarOpt != null) {
+            state.calendar = calendarOpt;
+            builder.setUnicodeLocaleKeyword("ca", calendarOpt);
+        }
 
-        state.calendar = Calendar.getInstance(strippedLocale).getCalendarType();
+        if (numberingSystemOpt != null && IntlUtil.isValidNumberingSystem(numberingSystemOpt)) {
+            state.numberingSystem = numberingSystemOpt;
+            builder.setUnicodeLocaleKeyword("nu", numberingSystemOpt);
+        }
+
+        Locale javaLocale = builder.build();
+
+        if (state.numberingSystem == null) {
+            state.numberingSystem = IntlUtil.defaultNumberingSystemName(javaLocale);
+        }
+
+        SimpleDateFormat dateFormat = new SimpleDateFormat(bestPattern, javaLocale);
+        state.dateFormat = dateFormat;
+        state.locale = resolvedLocale.toLanguageTag();
+
+        state.calendar = Calendar.getInstance(javaLocale).getCalendarType();
         if ("gregory".equals(state.calendar)) {
             // Ensure that Gregorian calendar is used for all dates.
             // GregorianCalendar used by SimpleDateFormat is using
             // Julian calendar for dates before 1582 otherwise.
             com.ibm.icu.util.Calendar calendar = dateFormat.getCalendar();
             if (!(calendar instanceof GregorianCalendar)) {
-                calendar = new GregorianCalendar(strippedLocale);
+                calendar = new GregorianCalendar(javaLocale);
                 dateFormat.setCalendar(calendar);
             }
             ((GregorianCalendar) calendar).setGregorianChange(new Date(Long.MIN_VALUE));
@@ -583,7 +618,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
         private String locale;
         private String calendar;
-        private String numberingSystem = "latn";
+        private String numberingSystem;
 
         private String weekday;
         private String era;

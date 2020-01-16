@@ -67,6 +67,8 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
     @Child GetStringOptionNode getLocaleMatcherOption;
     @Child GetStringOptionNode getFormatMatcherOption;
     @Child GetStringOptionNode getHourCycleOption;
+    @Child GetStringOptionNode getCalendarOption;
+    @Child GetStringOptionNode getNumberingSystemOption;
     @Child GetBooleanOptionNode getHour12Option;
 
     // https://tc39.github.io/ecma402/#table-datetimeformat-components
@@ -96,6 +98,8 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
         this.getFormatMatcherOption = GetStringOptionNode.create(context, IntlUtil.FORMAT_MATCHER, new String[]{IntlUtil.BASIC, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
         this.getHourCycleOption = GetStringOptionNode.create(context, IntlUtil.HOUR_CYCLE, new String[]{IntlUtil.H11, IntlUtil.H12, IntlUtil.H23, IntlUtil.H24}, null);
+        this.getCalendarOption = GetStringOptionNode.create(context, IntlUtil.CALENDAR, null, null);
+        this.getNumberingSystemOption = GetStringOptionNode.create(context, IntlUtil.NUMBERING_SYSTEM, null, null);
         this.getHour12Option = GetBooleanOptionNode.create(context, IntlUtil.HOUR12, null);
 
         this.getWeekdayOption = GetStringOptionNode.create(context, IntlUtil.WEEKDAY, new String[]{IntlUtil.NARROW, IntlUtil.SHORT, IntlUtil.LONG}, null);
@@ -128,6 +132,17 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
             // enforce validity check
             getLocaleMatcherOption.executeValue(options);
 
+            String calendarOpt = getCalendarOption.executeValue(options);
+            if (calendarOpt != null) {
+                IntlUtil.validateUnicodeLocaleIdentifierType(calendarOpt);
+                calendarOpt = IntlUtil.normalizeUnicodeLocaleIdentifierType(calendarOpt);
+            }
+            String numberingSystemOpt = getNumberingSystemOption.executeValue(options);
+            if (numberingSystemOpt != null) {
+                IntlUtil.validateUnicodeLocaleIdentifierType(numberingSystemOpt);
+                numberingSystemOpt = IntlUtil.normalizeUnicodeLocaleIdentifierType(numberingSystemOpt);
+            }
+
             Boolean hour12Opt = getHour12Option.executeValue(options);
             String hcOpt = getHourCycleOption.executeValue(options);
 
@@ -147,7 +162,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
             getFormatMatcherOption.executeValue(options);
 
             JSDateTimeFormat.setupInternalDateTimeFormat(context, state, locales, weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hcOpt, hour12Opt, minuteOpt, secondOpt, tzNameOpt,
-                            timeZone);
+                            timeZone, calendarOpt, numberingSystemOpt);
 
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError(e);
