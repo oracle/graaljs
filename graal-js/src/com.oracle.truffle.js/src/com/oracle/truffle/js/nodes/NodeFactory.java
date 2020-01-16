@@ -89,9 +89,12 @@ import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.LazyReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.LazyWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.LocalVarIncNode;
+import com.oracle.truffle.js.nodes.access.NewPrivateNameNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.MakeMethodNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
+import com.oracle.truffle.js.nodes.access.PrivateFieldGetNode;
+import com.oracle.truffle.js.nodes.access.PrivateFieldSetNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.RegExpLiteralNode;
@@ -571,7 +574,7 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createFunctionCall(@SuppressWarnings("unused") JSContext context, JavaScriptNode expression, JavaScriptNode[] arguments) {
-        if (expression instanceof PropertyNode || expression instanceof ReadElementNode || expression instanceof WithVarWrapperNode) {
+        if (expression instanceof PropertyNode || expression instanceof ReadElementNode || expression instanceof WithVarWrapperNode || expression instanceof PrivateFieldGetNode) {
             if (expression instanceof PropertyNode) {
                 ((PropertyNode) expression).setMethod();
             }
@@ -1170,6 +1173,22 @@ public class NodeFactory {
 
     public JavaScriptNode createInitializeInstanceFields(JSContext context, JavaScriptNode target, JavaScriptNode source) {
         return InitializeInstanceFieldsNode.create(context, target, source);
+    }
+
+    public JavaScriptNode createNewPrivateName(String description) {
+        return NewPrivateNameNode.create(description);
+    }
+
+    public JavaScriptNode createPrivateFieldGet(JSContext context, JavaScriptNode target, JavaScriptNode key) {
+        return PrivateFieldGetNode.create(target, key, context);
+    }
+
+    public JavaScriptNode createPrivateFieldSet(JSContext context, JavaScriptNode targetNode, JavaScriptNode indexNode, JavaScriptNode valueNode) {
+        return PrivateFieldSetNode.create(targetNode, indexNode, valueNode, context);
+    }
+
+    public ObjectLiteralMemberNode createPrivateFieldMember(JavaScriptNode keyNode, boolean isStatic, JavaScriptNode valueNode) {
+        return ObjectLiteralNode.newPrivateFieldMember(keyNode, isStatic, valueNode);
     }
 
     public JavaScriptNode createToPropertyKey(JavaScriptNode key) {

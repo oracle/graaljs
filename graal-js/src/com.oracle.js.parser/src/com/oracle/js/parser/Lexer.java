@@ -1679,6 +1679,28 @@ public class Lexer extends Scanner {
     }
 
     /**
+     * Test if char is the start of a PrivateIdentifier.
+     */
+    private static boolean isPrivateIdentifierStart(char ch) {
+        return ch == '#';
+    }
+
+    /**
+     * Scan over a PrivateIdentifier.
+     */
+    private void scanPrivateIdentifier() {
+        final int start = position;
+
+        assert isPrivateIdentifierStart(ch0);
+        skip(1);
+
+        scanIdentifier();
+
+        // Add PrivateIdentifier token.
+        add(TokenType.PRIVATE_IDENT, start);
+    }
+
+    /**
      * Detect if a line starts with a marker identifier.
      *
      * @param identStart Start of identifier.
@@ -2044,6 +2066,9 @@ public class Lexer extends Scanner {
             } else if (isTemplateDelimiter(ch0) && scripting) {
                 // Scan and add an exec string ('`') in scripting mode.
                 scanString(true);
+            } else if (isPrivateIdentifierStart(ch0) && isES2020()) {
+                // Scan and add a PrivateIdentifier
+                scanPrivateIdentifier();
             } else {
                 // Don't recognize this character.
                 skip(1);
@@ -2122,6 +2147,8 @@ public class Lexer extends Scanner {
                 return valueOfXML(start, len); // XMLToken::LexerToken
             case DIRECTIVE_COMMENT:
                 return source.getString(start, len);
+            case PRIVATE_IDENT:
+                return valueOfIdent(start, len, convertUnicode); // String
             default:
                 break;
         }

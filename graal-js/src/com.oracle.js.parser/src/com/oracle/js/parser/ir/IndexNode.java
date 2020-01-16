@@ -59,9 +59,13 @@ public final class IndexNode extends BaseNode {
      * @param base base node for access
      * @param index index for access
      */
-    public IndexNode(final long token, final int finish, final Expression base, final Expression index) {
-        super(token, finish, base, false, false);
+    public IndexNode(final long token, final int finish, final Expression base, final Expression index, final boolean isSuper) {
+        super(token, finish, base, false, isSuper);
         this.index = index;
+    }
+
+    public IndexNode(final long token, final int finish, final Expression base, final Expression index) {
+        this(token, finish, base, index, false);
     }
 
     private IndexNode(final IndexNode indexNode, final Expression base, final Expression index, final boolean isFunction, final boolean isSuper) {

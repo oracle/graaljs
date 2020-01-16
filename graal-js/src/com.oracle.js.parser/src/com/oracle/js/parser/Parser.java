@@ -181,6 +181,7 @@ public class Parser extends AbstractParser {
     /** The eval function variable name. */
     private static final String EVAL_NAME = "eval";
     private static final String CONSTRUCTOR_NAME = "constructor";
+    private static final String PRIVATE_CONSTRUCTOR_NAME = "#constructor";
     private static final String PROTO_NAME = "__proto__";
     private static final String NEW_TARGET_NAME = "new.target";
     private static final String IMPORT_META_NAME = "import.meta";
@@ -1566,17 +1567,22 @@ public class Parser extends AbstractParser {
 
                 final TokenType nameTokenType = type;
                 final boolean computed = nameTokenType == LBRACKET;
-                final Expression propertyName = classElementName(yield, await);
+                final boolean privateIdent = nameTokenType == TokenType.PRIVATE_IDENT;
+                final Expression classElementName = classElementName(yield, await);
 
                 PropertyNode classElement;
                 if (!generator && !async && !isStatic && isClassFieldDefinition(nameTokenType)) {
-                    classElement = fieldDefinition(propertyName, isStatic, classElementToken, computed);
+                    classElement = fieldDefinition(classElementName, isStatic, classElementToken, computed);
                     instanceFieldCount++;
                 } else {
-                    classElement = methodDefinition(propertyName, isStatic, classHeritage != null, generator, async, classElementToken, classElementLine, yield, await, nameTokenType, computed);
+                    if (privateIdent) {
+                        // private methods not supported yet
+                        throw error(AbstractParser.message("unexpected.token", type.getNameOrType()));
+                    }
+                    classElement = methodDefinition(classElementName, isStatic, classHeritage != null, generator, async, classElementToken, classElementLine, yield, await, nameTokenType, computed);
                 }
 
-                if (classElement.isComputed()) {
+                if (classElement.isComputed() || classElement.isClassField()) {
                     classElements.add(classElement);
                 } else if (!classElement.isStatic() && classElement.getKeyName().equals(CONSTRUCTOR_NAME)) {
                     if (constructor == null) {
@@ -1636,6 +1642,10 @@ public class Parser extends AbstractParser {
                                 ctor.getLength(), ctor.getNumOfParams(), ctor.getParameters(), flags, ctor.getBody(), ctor.getEndParserState(), ctor.getModule()));
             }
 
+            IdentNode invalidPrivateIdent = classScope.verifyAllPrivateIdentifiersValid();
+            if (invalidPrivateIdent != null) {
+                throw error(AbstractParser.message("invalid.private.ident"), invalidPrivateIdent.getToken());
+            }
             classScope.close();
             return new ClassNode(classToken, classFinish, className, classHeritage, constructor, classElements, classScope, instanceFieldCount);
         } finally {
@@ -1644,7 +1654,47 @@ public class Parser extends AbstractParser {
     }
 
     private Expression classElementName(boolean yield, boolean await) {
+        if (type == TokenType.PRIVATE_IDENT) {
+            return privateIdentifier(true);
+        }
         return propertyName(yield, await);
+    }
+
+    private IdentNode privateIdentifier(boolean declaration) {
+        assert type == TokenType.PRIVATE_IDENT;
+        if (!isES2020()) {
+            throw error(AbstractParser.message("unexpected.token", type.getNameOrType()));
+        }
+
+        final long identToken = token;
+        final String name = (String) getValue(identToken);
+        next();
+
+        IdentNode privateIdent = createIdentNode(identToken, finish, name).setIsPrivate();
+
+        ParserContextClassNode currentClass = lc.getCurrentClass();
+        if (declaration) {
+            if (currentClass == null) {
+                throw error(AbstractParser.message("invalid.private.ident"), privateIdent.getToken());
+            }
+            // Syntax Error if PrivateBoundIdentifiers of ClassBody contains any duplicate entries.
+            if (!currentClass.getScope().addPrivateName(privateIdent.getName())) {
+                throw error(ECMAErrors.getMessage("syntax.error.redeclare.variable", privateIdent.getName()), identToken);
+            }
+        } else {
+            // In a class: try to eagerly resolve the private identifier; if it is not found,
+            // defer resolving until the end of the class declaration.
+            // In a direct eval: try to find a resolved private identifier in the caller scopes.
+            if (currentClass != null) {
+                currentClass.getScope().usePrivateName(privateIdent);
+            } else {
+                if (!lc.getCurrentScope().findPrivateName(name)) {
+                    throw error(AbstractParser.message("invalid.private.ident"), privateIdent.getToken());
+                }
+            }
+        }
+
+        return privateIdent;
     }
 
     private boolean isClassFieldDefinition(final TokenType nameTokenType) {
@@ -1762,8 +1812,11 @@ public class Parser extends AbstractParser {
 
     private PropertyNode fieldDefinition(Expression propertyName, boolean isStatic, long startToken, boolean computed) {
         // "constructor" or #constructor is not allowed as an instance field name
-        if (propertyName instanceof PropertyKey && CONSTRUCTOR_NAME.equals(((PropertyKey) propertyName).getPropertyName())) {
-            throw error(AbstractParser.message("constructor.field"), startToken);
+        if (!computed && propertyName instanceof PropertyKey) {
+            String name = ((PropertyKey) propertyName).getPropertyName();
+            if (CONSTRUCTOR_NAME.equals(name) || PRIVATE_CONSTRUCTOR_NAME.equals(name)) {
+                throw error(AbstractParser.message("constructor.field"), startToken);
+            }
         }
 
         Expression initializer = null;
@@ -4032,11 +4085,13 @@ public class Parser extends AbstractParser {
      *      CallExpression
      *
      * CallExpression :
-     *      MemberExpression Arguments
+     *      MemberExpression Arguments (CoverCallExpressionAndAsyncArrowHead)
      *      SuperCall
      *      CallExpression Arguments
      *      CallExpression [ Expression ]
      *      CallExpression . IdentifierName
+     *      CallExpression TemplateLiteral
+     *      CallExpression . PrivateIdentifier
      *
      * SuperCall :
      *      super Arguments
@@ -4084,7 +4139,7 @@ public class Parser extends AbstractParser {
                     assert ident.isDirectSuper();
                     markSuperCall(lc);
                 }
-            } else if (lhs instanceof AccessNode && arguments.size() == 2 && arguments.get(1) instanceof IdentNode &&
+            } else if (lhs instanceof AccessNode && !((AccessNode) lhs).isPrivate() && arguments.size() == 2 && arguments.get(1) instanceof IdentNode &&
                             ((IdentNode) arguments.get(1)).isArguments() && APPLY_NAME.equals(((AccessNode) lhs).getProperty())) {
                 if (markApplyArgumentsCall(lc, arguments)) {
                     applyArguments = true;
@@ -4125,10 +4180,16 @@ public class Parser extends AbstractParser {
                 case PERIOD: {
                     next();
 
-                    final IdentNode property = getIdentifierName();
+                    final boolean isPrivate = type == TokenType.PRIVATE_IDENT;
+                    final IdentNode property;
+                    if (isPrivate) {
+                        property = privateIdentifier(false);
+                    } else {
+                        property = getIdentifierName();
+                    }
 
                     // Create property access node.
-                    lhs = new AccessNode(callToken, finish, lhs, property.getName());
+                    lhs = new AccessNode(callToken, finish, lhs, property.getName(), false, isPrivate);
 
                     break;
                 }
@@ -4230,6 +4291,7 @@ public class Parser extends AbstractParser {
      *      SuperProperty
      *      MetaProperty
      *      new MemberExpression Arguments
+     *      MemberExpression . PrivateIdentifier
      *
      * SuperProperty :
      *      super [ Expression ]
@@ -4330,11 +4392,10 @@ public class Parser extends AbstractParser {
                     expect(RBRACKET);
 
                     // Create indexing node.
-                    lhs = new IndexNode(callToken, finish, lhs, index);
+                    lhs = new IndexNode(callToken, finish, lhs, index, isSuper);
 
                     if (isSuper) {
                         isSuper = false;
-                        lhs = ((BaseNode) lhs).setIsSuper();
                     }
 
                     break;
@@ -4346,14 +4407,19 @@ public class Parser extends AbstractParser {
 
                     next();
 
-                    final IdentNode property = getIdentifierName();
+                    final boolean isPrivate = type == TokenType.PRIVATE_IDENT;
+                    final IdentNode property;
+                    if (!isSuper && isPrivate) {
+                        property = privateIdentifier(false);
+                    } else {
+                        property = getIdentifierName();
+                    }
 
                     // Create property access node.
-                    lhs = new AccessNode(callToken, finish, lhs, property.getName());
+                    lhs = new AccessNode(callToken, finish, lhs, property.getName(), isSuper, isPrivate);
 
                     if (isSuper) {
                         isSuper = false;
-                        lhs = ((BaseNode) lhs).setIsSuper();
                     }
 
                     break;
@@ -4711,7 +4777,7 @@ public class Parser extends AbstractParser {
                 markDefaultNameUsed();
                 if (accessNode.getBase() instanceof AccessNode) {
                     AccessNode base = (AccessNode) accessNode.getBase();
-                    if (base.getBase() instanceof IdentNode && base.getProperty().equals(PROTOTYPE_NAME)) {
+                    if (base.getBase() instanceof IdentNode && !base.isPrivate() && base.getProperty().equals(PROTOTYPE_NAME)) {
                         return ((IdentNode) base.getBase()).getName() + "." + accessNode.getProperty();
                     }
                 } else if (accessNode.getBase() instanceof IdentNode) {
@@ -5148,10 +5214,14 @@ public class Parser extends AbstractParser {
                 }
 
                 if (expr instanceof BaseNode || expr instanceof IdentNode) {
-                    if (isStrictMode && expr instanceof IdentNode) {
-                        IdentNode ident = (IdentNode) expr;
-                        if (!ident.isThis() && !ident.isMetaProperty()) {
-                            throw error(AbstractParser.message("strict.cant.delete.ident", ident.getName()), unaryToken);
+                    if (isStrictMode) {
+                        if (expr instanceof IdentNode) {
+                            IdentNode ident = (IdentNode) expr;
+                            if (!ident.isThis() && !ident.isMetaProperty()) {
+                                throw error(AbstractParser.message("strict.cant.delete.ident", ident.getName()), unaryToken);
+                            }
+                        } else if (expr instanceof AccessNode && ((AccessNode) expr).isPrivate()) {
+                            throw error(AbstractParser.message("strict.cant.delete.private"), unaryToken);
                         }
                     }
                     return new UnaryNode(unaryToken, expr);

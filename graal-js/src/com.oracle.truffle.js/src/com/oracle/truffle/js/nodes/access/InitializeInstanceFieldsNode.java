@@ -40,10 +40,16 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -65,20 +71,17 @@ public abstract class InitializeInstanceFieldsNode extends JavaScriptNode {
         return InitializeInstanceFieldsNodeGen.create(context, targetNode, sourceNode);
     }
 
+    @ExplodeLoop(kind = LoopExplosionKind.FULL_UNROLL)
     @Specialization
     protected static Object doObject(Object target, Object[] fields,
-                    @Cached("create(context, true, true)") WriteElementNode writeNode,
-                    @Cached("createCall()") JSFunctionCallNode callNode) {
-        int size = fields.length;
+                    @Cached("createFieldNodes(fields)") FieldNode[] fieldNodes) {
+        int size = fieldNodes.length;
+        assert size == fields.length;
         for (int i = 0; i < size; i++) {
             Object[] field = (Object[]) fields[i];
             Object key = field[0];
             Object initializer = field[1];
-            Object value = Undefined.instance;
-            if (initializer != Undefined.instance) {
-                value = callNode.executeCall(JSArguments.createZeroArg(target, initializer));
-            }
-            writeNode.executeWithTargetAndIndexAndValue(target, key, value);
+            fieldNodes[i].defineField(target, key, initializer);
         }
         return target;
     }
@@ -91,5 +94,51 @@ public abstract class InitializeInstanceFieldsNode extends JavaScriptNode {
     @Override
     protected JavaScriptNode copyUninitialized() {
         return create(context, cloneUninitialized(targetNode), cloneUninitialized(sourceNode));
+    }
+
+    FieldNode[] createFieldNodes(Object[] fields) {
+        CompilerAsserts.neverPartOfCompilation();
+        int size = fields.length;
+        FieldNode[] fieldNodes = new FieldNode[size];
+        for (int i = 0; i < size; i++) {
+            Object[] field = (Object[]) fields[i];
+            Object key = field[0];
+            Object initializer = field[1];
+            JavaScriptBaseNode writeNode;
+            if (key instanceof HiddenKey) {
+                writeNode = PrivateFieldAddNode.create(context);
+            } else {
+                writeNode = WriteElementNode.create(context, true, true);
+            }
+            JSFunctionCallNode callNode = null;
+            if (initializer != Undefined.instance) {
+                callNode = JSFunctionCallNode.createCall();
+            }
+            fieldNodes[i] = new FieldNode(writeNode, callNode);
+        }
+        return fieldNodes;
+    }
+
+    static final class FieldNode extends Node {
+        @Child JavaScriptBaseNode writeNode;
+        @Child JSFunctionCallNode callNode;
+
+        FieldNode(JavaScriptBaseNode writeNode, JSFunctionCallNode callNode) {
+            this.writeNode = writeNode;
+            this.callNode = callNode;
+        }
+
+        void defineField(Object target, Object key, Object initializer) {
+            assert (writeNode instanceof PrivateFieldAddNode) == (key instanceof HiddenKey) && (callNode != null) == (initializer != Undefined.instance);
+            Object value = Undefined.instance;
+            if (callNode != null) {
+                value = callNode.executeCall(JSArguments.createZeroArg(target, initializer));
+            }
+            if (writeNode instanceof PrivateFieldAddNode) {
+                ((PrivateFieldAddNode) writeNode).execute(target, key, value);
+            } else {
+                ((WriteElementNode) writeNode).executeWithTargetAndIndexAndValue(target, key, value);
+            }
+        }
     }
 }

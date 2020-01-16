@@ -43,11 +43,13 @@ package com.oracle.js.parser.ir;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
 
 /**
  * Represents a binding scope (corresponds to LexicalEnvironment or VariableEnvironment).
@@ -81,6 +83,9 @@ public final class Scope {
     protected final EconomicMap<String, Symbol> symbols;
     protected List<Map.Entry<VarNode, Scope>> hoistedVarDeclarations;
     protected List<Map.Entry<VarNode, Scope>> hoistableBlockFunctionDeclarations;
+    protected EconomicMap<String, Object> privateBoundIdentifiers;
+
+    private static final Boolean RESOLVED = Boolean.TRUE;
 
     private int blockScopedOrRedeclaredSymbols;
     private int declaredNames;
@@ -335,6 +340,85 @@ public final class Scope {
                 putSymbol(new Symbol(varName, Symbol.IS_VAR | (isGlobalScope() ? Symbol.IS_GLOBAL : 0)));
             }
             functionDeclScope.getExistingSymbol(varName).setHoistedBlockFunctionDeclaration();
+        }
+    }
+
+    /**
+     * Add a private bound identifier.
+     *
+     * @return true if the private name was added, false if it was already declared (duplicate name)
+     */
+    public boolean addPrivateName(String name) {
+        assert isClassScope();
+        ensurePrivateBoundIdentifiers();
+        // Register a declared private name.
+        boolean added = privateBoundIdentifiers.put(name, RESOLVED) != RESOLVED;
+        if (added) {
+            putSymbol(new Symbol(name, Symbol.IS_CONST | Symbol.IS_PRIVATE_NAME | Symbol.HAS_BEEN_DECLARED));
+        }
+        return added;
+    }
+
+    /**
+     * Register a private name usage (.
+     */
+    public void usePrivateName(IdentNode ident) {
+        assert isClassScope();
+        ensurePrivateBoundIdentifiers();
+        String name = ident.getName();
+        if (!findPrivateName(name)) {
+            // Register an unresolved private name.
+            privateBoundIdentifiers.put(name, ident);
+        } else {
+            // Private name has already been declared in this class.
+        }
+    }
+
+    public boolean findPrivateName(String name) {
+        for (Scope current = this; current != null; current = current.parent) {
+            if (current.privateBoundIdentifiers != null && current.privateBoundIdentifiers.get(name) == RESOLVED) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public Iterable<String> getPrivateBoundIdentifiers() {
+        return privateBoundIdentifiers != null ? privateBoundIdentifiers.getKeys() : Collections.emptyList();
+    }
+
+    public IdentNode verifyAllPrivateIdentifiersValid() {
+        if (privateBoundIdentifiers != null) {
+            MapCursor<String, Object> entries = privateBoundIdentifiers.getEntries();
+            next: while (entries.advance()) {
+                Object resolution = entries.getValue();
+                if (resolution != RESOLVED) {
+                    String name = entries.getKey();
+                    IdentNode unresolved = (IdentNode) resolution;
+                    entries.remove();
+                    if (findPrivateName(name)) {
+                        // found the private name in an outer class scope
+                        continue next;
+                    } else {
+                        // push unresolved private names to the outer class, if any
+                        for (Scope outer = parent; outer != null; outer = outer.parent) {
+                            if (outer.isClassScope()) {
+                                outer.usePrivateName(unresolved);
+                                continue next;
+                            }
+                        }
+                        // this is already the outermost class, i.e. private name is not valid
+                        return unresolved;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private void ensurePrivateBoundIdentifiers() {
+        if (privateBoundIdentifiers == null) {
+            privateBoundIdentifiers = EconomicMap.create();
         }
     }
 

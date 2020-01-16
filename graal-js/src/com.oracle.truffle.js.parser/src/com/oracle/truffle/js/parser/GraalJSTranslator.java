@@ -1079,10 +1079,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return visitor.directArgumentsAccess;
     }
 
-    static boolean isApply(CallNode callNode) {
-        return callNode.getFunction() instanceof AccessNode && ((AccessNode) callNode.getFunction()).getProperty().equals("apply");
-    }
-
     private static void markTerminalReturnNodes(com.oracle.js.parser.ir.Node node) {
         if (node instanceof Block && ((Block) node).isTerminal()) {
             Statement lastStatement = ((Block) node).getLastStatement();
@@ -2460,7 +2456,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode target = transform(accessNode.getBase());
 
         if (binaryOp == null) {
-            assignedNode = factory.createWriteProperty(target, accessNode.getProperty(), assignedValue, context, environment.isStrictMode());
+            assignedNode = createWriteProperty(accessNode, target, assignedValue);
         } else {
             JavaScriptNode target1;
             JavaScriptNode target2;
@@ -2474,7 +2470,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             }
 
             VarRef prevValueTemp = null;
-            JavaScriptNode readNode = tagExpression(factory.createReadProperty(context, target2, accessNode.getProperty()), accessNode);
+            JavaScriptNode readNode = tagExpression(createReadProperty(accessNode, target2), accessNode);
             if (convertToNumeric) {
                 readNode = factory.createToNumeric(readNode);
             }
@@ -2483,7 +2479,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 readNode = prevValueTemp.createWriteNode(readNode);
             }
             JavaScriptNode binOpNode = tagExpression(factory.createBinary(context, binaryOp, readNode, assignedValue), accessNode);
-            JavaScriptNode writeNode = factory.createWriteProperty(target1, accessNode.getProperty(), binOpNode, context, environment.isStrictMode());
+            JavaScriptNode writeNode = createWriteProperty(accessNode, target1, binOpNode);
             if (returnOldValue) {
                 assignedNode = factory.createDual(context, writeNode, prevValueTemp.createReadNode());
             } else {
@@ -2649,9 +2645,29 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     @Override
     public JavaScriptNode enterAccessNode(AccessNode accessNode) {
-        String propertyName = accessNode.getProperty();
         JavaScriptNode base = transform(accessNode.getBase());
-        return tagExpression(factory.createReadProperty(context, base, propertyName), accessNode);
+        JavaScriptNode read = createReadProperty(accessNode, base);
+        return tagExpression(read, accessNode);
+    }
+
+    private JavaScriptNode createReadProperty(AccessNode accessNode, JavaScriptNode base) {
+        if (accessNode.isPrivate()) {
+            return factory.createPrivateFieldGet(context, base, getPrivateName(accessNode.getPrivateName()));
+        } else {
+            return factory.createReadProperty(context, base, accessNode.getProperty());
+        }
+    }
+
+    private JavaScriptNode createWriteProperty(AccessNode accessNode, JavaScriptNode base, JavaScriptNode rhs) {
+        if (accessNode.isPrivate()) {
+            return factory.createPrivateFieldSet(context, base, getPrivateName(accessNode.getPrivateName()), rhs);
+        } else {
+            return factory.createWriteProperty(base, accessNode.getProperty(), rhs, context, environment.isStrictMode());
+        }
+    }
+
+    private JavaScriptNode getPrivateName(String privateName) {
+        return environment.findLocalVar(privateName).createReadNode();
     }
 
     @Override
@@ -2742,6 +2758,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             return factory.createComputedDataMember(computedKey, property.isStatic(), enumerable, property.isClassField(), value);
         } else if (!isClass && property.isProto()) {
             return factory.createProtoMember(property.getKeyName(), property.isStatic(), value);
+        } else if (property.isPrivate()) {
+            JavaScriptNode key = getPrivateName(property.getPrivateName());
+            return factory.createPrivateFieldMember(key, property.isStatic(), value);
         } else {
             String keyName = property.getKeyName();
             setAnonymousFunctionName(value, keyName);
@@ -3083,12 +3102,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     @Override
     public JavaScriptNode enterClassNode(ClassNode classNode) {
-        try (EnvironmentCloseable blockEnv = enterBlockEnvironment(classNode.getScope())) {
+        Scope classScope = classNode.getScope();
+        try (EnvironmentCloseable blockEnv = enterBlockEnvironment(classScope)) {
             String className = null;
             Symbol classNameSymbol = null;
             if (classNode.getIdent() != null) {
                 className = classNode.getIdent().getName();
-                classNameSymbol = classNode.getScope().getExistingSymbol(className);
+                classNameSymbol = classScope.getExistingSymbol(className);
             }
 
             JavaScriptNode classHeritage = transform(classNode.getClassHeritage());
@@ -3101,6 +3121,16 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             if (className != null) {
                 classDefinition = ensureHasSourceSection(findScopeVar(className, true).createWriteNode(classDefinition), classNode);
             }
+
+            if (classNode.hasInstanceFields()) {
+                List<JavaScriptNode> init = new ArrayList<>();
+                for (String dn : classScope.getPrivateBoundIdentifiers()) {
+                    init.add(environment.findLocalVar(dn).createWriteNode(factory.createNewPrivateName(dn)));
+                }
+                init.add(classDefinition);
+                classDefinition = factory.createExprBlock(init.toArray(EMPTY_NODE_ARRAY));
+            }
+
             return tagExpression(blockEnv.wrapBlockScope(classDefinition), classNode);
         }
     }

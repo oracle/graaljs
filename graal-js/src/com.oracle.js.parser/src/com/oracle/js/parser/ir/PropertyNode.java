@@ -289,4 +289,13 @@ public final class PropertyNode extends Node {
     public boolean isClassField() {
         return classField;
     }
+
+    public boolean isPrivate() {
+        return key instanceof IdentNode && ((IdentNode) key).isPrivate();
+    }
+
+    public String getPrivateName() {
+        assert isPrivate();
+        return ((IdentNode) key).getName();
+    }
 }

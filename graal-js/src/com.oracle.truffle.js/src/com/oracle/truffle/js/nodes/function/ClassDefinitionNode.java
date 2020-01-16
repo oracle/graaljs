@@ -171,6 +171,7 @@ public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameH
                 memberNode.executeVoid(frame, homeObject, context);
             }
         }
+        assert fieldIndex == instanceFieldCount;
     }
 
     @Override
