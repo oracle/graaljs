@@ -1700,12 +1700,12 @@ public class JSRealm {
             setErrorWriter(null, newEnv.err());
         }
 
-        setArguments(newEnv.getApplicationArguments());
-
         // During context pre-initialization, optional globals are not added to global
         // environment. During context-patching time, we are obliged to call addOptionalGlobals
         // to add any necessary globals.
         addOptionalGlobals();
+
+        addArgumentsFromEnv(newEnv);
 
         // Reflect any changes to the timezone option.
         if (localTimeZoneHolder != null) {
@@ -1723,8 +1723,9 @@ public class JSRealm {
             return;
         }
 
-        setArguments(getEnv().getApplicationArguments());
         addOptionalGlobals();
+
+        addArgumentsFromEnv(getEnv());
 
         initTimeOffsetAndRandom();
     }
@@ -1733,6 +1734,13 @@ public class JSRealm {
         preinitIntlObject = createIntlObject();
         preinitConsoleBuiltinObject = createConsoleObject();
         preinitPerformanceObject = createPerformanceObject();
+    }
+
+    private void addArgumentsFromEnv(TruffleLanguage.Env newEnv) {
+        String[] applicationArguments = newEnv.getApplicationArguments();
+        if (context.getContextOptions().isGlobalArguments()) {
+            setArguments(applicationArguments);
+        }
     }
 
     @TruffleBoundary
