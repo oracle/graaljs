@@ -247,7 +247,13 @@ public final class IntlUtil {
         return Arrays.asList(NumberingSystem.getAvailableNames()).contains(numberingSystem);
     }
 
-    public static String defaultNumberingSystemName(Locale locale) {
+    public static String defaultNumberingSystemName(JSContext context, Locale locale) {
+        if (context.isOptionV8CompatibilityMode() && "ar".equals(locale.toLanguageTag())) {
+            // https://chromium.googlesource.com/chromium/deps/icu/+/6cca29a092eef02178e13b7461fe8fbf3021d04b
+            // V8 is using a patched version of ICU (where the default numbering system for "ar"
+            // locale is "latn")
+            return "latn";
+        }
         return NumberingSystem.getInstance(locale).getName();
     }
 

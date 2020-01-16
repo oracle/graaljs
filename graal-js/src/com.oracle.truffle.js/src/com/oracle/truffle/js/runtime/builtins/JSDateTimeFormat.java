@@ -260,7 +260,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         Locale javaLocale = builder.build();
 
         if (state.numberingSystem == null) {
-            state.numberingSystem = IntlUtil.defaultNumberingSystemName(javaLocale);
+            state.numberingSystem = IntlUtil.defaultNumberingSystemName(ctx, javaLocale);
         }
 
         SimpleDateFormat dateFormat = new SimpleDateFormat(bestPattern, javaLocale);

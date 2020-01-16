@@ -521,7 +521,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         state.javaLocale = builder.build();
 
         if (state.numberingSystem == null) {
-            state.numberingSystem = IntlUtil.defaultNumberingSystemName(state.javaLocale);
+            state.numberingSystem = IntlUtil.defaultNumberingSystemName(ctx, state.javaLocale);
         }
     }
 
