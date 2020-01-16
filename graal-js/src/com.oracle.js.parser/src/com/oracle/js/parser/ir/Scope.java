@@ -74,6 +74,8 @@ public final class Scope {
     private static final int IN_METHOD = 1 << 17;
     /** Scope is in a derived class constructor. Super calls are allowed. */
     private static final int IN_DERIVED_CONSTRUCTOR = 1 << 18;
+    /** Scope is in a class field initializer. 'arguments' is not allowed. */
+    private static final int IS_CLASS_FIELD_INITIALIZER = 1 << 19;
 
     /** Symbol table - keys must be returned in the order they were put in. */
     protected final EconomicMap<String, Symbol> symbols;
@@ -105,9 +107,10 @@ public final class Scope {
             return parent.flags;
         } else {
             int flags = 0;
+            flags |= IN_FUNCTION;
             flags |= ((functionFlags & FunctionNode.IS_METHOD) != 0) ? IN_METHOD : 0;
             flags |= ((functionFlags & FunctionNode.IS_DERIVED_CONSTRUCTOR) != 0) ? IN_DERIVED_CONSTRUCTOR : 0;
-            flags |= IN_FUNCTION;
+            flags |= ((functionFlags & FunctionNode.IS_CLASS_FIELD_INITIALIZER) != 0) ? IS_CLASS_FIELD_INITIALIZER : 0;
             return flags;
         }
     }
@@ -385,6 +388,10 @@ public final class Scope {
 
     public boolean inDerivedConstructor() {
         return (flags & IN_DERIVED_CONSTRUCTOR) != 0;
+    }
+
+    public boolean inClassFieldInitializer() {
+        return (flags & IS_CLASS_FIELD_INITIALIZER) != 0;
     }
 
     /**

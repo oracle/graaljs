@@ -231,6 +231,9 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     /** Does this function contain a {@code fn.apply(_, arguments)} call? */
     public static final int HAS_APPLY_ARGUMENTS_CALL = 1 << 29;
 
+    /** Is this function a class field initializer? */
+    public static final int IS_CLASS_FIELD_INITIALIZER = 1 << 30;
+
     /**
      * Constructor
      *
@@ -736,5 +739,9 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     public boolean needsSuper() {
         return usesSuper() || (isMethod() && (hasEval() || hasArrowEval()));
+    }
+
+    public boolean isClassFieldInitializer() {
+        return getFlag(IS_CLASS_FIELD_INITIALIZER);
     }
 }

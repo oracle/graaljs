@@ -785,11 +785,18 @@ public class Parser extends AbstractParser {
      */
     private IdentNode detectSpecialProperty(final IdentNode ident) {
         if (isArguments(ident)) {
-            // skip over arrow functions, e.g. function f() { return (() => arguments.length)(); }
-            lc.getCurrentNonArrowFunction().setFlag(FunctionNode.USES_ARGUMENTS);
-            return ident.setIsArguments();
+            return markArguments(ident);
         }
         return ident;
+    }
+
+    private IdentNode markArguments(final IdentNode ident) {
+        if (lc.getCurrentScope().inClassFieldInitializer()) {
+            throw error(AbstractParser.message("arguments.in.field.initializer"), ident.getToken());
+        }
+        // skip over arrow functions, e.g. function f() { return (() => arguments.length)(); }
+        lc.getCurrentNonArrowFunction().setFlag(FunctionNode.USES_ARGUMENTS);
+        return ident.setIsArguments();
     }
 
     private boolean useBlockScope() {
@@ -1777,7 +1784,7 @@ public class Parser extends AbstractParser {
         final IdentNode initName = propertyName instanceof IdentNode
                         ? (IdentNode) propertyName
                         : new IdentNode(Token.recast(fieldToken, TokenType.IDENT), propertyName.getFinish(), INITIALIZER_FUNCTION_NAME);
-        int functionFlags = FunctionNode.IS_METHOD;
+        int functionFlags = FunctionNode.IS_METHOD | FunctionNode.IS_CLASS_FIELD_INITIALIZER;
         ParserContextFunctionNode function = createParserContextFunctionNode(initName, fieldToken, functionFlags, lineNumber, Collections.emptyList(), 0);
         lc.push(function);
         ParserContextBlockNode body = newBlock(function.createBodyScope());
@@ -1789,7 +1796,10 @@ public class Parser extends AbstractParser {
             lc.pop(function);
         }
 
+        // It is a Syntax Error if ContainsArguments of Initializer is true.
+        assert function.getFlag(FunctionNode.USES_ARGUMENTS) == 0;
         function.setLastToken(token);
+
         final List<Statement> statements = Collections.singletonList(new ReturnNode(lineNumber, fieldToken, finish, initializer));
         Block bodyBlock = new Block(fieldToken, finish, Block.IS_BODY | Block.IS_SYNTHETIC, body.getScope(), statements);
         return createFunctionNode(function, fieldToken, initName, lineNumber, bodyBlock);
