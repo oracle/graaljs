@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -55,6 +56,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.InputNodeTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
+import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 
@@ -86,7 +88,7 @@ public class WritePropertyNode extends JSTargetableWriteNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == WriteVariableTag.class && isScopeAccess()) {
+        if ((tag == WriteVariableTag.class || tag == StandardTags.WriteVariableTag.class) && isScopeAccess()) {
             return true;
         } else if (tag == WritePropertyTag.class && !isScopeAccess()) {
             return true;
@@ -104,9 +106,12 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     @Override
     public Object getNodeObject() {
         if (isScopeAccess()) {
-            return JSTags.createNodeObjectDescriptor("name", getKey());
+            NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor("name", getKey());
+            descriptor.addProperty(StandardTags.WriteVariableTag.NAME, getKey());
+            return descriptor;
         }
-        return JSTags.createNodeObjectDescriptor("key", getKey());
+        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor("key", getKey());
+        return descriptor;
     }
 
     @Override
