@@ -139,7 +139,6 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
 
     @TruffleBoundary
     public static void setupInternalRelativeTimeFormatter(InternalState state) {
-        state.javaLocale = Locale.forLanguageTag(state.locale);
         state.relativeDateTimeFormatter = createFormatter(state.javaLocale, state.style);
     }
 
@@ -214,7 +213,7 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
             JSObjectUtil.defineDataProperty(result, "locale", locale, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, "style", style, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, "numeric", numeric, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, "numberingSystem", numeric, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, "numberingSystem", numberingSystem, JSAttributes.getDefault());
             return result;
         }
 

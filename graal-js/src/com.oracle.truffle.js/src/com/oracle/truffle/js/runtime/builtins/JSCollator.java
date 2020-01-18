@@ -177,9 +177,10 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
                 kn = false;
             }
             if (kn != null) {
-                // Test262 and TestV8 expect -u-kn-true to be converted to -u-kn.
-                // This seems to be off-spec. The spec. tells us to keep the actual
-                // value (knType) of the kn extension instead.
+                // "BCP 47 Language Tag to Unicode BCP 47 Locale Identifier" algorithm
+                // used during CanonicalizeLanguageTag() operation requires the removal
+                // of "true" value of a unicode extension i.e. -u-kn-true should be converted to
+                // -u-kn.
                 String value = kn ? "" : "false";
                 builder.setUnicodeLocaleKeyword("kn", value);
             }

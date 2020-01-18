@@ -63,6 +63,7 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
     @Child CreateOptionsObjectNode createOptionsNode;
 
     @Child GetStringOptionNode getLocaleMatcherOption;
+    @Child GetStringOptionNode getNumberingSystemOption;
 
     @Child GetNumberOptionNode getMinIntDigitsOption;
     @Child GetNumberOptionNode getMinFracDigitsOption;
@@ -85,6 +86,7 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
         this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER,
                         new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
+        this.getNumberingSystemOption = GetStringOptionNode.create(context, IntlUtil.NUMBERING_SYSTEM, null, null);
         this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.STYLE, new String[]{IntlUtil.DECIMAL, IntlUtil.PERCENT, IntlUtil.CURRENCY}, IntlUtil.DECIMAL);
         this.getCurrencyOption = GetStringOptionNode.create(context, IntlUtil.CURRENCY, null, null);
         this.getCurrencyDisplayOption = GetStringOptionNode.create(context, IntlUtil.CURRENCY_DISPLAY, new String[]{IntlUtil.CODE, IntlUtil.SYMBOL, IntlUtil.NAME}, IntlUtil.SYMBOL);
@@ -115,6 +117,12 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
             DynamicObject options = createOptionsNode.execute(optionsArg);
 
             getLocaleMatcherOption.executeValue(options);
+            String numberingSystemOpt = getNumberingSystemOption.executeValue(options);
+            if (numberingSystemOpt != null) {
+                IntlUtil.validateUnicodeLocaleIdentifierType(numberingSystemOpt);
+                numberingSystemOpt = IntlUtil.normalizeUnicodeLocaleIdentifierType(numberingSystemOpt);
+            }
+
             String optStyle = getStyleOption.executeValue(options);
 
             String optCurrency = getCurrencyOption.executeValue(options);
@@ -122,7 +130,7 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
 
             state.setInitialized(true);
 
-            JSNumberFormat.setLocaleAndNumberingSystem(context, state, locales);
+            JSNumberFormat.setLocaleAndNumberingSystem(context, state, locales, numberingSystemOpt);
 
             state.setStyle(optStyle);
             String currencyCode = optCurrency;

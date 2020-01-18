@@ -42,17 +42,9 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
-    "filePath" : "intl/date-format/check-nu-option.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
-  }, {
     "filePath" : "intl/date-format/check-numbering-system.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl/date-format/constructor-calendar-numberingSytem-order.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+    "comment" : "Off-spec, should be fixed by a next TestV8 update, see https://bugs.chromium.org/p/v8/issues/detail?id=9887"
   }, {
     "filePath" : "intl/date-format/constructor-date-style-order.js",
     "status" : "FAIL",
@@ -85,10 +77,6 @@
     "filePath" : "intl/date-format/format-range.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl/date-format/format-with-extensions.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
     "filePath" : "intl/date-format/month-far-future.js",
     "status" : "PASS",
@@ -187,17 +175,9 @@
     "filePath" : "intl/number-format/check-minimum-fraction-digits.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "intl/number-format/check-nu-option.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
-  }, {
     "filePath" : "intl/number-format/check-numbering-system.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl/number-format/constructor-numberingSytem-order.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+    "comment" : "Off-spec, should be fixed by a next TestV8 update, see https://bugs.chromium.org/p/v8/issues/detail?id=9887"
   }, {
     "filePath" : "intl/number-format/format-currency.js",
     "status" : "FAIL"
@@ -270,10 +250,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "intl/regress-8525.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
-  }, {
     "filePath" : "intl/regress-8604.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -308,15 +284,7 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
-    "filePath" : "intl/regress-966285.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
     "filePath" : "intl/regress-9747.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "intl/regress-9787.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
@@ -330,7 +298,7 @@
   }, {
     "filePath" : "intl/relative-time-format/check-numbering-system.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+    "comment" : "Off-spec, should be fixed by a next TestV8 update, see https://bugs.chromium.org/p/v8/issues/detail?id=9887"
   }, {
     "filePath" : "intl/relative-time-format/default-locale-fr-CA.js",
     "status" : "FAIL",
@@ -343,18 +311,6 @@
     "filePath" : "intl/relative-time-format/format-en.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "intl/relative-time-format/numberingSystems.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl/relative-time-format/resolved-options-nu-extended.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl/relative-time-format/resolved-options-nu.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
     "filePath" : "intl/relative-time-format/supported-locale.js",
     "status" : "FAIL",

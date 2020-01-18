@@ -1680,10 +1680,6 @@
     },
     "comment" : "GR-15359"
   }, {
-    "filePath" : "intl402/DateTimeFormat/constructor-calendar-numberingSystem-order.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
     "filePath" : "intl402/DateTimeFormat/date-time-options.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -1808,14 +1804,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
-    "filePath" : "intl402/NumberFormat/constructor-numberingSystem-order.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "intl402/NumberFormat/constructor-options-throwing-getters.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
     "filePath" : "intl402/NumberFormat/constructor-signDisplay.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
@@ -1838,10 +1826,6 @@
       "SVM" : "SKIP"
     },
     "comment" : "GR-15359"
-  }, {
-    "filePath" : "intl402/NumberFormat/numbering-system-options.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/bound-to-numberformat-instance.js",
     "status" : "PASS",
