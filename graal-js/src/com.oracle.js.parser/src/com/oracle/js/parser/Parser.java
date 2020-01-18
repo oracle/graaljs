@@ -2085,7 +2085,7 @@ public class Parser extends AbstractParser {
                             (varNode.isHoistableDeclaration() ? Symbol.IS_HOISTABLE_DECLARATION : 0) |
                             (varScope.isGlobalScope() ? Symbol.IS_GLOBAL : 0);
             // if the var name appears in a non-simple parameter list, we need to copy its value.
-            if (function.getParameterBlock() != null && function.getParameterBlock().getScope().hasSymbol(name)) {
+            if (function.hasParameterExpressions() && function.getParameterBlock().getScope().hasSymbol(name)) {
                 symbolFlags |= Symbol.IS_VAR_REDECLARED_HERE;
             }
             varScope.putSymbol(new Symbol(name, symbolFlags));
