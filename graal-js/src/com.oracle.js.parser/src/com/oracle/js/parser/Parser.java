@@ -1531,6 +1531,15 @@ public class Parser extends AbstractParser {
             if (type == EXTENDS) {
                 next();
                 classHeritage = leftHandSideExpression(yield, await);
+
+                // Note: ClassHeritage should be parsed in the outer PrivateEnvironment.
+                // We have only one scope for both classScope and classPrivateEnvironment, so we
+                // emulate this by verifying the private identifiers before any private fields are
+                // declared. Unresolved uses are reported as errors or pushed up to the outer class.
+                IdentNode invalidPrivateIdent = classNode.verifyAllPrivateIdentifiersValid(lc);
+                if (invalidPrivateIdent != null) {
+                    throw error(AbstractParser.message("invalid.private.ident"), invalidPrivateIdent.getToken());
+                }
             }
 
             expect(LBRACE);
