@@ -325,6 +325,15 @@ class ParserContext {
         return iter.hasNext() ? iter.next() : null;
     }
 
+    /**
+     * Returns an iterator over all classes in the context, with the innermost class first.
+     *
+     * @return an iterator over all classes in the context.
+     */
+    public Iterator<ParserContextClassNode> getClasses() {
+        return new NodeIterator<>(ParserContextClassNode.class);
+    }
+
     private class NodeIterator<T extends ParserContextNode> implements Iterator<T> {
         private int index;
         private T next;

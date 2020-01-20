@@ -1642,7 +1642,7 @@ public class Parser extends AbstractParser {
                                 ctor.getLength(), ctor.getNumOfParams(), ctor.getParameters(), flags, ctor.getBody(), ctor.getEndParserState(), ctor.getModule()));
             }
 
-            IdentNode invalidPrivateIdent = classScope.verifyAllPrivateIdentifiersValid();
+            IdentNode invalidPrivateIdent = classNode.verifyAllPrivateIdentifiersValid(lc);
             if (invalidPrivateIdent != null) {
                 throw error(AbstractParser.message("invalid.private.ident"), invalidPrivateIdent.getToken());
             }
@@ -1686,7 +1686,7 @@ public class Parser extends AbstractParser {
             // defer resolving until the end of the class declaration.
             // In a direct eval: try to find a resolved private identifier in the caller scopes.
             if (currentClass != null) {
-                currentClass.getScope().usePrivateName(privateIdent);
+                currentClass.usePrivateName(privateIdent);
             } else {
                 if (!lc.getCurrentScope().findPrivateName(name)) {
                     throw error(AbstractParser.message("invalid.private.ident"), privateIdent.getToken());

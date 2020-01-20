@@ -40,6 +40,12 @@
  */
 package com.oracle.js.parser;
 
+import java.util.Iterator;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
+
+import com.oracle.js.parser.ir.IdentNode;
 import com.oracle.js.parser.ir.Scope;
 
 /**
@@ -49,6 +55,7 @@ class ParserContextClassNode extends ParserContextBaseNode implements ParserCont
 
     private final long token;
     private final Scope scope;
+    protected EconomicMap<String, IdentNode> unresolvedPrivateIdentifiers;
 
     /**
      * Constructs a ParserContextClassNode.
@@ -59,6 +66,7 @@ class ParserContextClassNode extends ParserContextBaseNode implements ParserCont
     ParserContextClassNode(final long token, Scope scope) {
         this.token = token;
         this.scope = scope;
+        assert scope.isClassScope();
     }
 
     /**
@@ -75,4 +83,55 @@ class ParserContextClassNode extends ParserContextBaseNode implements ParserCont
         return scope;
     }
 
+    /**
+     * Register a private name usage for resolving.
+     */
+    void usePrivateName(IdentNode ident) {
+        String name = ident.getName();
+        if (scope.findPrivateName(name)) {
+            // Private name has already been declared in this class.
+            return;
+        } else {
+            // Register an unresolved private name.
+            if (unresolvedPrivateIdentifiers == null) {
+                unresolvedPrivateIdentifiers = EconomicMap.create();
+            }
+            if (!unresolvedPrivateIdentifiers.containsKey(name)) {
+                unresolvedPrivateIdentifiers.put(name, ident);
+            }
+        }
+    }
+
+    IdentNode verifyAllPrivateIdentifiersValid(ParserContext lc) {
+        if (unresolvedPrivateIdentifiers != null) {
+            MapCursor<String, IdentNode> entries = unresolvedPrivateIdentifiers.getEntries();
+            next: while (entries.advance()) {
+                IdentNode unresolved = entries.getValue();
+                String name = entries.getKey();
+                if (scope.findPrivateName(name)) {
+                    // found the private name in this or an outer class scope
+                    continue next;
+                } else {
+                    // push unresolved private names to the outer class, if any
+                    Iterator<ParserContextClassNode> it = lc.getClasses();
+                    boolean seenThis = false;
+                    while (it.hasNext()) {
+                        ParserContextClassNode outer = it.next();
+                        if (!seenThis) {
+                            if (outer == this) {
+                                seenThis = true;
+                            }
+                            continue;
+                        }
+                        outer.usePrivateName(unresolved);
+                        continue next;
+                    }
+                    // this is already the outermost class, i.e. private name is not valid
+                    return unresolved;
+                }
+            }
+            unresolvedPrivateIdentifiers = null;
+        }
+        return null;
+    }
 }

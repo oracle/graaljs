@@ -3124,8 +3124,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
             if (classNode.hasInstanceFields()) {
                 List<JavaScriptNode> init = new ArrayList<>();
-                for (String dn : classScope.getPrivateBoundIdentifiers()) {
-                    init.add(environment.findLocalVar(dn).createWriteNode(factory.createNewPrivateName(dn)));
+                for (Symbol symbol : classScope.getSymbols()) {
+                    if (symbol.isPrivateName()) {
+                        init.add(environment.findLocalVar(symbol.getName()).createWriteNode(factory.createNewPrivateName(symbol.getName())));
+                    }
                 }
                 init.add(classDefinition);
                 classDefinition = factory.createExprBlock(init.toArray(EMPTY_NODE_ARRAY));
