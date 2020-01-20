@@ -3245,6 +3245,15 @@ namespace v8 {
         isolate->RunMicrotasks();
     }
 
+    String::ExternalStringResourceBase* String::GetExternalStringResourceBaseSlow(String::Encoding* encoding_out) const {
+        TRACE
+        return nullptr;
+    }
+
+    void EmbedderHeapTracer::TracePrologue(TraceFlags flags) {
+        TRACE
+    }
+
     void Object::CheckCast(v8::Value* obj) {}
     void Promise::CheckCast(v8::Value* obj) {}
     void Function::CheckCast(v8::Value* obj) {}
