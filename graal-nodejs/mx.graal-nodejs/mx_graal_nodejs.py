@@ -26,7 +26,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-import mx, mx_gate, mx_subst, mx_sdk, mx_graal_js, os, tarfile, tempfile
+import mx, mx_gate, mx_subst, mx_sdk, mx_sdk_vm, mx_graal_js, os, tarfile, tempfile
 
 import mx_graal_nodejs_benchmark
 
@@ -556,6 +556,14 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     installable=False,
 ))
 
+
+mx_sdk_vm.register_vm_config('node', ['nfi', 'njs', 'js', 'poly', 'tfl', 'rgx', 'sdk'], _suite, env_file=False)  # stage1
+mx_sdk_vm.register_vm_config('node', ['bjs', 'bpolyglot', 'nfi', 'njs', 'js', 'poly', 'tfl', 'rgx', 'sdk'], _suite, env_file=False)
+mx_sdk_vm.register_vm_config('node', ['bjs', 'bpolyglot', 'nfi', 'njs', 'js', 'llp', 'poly', 'tfl', 'rgx', 'sdk'], _suite, env_file=False)
+mx_sdk_vm.register_vm_config('node-ce', ['cmp', 'nfi', 'njs', 'js', 'llp', 'poly', 'tfl', 'rgx', 'sdk'], _suite, env_file=False)  # stage1
+mx_sdk_vm.register_vm_config('node-ce', ['bjs', 'bpolyglot', 'cmp', 'nfi', 'njs', 'js', 'llp', 'poly', 'tfl', 'rgx', 'sdk'], _suite, env_file=False)
+mx_sdk_vm.register_vm_config('node-ee', ['cmp', 'cmpee', 'nfi', 'njs', 'js', 'llp', 'poly', 'tfl', 'rgx', 'sdk'], _suite, env_file=False)  # stage1
+mx_sdk_vm.register_vm_config('node-ee', ['bjs', 'bpolyglot', 'cmp', 'cmpee', 'nfi', 'njs', 'js', 'llp', 'poly', 'tfl', 'rgx', 'sdk'], _suite, env_file=False)
 
 mx.update_commands(_suite, {
     'node' : [node, ''],
