@@ -1659,55 +1659,6 @@
     },
     "comment" : "Fails on big endian and works on little endian"
   }, {
-    "filePath" : "intl402/Collator/prototype/compare/non-normative-sensitivity.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15359"
-  }, {
-    "filePath" : "intl402/constructors-string-and-single-element-array.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15359"
-  }, {
-    "filePath" : "intl402/Date/prototype/returns-same-results-as-DateTimeFormat.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15359"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/date-time-options.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15359"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/ignore-invalid-unicode-ext-values.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15359"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/format/bound-to-datetimeformat-instance.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15359"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/main.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15359"
-  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/pattern-on-calendar.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
@@ -1716,13 +1667,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/basic.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "Fails on SVM due to timezone issues, see GR-4538"
-  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/hourCycle.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
@@ -1730,13 +1674,6 @@
     "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/resolved-locale-with-hc-unicode.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/required-date-time-formats.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15359"
   }, {
     "filePath" : "intl402/Intl/getCanonicalLocales/canonicalized-tags.js",
     "status" : "FAIL",
@@ -1762,13 +1699,6 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "intl402/language-tags-valid.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15359"
-  }, {
     "filePath" : "intl402/language-tags-with-underscore.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
@@ -1784,13 +1714,6 @@
     "filePath" : "intl402/ListFormat/constructor/supportedLocalesOf/locales-invalid.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Number/prototype/toLocaleString/returns-same-results-as-NumberFormat.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15359"
   }, {
     "filePath" : "intl402/NumberFormat/constructor-compactDisplay-compact.js",
     "status" : "FAIL",
@@ -1820,20 +1743,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
   }, {
-    "filePath" : "intl402/NumberFormat/ignore-invalid-unicode-ext-values.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15359"
-  }, {
-    "filePath" : "intl402/NumberFormat/prototype/format/bound-to-numberformat-instance.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15359"
-  }, {
     "filePath" : "intl402/NumberFormat/prototype/format/engineering-scientific-de-DE.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
@@ -1854,30 +1763,13 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
-    "filePath" : "intl402/NumberFormat/prototype/format/format-fraction-digits-precision.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15730"
-  }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-fraction-digits.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-significant-digits-precision.js",
     "status" : "FAIL",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
     "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl402/NumberFormat/prototype/format/format-significant-digits.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15359"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/notation-compact-de-DE.js",
     "status" : "FAIL",
@@ -1982,13 +1874,6 @@
     "filePath" : "intl402/NumberFormat/prototype/formatToParts/engineering-scientific-zh-TW.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "intl402/NumberFormat/prototype/formatToParts/main.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15359"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/formatToParts/notation-compact-de-DE.js",
     "status" : "FAIL",
@@ -2125,13 +2010,6 @@
     "filePath" : "intl402/supportedLocalesOf-consistent-with-resolvedOptions.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "intl402/supportedLocalesOf-unicode-extensions-ignored.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "Segfaults on SVM, see GR-15064"
   }, {
     "filePath" : "language/asi/S7.9_A5.7_T1.js",
     "ecmaVersion" : {
