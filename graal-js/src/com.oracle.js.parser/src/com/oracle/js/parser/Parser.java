@@ -1655,12 +1655,12 @@ public class Parser extends AbstractParser {
 
     private Expression classElementName(boolean yield, boolean await) {
         if (type == TokenType.PRIVATE_IDENT) {
-            return privateIdentifier(true);
+            return privateIdentifierDeclaration();
         }
         return propertyName(yield, await);
     }
 
-    private IdentNode privateIdentifier(boolean declaration) {
+    private IdentNode parsePrivateIdentifier() {
         assert type == TokenType.PRIVATE_IDENT;
         if (!isES2020()) {
             throw error(AbstractParser.message("unexpected.token", type.getNameOrType()));
@@ -1670,27 +1670,36 @@ public class Parser extends AbstractParser {
         final String name = (String) getValue(identToken);
         next();
 
-        IdentNode privateIdent = createIdentNode(identToken, finish, name).setIsPrivate();
+        return createIdentNode(identToken, finish, name).setIsPrivate();
+    }
+
+    private IdentNode privateIdentifierDeclaration() {
+        IdentNode privateIdent = parsePrivateIdentifier();
 
         ParserContextClassNode currentClass = lc.getCurrentClass();
-        if (declaration) {
-            if (currentClass == null) {
-                throw error(AbstractParser.message("invalid.private.ident"), privateIdent.getToken());
-            }
-            // Syntax Error if PrivateBoundIdentifiers of ClassBody contains any duplicate entries.
-            if (!currentClass.getScope().addPrivateName(privateIdent.getName())) {
-                throw error(ECMAErrors.getMessage("syntax.error.redeclare.variable", privateIdent.getName()), identToken);
-            }
+        if (currentClass == null) {
+            throw error(AbstractParser.message("invalid.private.ident"), privateIdent.getToken());
+        }
+        // Syntax Error if PrivateBoundIdentifiers of ClassBody contains any duplicate entries.
+        if (!currentClass.getScope().addPrivateName(privateIdent.getName())) {
+            throw error(ECMAErrors.getMessage("syntax.error.redeclare.variable", privateIdent.getName()), privateIdent.getToken());
+        }
+
+        return privateIdent;
+    }
+
+    private IdentNode privateIdentifierUse() {
+        IdentNode privateIdent = parsePrivateIdentifier();
+
+        ParserContextClassNode currentClass = lc.getCurrentClass();
+        // In a class: try to eagerly resolve the private identifier; if it is not found,
+        // defer resolving until the end of the class declaration.
+        // In a direct eval: try to find a resolved private identifier in the caller scopes.
+        if (currentClass != null) {
+            currentClass.usePrivateName(privateIdent);
         } else {
-            // In a class: try to eagerly resolve the private identifier; if it is not found,
-            // defer resolving until the end of the class declaration.
-            // In a direct eval: try to find a resolved private identifier in the caller scopes.
-            if (currentClass != null) {
-                currentClass.usePrivateName(privateIdent);
-            } else {
-                if (!lc.getCurrentScope().findPrivateName(name)) {
-                    throw error(AbstractParser.message("invalid.private.ident"), privateIdent.getToken());
-                }
+            if (!lc.getCurrentScope().findPrivateName(privateIdent.getName())) {
+                throw error(AbstractParser.message("invalid.private.ident"), privateIdent.getToken());
             }
         }
 
@@ -4183,7 +4192,7 @@ public class Parser extends AbstractParser {
                     final boolean isPrivate = type == TokenType.PRIVATE_IDENT;
                     final IdentNode property;
                     if (isPrivate) {
-                        property = privateIdentifier(false);
+                        property = privateIdentifierUse();
                     } else {
                         property = getIdentifierName();
                     }
@@ -4410,7 +4419,7 @@ public class Parser extends AbstractParser {
                     final boolean isPrivate = type == TokenType.PRIVATE_IDENT;
                     final IdentNode property;
                     if (!isSuper && isPrivate) {
-                        property = privateIdentifier(false);
+                        property = privateIdentifierUse();
                     } else {
                         property = getIdentifierName();
                     }
