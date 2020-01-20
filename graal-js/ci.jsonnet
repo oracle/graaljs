@@ -69,6 +69,13 @@ local common = import '../common.jsonnet';
     timelimit: '10:00',
   },
 
+  local jsInteropJmhBenchmarks {
+    run+: [
+        ["mx", "--dy", "/compiler", "--kill-with-sigquit", "benchmark", "--results-file", "bench-results.json", "js-interop-jmh:JS_INTEROP_MICRO_BENCHMARKS", "--", "--", "com.oracle.truffle.js.jmh.JMHArrayInteropBenchmark"]
+    ]
+    timelimit: '30:00',
+  },
+
   builds: [
     // jdk 8 - linux
     graalJs + common.jdk8 + common.gate   + common.linux + gateGraalImport  + {environment+: {GATE_TAGS: 'style,fullbuild'}}    + {name: 'js-gate-style-fullbuild-graal-import-jdk8-linux-amd64'},
@@ -93,5 +100,8 @@ local common = import '../common.jsonnet';
 
     // jdk 11 - linux aarch64
     graalJs + common.jdk11 + common.gate  + common.linux_aarch64 + gateGraalTip     + {environment+: {GATE_TAGS: 'default'}}            + {name: 'js-gate-default-graal-tip-jdk11-linux-aarch64'},
+
+    // js interop benchmarks
+    graalJs + common.jdk8 + common.bench  + common.linux + gateGraalTip  + jsInteropJmhBenchmarks  + {environment+: {GATE_TAGS: 'default'}}  + {name: 'js-interop-jmh-bechmarks-jdk8-linux-amd64'},
   ],
 }

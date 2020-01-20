@@ -435,6 +435,20 @@ suite = {
       "testProject" : True,
     },
 
+    "com.oracle.truffle.js.jmh" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "sdk:GRAAL_SDK",
+        "GRAALJS",
+        "mx:JMH_1_21"
+      ],
+      "checkstyle" : "com.oracle.truffle.js",
+      "javaCompliance" : "8+",
+      "annotationProcessors" : ["mx:JMH_1_21"],
+      "spotbugsIgnoresGenerated" : True,
+    },
+
     "com.oracle.truffle.js.test.external" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -625,5 +639,17 @@ suite = {
         "./": "file:README.md",
       },
     },
+
+    "JS_INTEROP_MICRO_BENCHMARKS" : {
+      "subDir" : "src",
+      "dependencies" : ["com.oracle.truffle.js.jmh"],
+      "exclude" : [
+        "mx:JUNIT"
+      ],
+      "distDependencies" : [
+        "sdk:GRAAL_SDK",
+        "GRAALJS"
+      ]
+    }
   }
 }
