@@ -1451,7 +1451,7 @@ public class Parser extends AbstractParser {
      *
      * @return Class expression node.
      */
-    private Expression classExpression(boolean yield, boolean await) {
+    private ClassNode classExpression(boolean yield, boolean await) {
         assert type == CLASS;
         int classLineNumber = line;
         long classToken = token;
@@ -1518,8 +1518,7 @@ public class Parser extends AbstractParser {
      * </pre>
      */
     private ClassNode classTail(int classLineNumber, long classToken, IdentNode className, boolean yield, boolean await) {
-        boolean oldStrictMode = isStrictMode;
-        isStrictMode = true;
+        assert isStrictMode;
         Scope classScope = Scope.createClass(lc.getCurrentScope());
         if (className != null) {
             classScope.putSymbol(new Symbol(className.getName(), Symbol.IS_CONST));
@@ -1641,7 +1640,6 @@ public class Parser extends AbstractParser {
             return new ClassNode(classToken, classFinish, className, classHeritage, constructor, classElements, classScope, instanceFieldCount);
         } finally {
             lc.pop(classNode);
-            isStrictMode = oldStrictMode;
         }
     }
 
