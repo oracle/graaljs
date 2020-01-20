@@ -1652,7 +1652,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             ReceiverCheckNode receiverCheck = (depth == 0) ? new JSClassCheckNode(JSObject.getJSClass(jsobject)) : shapeCheck;
             if (JSAdapter.isJSAdapter(store)) {
                 return new JSAdapterPropertyGetNode(receiverCheck);
-            } else if (JSProxy.isProxy(store) && !(key instanceof HiddenKey)) {
+            } else if (JSProxy.isProxy(store) && JSRuntime.isPropertyKey(key)) {
                 if (isRequired()) {
                     return new JSProxyDispatcherRequiredPropertyGetNode(context, key, receiverCheck, isMethod());
                 } else {
