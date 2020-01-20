@@ -69,7 +69,7 @@ local common = import '../common.jsonnet';
     timelimit: '10:00',
   },
 
-  local jsInteropJmhBenchmarks {
+  local jsInteropJmhBenchmarks = {
     run+: [
         ["mx", "--dy", "/compiler", "--kill-with-sigquit", "benchmark", "--results-file", "bench-results.json", "js-interop-jmh:JS_INTEROP_MICRO_BENCHMARKS", "--", "--", "com.oracle.truffle.js.jmh.JMHArrayInteropBenchmark"]
     ]
