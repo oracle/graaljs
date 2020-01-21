@@ -78,13 +78,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
   }, {
-    "filePath" : "intl/date-format/month-far-future.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15359"
-  }, {
     "filePath" : "intl/date-format/property-override-date-style.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
@@ -249,12 +242,6 @@
     "filePath" : "intl/regress-7982.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/regress-8604.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "FAIL"
-    }
   }, {
     "filePath" : "intl/regress-8657.js",
     "status" : "FAIL",
@@ -455,27 +442,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
-    "filePath" : "mjsunit/compiler/escape-analysis-arguments.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15354"
-  }, {
-    "filePath" : "mjsunit/compiler/function-caller.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15354"
-  }, {
-    "filePath" : "mjsunit/compiler/math-trunc.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15356"
-  }, {
     "filePath" : "mjsunit/compiler/regress-445907.js",
     "status" : "SKIP",
     "runInIsolation" : true,
@@ -483,7 +449,7 @@
   }, {
     "filePath" : "mjsunit/compiler/regress-801097.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "comment" : "needs larger stack, at least 21m is needed"
   }, {
     "filePath" : "mjsunit/compiler/regress-9017.js",
     "status" : "FAIL",
@@ -549,7 +515,8 @@
     "status" : "FAIL",
     "statusOverrides" : {
       "AARCH64" : "PASS"
-    }
+    },
+    "comment" : "needs larger stack, at least 3m is needed"
   }, {
     "filePath" : "mjsunit/duplicate-parameters.js",
     "status" : "FAIL",
@@ -1378,13 +1345,6 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
-    "filePath" : "mjsunit/regress/regress-347262.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15354"
-  }, {
     "filePath" : "mjsunit/regress/regress-350865.js",
     "status" : "SKIP",
     "comment" : "NOW: Consistently fails with NoClassDefFoundError. Sets stack size and uses infinite recursion. BEFORE: spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
@@ -1400,7 +1360,8 @@
     "status" : "FAIL",
     "statusOverrides" : {
       "AARCH64" : "PASS"
-    }
+    },
+    "comment" : "needs larger stack, at least 6m is needed"
   }, {
     "filePath" : "mjsunit/regress/regress-360733.js",
     "runInIsolation" : true,
@@ -1430,11 +1391,8 @@
   }, {
     "filePath" : "mjsunit/regress/regress-475705.js",
     "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
     "runInIsolation" : true,
-    "comment" : "test with (expected) stack overflows that might influence other tests; sometimes fails on SVM (GR-15488)"
+    "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
     "filePath" : "mjsunit/regress/regress-487981.js",
     "runInIsolation" : true,
@@ -1672,7 +1630,7 @@
   }, {
     "filePath" : "mjsunit/regress/regress-903874.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
+    "comment" : "needs larger stack, at least 12m is needed"
   }, {
     "filePath" : "mjsunit/regress/regress-904707.js",
     "status" : "FAIL",
@@ -1902,7 +1860,7 @@
     "statusOverrides" : {
       "AARCH64" : "PASS"
     },
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "comment" : "needs larger stack, at least 6m is needed"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-816961.js",
     "status" : "FAIL",

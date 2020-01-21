@@ -1,5 +1,13 @@
 [
 {
+  "name":"com.ibm.icu.impl.ICUCurrencyDisplayInfoProvider",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"com.ibm.icu.impl.ICUCurrencyMetaInfo",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
   "name":"com.ibm.icu.text.NumberFormatServiceShim",
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },
