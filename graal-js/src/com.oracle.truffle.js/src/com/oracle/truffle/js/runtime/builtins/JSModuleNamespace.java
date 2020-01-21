@@ -174,11 +174,14 @@ public final class JSModuleNamespace extends JSBuiltinObject {
     private static Object getBindingValue(ExportResolution binding) {
         JSModuleRecord targetModule = binding.getModule();
         MaterializedFrame targetEnv = targetModule.getEnvironment();
+        if (targetEnv == null) {
+            // Module has not been linked yet.
+            throw Errors.createReferenceErrorNotDefined(binding.getBindingName(), null);
+        }
         FrameSlot frameSlot = targetEnv.getFrameDescriptor().findFrameSlot(binding.getBindingName());
-        assert frameSlot != null;
         if (JSFrameUtil.hasTemporalDeadZone(frameSlot) && targetEnv.isObject(frameSlot) && FrameUtil.getObjectSafe(targetEnv, frameSlot) == Dead.instance()) {
             // If it is an uninitialized binding, throw a ReferenceError
-            throw Errors.createReferenceErrorNotDefined(frameSlot.getIdentifier(), null);
+            throw Errors.createReferenceErrorNotDefined(binding.getBindingName(), null);
         }
         return targetEnv.getValue(frameSlot);
     }
