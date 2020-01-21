@@ -55,7 +55,6 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -175,12 +174,14 @@ public final class JSModuleNamespace extends JSBuiltinObject {
     private static Object getBindingValue(ExportResolution binding) {
         JSModuleRecord targetModule = binding.getModule();
         MaterializedFrame targetEnv = targetModule.getEnvironment();
+        if (targetEnv == null) {
+            // Module has not been linked yet.
+            throw Errors.createReferenceErrorNotDefined(binding.getBindingName(), null);
+        }
         FrameSlot frameSlot = targetEnv.getFrameDescriptor().findFrameSlot(binding.getBindingName());
-        assert frameSlot != null;
         if (JSFrameUtil.hasTemporalDeadZone(frameSlot) && targetEnv.isObject(frameSlot) && FrameUtil.getObjectSafe(targetEnv, frameSlot) == Dead.instance()) {
             // If it is an uninitialized binding, throw a ReferenceError
-            JSContext context = JavaScriptLanguage.getCurrentJSRealm().getContext();
-            throw Errors.createReferenceErrorNotDefined(context, frameSlot.getIdentifier(), null);
+            throw Errors.createReferenceErrorNotDefined(binding.getBindingName(), null);
         }
         return targetEnv.getValue(frameSlot);
     }
