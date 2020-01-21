@@ -110,43 +110,43 @@ class GraalNodeJsProject(mx.NativeProject):  # pylint: disable=too-many-ancestor
 class GraalNodeJsBuildTask(mx.NativeBuildTask):
     def __init__(self, project, args):
         mx.NativeBuildTask.__init__(self, args, project)
+        self._debug_mode = hasattr(self.args, 'debug') and self.args.debug
+        self._build_dir = join(_suite.dir, 'out', 'Debug' if self._debug_mode else 'Release')
 
     def build(self):
         pre_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=False)
 
         pythonPath = join(_suite.mxDir, 'python2')
         prevPATH = os.environ['PATH']
-        _setEnvVar('PATH', "%s:%s" % (pythonPath, prevPATH))
+        _setEnvVar('PATH', '%s%s%s' % (pythonPath, os.pathsep, prevPATH))
 
-        debug_mode = hasattr(self.args, 'debug') and self.args.debug
-        debug = ['--debug'] if debug_mode else []
+
+        debug = ['--debug'] if self._debug_mode else []
         shared_library = ['--enable-shared-library'] if hasattr(self.args, 'sharedlibrary') and self.args.sharedlibrary else []
 
+        newest_config_file_ts = GraalNodeJsBuildTask._get_newest_ts(_config_files, fatalIfMissing=True)
+        newest_generated_config_file_ts = GraalNodeJsBuildTask._get_newest_ts(_generated_config_files, fatalIfMissing=False)
+        # Lazily generate config files only if `configure` and `configure.py` are older than the files they generate.
+        # If we don't do this, the `Makefile` always considers `config.gypi` out of date, triggering a second, unnecessary configure.
+        lazy_generator = ['--lazy-generator'] if newest_generated_config_file_ts.isNewerThan(newest_config_file_ts) else []
+        windows = ['--ninja', '--openssl-no-asm', '--without-etw', '--without-snapshot'] if _currentOs == 'windows' else []
+
+        _mxrun(['python',
+                join(_suite.dir, 'configure'),
+                '--partly-static',
+                '--without-dtrace',
+                '--without-snapshot',
+                '--without-node-snapshot',
+                '--java-home', _java_home()
+                ] + debug + shared_library + lazy_generator + windows,
+                cwd=_suite.dir, verbose=True)
+
         if _currentOs == 'windows':
-            _mxrun([join(_suite.dir, 'vcbuild.bat'),
-                    'projgen',
-                    'no-cctest',
-                    'noetw',
-                    'nosnapshot',
-                    'java-home', _java_home()
-                    ] + debug + shared_library,
-                   cwd=_suite.dir, verbose=True)
+            prevPATH = os.environ['PATH']
+            _setEnvVar('PATH', '%s%s%s' % (prevPATH, os.pathsep, mx.library('NINJA').extract_path))
+            verbose = ['-v'] if mx.get_opts().verbose else []
+            _mxrun(['ninja'] + verbose + ['-j%d' % self.parallelism, '-C', self._build_dir])
         else:
-            newest_config_file_ts = GraalNodeJsBuildTask._get_newest_ts(_config_files, fatalIfMissing=True)
-            newest_generated_config_file_ts = GraalNodeJsBuildTask._get_newest_ts(_generated_config_files, fatalIfMissing=False)
-            # Lazily generate config files only if `configure` and `configure.py` are older than the files they generate.
-            # If we don't do this, the `Makefile` always considers `config.gypi` out of date, triggering a second, unnecessary configure.
-            lazy_generator = ['--lazy-generator'] if newest_generated_config_file_ts.isNewerThan(newest_config_file_ts) else []
-
-            _mxrun([join(_suite.dir, 'configure'),
-                    '--partly-static',
-                    '--without-dtrace',
-                    '--without-snapshot',
-                    '--without-node-snapshot',
-                    '--java-home', _java_home()
-                    ] + debug + shared_library + lazy_generator,
-                   cwd=_suite.dir, verbose=True)
-
             verbose = 'V={}'.format('1' if mx.get_opts().verbose else '')
             _mxrun([mx.gmake_cmd(), '-j%d' % self.parallelism, verbose], cwd=_suite.dir, verbose=True)
 
@@ -159,7 +159,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         mx.logv('Newest time-stamp before building: {}\nNewest time-stamp after building: {}\nHas built? {}'.format(pre_ts, post_ts, post_ts.isNewerThan(pre_ts)))
         built = post_ts.isNewerThan(pre_ts)
         if built and _currentOs == 'darwin':
-            nodePath = join(_suite.dir, 'out', 'Debug' if debug_mode else 'Release', 'node')
+            nodePath = join(self._build_dir, 'node')
             _mxrun(['install_name_tool', '-add_rpath', join(_java_home(), 'jre', 'lib'), '-add_rpath', join(_java_home(), 'lib'), nodePath], verbose=True)
         return built
 
@@ -169,10 +169,8 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
     def clean(self, forBuild=False):
         if not forBuild:
             if _currentOs == 'windows':
-                mx.run([join(_suite.dir, 'vcbuild.bat'),
-                        'clean',
-                        'java-home', _java_home()
-                    ], cwd=_suite.dir)
+                if exists (self._build_dir):
+                  mx.run([join(mx.library('NINJA').extract_path, 'ninja.exe'), '-C', self._build_dir, '-t', 'clean'])
             else:
                 mx.run([mx.gmake_cmd(), 'clean'], nonZeroIsFatal=False, cwd=_suite.dir)
             for f in _generated_config_files:
@@ -431,11 +429,7 @@ def prepareNodeCmdLine(args, add_graal_vm_args=True):
     '''
     mode, vmArgs, progArgs = setupNodeEnvironment(args, add_graal_vm_args)
     _setEnvVar('NODE_JVM_OPTIONS', ' '.join(vmArgs))
-
-    if _currentOs == 'windows':
-        return [join(_suite.dir, mode, 'node.exe')] + progArgs
-    else:
-        return [join(_suite.dir, 'out', mode, 'node')] + progArgs
+    return [join(_suite.dir, 'out', mode, 'node')] + progArgs
 
 def parse_js_args(args):
     vmArgs, progArgs = mx_graal_js.parse_js_args(args)

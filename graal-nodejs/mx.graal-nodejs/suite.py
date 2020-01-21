@@ -47,20 +47,8 @@ suite = {
         "coremodules",
       ],
       "class" : "GraalNodeJsProject",
-      "os_arch": {
-        "windows": {
-          "<others>": {
-            "results" : ["Release/node.exe", "out/headers/include"],
-            "output" : "."
-          },
-        },
-        "<others>": {
-          "<others>": {
-            "results" : ["Release/node", "headers/include"],
-            "output" : "out"
-          },
-        },
-      },
+      "results" : ["Release/<exe:node>", "headers/include"],
+      "output" : "out"
     },
     "com.oracle.truffle.trufflenode" : {
       "subDir" : "mx.graal-nodejs",
@@ -142,31 +130,6 @@ suite = {
         "artifactId" : "graal-nodejs-jniboundaryprofiler",
       }
     },
-    "TRUFFLENODE_HEADERS" : {
-      "native" : True,
-      "platformDependent" : True,
-      "description" : "Generated header files",
-      "os_arch": {
-        "windows": {
-          "<others>": {
-            "layout" : {
-              "./" : [
-                "dependency:trufflenodeNative/out/headers/include",
-              ],
-            },
-          },
-        },
-        "<others>": {
-          "<others>": {
-            "layout" : {
-              "./" : [
-                "dependency:trufflenodeNative/headers/include",
-              ],
-            },
-          },
-        },
-      },
-    },
     "TRUFFLENODE_GRAALVM_SUPPORT" : {
       "native" : True,
       "platformDependent" : True,
@@ -178,7 +141,7 @@ suite = {
             "path": "deps/npm",
             "exclude": ["deps/npm/test"]
           },
-          "dependency:TRUFFLENODE_HEADERS",
+          "dependency:trufflenodeNative/headers/include",
         ],
         "NODE_README.md" : "file:README.md",
         "bin/" : [
