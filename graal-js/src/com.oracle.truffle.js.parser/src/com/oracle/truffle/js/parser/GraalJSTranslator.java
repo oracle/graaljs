@@ -352,11 +352,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             functionData = factory.createFunctionData(context, functionNode.getLength(), functionName, isConstructor, isDerivedConstructor, isStrict, isBuiltin,
                             needsParentFrame, isGeneratorFunction, isAsyncFunction, isClassConstructor, strictFunctionProperties, needsNewTarget);
 
+            ClassNode enclosingClass = lc.getCurrentClass();
             Environment parentEnv = environment;
             functionData.setLazyInit(fd -> {
                 GraalJSTranslator translator = newTranslator(parentEnv);
                 translator.translateFunctionOnDemand(functionNode, fd, isStrict, isArrowFunction, isGeneratorFunction, isAsyncFunction, isDerivedConstructor, isGlobal,
-                                needsNewTarget, needsParentFrame, functionName);
+                                needsNewTarget, needsParentFrame, functionName, enclosingClass);
             });
             functionRoot = null;
         } else {
@@ -465,7 +466,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private FunctionRootNode translateFunctionOnDemand(FunctionNode functionNode, JSFunctionData functionData, boolean isStrict, boolean isArrowFunction, boolean isGeneratorFunction,
-                    boolean isAsyncFunction, boolean isDerivedConstructor, boolean isGlobal, boolean needsNewTarget, boolean needsParentFrame, String functionName) {
+                    boolean isAsyncFunction, boolean isDerivedConstructor, boolean isGlobal, boolean needsNewTarget, boolean needsParentFrame, String functionName, ClassNode enclosingClass) {
+        assert lc.isEmpty();
+        if (enclosingClass != null) {
+            lc.push(enclosingClass);
+        }
         try (EnvironmentCloseable functionEnv = enterFunctionEnvironment(isStrict, isArrowFunction, isGeneratorFunction, isDerivedConstructor, isAsyncFunction, isGlobal)) {
             FunctionEnvironment currentFunction = currentFunction();
             currentFunction.setFunctionName(functionName);
@@ -483,14 +488,17 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             currentFunction.freeze();
             assert currentFunction.isDeepFrozen();
 
-            assert getLexicalContext().isEmpty();
-            getLexicalContext().push(functionNode);
+            lc.push(functionNode);
             try {
                 JavaScriptNode body = translateFunctionBody(functionNode, isArrowFunction, isGeneratorFunction, isAsyncFunction, isDerivedConstructor, needsNewTarget,
                                 currentFunction, Collections.emptyList());
                 return createFunctionRoot(functionNode, functionData, currentFunction, body);
             } finally {
-                getLexicalContext().pop(functionNode);
+                lc.pop(functionNode);
+            }
+        } finally {
+            if (enclosingClass != null) {
+                lc.pop(enclosingClass);
             }
         }
     }
@@ -940,6 +948,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 if (!identNode.isPropertyName()) {
                     String varName = identNode.getName();
                     findSymbol(varName);
+                }
+                return true;
+            }
+
+            @Override
+            public boolean enterAccessNode(AccessNode accessNode) {
+                if (accessNode.isPrivate()) {
+                    findSymbol(accessNode.getPrivateName());
                 }
                 return true;
             }
