@@ -44,18 +44,20 @@ import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import com.oracle.truffle.js.scriptengine.GraalJSScriptEngine;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import javax.script.Bindings;
+import javax.script.ScriptContext;
+import javax.script.ScriptException;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
 import org.junit.Test;
 
-import javax.script.Bindings;
-import javax.script.ScriptContext;
-import javax.script.ScriptException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
+import com.oracle.truffle.js.scriptengine.GraalJSScriptEngine;
 
 /**
  * Various tests for accessing JavaScript array in Java and accessing appropriate Java objects as
@@ -99,16 +101,19 @@ public class ScriptEngineInteropArrayTest {
     @Test
     public void testArrayBasic() throws ScriptException {
         final HostAccess hostAccess = HostAccess.newBuilder().targetTypeMapping(List.class, Object.class, null, (v) -> v).build();
-        final Engine graalEngine = Engine.newBuilder().build();
-        try (GraalJSScriptEngine graalJSScriptEngine = GraalJSScriptEngine.create(
+        try (Engine graalEngine = Engine.newBuilder().build(); GraalJSScriptEngine graalJSScriptEngine = GraalJSScriptEngine.create(
                         graalEngine,
-                        Context.newBuilder(ID).allowHostAccess(hostAccess).engine(graalEngine))) {
+                        Context.newBuilder(ID).allowHostAccess(hostAccess))) {
             Object o = graalJSScriptEngine.eval(JS_ARRAY_STRING);
             assertTrue(o instanceof List);
             List<?> list = (List<?>) o;
-            assertEquals(JAVA_ARRAY.length, list.size());
-            assertEquals(JS_ARRAY_STRING, Arrays.toString(list.toArray()));
+            commonCheck(list);
         }
+    }
+
+    private static void commonCheck(List<?> list) {
+        assertEquals(JAVA_LIST.size(), list.size());
+        assertEquals(JAVA_LIST, list);
     }
 
     @Test
@@ -130,10 +135,9 @@ public class ScriptEngineInteropArrayTest {
      */
     private static void testArrayAsParameter(String methodName) throws ScriptException {
         final HostAccess hostAccess = HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).build();
-        final Engine graalEngine = Engine.newBuilder().build();
-        try (GraalJSScriptEngine graalJSScriptEngine = GraalJSScriptEngine.create(
+        try (Engine graalEngine = Engine.newBuilder().build(); GraalJSScriptEngine graalJSScriptEngine = GraalJSScriptEngine.create(
                         graalEngine,
-                        Context.newBuilder(ID).allowHostAccess(hostAccess).engine(graalEngine))) {
+                        Context.newBuilder(ID).allowHostAccess(hostAccess))) {
             Bindings bindings = graalJSScriptEngine.getBindings(ScriptContext.ENGINE_SCOPE);
             ToBePassedToJS objectFromJava = new ToBePassedToJS();
             bindings.put("objectFromJava", objectFromJava);
@@ -150,10 +154,9 @@ public class ScriptEngineInteropArrayTest {
     @Test
     public void testJavaArrayAsJSArray() throws ScriptException {
         final HostAccess hostAccess = HostAccess.newBuilder().targetTypeMapping(List.class, Object.class, null, (v) -> v).allowArrayAccess(true).build();
-        final Engine graalEngine = Engine.newBuilder().build();
-        try (GraalJSScriptEngine graalJSScriptEngine = GraalJSScriptEngine.create(
+        try (Engine graalEngine = Engine.newBuilder().build(); GraalJSScriptEngine graalJSScriptEngine = GraalJSScriptEngine.create(
                         graalEngine,
-                        Context.newBuilder(ID).allowHostAccess(hostAccess).engine(graalEngine))) {
+                        Context.newBuilder(ID).allowHostAccess(hostAccess))) {
             Bindings bindings = graalJSScriptEngine.getBindings(ScriptContext.ENGINE_SCOPE);
             bindings.put("arrayFromJava", JAVA_ARRAY);
             Object o = graalJSScriptEngine.eval("var recreatedArray = [];" +
@@ -162,8 +165,7 @@ public class ScriptEngineInteropArrayTest {
                             "recreatedArray");
             assertTrue(o instanceof List);
             List<?> list = (List<?>) o;
-            assertEquals(JAVA_ARRAY.length, list.size());
-            assertEquals(JAVA_LIST, list);
+            commonCheck(list);
         }
     }
 
@@ -174,10 +176,9 @@ public class ScriptEngineInteropArrayTest {
     @Test
     public void testJavaListAsJSArray() throws ScriptException {
         final HostAccess hostAccess = HostAccess.newBuilder().targetTypeMapping(List.class, Object.class, null, (v) -> v).allowListAccess(true).build();
-        final Engine graalEngine = Engine.newBuilder().build();
-        try (GraalJSScriptEngine graalJSScriptEngine = GraalJSScriptEngine.create(
+        try (Engine graalEngine = Engine.newBuilder().build(); GraalJSScriptEngine graalJSScriptEngine = GraalJSScriptEngine.create(
                         graalEngine,
-                        Context.newBuilder(ID).allowHostAccess(hostAccess).engine(graalEngine))) {
+                        Context.newBuilder(ID).allowHostAccess(hostAccess))) {
             Bindings bindings = graalJSScriptEngine.getBindings(ScriptContext.ENGINE_SCOPE);
             bindings.put("arrayFromJava", JAVA_LIST);
             Object o = graalJSScriptEngine.eval("var recreatedArray = [];" +
@@ -186,62 +187,42 @@ public class ScriptEngineInteropArrayTest {
                             "recreatedArray");
             assertTrue(o instanceof List);
             List<?> list = (List<?>) o;
-            assertEquals(JAVA_LIST.size(), list.size());
-            assertEquals(JAVA_LIST, list);
+            commonCheck(list);
         }
     }
 
-    /**
-     * Test that a Java array can be returned from a Java method called in JavaScript and accessed
-     * as JavaScript array.
-     */
     @Test
     public void testJavaReturnArrayAsJSArray() throws ScriptException {
-        final HostAccess hostAccess = HostAccess.newBuilder().targetTypeMapping(List.class, Object.class, null, (v) -> v).allowAccessAnnotatedBy(HostAccess.Export.class).allowArrayAccess(
-                        true).build();
-        final Engine graalEngine = Engine.newBuilder().build();
-        try (GraalJSScriptEngine graalJSScriptEngine = GraalJSScriptEngine.create(
-                        graalEngine,
-                        Context.newBuilder(ID).allowHostAccess(hostAccess).engine(graalEngine))) {
-            Bindings bindings = graalJSScriptEngine.getBindings(ScriptContext.ENGINE_SCOPE);
-            ToBePassedToJS objectFromJava = new ToBePassedToJS();
-            bindings.put("objectFromJava", objectFromJava);
-            Object o = graalJSScriptEngine.eval("var arrayFromJava = objectFromJava.methodThatReturnsArray();" +
-                            "var recreatedArray = [];" +
-                            "for (var i = 0; i < arrayFromJava.length; i++)" +
-                            "recreatedArray.push(arrayFromJava[i]);" +
-                            "recreatedArray");
-            assertTrue(o instanceof List);
-            List<?> list = (List<?>) o;
-            assertEquals(JAVA_ARRAY.length, list.size());
-            assertEquals(JAVA_LIST, list);
-        }
+        testJavaReturnArrayOrListAsJSArray(true);
+    }
+
+    @Test
+    public void testJavaReturnListAsJSArray() throws ScriptException {
+        testJavaReturnArrayOrListAsJSArray(false);
     }
 
     /**
-     * Test that a Java List can be returned from a Java method called in JavaScript and accessed as
-     * JavaScript array.
+     * Test that a Java array or Java List can be returned from a Java method called in JavaScript
+     * and accessed as JavaScript array.
      */
-    @Test
-    public void testJavaReturnListAsJSArray() throws ScriptException {
-        final HostAccess hostAccess = HostAccess.newBuilder().targetTypeMapping(List.class, Object.class, null, (v) -> v).allowAccessAnnotatedBy(HostAccess.Export.class).allowListAccess(
-                        true).build();
-        final Engine graalEngine = Engine.newBuilder().build();
-        try (GraalJSScriptEngine graalJSScriptEngine = GraalJSScriptEngine.create(
+    private static void testJavaReturnArrayOrListAsJSArray(boolean isArray) throws ScriptException {
+        final HostAccess.Builder hostAccessBuilder = HostAccess.newBuilder().targetTypeMapping(List.class, Object.class, null, (v) -> v).allowAccessAnnotatedBy(HostAccess.Export.class);
+        final HostAccess hostAccess = (isArray ? hostAccessBuilder.allowArrayAccess(true) : hostAccessBuilder.allowListAccess(true)).build();
+        String methodName = isArray ? "methodThatReturnsArray" : "methodThatReturnsList";
+        try (Engine graalEngine = Engine.newBuilder().build(); GraalJSScriptEngine graalJSScriptEngine = GraalJSScriptEngine.create(
                         graalEngine,
-                        Context.newBuilder(ID).allowHostAccess(hostAccess).engine(graalEngine))) {
+                        Context.newBuilder(ID).allowHostAccess(hostAccess))) {
             Bindings bindings = graalJSScriptEngine.getBindings(ScriptContext.ENGINE_SCOPE);
             ToBePassedToJS objectFromJava = new ToBePassedToJS();
             bindings.put("objectFromJava", objectFromJava);
-            Object o = graalJSScriptEngine.eval("var arrayFromJava = objectFromJava.methodThatReturnsList();" +
+            Object o = graalJSScriptEngine.eval("var arrayFromJava = objectFromJava." + methodName + "();" +
                             "var recreatedArray = [];" +
                             "for (var i = 0; i < arrayFromJava.length; i++)" +
                             "recreatedArray.push(arrayFromJava[i]);" +
                             "recreatedArray");
             assertTrue(o instanceof List);
             List<?> list = (List<?>) o;
-            assertEquals(JAVA_LIST.size(), list.size());
-            assertEquals(JAVA_LIST, list);
+            commonCheck(list);
         }
     }
 }
