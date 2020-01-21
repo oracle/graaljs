@@ -298,6 +298,7 @@ public final class GraalJSAccess {
             contextBuilder.option(JSContextOptions.V8_COMPATIBILITY_MODE_NAME, "true");
             contextBuilder.option(JSContextOptions.INTL_402_NAME, "true");
             contextBuilder.option(JSContextOptions.SYNTAX_EXTENSIONS_NAME, "false");
+            contextBuilder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2020");
             // Node.js does not have global load property
             contextBuilder.option(JSContextOptions.LOAD_NAME, "false");
             // Node.js provides its own console
