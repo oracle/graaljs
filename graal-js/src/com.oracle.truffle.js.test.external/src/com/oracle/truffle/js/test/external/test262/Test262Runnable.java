@@ -224,7 +224,9 @@ public class Test262Runnable extends TestRunnable {
                     "import.meta",
                     "numeric-separator-literal",
                     "proxy-missing-checks",
-                    "WeakRef"
+    }));
+    private static final Set<String> ES2021_FEATURES = new HashSet<>(Arrays.asList(new String[]{
+                    "WeakRef",
     }));
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {
@@ -267,11 +269,13 @@ public class Test262Runnable extends TestRunnable {
         Source[] harnessSources = ((Test262) suite).getHarnessSources(runStrict, asyncTest, getIncludes(scriptCodeList));
 
         boolean supported = true;
-        boolean requiresES2020 = false;
+        int featureVersion = JSTruffleOptions.LatestECMAScriptVersion;
         for (String feature : features) {
             if (SUPPORTED_FEATURES.contains(feature)) {
                 if (ES2020_FEATURES.contains(feature)) {
-                    requiresES2020 = true;
+                    featureVersion = JSTruffleOptions.ECMAScript2020;
+                } else if (ES2021_FEATURES.contains(feature)) {
+                    featureVersion = JSTruffleOptions.ECMAScript2021;
                 }
             } else {
                 assert UNSUPPORTED_FEATURES.contains(feature) : feature;
@@ -281,8 +285,7 @@ public class Test262Runnable extends TestRunnable {
 
         TestFile.EcmaVersion ecmaVersion = testFile.getEcmaVersion();
         if (ecmaVersion == null) {
-            int version = requiresES2020 ? JSTruffleOptions.ECMAScript2020 : JSTruffleOptions.LatestECMAScriptVersion;
-            ecmaVersion = TestFile.EcmaVersion.forVersions(version);
+            ecmaVersion = TestFile.EcmaVersion.forVersions(featureVersion);
         }
         String prefix = runStrict ? "\"use strict\";" : "";
         Source testSource = null;

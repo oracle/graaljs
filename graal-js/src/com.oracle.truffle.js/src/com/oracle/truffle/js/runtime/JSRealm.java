@@ -1208,7 +1208,7 @@ public class JSRealm {
         if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019) {
             putGlobalProperty("globalThis", global);
         }
-        if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2020) {
+        if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2021) {
             putGlobalProperty(JSWeakRef.CLASS_NAME, getWeakRefConstructor());
         }
         if (context.getContextOptions().isGraalBuiltin()) {
