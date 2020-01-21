@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.jmh;
 
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -54,22 +53,20 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
-@Warmup(iterations = 2)
-@Measurement(iterations = 2)
+@Warmup(iterations = 5)
+@Measurement(iterations = 5)
 @Fork(2)
 public class JMHArrayInteropBenchmark {
     @State(Scope.Thread)
     public static class MyState {
         public static final int ARRAY_SIZE = 10000;
 
-        Engine engine;
         Context context;
         Source preSizedArraySource;
 
         @Setup(Level.Trial)
         public void doSetup() {
-            engine = Engine.newBuilder().build();
-            context = Context.newBuilder("js").engine(engine).build();
+            context = Context.create("js");
             preSizedArraySource = Source.create("js", "new Array(" + ARRAY_SIZE + ")");
         }
 

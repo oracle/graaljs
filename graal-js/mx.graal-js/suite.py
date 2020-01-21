@@ -642,6 +642,7 @@ suite = {
 
     "JS_INTEROP_MICRO_BENCHMARKS" : {
       "subDir" : "src",
+      "description" : "Graal.js JMH Interop Suite",
       "dependencies" : ["com.oracle.truffle.js.jmh"],
       "exclude" : [
         "mx:JUNIT"

@@ -43,14 +43,25 @@ local common = import '../common.jsonnet';
     timelimit: '30:00',
   },
 
-  local gateGraalTip = {
+  local graalTip = {
     setup+: [
       ['git', 'clone', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/graalvm/graal.git'], '../../graal'],
       ['mx', 'sversions'],
     ],
+    timelimit: '30:00',
+  },
+
+  local gateGraalTip = graalTip + {
     run+: [
       ['mx', 'build', '--force-javac'],
       gateCmd,
+    ],
+    timelimit: '30:00',
+  },
+
+  local benchmarkGraalTip = graalTip + {
+    run+: [
+      ['mx', '--dynamicimports', '/compiler', 'build', '--force-javac'],
     ],
     timelimit: '30:00',
   },
@@ -69,10 +80,11 @@ local common = import '../common.jsonnet';
     timelimit: '10:00',
   },
 
-  local jsInteropJmhBenchmarks = {
+  local interopJmhBenchmarks = {
     run+: [
-        ["mx", "--dy", "/compiler", "--kill-with-sigquit", "benchmark", "--results-file", "bench-results.json", "js-interop-jmh:JS_INTEROP_MICRO_BENCHMARKS", "--", "--", "com.oracle.truffle.js.jmh.JMHArrayInteropBenchmark"]
-    ]
+        ["mx", "--dynamicimports", "/compiler", "--kill-with-sigquit", "benchmark", "--results-file", "bench-results.json", "js-interop-jmh:JS_INTEROP_MICRO_BENCHMARKS", "--", "-Dgraal.TraceTruffleCompilation=true"],
+        ['bench-uploader.py', 'bench-results.json'],
+    ],
     timelimit: '30:00',
   },
 
@@ -101,7 +113,7 @@ local common = import '../common.jsonnet';
     // jdk 11 - linux aarch64
     graalJs + common.jdk11 + common.gate  + common.linux_aarch64 + gateGraalTip     + {environment+: {GATE_TAGS: 'default'}}            + {name: 'js-gate-default-graal-tip-jdk11-linux-aarch64'},
 
-    // js interop benchmarks
-    graalJs + common.jdk8 + common.bench  + common.linux + gateGraalTip  + jsInteropJmhBenchmarks  + {environment+: {GATE_TAGS: 'default'}}  + {name: 'js-interop-jmh-bechmarks-jdk8-linux-amd64'},
+    // interop benchmarks
+    graalJs + common.jdk8 + common.bench  + common.x52 + benchmarkGraalTip         + interopJmhBenchmarks                             + {name: 'js-interop-jmh-bechmarks-jdk8-x52'},
   ],
 }

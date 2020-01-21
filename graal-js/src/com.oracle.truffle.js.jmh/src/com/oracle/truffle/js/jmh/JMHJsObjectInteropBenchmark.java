@@ -44,7 +44,6 @@ import java.util.Random;
 import java.util.stream.IntStream;
 
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -57,40 +56,41 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
-@Warmup(iterations = 2)
-@Measurement(iterations = 2)
+@Warmup(iterations = 5)
+@Measurement(iterations = 5)
 @Fork(2)
-public class JMHJsObjectInteropTest {
+public class JMHJsObjectInteropBenchmark {
     @State(Scope.Thread)
     public static class MyState {
-        public static final int MIN_PROPERTY_KEY_LENGHT = 3;
-        public static final int MAX_PROPERTY_KEY_LENGHT = 10;
-        public static final int MIN_PROPERTY_VALUE_LENGHT = 3;
-        public static final int MAX_PROPERTY_VALUE_LENGHT = 50;
+        public static final int MIN_PROPERTY_KEY_LENGTH = 3;
+        public static final int MAX_PROPERTY_KEY_LENGTH = 10;
+        public static final int MIN_PROPERTY_VALUE_LENGTH = 3;
+        public static final int MAX_PROPERTY_VALUE_LENGTH = 50;
         public static final int PROPERTIES_COUNT = 10;
         public static final Character[] ALLOWED_CHARS = IntStream.range(0, 256).filter(i -> Character.isAlphabetic(i) || Character.isDigit(i)).mapToObj(i -> (char) i).toArray(Character[]::new);
 
-        String generateString(int lenght) {
+        String generateString(int length) {
             StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < lenght; i++) {
+            for (int i = 0; i < length; i++) {
                 sb.append(ALLOWED_CHARS[rnd.nextInt(ALLOWED_CHARS.length)]);
             }
             return sb.toString();
         }
 
-        Engine engine;
         Context context;
         Source emptyObjectSource;
         String[] propertyKeys;
+        String[] propertyValues;
         Random rnd;
 
         @Setup(Level.Trial)
         public void doSetup() {
-            engine = Engine.newBuilder().build();
-            context = Context.newBuilder("js").engine(engine).build();
+            context = Context.create("js");
             emptyObjectSource = Source.create("js", "new Object()");
             rnd = new Random();
-            propertyKeys = IntStream.range(0, PROPERTIES_COUNT).mapToObj(i -> generateString(3 + rnd.nextInt(MAX_PROPERTY_KEY_LENGHT - MIN_PROPERTY_KEY_LENGHT + 1))).toArray(
+            propertyKeys = IntStream.range(0, PROPERTIES_COUNT).mapToObj(i -> generateString(3 + rnd.nextInt(MAX_PROPERTY_KEY_LENGTH - MIN_PROPERTY_KEY_LENGTH + 1))).toArray(
+                            String[]::new);
+            propertyValues = IntStream.range(0, PROPERTIES_COUNT).mapToObj(i -> generateString(3 + rnd.nextInt(MAX_PROPERTY_VALUE_LENGTH - MIN_PROPERTY_VALUE_LENGTH + 1))).toArray(
                             String[]::new);
         }
 
@@ -104,7 +104,7 @@ public class JMHJsObjectInteropTest {
     public Value testPopulateJSObjectFromJava(MyState state) {
         Value object = state.context.eval(state.emptyObjectSource);
         for (int i = 0; i < MyState.PROPERTIES_COUNT; i++) {
-            object.putMember(state.propertyKeys[i], state.generateString(3 + state.rnd.nextInt(MyState.MAX_PROPERTY_VALUE_LENGHT - MyState.MIN_PROPERTY_VALUE_LENGHT + 1)));
+            object.putMember(state.propertyKeys[i], state.propertyValues[i]);
         }
         return object;
     }
