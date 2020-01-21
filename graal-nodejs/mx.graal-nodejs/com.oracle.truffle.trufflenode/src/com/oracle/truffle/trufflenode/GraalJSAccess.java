@@ -303,6 +303,8 @@ public final class GraalJSAccess {
             contextBuilder.option(JSContextOptions.LOAD_NAME, "false");
             // Node.js provides its own console
             contextBuilder.option(JSContextOptions.CONSOLE_NAME, "false");
+            // Node.js does not have global arguments property
+            contextBuilder.option(JSContextOptions.GLOBAL_ARGUMENTS_NAME, "false");
 
             exposeGC = options.isGCExposed();
             evaluator = contextBuilder.build();
