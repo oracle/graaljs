@@ -747,8 +747,10 @@
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
     "filePath" : "mjsunit/harmony/atomics.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "mjsunit/harmony/bigint/regressions.js",
     "status" : "FAIL",
@@ -782,8 +784,10 @@
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
     "filePath" : "mjsunit/harmony/numeric-separator.js",
-    "status" : "FAIL",
-    "comment" : "Expects 09_1_3 to parse as 913 (but is SyntaxError according to the spec)."
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "mjsunit/harmony/optional-chaining.js",
     "status" : "FAIL",
@@ -794,12 +798,16 @@
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
     "filePath" : "mjsunit/harmony/private-fields-ic.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "mjsunit/harmony/private-fields-special-object.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "mjsunit/harmony/private-fields-static.js",
     "status" : "FAIL",
@@ -1172,10 +1180,6 @@
     "status" : "SKIP",
     "comment" : "Tests specificities of V8's RegExp implementation (the use of different tiers)."
   }, {
-    "filePath" : "mjsunit/regress-930045.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
     "filePath" : "mjsunit/regress-966460.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
@@ -1455,10 +1459,6 @@
     "status" : "SKIP",
     "comment" : "Calls v8StringMaxLength. Checks that longer strings cannot be parsed as RegExps by V8."
   }, {
-    "filePath" : "mjsunit/regress/regress-7642.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "mjsunit/regress/regress-779407.js",
     "runInIsolation" : true,
     "comment" : "memory intensive test"
@@ -1481,8 +1481,7 @@
   }, {
     "filePath" : "mjsunit/regress/regress-800651.js",
     "ecmaVersion" : {
-      "minVersion" : 11,
-      "maxVersion" : 11
+      "minVersion" : 11
     },
     "status" : "PASS",
     "comment" : "ECMAScript 2020 feature"
@@ -1549,8 +1548,10 @@
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
     "filePath" : "mjsunit/regress/regress-899537.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "mjsunit/regress/regress-900585.js",
     "ecmaVersion" : {
@@ -2556,8 +2557,10 @@
     "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/reindexing-in-classes.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "mjsunit/serialize-embedded-error.js",
     "status" : "FAIL"

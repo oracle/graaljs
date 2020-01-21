@@ -67,6 +67,7 @@ import com.oracle.truffle.js.test.external.suite.TestRunnable;
 import com.oracle.truffle.js.test.external.suite.TestSuite;
 
 public class TestV8Runnable extends TestRunnable {
+
     private static final int LONG_RUNNING_TEST_SECONDS = 55;
 
     private static final String HARMONY_HASHBANG_FLAG = "--harmony-hashbang";
@@ -74,6 +75,9 @@ public class TestV8Runnable extends TestRunnable {
     private static final String HARMONY_DYNAMIC_IMPORT = "--harmony-dynamic-import";
     private static final String HARMONY_NUMERIC_SEPARATOR = "--harmony-numeric-separator";
     private static final String HARMONY_PROMISE_ALL_SETTLED = "--harmony-promise-all-settled";
+    private static final String HARMONY_SHAREDARRAYBUFFER = "--harmony-sharedarraybuffer";
+    private static final String HARMONY_PUBLIC_FIELDS = "--harmony-public-fields";
+    private static final String HARMONY_PRIVATE_FIELDS = "--harmony-private-fields";
 
     private static final String FLAGS_PREFIX = "// Flags: ";
     private static final Pattern FLAGS_FIND_PATTERN = Pattern.compile("// Flags: (.*)");
@@ -96,6 +100,8 @@ public class TestV8Runnable extends TestRunnable {
         Map<String, String> extraOptions = new HashMap<>(2);
         if (flags.contains(HARMONY_HASHBANG_FLAG)) {
             extraOptions.put(JSContextOptions.SHEBANG_NAME, "true");
+        } else if (flags.contains(HARMONY_SHAREDARRAYBUFFER)) {
+            extraOptions.put(JSContextOptions.SHARED_ARRAY_BUFFER_NAME, "true");
         }
 
         suite.logVerbose("Starting: " + getName());
@@ -108,7 +114,7 @@ public class TestV8Runnable extends TestRunnable {
         TestFile.EcmaVersion ecmaVersion = testFile.getEcmaVersion();
         if (ecmaVersion == null) {
             boolean requiresES2020 = flags.contains(HARMONY_IMPORT_META) || flags.contains(HARMONY_DYNAMIC_IMPORT) || flags.contains(HARMONY_NUMERIC_SEPARATOR) ||
-                            flags.contains(HARMONY_PROMISE_ALL_SETTLED);
+                            flags.contains(HARMONY_PROMISE_ALL_SETTLED) || flags.contains(HARMONY_PUBLIC_FIELDS) || flags.contains(HARMONY_PRIVATE_FIELDS);
             ecmaVersion = TestFile.EcmaVersion.forVersions(requiresES2020 ? JSTruffleOptions.ECMAScript2020 : JSTruffleOptions.LatestECMAScriptVersion);
         }
 
