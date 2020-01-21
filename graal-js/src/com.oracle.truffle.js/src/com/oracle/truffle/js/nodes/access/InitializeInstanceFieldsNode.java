@@ -56,6 +56,17 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
+/**
+ * InitializeInstanceFields (O, constructor.[[Fields]]).
+ *
+ * Relies on the following invariants:
+ * <ul>
+ * <li>The number of instance fields is constant.
+ * <li>For each field index, the key will either always or never be a private name.
+ * <li>For each field index, an initializer will either always or never be present.
+ * <li>For each field index, [[IsAnonymousFunctionDefinition]] will never change.
+ * </ul>
+ */
 public abstract class InitializeInstanceFieldsNode extends JavaScriptNode {
     @Child @Executed protected JavaScriptNode targetNode;
     @Child @Executed protected JavaScriptNode sourceNode;
