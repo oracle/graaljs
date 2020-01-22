@@ -2516,6 +2516,7 @@ public final class GraalJSAccess {
             agent.processAllPromises();
         } catch (Exception ex) {
             ex.printStackTrace();
+            System.exit(1);
         }
     }
 
