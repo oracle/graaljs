@@ -292,6 +292,8 @@ void Http2Session::Http2Settings::RefreshDefaults(Environment* env) {
       DEFAULT_SETTINGS_HEADER_TABLE_SIZE;
   buffer[IDX_SETTINGS_ENABLE_PUSH] =
       DEFAULT_SETTINGS_ENABLE_PUSH;
+  buffer[IDX_SETTINGS_MAX_CONCURRENT_STREAMS] =
+      DEFAULT_SETTINGS_MAX_CONCURRENT_STREAMS;
   buffer[IDX_SETTINGS_INITIAL_WINDOW_SIZE] =
       DEFAULT_SETTINGS_INITIAL_WINDOW_SIZE;
   buffer[IDX_SETTINGS_MAX_FRAME_SIZE] =
@@ -301,6 +303,7 @@ void Http2Session::Http2Settings::RefreshDefaults(Environment* env) {
   buffer[IDX_SETTINGS_COUNT] =
     (1 << IDX_SETTINGS_HEADER_TABLE_SIZE) |
     (1 << IDX_SETTINGS_ENABLE_PUSH) |
+    (1 << IDX_SETTINGS_MAX_CONCURRENT_STREAMS) |
     (1 << IDX_SETTINGS_INITIAL_WINDOW_SIZE) |
     (1 << IDX_SETTINGS_MAX_FRAME_SIZE) |
     (1 << IDX_SETTINGS_MAX_HEADER_LIST_SIZE);
@@ -745,8 +748,10 @@ void Http2Session::Close(uint32_t code, bool socket_closed) {
   flags_ |= SESSION_STATE_CLOSING;
 
   // Stop reading on the i/o stream
-  if (stream_ != nullptr)
+  if (stream_ != nullptr) {
+    flags_ |= SESSION_STATE_READING_STOPPED;
     stream_->ReadStop();
+  }
 
   // If the socket is not closed, then attempt to send a closing GOAWAY
   // frame. There is no guarantee that this GOAWAY will be received by
@@ -1219,12 +1224,16 @@ int Http2Session::OnDataChunkReceived(nghttp2_session* handle,
       stream->inbound_consumed_data_while_paused_ += avail;
 
     // If we have a gathered a lot of data for output, try sending it now.
-    if (session->outgoing_length_ > 4096) session->SendPendingData();
+    if (session->outgoing_length_ > 4096 ||
+        stream->available_outbound_length_ > 4096) {
+      session->SendPendingData();
+    }
   } while (len != 0);
 
   // If we are currently waiting for a write operation to finish, we should
   // tell nghttp2 that we want to wait before we process more input data.
   if (session->flags_ & SESSION_STATE_WRITE_IN_PROGRESS) {
+    CHECK_NE(session->flags_ & SESSION_STATE_READING_STOPPED, 0);
     session->flags_ |= SESSION_STATE_NGHTTP2_RECV_PAUSED;
     return NGHTTP2_ERR_PAUSE;
   }
@@ -1583,6 +1592,7 @@ void Http2Session::OnStreamAfterWrite(WriteWrap* w, int status) {
   ClearOutgoing(status);
 
   if ((flags_ & SESSION_STATE_READING_STOPPED) &&
+      !(flags_ & SESSION_STATE_WRITE_IN_PROGRESS) &&
       nghttp2_session_want_read(session_)) {
     flags_ &= ~SESSION_STATE_READING_STOPPED;
     stream_->ReadStart();
@@ -3226,6 +3236,7 @@ void Initialize(Local<Object> target,
 
   NODE_DEFINE_CONSTANT(constants, DEFAULT_SETTINGS_HEADER_TABLE_SIZE);
   NODE_DEFINE_CONSTANT(constants, DEFAULT_SETTINGS_ENABLE_PUSH);
+  NODE_DEFINE_CONSTANT(constants, DEFAULT_SETTINGS_MAX_CONCURRENT_STREAMS);
   NODE_DEFINE_CONSTANT(constants, DEFAULT_SETTINGS_INITIAL_WINDOW_SIZE);
   NODE_DEFINE_CONSTANT(constants, DEFAULT_SETTINGS_MAX_FRAME_SIZE);
   NODE_DEFINE_CONSTANT(constants, MAX_MAX_FRAME_SIZE);

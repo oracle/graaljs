@@ -41,8 +41,11 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import java.text.Normalizer;
+import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import com.ibm.icu.text.Collator;
@@ -91,6 +94,32 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
 
     public static final JSCollator INSTANCE = new JSCollator();
 
+    // Valid values of Unicode collation ("co") type key.
+    // Based on https://github.com/unicode-org/cldr/blob/master/common/bcp47/collation.xml
+    // "standard" and "search" are missing from the list because ECMAScript spec says:
+    // The values "standard" and "search" must not be used as elements
+    // in any [[SortLocaleData]].[[<locale>]].[[co]]
+    // and [[SearchLocaleData]].[[<locale>]].[[co]] list.
+    private static final Set<String> VALID_COLLATION_TYPES = new HashSet<>(Arrays.asList(new String[]{
+                    "big5han",
+                    "compat",
+                    "dict",
+                    "direct",
+                    "ducet",
+                    "emoji",
+                    "eor",
+                    "gb2312",
+                    "phonebk",
+                    "phonetic",
+                    "pinyin",
+                    "reformed",
+                    "searchjl",
+                    "stroke",
+                    "trad",
+                    "unihan",
+                    "zhuyin"
+    }));
+
     static {
         Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
         INTERNAL_STATE_PROPERTY = JSObjectUtil.makeHiddenProperty(INTERNAL_STATE_ID, allocator.locationForType(InternalState.class, EnumSet.of(LocationModifier.NonNull, LocationModifier.Final)));
@@ -132,39 +161,71 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
     @TruffleBoundary
     public static void initializeCollator(JSContext ctx, JSCollator.InternalState state, String[] locales, String usage, @SuppressWarnings("unused") String localeMatcher, Boolean optkn, String optkf,
                     String sensitivity, Boolean ignorePunctuation) {
-        Boolean kn = optkn;
-        String kf = optkf;
         state.initializedCollator = true;
         state.usage = usage;
         String selectedTag = IntlUtil.selectedLocale(ctx, locales);
         Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : ctx.getLocale();
         Locale strippedLocale = selectedLocale.stripExtensions();
-        for (String ek : selectedLocale.getUnicodeLocaleKeys()) {
-            if (kn == null && ek.equals("kn")) {
-                String ktype = selectedLocale.getUnicodeLocaleType(ek);
-                if (ktype.isEmpty() || ktype.equals("true")) {
-                    kn = true;
-                }
+        Locale.Builder builder = new Locale.Builder().setLocale(strippedLocale);
+
+        Boolean kn = optkn;
+        if (kn == null) {
+            String knType = selectedLocale.getUnicodeLocaleType("kn");
+            if ("".equals(knType) || "true".equals(knType)) {
+                kn = true;
+            } else if ("false".equals(knType)) {
+                kn = false;
             }
-            if (kf == null && ek.equals("kf")) {
-                String ktype = selectedLocale.getUnicodeLocaleType(ek);
-                if (!ktype.isEmpty()) {
-                    kf = ktype;
-                }
+            if (kn != null) {
+                // "BCP 47 Language Tag to Unicode BCP 47 Locale Identifier" algorithm
+                // used during CanonicalizeLanguageTag() operation requires the removal
+                // of "true" value of a unicode extension i.e. -u-kn-true should be converted to
+                // -u-kn.
+                String value = kn ? "" : "false";
+                builder.setUnicodeLocaleKeyword("kn", value);
             }
         }
         if (kn != null) {
             state.numeric = kn;
         }
+
+        String kf = optkf;
+        if (kf == null) {
+            String kfType = selectedLocale.getUnicodeLocaleType("kf");
+            if ("upper".equals(kfType) || "lower".equals(kfType) || "false".equals(kfType)) {
+                kf = kfType;
+                builder.setUnicodeLocaleKeyword("kf", kfType);
+            }
+        }
         if (kf != null) {
             state.caseFirst = kf;
         }
+
+        // Set collator.[[Usage]] to usage.
+        // "search" maps to -u-co-search, "sort" means the default behavior
+        boolean searchUsage = IntlUtil.SEARCH.equals(usage);
+        if (!searchUsage) {
+            String coType = selectedLocale.getUnicodeLocaleType("co");
+            if (VALID_COLLATION_TYPES.contains(coType)) {
+                builder.setUnicodeLocaleKeyword("co", coType);
+                state.collation = coType;
+            }
+        }
+
         if (sensitivity != null) {
             state.sensitivity = sensitivity;
         }
         state.ignorePunctuation = ignorePunctuation;
-        state.locale = strippedLocale.toLanguageTag();
-        state.collator = Collator.getInstance(Locale.forLanguageTag(state.locale));
+        Locale collatorLocale = builder.build();
+        state.locale = collatorLocale.toLanguageTag();
+
+        // "search" is not allowed in r.[[co]] but it must be set in the Locale
+        // used by the Collator (so that the Collator uses "search" collation).
+        if (searchUsage) {
+            collatorLocale = builder.setUnicodeLocaleKeyword("co", IntlUtil.SEARCH).build();
+        }
+
+        state.collator = Collator.getInstance(collatorLocale);
         state.collator.setDecomposition(Collator.CANONICAL_DECOMPOSITION);
         switch (state.sensitivity) {
             case IntlUtil.BASE:
@@ -210,7 +271,11 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
     @TruffleBoundary
     public static int compare(DynamicObject collatorObj, String one, String two) {
         Collator collator = getCollatorProperty(collatorObj);
-        return collator.compare(one, two);
+        return collator.compare(normalize(one), normalize(two));
+    }
+
+    private static String normalize(String s) {
+        return Normalizer.normalize(s, Normalizer.Form.NFD);
     }
 
     @TruffleBoundary
@@ -225,7 +290,7 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
         if (input == null) {
             return null;
         }
-        StringBuilder resultBuilder = new StringBuilder(Normalizer.normalize(input, Normalizer.Form.NFD));
+        StringBuilder resultBuilder = new StringBuilder(normalize(input));
         stripLlAccents(resultBuilder);
         Pattern accentMatchingPattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
         return accentMatchingPattern.matcher(resultBuilder).replaceAll("");

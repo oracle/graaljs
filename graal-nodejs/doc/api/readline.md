@@ -5,7 +5,8 @@
 > Stability: 2 - Stable
 
 The `readline` module provides an interface for reading data from a [Readable][]
-stream (such as [`process.stdin`]) one line at a time. It can be accessed using:
+stream (such as [`process.stdin`][]) one line at a time. It can be accessed
+using:
 
 ```js
 const readline = require('readline');
@@ -211,7 +212,7 @@ later if necessary.
 Calling `rl.pause()` does not immediately pause other events (including
 `'line'`) from being emitted by the `readline.Interface` instance.
 
-### rl.prompt([preserveCursor])
+### rl.prompt(\[preserveCursor\])
 <!-- YAML
 added: v0.1.98
 -->
@@ -278,7 +279,7 @@ added: v0.1.98
 The `rl.setPrompt()` method sets the prompt that will be written to `output`
 whenever `rl.prompt()` is called.
 
-### rl.write(data[, key])
+### rl.write(data\[, key\])
 <!-- YAML
 added: v0.1.98
 -->
@@ -348,7 +349,7 @@ async function processLineByLine() {
 }
 ```
 
-## readline.clearLine(stream, dir[, callback])
+## readline.clearLine(stream, dir\[, callback\])
 <!-- YAML
 added: v0.7.7
 changes:
@@ -359,9 +360,9 @@ changes:
 
 * `stream` {stream.Writable}
 * `dir` {number}
-  * `-1` - to the left from cursor
-  * `1` - to the right from cursor
-  * `0` - the entire line
+  * `-1`: to the left from cursor
+  * `1`: to the right from cursor
+  * `0`: the entire line
 * `callback` {Function} Invoked once the operation completes.
 * Returns: {boolean} `false` if `stream` wishes for the calling code to wait for
   the `'drain'` event to be emitted before continuing to write additional data;
@@ -370,7 +371,7 @@ changes:
 The `readline.clearLine()` method clears current line of given [TTY][] stream
 in a specified direction identified by `dir`.
 
-## readline.clearScreenDown(stream[, callback])
+## readline.clearScreenDown(stream\[, callback\])
 <!-- YAML
 added: v0.7.7
 changes:
@@ -489,7 +490,7 @@ function completer(linePartial, callback) {
 }
 ```
 
-## readline.cursorTo(stream, x[, y][, callback])
+## readline.cursorTo(stream, x\[, y\]\[, callback\])
 <!-- YAML
 added: v0.7.7
 changes:
@@ -509,7 +510,7 @@ changes:
 The `readline.cursorTo()` method moves cursor to the specified position in a
 given [TTY][] `stream`.
 
-## readline.emitKeypressEvents(stream[, interface])
+## readline.emitKeypressEvents(stream\[, interface\])
 <!-- YAML
 added: v0.7.7
 -->
@@ -535,7 +536,7 @@ if (process.stdin.isTTY)
   process.stdin.setRawMode(true);
 ```
 
-## readline.moveCursor(stream, dx, dy[, callback])
+## readline.moveCursor(stream, dx, dy\[, callback\])
 <!-- YAML
 added: v0.7.7
 changes:

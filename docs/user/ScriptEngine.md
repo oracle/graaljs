@@ -1,4 +1,4 @@
-# GraalVM JavaScript ScriptEngine implementation
+# GraalVM JavaScript ScriptEngine Implementation
 
 GraalVM JavaScript provides a JSR-223 compliant `javax.script.ScriptEngine` implementation.
 Note that this is feature is provided for legacy reasons in order to allow easier migration for implementations currently based on a `ScriptEngine`.
@@ -19,7 +19,7 @@ These options control the sandboxing rules applied to evaluated JavaScript code 
 started in Nashorn compatibility mode (`--js.nashorn-compat=true`).
 
 To set an option via `Bindings`, use `Bindings.put(<option name>, true)` **before** the engine's script context is initialized. Note that
-even a call to `Bindings#get(String)` may lead to context initialization. 
+even a call to `Bindings#get(String)` may lead to context initialization.
 The following code shows how to enable `polyglot.js.allowHostAccess` via `Bindings`:
 ```
 ScriptEngine engine = new ScriptEngineManager().getEngineByName("JavaScript");
@@ -30,11 +30,11 @@ bindings.put("javaObj", new Object());
 engine.eval("(javaObj instanceof Java.type('java.lang.Object'));"); // would not work without allowHostAccess and allowHostClassLookup
 ```
 This example would not work if the user would call e.g. `engine.eval("var x = 1;")` before calling `bindings.put("polyglot.js.allowHostAccess", true);`, since
-any call to `eval` forces context initialization. 
+any call to `eval` forces context initialization.
 
 `Context` options can also be passed to `GraalJSScriptEngine` directly, via an instance of `Context.Builder`:
 ```
-ScriptEngine engine = GraalJSScriptEngine.create(null, 
+ScriptEngine engine = GraalJSScriptEngine.create(null,
         Context.newBuilder("js")
         .allowHostAccess(HostAccess.ALL)
         .allowHostClassLookup(s -> true));

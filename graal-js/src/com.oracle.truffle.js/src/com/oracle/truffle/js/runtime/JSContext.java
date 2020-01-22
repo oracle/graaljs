@@ -112,6 +112,7 @@ import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
+import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.builtins.SIMDType;
@@ -188,6 +189,9 @@ public class JSContext {
 
     /** The TRegex engine, as obtained from RegexLanguage. */
     @CompilationFinal private Object tRegexEngine;
+
+    private PrepareStackTraceCallback prepareStackTraceCallback;
+    private final Assumption prepareStackTraceCallbackNotUsedAssumption;
 
     private PromiseRejectionTracker promiseRejectionTracker;
     private final Assumption promiseRejectionTrackerNotUsedAssumption;
@@ -342,6 +346,7 @@ public class JSContext {
     private final JSObjectFactory symbolFactory;
     private final JSObjectFactory mapFactory;
     private final JSObjectFactory setFactory;
+    private final JSObjectFactory weakRefFactory;
     private final JSObjectFactory weakMapFactory;
     private final JSObjectFactory weakSetFactory;
     private final JSObjectFactory proxyFactory;
@@ -409,6 +414,7 @@ public class JSContext {
 
         this.moduleNamespaceFactory = JSObjectFactory.createBound(this, Null.instance, JSModuleNamespace.makeInitialShape(this).createFactory());
 
+        this.prepareStackTraceCallbackNotUsedAssumption = Truffle.getRuntime().createAssumption("prepareStackTraceCallbackNotUsedAssumption");
         this.promiseHookNotUsedAssumption = Truffle.getRuntime().createAssumption("promiseHookNotUsedAssumption");
         this.promiseRejectionTrackerNotUsedAssumption = Truffle.getRuntime().createAssumption("promiseRejectionTrackerNotUsedAssumption");
         this.importMetaInitializerNotUsedAssumption = Truffle.getRuntime().createAssumption("importMetaInitializerNotUsedAssumption");
@@ -460,6 +466,7 @@ public class JSContext {
         this.symbolFactory = builder.create(JSSymbol.INSTANCE);
         this.mapFactory = builder.create(JSMap.INSTANCE);
         this.setFactory = builder.create(JSSet.INSTANCE);
+        this.weakRefFactory = builder.create(JSWeakRef.INSTANCE);
         this.weakMapFactory = builder.create(JSWeakMap.INSTANCE);
         this.weakSetFactory = builder.create(JSWeakSet.INSTANCE);
         this.proxyFactory = builder.create(JSProxy.INSTANCE);
@@ -501,7 +508,7 @@ public class JSContext {
         this.segmentIteratorFactory = builder.create(JSRealm::getSegmentIteratorPrototype, JSSegmenter::makeInitialSegmentIteratorShape);
 
         this.javaPackageFactory = builder.create(objectPrototypeSupplier, JavaPackage.INSTANCE::makeInitialShape);
-        boolean nashornCompat = isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
+        boolean nashornCompat = isOptionNashornCompatibilityMode();
         this.jsAdapterFactory = nashornCompat ? builder.create(JSAdapter.INSTANCE) : null;
         this.javaImporterFactory = nashornCompat ? builder.create(JavaImporter.instance()) : null;
 
@@ -765,6 +772,10 @@ public class JSContext {
 
     public final JSObjectFactory getMapFactory() {
         return mapFactory;
+    }
+
+    public final JSObjectFactory getWeakRefFactory() {
+        return weakRefFactory;
     }
 
     public final JSObjectFactory getWeakMapFactory() {
@@ -1218,6 +1229,22 @@ public class JSContext {
         return contextOptions.isAwaitOptimization();
     }
 
+    public final void setPrepareStackTraceCallback(PrepareStackTraceCallback callback) {
+        invalidatePrepareStackTraceCallbackNotUsedAssumption();
+        this.prepareStackTraceCallback = callback;
+    }
+
+    public final PrepareStackTraceCallback getPrepareStackTraceCallback() {
+        return prepareStackTraceCallbackNotUsedAssumption.isValid() ? null : prepareStackTraceCallback;
+    }
+
+    private void invalidatePrepareStackTraceCallbackNotUsedAssumption() {
+        if (prepareStackTraceCallbackNotUsedAssumption.isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            prepareStackTraceCallbackNotUsedAssumption.invalidate("prepare stack trace callback unused");
+        }
+    }
+
     public final void setPromiseRejectionTracker(PromiseRejectionTracker tracker) {
         invalidatePromiseRejectionTrackerNotUsedAssumption();
         this.promiseRejectionTracker = tracker;
@@ -1486,7 +1513,7 @@ public class JSContext {
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] arguments = frame.getArguments();
-                Object obj = JSRuntime.requireObjectCoercible(JSArguments.getThisObject(arguments));
+                Object obj = JSRuntime.requireObjectCoercible(JSArguments.getThisObject(arguments), JSContext.this);
                 if (JSArguments.getUserArgumentCount(arguments) < 1) {
                     return Undefined.instance;
                 }

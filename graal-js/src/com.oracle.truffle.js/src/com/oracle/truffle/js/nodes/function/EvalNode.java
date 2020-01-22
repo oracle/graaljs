@@ -121,7 +121,7 @@ public abstract class EvalNode extends JavaScriptNode {
     }
 
     @TruffleBoundary
-    private static String formatEvalOrigin(Node callNode) {
+    private static String formatEvalOrigin(Node callNode, JSContext context) {
         if (callNode == null) {
             return null;
         }
@@ -129,7 +129,7 @@ public abstract class EvalNode extends JavaScriptNode {
         String sourceName = sourceSection.getSource().getName();
         String callerName = callNode.getRootNode().getName();
         if (callerName == null || callerName.startsWith(":")) {
-            callerName = JSError.ANONYMOUS_FUNCTION_NAME_STACK_TRACE;
+            callerName = JSError.getAnonymousFunctionNameStackTrace(context);
         }
         if (sourceName.startsWith(Evaluator.EVAL_AT_SOURCE_NAME_PREFIX)) {
             return Evaluator.EVAL_AT_SOURCE_NAME_PREFIX + callerName + " (" + sourceName + ")";
@@ -139,12 +139,12 @@ public abstract class EvalNode extends JavaScriptNode {
     }
 
     @TruffleBoundary
-    public static String findAndFormatEvalOrigin(Node evalNode) {
-        String evalOrigin = formatEvalOrigin(evalNode);
+    public static String findAndFormatEvalOrigin(Node evalNode, JSContext context) {
+        String evalOrigin = formatEvalOrigin(evalNode, context);
         if (evalOrigin != null) {
             return evalOrigin;
         }
-        return Truffle.getRuntime().iterateFrames(frameInstance -> formatEvalOrigin(frameInstance.getCallNode()));
+        return Truffle.getRuntime().iterateFrames(frameInstance -> formatEvalOrigin(frameInstance.getCallNode(), context));
     }
 
     @Override
@@ -238,12 +238,18 @@ public abstract class EvalNode extends JavaScriptNode {
         private Source sourceFromString(CharSequence sourceCode) {
             String evalSourceName = null;
             if (context.isOptionV8CompatibilityMode()) {
-                evalSourceName = formatEvalOrigin(this);
+                evalSourceName = formatEvalOrigin(this, context);
             }
+            final SourceSection section = getRootNode().getSourceSection();
+            boolean internal = section != null && section.getSource().isInternal();
             if (evalSourceName == null) {
-                evalSourceName = Evaluator.EVAL_SOURCE_NAME;
+                if (internal) {
+                    evalSourceName = section.getSource().getName();
+                } else {
+                    evalSourceName = Evaluator.EVAL_SOURCE_NAME;
+                }
             }
-            return Source.newBuilder(JavaScriptLanguage.ID, sourceCode.toString(), evalSourceName).build();
+            return Source.newBuilder(JavaScriptLanguage.ID, sourceCode.toString(), evalSourceName).internal(internal).build();
         }
 
         protected DirectEvalNode copyUninitialized() {

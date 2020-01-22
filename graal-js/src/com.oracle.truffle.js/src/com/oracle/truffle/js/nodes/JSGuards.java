@@ -80,6 +80,7 @@ import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
+import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
@@ -421,6 +422,14 @@ public final class JSGuards {
 
     public static boolean isJSSet(Object value) {
         return JSSet.isJSSet(value);
+    }
+
+    public static boolean isJSWeakRef(DynamicObject value) {
+        return JSWeakRef.isJSWeakRef(value);
+    }
+
+    public static boolean isJSWeakRef(Object value) {
+        return JSWeakRef.isJSWeakRef(value);
     }
 
     public static boolean isJSWeakMap(DynamicObject value) {

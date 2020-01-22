@@ -274,7 +274,7 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         static JSFunctionData createThrower(JSContext context) {
-            return createThunkImpl(context, ThrowNode.create(PropertyNode.createProperty(context, AccessFunctionNode.create(), VALUE_KEY)));
+            return createThunkImpl(context, ThrowNode.create(PropertyNode.createProperty(context, AccessFunctionNode.create(), VALUE_KEY), context));
         }
 
         static JSFunctionData createValueThunk(JSContext context) {

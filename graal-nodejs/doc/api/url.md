@@ -21,10 +21,6 @@ The `url` module provides two APIs for working with URLs: a legacy API that is
 Node.js specific, and a newer API that implements the same
 [WHATWG URL Standard][] used by web browsers.
 
-While the Legacy API has not been deprecated, it is maintained solely for
-backwards compatibility with existing applications. New application code
-should use the WHATWG API.
-
 A comparison between the WHATWG and Legacy APIs is provided below. Above the URL
 `'http://user:pass@sub.example.com:8080/p/a/t/h?query=string#hash'`, properties
 of an object returned by the legacy `url.parse()` are shown. Below it are
@@ -93,7 +89,7 @@ using the `delete` keyword on any properties of `URL` objects (e.g. `delete
 myURL.protocol`, `delete myURL.pathname`, etc) has no effect but will still
 return `true`.
 
-#### Constructor: new URL(input[, base])
+#### Constructor: new URL(input\[, base\])
 
 * `input` {string} The absolute or relative input URL to parse. If `input`
   is relative, then `base` is required. If `input` is absolute, the `base`
@@ -316,7 +312,7 @@ The port value can be an empty string in which case the port depends on
 the protocol/scheme:
 
 | protocol | port |
-| :------- | :--- |
+| -------- | ---- |
 | "ftp"    | 21   |
 | "file"   |      |
 | "gopher" | 70   |
@@ -710,7 +706,7 @@ is the `name`, the second item of the `Array` is the `value`.
 
 Alias for [`urlSearchParams[@@iterator]()`][`urlSearchParams@@iterator()`].
 
-#### urlSearchParams.forEach(fn[, thisArg])
+#### urlSearchParams.forEach(fn\[, thisArg\])
 
 * `fn` {Function} Invoked for each name-value pair in the query
 * `thisArg` {Object} To be used as `this` value for when `fn` is called
@@ -919,7 +915,7 @@ new URL('file:///hello world').pathname; // Incorrect: /hello%20world
 fileURLToPath('file:///hello world');    // Correct:   /hello world (POSIX)
 ```
 
-### url.format(URL[, options])
+### url.format(URL\[, options\])
 <!-- YAML
 added: v7.6.0
 -->
@@ -1143,9 +1139,9 @@ The formatting process operates as follows:
   colon (`:`) character, the literal string `:` will be appended to `result`.
 * If either of the following conditions is true, then the literal string `//`
   will be appended to `result`:
-    * `urlObject.slashes` property is true;
-    * `urlObject.protocol` begins with `http`, `https`, `ftp`, `gopher`, or
-      `file`;
+  * `urlObject.slashes` property is true;
+  * `urlObject.protocol` begins with `http`, `https`, `ftp`, `gopher`, or
+    `file`;
 * If the value of the `urlObject.auth` property is truthy, and either
   `urlObject.host` or `urlObject.hostname` are not `undefined`, the value of
   `urlObject.auth` will be coerced into a string and appended to `result`
@@ -1185,7 +1181,7 @@ The formatting process operates as follows:
   string, an [`Error`][] is thrown.
 * `result` is returned.
 
-### url.parse(urlString[, parseQueryString[, slashesDenoteHost]])
+### url.parse(urlString\[, parseQueryString\[, slashesDenoteHost\]\])
 <!-- YAML
 added: v0.1.25
 changes:

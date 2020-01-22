@@ -3,14 +3,12 @@
 const { Object, SafePromise } = primordials;
 
 const { isModuleNamespaceObject } = require('internal/util/types');
-const { URL } = require('internal/url');
 const { isContext } = internalBinding('contextify');
 const {
   ERR_INVALID_ARG_TYPE,
   ERR_VM_MODULE_ALREADY_LINKED,
   ERR_VM_MODULE_DIFFERENT_CONTEXT,
   ERR_VM_MODULE_LINKING_ERRORED,
-  ERR_VM_MODULE_NOT_LINKED,
   ERR_VM_MODULE_NOT_MODULE,
   ERR_VM_MODULE_STATUS,
 } = require('internal/errors').codes;
@@ -22,7 +20,7 @@ const {
 const {
   validateInt32,
   validateUint32,
-  validateString
+  validateString,
 } = require('internal/validators');
 
 const binding = internalBinding('module_wrap');
@@ -37,29 +35,29 @@ const {
 } = binding;
 
 const STATUS_MAP = {
-  [kUninstantiated]: 'uninstantiated',
-  [kInstantiating]: 'instantiating',
-  [kInstantiated]: 'instantiated',
+  [kUninstantiated]: 'unlinked',
+  [kInstantiating]: 'linking',
+  [kInstantiated]: 'linked',
   [kEvaluating]: 'evaluating',
   [kEvaluated]: 'evaluated',
   [kErrored]: 'errored',
 };
 
 let globalModuleId = 0;
-const perContextModuleId = new WeakMap();
-const wrapMap = new WeakMap();
-const dependencyCacheMap = new WeakMap();
-const linkingStatusMap = new WeakMap();
-// ModuleWrap -> vm.SourceTextModule
-const wrapToModuleMap = new WeakMap();
 const defaultModuleName = 'vm:module';
+const perContextModuleId = new WeakMap();
+const wrapToModuleMap = new WeakMap();
 
-// TODO(devsnek): figure out AbstractModule class or protocol
+const kNoError = Symbol('kNoError');
+
 class SourceTextModule {
-  constructor(src, options = {}) {
+
+  constructor(source, options = {}) {
+    this._dependencySpecifiers = undefined;
+    this._error = kNoError;
     emitExperimentalWarning('vm.SourceTextModule');
 
-    validateString(src, 'src');
+    validateString(source, 'source');
     if (typeof options !== 'object' || options === null)
       throw new ERR_INVALID_ARG_TYPE('options', 'Object', options);
 
@@ -81,21 +79,6 @@ class SourceTextModule {
       }
     }
 
-    let { url } = options;
-    if (url !== undefined) {
-      validateString(url, 'options.url');
-      url = new URL(url).href;
-    } else if (context === undefined) {
-      url = `${defaultModuleName}(${globalModuleId++})`;
-    } else if (perContextModuleId.has(context)) {
-      const curId = perContextModuleId.get(context);
-      url = `${defaultModuleName}(${curId})`;
-      perContextModuleId.set(context, curId + 1);
-    } else {
-      url = `${defaultModuleName}(0)`;
-      perContextModuleId.set(context, 1);
-    }
-
     validateInt32(lineOffset, 'options.lineOffset');
     validateInt32(columnOffset, 'options.columnOffset');
 
@@ -111,114 +94,151 @@ class SourceTextModule {
         'options.importModuleDynamically', 'function', importModuleDynamically);
     }
 
-    const wrap = new ModuleWrap(src, url, context, lineOffset, columnOffset);
-    wrapMap.set(this, wrap);
-    linkingStatusMap.set(this, 'unlinked');
-    wrapToModuleMap.set(wrap, this);
+    let { identifier } = options;
+    if (identifier !== undefined) {
+      validateString(identifier, 'options.identifier');
+    } else if (context === undefined) {
+      identifier = `${defaultModuleName}(${globalModuleId++})`;
+    } else if (perContextModuleId.has(context)) {
+      const curId = perContextModuleId.get(context);
+      identifier = `${defaultModuleName}(${curId})`;
+      perContextModuleId.set(context, curId + 1);
+    } else {
+      identifier = `${defaultModuleName}(0)`;
+      perContextModuleId.set(context, 1);
+    }
 
-    binding.callbackMap.set(wrap, {
+    this._wrap = new ModuleWrap(
+      source, identifier, context,
+      lineOffset, columnOffset,
+    );
+    wrapToModuleMap.set(this._wrap, this);
+    this._identifier = identifier;
+    this._context = context;
+
+    binding.callbackMap.set(this._wrap, {
       initializeImportMeta,
-      importModuleDynamically: importModuleDynamically ? async (...args) => {
-        const m = await importModuleDynamically(...args);
-        if (isModuleNamespaceObject(m)) {
-          return m;
-        }
-        if (!m || !wrapMap.has(m))
-          throw new ERR_VM_MODULE_NOT_MODULE();
-        const childLinkingStatus = linkingStatusMap.get(m);
-        if (childLinkingStatus === 'errored')
-          throw m.error;
-        return m.namespace;
-      } : undefined,
+      importModuleDynamically: importModuleDynamically ?
+        importModuleDynamicallyWrap(importModuleDynamically) :
+        undefined,
     });
-
-    Object.defineProperties(this, {
-      url: { value: url, enumerable: true },
-      context: { value: context, enumerable: true },
-    });
-  }
-
-  get linkingStatus() {
-    return linkingStatusMap.get(this);
   }
 
   get status() {
-    return STATUS_MAP[wrapMap.get(this).getStatus()];
+    if (!('_error' in this)) {
+      throw new ERR_VM_MODULE_NOT_MODULE();
+    }
+    if (this._error !== kNoError) {
+      return 'errored';
+    }
+    if (this._statusOverride) {
+      return this._statusOverride;
+    }
+    return STATUS_MAP[this._wrap.getStatus()];
+  }
+
+  get identifier() {
+    if (!('_identifier' in this)) {
+      throw new ERR_VM_MODULE_NOT_MODULE();
+    }
+    return this._identifier;
+  }
+
+  get context() {
+    if (!('_context' in this)) {
+      throw new ERR_VM_MODULE_NOT_MODULE();
+    }
+    return this._context;
   }
 
   get namespace() {
-    const wrap = wrapMap.get(this);
-    if (wrap.getStatus() < kInstantiated)
-      throw new ERR_VM_MODULE_STATUS(
-        'must not be uninstantiated or instantiating'
-      );
-    return wrap.namespace();
+    if (!('_wrap' in this)) {
+      throw new ERR_VM_MODULE_NOT_MODULE();
+    }
+    if (this._wrap.getStatus() < kInstantiated) {
+      throw new ERR_VM_MODULE_STATUS('must not be unlinked or linking');
+    }
+    return this._wrap.getNamespace();
   }
 
   get dependencySpecifiers() {
-    let deps = dependencyCacheMap.get(this);
-    if (deps !== undefined)
-      return deps;
-
-    deps = wrapMap.get(this).getStaticDependencySpecifiers();
-    Object.freeze(deps);
-    dependencyCacheMap.set(this, deps);
-    return deps;
+    if (!('_dependencySpecifiers' in this)) {
+      throw new ERR_VM_MODULE_NOT_MODULE();
+    }
+    if (this._dependencySpecifiers === undefined) {
+      this._dependencySpecifiers = this._wrap.getStaticDependencySpecifiers();
+    }
+    return this._dependencySpecifiers;
   }
 
   get error() {
-    const wrap = wrapMap.get(this);
-    if (wrap.getStatus() !== kErrored)
+    if (!('_error' in this)) {
+      throw new ERR_VM_MODULE_NOT_MODULE();
+    }
+    if (this._error !== kNoError) {
+      return this._error;
+    }
+    if (this._wrap.getStatus() !== kErrored) {
       throw new ERR_VM_MODULE_STATUS('must be errored');
-    return wrap.getError();
+    }
+    return this._wrap.getError();
   }
 
   async link(linker) {
-    if (typeof linker !== 'function')
+    if (!('_link' in this)) {
+      throw new ERR_VM_MODULE_NOT_MODULE();
+    }
+
+    if (typeof linker !== 'function') {
       throw new ERR_INVALID_ARG_TYPE('linker', 'function', linker);
-    if (linkingStatusMap.get(this) !== 'unlinked')
+    }
+    if (this.status !== 'unlinked') {
       throw new ERR_VM_MODULE_ALREADY_LINKED();
-    const wrap = wrapMap.get(this);
-    if (wrap.getStatus() !== kUninstantiated)
-      throw new ERR_VM_MODULE_STATUS('must be uninstantiated');
+    }
 
-    linkingStatusMap.set(this, 'linking');
+    await this._link(linker);
 
-    const promises = wrap.link(async (specifier) => {
-      const m = await linker(specifier, this);
-      if (!m || !wrapMap.has(m))
+    this._wrap.instantiate();
+  }
+
+  async _link(linker) {
+    this._statusOverride = 'linking';
+
+    const promises = this._wrap.link(async (identifier) => {
+      const module = await linker(identifier, this);
+      if (!('_wrap' in module)) {
         throw new ERR_VM_MODULE_NOT_MODULE();
-      if (m.context !== this.context)
+      }
+      if (module.context !== this.context) {
         throw new ERR_VM_MODULE_DIFFERENT_CONTEXT();
-      const childLinkingStatus = linkingStatusMap.get(m);
-      if (childLinkingStatus === 'errored')
+      }
+      if (module.status === 'errored') {
         throw new ERR_VM_MODULE_LINKING_ERRORED();
-      if (childLinkingStatus === 'unlinked')
-        await m.link(linker);
-      return wrapMap.get(m);
+      }
+      if (module.status === 'unlinked') {
+        await module._link(linker);
+      }
+      return module._wrap;
     });
 
     try {
-      if (promises !== undefined)
+      if (promises !== undefined) {
         await SafePromise.all(promises);
-      linkingStatusMap.set(this, 'linked');
-    } catch (err) {
-      linkingStatusMap.set(this, 'errored');
-      throw err;
+      }
+    } catch (e) {
+      this._error = e;
+      throw e;
+    } finally {
+      this._statusOverride = undefined;
     }
-  }
+  };
 
-  instantiate() {
-    const wrap = wrapMap.get(this);
-    const status = wrap.getStatus();
-    if (status === kInstantiating || status === kEvaluating)
-      throw new ERR_VM_MODULE_STATUS('must not be instantiating or evaluating');
-    if (linkingStatusMap.get(this) !== 'linked')
-      throw new ERR_VM_MODULE_NOT_LINKED();
-    wrap.instantiate();
-  }
 
   async evaluate(options = {}) {
+    if (!('_wrap' in this)) {
+      throw new ERR_VM_MODULE_NOT_MODULE();
+    }
+
     if (typeof options !== 'object' || options === null) {
       throw new ERR_INVALID_ARG_TYPE('options', 'Object', options);
     }
@@ -229,24 +249,39 @@ class SourceTextModule {
     } else {
       validateUint32(timeout, 'options.timeout', true);
     }
-
     const { breakOnSigint = false } = options;
     if (typeof breakOnSigint !== 'boolean') {
       throw new ERR_INVALID_ARG_TYPE('options.breakOnSigint', 'boolean',
                                      breakOnSigint);
     }
-
-    const wrap = wrapMap.get(this);
-    const status = wrap.getStatus();
+    const status = this._wrap.getStatus();
     if (status !== kInstantiated &&
         status !== kEvaluated &&
         status !== kErrored) {
       throw new ERR_VM_MODULE_STATUS(
-        'must be one of instantiated, evaluated, and errored'
+        'must be one of linked, evaluated, or errored'
       );
     }
-    const result = wrap.evaluate(timeout, breakOnSigint);
-    return { result, __proto__: null };
+    const result = this._wrap.evaluate(timeout, breakOnSigint);
+    return { __proto__: null, result };
+  }
+
+  static importModuleDynamicallyWrap(importModuleDynamically) {
+    // Named declaration for function name
+    const importModuleDynamicallyWrapper = async (...args) => {
+      const m = await importModuleDynamically(...args);
+      if (isModuleNamespaceObject(m)) {
+        return m;
+      }
+      if (!('_wrap' in Object(m))) {
+        throw new ERR_VM_MODULE_NOT_MODULE();
+      }
+      if (m.status === 'errored') {
+        throw m.error;
+      }
+      return m.namespace;
+    };
+    return importModuleDynamicallyWrapper;
   }
 
   [customInspectSymbol](depth, options) {
@@ -258,16 +293,19 @@ class SourceTextModule {
 
     const o = Object.create({ constructor: ctor });
     o.status = this.status;
-    o.linkingStatus = this.linkingStatus;
-    o.url = this.url;
+    o.identifier = this.identifier;
     o.context = this.context;
     return require('internal/util/inspect').inspect(o, options);
   }
 }
 
+// Declared as static to allow access to #wrap
+const importModuleDynamicallyWrap =
+  SourceTextModule.importModuleDynamicallyWrap;
+delete SourceTextModule.importModuleDynamicallyWrap;
+
 module.exports = {
   SourceTextModule,
   wrapToModuleMap,
-  wrapMap,
-  linkingStatusMap,
+  importModuleDynamicallyWrap,
 };

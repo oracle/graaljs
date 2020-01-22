@@ -1,5 +1,5 @@
 'use strict';
-// Flags: --expose-gc --expose-internals --no-warnings
+// Flags: --expose-gc --expose-internals --no-warnings --test-udp-no-try-send
 
 const common = require('../common');
 const { internalBinding } = require('internal/test/binding');
@@ -51,6 +51,7 @@ const { getSystemErrorName } = require('util');
     delete providers.KEYPAIRGENREQUEST;
     delete providers.HTTPCLIENTREQUEST;
     delete providers.HTTPINCOMINGMESSAGE;
+    delete providers.ELDHISTOGRAM;
 
     const objKeys = Object.keys(providers);
     if (objKeys.length > 0)
@@ -305,4 +306,11 @@ if (process.features.inspector && common.isMainThread) {
 // PROVIDER_HEAPDUMP
 if (!global.Graal) { // not supported by graal-nodejs
   v8.getHeapSnapshot().destroy();
+}
+
+// DIRHANDLE
+{
+  const dirBinding = internalBinding('fs_dir');
+  const handle = dirBinding.opendir('./', 'utf8', undefined, {});
+  testInitialized(handle, 'DirHandle');
 }

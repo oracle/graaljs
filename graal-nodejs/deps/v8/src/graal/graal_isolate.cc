@@ -695,6 +695,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::isolate_enable_promise_reject_callback, "isolateEnablePromiseRejectCallback", "(Z)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_enable_import_meta_initializer, "isolateEnableImportMetaInitializer", "(Z)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_enable_import_module_dynamically, "isolateEnableImportModuleDynamically", "(Z)V")
+    ACCESS_METHOD(GraalAccessMethod::isolate_enable_prepare_stack_trace_callback, "isolateEnablePrepareStackTraceCallback", "(Z)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_enter, "isolateEnter", "(J)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_exit, "isolateExit", "(J)J")
     ACCESS_METHOD(GraalAccessMethod::isolate_enqueue_microtask, "isolateEnqueueMicrotask", "(Ljava/lang/Object;)V")
@@ -783,6 +784,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::json_stringify, "jsonStringify", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/String;")
     ACCESS_METHOD(GraalAccessMethod::symbol_new, "symbolNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::symbol_name, "symbolName", "(Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::symbol_get_iterator, "symbolGetIterator", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::promise_result, "promiseResult", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::promise_state, "promiseState", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::promise_resolver_new, "promiseResolverNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
@@ -797,6 +799,8 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::module_get_namespace, "moduleGetNamespace", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::module_get_identity_hash, "moduleGetIdentityHash", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::module_get_exception, "moduleGetException", "(Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::module_create_synthetic_module, "moduleCreateSyntheticModule", "(Ljava/lang/String;[Ljava/lang/Object;J)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::module_set_synthetic_module_export, "moduleSetSyntheticModuleExport", "(Ljava/lang/Object;Ljava/lang/String;Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::script_or_module_get_resource_name, "scriptOrModuleGetResourceName", "(Ljava/lang/Object;)Ljava/lang/String;")
     ACCESS_METHOD(GraalAccessMethod::script_or_module_get_host_defined_options, "scriptOrModuleGetHostDefinedOptions", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::value_serializer_new, "valueSerializerNew", "(J)Ljava/lang/Object;")
@@ -1343,6 +1347,24 @@ v8::MaybeLocal<v8::Promise> GraalIsolate::NotifyImportModuleDynamically(v8::Loca
         return import_module_dynamically(context, referrer, specifier);
     } else {
         return v8::MaybeLocal<v8::Promise>();
+    }
+}
+
+void GraalIsolate::SetPrepareStackTraceCallback(v8::PrepareStackTraceCallback callback) {
+    bool wasNull = prepare_stack_trace_callback_ == nullptr;
+    bool isNull = callback == nullptr;
+    if (wasNull != isNull) {
+        // turn the notification on/off
+        JNI_CALL_VOID(this, GraalAccessMethod::isolate_enable_prepare_stack_trace_callback, (jboolean) !isNull);
+    }
+    prepare_stack_trace_callback_ = callback;
+}
+
+v8::MaybeLocal<v8::Value> GraalIsolate::NotifyPrepareStackTraceCallback(v8::Local<v8::Context> context, v8::Local<v8::Value> error, v8::Local<v8::Array> sites) {
+    if (prepare_stack_trace_callback_ != nullptr) {
+        return prepare_stack_trace_callback_(context, error, sites);
+    } else {
+        return v8::MaybeLocal<v8::Value>();
     }
 }
 

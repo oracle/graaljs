@@ -27,25 +27,6 @@
     "filePath" : "intl/break-iterator/zh-break.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "intl/collator/check-co-option.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
-  }, {
-    "filePath" : "intl/collator/check-kf-option.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
-  }, {
-    "filePath" : "intl/collator/check-kn-option.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
-  }, {
-    "filePath" : "intl/collator/de-sort.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "intl/collator/options.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "intl/date-format/calendar-with-multiple-type-subtags.js",
     "status" : "FAIL"
   }, {
@@ -61,17 +42,9 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
-    "filePath" : "intl/date-format/check-nu-option.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
-  }, {
     "filePath" : "intl/date-format/check-numbering-system.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl/date-format/constructor-calendar-numberingSytem-order.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+    "comment" : "Off-spec, should be fixed by a next TestV8 update, see https://bugs.chromium.org/p/v8/issues/detail?id=9887"
   }, {
     "filePath" : "intl/date-format/constructor-date-style-order.js",
     "status" : "FAIL",
@@ -104,17 +77,6 @@
     "filePath" : "intl/date-format/format-range.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl/date-format/format-with-extensions.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/date-format/month-far-future.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15359"
   }, {
     "filePath" : "intl/date-format/property-override-date-style.js",
     "status" : "FAIL",
@@ -172,12 +134,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "intl/general/mapped-locale.js",
-    "status" : "FAIL",
-    "statusOverrides" : {
-      "AARCH64" : "PASS"
-    }
-  }, {
     "filePath" : "intl/general/supported-locales-of.js",
     "status" : "FAIL"
   }, {
@@ -212,17 +168,9 @@
     "filePath" : "intl/number-format/check-minimum-fraction-digits.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "intl/number-format/check-nu-option.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
-  }, {
     "filePath" : "intl/number-format/check-numbering-system.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl/number-format/constructor-numberingSytem-order.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+    "comment" : "Off-spec, should be fixed by a next TestV8 update, see https://bugs.chromium.org/p/v8/issues/detail?id=9887"
   }, {
     "filePath" : "intl/number-format/format-currency.js",
     "status" : "FAIL"
@@ -295,17 +243,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "intl/regress-8525.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
-  }, {
-    "filePath" : "intl/regress-8604.js",
-    "status" : "FAIL",
-    "statusOverrides" : {
-      "AARCH64" : "PASS"
-    },
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
     "filePath" : "intl/regress-8657.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
@@ -334,15 +271,7 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
-    "filePath" : "intl/regress-966285.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
     "filePath" : "intl/regress-9747.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "intl/regress-9787.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
@@ -356,7 +285,7 @@
   }, {
     "filePath" : "intl/relative-time-format/check-numbering-system.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+    "comment" : "Off-spec, should be fixed by a next TestV8 update, see https://bugs.chromium.org/p/v8/issues/detail?id=9887"
   }, {
     "filePath" : "intl/relative-time-format/default-locale-fr-CA.js",
     "status" : "FAIL",
@@ -369,18 +298,6 @@
     "filePath" : "intl/relative-time-format/format-en.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "intl/relative-time-format/numberingSystems.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl/relative-time-format/resolved-options-nu-extended.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl/relative-time-format/resolved-options-nu.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
     "filePath" : "intl/relative-time-format/supported-locale.js",
     "status" : "FAIL",
@@ -397,6 +314,10 @@
     "filePath" : "mjsunit/array-constructor-feedback.js",
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
+  }, {
+    "filePath" : "mjsunit/array-isarray.js",
+    "status" : "SKIP",
+    "comment" : "Contains a suspicious RangeError (stack-overflow) check."
   }, {
     "filePath" : "mjsunit/array-join-invalid-string-length.js",
     "status" : "SKIP",
@@ -521,27 +442,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
-    "filePath" : "mjsunit/compiler/escape-analysis-arguments.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15354"
-  }, {
-    "filePath" : "mjsunit/compiler/function-caller.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15354"
-  }, {
-    "filePath" : "mjsunit/compiler/math-trunc.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15356"
-  }, {
     "filePath" : "mjsunit/compiler/regress-445907.js",
     "status" : "SKIP",
     "runInIsolation" : true,
@@ -549,7 +449,7 @@
   }, {
     "filePath" : "mjsunit/compiler/regress-801097.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "comment" : "needs larger stack, at least 21m is needed"
   }, {
     "filePath" : "mjsunit/compiler/regress-9017.js",
     "status" : "FAIL",
@@ -615,7 +515,8 @@
     "status" : "FAIL",
     "statusOverrides" : {
       "AARCH64" : "PASS"
-    }
+    },
+    "comment" : "needs larger stack, at least 3m is needed"
   }, {
     "filePath" : "mjsunit/duplicate-parameters.js",
     "status" : "FAIL",
@@ -1444,13 +1345,6 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
-    "filePath" : "mjsunit/regress/regress-347262.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15354"
-  }, {
     "filePath" : "mjsunit/regress/regress-350865.js",
     "status" : "SKIP",
     "comment" : "NOW: Consistently fails with NoClassDefFoundError. Sets stack size and uses infinite recursion. BEFORE: spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
@@ -1466,7 +1360,8 @@
     "status" : "FAIL",
     "statusOverrides" : {
       "AARCH64" : "PASS"
-    }
+    },
+    "comment" : "needs larger stack, at least 6m is needed"
   }, {
     "filePath" : "mjsunit/regress/regress-360733.js",
     "runInIsolation" : true,
@@ -1496,11 +1391,8 @@
   }, {
     "filePath" : "mjsunit/regress/regress-475705.js",
     "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
     "runInIsolation" : true,
-    "comment" : "test with (expected) stack overflows that might influence other tests; sometimes fails on SVM (GR-15488)"
+    "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
     "filePath" : "mjsunit/regress/regress-487981.js",
     "runInIsolation" : true,
@@ -1738,7 +1630,7 @@
   }, {
     "filePath" : "mjsunit/regress/regress-903874.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
+    "comment" : "needs larger stack, at least 12m is needed"
   }, {
     "filePath" : "mjsunit/regress/regress-904707.js",
     "status" : "FAIL",
@@ -1968,7 +1860,7 @@
     "statusOverrides" : {
       "AARCH64" : "PASS"
     },
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "comment" : "needs larger stack, at least 6m is needed"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-816961.js",
     "status" : "FAIL",

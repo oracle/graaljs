@@ -33,7 +33,10 @@ const { Buffer } = require('buffer');
 const debug = require('internal/util/debuglog').debuglog('stream');
 const BufferList = require('internal/streams/buffer_list');
 const destroyImpl = require('internal/streams/destroy');
-const { getHighWaterMark } = require('internal/streams/state');
+const {
+  getHighWaterMark,
+  getDefaultHighWaterMark
+} = require('internal/streams/state');
 const {
   ERR_INVALID_ARG_TYPE,
   ERR_STREAM_PUSH_AFTER_EOF,
@@ -44,6 +47,7 @@ const {
 // Lazy loaded to improve the startup performance.
 let StringDecoder;
 let createReadableStreamAsyncIterator;
+let from;
 
 Object.setPrototypeOf(Readable.prototype, Stream.prototype);
 Object.setPrototypeOf(Readable, Stream);
@@ -70,8 +74,6 @@ function prependListener(emitter, event, fn) {
 }
 
 function ReadableState(options, stream, isDuplex) {
-  options = options || {};
-
   // Duplex streams are both readable and writable, but share
   // the same options object.
   // However, some cases require setting options to different
@@ -82,15 +84,17 @@ function ReadableState(options, stream, isDuplex) {
 
   // Object stream flag. Used to make read(n) ignore n and to
   // make all the buffer merging and length checks go away
-  this.objectMode = !!options.objectMode;
+  this.objectMode = !!(options && options.objectMode);
 
   if (isDuplex)
-    this.objectMode = this.objectMode || !!options.readableObjectMode;
+    this.objectMode = this.objectMode ||
+      !!(options && options.readableObjectMode);
 
   // The point at which it stops calling _read() to fill the buffer
   // Note: 0 is a valid value, means "don't call _read preemptively ever"
-  this.highWaterMark = getHighWaterMark(this, options, 'readableHighWaterMark',
-                                        isDuplex);
+  this.highWaterMark = options ?
+    getHighWaterMark(this, options, 'readableHighWaterMark', isDuplex) :
+    getDefaultHighWaterMark(false);
 
   // A linked list is used to store data chunks instead of an array because the
   // linked list can remove elements from the beginning faster than
@@ -119,10 +123,10 @@ function ReadableState(options, stream, isDuplex) {
   this.paused = true;
 
   // Should close be emitted on destroy. Defaults to true.
-  this.emitClose = options.emitClose !== false;
+  this.emitClose = !options || options.emitClose !== false;
 
   // Should .destroy() be called after 'end' (and potentially 'finish')
-  this.autoDestroy = !!options.autoDestroy;
+  this.autoDestroy = !!(options && options.autoDestroy);
 
   // Has it been destroyed
   this.destroyed = false;
@@ -130,7 +134,7 @@ function ReadableState(options, stream, isDuplex) {
   // Crypto is kind of old and crusty.  Historically, its default string
   // encoding is 'binary' so we have to make this configurable.
   // Everything else in the universe uses 'utf8', though.
-  this.defaultEncoding = options.defaultEncoding || 'utf8';
+  this.defaultEncoding = (options && options.defaultEncoding) || 'utf8';
 
   // The number of writers that are awaiting a drain event in .pipe()s
   this.awaitDrain = 0;
@@ -140,7 +144,7 @@ function ReadableState(options, stream, isDuplex) {
 
   this.decoder = null;
   this.encoding = null;
-  if (options.encoding) {
+  if (options && options.encoding) {
     if (!StringDecoder)
       StringDecoder = require('string_decoder').StringDecoder;
     this.decoder = new StringDecoder(options.encoding);
@@ -257,7 +261,7 @@ function readableAddChunk(stream, chunk, encoding, addToFront) {
       er = chunkInvalid(state, chunk);
     if (er) {
       errorOrDestroy(stream, er);
-    } else if (state.objectMode || chunk && chunk.length > 0) {
+    } else if (state.objectMode || (chunk && chunk.length > 0)) {
       if (typeof chunk !== 'string' &&
           !state.objectMode &&
           // Do not use Object.getPrototypeOf as it is slower since V8 7.3.
@@ -470,9 +474,10 @@ Readable.prototype.read = function(n) {
     debug('length less than watermark', doRead);
   }
 
-  // However, if we've ended, then there's no point, and if we're already
-  // reading, then it's unnecessary.
-  if (state.ended || state.reading) {
+  // However, if we've ended, then there's no point, if we're already
+  // reading, then it's unnecessary, and if we're destroyed, then it's
+  // not allowed.
+  if (state.ended || state.reading || state.destroyed) {
     doRead = false;
     debug('reading or ended', doRead);
   } else if (doRead) {
@@ -904,6 +909,7 @@ Readable.prototype.removeListener = function(ev, fn) {
 
   return res;
 };
+Readable.prototype.off = Readable.prototype.removeListener;
 
 Readable.prototype.removeAllListeners = function(ev) {
   const res = Stream.prototype.removeAllListeners.apply(this, arguments);
@@ -1189,40 +1195,8 @@ function endReadableNT(state, stream) {
 }
 
 Readable.from = function(iterable, opts) {
-  let iterator;
-  if (iterable && iterable[Symbol.asyncIterator])
-    iterator = iterable[Symbol.asyncIterator]();
-  else if (iterable && iterable[Symbol.iterator])
-    iterator = iterable[Symbol.iterator]();
-  else
-    throw new ERR_INVALID_ARG_TYPE('iterable', ['Iterable'], iterable);
-
-  const readable = new Readable({
-    objectMode: true,
-    ...opts
-  });
-  // Reading boolean to protect against _read
-  // being called before last iteration completion.
-  let reading = false;
-  readable._read = function() {
-    if (!reading) {
-      reading = true;
-      next();
-    }
-  };
-  async function next() {
-    try {
-      const { value, done } = await iterator.next();
-      if (done) {
-        readable.push(null);
-      } else if (readable.push(await value)) {
-        next();
-      } else {
-        reading = false;
-      }
-    } catch (err) {
-      readable.destroy(err);
-    }
+  if (from === undefined) {
+    from = require('internal/streams/from');
   }
-  return readable;
+  return from(Readable, iterable, opts);
 };

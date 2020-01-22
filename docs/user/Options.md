@@ -3,7 +3,7 @@
 GraalVM JavaScript can be configured with several options provided when starting the engine.
 Additional options control the behaviour of the `js` binary launcher.
 
-## Launcher options
+## Launcher Options
 
 The `js` launcher can be configured with the following options:
 
@@ -16,7 +16,7 @@ js -e 'print(1+2);'
 ```
 
 ### -f, --file FILE
-	
+
 Load and executed the provided script file.
 
 ```
@@ -33,7 +33,7 @@ Prints the version information of GraalVM JavaScript and then exits.
 
 Executes the engine in JavaScript's _strict mode_.
 
-## Engine options
+## Engine Options
 
 The engine options configure the behavior of the JavaScript engine.
 Depending on how the engine is started, the options can be passed in different ways:
@@ -94,4 +94,3 @@ Stability: stable
 
 Enables JavaScript's strict mode for all scripts.
 Expects a boolean value, default is `false`.
-

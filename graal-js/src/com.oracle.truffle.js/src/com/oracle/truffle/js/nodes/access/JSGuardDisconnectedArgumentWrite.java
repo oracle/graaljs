@@ -46,12 +46,14 @@ import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
+import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 
 public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode implements WriteNode {
@@ -76,7 +78,7 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == WriteVariableTag.class) {
+        if (tag == WriteVariableTag.class || tag == StandardTags.WriteVariableTag.class) {
             return true;
         } else {
             return super.hasTag(tag);
@@ -85,7 +87,9 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
 
     @Override
     public Object getNodeObject() {
-        return JSTags.createNodeObjectDescriptor("name", slot.getIdentifier());
+        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor("name", slot.getIdentifier());
+        descriptor.addProperty(StandardTags.WriteVariableTag.NAME, slot.getIdentifier());
+        return descriptor;
     }
 
     @Specialization(guards = "!isArgumentsDisconnected(argumentsArray)")

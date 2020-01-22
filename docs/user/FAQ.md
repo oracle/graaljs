@@ -1,4 +1,4 @@
-# GraalVM JavaScript frequently asked questions
+# GraalVM JavaScript Frequently Asked Questions
 
 This file lists frequently asked questions and answers around GraalVM JavaScript.
 
@@ -90,4 +90,3 @@ Reason:
 Solution:
 * Ensure the object (type) in question does handle the respective message.
 * Ensure access to the class is permitted, by having `@HostAccess.Export` on your class and/or the `Context.Builder.allowHostAccess()` set to a permissive setting. See [JavaDoc of org.graalvm.polyglot.Context](https://graalvm.org/truffle/javadoc/org/graalvm/polyglot/Context.html).
-

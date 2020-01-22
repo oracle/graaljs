@@ -141,10 +141,8 @@ public final class JSTruffleOptions {
     /** Enable Annex B "Additional ECMAScript Features for Web Browsers". */
     public static final boolean AnnexB = booleanOption("AnnexB", true);
 
-    // Nashorn extensions
-    public static final boolean NashornCompatibilityMode = booleanOption("NashornCompatibilityMode", false);
-
-    public static final boolean U180EWhitespace = booleanOption("U180EWhitespace", MaxECMAScriptVersion <= 6);
+    /** Used to be an option, was only used by Nashorn. */
+    public static final boolean U180EWhitespace = false;
 
     // JSON options
     public static final boolean TruffleJSONParser = booleanOption("TruffleJSONParser", true);
@@ -152,9 +150,6 @@ public final class JSTruffleOptions {
     // Engine options
     public static final boolean DumpHeapOnExit = booleanOption("DumpHeapOnExit", false);
     public static final String HeapDumpFileName = stringOption("HeapDumpFileName", null);
-
-    // Java Interop options
-    public static final boolean SingleThreaded = booleanOption("SingleThreaded", false);
 
     // Tracing
     public static final boolean TracePolymorphicPropertyAccess = booleanOption("TracePolymorphicPropertyAccess", false);
@@ -187,9 +182,6 @@ public final class JSTruffleOptions {
 
     // Spreading options
     public static final int SpreadArgumentPlaceholderCount = integerOption("SpreadArgumentPlaceholderCount", 3);
-
-    // Truffle Interop options
-    public static final boolean BindProgramResult = booleanOption("BindProgramResult", true);
 
     public static final boolean UseTRegex = booleanOption("UseTRegex", true);
     public static final boolean RegexRegressionTestMode = booleanOption("RegexRegressionTestMode", false);

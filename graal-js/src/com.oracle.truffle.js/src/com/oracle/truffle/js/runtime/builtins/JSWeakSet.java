@@ -52,7 +52,6 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.WeakSetPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -116,8 +115,8 @@ public final class JSWeakSet extends JSBuiltinObject implements JSConstructorFac
 
     @Override
     @TruffleBoundary
-    public String safeToString(DynamicObject obj, int depth) {
-        if (JSTruffleOptions.NashornCompatibilityMode) {
+    public String safeToString(DynamicObject obj, int depth, JSContext context) {
+        if (context.isOptionNashornCompatibilityMode()) {
             return "[" + getClassName() + "]";
         } else {
             return getClassName();

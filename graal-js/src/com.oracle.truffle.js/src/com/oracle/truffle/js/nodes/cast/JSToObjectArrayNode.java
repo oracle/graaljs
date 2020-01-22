@@ -153,22 +153,22 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected static Object[] toArrayString(CharSequence value) {
+    protected Object[] toArrayString(CharSequence value) {
         return notAnObjectError(value);
     }
 
     @Specialization
-    protected static Object[] toArrayInt(int value) {
+    protected Object[] toArrayInt(int value) {
         return notAnObjectError(value);
     }
 
     @Specialization
-    protected static Object[] toArrayDouble(double value) {
+    protected Object[] toArrayDouble(double value) {
         return notAnObjectError(value);
     }
 
     @Specialization
-    protected static Object[] toArrayBoolean(boolean value) {
+    protected Object[] toArrayBoolean(boolean value) {
         return notAnObjectError(value);
     }
 
@@ -179,8 +179,8 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
         return notAnObjectError(value);
     }
 
-    private static Object[] notAnObjectError(Object value) {
-        if (JSTruffleOptions.NashornCompatibilityMode) {
+    private Object[] notAnObjectError(Object value) {
+        if (context.isOptionNashornCompatibilityMode()) {
             throw Errors.createTypeError("Function.prototype.apply expects an Array for second argument");
         } else {
             throw Errors.createTypeErrorNotAnObject(value);
@@ -237,7 +237,7 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
     }
 
     @Fallback
-    protected static Object[] doFallback(Object value) {
+    protected Object[] doFallback(Object value) {
         assert !JSRuntime.isObject(value);
         return notAnObjectError(value);
     }

@@ -8,6 +8,9 @@ const { getOptionValue } = require('internal/options');
 
 const preserveSymlinks = getOptionValue('--preserve-symlinks');
 const preserveSymlinksMain = getOptionValue('--preserve-symlinks-main');
+const experimentalJsonModules = getOptionValue('--experimental-json-modules');
+const esModuleSpecifierResolution =
+  getOptionValue('--es-module-specifier-resolution');
 const typeFlag = getOptionValue('--input-type');
 const experimentalWasmModules = getOptionValue('--experimental-wasm-modules');
 const { resolve: moduleWrapResolve,
@@ -28,7 +31,6 @@ const extensionFormatMap = {
   '__proto__': null,
   '.cjs': 'commonjs',
   '.js': 'module',
-  '.json': 'json',
   '.mjs': 'module'
 };
 
@@ -36,13 +38,16 @@ const legacyExtensionFormatMap = {
   '__proto__': null,
   '.cjs': 'commonjs',
   '.js': 'commonjs',
-  '.json': 'json',
+  '.json': 'commonjs',
   '.mjs': 'module',
   '.node': 'commonjs'
 };
 
 if (experimentalWasmModules)
   extensionFormatMap['.wasm'] = legacyExtensionFormatMap['.wasm'] = 'wasm';
+
+if (experimentalJsonModules)
+  extensionFormatMap['.json'] = legacyExtensionFormatMap['.json'] = 'json';
 
 function resolve(specifier, parentURL) {
   try {
@@ -107,6 +112,8 @@ function resolve(specifier, parentURL) {
   if (!format) {
     if (isMain)
       format = type === TYPE_MODULE ? 'module' : 'commonjs';
+    else if (esModuleSpecifierResolution === 'node')
+      format = 'commonjs';
     else
       throw new ERR_UNKNOWN_FILE_EXTENSION(fileURLToPath(url));
   }

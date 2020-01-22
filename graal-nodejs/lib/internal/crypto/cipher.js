@@ -22,7 +22,7 @@ const {
 const {
   getDefaultEncoding,
   kHandle,
-  toBuf
+  getArrayBufferView
 } = require('internal/crypto/util');
 
 const { isArrayBufferView } = require('internal/util/types');
@@ -50,10 +50,16 @@ function rsaFunctionFor(method, defaultPadding, keyType) {
         preparePrivateKey(options) :
         preparePublicOrPrivateKey(options);
     const padding = options.padding || defaultPadding;
-    const { oaepHash } = options;
+    const { oaepHash, oaepLabel } = options;
     if (oaepHash !== undefined && typeof oaepHash !== 'string')
       throw new ERR_INVALID_ARG_TYPE('options.oaepHash', 'string', oaepHash);
-    return method(data, format, type, passphrase, buffer, padding, oaepHash);
+    if (oaepLabel !== undefined && !isArrayBufferView(oaepLabel)) {
+      throw new ERR_INVALID_ARG_TYPE('options.oaepLabel',
+                                     ['Buffer', 'TypedArray', 'DataView'],
+                                     oaepLabel);
+    }
+    return method(data, format, type, passphrase, buffer, padding, oaepHash,
+                  oaepLabel);
   };
 }
 
@@ -99,20 +105,9 @@ function createCipherBase(cipher, credential, options, decipher, iv) {
   LazyTransform.call(this, options);
 }
 
-function invalidArrayBufferView(name, value) {
-  return new ERR_INVALID_ARG_TYPE(
-    name,
-    ['string', 'Buffer', 'TypedArray', 'DataView'],
-    value
-  );
-}
-
 function createCipher(cipher, password, options, decipher) {
   validateString(cipher, 'cipher');
-  password = toBuf(password);
-  if (!isArrayBufferView(password)) {
-    throw invalidArrayBufferView('password', password);
-  }
+  password = getArrayBufferView(password, 'password');
 
   createCipherBase.call(this, cipher, password, options, decipher);
 }
@@ -120,10 +115,7 @@ function createCipher(cipher, password, options, decipher) {
 function createCipherWithIV(cipher, key, options, decipher, iv) {
   validateString(cipher, 'cipher');
   key = prepareSecretKey(key);
-  iv = toBuf(iv);
-  if (iv !== null && !isArrayBufferView(iv)) {
-    throw invalidArrayBufferView('iv', iv);
-  }
+  iv = iv === null ? null : getArrayBufferView(iv, 'iv');
   createCipherBase.call(this, cipher, key, options, decipher, iv);
 }
 
@@ -158,7 +150,8 @@ Cipher.prototype.update = function update(data, inputEncoding, outputEncoding) {
   outputEncoding = outputEncoding || encoding;
 
   if (typeof data !== 'string' && !isArrayBufferView(data)) {
-    throw invalidArrayBufferView('data', data);
+    throw new ERR_INVALID_ARG_TYPE(
+      'data', ['string', 'Buffer', 'TypedArray', 'DataView'], data);
   }
 
   const ret = this[kHandle].update(data, inputEncoding);

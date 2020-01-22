@@ -189,6 +189,7 @@ public class Test262Runnable extends TestRunnable {
                     "template",
                     "u180e",
                     "well-formed-json-stringify",
+                    "WeakRef"
     }));
     private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "FinalizationGroup",
@@ -198,7 +199,6 @@ public class Test262Runnable extends TestRunnable {
                     "Intl.DateTimeFormat-fractionalSecondDigits",
                     "Intl.Locale",
                     "IsHTMLDDA",
-                    "WeakRef",
                     "class-fields-private",
                     "class-fields-public",
                     "class-methods-private",
@@ -222,6 +222,7 @@ public class Test262Runnable extends TestRunnable {
                     "import.meta",
                     "numeric-separator-literal",
                     "proxy-missing-checks",
+                    "WeakRef"
     }));
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {

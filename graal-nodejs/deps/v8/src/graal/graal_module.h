@@ -58,6 +58,11 @@ public:
     v8::Local<v8::Value> GetModuleNamespace();
     int GetIdentityHash() const;
     v8::Local<v8::Value> GetException() const;
+    static v8::Local<v8::Module> CreateSyntheticModule(
+            v8::Isolate* isolate, v8::Local<v8::String> module_name,
+            const std::vector<v8::Local<v8::String>>&export_names,
+            v8::Module::SyntheticModuleEvaluationSteps evaluation_steps);
+    void SetSyntheticModuleExport(v8::Local<v8::String> export_name, v8::Local<v8::Value> export_value);
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };

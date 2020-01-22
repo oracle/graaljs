@@ -42,7 +42,10 @@ package com.oracle.truffle.js.runtime;
 
 import static com.oracle.truffle.js.runtime.JSTruffleOptions.JS_OPTION_PREFIX;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -245,6 +248,44 @@ public final class JSContextOptions {
     @Option(name = LOAD_FROM_CLASSPATH_NAME, category = OptionCategory.USER, help = "Allow 'load' to access 'classpath:' URLs. Do not use with untrusted code.") //
     public static final OptionKey<Boolean> LOAD_FROM_CLASSPATH = new OptionKey<>(false);
 
+    public static final String COMMONJS_REQUIRE_NAME = JS_OPTION_PREFIX + "commonjs-require";
+    @Option(name = COMMONJS_REQUIRE_NAME, category = OptionCategory.USER, help = "Enable CommonJS require emulation.") //
+    public static final OptionKey<Boolean> COMMONJS_REQUIRE = new OptionKey<>(false);
+    @CompilationFinal private boolean commonJSRequire;
+
+    public static final String COMMONJS_REQUIRE_CWD_NAME = JS_OPTION_PREFIX + "commonjs-require-cwd";
+    @Option(name = COMMONJS_REQUIRE_CWD_NAME, category = OptionCategory.USER, help = "CommonJS default current working directory.") //
+    public static final OptionKey<String> COMMONJS_REQUIRE_CWD = new OptionKey<>("");
+
+    public static final String COMMONJS_CORE_MODULES_REPLACEMENTS_NAME = JS_OPTION_PREFIX + "commonjs-core-modules-replacements";
+    @Option(name = COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, category = OptionCategory.USER, help = "Npm packages used to replace global Node.js builtins. Syntax: name1:module1,name2:module2,...") //
+    public static final OptionKey<Map<String, String>> COMMONJS_CORE_MODULES_REPLACEMENTS = new OptionKey<>(Collections.emptyMap(), new OptionType<>(
+                    "commonjs-require-globals",
+                    new Function<String, Map<String, String>>() {
+                        @Override
+                        public Map<String, String> apply(String value) {
+                            Map<String, String> map = new HashMap<>();
+                            if ("".equals(value)) {
+                                return map;
+                            }
+                            String[] options = value.split(",");
+                            for (String s : options) {
+                                String[] builtin = s.split(":");
+                                if (builtin.length != 2) {
+                                    throw new IllegalArgumentException("Unexpected builtin arguments: " + s);
+                                }
+                                String key = builtin[0];
+                                String val = builtin[1];
+                                map.put(key, val);
+                            }
+                            return map;
+                        }
+                    }));
+
+    public static final String COMMONJS_REQUIRE_GLOBAL_PROPERTIES_NAME = JS_OPTION_PREFIX + "commonjs-global-properties";
+    @Option(name = COMMONJS_REQUIRE_GLOBAL_PROPERTIES_NAME, category = OptionCategory.USER, help = "Npm package used to populate Node.js global object.") //
+    public static final OptionKey<String> COMMONJS_REQUIRE_GLOBAL_PROPERTIES = new OptionKey<>("");
+
     public static final String GRAAL_BUILTIN_NAME = JS_OPTION_PREFIX + "graal-builtin";
     @Option(name = GRAAL_BUILTIN_NAME, category = OptionCategory.USER, help = "Provide 'Graal' global property.") //
     public static final OptionKey<Boolean> GRAAL_BUILTIN = new OptionKey<>(true);
@@ -343,6 +384,11 @@ public final class JSContextOptions {
     public static final OptionKey<Integer> STRING_LENGTH_LIMIT = new OptionKey<>(JSTruffleOptions.StringLengthLimit);
     @CompilationFinal private int stringLengthLimit;
 
+    public static final String BIND_MEMBER_FUNCTIONS_NAME = JS_OPTION_PREFIX + "bind-member-functions";
+    @Option(name = BIND_MEMBER_FUNCTIONS_NAME, category = OptionCategory.EXPERT, help = "Bind functions returned by Value.getMember to the receiver object.") //
+    public static final OptionKey<Boolean> BIND_MEMBER_FUNCTIONS = new OptionKey<>(true);
+    @CompilationFinal private boolean bindMemberFunctions;
+
     JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
         this.optionValues = optionValues;
@@ -411,6 +457,8 @@ public final class JSContextOptions {
         this.validateRegExpLiterals = readBooleanOption(VALIDATE_REGEXP_LITERALS);
         this.functionConstructorCacheSize = readIntegerOption(FUNCTION_CONSTRUCTOR_CACHE_SIZE);
         this.stringLengthLimit = readIntegerOption(STRING_LENGTH_LIMIT);
+        this.bindMemberFunctions = readBooleanOption(BIND_MEMBER_FUNCTIONS);
+        this.commonJSRequire = readBooleanOption(COMMONJS_REQUIRE);
     }
 
     private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, Consumer<String> invalidate) {
@@ -598,6 +646,25 @@ public final class JSContextOptions {
         return LOAD.getValue(optionValues) || (!LOAD.hasBeenSet(optionValues) && (isShell() || isNashornCompatibilityMode()));
     }
 
+    public boolean isCommonJSRequire() {
+        return commonJSRequire;
+    }
+
+    public Map<String, String> getCommonJSRequireBuiltins() {
+        CompilerAsserts.neverPartOfCompilation("Context patchable option load was assumed not to be accessed in compiled code.");
+        return COMMONJS_CORE_MODULES_REPLACEMENTS.getValue(optionValues);
+    }
+
+    public String getCommonJSRequireGlobals() {
+        CompilerAsserts.neverPartOfCompilation("Context patchable option load was assumed not to be accessed in compiled code.");
+        return COMMONJS_REQUIRE_GLOBAL_PROPERTIES.getValue(optionValues);
+    }
+
+    public String getRequireCwd() {
+        CompilerAsserts.neverPartOfCompilation("Context patchable option load was assumed not to be accessed in compiled code.");
+        return COMMONJS_REQUIRE_CWD.getValue(optionValues);
+    }
+
     public boolean isPerformance() {
         CompilerAsserts.neverPartOfCompilation("Context patchable option performance was assumed not to be accessed in compiled code.");
         return PERFORMANCE.getValue(optionValues) || (!PERFORMANCE.hasBeenSet(optionValues) && isShell());
@@ -667,6 +734,10 @@ public final class JSContextOptions {
         return stringLengthLimit;
     }
 
+    public boolean bindMemberFunctions() {
+        return bindMemberFunctions;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -700,6 +771,8 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.validateRegExpLiterals ? 1 : 0);
         hash = 53 * hash + this.functionConstructorCacheSize;
         hash = 53 * hash + this.stringLengthLimit;
+        hash = 53 * hash + (this.bindMemberFunctions ? 1 : 0);
+        hash = 53 * hash + (this.commonJSRequire ? 1 : 0);
         return hash;
     }
 
@@ -800,6 +873,12 @@ public final class JSContextOptions {
             return false;
         }
         if (this.stringLengthLimit != other.stringLengthLimit) {
+            return false;
+        }
+        if (this.bindMemberFunctions != other.bindMemberFunctions) {
+            return false;
+        }
+        if (this.commonJSRequire != other.commonJSRequire) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

@@ -104,6 +104,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSetNod
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructStringNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSymbolNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakMapNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakRefNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakSetNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CreateDynamicFunctionNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.PromiseConstructorNodeGen;
@@ -195,6 +196,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
@@ -259,6 +261,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         Map(0),
         Set(0),
+        WeakRef(1),
         WeakMap(0),
         WeakSet(0),
         GeneratorFunction(1),
@@ -339,6 +342,15 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                                 ? ConstructStringNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context))
                                 : ConstructStringNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context)))
                                 : CallStringNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
+
+            case WeakRef:
+                if (construct) {
+                    return newTarget ? ConstructWeakRefNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
+                                    : ConstructWeakRefNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context));
+                } else {
+                    return createCallRequiresNew(context, builtin);
+                }
+
             case Collator:
                 return construct ? (newTarget
                                 ? ConstructCollatorNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
@@ -1065,6 +1077,27 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     }
 
+    public abstract static class ConstructWeakRefNode extends ConstructWithNewTargetNode {
+        public ConstructWeakRefNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
+            super(context, builtin, newTargetCase);
+        }
+
+        @Specialization(guards = {"isJSObject(target)"})
+        protected DynamicObject constructWeakRef(DynamicObject newTarget, Object target) {
+            return swapPrototype(JSWeakRef.create(getContext(), target), newTarget);
+        }
+
+        @Specialization(guards = {"!isJSObject(target)"})
+        protected DynamicObject constructWeakRefNonObject(@SuppressWarnings("unused") DynamicObject newTarget, @SuppressWarnings("unused") Object target) {
+            throw Errors.createTypeError("Cannot create WeakRef on non-object");
+        }
+
+        @Override
+        protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getWeakRefPrototype();
+        }
+    }
+
     public abstract static class CallCollatorNode extends JSBuiltinNode {
 
         @Child InitializeCollatorNode initializeCollatorNode;
@@ -1454,7 +1487,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         private String getSourceName() {
             String sourceName = null;
             if (isCallerSensitive()) {
-                sourceName = EvalNode.findAndFormatEvalOrigin(getContext().getRealm().getCallNode());
+                sourceName = EvalNode.findAndFormatEvalOrigin(getContext().getRealm().getCallNode(), getContext());
             }
             if (sourceName == null) {
                 sourceName = Evaluator.FUNCTION_SOURCE_NAME;

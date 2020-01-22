@@ -101,7 +101,6 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -131,6 +130,8 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
                 StandardTags.RootBodyTag.class,
                 StandardTags.ExpressionTag.class,
                 StandardTags.CallTag.class,
+                StandardTags.ReadVariableTag.class,
+                StandardTags.WriteVariableTag.class,
                 DebuggerTags.AlwaysHalt.class,
                 // Expressions
                 ObjectAllocationTag.class,
@@ -159,7 +160,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
                 JavaScriptLanguage.APPLICATION_MIME_TYPE,
                 JavaScriptLanguage.TEXT_MIME_TYPE,
                 JavaScriptLanguage.MODULE_MIME_TYPE}, defaultMimeType = JavaScriptLanguage.APPLICATION_MIME_TYPE, contextPolicy = TruffleLanguage.ContextPolicy.SHARED, dependentLanguages = "regex", fileTypeDetectors = JSFileTypeDetector.class)
-public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
+public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     public static final String TEXT_MIME_TYPE = "text/javascript";
     public static final String APPLICATION_MIME_TYPE = "application/javascript";
     public static final String MODULE_MIME_TYPE = "application/javascript+module";
@@ -307,7 +308,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 code.append(") {\n");
                 code.append("return eval(").append(JSRuntime.quote(source.getCharacters().toString())).append(");\n");
                 code.append("})");
-                Source wrappedSource = Source.newBuilder(ID, code.toString(), Evaluator.FUNCTION_SOURCE_NAME).build();
+                Source wrappedSource = Source.newBuilder(source).content(code.toString()).build();
                 Object function = parseInContext(wrappedSource, realm.getContext()).run(realm);
                 return JSRuntime.jsObjectToJavaObject(JSFunction.call(JSArguments.create(Undefined.instance, function, arguments)));
             }
@@ -578,6 +579,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         }
     }
 
+    @SuppressWarnings("static-method")
     public void interopBoundaryEnter(JSRealm realm) {
         realm.getAgent().interopBoundaryEnter();
     }
@@ -597,6 +599,10 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     public JSContext getJSContext() {
         return languageContext;
+    }
+
+    public boolean bindMemberFunctions() {
+        return getJSContext().getContextOptions().bindMemberFunctions();
     }
 
     private static void ensureErrorClassesInitialized() {

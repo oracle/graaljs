@@ -48,6 +48,7 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -55,6 +56,7 @@ import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
+import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.LargeInteger;
 
@@ -81,7 +83,7 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == ReadVariableTag.class) {
+        if ((tag == ReadVariableTag.class || tag == StandardTags.ReadVariableTag.class)) {
             if (JSFrameUtil.isInternal(frameSlot)) {
                 // Reads to "<this>" are instrumentable
                 return JSFrameUtil.isThisSlot(frameSlot);
@@ -94,7 +96,10 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
 
     @Override
     public Object getNodeObject() {
-        return JSTags.createNodeObjectDescriptor("name", JSFrameUtil.getPublicName(frameSlot));
+        String name = JSFrameUtil.getPublicName(frameSlot);
+        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor("name", name);
+        descriptor.addProperty(StandardTags.ReadVariableTag.NAME, name);
+        return descriptor;
     }
 
     @Override

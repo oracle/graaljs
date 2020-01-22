@@ -1,4 +1,4 @@
-# Migration guide from Nashorn to GraalVM JavaScript
+# Migration Guide from Nashorn to GraalVM JavaScript
 
 This document serves as migration guide for code previously targeted to the Nashorn engine.
 See the [JavaInterop.md](JavaInterop.md) for an overview of supported Java interoperability features.
@@ -12,7 +12,7 @@ Nashorn features available by default:
 * `Java.extend`, `Java.super`
 * Java package globals: `Packages`, `java`, `javafx`, `javax`, `com`, `org`, `edu`
 
-## Nashorn compatibility mode
+## Nashorn Compatibility Mode
 GraalVM JavaScript provides a Nashorn compatibility mode.
 Some of the functionality necessary for Nashorn compatibility is only available when the `js.nashorn-compat` option is enabled.
 This is the case for Nashorn-specific extensions that GraalVM JavaScript does not want to expose by default.
@@ -46,7 +46,7 @@ Functionality only available under this flag includes:
 * `load("nashorn:parser.js")`, `load("nashorn:mozilla_compat.js")`
 * `exit`, `quit`
 
-## Nashorn syntax extensions
+## Nashorn Syntax Extensions
 
 [Nashorn syntax extensions](https://wiki.openjdk.java.net/display/Nashorn/Nashorn+extensions) can be enabled using the `js.syntax-extensions` experimental option.
 They're also enabled by default in Nashorn compatibility mode (`js.nashorn-compat`).
@@ -133,7 +133,7 @@ new Thread(aJavaRunnable).start(); // allowed on GraalVM JavaScript
 
 With proper synchronization in place, multiple contexts can be shared between different threads. Example Java applications using GraalVM JavaScript `Context`s from multiple threads can be found [here](https://github.com/graalvm/graaljs/tree/master/graal-js/src/com.oracle.truffle.js.test.threading/src/com/oracle/truffle/js/test/threading).
 
-## Extensions only available in Nashorn compatibility mode
+## Extensions Only Available in Nashorn Compatibility Mode
 The following extensions to JavaScript available in Nashorn are deactivated in GraalVM JavaScript by default.
 They are provided in GraalVM's Nashorn compatibility mode.
 It is highly recommended not to implement new applications based on those features, but only to use it as a means to migrate existing applications to GraalVM.
@@ -186,7 +186,7 @@ If the field cannot be read or written, it will try to call a getter or setter:
 Nashorn can expose random behavior when both `getFieldName` and `isFieldName` are available.
 Nashorn also gives precedence to getters, even when a public field of the exact name is available.
 
-## Additional aspects to consider
+## Additional Aspects to Consider
 
 ### Features of GraalVM JavaScript
 GraalVM JavaScript supports features of the newest ECMAScript specification and some extensions to that, see [JavaScriptCompatibility.md](JavaScriptCompatibility.md).
@@ -198,4 +198,3 @@ GraalVM JavaScript provides a `print` builtin function compatible with Nashorn.
 Note that GraalVM JavaScript also provides a `console.log` function.
 This is an alias for `print` in pure JavaScript mode, but uses an implementation provided by Node.js when running in Node mode.
 Behavior around Java objects differs for `console.log` in Node mode as Node.js does not implement special treatment for such objects.
-

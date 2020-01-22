@@ -51,6 +51,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.CachedLanguage;
@@ -323,9 +324,10 @@ public abstract class JSClass extends ObjectType {
      * A more informative but side-effect-free toString variant, mainly used for error messages.
      *
      * @param depth allowed nesting depth
+     * @param context the current language context
      */
     @TruffleBoundary
-    public abstract String safeToString(DynamicObject object, int depth);
+    public abstract String safeToString(DynamicObject object, int depth, JSContext context);
 
     public final boolean isInstance(DynamicObject object) {
         return isInstance(object, this);
@@ -512,7 +514,8 @@ public abstract class JSClass extends ObjectType {
     static Object readMember(DynamicObject target, String key,
                     @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
                     @Cached(value = "create(languageRef.get().getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
-                    @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnknownIdentifierException, UnsupportedMessageException {
+                    @Cached(value = "languageRef.get().bindMemberFunctions()", allowUncached = true) boolean bindMemberFunctions,
+                    @Cached @Exclusive ExportValueNode exportNode) throws UnknownIdentifierException, UnsupportedMessageException {
         ensureHasMembers(target);
         Object result;
         if (readNode == null) {
@@ -523,7 +526,7 @@ public abstract class JSClass extends ObjectType {
         if (result == null) {
             throw UnknownIdentifierException.create(key);
         }
-        return exportNode.executeWithTarget(result, target);
+        return exportNode.execute(result, target, bindMemberFunctions);
     }
 
     @ExportMessage
@@ -634,7 +637,7 @@ public abstract class JSClass extends ObjectType {
         if (result == null) {
             throw InvalidArrayIndexException.create(index);
         }
-        return exportNode.executeWithTarget(result, target);
+        return exportNode.execute(result);
     }
 
     @ExportMessage
@@ -698,7 +701,7 @@ public abstract class JSClass extends ObjectType {
         language.interopBoundaryEnter(realm);
         try {
             Object result = callNode.execute(target, Undefined.instance, args);
-            return exportNode.executeWithTarget(result, Undefined.instance);
+            return exportNode.execute(result);
         } finally {
             language.interopBoundaryExit(realm);
         }
@@ -719,7 +722,7 @@ public abstract class JSClass extends ObjectType {
         language.interopBoundaryEnter(realm);
         try {
             Object result = callNode.execute(target, args);
-            return exportNode.executeWithTarget(result, Undefined.instance);
+            return exportNode.execute(result);
         } finally {
             language.interopBoundaryExit(realm);
         }
@@ -740,7 +743,7 @@ public abstract class JSClass extends ObjectType {
         language.interopBoundaryEnter(realm);
         try {
             Object result = callNode.execute(target, id, args);
-            return exportNode.executeWithTarget(result, target);
+            return exportNode.execute(result);
         } finally {
             language.interopBoundaryExit(realm);
         }

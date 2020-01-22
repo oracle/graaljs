@@ -44,10 +44,10 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -347,11 +347,15 @@ public final class DefinePropertyUtil {
     }
 
     private static String nonConfigurableMessage(Object key) {
-        return JSTruffleOptions.NashornCompatibilityMode ? "property is not configurable" : cannotRedefineMessage(key);
+        return isNashornMode() ? "property is not configurable" : cannotRedefineMessage(key);
     }
 
     private static String nonWritableMessage(Object key) {
-        return JSTruffleOptions.NashornCompatibilityMode ? "property is not writable" : cannotRedefineMessage(key);
+        return isNashornMode() ? "property is not writable" : cannotRedefineMessage(key);
+    }
+
+    private static boolean isNashornMode() {
+        return JavaScriptLanguage.getCurrentJSRealm().getContext().isOptionNashornCompatibilityMode();
     }
 
     private static String cannotRedefineMessage(Object key) {

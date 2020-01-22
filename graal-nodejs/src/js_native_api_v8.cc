@@ -186,7 +186,7 @@ inline static napi_status ConcludeDeferred(napi_env env,
 }
 
 // Wrapper around v8impl::Persistent that implements reference counting.
-class Reference : private Finalizer {
+class Reference : private Finalizer, RefTracker {
  private:
   Reference(napi_env env,
             v8::Local<v8::Value> value,
@@ -203,6 +203,9 @@ class Reference : private Finalizer {
       _persistent.SetWeak(
           this, FinalizeCallback, v8::WeakCallbackType::kParameter);
     }
+    Link(finalize_callback == nullptr
+        ? &env->reflist
+        : &env->finalizing_reflist);
   }
 
  public:
@@ -242,6 +245,7 @@ class Reference : private Finalizer {
   // the finalizer and _delete_self is set. In this case we
   // know we need to do the deletion so just do it.
   static void Delete(Reference* reference) {
+    reference->Unlink();
     if ((reference->RefCount() != 0) ||
         (reference->_delete_self) ||
         (reference->_finalize_ran)) {
@@ -286,6 +290,26 @@ class Reference : private Finalizer {
   }
 
  private:
+  void Finalize(bool is_env_teardown = false) override {
+    if (_finalize_callback != nullptr) {
+      _env->CallIntoModuleThrow([&](napi_env env) {
+        _finalize_callback(
+            env,
+            _finalize_data,
+            _finalize_hint);
+      });
+    }
+
+    // this is safe because if a request to delete the reference
+    // is made in the finalize_callback it will defer deletion
+    // to this block and set _delete_self to true
+    if (_delete_self || is_env_teardown) {
+      Delete(this);
+    } else {
+      _finalize_ran = true;
+    }
+  }
+
   // The N-API finalizer callback may make calls into the engine. V8's heap is
   // not in a consistent state during the weak callback, and therefore it does
   // not support calls back into it. However, it provides a mechanism for adding
@@ -303,25 +327,7 @@ class Reference : private Finalizer {
   }
 
   static void SecondPassCallback(const v8::WeakCallbackInfo<Reference>& data) {
-    Reference* reference = data.GetParameter();
-
-    if (reference->_finalize_callback != nullptr) {
-      reference->_env->CallIntoModuleThrow([&](napi_env env) {
-        reference->_finalize_callback(
-            env,
-            reference->_finalize_data,
-            reference->_finalize_hint);
-      });
-    }
-
-    // this is safe because if a request to delete the reference
-    // is made in the finalize_callback it will defer deletion
-    // to this block and set _delete_self to true
-    if (reference->_delete_self) {
-      Delete(reference);
-    } else {
-      reference->_finalize_ran = true;
-    }
+    data.GetParameter()->Finalize();
   }
 
   v8impl::Persistent<v8::Value> _persistent;
@@ -379,27 +385,10 @@ inline static napi_status Unwrap(napi_env env,
 // Ref: benchmark/misc/function_call
 // Discussion (incl. perf. data): https://github.com/nodejs/node/pull/21072
 struct CallbackBundle {
-  // Bind the lifecycle of `this` C++ object to a JavaScript object.
-  // We never delete a CallbackBundle C++ object directly.
-  void BindLifecycleTo(v8::Isolate* isolate, v8::Local<v8::Value> target) {
-    handle.Reset(isolate, target);
-    handle.SetWeak(this, WeakCallback, v8::WeakCallbackType::kParameter);
-  }
-
   napi_env       env;      // Necessary to invoke C++ NAPI callback
   void*          cb_data;  // The user provided callback data
   napi_callback  function_or_getter;
   napi_callback  setter;
-  v8impl::Persistent<v8::Value> handle;  // Die with this JavaScript object
-
- private:
-  static void WeakCallback(v8::WeakCallbackInfo<CallbackBundle> const& info) {
-    // Use the "WeakCallback mechanism" to delete the C++ `bundle` object.
-    // This will be called when the v8::External containing `this` pointer
-    // is being GC-ed.
-    CallbackBundle* bundle = info.GetParameter();
-    delete bundle;
-  }
 };
 
 // Base class extended by classes that wrap V8 function and property callback
@@ -580,6 +569,11 @@ class SetterCallbackWrapper
   const v8::Local<v8::Value>& _value;
 };
 
+static void DeleteCallbackBundle(napi_env env, void* data, void* hint) {
+  CallbackBundle* bundle = static_cast<CallbackBundle*>(data);
+  delete bundle;
+}
+
 // Creates an object to be made available to the static function callback
 // wrapper, used to retrieve the native callback function and data pointer.
 static
@@ -591,7 +585,7 @@ v8::Local<v8::Value> CreateFunctionCallbackData(napi_env env,
   bundle->cb_data = data;
   bundle->env = env;
   v8::Local<v8::Value> cbdata = v8::External::New(env->isolate, bundle);
-  bundle->BindLifecycleTo(env->isolate, cbdata);
+  Reference::New(env, cbdata, 0, true, DeleteCallbackBundle, bundle, nullptr);
 
   return cbdata;
 }

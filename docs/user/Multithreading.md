@@ -1,9 +1,9 @@
-## Multithreading in GraalVM JavaScript
+# Multithreading in GraalVM JavaScript
 
 GraalVM JavaScript supports multithreading.
 Depending on the usage scenario, threads can be used to execute parallel JavaScript code using multiple [`Context`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html) objects, or multiple [Worker](https://nodejs.org/api/worker_threads.html) threads.
 
-### Multithreading with Java and JavaScript
+## Multithreading with Java and JavaScript
 
 GraalVM JavaScript supports multithreading in the context of Java interoperability.
 The basic model of multi-threaded execution supported by GraalVM JavaScript is a "share-nothing" model that should be familiar to any JavaScript developer:
@@ -26,7 +26,7 @@ The most notable ones describe how:
 4. [Java concurrency can be used from JavaScript](https://github.com/graalvm/graaljs/blob/master/graal-js/src/com.oracle.truffle.js.test.threading/src/com/oracle/truffle/js/test/threading/ForkJoinTest.java).
 5. [Java objects can be accessed by multiple JavaScript threads, concurrently](https://github.com/graalvm/graaljs/blob/master/graal-js/src/com.oracle.truffle.js.test.threading/src/com/oracle/truffle/js/test/threading/SharedJavaObjects.java).
 
-### Multithreading with Node.js
+## Multithreading with Node.js
 
 The basic multi-threading model of GraalVM JavaScript applies to Node.js applications as well.
 In Node.js, a [Worker](https://nodejs.org/api/worker_threads.html#worker_threads_worker_threads) thread can be created to execute JavaScript code in parallel, but JavaScript objects cannot be shared between workers.

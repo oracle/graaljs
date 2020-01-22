@@ -42,95 +42,81 @@ package com.oracle.truffle.js.runtime.java.adapter;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 
+import java.lang.invoke.CallSite;
+import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.lang.reflect.Array;
+import java.util.Arrays;
 
-import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 /**
  * Provides static utility services to generated Java adapter classes.
  */
 public final class JavaAdapterServices {
-    private static final MethodHandle VALUE_EXECUTE_METHOD_HANDLE;
-    private static final MethodHandle VALUE_EXECUTE_VOID_METHOD_HANDLE;
-    private static final MethodHandle VALUE_AS_METHOD_HANDLE;
-    private static final Source HAS_OWN_PROPERTY_SOURCE = Source.newBuilder(ID, "(function(obj, name){return Object.prototype.hasOwnProperty.call(obj, name);})", "hasOwnProperty").buildLiteral();
-    private static final ThreadLocal<Value> classOverrides = new ThreadLocal<>();
+    private static final MethodType VALUE_EXECUTE_METHOD_TYPE = MethodType.methodType(Value.class, Object[].class);
+    private static final MethodType VALUE_EXECUTE_VOID_METHOD_TYPE = MethodType.methodType(void.class, Object[].class);
+    private static final MethodType VALUE_INVOKE_MEMBER_METHOD_TYPE = MethodType.methodType(Value.class, String.class, Object[].class);
+    private static final MethodType VALUE_AS_METHOD_TYPE = MethodType.methodType(Object.class, Class.class);
+    private static final MethodType CONCAT_ARRAYS_METHOD_TYPE = MethodType.methodType(Object[].class, Object[].class, Object.class);
 
-    static {
-        try {
-            VALUE_EXECUTE_METHOD_HANDLE = MethodHandles.publicLookup().findVirtual(Value.class, "execute", MethodType.methodType(Value.class, Object[].class));
-            VALUE_EXECUTE_VOID_METHOD_HANDLE = MethodHandles.publicLookup().findVirtual(Value.class, "executeVoid", MethodType.methodType(void.class, Object[].class));
-            VALUE_AS_METHOD_HANDLE = MethodHandles.publicLookup().findVirtual(Value.class, "as", MethodType.methodType(Object.class, Class.class));
-        } catch (NoSuchMethodException | IllegalAccessException e) {
-            throw new RuntimeException(e);
-        }
-    }
+    private static final Source HAS_OWN_PROPERTY_SOURCE = Source.newBuilder(ID, "(function(obj, name){return Object.prototype.hasOwnProperty.call(obj, name);})", "hasOwnProperty").buildLiteral();
+
+    static final int BOOTSTRAP_VALUE_INVOKE_MEMBER = 1 << 0;
+    static final int BOOTSTRAP_VALUE_EXECUTE = 1 << 1;
+    static final int BOOTSTRAP_VARARGS = 1 << 2;
 
     private JavaAdapterServices() {
         assert !JSTruffleOptions.SubstrateVM;
     }
 
     /**
-     * Returns a thread-local JS object used to define methods for the adapter class being
-     * initialized on the current thread. This method is public solely for implementation reasons,
-     * so the adapter classes can invoke it from their static initializers.
+     * Returns a JS object used to define methods for the adapter class being initialized. The
+     * object is retrieved from the class loader.
      *
-     * @return the thread-local JS object used to define methods for the class being initialized.
+     * This method is public solely for implementation reasons, so the adapter classes can invoke it
+     * from their static initializers.
+     *
+     * @return the JS object used to define methods for the class being initialized.
      */
-    public static Value getClassOverrides() {
-        final Value overrides = classOverrides.get();
+    public static Value getClassOverrides(ClassLoader classLoader) {
+        final Value overrides = JavaAdapterClassLoader.getClassOverrides(classLoader);
         assert overrides != null;
         return overrides;
     }
 
-    static void setClassOverrides(Value overrides) {
-        classOverrides.set(overrides);
-    }
-
     /**
-     * Given a JS object, retrieves a function from it by name, bound to the object.
+     * Given a JS object and a method name, checks if a method can be called.
      *
-     * This method is public mainly for implementation reasons, so the adapter classes can invoke it
-     * from their constructors that take a {@link Value} as last argument to obtain the functions
-     * for their method implementations.
+     * This method is public mainly for implementation reasons, so the adapter classes can invoke
+     * it.
      *
      * @param obj the script object
      * @param name the name of the property that contains the function
-     * @return a {@link Value} representing a member function (bound to the object if need be), or
-     *         null if the value of the property is either null or undefined, or "toString" was
-     *         requested as the name and the object doesn't directly define it but just inherits it.
+     * @return true if the {@link Value} has an invocable member function, or false if the member
+     *         does not exist or is not callable.
      */
-    @TruffleBoundary
-    public static Value getFunction(final Value obj, final String name) {
-        // Since every JS Object has a toString, we only override "String toString()" it if it's
-        // explicitly specified
-        if (JSRuntime.TO_STRING.equals(name) && !hasOwnProperty(obj, JSRuntime.TO_STRING)) {
-            return null;
-        }
-
-        final Value fnObj = obj.getMember(name);
-        if (fnObj == null) { // member does not exist
-            return null;
-        } else if (fnObj.canExecute()) {
-            return fnObj;
-        } else if (fnObj.isNull()) { // null or undefined
-            return null;
-        } else {
-            throw Errors.createTypeErrorNotAFunction(fnObj);
-        }
+    public static boolean hasMethod(final Value obj, final String name) {
+        return obj.canInvokeMember(name);
     }
 
-    private static boolean hasOwnProperty(final Value obj, final String name) {
-        Value hasOwnProperty = Context.getCurrent().eval(HAS_OWN_PROPERTY_SOURCE);
+    /**
+     * Checks if the given JS object has an own (non-inherited) property with the given name.
+     *
+     * This method is public mainly for implementation reasons, so the adapter classes can invoke
+     * it.
+     *
+     * @param obj the script object
+     * @param name the name of the property that contains the function
+     * @return true if the {@link Value} has an own property with the given name.
+     */
+    public static boolean hasOwnProperty(final Value obj, final String name) {
+        Value hasOwnProperty = obj.getContext().eval(HAS_OWN_PROPERTY_SOURCE);
         try {
             return hasOwnProperty.execute(obj, name).asBoolean();
         } catch (Exception e) {
@@ -144,29 +130,6 @@ public final class JavaAdapterServices {
      */
     public static boolean isFunction(final Object obj) {
         return obj instanceof Value && ((Value) obj).canExecute();
-    }
-
-    /**
-     * Obtains a method handle executing a {@link Value}, adapted for the given {@link MethodType}.
-     */
-    @TruffleBoundary
-    public static MethodHandle getHandle(final MethodType type) {
-        MethodHandle call;
-        if (type.returnType() == void.class) {
-            call = VALUE_EXECUTE_VOID_METHOD_HANDLE;
-        } else {
-            call = VALUE_EXECUTE_METHOD_HANDLE;
-        }
-        // TODO this has to be adapted to work with varargs methods as well
-        call = call.asCollector(Object[].class, type.parameterCount());
-
-        if (type.returnType() != void.class) {
-            call = MethodHandles.filterReturnValue(call, createReturnValueConverter(type.returnType()));
-        }
-
-        // insert [function object]
-        call = call.asType(type.insertParameterTypes(0, Value.class));
-        return call;
     }
 
     /**
@@ -192,7 +155,76 @@ public final class JavaAdapterServices {
         return new RuntimeException(t);
     }
 
-    private static MethodHandle createReturnValueConverter(Class<?> returnType) {
-        return MethodHandles.insertArguments(VALUE_AS_METHOD_HANDLE, 1, returnType);
+    private static MethodHandle createReturnValueConverter(MethodHandles.Lookup lookup, Class<?> returnType) throws NoSuchMethodException, IllegalAccessException {
+        return MethodHandles.insertArguments(lookup.findVirtual(Value.class, "as", VALUE_AS_METHOD_TYPE), 1, returnType);
+    }
+
+    /**
+     * Bootstrap a typed method handle for {@link Value#invokeMember} or {@link Value#execute}.
+     *
+     * This method is public solely for implementation reasons, so the adapter classes can use it.
+     *
+     * @param methodName the method's name.
+     * @param type the method's type with a leading receiver {@link Value} parameter.
+     * @param flags 0 for {@link Value#invokeMember}, 1 for {@link Value#execute}.
+     * @return a CallSite for invoking the member of, or executing a {@link Value}.
+     */
+    public static CallSite bootstrap(MethodHandles.Lookup lookup, String methodName, MethodType type, int flags) throws NoSuchMethodException, IllegalAccessException {
+        MethodHandle target;
+        if ((flags & BOOTSTRAP_VALUE_INVOKE_MEMBER) != 0) {
+            target = lookup.findVirtual(Value.class, "invokeMember", VALUE_INVOKE_MEMBER_METHOD_TYPE);
+            // insert method name parameter
+            target = MethodHandles.insertArguments(target, 1, methodName);
+        } else {
+            assert (flags & BOOTSTRAP_VALUE_EXECUTE) != 0;
+            if (type.returnType() == void.class) {
+                target = lookup.findVirtual(Value.class, "executeVoid", VALUE_EXECUTE_VOID_METHOD_TYPE);
+            } else {
+                target = lookup.findVirtual(Value.class, "execute", VALUE_EXECUTE_METHOD_TYPE);
+            }
+        }
+
+        boolean varargs = (flags & BOOTSTRAP_VARARGS) != 0;
+        if (varargs) {
+            Class<?> varargsParameter = type.parameterType(type.parameterCount() - 1);
+            if (type.parameterCount() == 2 && varargsParameter == Object[].class) {
+                // easy case: no need to collect anything, just pass through
+            } else {
+                // collect non-varargs arguments into an Object[]
+                MethodHandle fixedCollector = MethodHandles.identity(Object[].class).asCollector(Object[].class, type.parameterCount() - 2);
+                MethodType fixedCollectorType = MethodType.methodType(Object[].class, Arrays.copyOfRange(type.parameterArray(), 1, type.parameterCount() - 1));
+                fixedCollector = fixedCollector.asType(fixedCollectorType);
+
+                // concatenate fixed Object[] and varargs array
+                MethodHandle concatArray = lookup.findStatic(JavaAdapterServices.class, "concatArrays", CONCAT_ARRAYS_METHOD_TYPE);
+                concatArray = concatArray.asType(CONCAT_ARRAYS_METHOD_TYPE.changeParameterType(1, varargsParameter));
+
+                // combine collectors => Object[](fixed..., varargs)
+                MethodHandle collector = MethodHandles.collectArguments(concatArray, 0, fixedCollector);
+
+                // apply collector
+                target = MethodHandles.collectArguments(target, 1, collector);
+            }
+        } else {
+            // collect arguments
+            target = target.asCollector(Object[].class, type.parameterCount() - 1);
+        }
+
+        if (type.returnType() != void.class) {
+            target = MethodHandles.filterReturnValue(target, createReturnValueConverter(lookup, type.returnType()));
+        }
+
+        target = target.asType(type);
+        return new ConstantCallSite(target);
+    }
+
+    public static Object[] concatArrays(Object[] fixed, Object va) {
+        int fixedLen = fixed.length;
+        int vaLen = Array.getLength(va);
+        Object[] concat = Arrays.copyOf(fixed, fixedLen + vaLen);
+        for (int i = 0; i < vaLen; i++) {
+            concat[fixedLen + i] = Array.get(va, i);
+        }
+        return concat;
     }
 }

@@ -1753,7 +1753,7 @@ public class WriteElementNode extends JSTargetableNode {
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root) {
             Object truffleObject = targetClass.cast(target);
             if (interop.isNull(truffleObject)) {
-                throw Errors.createTypeErrorCannotSetProperty(index, truffleObject, this);
+                throw Errors.createTypeErrorCannotSetProperty(index, truffleObject, this, root.getContext());
             }
             Object convertedKey = exportKey.execute(index);
             if (convertedKey instanceof Symbol) {

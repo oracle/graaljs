@@ -55,7 +55,6 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
-import com.oracle.truffle.js.runtime.objects.PropertyReference;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropAsyncFunction;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
@@ -74,89 +73,84 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
     }
 
     public final Object execute(Object value) {
-        return executeWithTarget(value, Undefined.instance);
+        return execute(value, Undefined.instance, false);
     }
 
-    public abstract Object executeWithTarget(Object value, Object thiz);
+    public abstract Object execute(Object value, Object thiz, boolean bindMemberFunctions);
 
-    @Specialization(guards = {"isJSFunction(function)", "!BindProgramResult", "!InteropCompletePromises || !isAsyncFunction(function)"})
-    protected static TruffleObject doFunctionNoBind(DynamicObject function, @SuppressWarnings("unused") Object thiz) {
+    @Specialization(guards = {"isJSFunction(function)", "!bindFunctions", "!InteropCompletePromises || !isAsyncFunction(function)"})
+    protected static DynamicObject doFunctionNoBind(DynamicObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         return function;
     }
 
-    @Specialization(guards = {"isJSFunction(function)", "BindProgramResult", "isUndefined(thiz)", "!InteropCompletePromises || !isAsyncFunction(function)"})
-    protected static TruffleObject doFunctionUndefinedThis(DynamicObject function, @SuppressWarnings("unused") Object thiz) {
+    @Specialization(guards = {"isJSFunction(function)", "bindFunctions", "isUndefined(thiz)", "!InteropCompletePromises || !isAsyncFunction(function)"})
+    protected static DynamicObject doFunctionUndefinedThis(DynamicObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         return function;
     }
 
-    @Specialization(guards = {"isJSFunction(function)", "BindProgramResult", "!isUndefined(thiz)", "!isBoundJSFunction(function)", "!InteropCompletePromises || !isAsyncFunction(function)"})
-    protected static TruffleObject doBindUnboundFunction(DynamicObject function, Object thiz) {
+    @Specialization(guards = {"isJSFunction(function)", "bindFunctions", "!isUndefined(thiz)", "!isBoundJSFunction(function)", "!InteropCompletePromises || !isAsyncFunction(function)"})
+    protected static TruffleObject doBindUnboundFunction(DynamicObject function, Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         return new InteropBoundFunction(function, thiz);
     }
 
-    @Specialization(guards = {"isJSFunction(function)", "BindProgramResult", "isBoundJSFunction(function)", "!InteropCompletePromises || !isAsyncFunction(function)"})
-    protected static TruffleObject doBoundFunction(DynamicObject function, @SuppressWarnings("unused") Object thiz) {
+    @Specialization(guards = {"isJSFunction(function)", "bindFunctions", "isBoundJSFunction(function)", "!InteropCompletePromises || !isAsyncFunction(function)"})
+    protected static DynamicObject doBoundFunction(DynamicObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         return function;
     }
 
     @Specialization(guards = {"isJSFunction(function)", "InteropCompletePromises", "isAsyncFunction(function)"})
-    protected static TruffleObject doAsyncFunction(DynamicObject function, @SuppressWarnings("unused") Object thiz) {
+    protected static TruffleObject doAsyncFunction(DynamicObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         return new InteropAsyncFunction(function);
     }
 
     @Specialization
-    protected static String doLazyString(PropertyReference value, @SuppressWarnings("unused") Object thiz) {
-        return value.toString();
-    }
-
-    @Specialization
-    protected static double doLargeInteger(LargeInteger value, @SuppressWarnings("unused") Object thiz) {
+    protected static double doLargeInteger(LargeInteger value, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         return value.doubleValue();
     }
 
     @Specialization(guards = {"!isJSFunction(value)"})
-    protected static DynamicObject doObject(DynamicObject value, @SuppressWarnings("unused") Object thiz) {
+    protected static DynamicObject doObject(DynamicObject value, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         return value;
     }
 
     @Specialization
-    protected static int doInt(int value, @SuppressWarnings("unused") Object thiz) {
+    protected static int doInt(int value, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         return value;
     }
 
     @Specialization
-    protected static long doLong(long value, @SuppressWarnings("unused") Object thiz) {
+    protected static long doLong(long value, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         return value;
     }
 
     @Specialization
-    protected static double doDouble(double value, @SuppressWarnings("unused") Object thiz) {
+    protected static double doDouble(double value, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         return value;
     }
 
     @Specialization
-    protected static boolean doBoolean(boolean value, @SuppressWarnings("unused") Object thiz) {
+    protected static boolean doBoolean(boolean value, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         return value;
     }
 
     @Specialization
-    protected static BigInt doBigInt(BigInt value, @SuppressWarnings("unused") Object thiz) {
+    protected static BigInt doBigInt(BigInt value, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         return value;
     }
 
     @Specialization
-    protected static String doString(String value, @SuppressWarnings("unused") Object thiz) {
+    protected static String doString(String value, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         return value;
     }
 
     @Specialization(guards = {"!isJSFunction(value)"}, replaces = "doObject")
-    protected static TruffleObject doTruffleObject(TruffleObject value, @SuppressWarnings("unused") Object thiz) {
+    protected static TruffleObject doTruffleObject(TruffleObject value, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         return value;
     }
 
     @TruffleBoundary
     @Fallback
-    protected static final Object doOther(Object value, @SuppressWarnings("unused") Object thiz) {
+    protected static final Object doOther(Object value, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         throw Errors.createTypeErrorFormat("Cannot convert to TruffleObject: %s", value == null ? null : value.getClass().getSimpleName());
     }
 

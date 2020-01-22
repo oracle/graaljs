@@ -138,14 +138,16 @@ public class ConsolePrintTest extends JSTest {
     @Test
     public void testFunctionObject() {
         Object result = testHelper.runNoPolyglot("function f(a,b) { return a+b; }; f.x=1; f;");
+        testHelper.enterContext();
         String converted = JSRuntime.safeToString(result);
+        testHelper.leaveContext();
         assertEquals("function f(a,b) { return a+b; }", converted);
     }
 
     @Test
     public void testInternalFunction() {
         Object result = testHelper.runNoPolyglot("Promise;");
-        testHelper.enterContext(); // fails without, only this test
+        testHelper.enterContext();
         String converted = JSRuntime.safeToString(result);
         testHelper.leaveContext();
         assertEquals("function Promise() { [native code] }", converted);

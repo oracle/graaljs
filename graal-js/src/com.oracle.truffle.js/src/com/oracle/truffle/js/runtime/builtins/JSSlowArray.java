@@ -42,11 +42,11 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.SparseArray;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -151,7 +151,8 @@ public final class JSSlowArray extends JSAbstractArray {
 
         boolean succeeded = jsDefineProperty(thisObj, index, descriptor, false);
         if (!succeeded) {
-            return DefinePropertyUtil.reject(doThrow, JSTruffleOptions.NashornCompatibilityMode ? "cannot set property" : "Cannot redefine property");
+            JSContext context = JavaScriptLanguage.getCurrentJSRealm().getContext();
+            return DefinePropertyUtil.reject(doThrow, context.isOptionNashornCompatibilityMode() ? "cannot set property" : "Cannot redefine property");
         }
         return true;
     }
@@ -196,7 +197,8 @@ public final class JSSlowArray extends JSAbstractArray {
         arraySetArrayType(thisObj, internalArray.setLength(thisObj, newLen, doThrow));
 
         if (!deleteSucceeded) {
-            return DefinePropertyUtil.reject(doThrow, JSTruffleOptions.NashornCompatibilityMode ? "cannot set property: length" : "Cannot redefine property: length");
+            JSContext context = JavaScriptLanguage.getCurrentJSRealm().getContext();
+            return DefinePropertyUtil.reject(doThrow, context.isOptionNashornCompatibilityMode() ? "cannot set property: length" : "Cannot redefine property: length");
         }
         return true;
     }

@@ -220,7 +220,7 @@ MaybeLocal<Value> ExecuteBootstrapper(Environment* env,
   return scope.EscapeMaybe(result);
 }
 
-#if HAVE_INSPECTOR && NODE_USE_V8_PLATFORM
+#if HAVE_INSPECTOR
 int Environment::InitializeInspector(
     inspector::ParentInspectorHandle* parent_handle) {
   std::string inspector_path;
@@ -809,13 +809,6 @@ int InitializeNodeWithArgs(std::vector<std::string>* argv,
     credentials::SafeGetenv("NODE_REDIRECT_WARNINGS",
                             &default_env_options->redirect_warnings);
   }
-
-#if HAVE_OPENSSL
-  std::string* openssl_config = &per_process::cli_options->openssl_config;
-  if (openssl_config->empty()) {
-    credentials::SafeGetenv("OPENSSL_CONF", openssl_config);
-  }
-#endif
 
 #if !defined(NODE_WITHOUT_NODE_OPTIONS)
   std::string node_options;

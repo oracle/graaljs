@@ -6,9 +6,13 @@ x-ccache-setup-steps: &ccache-setup-steps
 
 os: linux
 language: cpp
+# Currently this file can only support one PYTHON_VERSION.
+# To experiment with Python 3, comment out Python 2.7 and uncomment one of the Python 3 versions.
 env:
   global:
     - PYTHON_VERSION="2.7.15"
+    # - PYTHON_VERSION="3.6.7"
+    # - PYTHON_VERSION="3.7.1"
 jobs:
   include:
     - stage: "Compile"
@@ -70,14 +74,14 @@ jobs:
         - make -j1 V=1 test/addons/.buildstamp test/js-native-api/.buildstamp test/node-api/.buildstamp
         - python tools/test.py -j 2 -p dots --report --mode=release --flaky-tests=dontcare addons js-native-api node-api
 
-    - name: "Linter"
+    - name: "Run Linter and Build Docs"
       language: node_js
       node_js: "node"
       install:
         - pyenv global ${PYTHON_VERSION}
         - make lint-py-build || true
       script:
-        - NODE=$(which node) make lint lint-py
+        - NODE=$(which node) make lint-py doc-only lint
 
     - name: "First commit message adheres to guidelines at <a href=\"https://goo.gl/p2fr5Q\">https://goo.gl/p2fr5Q</a>"
       if: type = pull_request
@@ -88,30 +92,14 @@ jobs:
             bash -x tools/lint-pr-commit-message.sh ${TRAVIS_PULL_REQUEST};
           fi
 
-    - name: "Python 3 is EXPERIMENTAL (Py36)"
-      language: node_js
-      node_js: "node"
+    - name: "Find syntax errors in our Python dependencies"
+      language: python
+      python: 3.8
       install:
-        - pyenv global 3.6.7
-        - python3.6 -m pip install --upgrade pip
-        - make lint-py-build
+        - mv .flake8 disabled.flake8  # take the blinders off of flake8
+        - python3.8 -m pip install --upgrade pip
+        - python3.8 -m pip install flake8
       script:
-        - NODE=$(which node) make lint lint-py
-        - python3.6 ./configure.py
-        - NODE=$(which node) make test
-
-    - name: "Python 3 is EXPERIMENTAL (Py37)"
-      language: node_js
-      node_js: "node"
-      install:
-        - pyenv global 3.7.1
-        - python3.7 -m pip install --upgrade pip
-        - make lint-py-build
-      script:
-        - NODE=$(which node) make lint lint-py
-        - python3.7 ./configure.py
-        - NODE=$(which node) make test
-
-  allow_failures:
-    - name: "Python 3 is EXPERIMENTAL (Py36)"
-    - name: "Python 3 is EXPERIMENTAL (Py37)"
+        - flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+  allow_failures:  # TODO (cclauss): remove this when dependencies are clean
+    - name: "Find syntax errors in our Python dependencies"

@@ -826,7 +826,7 @@ public final class JSFunction extends JSBuiltinObject {
 
     @Override
     @TruffleBoundary
-    public String safeToString(DynamicObject obj, int depth) {
+    public String safeToString(DynamicObject obj, int depth, JSContext context) {
         RootNode rn = ((RootCallTarget) JSFunction.getCallTarget(obj)).getRootNode();
         SourceSection ssect = rn.getSourceSection();
         String source;
@@ -1044,7 +1044,7 @@ public final class JSFunction extends JSBuiltinObject {
         return initialShape;
     }
 
-    private static RootNode getFrameRootNode(FrameInstance frameInstance) {
+    public static RootNode getFrameRootNode(FrameInstance frameInstance) {
         Node callNode = frameInstance.getCallNode();
         if (callNode != null) {
             return callNode.getRootNode();

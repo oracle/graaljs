@@ -563,8 +563,8 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     @Override
-    public String safeToString(DynamicObject obj, int depth) {
-        if (JSTruffleOptions.NashornCompatibilityMode) {
+    public String safeToString(DynamicObject obj, int depth, JSContext context) {
+        if (context.isOptionNashornCompatibilityMode()) {
             return defaultToString(obj);
         } else {
             Object target = getTarget(obj);

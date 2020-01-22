@@ -22,7 +22,7 @@
 /* A repl library that you can include in your own code to get a runtime
  * interface to your program.
  *
- *   var repl = require("repl");
+ *   const repl = require("repl");
  *   // start repl on stdin
  *   repl.start("prompt> ");
  *
@@ -69,12 +69,15 @@ const CJSModule = require('internal/modules/cjs/loader');
 const domain = require('domain');
 const debug = require('internal/util/debuglog').debuglog('repl');
 const {
-  ERR_CANNOT_WATCH_SIGINT,
-  ERR_INVALID_ARG_TYPE,
-  ERR_INVALID_REPL_EVAL_CONFIG,
-  ERR_INVALID_REPL_INPUT,
-  ERR_SCRIPT_EXECUTION_INTERRUPTED
-} = require('internal/errors').codes;
+  codes: {
+    ERR_CANNOT_WATCH_SIGINT,
+    ERR_INVALID_ARG_TYPE,
+    ERR_INVALID_REPL_EVAL_CONFIG,
+    ERR_INVALID_REPL_INPUT,
+    ERR_SCRIPT_EXECUTION_INTERRUPTED,
+  },
+  overrideStackTrace,
+} = require('internal/errors');
 const { sendInspectorCommand } = require('internal/util/inspector');
 const experimentalREPLAwait = require('internal/options').getOptionValue(
   '--experimental-repl-await'
@@ -279,6 +282,12 @@ function REPLServer(prompt,
   }
 
   function defaultEval(code, context, file, cb) {
+    const { getOptionValue } = require('internal/options');
+    const experimentalModules = getOptionValue('--experimental-modules');
+    const asyncESM = experimentalModules ?
+      require('internal/process/esm_loader') :
+      null;
+
     let result, script, wrappedErr;
     let err = null;
     let wrappedCmd = false;
@@ -312,6 +321,12 @@ function REPLServer(prompt,
     if (code === '\n')
       return cb(null);
 
+    let pwd;
+    try {
+      const { pathToFileURL } = require('url');
+      pwd = pathToFileURL(process.cwd()).href;
+    } catch {
+    }
     while (true) {
       try {
         if (!/^\s*$/.test(code) &&
@@ -322,7 +337,12 @@ function REPLServer(prompt,
         }
         script = vm.createScript(code, {
           filename: file,
-          displayErrors: true
+          displayErrors: true,
+          importModuleDynamically: experimentalModules ?
+            async (specifier) => {
+              return (await asyncESM.loaderPromise).import(specifier, pwd);
+            } :
+            undefined
         });
       } catch (e) {
         debug('parse error %j', code, e);
@@ -355,7 +375,7 @@ function REPLServer(prompt,
 
       // After executing the current expression, store the values of RegExp
       // predefined properties back in `savedRegExMatches`
-      for (var idx = 1; idx < savedRegExMatches.length; idx += 1) {
+      for (let idx = 1; idx < savedRegExMatches.length; idx += 1) {
         savedRegExMatches[idx] = RegExp[`$${idx}`];
       }
 
@@ -456,10 +476,29 @@ function REPLServer(prompt,
     let errStack = '';
 
     if (typeof e === 'object' && e !== null) {
-      const pstrace = Error.prepareStackTrace;
-      Error.prepareStackTrace = prepareStackTrace(pstrace);
+      overrideStackTrace.set(e, (error, stackFrames) => {
+        let frames;
+        if (typeof stackFrames === 'object') {
+          // Search from the bottom of the call stack to
+          // find the first frame with a null function name
+          const idx = stackFrames
+            .reverse()
+            .findIndex((frame) => frame.getFunctionName() === null);
+          // If found, get rid of it and everything below it
+          frames = stackFrames.splice(idx + 1);
+        } else {
+          frames = stackFrames;
+        }
+        // FIXME(devsnek): this is inconsistent with the checks
+        // that the real prepareStackTrace dispatch uses in
+        // lib/internal/errors.js.
+        if (typeof Error.prepareStackTrace === 'function') {
+          return Error.prepareStackTrace(error, frames);
+        }
+        frames.push(error);
+        return frames.reverse().join('\n    at ');
+      });
       decorateErrorStack(e);
-      Error.prepareStackTrace = pstrace;
 
       if (e.domainThrown) {
         delete e.domain;
@@ -573,30 +612,6 @@ function REPLServer(prompt,
     }
   }
 
-  function filterInternalStackFrames(structuredStack) {
-    // Search from the bottom of the call stack to
-    // find the first frame with a null function name
-    if (typeof structuredStack !== 'object')
-      return structuredStack;
-    const idx = structuredStack.reverse().findIndex(
-      (frame) => frame.getFunctionName() === null);
-
-    // If found, get rid of it and everything below it
-    structuredStack = structuredStack.splice(idx + 1);
-    return structuredStack;
-  }
-
-  function prepareStackTrace(fn) {
-    return (error, stackFrames) => {
-      const frames = filterInternalStackFrames(stackFrames);
-      if (fn) {
-        return fn(error, frames);
-      }
-      frames.push(error);
-      return frames.reverse().join('\n    at ');
-    };
-  }
-
   function _parseREPLKeyword(keyword, rest) {
     const cmd = this.commands[keyword];
     if (cmd) {
@@ -619,8 +634,8 @@ function REPLServer(prompt,
     self.emit('exit');
   });
 
-  var sawSIGINT = false;
-  var sawCtrlD = false;
+  let sawSIGINT = false;
+  let sawCtrlD = false;
   const prioritizedSigintQueue = new Set();
   self.on('SIGINT', function onSigInt() {
     if (prioritizedSigintQueue.size > 0) {
@@ -860,7 +875,7 @@ REPLServer.prototype.close = function close() {
 };
 
 REPLServer.prototype.createContext = function() {
-  var context;
+  let context;
   if (this.useGlobal) {
     context = global;
   } else {
@@ -946,7 +961,7 @@ REPLServer.prototype.resetContext = function() {
 };
 
 REPLServer.prototype.displayPrompt = function(preserveCursor) {
-  var prompt = this._initialPrompt;
+  let prompt = this._initialPrompt;
   if (this[kBufferedCommandSymbol].length) {
     prompt = '...';
     const len = this.lines.level.length ? this.lines.level.length - 1 : 0;
@@ -976,7 +991,7 @@ function ArrayStream() {
   Stream.call(this);
 
   this.run = function(data) {
-    for (var n = 0; n < data.length; n++)
+    for (let n = 0; n < data.length; n++)
       this.emit('data', `${data[n]}\n`);
   };
 }
@@ -988,6 +1003,7 @@ ArrayStream.prototype.resume = function() {};
 ArrayStream.prototype.write = function() {};
 
 const requireRE = /\brequire\s*\(['"](([\w@./-]+\/)?(?:[\w@./-]*))/;
+const fsAutoCompleteRE = /fs(?:\.promises)?\.\s*[a-z][a-zA-Z]+\(\s*["'](.*)/;
 const simpleExpressionRE =
     /(?:[a-zA-Z_$](?:\w|\$)*\.)*[a-zA-Z_$](?:\w|\$)*\.?$/;
 
@@ -1000,7 +1016,7 @@ function isIdentifier(str) {
     return false;
   }
   const firstLen = first > 0xffff ? 2 : 1;
-  for (var i = firstLen; i < str.length; i += 1) {
+  for (let i = firstLen; i < str.length; i += 1) {
     const cp = str.codePointAt(i);
     if (!isIdentifierChar(cp)) {
       return false;
@@ -1038,7 +1054,7 @@ REPLServer.prototype.complete = function() {
 // given to the readline interface for handling tab completion.
 //
 // Example:
-//  complete('var foo = util.')
+//  complete('let foo = util.')
 //    -> [['util.print', 'util.debug', 'util.log', 'util.inspect'],
 //        'util.' ]
 //
@@ -1049,16 +1065,16 @@ function complete(line, callback) {
   if (this[kBufferedCommandSymbol] !== undefined &&
       this[kBufferedCommandSymbol].length) {
     // Get a new array of inputted lines
-    var tmp = this.lines.slice();
+    const tmp = this.lines.slice();
     // Kill off all function declarations to push all local variables into
     // global scope
-    for (var n = 0; n < this.lines.level.length; n++) {
-      var kill = this.lines.level[n];
+    for (let n = 0; n < this.lines.level.length; n++) {
+      const kill = this.lines.level[n];
       if (kill.isFunction)
         tmp[kill.line] = '';
     }
-    var flat = new ArrayStream();         // Make a new "input" stream.
-    var magic = new REPLServer('', flat); // Make a nested REPL.
+    const flat = new ArrayStream();         // Make a new "input" stream.
+    const magic = new REPLServer('', flat); // Make a nested REPL.
     replMap.set(magic, replMap.get(this));
     flat.run(tmp);                        // `eval` the flattened code.
     // All this is only profitable if the nested REPL does not have a
@@ -1069,13 +1085,12 @@ function complete(line, callback) {
     }
   }
 
-  var completions;
   // List of completion lists, one for each inheritance "level"
-  var completionGroups = [];
-  var completeOn, i, group, c;
+  let completionGroups = [];
+  let completeOn, group;
 
   // REPL commands (e.g. ".break").
-  var filter;
+  let filter;
   let match = line.match(/^\s*\.(\w*)$/);
   if (match) {
     completionGroups.push(Object.keys(this.commands));
@@ -1088,14 +1103,14 @@ function complete(line, callback) {
   } else if (match = line.match(requireRE)) {
     // require('...<Tab>')
     const exts = Object.keys(this.context.require.extensions);
-    var indexRe = new RegExp('^index(?:' + exts.map(regexpEscape).join('|') +
+    const indexRe = new RegExp('^index(?:' + exts.map(regexpEscape).join('|') +
                              ')$');
-    var versionedFileNamesRe = /-\d+\.\d+/;
+    const versionedFileNamesRe = /-\d+\.\d+/;
 
     completeOn = match[1];
-    var subdir = match[2] || '';
+    const subdir = match[2] || '';
     filter = match[1];
-    var dir, files, f, name, base, ext, abs, subfiles, s, isDirectory;
+    let dir, files, name, base, ext, abs, subfiles, isDirectory;
     group = [];
     let paths = [];
 
@@ -1109,14 +1124,14 @@ function complete(line, callback) {
       paths = module.paths.concat(CJSModule.globalPaths);
     }
 
-    for (i = 0; i < paths.length; i++) {
+    for (let i = 0; i < paths.length; i++) {
       dir = path.resolve(paths[i], subdir);
       try {
         files = fs.readdirSync(dir);
       } catch {
         continue;
       }
-      for (f = 0; f < files.length; f++) {
+      for (let f = 0; f < files.length; f++) {
         name = files[f];
         ext = path.extname(name);
         base = name.slice(0, -ext.length);
@@ -1137,7 +1152,7 @@ function complete(line, callback) {
           } catch {
             continue;
           }
-          for (s = 0; s < subfiles.length; s++) {
+          for (let s = 0; s < subfiles.length; s++) {
             if (indexRe.test(subfiles[s])) {
               group.push(subdir + name);
             }
@@ -1156,7 +1171,7 @@ function complete(line, callback) {
     }
 
     completionGroupsLoaded();
-  } else if (match = line.match(/fs\.\s*[a-z][a-zA-Z]+\(\s*["'](.*)/)) {
+  } else if (match = line.match(fsAutoCompleteRE)) {
 
     let filePath = match[1];
     let fileList;
@@ -1175,7 +1190,7 @@ function complete(line, callback) {
           d.name.startsWith(baseName))
           .map((d) => d.name);
         completionGroups.push(filteredValue);
-        completeOn = filePath;
+        completeOn = baseName;
       } catch {}
     }
 
@@ -1193,7 +1208,7 @@ function complete(line, callback) {
   } else if (line.length === 0 || /\w|\.|\$/.test(line[line.length - 1])) {
     match = simpleExpressionRE.exec(line);
     if (line.length === 0 || match) {
-      var expr;
+      let expr;
       completeOn = (match ? match[0] : '');
       if (line.length === 0) {
         filter = '';
@@ -1202,19 +1217,19 @@ function complete(line, callback) {
         filter = '';
         expr = match[0].slice(0, match[0].length - 1);
       } else {
-        var bits = match[0].split('.');
+        const bits = match[0].split('.');
         filter = bits.pop();
         expr = bits.join('.');
       }
 
       // Resolve expr and get its completions.
-      var memberGroups = [];
+      const memberGroups = [];
       if (!expr) {
         // If context is instance of vm.ScriptContext
         // Get global vars synchronously
         if (this.useGlobal || vm.isContext(this.context)) {
           completionGroups.push(getGlobalLexicalScopeNames(this[kContextId]));
-          var contextProto = this.context;
+          let contextProto = this.context;
           while (contextProto = Object.getPrototypeOf(contextProto)) {
             completionGroups.push(
               filteredOwnPropertyNames.call(this, contextProto));
@@ -1229,7 +1244,7 @@ function complete(line, callback) {
               if (filter !== '') addCommonWords(completionGroups);
             } else if (Array.isArray(globals[0])) {
               // Add grouped globals
-              for (var n = 0; n < globals.length; n++)
+              for (let n = 0; n < globals.length; n++)
                 completionGroups.push(globals[n]);
             } else {
               completionGroups.push(globals);
@@ -1254,8 +1269,8 @@ function complete(line, callback) {
             }
             // Works for non-objects
             try {
-              var sentinel = 5;
-              var p;
+              let sentinel = 5;
+              let p;
               if (typeof obj === 'object' || typeof obj === 'function') {
                 p = Object.getPrototypeOf(obj);
               } else {
@@ -1274,7 +1289,7 @@ function complete(line, callback) {
           }
 
           if (memberGroups.length) {
-            for (i = 0; i < memberGroups.length; i++) {
+            for (let i = 0; i < memberGroups.length; i++) {
               completionGroups.push(
                 memberGroups[i].map((member) => `${expr}.${member}`));
             }
@@ -1298,8 +1313,8 @@ function complete(line, callback) {
   function completionGroupsLoaded() {
     // Filter, sort (within each group), uniq and merge the completion groups.
     if (completionGroups.length && filter) {
-      var newCompletionGroups = [];
-      for (i = 0; i < completionGroups.length; i++) {
+      const newCompletionGroups = [];
+      for (let i = 0; i < completionGroups.length; i++) {
         group = completionGroups[i]
           .filter((elem) => elem.indexOf(filter) === 0);
         if (group.length) {
@@ -1309,17 +1324,19 @@ function complete(line, callback) {
       completionGroups = newCompletionGroups;
     }
 
+    let completions;
+
     if (completionGroups.length) {
-      var uniq = {};  // Unique completions across all groups
+      const uniq = {};  // Unique completions across all groups
       completions = [];
       // Completion group 0 is the "closest"
       // (least far up the inheritance chain)
       // so we put its completions last: to be closest in the REPL.
-      for (i = 0; i < completionGroups.length; i++) {
+      for (let i = 0; i < completionGroups.length; i++) {
         group = completionGroups[i];
         group.sort();
-        for (var j = group.length - 1; j >= 0; j--) {
-          c = group[j];
+        for (let j = group.length - 1; j >= 0; j--) {
+          const c = group[j];
           if (!ObjectPrototype.hasOwnProperty(uniq, c)) {
             completions.unshift(c);
             uniq[c] = true;
@@ -1343,9 +1360,9 @@ function longestCommonPrefix(arr = []) {
 
   const first = arr[0];
   // complexity: O(m * n)
-  for (var m = 0; m < first.length; m++) {
+  for (let m = 0; m < first.length; m++) {
     const c = first[m];
-    for (var n = 1; n < cnt; n++) {
+    for (let n = 1; n < cnt; n++) {
       const entry = arr[n];
       if (m >= entry.length || c !== entry[m]) {
         return first.substring(0, m);
@@ -1488,7 +1505,7 @@ function defineDefaultCommands(repl) {
     }
   });
 
-  var clearMessage;
+  let clearMessage;
   if (repl.useGlobal) {
     clearMessage = 'Alias for .break';
   } else {
@@ -1521,11 +1538,11 @@ function defineDefaultCommands(repl) {
         (max, name) => Math.max(max, name.length),
         0
       );
-      for (var n = 0; n < names.length; n++) {
-        var name = names[n];
-        var cmd = this.commands[name];
-        var spaces = ' '.repeat(longestNameLength - name.length + 3);
-        var line = `.${name}${cmd.help ? spaces + cmd.help : ''}\n`;
+      for (let n = 0; n < names.length; n++) {
+        const name = names[n];
+        const cmd = this.commands[name];
+        const spaces = ' '.repeat(longestNameLength - name.length + 3);
+        const line = `.${name}${cmd.help ? spaces + cmd.help : ''}\n`;
         this.outputStream.write(line);
       }
       this.outputStream.write('\nPress ^C to abort current expression, ' +

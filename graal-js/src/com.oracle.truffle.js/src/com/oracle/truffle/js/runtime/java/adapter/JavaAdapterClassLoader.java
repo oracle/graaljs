@@ -52,6 +52,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Value;
 import org.objectweb.asm.ClassReader;
@@ -83,18 +84,22 @@ final class JavaAdapterClassLoader {
      * @param parentLoader the parent class loader for the generated class loader
      * @return the generated adapter class
      */
-    Class<?> generateClass(final ClassLoader parentLoader) {
+    Class<?> generateClass(ClassLoader parentLoader, Value classOverrides) {
         try {
-            return Class.forName(className, true, createClassLoader(parentLoader));
+            return Class.forName(className, true, createClassLoader(parentLoader, classOverrides));
         } catch (final ClassNotFoundException e) {
             throw new IllegalStateException(e);
         }
     }
 
-    private ClassLoader createClassLoader(final ClassLoader parentLoader) {
-        return new SecureClassLoader(parentLoader) {
+    private ClassLoader createClassLoader(final ClassLoader parentLoader, final Value classOverrides) {
+        final class CLImpl extends SecureClassLoader implements Supplier<Value> {
             private static final boolean PRINT_CODE = false;
             private final ClassLoader myLoader = getClass().getClassLoader();
+
+            private CLImpl() {
+                super(parentLoader);
+            }
 
             @Override
             public Class<?> loadClass(final String name, final boolean resolve) throws ClassNotFoundException {
@@ -138,7 +143,13 @@ final class JavaAdapterClassLoader {
                 }
                 System.out.println(new String(baos.toByteArray()));
             }
-        };
+
+            @Override
+            public Value get() {
+                return classOverrides;
+            }
+        }
+        return new CLImpl();
     }
 
     private static ProtectionDomain createGeneratedProtectionDomain() {
@@ -153,5 +164,10 @@ final class JavaAdapterClassLoader {
         final Permissions permissions = new Permissions();
         permissions.add(new AllPermission());
         return new ProtectionDomain(new CodeSource(null, (CodeSigner[]) null), permissions);
+    }
+
+    @SuppressWarnings("unchecked")
+    static Value getClassOverrides(ClassLoader classLoader) {
+        return ((Supplier<Value>) classLoader).get();
     }
 }

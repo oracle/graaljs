@@ -86,6 +86,7 @@
       { "name": "isolateDispose" },
       { "name": "isolateEnableImportMetaInitializer" },
       { "name": "isolateEnableImportModuleDynamically" },
+      { "name": "isolateEnablePrepareStackTraceCallback" },
       { "name": "isolateEnablePromiseHook" },
       { "name": "isolateEnablePromiseRejectCallback" },
       { "name": "isolateEnqueueMicrotask" },
@@ -115,6 +116,7 @@
       { "name": "messageGetStackTrace" },
       { "name": "messageGetStartColumn" },
       { "name": "moduleCompile" },
+      { "name": "moduleCreateSyntheticModule" },
       { "name": "moduleEvaluate" },
       { "name": "moduleInstantiate" },
       { "name": "moduleGetException" },
@@ -123,6 +125,7 @@
       { "name": "moduleGetRequest" },
       { "name": "moduleGetRequestsLength" },
       { "name": "moduleGetStatus" },
+      { "name": "moduleSetSyntheticModuleExport" },
       { "name": "nullInstance" },
       { "name": "numberNew" },
       { "name": "numberObjectNew" },
@@ -192,6 +195,7 @@
       { "name": "stringExternalResourceCallback" },
       { "name": "stringObjectNew" },
       { "name": "stringObjectValueOf" },
+      { "name": "symbolGetIterator" },
       { "name": "symbolName" },
       { "name": "symbolNew" },
       { "name": "templateSet" },
@@ -279,6 +283,7 @@
       { "name": "executeFunction4" },
       { "name": "executeFunction5" },
       { "name": "executeFunction6" },
+      { "name": "executePrepareStackTraceCallback" },
       { "name": "executePropertyHandlerDefiner" },
       { "name": "executePropertyHandlerDeleter" },
       { "name": "executePropertyHandlerDescriptor" },
@@ -299,7 +304,8 @@
       { "name": "readHostObject" },
       { "name": "throwDataCloneError" },
       { "name": "getSharedArrayBufferFromId" },
-      { "name": "getSharedArrayBufferId" }
+      { "name": "getSharedArrayBufferId" },
+      { "name": "syntheticModuleEvaluationSteps" }
     ]
   },
   {

@@ -42,21 +42,23 @@ package com.oracle.truffle.js.runtime.util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.IllformedLocaleException;
 import java.util.List;
 import java.util.Locale;
 import java.util.MissingResourceException;
+import java.util.Set;
 
 import com.ibm.icu.text.CaseMap;
 import com.ibm.icu.text.CaseMap.Lower;
 import com.ibm.icu.text.CaseMap.Upper;
+import com.ibm.icu.text.NumberingSystem;
 import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
@@ -69,14 +71,6 @@ public final class IntlUtil {
     private IntlUtil() {
         // should not be constructed
     }
-
-    // based on http://unicode.org/repos/cldr/trunk/common/bcp47/number.xml
-    private static final List<String> BCP47_NU_KEYS = Arrays.asList(new String[]{"adlm", "ahom", "arab", "arabext", "armn", "armnlow", "bali", "beng", "bhks", "brah", "cakm", "cham", "cyrl", "deva",
-                    "ethi", "finance", "fullwide", "geor", "gonm", "grek", "greklow", "gujr", "guru", "hanidays", "hanidec", "hans", "hansfin", "hant", "hantfin", "hebr", "hmng", "java", "jpan",
-                    "jpanfin", "kali", "khmr", "knda", "lana", "lanatham", "laoo", "latn", "lepc", "limb", "mathbold", "mathdbl", "mathmono", "mathsanb", "mathsans", "mlym", "modi", "mong", "mroo",
-                    "mtei", "mymr", "mymrshan", "mymrtlng", "native", "newa", "nkoo", "olck", "orya", "osma", "roman", "romanlow", "saur", "shrd", "sind", "sinh", "sora", "sund", "takr", "talu",
-                    "taml", "tamldec", "telu", "thai", "tirh", "tibt", "traditio", "vaii", "wara"});
-    private static final List<String> BANNED_BCP47_NU_KEYS = Arrays.asList("native", "traditio", "finance");
 
     public static final String _2_DIGIT = "2-digit";
     public static final String ACCENT = "accent";
@@ -213,53 +207,98 @@ public final class IntlUtil {
 
     private static boolean lookupMatch(JSContext ctx, Locale locale, boolean stripIt) {
         Locale lookForLocale = stripIt ? locale.stripExtensions() : locale;
+        Set<Locale> availableLocales = getAvailableLocales();
+        if (availableLocales.contains(lookForLocale)) {
+            return true;
+        }
+
         // default locale might be missing in the available locale list
-        return getAvailableLocales().contains(lookForLocale) || ctx.getLocale().equals(lookForLocale);
-    }
-
-    private static final LazyValue<List<Locale>> availableLocales = new LazyValue<>(IntlUtil::initAvailableLocales);
-
-    private static List<Locale> getAvailableLocales() {
-        return availableLocales.get();
-    }
-
-    private static void addIfMissing(List<Locale> locales, Locale locale) {
-        if (!locales.contains(locale)) {
-            locales.add(locale);
+        if (ctx.getLocale().equals(lookForLocale)) {
+            return true;
         }
+
+        // Check if the locale is among the available ones when we add likely sub-tags
+        ULocale ulocale = ULocale.forLocale(lookForLocale);
+        ulocale = ULocale.addLikelySubtags(ulocale);
+        return availableLocales.contains(ulocale.toLocale());
     }
 
-    private static List<Locale> initAvailableLocales() {
-        List<Locale> result = new ArrayList<>();
+    private static final LazyValue<Set<Locale>> AVAILABLE_LOCALES = new LazyValue<>(IntlUtil::initAvailableLocales);
 
-        if (JSTruffleOptions.SubstrateVM) {
-            try {
-                // GR-6347 (Locale.getAvailableLocales() support is missing in SVM)
-                ULocale[] localesAvailable = ULocale.getAvailableLocales();
-                Locale[] javaLocalesAvailable = new Locale[localesAvailable.length];
-                int i = 0;
-                for (ULocale ul : localesAvailable) {
-                    javaLocalesAvailable[i++] = ul.toLocale();
-                }
-                result.addAll(Arrays.asList(javaLocalesAvailable));
-            } catch (MissingResourceException e) {
-                throw Errors.createICU4JDataError(e);
+    private static Set<Locale> getAvailableLocales() {
+        return AVAILABLE_LOCALES.get();
+    }
+
+    private static Set<Locale> initAvailableLocales() {
+        Set<Locale> result = new HashSet<>();
+
+        try {
+            for (ULocale ul : ULocale.getAvailableLocales()) {
+                result.add(ul.toLocale());
             }
-        } else {
-            result.addAll(Arrays.asList(Locale.getAvailableLocales()));
+        } catch (MissingResourceException e) {
+            throw Errors.createICU4JDataError(e);
         }
-
-        // As of Unicode 10.0, the availableLocales list
-        // contains the elements "az", "lt", and "tr".
-        addIfMissing(result, Locale.forLanguageTag("az"));
-        addIfMissing(result, Locale.forLanguageTag("lt"));
-        addIfMissing(result, Locale.forLanguageTag("tr"));
 
         return result;
     }
 
-    public static boolean isSupportedNumberSystemKey(String nuKey) {
-        return BCP47_NU_KEYS.contains(nuKey) && !BANNED_BCP47_NU_KEYS.contains(nuKey);
+    public static boolean isValidNumberingSystem(String numberingSystem) {
+        return Arrays.asList(NumberingSystem.getAvailableNames()).contains(numberingSystem);
+    }
+
+    public static String defaultNumberingSystemName(JSContext context, Locale locale) {
+        if (context.isOptionV8CompatibilityMode() && "ar".equals(locale.toLanguageTag())) {
+            // https://chromium.googlesource.com/chromium/deps/icu/+/6cca29a092eef02178e13b7461fe8fbf3021d04b
+            // V8 is using a patched version of ICU (where the default numbering system for "ar"
+            // locale is "latn")
+            return "latn";
+        }
+        return NumberingSystem.getInstance(locale).getName();
+    }
+
+    public static void validateUnicodeLocaleIdentifierType(String type) {
+        // type = alphanum{3,8} (sep alphanum{3,8})*
+        // sep = [-_]
+        // alphanum = [0-9 A-Z a-z]
+        int alphanumStart = 0;
+        boolean invalid = false;
+        for (int i = 0; i < type.length(); i++) {
+            char c = type.charAt(i);
+            if (!isUnicodeLocaleIdentifierAlphanum(c)) {
+                if (c == '-' || c == '_') { // c is sep
+                    int alphanumLength = i - alphanumStart;
+                    if (3 <= alphanumLength && alphanumLength <= 8) {
+                        alphanumStart = i + 1;
+                    } else {
+                        // not alphanum{3,8}
+                        invalid = true;
+                        break;
+                    }
+                } else {
+                    // unexpected character
+                    invalid = true;
+                    break;
+                }
+            }
+        }
+        int alphanumLength = type.length() - alphanumStart;
+        if (alphanumLength < 3 || 8 < alphanumLength) {
+            // not alphanum{3,8}
+            invalid = true;
+        }
+        if (invalid) {
+            throw Errors.createRangeErrorFormat("Invalid option: %s", null, type);
+        }
+    }
+
+    private static boolean isUnicodeLocaleIdentifierAlphanum(char c) {
+        return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9');
+    }
+
+    @TruffleBoundary
+    public static String normalizeUnicodeLocaleIdentifierType(String type) {
+        return type.toLowerCase();
     }
 
     @TruffleBoundary

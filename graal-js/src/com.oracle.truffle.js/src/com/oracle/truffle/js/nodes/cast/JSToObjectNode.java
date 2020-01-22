@@ -55,7 +55,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
@@ -127,7 +126,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
         if (isFromWith()) {
             return Errors.createTypeError("Cannot apply \"with\" to " + JSRuntime.safeToString(value), this);
         }
-        return Errors.createTypeErrorNotObjectCoercible(value, this);
+        return Errors.createTypeErrorNotObjectCoercible(value, this, context);
     }
 
     @Specialization
@@ -234,7 +233,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
     @TruffleBoundary
     private void throwWithError() {
         String message = "Cannot apply \"with\" to non script object";
-        if (JSTruffleOptions.NashornCompatibilityMode) {
+        if (getContext().isOptionNashornCompatibilityMode()) {
             message += ". Consider using \"with(Object.bindProperties({}, nonScriptObject))\".";
         }
         throw Errors.createTypeError(message, this);

@@ -55,7 +55,6 @@ import com.oracle.js.parser.Source;
 import com.oracle.js.parser.Token;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
@@ -508,7 +507,7 @@ public class JSONParser {
     }
 
     private ParserException trailingCommaError(int start, String found) {
-        return JSTruffleOptions.NashornCompatibilityMode
+        return context.isOptionNashornCompatibilityMode()
                         ? error(parserMessage("trailing.comma.in.json"), start)
                         : expectedErrorV8(start, found);
     }

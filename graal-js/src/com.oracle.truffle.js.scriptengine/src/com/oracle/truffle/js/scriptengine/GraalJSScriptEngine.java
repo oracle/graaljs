@@ -400,35 +400,46 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         }
         GraalJSBindings engineBindings = getOrCreateGraalJSBindings(context);
         importGlobalBindings(context, engineBindings);
-        Value value = engineBindings.getContext().asValue(thiz);
-        Value function = value.getMember(name);
-        return invokeInternal(name, function, args);
+        Value thisValue = engineBindings.getContext().asValue(thiz);
+
+        if (!thisValue.canInvokeMember(name)) {
+            if (!thisValue.hasMember(name)) {
+                throw noSuchMethod(name);
+            } else {
+                throw notCallable(name);
+            }
+        }
+        try {
+            return thisValue.invokeMember(name, args).as(Object.class);
+        } catch (PolyglotException e) {
+            throw new ScriptException(e);
+        }
     }
 
     @Override
     public Object invokeFunction(String name, Object... args) throws ScriptException, NoSuchMethodException {
         GraalJSBindings engineBindings = getOrCreateGraalJSBindings(context);
         importGlobalBindings(context, engineBindings);
-        Value value = engineBindings.getContext().getBindings(ID).getMember(name);
-        return invokeInternal(name, value, args);
-    }
+        Value function = engineBindings.getContext().getBindings(ID).getMember(name);
 
-    @Deprecated
-    public static Object invoke(String methodName, Value function, Object... args) throws NoSuchMethodException, ScriptException {
-        return invokeInternal(methodName, function, args);
-    }
-
-    private static Object invokeInternal(String methodName, Value function, Object... args) throws NoSuchMethodException, ScriptException {
         if (function == null) {
-            throw new NoSuchMethodException(methodName);
+            throw noSuchMethod(name);
         } else if (!function.canExecute()) {
-            throw new NoSuchMethodException(methodName + " is not a function");
+            throw notCallable(name);
         }
         try {
             return function.execute(args).as(Object.class);
         } catch (PolyglotException e) {
             throw new ScriptException(e);
         }
+    }
+
+    private static NoSuchMethodException noSuchMethod(String name) throws NoSuchMethodException {
+        throw new NoSuchMethodException(name);
+    }
+
+    private static NoSuchMethodException notCallable(String name) throws NoSuchMethodException {
+        throw new NoSuchMethodException(name + " is not a function");
     }
 
     @Override

@@ -146,7 +146,6 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -1228,10 +1227,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected Object toString(Object thisObj) {
-            if (JSTruffleOptions.NashornCompatibilityMode && JSArrayBufferView.isJSArrayBufferView(thisObj)) {
-                // cf. e.g. NASHORN-377.js
-                return JSObject.defaultToString((DynamicObject) thisObj);
-            }
             Object arrayObj = toObject(thisObj);
             if (isJSObjectProfile.profile(JSObject.isJSObject(arrayObj))) {
                 Object join = getJoinProperty(arrayObj);

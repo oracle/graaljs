@@ -6,13 +6,13 @@
 Applications running in Node.js will generally experience four categories of
 errors:
 
-- Standard JavaScript errors such as {EvalError}, {SyntaxError}, {RangeError},
+* Standard JavaScript errors such as {EvalError}, {SyntaxError}, {RangeError},
   {ReferenceError}, {TypeError}, and {URIError}.
-- System errors triggered by underlying operating system constraints such
+* System errors triggered by underlying operating system constraints such
   as attempting to open a file that does not exist or attempting to send data
   over a closed socket.
-- User-specified errors triggered by application code.
-- `AssertionError`s are a special class of error that can be triggered when
+* User-specified errors triggered by application code.
+* `AssertionError`s are a special class of error that can be triggered when
   Node.js detects an exceptional logic violation that should never occur. These
   are raised typically by the `assert` module.
 
@@ -54,7 +54,7 @@ to report errors.
 
 Errors that occur within _Asynchronous APIs_ may be reported in multiple ways:
 
-- Most asynchronous methods that accept a `callback` function will accept an
+* Most asynchronous methods that accept a `callback` function will accept an
   `Error` object passed as the first argument to that function. If that first
   argument is not `null` and is an instance of `Error`, then an error occurred
   that should be handled.
@@ -71,7 +71,7 @@ Errors that occur within _Asynchronous APIs_ may be reported in multiple ways:
   });
   ```
 
-- When an asynchronous method is called on an object that is an
+* When an asynchronous method is called on an object that is an
   [`EventEmitter`][], errors can be routed to that object's `'error'` event.
 
   ```js
@@ -89,7 +89,7 @@ Errors that occur within _Asynchronous APIs_ may be reported in multiple ways:
   connection.pipe(process.stdout);
   ```
 
-- A handful of typically asynchronous methods in the Node.js API may still
+* A handful of typically asynchronous methods in the Node.js API may still
   use the `throw` mechanism to raise exceptions that must be handled using
   `try…catch`. There is no comprehensive list of such methods; please
   refer to the documentation of each method to determine the appropriate
@@ -201,7 +201,7 @@ are dependent on [V8's stack trace API][]. Stack traces extend only to either
 (a) the beginning of *synchronous code execution*, or (b) the number of frames
 given by the property `Error.stackTraceLimit`, whichever is smaller.
 
-### Error.captureStackTrace(targetObject[, constructorOpt])
+### Error.captureStackTrace(targetObject\[, constructorOpt\])
 
 * `targetObject` {Object}
 * `constructorOpt` {Function}
@@ -461,7 +461,7 @@ system error.
 
 The `error.errno` property is a number or a string. If it is a number, it is a
 negative value which corresponds to the error code defined in
-[`libuv Error handling`]. See the libuv `errno.h` header file
+[`libuv Error handling`][]. See the libuv `errno.h` header file
 (`deps/uv/include/uv/errno.h` in the Node.js source tree) for details. In case
 of a string, it is the same as `error.code`.
 
@@ -500,29 +500,29 @@ The `error.syscall` property is a string describing the [syscall][] that failed.
 This is a list of system errors commonly-encountered when writing a Node.js
 program. For a comprehensive list, see the [`errno`(3) man page][].
 
-- `EACCES` (Permission denied): An attempt was made to access a file in a way
+* `EACCES` (Permission denied): An attempt was made to access a file in a way
   forbidden by its file access permissions.
 
-- `EADDRINUSE` (Address already in use): An attempt to bind a server
+* `EADDRINUSE` (Address already in use): An attempt to bind a server
   ([`net`][], [`http`][], or [`https`][]) to a local address failed due to
   another server on the local system already occupying that address.
 
-- `ECONNREFUSED` (Connection refused): No connection could be made because the
+* `ECONNREFUSED` (Connection refused): No connection could be made because the
   target machine actively refused it. This usually results from trying to
   connect to a service that is inactive on the foreign host.
 
-- `ECONNRESET` (Connection reset by peer): A connection was forcibly closed by
+* `ECONNRESET` (Connection reset by peer): A connection was forcibly closed by
   a peer. This normally results from a loss of the connection on the remote
   socket due to a timeout or reboot. Commonly encountered via the [`http`][]
   and [`net`][] modules.
 
-- `EEXIST` (File exists): An existing file was the target of an operation that
+* `EEXIST` (File exists): An existing file was the target of an operation that
   required that the target not exist.
 
-- `EISDIR` (Is a directory): An operation expected a file, but the given
+* `EISDIR` (Is a directory): An operation expected a file, but the given
   pathname was a directory.
 
-- `EMFILE` (Too many open files in system): Maximum number of
+* `EMFILE` (Too many open files in system): Maximum number of
   [file descriptors][] allowable on the system has been reached, and
   requests for another descriptor cannot be fulfilled until at least one
   has been closed. This is encountered when opening many files at once in
@@ -530,28 +530,28 @@ program. For a comprehensive list, see the [`errno`(3) man page][].
   file descriptor limit for processes. To remedy a low limit, run
   `ulimit -n 2048` in the same shell that will run the Node.js process.
 
-- `ENOENT` (No such file or directory): Commonly raised by [`fs`][] operations
+* `ENOENT` (No such file or directory): Commonly raised by [`fs`][] operations
   to indicate that a component of the specified pathname does not exist — no
   entity (file or directory) could be found by the given path.
 
-- `ENOTDIR` (Not a directory): A component of the given pathname existed, but
+* `ENOTDIR` (Not a directory): A component of the given pathname existed, but
   was not a directory as expected. Commonly raised by [`fs.readdir`][].
 
-- `ENOTEMPTY` (Directory not empty): A directory with entries was the target
+* `ENOTEMPTY` (Directory not empty): A directory with entries was the target
   of an operation that requires an empty directory — usually [`fs.unlink`][].
 
-- `ENOTFOUND` (DNS lookup failed): Indicates a DNS failure of either
+* `ENOTFOUND` (DNS lookup failed): Indicates a DNS failure of either
   `EAI_NODATA` or `EAI_NONAME`. This is not a standard POSIX error.
 
-- `EPERM` (Operation not permitted): An attempt was made to perform an
+* `EPERM` (Operation not permitted): An attempt was made to perform an
   operation that requires elevated privileges.
 
-- `EPIPE` (Broken pipe): A write on a pipe, socket, or FIFO for which there is
+* `EPIPE` (Broken pipe): A write on a pipe, socket, or FIFO for which there is
   no process to read the data. Commonly encountered at the [`net`][] and
   [`http`][] layers, indicative that the remote side of the stream being
   written to has been closed.
 
-- `ETIMEDOUT` (Operation timed out): A connect or send request failed because
+* `ETIMEDOUT` (Operation timed out): A connect or send request failed because
   the connected party did not properly respond after a period of time. Usually
   encountered by [`http`][] or [`net`][] — often a sign that a `socket.end()`
   was not properly called.
@@ -763,14 +763,6 @@ to enable or disable FIPS mode in the `crypto` module.
 An attempt was made to enable or disable FIPS mode, but FIPS mode was not
 available.
 
-<a id="ERR_CRYPTO_HASH_DIGEST_NO_UTF16"></a>
-### ERR_CRYPTO_HASH_DIGEST_NO_UTF16
-
-The UTF-16 encoding was used with [`hash.digest()`][]. While the
-`hash.digest()` method does allow an `encoding` argument to be passed in,
-causing the method to return a string rather than a `Buffer`, the UTF-16
-encoding (e.g. `ucs` or `utf16le`) is not supported.
-
 <a id="ERR_CRYPTO_HASH_FINALIZED"></a>
 ### ERR_CRYPTO_HASH_FINALIZED
 
@@ -831,6 +823,11 @@ A signing `key` was not provided to the [`sign.sign()`][] method.
 
 [`crypto.timingSafeEqual()`][] was called with `Buffer`, `TypedArray`, or
 `DataView` arguments of different lengths.
+
+<a id="ERR_DIR_CLOSED"></a>
+### ERR_DIR_CLOSED
+
+The [`fs.Dir`][] was previously closed.
 
 <a id="ERR_DNS_SET_SERVERS_FAILED"></a>
 ### ERR_DNS_SET_SERVERS_FAILED
@@ -1213,6 +1210,12 @@ The `inspector` module is not available for use.
 While using the `inspector` module, an attempt was made to use the inspector
 before it was connected.
 
+<a id="ERR_INSPECTOR_NOT_WORKER"></a>
+### ERR_INSPECTOR_NOT_WORKER
+
+An API was called on the main thread that can only be used from
+the worker thread.
+
 <a id="ERR_INVALID_ADDRESS_FAMILY"></a>
 ### ERR_INVALID_ADDRESS_FAMILY
 
@@ -1285,8 +1288,8 @@ semantics for determining whether a path can be used is platform-dependent.
 ### ERR_INVALID_HANDLE_TYPE
 
 An attempt was made to send an unsupported "handle" over an IPC communication
-channel to a child process. See [`subprocess.send()`] and [`process.send()`] for
-more information.
+channel to a child process. See [`subprocess.send()`][] and [`process.send()`][]
+for more information.
 
 <a id="ERR_INVALID_HTTP_TOKEN"></a>
 ### ERR_INVALID_HTTP_TOKEN
@@ -1438,7 +1441,7 @@ for more information.
 ### ERR_MANIFEST_ASSERT_INTEGRITY
 
 An attempt was made to load a resource, but the resource did not match the
-integrity defined by the policy manifest. See the documentation for [policy]
+integrity defined by the policy manifest. See the documentation for [policy][]
 manifests for more information.
 
 <a id="ERR_MANIFEST_DEPENDENCY_MISSING"></a>
@@ -1446,7 +1449,7 @@ manifests for more information.
 
 An attempt was made to load a resource, but the resource was not listed as a
 dependency from the location that attempted to load it. See the documentation
-for [policy] manifests for more information.
+for [policy][] manifests for more information.
 
 <a id="ERR_MANIFEST_INTEGRITY_MISMATCH"></a>
 ### ERR_MANIFEST_INTEGRITY_MISMATCH
@@ -1454,20 +1457,20 @@ for [policy] manifests for more information.
 An attempt was made to load a policy manifest, but the manifest had multiple
 entries for a resource which did not match each other. Update the manifest
 entries to match in order to resolve this error. See the documentation for
-[policy] manifests for more information.
+[policy][] manifests for more information.
 
 <a id="ERR_MANIFEST_INVALID_RESOURCE_FIELD"></a>
 ### ERR_MANIFEST_INVALID_RESOURCE_FIELD
 
 A policy manifest resource had an invalid value for one of its fields. Update
 the manifest entry to match in order to resolve this error. See the
-documentation for [policy] manifests for more information.
+documentation for [policy][] manifests for more information.
 
 <a id="ERR_MANIFEST_PARSE_POLICY"></a>
 ### ERR_MANIFEST_PARSE_POLICY
 
 An attempt was made to load a policy manifest, but the manifest was unable to
-be parsed. See the documentation for [policy] manifests for more information.
+be parsed. See the documentation for [policy][] manifests for more information.
 
 <a id="ERR_MANIFEST_TDZ"></a>
 ### ERR_MANIFEST_TDZ
@@ -1479,7 +1482,7 @@ initialization has not yet taken place. This is likely a bug in Node.js.
 ### ERR_MANIFEST_UNKNOWN_ONERROR
 
 A policy manifest was loaded, but had an unknown value for its "onerror"
-behavior. See the documentation for [policy] manifests for more information.
+behavior. See the documentation for [policy][] manifests for more information.
 
 <a id="ERR_MEMORY_ALLOCATION_FAILED"></a>
 ### ERR_MEMORY_ALLOCATION_FAILED
@@ -1602,6 +1605,11 @@ OpenSSL crypto support.
 
 An attempt was made to use features that require [ICU][], but Node.js was not
 compiled with ICU support.
+
+<a id="ERR_NON_CONTEXT_AWARE_DISABLED"></a>
+### ERR_NON_CONTEXT_AWARE_DISABLED
+
+A non-context-aware native addon was loaded in a process that disallows them.
 
 <a id="ERR_OUT_OF_RANGE"></a>
 ### ERR_OUT_OF_RANGE
@@ -1950,9 +1958,9 @@ A dynamic import callback was not specified.
 The module attempted to be linked is not eligible for linking, because of one of
 the following reasons:
 
-- It has already been linked (`linkingStatus` is `'linked'`)
-- It is being linked (`linkingStatus` is `'linking'`)
-- Linking has failed for this module (`linkingStatus` is `'errored'`)
+* It has already been linked (`linkingStatus` is `'linked'`)
+* It is being linked (`linkingStatus` is `'linking'`)
+* Linking has failed for this module (`linkingStatus` is `'errored'`)
 
 <a id="ERR_VM_MODULE_DIFFERENT_CONTEXT"></a>
 ### ERR_VM_MODULE_DIFFERENT_CONTEXT
@@ -1964,11 +1972,6 @@ than the parent module. Linked modules must share the same context.
 ### ERR_VM_MODULE_LINKING_ERRORED
 
 The linker function returned a module for which linking has failed.
-
-<a id="ERR_VM_MODULE_NOT_LINKED"></a>
-### ERR_VM_MODULE_NOT_LINKED
-
-The module must be successfully linked before instantiation.
 
 <a id="ERR_VM_MODULE_NOT_MODULE"></a>
 ### ERR_VM_MODULE_NOT_MODULE
@@ -2063,6 +2066,18 @@ removed: v11.12.0
 
 There was an attempt to use a `MessagePort` instance in a closed
 state, usually after `.close()` has been called.
+
+<a id="ERR_CRYPTO_HASH_DIGEST_NO_UTF16"></a>
+### ERR_CRYPTO_HASH_DIGEST_NO_UTF16
+<!-- YAML
+added: v9.0.0
+removed: v12.12.0
+-->
+
+The UTF-16 encoding was used with [`hash.digest()`][]. While the
+`hash.digest()` method does allow an `encoding` argument to be passed in,
+causing the method to return a string rather than a `Buffer`, the UTF-16
+encoding (e.g. `ucs` or `utf16le`) is not supported.
 
 <a id="ERR_HTTP2_FRAME_ERROR"></a>
 ### ERR_HTTP2_FRAME_ERROR
@@ -2256,6 +2271,11 @@ removed: v10.0.0
 
 Used when a given value is out of the accepted range.
 
+<a id="ERR_VM_MODULE_NOT_LINKED"></a>
+### ERR_VM_MODULE_NOT_LINKED
+
+The module must be successfully linked before instantiation.
+
 <a id="ERR_ZLIB_BINDING_CLOSED"></a>
 ### ERR_ZLIB_BINDING_CLOSED
 <!-- YAML
@@ -2365,6 +2385,7 @@ such as `process.stdout.on('data')`.
 [`dgram.disconnect()`]: dgram.html#dgram_socket_disconnect
 [`dgram.remoteAddress()`]: dgram.html#dgram_socket_remoteaddress
 [`errno`(3) man page]: http://man7.org/linux/man-pages/man3/errno.3.html
+[`fs.Dir`]: fs.html#fs_class_fs_dir
 [`fs.readFileSync`]: fs.html#fs_fs_readfilesync_path_options
 [`fs.readdir`]: fs.html#fs_fs_readdir_path_options_callback
 [`fs.symlink()`]: fs.html#fs_fs_symlink_target_path_type_callback

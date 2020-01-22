@@ -93,14 +93,13 @@ import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.parser.env.EvalEnvironment;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
-import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -139,7 +138,7 @@ public final class GraalJSEvaluator implements JSParser {
         try {
             GraalJSParserHelper.checkFunctionSyntax(context, context.getParserOptions(), parameterList, body, generatorFunction, asyncFunction);
         } catch (com.oracle.js.parser.ParserException e) {
-            throw parserToJSError(null, e);
+            throw parserToJSError(null, e, context);
         }
         StringBuilder code = new StringBuilder();
         if (asyncFunction) {
@@ -153,12 +152,12 @@ public final class GraalJSEvaluator implements JSParser {
         if (context.getEcmaScriptVersion() >= 6) {
             code.append(" anonymous");
         }
-        if (JSTruffleOptions.NashornCompatibilityMode) {
+        if (context.isOptionNashornCompatibilityMode()) {
             code.append(' ');
         }
         code.append('(');
         code.append(parameterList);
-        if (!JSTruffleOptions.NashornCompatibilityMode) {
+        if (!context.isOptionNashornCompatibilityMode()) {
             code.append(JSRuntime.LINE_SEPARATOR);
         }
         code.append(") {");
@@ -220,18 +219,18 @@ public final class GraalJSEvaluator implements JSParser {
         try {
             return JavaScriptTranslator.translateEvalScript(nodeFactory, context, evalEnv, source, isStrict);
         } catch (com.oracle.js.parser.ParserException e) {
-            throw parserToJSError(lastNode, e);
+            throw parserToJSError(lastNode, e, context);
         }
     }
 
     @TruffleBoundary
-    private static JSException parserToJSError(Node lastNode, com.oracle.js.parser.ParserException e) {
+    private static JSException parserToJSError(Node lastNode, com.oracle.js.parser.ParserException e, JSContext context) {
         String message = e.getMessage().replace("\r\n", "\n");
         if (e.getErrorType() == com.oracle.js.parser.JSErrorType.ReferenceError) {
             return Errors.createReferenceError(message, e, lastNode);
         }
         assert e.getErrorType() == com.oracle.js.parser.JSErrorType.SyntaxError;
-        if (JSTruffleOptions.NashornCompatibilityMode && lastNode instanceof EvalNode) {
+        if (context.isOptionNashornCompatibilityMode() && lastNode instanceof EvalNode) {
             SourceSection sourceSection = lastNode.getSourceSection();
             String name = sourceSection.getSource().getName();
             int lineNumber = sourceSection.getStartLine();

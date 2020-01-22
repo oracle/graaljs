@@ -146,7 +146,7 @@ def _js_cmd_line(args, main_class, default_cp=None, append_default_args=True):
 def graaljs_cmd_line(args, append_default_args=True):
     default_cp = mx.classpath(['GRAALJS_LAUNCHER', 'GRAALJS']
             + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:AGENTSCRIPT'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
-    return _js_cmd_line(args + ['-Dtruffle.js.BindProgramResult=false'], main_class=mx.distribution('GRAALJS_LAUNCHER').mainClass, default_cp=[default_cp], append_default_args=append_default_args)
+    return _js_cmd_line(args, main_class=mx.distribution('GRAALJS_LAUNCHER').mainClass, default_cp=[default_cp], append_default_args=append_default_args)
 
 def js(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     """Run the REPL or a JavaScript program with Graal.js"""
@@ -206,10 +206,7 @@ def test262(args, nonZeroIsFatal=True):
 def testnashorn(args, nonZeroIsFatal=True):
     """run the testNashorn conformance suite"""
     _location = join(_suite.dir, 'lib', 'testnashorn')
-    _default_vm_args = [
-        '-Dtruffle.js.NashornCompatibilityMode=true',
-        '-Dtruffle.js.U180EWhitespace=true',
-    ]
+    _default_vm_args = []
     _stack_size = '2m' if mx.get_arch() in ('aarch64', 'sparcv9') else '1m'
     _run_test_suite(
         location=_location,

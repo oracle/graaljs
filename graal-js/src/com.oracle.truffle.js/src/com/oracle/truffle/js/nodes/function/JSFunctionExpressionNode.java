@@ -46,7 +46,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
-import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.DeclareTagProvider;
@@ -112,7 +111,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (JSTruffleOptions.LazyFunctionData && (materializedTags.contains(StatementTag.class) || materializedTags.contains(ExpressionTag.class))) {
+        if (JSTruffleOptions.LazyFunctionData && !materializedTags.isEmpty()) {
             // when instruments require the materialization of function expression nodes, we force
             // initialization.
             functionData.getCallTarget();

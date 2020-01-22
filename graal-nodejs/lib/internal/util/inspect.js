@@ -351,7 +351,7 @@ function getEmptyFormatArray() {
   return [];
 }
 
-function getConstructorName(obj, ctx) {
+function getConstructorName(obj, ctx, recurseTimes) {
   let firstProto;
   const tmp = obj;
   while (obj) {
@@ -372,10 +372,23 @@ function getConstructorName(obj, ctx) {
     return null;
   }
 
-  return `${internalGetConstructorName(tmp)} <${inspect(firstProto, {
-    ...ctx,
-    customInspect: false
-  })}>`;
+  const res = internalGetConstructorName(tmp);
+
+  if (recurseTimes > ctx.depth && ctx.depth !== null) {
+    return `${res} <Complex prototype>`;
+  }
+
+  const protoConstr = getConstructorName(firstProto, ctx, recurseTimes + 1);
+
+  if (protoConstr === null) {
+    return `${res} <${inspect(firstProto, {
+      ...ctx,
+      customInspect: false,
+      depth: -1
+    })}>`;
+  }
+
+  return `${res} <${protoConstr}>`;
 }
 
 function getPrefix(constructor, tag, fallback) {
@@ -561,8 +574,19 @@ function formatValue(ctx, value, recurseTimes, typedArray) {
 
   // Using an array here is actually better for the average case than using
   // a Set. `seen` will only check for the depth and will never grow too large.
-  if (ctx.seen.includes(value))
+  if (ctx.seen.includes(value)) {
+    let index = 1;
+    if (ctx.circular === undefined) {
+      ctx.circular = new Map([[value, index]]);
+    } else {
+      index = ctx.circular.get(value);
+      if (index === undefined) {
+        index = ctx.circular.size + 1;
+        ctx.circular.set(value, index);
+      }
+    }
     return ctx.stylize('[Circular]', 'special');
+  }
 
   return formatRaw(ctx, value, recurseTimes, typedArray);
 }
@@ -570,15 +594,15 @@ function formatValue(ctx, value, recurseTimes, typedArray) {
 function formatRaw(ctx, value, recurseTimes, typedArray) {
   let keys;
 
-  const constructor = getConstructorName(value, ctx);
+  const constructor = getConstructorName(value, ctx, recurseTimes);
   let tag = value[Symbol.toStringTag];
   // Only list the tag in case it's non-enumerable / not an own property.
   // Otherwise we'd print this twice.
   if (typeof tag !== 'string' ||
-      tag !== '' &&
+      (tag !== '' &&
       (ctx.showHidden ? hasOwnProperty : propertyIsEnumerable)(
         value, Symbol.toStringTag
-      )) {
+      ))) {
     tag = '';
   }
   let base = '';
@@ -662,7 +686,7 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
       const prefix = getPrefix(constructor, tag, 'RegExp');
       if (prefix !== 'RegExp ')
         base = `${prefix}${base}`;
-      if (keys.length === 0 || recurseTimes > ctx.depth && ctx.depth !== null)
+      if (keys.length === 0 || (recurseTimes > ctx.depth && ctx.depth !== null))
         return ctx.stylize(base, 'regexp');
     } else if (isDate(value)) {
       // Make dates with properties first say the date
@@ -763,6 +787,17 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
   } catch (err) {
     const constructorName = getCtxStyle(value, constructor, tag).slice(0, -1);
     return handleMaxCallStackSize(ctx, err, constructorName, indentationLvl);
+  }
+  if (ctx.circular !== undefined) {
+    const index = ctx.circular.get(value);
+    if (index !== undefined) {
+      // Add reference always to the very beginning of the output.
+      if (ctx.compact !== true) {
+        base = base === '' ? '' : `${base}`;
+      } else {
+        braces[0] = `${braces[0]}`;
+      }
+    }
   }
   ctx.seen.pop();
 
@@ -876,14 +911,14 @@ function formatError(err, constructor, tag, ctx) {
   const name = err.name || 'Error';
   let len = name.length;
   if (constructor === null ||
-      name.endsWith('Error') &&
+      (name.endsWith('Error') &&
       stack.startsWith(name) &&
-      (stack.length === len || stack[len] === ':' || stack[len] === '\n')) {
+      (stack.length === len || stack[len] === ':' || stack[len] === '\n'))) {
     let fallback = 'Error';
     if (constructor === null) {
       const start = stack.match(/^([A-Z][a-z_ A-Z0-9[\]()-]+)(?::|\n {4}at)/) ||
         stack.match(/^([a-z_A-Z0-9-]*Error)$/);
-      fallback = start && start[1] || '';
+      fallback = (start && start[1]) || '';
       len = fallback.length;
       fallback = fallback || 'Error';
     }
@@ -901,7 +936,7 @@ function formatError(err, constructor, tag, ctx) {
     }
   }
   // Ignore the error message if it's contained in the stack.
-  let pos = err.message && stack.indexOf(err.message) || -1;
+  let pos = (err.message && stack.indexOf(err.message)) || -1;
   if (pos !== -1)
     pos += err.message.length;
   // Wrap the error in brackets in case it has no stack trace.
@@ -1381,8 +1416,8 @@ function formatProperty(ctx, value, recurseTimes, key, type) {
     const s = ctx.stylize;
     const sp = 'special';
     if (ctx.getters && (ctx.getters === true ||
-          ctx.getters === 'get' && desc.set === undefined ||
-          ctx.getters === 'set' && desc.set !== undefined)) {
+          (ctx.getters === 'get' && desc.set === undefined) ||
+          (ctx.getters === 'set' && desc.set !== undefined))) {
       try {
         const tmp = value[key];
         ctx.indentationLvl += 2;
@@ -1559,15 +1594,15 @@ function formatWithOptions(inspectOptions, ...args) {
                 let constr;
                 if (typeof tempArg !== 'object' ||
                     tempArg === null ||
-                    typeof tempArg.toString === 'function' &&
+                    (typeof tempArg.toString === 'function' &&
                      // A direct own property.
                      (hasOwnProperty(tempArg, 'toString') ||
                       // A direct own property on the constructor prototype in
                       // case the constructor is not an built-in object.
-                      (constr = tempArg.constructor) &&
+                      ((constr = tempArg.constructor) &&
                       !builtInObjects.has(constr.name) &&
                       constr.prototype &&
-                      hasOwnProperty(constr.prototype, 'toString'))) {
+                      hasOwnProperty(constr.prototype, 'toString'))))) {
                   tempStr = String(tempArg);
                 } else {
                   tempStr = inspect(tempArg, {
@@ -1596,7 +1631,6 @@ function formatWithOptions(inspectOptions, ...args) {
               tempStr = inspect(args[++a], inspectOptions);
               break;
             case 111: // 'o'
-            {
               tempStr = inspect(args[++a], {
                 ...inspectOptions,
                 showHidden: true,
@@ -1604,7 +1638,6 @@ function formatWithOptions(inspectOptions, ...args) {
                 depth: 4
               });
               break;
-            }
             case 105: // 'i'
               const tempInteger = args[++a];
               if (typeof tempInteger === 'bigint') {
@@ -1622,6 +1655,10 @@ function formatWithOptions(inspectOptions, ...args) {
               } else {
                 tempStr = formatNumber(stylizeNoColor, parseFloat(tempFloat));
               }
+              break;
+            case 99: // 'c'
+              a += 1;
+              tempStr = '';
               break;
             case 37: // '%'
               str += first.slice(lastPos, i);
