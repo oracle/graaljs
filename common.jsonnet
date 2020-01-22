@@ -101,9 +101,9 @@
     packages+: {
       'devkit:VS2017-15.5.5+1': '==0',
     },
-    environment+: {
-      GYP_MSVS_OVERRIDE_PATH: '$DEVKIT_ROOT',
-      GYP_MSVS_VERSION: '2017',
+    setup+: {
+      ['set-export', 'GYP_MSVS_OVERRIDE_PATH', '$VS2017_15_5_5_1_0_ROOT'],
+      ['set-export', 'GYP_MSVS_VERSION', '2017'],
     },
   },
 }
