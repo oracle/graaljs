@@ -71,15 +71,20 @@ public interface LexicalContextNode {
     default Node accept(final NodeVisitor<? extends LexicalContext> visitor) {
         final LexicalContext lc = visitor.getLexicalContext();
         lc.push(this);
-        final LexicalContextNode newNode = (LexicalContextNode) this.accept(lc, visitor);
-        return (Node) lc.pop(newNode);
+        try {
+            return this.accept(lc, visitor);
+        } finally {
+            lc.pop(this);
+        }
     }
 
     default <R> R accept(TranslatorNodeVisitor<? extends LexicalContext, R> visitor) {
         final LexicalContext lc = visitor.getLexicalContext();
         lc.push(this);
-        final R result = this.accept(lc, visitor);
-        lc.pop(this);
-        return result;
+        try {
+            return this.accept(lc, visitor);
+        } finally {
+            lc.pop(this);
+        }
     }
 }
