@@ -61,7 +61,6 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -846,8 +845,8 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     }
 
     @Override
-    public String safeToString(DynamicObject obj, int depth) {
-        if (JSTruffleOptions.NashornCompatibilityMode) {
+    public String safeToString(DynamicObject obj, int depth, JSContext context) {
+        if (context.isOptionNashornCompatibilityMode()) {
             return defaultToString(obj);
         } else {
             return JSRuntime.objectToConsoleString(obj, null, depth);

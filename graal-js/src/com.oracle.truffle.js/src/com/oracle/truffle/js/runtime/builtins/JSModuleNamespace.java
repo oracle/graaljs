@@ -55,6 +55,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -152,7 +153,7 @@ public final class JSModuleNamespace extends JSBuiltinObject {
 
     @Override
     @TruffleBoundary
-    public String safeToString(DynamicObject obj, int depth) {
+    public String safeToString(DynamicObject obj, int depth, JSContext context) {
         return "[" + CLASS_NAME + "]";
     }
 
@@ -178,7 +179,8 @@ public final class JSModuleNamespace extends JSBuiltinObject {
         assert frameSlot != null;
         if (JSFrameUtil.hasTemporalDeadZone(frameSlot) && targetEnv.isObject(frameSlot) && FrameUtil.getObjectSafe(targetEnv, frameSlot) == Dead.instance()) {
             // If it is an uninitialized binding, throw a ReferenceError
-            throw Errors.createReferenceErrorNotDefined(frameSlot.getIdentifier(), null);
+            JSContext context = JavaScriptLanguage.getCurrentJSRealm().getContext();
+            throw Errors.createReferenceErrorNotDefined(context, frameSlot.getIdentifier(), null);
         }
         return targetEnv.getValue(frameSlot);
     }
@@ -201,7 +203,8 @@ public final class JSModuleNamespace extends JSBuiltinObject {
         Map<String, ExportResolution> exports = getExports(thisObj);
         ExportResolution binding = exports.get(key);
         if (binding != null) {
-            getBindingValue(binding); // checks for uninitialized bindings
+            // checks for uninitialized bindings
+            getBindingValue(binding);
             return true;
         } else {
             return false;
@@ -299,13 +302,15 @@ public final class JSModuleNamespace extends JSBuiltinObject {
                 ExportResolution firstBinding = exports.values().iterator().next();
                 // Throw ReferenceError if the first binding is uninitialized,
                 // throw TypeError otherwise
-                getBindingValue(firstBinding); // checks for an uninitialized binding
+                // checks for an uninitialized binding
+                getBindingValue(firstBinding);
                 throw Errors.createTypeError("not allowed to freeze a namespace object");
             }
         } else {
             // Check for uninitalized bindings
             for (ExportResolution binding : getExports(obj).values()) {
-                getBindingValue(binding); // can throw ReferenceError
+                // can throw ReferenceError
+                getBindingValue(binding);
             }
         }
         return true;

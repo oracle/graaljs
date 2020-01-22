@@ -94,7 +94,7 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
 
     @Specialization(guards = {"isJSNull(object)"})
     protected String[] doNull(DynamicObject object) {
-        throw Errors.createTypeErrorNotObjectCoercible(object, this);
+        throw Errors.createTypeErrorNotObjectCoercible(object, this, context);
     }
 
     @SuppressWarnings("unused")

@@ -294,8 +294,8 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
 
     @TruffleBoundary
     @Override
-    public String safeToString(DynamicObject obj, int depth) {
-        if (JSTruffleOptions.NashornCompatibilityMode) {
+    public String safeToString(DynamicObject obj, int depth, JSContext context) {
+        if (context.isOptionNashornCompatibilityMode()) {
             return "[" + CLASS_NAME + " " + getCharSequence(obj) + "]";
         } else {
             String primitiveValue = JSString.getString(obj);

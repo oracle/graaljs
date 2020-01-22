@@ -52,7 +52,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -93,7 +92,7 @@ public final class ErrorFunctionBuiltins extends JSBuiltinsContainer.Lambda {
             }
             int stackTraceLimit = stackTraceLimitNode.executeInt(frame);
             Object skipFramesUpTo = JSFunction.isJSFunction(skipUpTo) ? skipUpTo : JSArguments.getFunctionObject(frame.getArguments());
-            UserScriptException ex = UserScriptException.createCapture(obj, JSTruffleOptions.NashornCompatibilityMode ? this : null, stackTraceLimit, (DynamicObject) skipFramesUpTo);
+            UserScriptException ex = UserScriptException.createCapture(obj, getContext().isOptionNashornCompatibilityMode() ? this : null, stackTraceLimit, (DynamicObject) skipFramesUpTo);
             initErrorObjectNode.execute(obj, ex);
             return Undefined.instance;
         }

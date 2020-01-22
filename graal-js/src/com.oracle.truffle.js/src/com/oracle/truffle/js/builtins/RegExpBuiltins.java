@@ -49,7 +49,6 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
@@ -196,10 +195,15 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
             super(context, builtin);
         }
 
-        @Specialization(assumptions = "getStaticResultUnusedAssumption()")
+        @Specialization(guards = "getContext().isOptionNashornCompatibilityMode()")
+        boolean getMultilineLazyNashorn() {
+            return false;
+        }
+
+        @Specialization(assumptions = "getStaticResultUnusedAssumption()", guards = "!getContext().isOptionNashornCompatibilityMode()")
         boolean getMultilineLazy() {
             Object compiledRegex = getContext().getRealm().getLazyStaticRegexResultCompiledRegex();
-            if (!JSTruffleOptions.NashornCompatibilityMode && compiledRegex != null) {
+            if (compiledRegex != null) {
                 return multilineAccessor.get(compiledRegex);
             } else {
                 return false;
@@ -211,7 +215,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
                         @Cached("create()") TRegexUtil.TRegexResultAccessor resultAccessor) {
             Object compiledRegex = getContext().getRealm().getLazyStaticRegexResultCompiledRegex();
             Object result = getResultNode.execute();
-            if (!JSTruffleOptions.NashornCompatibilityMode && resultAccessor.isMatch(result)) {
+            if (!getContext().isOptionNashornCompatibilityMode() && resultAccessor.isMatch(result)) {
                 return multilineAccessor.get(compiledRegex);
             } else {
                 return false;

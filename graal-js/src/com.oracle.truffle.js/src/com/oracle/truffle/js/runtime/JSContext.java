@@ -508,7 +508,7 @@ public class JSContext {
         this.segmentIteratorFactory = builder.create(JSRealm::getSegmentIteratorPrototype, JSSegmenter::makeInitialSegmentIteratorShape);
 
         this.javaPackageFactory = builder.create(objectPrototypeSupplier, JavaPackage.INSTANCE::makeInitialShape);
-        boolean nashornCompat = isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
+        boolean nashornCompat = isOptionNashornCompatibilityMode();
         this.jsAdapterFactory = nashornCompat ? builder.create(JSAdapter.INSTANCE) : null;
         this.javaImporterFactory = nashornCompat ? builder.create(JavaImporter.instance()) : null;
 
@@ -1513,7 +1513,7 @@ public class JSContext {
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] arguments = frame.getArguments();
-                Object obj = JSRuntime.requireObjectCoercible(JSArguments.getThisObject(arguments));
+                Object obj = JSRuntime.requireObjectCoercible(JSArguments.getThisObject(arguments), JSContext.this);
                 if (JSArguments.getUserArgumentCount(arguments) < 1) {
                     return Undefined.instance;
                 }

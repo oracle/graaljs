@@ -565,7 +565,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJSObject(prototype)", "isJSNull(properties)"})
         protected DynamicObject createNull(DynamicObject prototype, Object properties) {
-            throw Errors.createTypeErrorNotObjectCoercible(properties);
+            throw Errors.createTypeErrorNotObjectCoercible(properties, null, getContext());
         }
 
         private DynamicObject objectDefineProperties(DynamicObject ret, Object properties) {

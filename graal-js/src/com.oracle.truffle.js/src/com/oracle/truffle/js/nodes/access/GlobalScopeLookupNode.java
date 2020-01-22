@@ -49,6 +49,7 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -91,7 +92,7 @@ public abstract class GlobalScopeLookupNode extends JavaScriptBaseNode {
                     @Cached("isConstAssignment(cachedShape)") boolean constAssignment) {
         assert !exists || dead == (scope.get(varName) == Dead.instance());
         if (dead) {
-            throw Errors.createReferenceErrorNotDefined(varName, this);
+            throw Errors.createReferenceErrorNotDefined(JavaScriptLanguage.getCurrentJSRealm().getContext(), varName, this);
         }
         if (constAssignment) {
             throw Errors.createTypeErrorConstReassignment(varName, scope, this);
@@ -106,7 +107,7 @@ public abstract class GlobalScopeLookupNode extends JavaScriptBaseNode {
         if (property != null) {
             if (scope.get(varName) == Dead.instance()) {
                 errorBranch.enter();
-                throw Errors.createReferenceErrorNotDefined(varName, this);
+                throw Errors.createReferenceErrorNotDefined(JavaScriptLanguage.getCurrentJSRealm().getContext(), varName, this);
             } else if (write && JSProperty.isConst(property)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorConstReassignment(varName, scope, this);

@@ -69,7 +69,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.TypedArray;
@@ -699,8 +698,8 @@ public final class JSArrayBufferView extends JSBuiltinObject {
     }
 
     @Override
-    public String safeToString(DynamicObject obj, int depth) {
-        if (JSTruffleOptions.NashornCompatibilityMode) {
+    public String safeToString(DynamicObject obj, int depth, JSContext context) {
+        if (context.isOptionNashornCompatibilityMode()) {
             return defaultToString(obj);
         } else {
             return JSRuntime.objectToConsoleString(obj, typedArrayGetName(obj), depth);

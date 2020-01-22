@@ -59,8 +59,10 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractConstantArray;
@@ -110,7 +112,8 @@ public abstract class ScriptArray {
 
     @TruffleBoundary
     private static void setElementFrozenStrict(long index) {
-        if (JSTruffleOptions.NashornCompatibilityMode) {
+        JSContext context = JavaScriptLanguage.getCurrentJSRealm().getContext();
+        if (context.isOptionNashornCompatibilityMode()) {
             throw Errors.createTypeErrorFormat("Cannot set property \"%d\" of frozen array", index);
         } else {
             throw Errors.createTypeErrorCannotRedefineProperty(String.valueOf(index));
