@@ -88,7 +88,7 @@ public interface Evaluator {
 
     JSModuleRecord hostResolveImportedModule(JSContext context, ScriptOrModule referencingScriptOrModule, String specifier);
 
-    void moduleInstantiation(JSModuleRecord moduleRecord);
+    void moduleInstantiation(JSRealm realm, JSModuleRecord moduleRecord);
 
     Object moduleEvaluation(JSRealm realm, JSModuleRecord moduleRecord);
 

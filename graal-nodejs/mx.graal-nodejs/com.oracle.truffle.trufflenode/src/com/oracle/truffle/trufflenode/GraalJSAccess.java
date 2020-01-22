@@ -199,6 +199,7 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
+import com.oracle.truffle.js.runtime.objects.JSModuleRecord.Status;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -3048,11 +3049,12 @@ public final class GraalJSAccess {
     }
 
     public void moduleInstantiate(Object context, Object module, long resolveCallback) {
+        JSRealm jsRealm = (JSRealm) context;
+        JSContext jsContext = jsRealm.getContext();
         ESModuleLoader loader = getModuleLoader();
         loader.setResolver(resolveCallback);
-        JSContext jsContext = ((JSRealm) context).getContext();
         try {
-            jsContext.getEvaluator().moduleInstantiation((JSModuleRecord) module);
+            jsContext.getEvaluator().moduleInstantiation(jsRealm, (JSModuleRecord) module);
         } finally {
             loader.setResolver(0);
         }
@@ -3116,12 +3118,6 @@ public final class GraalJSAccess {
         return System.identityHashCode(module);
     }
 
-    /**
-     * Exports of synthetic modules that were set before the evaluation of the module started (and
-     * the storage for the exports was created).
-     */
-    private Map<JSModuleRecord, Map<String, Object>> earlySyntheticModuleExports = new WeakHashMap<>();
-
     public Object moduleCreateSyntheticModule(String moduleName, Object[] exportNames, final long evaluationStepsCallback) {
         FrameDescriptor frameDescriptor = new FrameDescriptor(Undefined.instance);
         List<Module.ExportEntry> localExportEntries = new ArrayList<>();
@@ -3129,27 +3125,28 @@ public final class GraalJSAccess {
             frameDescriptor.addFrameSlot(exportName);
             localExportEntries.add(Module.ExportEntry.exportSpecifier((String) exportName));
         }
-        Module module = new Module(Collections.emptyList(), Collections.emptyList(), localExportEntries, Collections.emptyList(), Collections.emptyList(), null, null);
+        Module moduleNode = new Module(Collections.emptyList(), Collections.emptyList(), localExportEntries, Collections.emptyList(), Collections.emptyList(), null, null);
         Source source = Source.newBuilder(JavaScriptLanguage.ID, "<unavailable>", moduleName).build();
-        final JSModuleRecord moduleRecord = new JSModuleRecord(module, mainJSContext, getModuleLoader(), source, () -> {
+        final JSModuleRecord moduleRecord = new JSModuleRecord(moduleNode, mainJSContext, getModuleLoader(), source, () -> {
         });
         moduleRecord.setFrameDescriptor(frameDescriptor);
-        JavaScriptRootNode rootNode = new JavaScriptRootNode(null, null, frameDescriptor) {
+        JavaScriptRootNode rootNode = new JavaScriptRootNode(mainJSContext.getLanguage(), source.createUnavailableSection(), frameDescriptor) {
             @Override
             public Object execute(VirtualFrame frame) {
-                moduleRecord.setEnvironment(frame.materialize());
-                return invokeEvaluationStepsCallback(mainJSContext.getRealm());
+                JSModuleRecord module = (JSModuleRecord) JSArguments.getUserArgument(frame.getArguments(), 0);
+                if (module.getEnvironment() == null) {
+                    assert module.getStatus() == Status.Instantiating;
+                    module.setEnvironment(frame.materialize());
+                    return Undefined.instance;
+                } else {
+                    assert module.getStatus() == Status.Evaluating;
+                    return invokeEvaluationStepsCallback(mainJSContext.getRealm(), module);
+                }
             }
 
             @TruffleBoundary
-            private Object invokeEvaluationStepsCallback(JSRealm realm) {
-                Map<String, Object> map = earlySyntheticModuleExports.get(moduleRecord);
-                if (map != null) {
-                    for (Map.Entry<String, Object> entry : map.entrySet()) {
-                        moduleSetSyntheticModuleExport(moduleRecord, entry.getKey(), entry.getValue());
-                    }
-                }
-                return NativeAccess.syntheticModuleEvaluationSteps(evaluationStepsCallback, realm, moduleRecord);
+            private Object invokeEvaluationStepsCallback(JSRealm realm, JSModuleRecord module) {
+                return NativeAccess.syntheticModuleEvaluationSteps(evaluationStepsCallback, realm, module);
             }
         };
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
@@ -3163,16 +3160,7 @@ public final class GraalJSAccess {
         FrameDescriptor frameDescriptor = moduleRecord.getFrameDescriptor();
         FrameSlot frameSlot = frameDescriptor.findFrameSlot(exportName);
         MaterializedFrame frame = moduleRecord.getEnvironment();
-        if (frame == null) {
-            Map<String, Object> map = earlySyntheticModuleExports.get(module);
-            if (map == null) {
-                map = new HashMap<>();
-                earlySyntheticModuleExports.put(moduleRecord, map);
-            }
-            map.put(exportName, exportValue);
-        } else {
-            frame.setObject(frameSlot, exportValue);
-        }
+        frame.setObject(frameSlot, exportValue);
     }
 
     public String scriptOrModuleGetResourceName(Object scriptOrModule) {
