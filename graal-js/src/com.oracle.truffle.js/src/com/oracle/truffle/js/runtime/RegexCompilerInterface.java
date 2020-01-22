@@ -60,7 +60,7 @@ public final class RegexCompilerInterface {
     public static Object compile(String pattern, String flags, JSContext context, TRegexUtil.CompileRegexNode compileRegexNode) {
         // RegexLanguage does its own validation of the flags. This call to validateFlags only
         // serves the purpose of mimicking the error messages of Nashorn and V8.
-        validateFlags(flags, context.getEcmaScriptVersion());
+        validateFlags(flags, context.getEcmaScriptVersion(), context.isOptionNashornCompatibilityMode());
         try {
             return compileRegexNode.execute(context.getRegexEngine(), pattern, flags);
         } catch (RuntimeException e) {
@@ -76,7 +76,7 @@ public final class RegexCompilerInterface {
     public static void validate(JSContext context, String pattern, String flags, int ecmaScriptVersion) {
         // We cannot use the TRegex parser in Nashorn compatibility mode, since the Nashorn
         // parser produces different error messages.
-        if (JSTruffleOptions.NashornCompatibilityMode) {
+        if (context.isOptionNashornCompatibilityMode()) {
             try {
                 try {
                     RegExpScanner.scan(pattern);
@@ -90,7 +90,7 @@ public final class RegexCompilerInterface {
                 throw Errors.createSyntaxError(e.getMessage());
             }
             if (!flags.isEmpty()) {
-                validateFlags(flags, ecmaScriptVersion);
+                validateFlags(flags, ecmaScriptVersion, true);
             }
         } else {
             try {
@@ -106,7 +106,7 @@ public final class RegexCompilerInterface {
 
     @SuppressWarnings("fallthrough")
     @TruffleBoundary
-    public static void validateFlags(String flags, int ecmaScriptVersion) {
+    public static void validateFlags(String flags, int ecmaScriptVersion, boolean nashornCompat) {
         boolean ignoreCase = false;
         boolean multiline = false;
         boolean global = false;
@@ -152,7 +152,7 @@ public final class RegexCompilerInterface {
                     }
                     // fallthrough
                 default:
-                    if (JSTruffleOptions.NashornCompatibilityMode) {
+                    if (nashornCompat) {
                         throw throwFlagError(UNSUPPORTED_REG_EXP_FLAG_MSG_NASHORN, ch);
                     } else {
                         throw throwFlagError(UNSUPPORTED_REG_EXP_FLAG_MSG);

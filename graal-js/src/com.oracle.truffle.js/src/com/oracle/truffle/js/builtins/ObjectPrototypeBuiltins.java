@@ -262,7 +262,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected Object valueOf(Object thisObj,
                         @CachedLibrary(limit = "3") InteropLibrary interop) {
             if (interop.isNull(thisObj)) {
-                throw Errors.createTypeErrorNotObjectCoercible(thisObj);
+                throw Errors.createTypeErrorNotObjectCoercible(thisObj, null, getContext());
             }
             return thisObj;
         }
@@ -485,7 +485,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = "isNullOrUndefined(thisObj)")
         protected boolean hasOwnPropertyNullOrUndefined(DynamicObject thisObj, Object propName) {
             getToPropertyKeyNode().execute(propName); // may have side effect
-            throw Errors.createTypeErrorNotObjectCoercible(thisObj);
+            throw Errors.createTypeErrorNotObjectCoercible(thisObj, null, getContext());
         }
 
         @Specialization

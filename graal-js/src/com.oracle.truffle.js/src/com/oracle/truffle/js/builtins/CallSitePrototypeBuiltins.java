@@ -201,8 +201,9 @@ public final class CallSitePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                     return functionName.isEmpty() ? Null.instance : functionName;
                 }
                 case getMethodName: {
-                    String methodName = stackTraceElement.getMethodName();
-                    if (methodName == null || methodName.isEmpty() || methodName.equals(JSError.ANONYMOUS_FUNCTION_NAME_STACK_TRACE)) {
+                    JSContext context = getContext();
+                    String methodName = stackTraceElement.getMethodName(context);
+                    if (methodName == null || methodName.isEmpty() || methodName.equals(JSError.getAnonymousFunctionNameStackTrace(context))) {
                         return Null.instance;
                     } else {
                         return methodName;

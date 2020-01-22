@@ -53,7 +53,6 @@ import com.oracle.truffle.js.builtins.NumberPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -159,9 +158,9 @@ public final class JSNumber extends JSPrimitiveObject implements JSConstructorFa
 
     @TruffleBoundary
     @Override
-    public String safeToString(DynamicObject obj, int depth) {
-        if (JSTruffleOptions.NashornCompatibilityMode) {
-            return super.safeToString(obj, depth);
+    public String safeToString(DynamicObject obj, int depth, JSContext context) {
+        if (context.isOptionNashornCompatibilityMode()) {
+            return super.safeToString(obj, depth, context);
         } else {
             Number primitiveValue = JSNumber.valueOf(obj);
             return JSRuntime.objectToConsoleString(obj, getBuiltinToStringTag(obj), depth,

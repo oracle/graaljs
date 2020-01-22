@@ -2760,7 +2760,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     @Override
     public JavaScriptNode enterThrowNode(com.oracle.js.parser.ir.ThrowNode throwNode) {
-        return tagStatement(factory.createThrow(transform(throwNode.getExpression())), throwNode);
+        return tagStatement(factory.createThrow(context, transform(throwNode.getExpression())), throwNode);
     }
 
     @Override

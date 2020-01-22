@@ -53,7 +53,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.GraalJSException.JSStackTraceElement;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -72,7 +71,7 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
         this.setFormattedStack = PropertySetNode.createSetHidden(JSError.FORMATTED_STACK_NAME, context);
         this.defineStackProperty = DefineStackPropertyNode.create();
         this.defaultColumnNumber = defaultColumnNumber;
-        if (JSTruffleOptions.NashornCompatibilityMode) {
+        if (context.isOptionNashornCompatibilityMode()) {
             this.setLineNumber = CreateMethodPropertyNode.create(context, JSError.LINE_NUMBER_PROPERTY_NAME);
             this.setColumnNumber = CreateMethodPropertyNode.create(context, JSError.COLUMN_NUMBER_PROPERTY_NAME);
         }
@@ -92,7 +91,7 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
         setFormattedStack.setValue(errorObj, null);
         defineStackProperty.execute(errorObj);
 
-        if (JSTruffleOptions.NashornCompatibilityMode && exception.getJSStackTrace().length > 0) {
+        if (setLineNumber != null && exception.getJSStackTrace().length > 0) {
             JSStackTraceElement topStackTraceElement = exception.getJSStackTrace()[0];
             setLineNumber.executeVoid(errorObj, topStackTraceElement.getLineNumber());
             setColumnNumber.executeVoid(errorObj, defaultColumnNumber ? JSError.DEFAULT_COLUMN_NUMBER : topStackTraceElement.getColumnNumber());

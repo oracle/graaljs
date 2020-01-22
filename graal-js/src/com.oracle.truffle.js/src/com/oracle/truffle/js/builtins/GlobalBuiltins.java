@@ -1168,7 +1168,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         private Object indirectEvalImpl(JSRealm realm, String source) {
             String sourceName = null;
             if (isCallerSensitive()) {
-                sourceName = EvalNode.findAndFormatEvalOrigin(realm.getCallNode());
+                sourceName = EvalNode.findAndFormatEvalOrigin(realm.getCallNode(), realm.getContext());
             }
             if (sourceName == null) {
                 sourceName = Evaluator.EVAL_SOURCE_NAME;

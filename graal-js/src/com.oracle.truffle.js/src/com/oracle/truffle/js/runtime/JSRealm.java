@@ -600,7 +600,7 @@ public class JSRealm {
             this.asyncGeneratorObjectPrototype = null;
         }
 
-        boolean nashornCompat = context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
+        boolean nashornCompat = context.isOptionNashornCompatibilityMode();
         if (nashornCompat) {
             ctor = JSAdapter.createConstructor(this);
             this.jsAdapterConstructor = ctor.getFunctionObject();
@@ -1156,6 +1156,7 @@ public class JSRealm {
 
         if (context.isOptionNashornCompatibilityMode()) {
             initGlobalNashornExtensions();
+            removeNashornIncompatibleBuiltins();
         }
         if (context.getContextOptions().isScriptEngineGlobalScopeImport()) {
             JSObjectUtil.putDataProperty(context, getScriptEngineImportScope(), "importScriptEngineGlobalBindings",
@@ -1225,6 +1226,13 @@ public class JSRealm {
         putGlobalProperty("quit", lookupFunction(GlobalBuiltins.GLOBAL_NASHORN_EXTENSIONS, "quit"));
         DynamicObject parseToJSON = lookupFunction(GlobalBuiltins.GLOBAL_NASHORN_EXTENSIONS, "parseToJSON");
         putGlobalProperty("parseToJSON", parseToJSON);
+    }
+
+    private void removeNashornIncompatibleBuiltins() {
+        assert getContext().isOptionNashornCompatibilityMode();
+
+        // Nashorn has no join method on TypedArrays
+        JSObject.delete(typedArrayPrototype, "join");
     }
 
     private void addPrintGlobals() {

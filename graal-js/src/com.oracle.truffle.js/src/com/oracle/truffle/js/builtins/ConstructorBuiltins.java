@@ -1487,7 +1487,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         private String getSourceName() {
             String sourceName = null;
             if (isCallerSensitive()) {
-                sourceName = EvalNode.findAndFormatEvalOrigin(getContext().getRealm().getCallNode());
+                sourceName = EvalNode.findAndFormatEvalOrigin(getContext().getRealm().getCallNode(), getContext());
             }
             if (sourceName == null) {
                 sourceName = Evaluator.FUNCTION_SOURCE_NAME;

@@ -232,6 +232,10 @@
     "filePath" : "basic/JDK-8019814.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "basic/JDK-8019987.js",
+    "status" : "SKIP",
+    "comment" : "U180E support removed"
+  }, {
     "filePath" : "basic/JDK-8020223.js",
     "status" : "FAIL"
   }, {
@@ -533,6 +537,10 @@
   }, {
     "filePath" : "basic/JDK-8137134.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8138758.js",
+    "status" : "FAIL",
+    "comment" : "U180E support removed"
   }, {
     "filePath" : "basic/JDK-8143896.js",
     "status" : "FAIL"
