@@ -86,8 +86,7 @@
 
   windows: common + {
     packages+: {
-      "devkit:VS2017-15.5.5+1": "==0",
-      "pip:ninja_syntax": "==1.7.2",
+      'pip:ninja_syntax': '==1.7.2',
     },
     downloads+: {
       NASM: {name: 'nasm', version: '2.14.02', platformspecific: true},
@@ -96,5 +95,15 @@
       PATH: '$PATH;$NASM',
     },
     capabilities: ['windows', 'amd64'],
+  },
+
+  windows_vs2017: self.windows + {
+    packages+: {
+      'devkit:VS2017-15.5.5+1': '==0',
+    },
+    environment+: {
+      GYP_MSVS_OVERRIDE_PATH: '$DEVKIT_ROOT',
+      GYP_MSVS_VERSION: '2017',
+    },
   },
 }
