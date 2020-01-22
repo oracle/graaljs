@@ -5955,6 +5955,12 @@ public class Parser extends AbstractParser {
 
         try {
             moduleBody(module);
+
+            // Insert a synthetic yield before the module body but after any function declarations.
+            long yieldToken = Token.toDesc(YIELD, functionStart, 0);
+            prependStatement(new ExpressionStatement(functionLine, yieldToken, functionLine, new UnaryNode(yieldToken, newUndefinedLiteral(yieldToken, finish))));
+            script.setFlag(FunctionNode.IS_GENERATOR);
+
             addFunctionDeclarations(script);
         } finally {
             functionDeclarations = null;

@@ -60,7 +60,6 @@ import java.util.function.Supplier;
 import com.oracle.js.parser.ir.Expression;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ExportEntry;
-import com.oracle.js.parser.ir.Module.ImportEntry;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
@@ -283,7 +282,7 @@ public final class GraalJSEvaluator implements JSParser {
             @TruffleBoundary
             private Object evalModule(JSRealm realm) {
                 JSModuleRecord moduleRecord = realm.getModuleLoader().loadModule(source);
-                moduleInstantiation(moduleRecord);
+                moduleInstantiation(realm, moduleRecord);
                 return moduleEvaluation(realm, moduleRecord);
             }
         };
@@ -476,12 +475,12 @@ public final class GraalJSEvaluator implements JSParser {
 
     @TruffleBoundary
     @Override
-    public void moduleInstantiation(JSModuleRecord moduleRecord) {
+    public void moduleInstantiation(JSRealm realm, JSModuleRecord moduleRecord) {
         assert moduleRecord.getStatus() != Status.Instantiating && moduleRecord.getStatus() != Status.Evaluating;
         Deque<JSModuleRecord> stack = new ArrayDeque<>(4);
 
         try {
-            innerModuleInstantiation(moduleRecord, stack, 0);
+            innerModuleInstantiation(realm, moduleRecord, stack, 0);
         } catch (GraalJSException e) {
             for (JSModuleRecord m : stack) {
                 assert m.getStatus() == Status.Instantiating;
@@ -495,7 +494,7 @@ public final class GraalJSEvaluator implements JSParser {
         assert stack.isEmpty();
     }
 
-    private int innerModuleInstantiation(JSModuleRecord moduleRecord, Deque<JSModuleRecord> stack, int index0) {
+    private int innerModuleInstantiation(JSRealm realm, JSModuleRecord moduleRecord, Deque<JSModuleRecord> stack, int index0) {
         int index = index0;
         if (moduleRecord.getStatus() == Status.Instantiating || moduleRecord.getStatus() == Status.Instantiated || moduleRecord.getStatus() == Status.Evaluated) {
             return index;
@@ -510,7 +509,7 @@ public final class GraalJSEvaluator implements JSParser {
         Module module = (Module) moduleRecord.getModule();
         for (String requestedModule : module.getRequestedModules()) {
             JSModuleRecord requiredModule = hostResolveImportedModule(moduleRecord, requestedModule);
-            index = innerModuleInstantiation(requiredModule, stack, index);
+            index = innerModuleInstantiation(realm, requiredModule, stack, index);
             assert requiredModule.getStatus() == Status.Instantiating || requiredModule.getStatus() == Status.Instantiated ||
                             requiredModule.getStatus() == Status.Evaluated : requiredModule.getStatus();
             assert (requiredModule.getStatus() == Status.Instantiating) == stack.contains(requiredModule);
@@ -518,7 +517,7 @@ public final class GraalJSEvaluator implements JSParser {
                 moduleRecord.setDFSAncestorIndex(Math.min(moduleRecord.getDFSAncestorIndex(), requiredModule.getDFSAncestorIndex()));
             }
         }
-        moduleDeclarationEnvironmentSetup(moduleRecord);
+        moduleInitializeEnvironment(realm, moduleRecord);
 
         assert occursExactlyOnce(moduleRecord, stack);
         assert moduleRecord.getDFSAncestorIndex() <= moduleRecord.getDFSIndex();
@@ -534,7 +533,7 @@ public final class GraalJSEvaluator implements JSParser {
         return index;
     }
 
-    private void moduleDeclarationEnvironmentSetup(JSModuleRecord moduleRecord) {
+    private void moduleInitializeEnvironment(JSRealm realm, JSModuleRecord moduleRecord) {
         assert moduleRecord.getStatus() == Status.Instantiating;
         Module module = (Module) moduleRecord.getModule();
         for (ExportEntry exportEntry : module.getIndirectExportEntries()) {
@@ -543,30 +542,12 @@ public final class GraalJSEvaluator implements JSParser {
                 throw Errors.createSyntaxError("Could not resolve indirect export entry");
             }
         }
-        // Assert: all named exports from module are resolvable.
-        for (ImportEntry importEntry : module.getImportEntries()) {
-            JSModuleRecord importedModule = hostResolveImportedModule(moduleRecord, importEntry.getModuleRequest());
-            if (importEntry.getImportName().equals(Module.STAR_NAME)) {
-                // GetModuleNamespace(importedModule)
-                DynamicObject namespace = getModuleNamespace(importedModule);
-                assert JSModuleNamespace.isJSModuleNamespace(namespace);
-                // envRec.CreateImmutableBinding(in.[[LocalName]], true).
-                // Call envRec.InitializeBinding(in.[[LocalName]], namespace).
-                // bindings initialized in the translator
-            } else {
-                // Let resolution be importedModule.ResolveExport(in.[[ImportName]], << >>, << >>).
-                ExportResolution resolution = resolveExport(importedModule, importEntry.getImportName());
-                // If resolution is null or resolution is "ambiguous", throw SyntaxError.
-                if (resolution.isNull() || resolution.isAmbiguous()) {
-                    throw Errors.createSyntaxError("Could not resolve import entry");
-                }
-                // Call envRec.CreateImportBinding(in.[[LocalName]], resolution.[[module]],
-                // resolution.[[bindingName]]).
-                // bindings initialized in the translator
-            }
-        }
 
         moduleRecord.finishTranslation();
+
+        // Initialize the environment by executing the module function.
+        // It will automatically yield when the module is instantiated.
+        moduleExecution(realm, moduleRecord);
     }
 
     @TruffleBoundary
