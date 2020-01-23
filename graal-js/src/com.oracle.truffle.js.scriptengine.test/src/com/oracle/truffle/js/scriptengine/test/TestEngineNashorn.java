@@ -82,8 +82,11 @@ public class TestEngineNashorn {
     }
 
     private static ScriptEngine getEngineNashornCompat() {
-        return GraalJSScriptEngine.create(null,
-                        Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowHostClassLookup(s -> true).allowExperimentalOptions(true).option("js.nashorn-compat", "true"));
+        Context.Builder contextBuilder = Context.newBuilder("js").allowExperimentalOptions(true);
+        contextBuilder.allowHostAccess(HostAccess.ALL).allowHostClassLookup(s -> true);
+        contextBuilder.option("js.nashorn-compat", "true");
+        contextBuilder.option("js.global-arguments", "true");
+        return GraalJSScriptEngine.create(null, contextBuilder);
     }
 
     private static void invertedAssertEquals(Object actual, Object expected) {
