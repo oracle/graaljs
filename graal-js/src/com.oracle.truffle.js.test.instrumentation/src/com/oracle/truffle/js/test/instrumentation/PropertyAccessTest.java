@@ -358,6 +358,58 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
         assertPropertyRead("bar");
     }
 
+    @Test
+    public void nonMaterializedApply() {
+        String src = "function foo(a) {\n" +
+                        "    return a;\n" +
+                        "}\n" +
+                        "function bar() {\n" +
+                        "    return foo.apply(undefined, arguments);\n" +
+                        "}\n" +
+                        "function baz(a) {\n" +
+                        "    return a;\n" +
+                        "}\n" +
+                        "baz(bar(1));";
+        // ReadPropertyTag instrumentation only; no input tags specified, thus should not trigger
+        // materialize in CallApplyArgumentsNode
+        evalWithTags(src, new Class[]{ReadPropertyTag.class}, new Class[]{});
+
+        enter(ReadPropertyTag.class, (e, pr) -> {
+            assertAttribute(e, KEY, "baz");
+        }).exit();
+        enter(ReadPropertyTag.class, (e, pr) -> {
+            assertAttribute(e, KEY, "bar");
+        }).exit();
+        enter(ReadPropertyTag.class, (e, pr) -> {
+            assertAttribute(e, KEY, "foo");
+        }).exit();
+        enter(ReadPropertyTag.class, (e, pr) -> {
+            assertAttribute(e, KEY, "apply");
+        }).exit();
+    }
+
+    @Test
+    public void materializedApply() {
+        String src = "function foo(a) {\n" +
+                        "    return a;\n" +
+                        "}\n" +
+                        "function bar() {\n" +
+                        "    return foo.apply(undefined, arguments);\n" +
+                        "}\n" +
+                        "function baz(a) {\n" +
+                        "    return a;\n" +
+                        "}\n" +
+                        "baz(bar(1));";
+        // evalWithTag implicitly instruments expressions for inputs and thus should trigger
+        // materialize in CallApplyArgumentsNode
+        evalWithTag(src, ReadPropertyTag.class);
+
+        assertPropertyRead("baz");
+        assertPropertyRead("bar");
+        assertPropertyRead("foo");
+        assertPropertyRead("apply");
+    }
+
     private void assertPropertyRead(String key) {
         enter(ReadPropertyTag.class, (e, pr) -> {
             assertAttribute(e, KEY, key);
