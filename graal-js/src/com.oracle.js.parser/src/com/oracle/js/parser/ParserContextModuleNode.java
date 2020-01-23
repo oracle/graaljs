@@ -138,7 +138,9 @@ class ParserContextModuleNode extends ParserContextBaseNode {
 
     private void resolveExports() {
         for (ExportNode export : exports) {
+            long exportToken = export.getToken();
             if (export.getExportClause() != null) {
+                assert export.getExportIdentifier() == null;
                 for (ExportSpecifierNode s : export.getExportClause().getExportSpecifiers()) {
                     String localName = s.getIdentifier().getName();
                     ExportEntry ee;
@@ -147,7 +149,6 @@ class ParserContextModuleNode extends ParserContextBaseNode {
                     } else {
                         ee = ExportEntry.exportSpecifier(localName);
                     }
-                    long exportToken = export.getToken();
                     if (export.getFrom() == null) {
                         ImportEntry ie = importedLocalNames.get(localName);
                         if (ie == null) {
@@ -163,6 +164,14 @@ class ParserContextModuleNode extends ParserContextBaseNode {
                         addIndirectExportEntry(exportToken, ee.withFrom(export.getFrom().getModuleSpecifier().getValue()));
                     }
                 }
+            } else if (export.getFrom() != null) {
+                assert export.getExportIdentifier() == null;
+                String moduleRequest = export.getFrom().getModuleSpecifier().getValue();
+                addStarExportEntry(ExportEntry.exportStarFrom(moduleRequest));
+            } else if (export.isDefault()) {
+                addLocalExportEntry(exportToken, ExportEntry.exportDefault(export.getExportIdentifier().getName()));
+            } else {
+                addLocalExportEntry(exportToken, ExportEntry.exportSpecifier(export.getExportIdentifier().getName()));
             }
         }
     }

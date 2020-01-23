@@ -147,7 +147,6 @@ import com.oracle.js.parser.ir.LexicalContext;
 import com.oracle.js.parser.ir.LiteralNode;
 import com.oracle.js.parser.ir.LiteralNode.ArrayLiteralNode;
 import com.oracle.js.parser.ir.Module;
-import com.oracle.js.parser.ir.Module.ExportEntry;
 import com.oracle.js.parser.ir.Module.ImportEntry;
 import com.oracle.js.parser.ir.NameSpaceImportNode;
 import com.oracle.js.parser.ir.NamedImportsNode;
@@ -6438,25 +6437,23 @@ public class Parser extends AbstractParser {
                 FromNode from = fromClause();
                 String moduleRequest = from.getModuleSpecifier().getValue();
                 module.addModuleRequest(moduleRequest);
-                module.addStarExportEntry(ExportEntry.exportStarFrom(moduleRequest));
                 module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, from));
                 endOfLine();
                 break;
             }
             case LBRACE: {
                 ExportClauseNode exportClause = exportClause();
+                FromNode from = null;
                 if (type == FROM) {
-                    FromNode from = fromClause();
-                    module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportClause, from));
+                    from = fromClause();
                     String moduleRequest = from.getModuleSpecifier().getValue();
                     module.addModuleRequest(moduleRequest);
-                } else {
-                    module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportClause));
                 }
+                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportClause, from));
                 endOfLine();
                 break;
             }
-            case DEFAULT:
+            case DEFAULT: {
                 next();
                 Expression assignmentExpression;
                 IdentNode ident = null;
@@ -6500,39 +6497,37 @@ public class Parser extends AbstractParser {
                 } else {
                     lc.appendStatementToCurrentNode(varNode);
                 }
-                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, assignmentExpression, true));
-                module.addLocalExportEntry(exportToken, ExportEntry.exportDefault(ident.getName()));
+                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, ident, assignmentExpression, true));
                 break;
+            }
             case VAR:
             case LET:
-            case CONST:
+            case CONST: {
                 List<Statement> statements = lc.getCurrentBlock().getStatements();
                 int previousEnd = statements.size();
                 variableStatement(type);
                 for (Statement statement : statements.subList(previousEnd, statements.size())) {
                     if (statement instanceof VarNode) {
-                        module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, (VarNode) statement));
-                        module.addLocalExportEntry(exportToken, ExportEntry.exportSpecifier(((VarNode) statement).getName().getName()));
+                        VarNode varNode = (VarNode) statement;
+                        module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, varNode.getName(), varNode));
                     }
                 }
                 break;
+            }
             case CLASS: {
                 ClassNode classDeclaration = classDeclaration(false, false, false);
-                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, classDeclaration, false));
-                module.addLocalExportEntry(exportToken, ExportEntry.exportSpecifier(classDeclaration.getIdent().getName()));
+                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, classDeclaration.getIdent(), classDeclaration, false));
                 break;
             }
             case FUNCTION: {
                 FunctionNode functionDeclaration = (FunctionNode) functionExpression(true, true);
-                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, functionDeclaration, false));
-                module.addLocalExportEntry(exportToken, ExportEntry.exportSpecifier(functionDeclaration.getIdent().getName()));
+                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, functionDeclaration.getIdent(), functionDeclaration, false));
                 break;
             }
             default:
                 if (isAsync() && lookaheadIsAsyncFunction()) {
                     FunctionNode functionDeclaration = (FunctionNode) asyncFunctionExpression(true, true);
-                    module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, functionDeclaration, false));
-                    module.addLocalExportEntry(exportToken, ExportEntry.exportSpecifier(functionDeclaration.getIdent().getName()));
+                    module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, functionDeclaration.getIdent(), functionDeclaration, false));
                     break;
                 }
                 throw error(AbstractParser.message("invalid.export"), token);
