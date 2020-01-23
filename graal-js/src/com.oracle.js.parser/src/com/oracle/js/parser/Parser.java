@@ -6658,16 +6658,15 @@ public class Parser extends AbstractParser {
     }
 
     private void markNewTarget() {
+        if (!lc.getCurrentScope().inFunction()) {
+            // `new.target` in script or module (may be wrapped in an arrow function or eval).
+            throw error(AbstractParser.message("new.target.in.function"), token);
+        }
         final Iterator<ParserContextFunctionNode> iter = lc.getFunctions();
         while (iter.hasNext()) {
             final ParserContextFunctionNode fn = iter.next();
             if (!fn.isArrow()) {
-                if (fn.isProgram()) {
-                    // e.g.: `new.target` or `() => new.target` in script, module, or eval.
-                    if (fn.getBodyScope().isGlobalScope() || fn.getBodyScope().isModuleScope()) {
-                        throw error(AbstractParser.message("new.target.in.function"), token);
-                    }
-                } else {
+                if (!fn.isProgram()) {
                     fn.setFlag(FunctionNode.USES_NEW_TARGET);
                 }
                 break;

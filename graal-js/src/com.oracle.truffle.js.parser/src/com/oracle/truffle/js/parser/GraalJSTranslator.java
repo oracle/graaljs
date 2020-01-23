@@ -1441,7 +1441,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else if (identNode.isSuper()) {
             result = enterIdentNodeSuper(identNode);
         } else if (identNode.isNewTarget()) {
-            result = enterNewTarget(identNode);
+            result = enterNewTarget();
         } else if (identNode.isImportMeta()) {
             result = factory.createImportMeta(getActiveScriptOrModule());
         } else {
@@ -1452,13 +1452,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return tagExpression(result, identNode);
     }
 
-    private JavaScriptNode enterNewTarget(IdentNode identNode) {
-        VarRef newTargetVar = environment.findNewTargetVar();
-        if (newTargetVar == null) {
-            // While parsing eval code, we do not know if there is an outer non-arrow function.
-            throw Errors.createSyntaxError(error(com.oracle.js.parser.ECMAErrors.getMessage("parser.error.new.target.in.function"), identNode.getToken(), lc));
-        }
-        return newTargetVar.createReadNode();
+    private JavaScriptNode enterNewTarget() {
+        return environment.findNewTargetVar().createReadNode();
     }
 
     private JavaScriptNode enterIdentNodeSuper(IdentNode identNode) {
