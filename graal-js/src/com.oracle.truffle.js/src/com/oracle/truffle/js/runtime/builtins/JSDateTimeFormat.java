@@ -188,7 +188,24 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         String selectedTag = IntlUtil.selectedLocale(ctx, locales);
         Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : ctx.getLocale();
         Locale strippedLocale = selectedLocale.stripExtensions();
-        String skeleton = makeSkeleton(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hcOpt, hour12Opt, minuteOpt, secondOpt, tzNameOpt);
+
+        Locale.Builder builder = new Locale.Builder();
+        builder.setLocale(strippedLocale);
+
+        String hc;
+        if (hour12Opt == null) {
+            String hcType = selectedLocale.getUnicodeLocaleType("hc");
+            if (hcType != null && (hcOpt == null || hcOpt.equals(hcType)) && isValidHCType(hcType)) {
+                hc = hcType;
+                builder.setUnicodeLocaleKeyword("hc", hcType);
+            } else {
+                hc = hcOpt;
+            }
+        } else {
+            hc = null;
+        }
+
+        String skeleton = makeSkeleton(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hc, hour12Opt, minuteOpt, secondOpt, tzNameOpt);
 
         DateTimePatternGenerator patternGenerator = DateTimePatternGenerator.getInstance(strippedLocale);
         String bestPattern = patternGenerator.getBestPattern(skeleton);
@@ -216,8 +233,15 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
         if (containsOneOf(baseSkeleton, "hHKk")) {
             state.hour = hourOpt;
-            state.hourCycle = hcOpt;
             state.hour12 = containsOneOf(baseSkeleton, "hK");
+            if (hour12Opt != null) {
+                if (containsOneOf(baseSkeleton, "HK")) {
+                    hc = hour12Opt ? IntlUtil.H11 : IntlUtil.H23;
+                } else {
+                    hc = hour12Opt ? IntlUtil.H12 : IntlUtil.H24;
+                }
+            }
+            state.hourCycle = hc;
         }
 
         if (baseSkeleton.contains("m")) {
@@ -227,9 +251,6 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         if (containsOneOf(baseSkeleton, "sSA")) {
             state.second = secondOpt;
         }
-
-        Locale.Builder builder = new Locale.Builder();
-        builder.setLocale(strippedLocale);
 
         String caType = selectedLocale.getUnicodeLocaleType("ca");
         if (caType != null && (calendarOpt == null || calendarOpt.equals(caType))) {
@@ -286,6 +307,10 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
         state.dateFormat.setTimeZone(timeZone);
         state.timeZone = timeZone.getID();
+    }
+
+    private static boolean isValidHCType(String hcType) {
+        return IntlUtil.H11.equals(hcType) || IntlUtil.H12.equals(hcType) || IntlUtil.H23.equals(hcType) || IntlUtil.H24.equals(hcType);
     }
 
     private static String weekdayOptToSkeleton(String weekdayOpt) {
