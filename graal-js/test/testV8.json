@@ -27,16 +27,9 @@
     "filePath" : "intl/break-iterator/zh-break.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "intl/date-format/calendar-with-multiple-type-subtags.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "intl/date-format/check-ca-option.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
-  }, {
     "filePath" : "intl/date-format/check-calendar.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
+    "comment" : "Off-spec, should be fixed by a next TestV8 update, see https://bugs.chromium.org/p/v8/issues/detail?id=9887"
   }, {
     "filePath" : "intl/date-format/check-numbering-system.js",
     "status" : "FAIL",
