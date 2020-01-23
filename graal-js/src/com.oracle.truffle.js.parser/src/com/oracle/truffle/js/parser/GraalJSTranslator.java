@@ -378,7 +378,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 } else if (functionNode.isModule()) {
                     assert currentFunction.isGlobal();
                     declarations = setupModuleEnvironment(functionNode);
-                    verifyModuleLocalExports(functionNode.getBody());
                 } else {
                     assert currentFunction.isGlobal();
                     declarations = collectGlobalVars(functionNode, isEval);
@@ -1144,11 +1143,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     protected void createImportBinding(String localName, JSModuleRecord module, String bindingName) {
         currentFunction().addImportBinding(localName, module, bindingName);
-    }
-
-    @SuppressWarnings("unused")
-    protected void verifyModuleLocalExports(Block moduleBodyBlock) {
-        throw new UnsupportedOperationException();
     }
 
     protected JavaScriptNode getActiveScriptOrModule() {

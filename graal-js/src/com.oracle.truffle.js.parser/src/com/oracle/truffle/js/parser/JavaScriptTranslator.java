@@ -41,14 +41,10 @@
 package com.oracle.truffle.js.parser;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
-import com.oracle.js.parser.ir.Block;
 import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.js.parser.ir.Module;
-import com.oracle.js.parser.ir.Module.ExportEntry;
 import com.oracle.js.parser.ir.Module.ImportEntry;
 import com.oracle.js.parser.ir.Scope;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -164,35 +160,7 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
             }
         }
 
-        // Check for duplicate exports
-        verifyModuleExportedNames();
-
         return declarations;
-    }
-
-    private void verifyModuleExportedNames() {
-        Set<String> exportedNames = new HashSet<>();
-        for (ExportEntry exportEntry : moduleNode.getLocalExportEntries()) {
-            // Assert: module provides the direct binding for this export.
-            if (!exportedNames.add(exportEntry.getExportName())) {
-                throw Errors.createSyntaxError("Duplicate export");
-            }
-        }
-        for (ExportEntry exportEntry : moduleNode.getIndirectExportEntries()) {
-            // Assert: module imports a specific binding for this export.
-            if (!exportedNames.add(exportEntry.getExportName())) {
-                throw Errors.createSyntaxError("Duplicate export");
-            }
-        }
-    }
-
-    @Override
-    protected void verifyModuleLocalExports(Block moduleBodyBlock) {
-        for (ExportEntry exportEntry : moduleNode.getLocalExportEntries()) {
-            if (!moduleBodyBlock.getScope().hasSymbol(exportEntry.getLocalName())) {
-                throw Errors.createSyntaxError(String.format("Export specifies undeclared identifier: '%s'", exportEntry.getLocalName()));
-            }
-        }
     }
 
     @Override

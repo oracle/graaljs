@@ -6139,7 +6139,7 @@ public class Parser extends AbstractParser {
                         Collections.<IdentNode> emptyList(), 0, moduleScope);
         lc.push(script);
 
-        final ParserContextModuleNode module = new ParserContextModuleNode(moduleName);
+        final ParserContextModuleNode module = new ParserContextModuleNode(moduleName, moduleScope, this);
         final ParserContextBlockNode body = newBlock(moduleScope);
         functionDeclarations = new ArrayList<>();
 
@@ -6489,7 +6489,6 @@ public class Parser extends AbstractParser {
                         assignmentExpression = functionNode.setFlag(null, FunctionNode.IS_DECLARED);
                     }
                 }
-                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, assignmentExpression, true));
                 if (ident == null) {
                     ident = new IdentNode(Token.recast(rhsToken, IDENT), finish, Module.DEFAULT_EXPORT_BINDING_NAME);
                 }
@@ -6501,7 +6500,8 @@ public class Parser extends AbstractParser {
                 } else {
                     lc.appendStatementToCurrentNode(varNode);
                 }
-                module.addLocalExportEntry(ExportEntry.exportDefault(ident.getName()));
+                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, assignmentExpression, true));
+                module.addLocalExportEntry(exportToken, ExportEntry.exportDefault(ident.getName()));
                 break;
             case VAR:
             case LET:
@@ -6512,28 +6512,27 @@ public class Parser extends AbstractParser {
                 for (Statement statement : statements.subList(previousEnd, statements.size())) {
                     if (statement instanceof VarNode) {
                         module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, (VarNode) statement));
-                        module.addLocalExportEntry(ExportEntry.exportSpecifier(((VarNode) statement).getName().getName()));
+                        module.addLocalExportEntry(exportToken, ExportEntry.exportSpecifier(((VarNode) statement).getName().getName()));
                     }
                 }
                 break;
             case CLASS: {
                 ClassNode classDeclaration = classDeclaration(false, false, false);
                 module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, classDeclaration, false));
-                IdentNode classIdent = classDeclaration.getIdent();
-                module.addLocalExportEntry(ExportEntry.exportSpecifier(classIdent != null ? classIdent.getName() : ""));
+                module.addLocalExportEntry(exportToken, ExportEntry.exportSpecifier(classDeclaration.getIdent().getName()));
                 break;
             }
             case FUNCTION: {
                 FunctionNode functionDeclaration = (FunctionNode) functionExpression(true, true);
                 module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, functionDeclaration, false));
-                module.addLocalExportEntry(ExportEntry.exportSpecifier(functionDeclaration.getIdent().getName()));
+                module.addLocalExportEntry(exportToken, ExportEntry.exportSpecifier(functionDeclaration.getIdent().getName()));
                 break;
             }
             default:
                 if (isAsync() && lookaheadIsAsyncFunction()) {
                     FunctionNode functionDeclaration = (FunctionNode) asyncFunctionExpression(true, true);
                     module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, functionDeclaration, false));
-                    module.addLocalExportEntry(ExportEntry.exportSpecifier(functionDeclaration.getIdent().getName()));
+                    module.addLocalExportEntry(exportToken, ExportEntry.exportSpecifier(functionDeclaration.getIdent().getName()));
                     break;
                 }
                 throw error(AbstractParser.message("invalid.export"), token);

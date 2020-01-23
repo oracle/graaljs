@@ -41,9 +41,10 @@
 package com.oracle.js.parser;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 
 import com.oracle.js.parser.ir.ExportNode;
 import com.oracle.js.parser.ir.ExportSpecifierNode;
@@ -51,6 +52,7 @@ import com.oracle.js.parser.ir.ImportNode;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ExportEntry;
 import com.oracle.js.parser.ir.Module.ImportEntry;
+import com.oracle.js.parser.ir.Scope;
 
 /**
  * ParserContextNode that represents a module.
@@ -59,24 +61,30 @@ class ParserContextModuleNode extends ParserContextBaseNode {
 
     /** Module name. */
     private final String name;
+    private final Scope moduleScope;
+    private final AbstractParser parser;
 
     private List<String> requestedModules = new ArrayList<>();
     private List<ImportEntry> importEntries = new ArrayList<>();
     private List<ExportEntry> localExportEntries = new ArrayList<>();
     private List<ExportEntry> indirectExportEntries = new ArrayList<>();
     private List<ExportEntry> starExportEntries = new ArrayList<>();
-    private Map<String, ImportEntry> importedLocalNames = new HashMap<>();
 
     private List<ImportNode> imports = new ArrayList<>();
     private List<ExportNode> exports = new ArrayList<>();
+
+    private EconomicMap<String, ImportEntry> importedLocalNames = EconomicMap.create();
+    private EconomicSet<String> exportedNames = EconomicSet.create();
 
     /**
      * Constructor.
      *
      * @param name name of the module
      */
-    ParserContextModuleNode(final String name) {
+    ParserContextModuleNode(final String name, Scope moduleScope, AbstractParser parser) {
         this.name = name;
+        this.moduleScope = moduleScope;
+        this.parser = parser;
     }
 
     /**
@@ -105,19 +113,30 @@ class ParserContextModuleNode extends ParserContextBaseNode {
         importedLocalNames.put(importEntry.getLocalName(), importEntry);
     }
 
-    public void addLocalExportEntry(ExportEntry exportEntry) {
+    public void addLocalExportEntry(long exportToken, ExportEntry exportEntry) {
         localExportEntries.add(exportEntry);
+        addExportedName(exportToken, exportEntry);
+        if (!moduleScope.hasSymbol(exportEntry.getLocalName())) {
+            throw parser.error(AbstractParser.message("export.not.defined", exportEntry.getLocalName()), exportToken);
+        }
     }
 
-    public void addIndirectExportEntry(ExportEntry exportEntry) {
+    public void addIndirectExportEntry(long exportToken, ExportEntry exportEntry) {
         indirectExportEntries.add(exportEntry);
+        addExportedName(exportToken, exportEntry);
     }
 
     public void addStarExportEntry(ExportEntry exportEntry) {
         starExportEntries.add(exportEntry);
     }
 
-    public Module createModule() {
+    private void addExportedName(long exportToken, ExportEntry exportEntry) {
+        if (!exportedNames.add(exportEntry.getExportName())) {
+            throw parser.error(AbstractParser.message("duplicate.export", exportEntry.getExportName()), exportToken);
+        }
+    }
+
+    private void resolveExports() {
         for (ExportNode export : exports) {
             if (export.getExportClause() != null) {
                 for (ExportSpecifierNode s : export.getExportClause().getExportSpecifiers()) {
@@ -128,24 +147,28 @@ class ParserContextModuleNode extends ParserContextBaseNode {
                     } else {
                         ee = ExportEntry.exportSpecifier(localName);
                     }
+                    long exportToken = export.getToken();
                     if (export.getFrom() == null) {
                         ImportEntry ie = importedLocalNames.get(localName);
                         if (ie == null) {
-                            addLocalExportEntry(ee);
+                            addLocalExportEntry(exportToken, ee);
                         } else if (ie.getImportName().equals(Module.STAR_NAME)) {
                             // This is a re-export of an imported module namespace object.
-                            addLocalExportEntry(ee);
+                            addLocalExportEntry(exportToken, ee);
                         } else {
                             // This is a re-export of a single name.
-                            addIndirectExportEntry(ExportEntry.exportIndirect(ee.getExportName(), ie.getModuleRequest(), ie.getImportName()));
+                            addIndirectExportEntry(exportToken, ExportEntry.exportIndirect(ee.getExportName(), ie.getModuleRequest(), ie.getImportName()));
                         }
                     } else {
-                        addIndirectExportEntry(ee.withFrom(export.getFrom().getModuleSpecifier().getValue()));
+                        addIndirectExportEntry(exportToken, ee.withFrom(export.getFrom().getModuleSpecifier().getValue()));
                     }
                 }
             }
         }
+    }
 
+    public Module createModule() {
+        resolveExports();
         return new Module(requestedModules, importEntries, localExportEntries, indirectExportEntries, starExportEntries, imports, exports);
     }
 }
