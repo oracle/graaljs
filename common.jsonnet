@@ -101,9 +101,9 @@
     packages : {
       msvc : '==10.0',
     },
-    environment+: {
-      GYP_MSVS_OVERRIDE_PATH: '$DEVKIT_ROOT',
-      GYP_MSVS_VERSION: '2010',
+    setup+: {
+      ['set-export', 'GYP_MSVS_OVERRIDE_PATH', '$MSVC_10_0_ROOT'],
+      ['set-export', 'GYP_MSVS_VERSION', '2010'],
     },
   },
 
