@@ -42,12 +42,12 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import java.text.AttributedCharacterIterator;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
@@ -56,8 +56,10 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 import com.ibm.icu.text.DateFormat;
 import com.ibm.icu.text.DateTimePatternGenerator;
 import com.ibm.icu.text.SimpleDateFormat;
+import com.ibm.icu.util.Calendar;
 import com.ibm.icu.util.GregorianCalendar;
 import com.ibm.icu.util.TimeZone;
+import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -188,7 +190,24 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         String selectedTag = IntlUtil.selectedLocale(ctx, locales);
         Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : ctx.getLocale();
         Locale strippedLocale = selectedLocale.stripExtensions();
-        String skeleton = makeSkeleton(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hcOpt, hour12Opt, minuteOpt, secondOpt, tzNameOpt);
+
+        Locale.Builder builder = new Locale.Builder();
+        builder.setLocale(strippedLocale);
+
+        String hc;
+        if (hour12Opt == null) {
+            String hcType = selectedLocale.getUnicodeLocaleType("hc");
+            if (hcType != null && (hcOpt == null || hcOpt.equals(hcType)) && isValidHCType(hcType)) {
+                hc = hcType;
+                builder.setUnicodeLocaleKeyword("hc", hcType);
+            } else {
+                hc = hcOpt;
+            }
+        } else {
+            hc = null;
+        }
+
+        String skeleton = makeSkeleton(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hc, hour12Opt, minuteOpt, secondOpt, tzNameOpt);
 
         DateTimePatternGenerator patternGenerator = DateTimePatternGenerator.getInstance(strippedLocale);
         String bestPattern = patternGenerator.getBestPattern(skeleton);
@@ -216,8 +235,15 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
         if (containsOneOf(baseSkeleton, "hHKk")) {
             state.hour = hourOpt;
-            state.hourCycle = hcOpt;
             state.hour12 = containsOneOf(baseSkeleton, "hK");
+            if (hour12Opt != null) {
+                if (containsOneOf(baseSkeleton, "HK")) {
+                    hc = hour12Opt ? IntlUtil.H11 : IntlUtil.H23;
+                } else {
+                    hc = hour12Opt ? IntlUtil.H12 : IntlUtil.H24;
+                }
+            }
+            state.hourCycle = hc;
         }
 
         if (baseSkeleton.contains("m")) {
@@ -228,11 +254,9 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             state.second = secondOpt;
         }
 
-        Locale.Builder builder = new Locale.Builder();
-        builder.setLocale(strippedLocale);
-
-        String caType = selectedLocale.getUnicodeLocaleType("ca");
-        if (caType != null && (calendarOpt == null || calendarOpt.equals(caType))) {
+        String caType = normalizeCalendar(selectedLocale.getUnicodeLocaleType("ca"));
+        String normCalendarOpt = normalizeCalendar(calendarOpt);
+        if (caType != null && (normCalendarOpt == null || normCalendarOpt.equals(caType)) && isValidCAType(strippedLocale, caType)) {
             state.calendar = caType;
             builder.setUnicodeLocaleKeyword("ca", caType);
         }
@@ -247,9 +271,9 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
         state.initialized = true;
 
-        if (calendarOpt != null) {
-            state.calendar = calendarOpt;
-            builder.setUnicodeLocaleKeyword("ca", calendarOpt);
+        if (normCalendarOpt != null && isValidCAType(strippedLocale, normCalendarOpt)) {
+            state.calendar = normCalendarOpt;
+            builder.setUnicodeLocaleKeyword("ca", normCalendarOpt);
         }
 
         if (numberingSystemOpt != null && IntlUtil.isValidNumberingSystem(numberingSystemOpt)) {
@@ -267,12 +291,14 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         state.dateFormat = dateFormat;
         state.locale = resolvedLocale.toLanguageTag();
 
-        state.calendar = Calendar.getInstance(javaLocale).getCalendarType();
+        if (state.calendar == null) {
+            state.calendar = normalizeCalendar(Calendar.getInstance(javaLocale).getType());
+        }
         if ("gregory".equals(state.calendar)) {
             // Ensure that Gregorian calendar is used for all dates.
             // GregorianCalendar used by SimpleDateFormat is using
             // Julian calendar for dates before 1582 otherwise.
-            com.ibm.icu.util.Calendar calendar = dateFormat.getCalendar();
+            Calendar calendar = dateFormat.getCalendar();
             if (!(calendar instanceof GregorianCalendar)) {
                 calendar = new GregorianCalendar(javaLocale);
                 dateFormat.setCalendar(calendar);
@@ -286,6 +312,34 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
         state.dateFormat.setTimeZone(timeZone);
         state.timeZone = timeZone.getID();
+    }
+
+    private static boolean isValidHCType(String hcType) {
+        return IntlUtil.H11.equals(hcType) || IntlUtil.H12.equals(hcType) || IntlUtil.H23.equals(hcType) || IntlUtil.H24.equals(hcType);
+    }
+
+    private static boolean isValidCAType(Locale locale, String calendar) {
+        assert Objects.equals(calendar, normalizeCalendar(calendar));
+        String[] validValues = Calendar.getKeywordValuesForLocale("ca", ULocale.forLocale(locale), false);
+        for (String validValue : validValues) {
+            if (normalizeCalendar(validValue).equals(calendar)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String normalizeCalendar(String calendar) {
+        // (Preferred) aliases from
+        // https://github.com/unicode-org/cldr/blob/master/common/bcp47/calendar.xml
+        if ("gregorian".equals(calendar)) {
+            return "gregory";
+        } else if ("ethiopic-amete-alem".equals(calendar)) {
+            return "ethioaa";
+        } else if ("islamicc".equals(calendar)) {
+            return "islamic-civil";
+        }
+        return calendar;
     }
 
     private static String weekdayOptToSkeleton(String weekdayOpt) {
