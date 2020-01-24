@@ -40,6 +40,7 @@
  */
 package com.oracle.js.parser.ir;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
@@ -60,7 +61,15 @@ public class LexicalContext {
      * Creates a new empty lexical context.
      */
     public LexicalContext() {
-        stack = new LexicalContextNode[16];
+        this.stack = new LexicalContextNode[16];
+    }
+
+    /**
+     * Creates a copy of a lexical context.
+     */
+    private LexicalContext(LexicalContext from) {
+        this.stack = Arrays.copyOf(from.stack, from.stack.length);
+        this.sp = from.sp;
     }
 
     /**
@@ -220,6 +229,10 @@ public class LexicalContext {
     public ClassNode getCurrentClass() {
         NodeIterator<ClassNode> iterator = new NodeIterator<>(ClassNode.class);
         return iterator.hasNext() ? iterator.next() : null;
+    }
+
+    public LexicalContext copy() {
+        return new LexicalContext(this);
     }
 
     @Override

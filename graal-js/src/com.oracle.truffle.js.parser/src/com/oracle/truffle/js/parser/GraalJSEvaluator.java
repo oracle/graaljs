@@ -60,7 +60,6 @@ import java.util.function.Supplier;
 import com.oracle.js.parser.ir.Expression;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ExportEntry;
-import com.oracle.js.parser.ir.Scope;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
@@ -90,7 +89,6 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.parser.date.DateParser;
 import com.oracle.truffle.js.parser.env.DebugEnvironment;
 import com.oracle.truffle.js.parser.env.Environment;
-import com.oracle.truffle.js.parser.env.EvalEnvironment;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -127,7 +125,7 @@ public final class GraalJSEvaluator implements JSParser {
     @Override
     public Object evaluate(JSRealm realm, Node lastNode, Source source) {
         Object thisObj = realm.getGlobalObject();
-        return doEvaluate(realm, lastNode, thisObj, JSFrameUtil.NULL_MATERIALIZED_FRAME, source, false, null, null);
+        return doEvaluate(realm, lastNode, thisObj, JSFrameUtil.NULL_MATERIALIZED_FRAME, source, false, null);
     }
 
     /**
@@ -167,7 +165,7 @@ public final class GraalJSEvaluator implements JSParser {
         code.append("})");
         Source source = Source.newBuilder(JavaScriptLanguage.ID, code.toString(), sourceName).build();
 
-        return parseEval(context, null, source, false, null, null);
+        return parseEval(context, null, source, false, null);
     }
 
     /**
@@ -175,12 +173,10 @@ public final class GraalJSEvaluator implements JSParser {
      */
     @TruffleBoundary(transferToInterpreterOnException = false)
     @Override
-    public Object evaluate(JSRealm realm, Node lastNode, Source source, MaterializedFrame frame, Object thisObj, Object currScope, Object currEnv) {
-        assert currEnv instanceof Environment;
+    public Object evaluate(JSRealm realm, Node lastNode, Source source, MaterializedFrame frame, Object thisObj, Object evalEnv) {
         assert frame != null;
-
-        Environment outerEnv = (Environment) currEnv;
-        return doEvaluate(realm, lastNode, thisObj, frame.materialize(), source, outerEnv.isStrictMode(), (Scope) currScope, outerEnv);
+        DirectEvalContext directEval = (DirectEvalContext) evalEnv;
+        return doEvaluate(realm, lastNode, thisObj, frame, source, directEval.env.isStrictMode(), directEval);
     }
 
     @Override
@@ -200,9 +196,9 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     @TruffleBoundary
-    private static Object doEvaluate(JSRealm realm, Node lastNode, Object thisObj, MaterializedFrame materializedFrame, Source source, boolean isStrict, Scope evalScope, Environment env) {
+    private static Object doEvaluate(JSRealm realm, Node lastNode, Object thisObj, MaterializedFrame materializedFrame, Source source, boolean isStrict, DirectEvalContext directEval) {
         JSContext context = realm.getContext();
-        ScriptNode scriptNode = parseEval(context, lastNode, source, isStrict, evalScope, env);
+        ScriptNode scriptNode = parseEval(context, lastNode, source, isStrict, directEval);
         return runParsed(scriptNode, realm, thisObj, materializedFrame);
     }
 
@@ -211,12 +207,11 @@ public final class GraalJSEvaluator implements JSParser {
         return scriptNode.run(JSArguments.createZeroArg(thisObj, functionObj));
     }
 
-    private static ScriptNode parseEval(JSContext context, Node lastNode, Source source, boolean isStrict, Scope evalScope, Environment env) {
+    private static ScriptNode parseEval(JSContext context, Node lastNode, Source source, boolean isStrict, DirectEvalContext directEval) {
         context.checkEvalAllowed();
         NodeFactory nodeFactory = NodeFactory.getInstance(context);
-        EvalEnvironment evalEnv = new EvalEnvironment(env, nodeFactory, context, env != null);
         try {
-            return JavaScriptTranslator.translateEvalScript(nodeFactory, context, evalEnv, source, isStrict, evalScope);
+            return JavaScriptTranslator.translateEvalScript(nodeFactory, context, source, isStrict, directEval);
         } catch (com.oracle.js.parser.ParserException e) {
             throw parserToJSError(lastNode, e, context);
         }

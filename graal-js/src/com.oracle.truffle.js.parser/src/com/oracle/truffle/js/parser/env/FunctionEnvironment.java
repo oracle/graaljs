@@ -435,10 +435,10 @@ public class FunctionEnvironment extends Environment {
     }
 
     public final FunctionEnvironment getNonArrowParentFunction() {
-        if (!isArrowFunction()) {
-            return this;
+        if (isArrowFunction() || isDirectEval()) {
+            return getParentFunction().getNonArrowParentFunction();
         }
-        return getParentFunction(getArrowFunctionLevel());
+        return this;
     }
 
     @Override
@@ -582,8 +582,12 @@ public class FunctionEnvironment extends Environment {
         return isDerivedConstructor;
     }
 
-    public int getArrowFunctionLevel() {
-        return isArrowFunction ? 1 + getParentFunction().getArrowFunctionLevel() : 0;
+    /**
+     * Returns the number of function levels to skip to reach the function with the [[ThisValue]].
+     * Loosely resembles GetThisEnvironment(), but we need to consider eval functions, too.
+     */
+    public int getThisFunctionLevel() {
+        return (isArrowFunction() || isDirectEval()) ? 1 + getParentFunction().getThisFunctionLevel() : 0;
     }
 
     public boolean isAsyncFunction() {

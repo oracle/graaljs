@@ -773,11 +773,11 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     }
 
     public boolean needsThis() {
-        return usesThis() || (hasEval() || hasArrowEval());
+        return usesThis() || hasDirectSuper() || (hasEval() || hasArrowEval());
     }
 
     public boolean needsNewTarget() {
-        return usesNewTarget() || (!isArrow() && !isProgram() && (hasEval() || hasArrowEval()));
+        return usesNewTarget() || hasDirectSuper() || (!isArrow() && !isProgram() && (hasEval() || hasArrowEval()));
     }
 
     public boolean needsSuper() {

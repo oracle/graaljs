@@ -74,8 +74,8 @@ public abstract class EvalNode extends JavaScriptNode {
     @Child protected AbstractFunctionArgumentsNode arguments;
     @Child protected DirectEvalNode directEvalNode;
 
-    protected EvalNode(JSContext context, JavaScriptNode function, JavaScriptNode[] args, JavaScriptNode thisObject, Object scope, Object env) {
-        this(context, function, JSFunctionArgumentsNode.create(context, args), DirectEvalNode.create(context, thisObject, scope, env));
+    protected EvalNode(JSContext context, JavaScriptNode function, JavaScriptNode[] args, JavaScriptNode thisObject, Object env) {
+        this(context, function, JSFunctionArgumentsNode.create(context, args), DirectEvalNode.create(context, thisObject, env));
     }
 
     protected EvalNode(JSContext context, JavaScriptNode functionNode, AbstractFunctionArgumentsNode arguments, DirectEvalNode directEvalNode) {
@@ -116,8 +116,8 @@ public abstract class EvalNode extends JavaScriptNode {
         return function != context.getRealm().getEvalFunctionObject();
     }
 
-    public static EvalNode create(JSContext context, JavaScriptNode functionNode, JavaScriptNode[] args, JavaScriptNode thisObject, Object scope, Object env) {
-        return EvalNodeGen.create(context, functionNode, args, thisObject, scope, env);
+    public static EvalNode create(JSContext context, JavaScriptNode functionNode, JavaScriptNode[] args, JavaScriptNode thisObject, Object env) {
+        return EvalNodeGen.create(context, functionNode, args, thisObject, env);
     }
 
     @TruffleBoundary
@@ -154,20 +154,18 @@ public abstract class EvalNode extends JavaScriptNode {
 
     protected abstract static class DirectEvalNode extends JavaScriptBaseNode {
         private final JSContext context;
-        @Child private JavaScriptNode thisNode;
-        private final Object currScope;
         private final Object currEnv;
+        @Child private JavaScriptNode thisNode;
 
-        protected DirectEvalNode(JSContext context, JavaScriptNode thisNode, Object currScope, Object currEnv) {
+        protected DirectEvalNode(JSContext context, JavaScriptNode thisNode, Object currEnv) {
             assert currEnv != null;
             this.context = context;
-            this.thisNode = thisNode;
-            this.currScope = currScope;
             this.currEnv = currEnv;
+            this.thisNode = thisNode;
         }
 
-        protected static DirectEvalNode create(JSContext context, JavaScriptNode thisNode, Object currScope, Object currEnv) {
-            return EvalNodeGen.DirectEvalNodeGen.create(context, thisNode, currScope, currEnv);
+        protected static DirectEvalNode create(JSContext context, JavaScriptNode thisNode, Object currEnv) {
+            return EvalNodeGen.DirectEvalNodeGen.create(context, thisNode, currEnv);
         }
 
         public abstract Object executeWithSource(VirtualFrame frame, Object source);
@@ -219,7 +217,7 @@ public abstract class EvalNode extends JavaScriptNode {
 
         private Object directEvalImpl(VirtualFrame frame, CharSequence sourceCode) {
             final Source source = sourceFromString(sourceCode);
-            return context.getEvaluator().evaluate(context.getRealm(), getParent(), source, frame.materialize(), thisNode.execute(frame), currScope, currEnv);
+            return context.getEvaluator().evaluate(context.getRealm(), getParent(), source, frame.materialize(), thisNode.execute(frame), currEnv);
         }
 
         @Specialization(guards = {"isForeignObject(sourceCode)"}, limit = "3")
@@ -255,7 +253,7 @@ public abstract class EvalNode extends JavaScriptNode {
         }
 
         protected DirectEvalNode copyUninitialized() {
-            return create(context, cloneUninitialized(thisNode), currScope, currEnv);
+            return create(context, cloneUninitialized(thisNode), currEnv);
         }
 
     }
