@@ -41,6 +41,28 @@ suite = {
 
   "defaultLicense" : "UPL",
 
+  "libraries" : {
+    "NASM" : {
+      "packedResource": True,
+      "os_arch" : {
+        "windows" : {
+          "amd64" : {
+            "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/nodejs/nasm-2.14.02-windows-amd64.tar.gz"],
+            "sha1": "2a7caf509b5d9f56fad303538d2a5f0e783e7a1e",
+          },
+          "<others>": {
+            "optional": True,
+          }
+        },
+        "<others>": {
+          "<others>": {
+            "optional": True,
+          }
+        },
+      },
+    },
+  },
+
   "projects" : {
     "trufflenodeNative" : {
       "dependencies" : [
