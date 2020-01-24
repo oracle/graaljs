@@ -52,6 +52,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.function.SetFunctionNameNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -115,6 +116,7 @@ public abstract class InitializeInstanceFieldsNode extends JavaScriptNode {
             Object[] field = (Object[]) fields[i];
             Object key = field[0];
             Object initializer = field[1];
+            boolean isAnonymousFunctionDefinition = (boolean) field[2];
             JavaScriptBaseNode writeNode;
             if (key instanceof HiddenKey) {
                 writeNode = PrivateFieldAddNode.create(context);
@@ -125,7 +127,11 @@ public abstract class InitializeInstanceFieldsNode extends JavaScriptNode {
             if (initializer != Undefined.instance) {
                 callNode = JSFunctionCallNode.createCall();
             }
-            fieldNodes[i] = new FieldNode(writeNode, callNode);
+            SetFunctionNameNode setFunctionNameNode = null;
+            if (isAnonymousFunctionDefinition) {
+                setFunctionNameNode = SetFunctionNameNode.create();
+            }
+            fieldNodes[i] = new FieldNode(writeNode, callNode, setFunctionNameNode);
         }
         return fieldNodes;
     }
@@ -133,10 +139,12 @@ public abstract class InitializeInstanceFieldsNode extends JavaScriptNode {
     static final class FieldNode extends Node {
         @Child JavaScriptBaseNode writeNode;
         @Child JSFunctionCallNode callNode;
+        @Child SetFunctionNameNode setFunctionNameNode;
 
-        FieldNode(JavaScriptBaseNode writeNode, JSFunctionCallNode callNode) {
+        FieldNode(JavaScriptBaseNode writeNode, JSFunctionCallNode callNode, SetFunctionNameNode setFunctionNameNode) {
             this.writeNode = writeNode;
             this.callNode = callNode;
+            this.setFunctionNameNode = setFunctionNameNode;
         }
 
         void defineField(Object target, Object key, Object initializer) {
@@ -144,6 +152,9 @@ public abstract class InitializeInstanceFieldsNode extends JavaScriptNode {
             Object value = Undefined.instance;
             if (callNode != null) {
                 value = callNode.executeCall(JSArguments.createZeroArg(target, initializer));
+                if (setFunctionNameNode != null) {
+                    setFunctionNameNode.execute(value, key);
+                }
             }
             if (writeNode instanceof PrivateFieldAddNode) {
                 ((PrivateFieldAddNode) writeNode).execute(target, key, value);

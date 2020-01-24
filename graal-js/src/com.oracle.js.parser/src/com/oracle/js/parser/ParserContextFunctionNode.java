@@ -98,6 +98,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     private boolean containsDefaultParameter;
 
     private Module module;
+    private String internalName;
 
     /**
      * @param token The token for the function
@@ -126,7 +127,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     }
 
     /**
-     * @return Internal name of the function
+     * @return Name of the function
      */
     public String getName() {
         return name;
@@ -475,6 +476,14 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
 
     public Scope getParameterScope() {
         return parameterBlock.getScope();
+    }
+
+    public String getInternalName() {
+        return internalName;
+    }
+
+    public void setInternalName(String internalName) {
+        this.internalName = internalName;
     }
 
     private static int calculateLength(final List<IdentNode> parameters) {

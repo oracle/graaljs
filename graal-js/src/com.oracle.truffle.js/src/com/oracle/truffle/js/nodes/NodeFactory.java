@@ -762,16 +762,16 @@ public class NodeFactory {
         return ObjectLiteralNode.newAccessorMember(keyName, isStatic, enumerable, getter, setter);
     }
 
-    public ObjectLiteralMemberNode createDataMember(String keyName, boolean isStatic, boolean enumerable, boolean isField, JavaScriptNode value) {
-        return ObjectLiteralNode.newDataMember(keyName, isStatic, enumerable, isField, value);
+    public ObjectLiteralMemberNode createDataMember(String keyName, boolean isStatic, boolean enumerable, JavaScriptNode value, boolean isField) {
+        return ObjectLiteralNode.newDataMember(keyName, isStatic, enumerable, value, isField);
     }
 
     public ObjectLiteralMemberNode createProtoMember(String keyName, boolean isStatic, JavaScriptNode value) {
         return ObjectLiteralNode.newProtoMember(keyName, isStatic, value);
     }
 
-    public ObjectLiteralMemberNode createComputedDataMember(JavaScriptNode key, boolean isStatic, boolean enumerable, boolean isField, JavaScriptNode value) {
-        return ObjectLiteralNode.newComputedDataMember(key, isStatic, enumerable, isField, value);
+    public ObjectLiteralMemberNode createComputedDataMember(JavaScriptNode key, boolean isStatic, boolean enumerable, JavaScriptNode value, boolean isField, boolean isAnonymousFunctionDefinition) {
+        return ObjectLiteralNode.newComputedDataMember(key, isStatic, enumerable, value, isField, isAnonymousFunctionDefinition);
     }
 
     public ObjectLiteralMemberNode createComputedAccessorMember(JavaScriptNode key, boolean isStatic, boolean enumerable, JavaScriptNode getter, JavaScriptNode setter) {

@@ -166,7 +166,7 @@ public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameH
             if (memberNode.isField()) {
                 Object key = memberNode.executeKey(frame);
                 Object value = memberNode.executeValue(frame, homeObject);
-                fields[fieldIndex++] = new Object[]{key, value};
+                fields[fieldIndex++] = new Object[]{key, value, memberNode.isAnonymousFunctionDefinition()};
             } else {
                 memberNode.executeVoid(frame, homeObject, context);
             }

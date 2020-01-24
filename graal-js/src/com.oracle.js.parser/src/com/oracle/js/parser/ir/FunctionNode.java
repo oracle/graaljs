@@ -44,6 +44,7 @@ package com.oracle.js.parser.ir;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 
 import com.oracle.js.parser.Source;
 import com.oracle.js.parser.Token;
@@ -70,7 +71,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     /** The body of the function node */
     private final Block body;
 
-    /** Internal function name. */
+    /** Function name. */
     private final String name;
 
     /** List of parameters. */
@@ -95,6 +96,9 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     private final int length;
 
     private final Module module;
+
+    /** Optional internal/inferred function name. */
+    private final String internalName;
 
     private boolean usesAncestorScope;
 
@@ -265,13 +269,14 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
                     final int flags,
                     final Block body,
                     final Object endParserState,
-                    final Module module) {
+                    final Module module,
+                    final String internalName) {
         super(token, Token.descPosition(firstToken), finish);
 
         this.source = source;
         this.lineNumber = lineNumber;
         this.ident = ident;
-        this.name = name;
+        this.name = Objects.requireNonNull(name);
         this.length = length;
         this.numOfParams = numOfParams;
         this.parameters = parameters;
@@ -281,6 +286,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         this.body = body;
         this.endParserState = endParserState;
         this.module = module;
+        this.internalName = internalName;
     }
 
     private FunctionNode(
@@ -297,7 +303,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         this.endParserState = endParserState;
         this.lineNumber = functionNode.lineNumber;
         this.flags = flags;
-        this.name = name;
+        this.name = Objects.requireNonNull(name);
         this.lastToken = lastToken;
         this.body = body;
         this.parameters = parameters;
@@ -309,6 +315,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         this.length = functionNode.length;
         this.numOfParams = functionNode.numOfParams;
         this.module = functionNode.module;
+        this.internalName = functionNode.internalName;
     }
 
     @Override
@@ -377,10 +384,17 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
             sb.append("async ");
         }
         sb.append("function");
+        if (isGenerator()) {
+            sb.append('*');
+        }
 
         if (ident != null) {
             sb.append(' ');
             ident.toString(sb, printTypes);
+        } else if (!name.isEmpty()) {
+            sb.append(' ').append(name);
+        } else if (internalName != null && !internalName.isEmpty()) {
+            sb.append(' ').append(internalName);
         }
 
         toStringTail(sb, printTypes);
@@ -574,7 +588,36 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
      * @return the name
      */
     public String getName() {
+        if (!isAnonymous()) {
+            return getIdent().getName();
+        }
         return name;
+    }
+
+    /**
+     * Set the name of this function.
+     *
+     * @param lc lexical context
+     * @param name new name
+     * @return new function node if changed, otherwise the same
+     */
+    public FunctionNode setName(final LexicalContext lc, final String name) {
+        if (this.name.equals(name)) {
+            return this;
+        }
+        return Node.replaceInLexicalContext(lc, this, new FunctionNode(
+                        this,
+                        lastToken,
+                        endParserState,
+                        flags,
+                        name,
+                        body,
+                        parameters,
+                        source));
+    }
+
+    public String getInternalName() {
+        return internalName;
     }
 
     /**

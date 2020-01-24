@@ -364,7 +364,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             try (EnvironmentCloseable functionEnv = enterFunctionEnvironment(isStrict, isArrowFunction, isGeneratorFunction, isDerivedConstructor, isAsyncFunction, isGlobal)) {
                 FunctionEnvironment currentFunction = currentFunction();
                 currentFunction.setFunctionName(functionName);
-                currentFunction.setInternalFunctionName(!functionName.isEmpty() ? functionName : functionNode.getIdent().getName());
+                currentFunction.setInternalFunctionName(functionNode.getInternalName());
                 currentFunction.setNamedFunctionExpression(functionNode.isNamedFunctionExpression());
 
                 declareParameters(functionNode);
@@ -473,7 +473,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         try (EnvironmentCloseable functionEnv = enterFunctionEnvironment(isStrict, isArrowFunction, isGeneratorFunction, isDerivedConstructor, isAsyncFunction, isGlobal)) {
             FunctionEnvironment currentFunction = currentFunction();
             currentFunction.setFunctionName(functionName);
-            currentFunction.setInternalFunctionName(!functionName.isEmpty() ? functionName : functionNode.getIdent().getName());
+            currentFunction.setInternalFunctionName(functionNode.getInternalName());
             currentFunction.setNamedFunctionExpression(functionNode.isNamedFunctionExpression());
 
             currentFunction.setNeedsParentFrame(needsParentFrame);
@@ -833,13 +833,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (context.getEcmaScriptVersion() < 6 && (functionNode.isGetter() || functionNode.isSetter())) {
             // strip getter/setter name prefix in ES5 mode
             assert !functionNode.isAnonymous();
-            String name = functionNode.getIdent().getName();
+            String name = functionNode.getName();
             if ((functionNode.isGetter() && name.startsWith("get ")) || (functionNode.isSetter() && name.startsWith("set "))) {
                 name = name.substring(4);
             }
             return name;
         }
-        return !functionNode.isAnonymous() ? functionNode.getIdent().getName() : "";
+        return functionNode.getName();
     }
 
     private JavaScriptNode prepareParameters(JavaScriptNode body) {
@@ -2768,7 +2768,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         boolean enumerable = !isClass || property.isClassField();
         if (property.isComputed()) {
             JavaScriptNode computedKey = transform(property.getKey());
-            return factory.createComputedDataMember(computedKey, property.isStatic(), enumerable, property.isClassField(), value);
+            return factory.createComputedDataMember(computedKey, property.isStatic(), enumerable, value, property.isClassField(), property.isAnonymousFunctionDefinition());
         } else if (!isClass && property.isProto()) {
             return factory.createProtoMember(property.getKeyName(), property.isStatic(), value);
         } else if (property.isPrivate()) {
@@ -2777,7 +2777,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else {
             String keyName = property.getKeyName();
             setAnonymousFunctionName(value, keyName);
-            return factory.createDataMember(keyName, property.isStatic(), enumerable, property.isClassField(), value);
+            return factory.createDataMember(keyName, property.isStatic(), enumerable, value, property.isClassField());
         }
     }
 

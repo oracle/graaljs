@@ -147,16 +147,18 @@ public class ObjectLiteralNode extends JavaScriptNode {
         protected final boolean isStatic;
         protected final byte attributes;
         protected final boolean isField;
+        protected final boolean isAnonymousFunctionDefinition;
 
         public ObjectLiteralMemberNode(boolean isStatic, int attributes) {
-            this(isStatic, attributes, false);
+            this(isStatic, attributes, false, false);
         }
 
-        public ObjectLiteralMemberNode(boolean isStatic, int attributes, boolean isField) {
+        public ObjectLiteralMemberNode(boolean isStatic, int attributes, boolean isField, boolean isAnonymousFunctionDefinition) {
             assert attributes == (attributes & JSAttributes.ATTRIBUTES_MASK);
             this.isStatic = isStatic;
             this.attributes = (byte) attributes;
             this.isField = isField;
+            this.isAnonymousFunctionDefinition = isAnonymousFunctionDefinition;
         }
 
         public abstract void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSContext context);
@@ -179,6 +181,14 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         public final boolean isField() {
             return isField;
+        }
+
+        public final boolean isAnonymousFunctionDefinition() {
+            return isAnonymousFunctionDefinition;
+        }
+
+        static boolean isAnonymousFunctionDefinition(JavaScriptNode expression) {
+            return expression instanceof FunctionNameHolder && ((FunctionNameHolder) expression).isAnonymous();
         }
 
         protected static Object executeWithHomeObject(JavaScriptNode valueNode, VirtualFrame frame, DynamicObject obj) {
@@ -205,7 +215,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         protected static final CacheEntry GENERIC = new CacheEntry(null, null, null, null, null);
 
         CachingObjectLiteralMemberNode(Object name, boolean isStatic, int attributes, boolean isField) {
-            super(isStatic, attributes, isField);
+            super(isStatic, attributes, isField, false);
             assert JSRuntime.isPropertyKey(name);
             this.name = name;
         }
@@ -300,7 +310,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
     private static class ObjectLiteralDataMemberNode extends CachingObjectLiteralMemberNode {
         @Child protected JavaScriptNode valueNode;
 
-        ObjectLiteralDataMemberNode(Object name, boolean isStatic, int attributes, boolean isField, JavaScriptNode valueNode) {
+        ObjectLiteralDataMemberNode(Object name, boolean isStatic, int attributes, JavaScriptNode valueNode, boolean isField) {
             super(name, isStatic, attributes, isField);
             this.valueNode = valueNode;
         }
@@ -370,7 +380,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         @Override
         protected ObjectLiteralMemberNode copyUninitialized() {
-            return new ObjectLiteralDataMemberNode(name, isStatic, attributes, isField, JavaScriptNode.cloneUninitialized(valueNode));
+            return new ObjectLiteralDataMemberNode(name, isStatic, attributes, JavaScriptNode.cloneUninitialized(valueNode), isField);
         }
     }
 
@@ -477,8 +487,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
         @Child private JSToPropertyKeyNode toPropertyKey;
         @Child private SetFunctionNameNode setFunctionName;
 
-        ComputedObjectLiteralDataMemberNode(JavaScriptNode key, boolean isStatic, int attributes, boolean isField, JavaScriptNode valueNode) {
-            super(isStatic, attributes, isField);
+        ComputedObjectLiteralDataMemberNode(JavaScriptNode key, boolean isStatic, int attributes, JavaScriptNode valueNode, boolean isField, boolean isAnonymousFunctionDefinition) {
+            super(isStatic, attributes, isField, isAnonymousFunctionDefinition);
             this.propertyKey = key;
             this.valueNode = valueNode;
             this.toPropertyKey = JSToPropertyKeyNode.create();
@@ -578,10 +588,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
     }
 
-    static boolean isAnonymousFunctionDefinition(JavaScriptNode getter) {
-        return getter instanceof FunctionNameHolder && ((FunctionNameHolder) getter).isAnonymous();
-    }
-
     private static class ObjectLiteralProtoMemberNode extends ObjectLiteralMemberNode {
         @Child protected JavaScriptNode valueNode;
 
@@ -667,7 +673,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         @Child private JavaScriptNode valueNode;
 
         PrivateFieldMemberNode(JavaScriptNode key, boolean isStatic, JavaScriptNode valueNode) {
-            super(isStatic, JSAttributes.getDefaultNotEnumerable(), true);
+            super(isStatic, JSAttributes.getDefaultNotEnumerable(), true, false);
             this.keyNode = key;
             this.valueNode = valueNode;
         }
@@ -693,16 +699,18 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
     }
 
-    public static ObjectLiteralMemberNode newDataMember(String name, boolean isStatic, boolean enumerable, boolean isField, JavaScriptNode valueNode) {
-        return new ObjectLiteralDataMemberNode(name, isStatic, enumerable ? JSAttributes.getDefault() : JSAttributes.getDefaultNotEnumerable(), isField, valueNode);
+    public static ObjectLiteralMemberNode newDataMember(String name, boolean isStatic, boolean enumerable, JavaScriptNode valueNode, boolean isField) {
+        return new ObjectLiteralDataMemberNode(name, isStatic, enumerable ? JSAttributes.getDefault() : JSAttributes.getDefaultNotEnumerable(), valueNode, isField);
     }
 
     public static ObjectLiteralMemberNode newAccessorMember(String name, boolean isStatic, boolean enumerable, JavaScriptNode getterNode, JavaScriptNode setterNode) {
         return new ObjectLiteralAccessorMemberNode(name, isStatic, JSAttributes.fromConfigurableEnumerable(true, enumerable), getterNode, setterNode);
     }
 
-    public static ObjectLiteralMemberNode newComputedDataMember(JavaScriptNode name, boolean isStatic, boolean enumerable, boolean isField, JavaScriptNode valueNode) {
-        return new ComputedObjectLiteralDataMemberNode(name, isStatic, enumerable ? JSAttributes.getDefault() : JSAttributes.getDefaultNotEnumerable(), isField, valueNode);
+    public static ObjectLiteralMemberNode newComputedDataMember(JavaScriptNode name, boolean isStatic, boolean enumerable, JavaScriptNode valueNode, boolean isField,
+                    boolean isAnonymousFunctionDefinition) {
+        return new ComputedObjectLiteralDataMemberNode(name, isStatic, enumerable ? JSAttributes.getDefault() : JSAttributes.getDefaultNotEnumerable(), valueNode, isField,
+                        isAnonymousFunctionDefinition);
     }
 
     public static ObjectLiteralMemberNode newComputedAccessorMember(JavaScriptNode name, boolean isStatic, boolean enumerable, JavaScriptNode getter, JavaScriptNode setter) {
@@ -710,7 +718,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
     }
 
     public static ObjectLiteralMemberNode newDataMember(Object name, boolean isStatic, int attributes, JavaScriptNode valueNode) {
-        return new ObjectLiteralDataMemberNode(name, isStatic, attributes, false, valueNode);
+        return new ObjectLiteralDataMemberNode(name, isStatic, attributes, valueNode, false);
     }
 
     public static ObjectLiteralMemberNode newAccessorMember(Object name, boolean isStatic, int attributes, JavaScriptNode getterNode, JavaScriptNode setterNode) {
@@ -718,7 +726,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
     }
 
     public static ObjectLiteralMemberNode newComputedDataMember(JavaScriptNode name, boolean isStatic, int attributes, JavaScriptNode valueNode) {
-        return new ComputedObjectLiteralDataMemberNode(name, isStatic, attributes, false, valueNode);
+        return new ComputedObjectLiteralDataMemberNode(name, isStatic, attributes, valueNode, false, false);
     }
 
     public static ObjectLiteralMemberNode newPrivateFieldMember(JavaScriptNode name, boolean isStatic, JavaScriptNode valueNode) {
