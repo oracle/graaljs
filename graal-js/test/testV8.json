@@ -512,9 +512,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
-    "filePath" : "mjsunit/es6/classes-lazy-parsing.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/es6/classes-subclass-builtins.js",
     "status" : "FAIL"
   }, {
@@ -814,8 +811,11 @@
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
     "filePath" : "mjsunit/harmony/private-fields.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS",
+    "comment" : "--harmony-private-fields"
   }, {
     "filePath" : "mjsunit/harmony/private-methods.js",
     "status" : "FAIL",
@@ -832,8 +832,11 @@
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/harmony/public-instance-class-fields.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS",
+    "comment" : "--harmony-public-fields"
   }, {
     "filePath" : "mjsunit/harmony/public-static-class-fields.js",
     "status" : "FAIL",
@@ -1780,10 +1783,6 @@
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-772056.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-crbug-774994.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
