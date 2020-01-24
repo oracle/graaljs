@@ -4154,7 +4154,7 @@ public class Parser extends AbstractParser {
                     eval = true;
                 } else if (SUPER.getName().equals(name)) {
                     assert ident.isDirectSuper();
-                    markSuperCall(lc);
+                    markSuperCall();
                 }
             } else if (lhs instanceof AccessNode && !((AccessNode) lhs).isPrivate() && arguments.size() == 2 && arguments.get(1) instanceof IdentNode &&
                             ((IdentNode) arguments.get(1)).isArguments() && APPLY_NAME.equals(((AccessNode) lhs).getProperty())) {
@@ -6634,13 +6634,15 @@ public class Parser extends AbstractParser {
         lc.appendStatementToCurrentNode(statement);
     }
 
-    private static void markSuperCall(final ParserContext lc) {
+    private void markSuperCall() {
         final Iterator<ParserContextFunctionNode> iter = lc.getFunctions();
         while (iter.hasNext()) {
             final ParserContextFunctionNode fn = iter.next();
             if (!fn.isArrow()) {
-                assert fn.isDerivedConstructor();
-                fn.setFlag(FunctionNode.HAS_DIRECT_SUPER);
+                if (!fn.isProgram()) {
+                    assert fn.isDerivedConstructor();
+                    fn.setFlag(FunctionNode.HAS_DIRECT_SUPER);
+                }
                 break;
             }
         }
