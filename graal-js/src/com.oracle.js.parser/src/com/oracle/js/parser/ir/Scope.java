@@ -201,13 +201,11 @@ public final class Scope {
             assert (existing.getFlags() & Symbol.KINDMASK) == (symbol.getFlags() & Symbol.KINDMASK) : symbol;
             return existing;
         }
-        if (!symbol.isImportBinding()) {
-            if (symbol.isBlockScoped() || symbol.isVarRedeclaredHere()) {
-                blockScopedOrRedeclaredSymbols++;
-            }
-            if (symbol.isBlockScoped() || (symbol.isVar() && !symbol.isParam())) {
-                declaredNames++;
-            }
+        if (symbol.isBlockScoped() || symbol.isVarRedeclaredHere()) {
+            blockScopedOrRedeclaredSymbols++;
+        }
+        if (symbol.isBlockScoped() || (symbol.isVar() && !symbol.isParam())) {
+            declaredNames++;
         }
         return null;
     }

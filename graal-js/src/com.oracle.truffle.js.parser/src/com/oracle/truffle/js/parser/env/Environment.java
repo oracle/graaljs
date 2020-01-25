@@ -63,9 +63,7 @@ import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
-import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
@@ -274,12 +272,6 @@ public abstract class Environment {
                         }
                     }
 
-                    VarRef importBinding = fnEnv.getImportBinding(name);
-                    if (importBinding != null) {
-                        // NB: no outer frame access or wrapping required
-                        return importBinding;
-                    }
-
                     frameLevel++;
                     scopeLevel = 0;
                 } else if (current instanceof BlockEnvironment) {
@@ -431,7 +423,11 @@ public abstract class Environment {
         if (currentFunction.getArgumentsSlot() != null && !currentFunction.isStrictMode() && currentFunction.hasSimpleParameterList() && currentFunction.isParam(slot)) {
             return createReadParameterFromMappedArguments(current, frameLevel, scopeLevel, slot);
         }
-        return createLocal(slot, frameLevel, scopeLevel, checkTDZ);
+        JavaScriptNode readNode = createLocal(slot, frameLevel, scopeLevel, checkTDZ);
+        if (JSFrameUtil.isImportBinding(slot)) {
+            return factory.createReadImportBinding(readNode);
+        }
+        return readNode;
     }
 
     private JavaScriptNode createWriteLocalVarNodeFromSlot(Environment current, int frameLevel, FrameSlot slot, int scopeLevel, boolean checkTDZ, JavaScriptNode rhs) {
@@ -546,9 +542,6 @@ public abstract class Environment {
 
     public void addFrameSlotsFromSymbols(Iterable<com.oracle.js.parser.ir.Symbol> symbols, boolean onlyBlockScoped) {
         for (com.oracle.js.parser.ir.Symbol symbol : symbols) {
-            if (symbol.isImportBinding()) {
-                continue; // no frame slot required
-            }
             if (symbol.isBlockScoped() || (!onlyBlockScoped && symbol.isVar() && !symbol.isParam() && !symbol.isGlobal())) {
                 addFrameSlotFromSymbol(symbol);
             }
@@ -942,42 +935,6 @@ public abstract class Environment {
         @Override
         public VarRef withRequired(boolean required) {
             return new WrappedVarRef(name, wrappee.withRequired(required), wrapClosure);
-        }
-    }
-
-    public class ImportBindingRef extends VarRef {
-        private final JSModuleRecord module;
-        private final String bindingName;
-
-        public ImportBindingRef(String localName, JSModuleRecord module, String bindingName) {
-            super(localName);
-            this.module = module;
-            this.bindingName = bindingName;
-        }
-
-        @Override
-        public JavaScriptNode createReadNode() {
-            return factory.createReadModuleImportBinding(module, bindingName);
-        }
-
-        @Override
-        public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
-            return factory.createThrowError(JSErrorType.TypeError, "Assignment to immutable binding");
-        }
-
-        @Override
-        public boolean isFunctionLocal() {
-            return false;
-        }
-
-        @Override
-        public boolean isGlobal() {
-            return false;
-        }
-
-        @Override
-        public FrameSlot getFrameSlot() {
-            return null;
         }
     }
 

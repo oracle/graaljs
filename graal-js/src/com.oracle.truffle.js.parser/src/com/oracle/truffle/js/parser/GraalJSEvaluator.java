@@ -373,6 +373,8 @@ public final class GraalJSEvaluator implements JSParser {
         return exportedNames;
     }
 
+    @TruffleBoundary
+    @Override
     public ExportResolution resolveExport(JSModuleRecord referencingModule, String exportName) {
         return resolveExport(referencingModule, exportName, new HashSet<>());
     }
@@ -536,8 +538,6 @@ public final class GraalJSEvaluator implements JSParser {
                 throw Errors.createSyntaxError("Could not resolve indirect export entry");
             }
         }
-
-        moduleRecord.finishTranslation();
 
         // Initialize the environment by executing the module function.
         // It will automatically yield when the module is instantiated.

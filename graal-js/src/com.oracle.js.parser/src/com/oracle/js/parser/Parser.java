@@ -6176,7 +6176,7 @@ public class Parser extends AbstractParser {
         }
 
         body.setFlag(Block.NEEDS_SCOPE);
-        final Block programBody = new Block(functionToken, finish, body.getFlags() | Block.IS_SYNTHETIC | Block.IS_BODY, body.getScope(), body.getStatements());
+        final Block programBody = new Block(functionToken, finish, body.getFlags() | Block.IS_SYNTHETIC | Block.IS_BODY | Block.IS_MODULE_BODY, body.getScope(), body.getStatements());
         script.setLastToken(token);
 
         expect(EOF);
@@ -6240,7 +6240,7 @@ public class Parser extends AbstractParser {
         if (moduleScope.hasSymbol(ident.getName())) {
             throw error(ECMAErrors.getMessage("syntax.error.redeclare.variable", ident.getName()), ident.getToken());
         }
-        moduleScope.putSymbol(new Symbol(ident.getName(), Symbol.IS_CONST | (star ? Symbol.HAS_BEEN_DECLARED : Symbol.IS_IMPORT_BINDING)));
+        moduleScope.putSymbol(new Symbol(ident.getName(), Symbol.IS_CONST | Symbol.HAS_BEEN_DECLARED | (star ? 0 : Symbol.IS_IMPORT_BINDING)));
     }
 
     private void declareImportBinding(IdentNode ident) {

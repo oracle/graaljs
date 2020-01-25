@@ -3127,8 +3127,7 @@ public final class GraalJSAccess {
         }
         Module moduleNode = new Module(Collections.emptyList(), Collections.emptyList(), localExportEntries, Collections.emptyList(), Collections.emptyList(), null, null);
         Source source = Source.newBuilder(JavaScriptLanguage.ID, "<unavailable>", moduleName).build();
-        final JSModuleRecord moduleRecord = new JSModuleRecord(moduleNode, mainJSContext, getModuleLoader(), source, () -> {
-        });
+        final JSModuleRecord moduleRecord = new JSModuleRecord(moduleNode, mainJSContext, getModuleLoader(), source);
         moduleRecord.setFrameDescriptor(frameDescriptor);
         JavaScriptRootNode rootNode = new JavaScriptRootNode(mainJSContext.getLanguage(), source.createUnavailableSection(), frameDescriptor) {
             @Override

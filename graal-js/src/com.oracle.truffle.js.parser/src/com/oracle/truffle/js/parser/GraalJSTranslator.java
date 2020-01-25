@@ -77,6 +77,7 @@ import com.oracle.js.parser.ir.LexicalContextNode;
 import com.oracle.js.parser.ir.LexicalContextScope;
 import com.oracle.js.parser.ir.LiteralNode;
 import com.oracle.js.parser.ir.Module;
+import com.oracle.js.parser.ir.Module.ImportEntry;
 import com.oracle.js.parser.ir.ObjectNode;
 import com.oracle.js.parser.ir.ParameterNode;
 import com.oracle.js.parser.ir.PropertyNode;
@@ -174,7 +175,6 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.Dead;
-import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
 
@@ -377,7 +377,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     declarations = functionEnvInit(functionNode);
                 } else if (functionNode.isModule()) {
                     assert currentFunction.isGlobal();
-                    declarations = setupModuleEnvironment(functionNode);
+                    declarations = Collections.emptyList();
                 } else {
                     assert currentFunction.isGlobal();
                     declarations = collectGlobalVars(functionNode, isEval);
@@ -953,7 +953,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     LexicalContextNode node = iterator.next();
                     if (node instanceof LexicalContextScope) {
                         Symbol foundSymbol = ((LexicalContextScope) node).getScope().getExistingSymbol(varName);
-                        if (foundSymbol != null && !(foundSymbol.isGlobal() || foundSymbol.isImportBinding())) {
+                        if (foundSymbol != null && !foundSymbol.isGlobal()) {
                             if (!local) {
                                 markUsesAncestorScopeUntil(lastFunction, true);
                             }
@@ -984,6 +984,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                             if (!local) {
                                 markUsesAncestorScopeUntil(lastFunction, true);
                             }
+                        } else if (function.isModule() && isImport(varName)) {
+                            // needed for GetActiveScriptOrModule()
+                            if (!local) {
+                                markUsesAncestorScopeUntil(lastFunction, true);
+                            }
                         }
                         lastFunction = function;
                         local = false;
@@ -1001,6 +1006,16 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     case Environment.NEW_TARGET_NAME:
                     case Environment.SUPER_NAME:
                     case Environment.THIS_NAME:
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+
+            private boolean isImport(String varName) {
+                switch (varName) {
+                    case "import":
+                    case "import.meta":
                         return true;
                     default:
                         return false;
@@ -1120,19 +1135,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return nodes;
     }
 
-    @SuppressWarnings("unused")
-    protected List<JavaScriptNode> setupModuleEnvironment(FunctionNode functionNode) {
-        throw new UnsupportedOperationException();
-    }
-
-    protected void createImportBinding(String localName, JSModuleRecord module, String bindingName) {
-        currentFunction().addImportBinding(localName, module, bindingName);
-    }
-
-    protected JavaScriptNode getActiveScriptOrModule() {
-        throw new UnsupportedOperationException();
-    }
-
     private JavaScriptNode prepareArguments(JavaScriptNode body) {
         VarRef argumentsVar = environment.findLocalVar(Environment.ARGUMENTS_NAME);
         boolean unmappedArgumentsObject = currentFunction().isStrictMode() || !currentFunction().hasSimpleParameterList();
@@ -1226,7 +1228,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
      * Initialize block-scoped symbols with a <i>dead</i> marker value.
      */
     private List<JavaScriptNode> createTemporalDeadZoneInit(Block block) {
-        if (!block.getScope().hasBlockScopedOrRedeclaredSymbols() || environment instanceof GlobalEnvironment) {
+        if ((!block.getScope().hasBlockScopedOrRedeclaredSymbols() && !block.isModuleBody()) || environment instanceof GlobalEnvironment) {
             return Collections.emptyList();
         }
 
@@ -1248,7 +1250,29 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 blockWithInit.add(findScopeVar(symbol.getName(), true).createWriteNode(outerVar));
             }
         }
+        if (block.isModuleBody()) {
+            createResolveImports(lc.getCurrentFunction(), blockWithInit);
+        }
         return blockWithInit;
+    }
+
+    private void createResolveImports(FunctionNode functionNode, List<JavaScriptNode> declarations) {
+        assert functionNode.isModule();
+
+        // Assert: all named exports from module are resolvable.
+        for (ImportEntry importEntry : functionNode.getModule().getImportEntries()) {
+            String moduleRequest = importEntry.getModuleRequest();
+            String localName = importEntry.getLocalName();
+            JSWriteFrameSlotNode writeLocalNode = (JSWriteFrameSlotNode) environment.findLocalVar(localName).createWriteNode(null);
+            JavaScriptNode thisModule = getActiveModule();
+            if (importEntry.getImportName().equals(Module.STAR_NAME)) {
+                assert functionNode.getBody().getScope().hasSymbol(localName) && functionNode.getBody().getScope().getExistingSymbol(localName).hasBeenDeclared();
+                declarations.add(factory.createResolveStarImport(context, thisModule, moduleRequest, writeLocalNode));
+            } else {
+                assert functionNode.getBody().getScope().hasSymbol(localName) && functionNode.getBody().getScope().getExistingSymbol(localName).isImportBinding();
+                declarations.add(factory.createResolveNamedImport(context, thisModule, moduleRequest, importEntry.getImportName(), writeLocalNode));
+            }
+        }
     }
 
     /**
@@ -1430,7 +1454,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else if (identNode.isNewTarget()) {
             result = enterNewTarget();
         } else if (identNode.isImportMeta()) {
-            result = factory.createImportMeta(getActiveScriptOrModule());
+            result = enterImportMeta();
         } else {
             String varName = identNode.getName();
             VarRef varRef = findScopeVarCheckTDZ(varName, false);
@@ -1476,7 +1500,23 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return accessThisNode;
     }
 
-    protected final VarRef findScopeVar(String name, boolean skipWith) {
+    private JavaScriptNode enterImportMeta() {
+        return factory.createImportMeta(getActiveModule());
+    }
+
+    private JavaScriptNode getActiveModule() {
+        assert lc.inModule();
+        return factory.createAccessFrameArgument(currentFunction().getOutermostFunctionLevel(), 0);
+    }
+
+    private JavaScriptNode getActiveScriptOrModule() {
+        if (lc.inModule()) {
+            return getActiveModule();
+        }
+        return null;
+    }
+
+    private VarRef findScopeVar(String name, boolean skipWith) {
         return environment.findVar(name, skipWith);
     }
 

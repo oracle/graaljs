@@ -231,6 +231,16 @@ public class LexicalContext {
         return iterator.hasNext() ? iterator.next() : null;
     }
 
+    public boolean inModule() {
+        for (Iterator<FunctionNode> functions = getFunctions(); functions.hasNext();) {
+            FunctionNode function = functions.next();
+            if (function.isModule()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public LexicalContext copy() {
         return new LexicalContext(this);
     }

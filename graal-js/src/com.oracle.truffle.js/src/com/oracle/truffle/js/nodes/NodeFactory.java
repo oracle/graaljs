@@ -44,8 +44,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -109,6 +107,7 @@ import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
 import com.oracle.truffle.js.nodes.arguments.AccessArgumentsArrayDirectlyNode;
 import com.oracle.truffle.js.nodes.arguments.AccessDerivedConstructorThisNode;
+import com.oracle.truffle.js.nodes.arguments.AccessFrameArgumentNode;
 import com.oracle.truffle.js.nodes.arguments.AccessFunctionNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.arguments.AccessLevelFunctionNode;
@@ -198,6 +197,10 @@ import com.oracle.truffle.js.nodes.function.JSFunctionExpressionNode;
 import com.oracle.truffle.js.nodes.function.JSNewNode;
 import com.oracle.truffle.js.nodes.function.NewTargetRootNode;
 import com.oracle.truffle.js.nodes.function.SpreadArgumentNode;
+import com.oracle.truffle.js.nodes.module.ImportMetaNode;
+import com.oracle.truffle.js.nodes.module.ReadImportBindingNode;
+import com.oracle.truffle.js.nodes.module.ResolveNamedImportNode;
+import com.oracle.truffle.js.nodes.module.ResolveStarImportNode;
 import com.oracle.truffle.js.nodes.promise.ImportCallNode;
 import com.oracle.truffle.js.nodes.unary.JSComplementNode;
 import com.oracle.truffle.js.nodes.unary.JSNotNode;
@@ -209,12 +212,10 @@ import com.oracle.truffle.js.nodes.unary.VoidNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
-import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 @GenerateDecoder
@@ -641,6 +642,10 @@ public class NodeFactory {
 
     public JavaScriptNode createAccessNewTarget() {
         return AccessIndexedArgumentNode.create(0);
+    }
+
+    public JavaScriptNode createAccessFrameArgument(int frameLevel, int argIndex) {
+        return AccessFrameArgumentNode.create(frameLevel, argIndex);
     }
 
     public JavaScriptNode createAccessHomeObject(JSContext context) {
@@ -1070,84 +1075,20 @@ public class NodeFactory {
         return ModuleYieldNode.create();
     }
 
-    public JavaScriptNode createReadModuleImportBinding(JSModuleRecord moduleRecord, String bindingName) {
-        class ModuleEnvFrameNode extends ScopeFrameNode {
-            private final JSModuleRecord module;
-
-            ModuleEnvFrameNode(JSModuleRecord module) {
-                this.module = module;
-            }
-
-            @Override
-            public Frame executeFrame(Frame f) {
-                return module.getEnvironment();
-            }
-        }
-        class ReadModuleImportBindingNode extends JavaScriptNode {
-            private final JSModuleRecord module;
-            private final FrameSlot frameSlot;
-            private final boolean hasTDZ;
-
-            ReadModuleImportBindingNode(JSModuleRecord module, FrameSlot frameSlot) {
-                assert frameSlot != null;
-                this.module = module;
-                this.frameSlot = frameSlot;
-                this.hasTDZ = JSFrameUtil.hasTemporalDeadZone(frameSlot);
-            }
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                if (module.getEnvironment() == null) {
-                    // Reading a binding from a module that is not evaluated yet (due to cyclic
-                    // dependencies).
-                    assert module.getStatus() == JSModuleRecord.Status.Evaluating;
-                    if (hasTDZ) {
-                        // Uninitialized binding
-                        throw Errors.createReferenceErrorNotDefined(bindingName, this);
-                    } else {
-                        return Undefined.instance;
-                    }
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    return replace(JSReadFrameSlotNode.create(frameSlot, new ModuleEnvFrameNode(module), hasTDZ)).execute(frame);
-                }
-            }
-
-            @Override
-            protected JavaScriptNode copyUninitialized() {
-                return new ReadModuleImportBindingNode(module, frameSlot);
-            }
-        }
-        return new JavaScriptNode() {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                FrameSlot frameSlot = moduleRecord.getFrameDescriptor().findFrameSlot(bindingName);
-                return replace(new ReadModuleImportBindingNode(moduleRecord, frameSlot)).execute(frame);
-            }
-
-            @Override
-            protected JavaScriptNode copyUninitialized() {
-                return copy();
-            }
-        };
+    public JavaScriptNode createImportMeta(JavaScriptNode moduleNode) {
+        return ImportMetaNode.create(moduleNode);
     }
 
-    public JavaScriptNode createImportMeta(JavaScriptNode moduleRecordNode) {
-        return new StatementNode() {
-            @Child private JavaScriptNode moduleNode = moduleRecordNode;
+    public JavaScriptNode createResolveStarImport(JSContext context, JavaScriptNode moduleNode, String moduleRequest, JSWriteFrameSlotNode writeLocalNode) {
+        return ResolveStarImportNode.create(context, moduleNode, moduleRequest, writeLocalNode);
+    }
 
-            @Override
-            public Object execute(VirtualFrame frame) {
-                JSModuleRecord module = (JSModuleRecord) moduleNode.execute(frame);
-                return module.getImportMeta();
-            }
+    public JavaScriptNode createResolveNamedImport(JSContext context, JavaScriptNode moduleNode, String moduleRequest, String importName, JSWriteFrameSlotNode writeLocalNode) {
+        return ResolveNamedImportNode.create(context, moduleNode, moduleRequest, importName, writeLocalNode);
+    }
 
-            @Override
-            protected JavaScriptNode copyUninitialized() {
-                return copy();
-            }
-        };
+    public JavaScriptNode createReadImportBinding(JavaScriptNode readLocal) {
+        return ReadImportBindingNode.create(readLocal);
     }
 
     public JavaScriptNode createImportCall(JSContext context, JavaScriptNode argument, JavaScriptNode activeScriptOrModule) {

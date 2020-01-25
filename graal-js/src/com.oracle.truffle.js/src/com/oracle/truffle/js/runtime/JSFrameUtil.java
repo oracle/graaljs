@@ -61,7 +61,8 @@ public final class JSFrameUtil {
     private static final int IS_CONST = Symbol.IS_CONST;
     private static final int HAS_TDZ = IS_LET | IS_CONST;
     private static final int IS_HOISTABLE_DECLARATION = Symbol.IS_HOISTABLE_DECLARATION;
-    public static final int SYMBOL_FLAG_MASK = HAS_TDZ | IS_HOISTABLE_DECLARATION;
+    private static final int IS_IMPORT_BINDING = Symbol.IS_IMPORT_BINDING;
+    public static final int SYMBOL_FLAG_MASK = HAS_TDZ | IS_HOISTABLE_DECLARATION | IS_IMPORT_BINDING;
 
     private JSFrameUtil() {
         // this utility class should not be instantiated
@@ -101,6 +102,10 @@ public final class JSFrameUtil {
 
     public static boolean isHoistable(FrameSlot frameSlot) {
         return (getFlags(frameSlot) & IS_HOISTABLE_DECLARATION) != 0;
+    }
+
+    public static boolean isImportBinding(FrameSlot frameSlot) {
+        return (getFlags(frameSlot) & IS_IMPORT_BINDING) != 0;
     }
 
     public static MaterializedFrame getParentFrame(Frame frame) {
