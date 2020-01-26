@@ -108,6 +108,7 @@ public class Test262Runnable extends TestRunnable {
                     "Float64Array",
                     "Int32Array",
                     "Int8Array",
+                    "Intl.DateTimeFormat-datetimestyle",
                     "Intl.ListFormat",
                     "Intl.NumberFormat-unified",
                     "Intl.RelativeTimeFormat",
@@ -193,7 +194,6 @@ public class Test262Runnable extends TestRunnable {
     }));
     private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "FinalizationGroup",
-                    "Intl.DateTimeFormat-datetimestyle",
                     "Intl.DateTimeFormat-dayPeriod",
                     "Intl.DateTimeFormat-formatRange",
                     "Intl.DateTimeFormat-fractionalSecondDigits",
