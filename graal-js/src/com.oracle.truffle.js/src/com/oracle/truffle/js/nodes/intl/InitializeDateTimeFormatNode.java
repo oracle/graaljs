@@ -81,6 +81,8 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
     @Child GetStringOptionNode getMinuteOption;
     @Child GetStringOptionNode getSecondOption;
     @Child GetStringOptionNode getTimeZoneNameOption;
+    @Child GetStringOptionNode getDateStyleOption;
+    @Child GetStringOptionNode getTimeStyleOption;
 
     private final JSContext context;
 
@@ -111,6 +113,8 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         this.getMinuteOption = GetStringOptionNode.create(context, IntlUtil.MINUTE, new String[]{IntlUtil._2_DIGIT, IntlUtil.NUMERIC}, null);
         this.getSecondOption = GetStringOptionNode.create(context, IntlUtil.SECOND, new String[]{IntlUtil._2_DIGIT, IntlUtil.NUMERIC}, null);
         this.getTimeZoneNameOption = GetStringOptionNode.create(context, IntlUtil.TIME_ZONE_NAME, new String[]{IntlUtil.SHORT, IntlUtil.LONG}, null);
+        this.getDateStyleOption = GetStringOptionNode.create(context, IntlUtil.DATE_STYLE, new String[]{IntlUtil.FULL, IntlUtil.LONG, IntlUtil.MEDIUM, IntlUtil.SHORT}, null);
+        this.getTimeStyleOption = GetStringOptionNode.create(context, IntlUtil.TIME_STYLE, new String[]{IntlUtil.FULL, IntlUtil.LONG, IntlUtil.MEDIUM, IntlUtil.SHORT}, null);
     }
 
     public abstract DynamicObject executeInit(DynamicObject collator, Object locales, Object options);
@@ -149,20 +153,35 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
             Object timeZoneValue = getTimeZoneNode.getValue(options);
             TimeZone timeZone = JSDateTimeFormat.toTimeZone(timeZoneValue);
 
-            String weekdayOpt = getWeekdayOption.executeValue(options);
-            String eraOpt = getEraOption.executeValue(options);
-            String yearOpt = getYearOption.executeValue(options);
-            String monthOpt = getMonthOption.executeValue(options);
-            String dayOpt = getDayOption.executeValue(options);
-            String hourOpt = getHourOption.executeValue(options);
-            String minuteOpt = getMinuteOption.executeValue(options);
-            String secondOpt = getSecondOption.executeValue(options);
-            String tzNameOpt = getTimeZoneNameOption.executeValue(options);
+            String dateStyleOpt = getDateStyleOption.executeValue(options);
+            String timeStyleOpt = getTimeStyleOption.executeValue(options);
 
-            getFormatMatcherOption.executeValue(options);
+            String weekdayOpt = null;
+            String eraOpt = null;
+            String yearOpt = null;
+            String monthOpt = null;
+            String dayOpt = null;
+            String hourOpt = null;
+            String minuteOpt = null;
+            String secondOpt = null;
+            String tzNameOpt = null;
+
+            if (dateStyleOpt == null && timeStyleOpt == null) {
+                weekdayOpt = getWeekdayOption.executeValue(options);
+                eraOpt = getEraOption.executeValue(options);
+                yearOpt = getYearOption.executeValue(options);
+                monthOpt = getMonthOption.executeValue(options);
+                dayOpt = getDayOption.executeValue(options);
+                hourOpt = getHourOption.executeValue(options);
+                minuteOpt = getMinuteOption.executeValue(options);
+                secondOpt = getSecondOption.executeValue(options);
+                tzNameOpt = getTimeZoneNameOption.executeValue(options);
+
+                getFormatMatcherOption.executeValue(options);
+            }
 
             JSDateTimeFormat.setupInternalDateTimeFormat(context, state, locales, weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hcOpt, hour12Opt, minuteOpt, secondOpt, tzNameOpt,
-                            timeZone, calendarOpt, numberingSystemOpt);
+                            timeZone, calendarOpt, numberingSystemOpt, dateStyleOpt, timeStyleOpt);
 
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError(e);
