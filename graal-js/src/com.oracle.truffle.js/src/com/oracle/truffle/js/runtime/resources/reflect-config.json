@@ -8,6 +8,10 @@
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },
 {
+  "name":"com.ibm.icu.impl.TimeZoneNamesFactoryImpl",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
   "name":"com.ibm.icu.text.NumberFormatServiceShim",
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },
