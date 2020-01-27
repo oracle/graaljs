@@ -186,7 +186,9 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                     String tzNameOpt,
                     TimeZone timeZone,
                     String calendarOpt,
-                    String numberingSystemOpt) {
+                    String numberingSystemOpt,
+                    String dateStyleOpt,
+                    String timeStyleOpt) {
         String selectedTag = IntlUtil.selectedLocale(ctx, locales);
         Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : ctx.getLocale();
         Locale strippedLocale = selectedLocale.stripExtensions();
@@ -207,53 +209,6 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             hc = null;
         }
 
-        String skeleton = makeSkeleton(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hc, hour12Opt, minuteOpt, secondOpt, tzNameOpt);
-
-        DateTimePatternGenerator patternGenerator = DateTimePatternGenerator.getInstance(strippedLocale);
-        String bestPattern = patternGenerator.getBestPattern(skeleton);
-        String baseSkeleton = patternGenerator.getBaseSkeleton(bestPattern);
-
-        if (containsOneOf(baseSkeleton, "eEc")) {
-            state.weekday = weekdayOpt;
-        }
-
-        if (baseSkeleton.contains("G")) {
-            state.era = eraOpt;
-        }
-
-        if (containsOneOf(baseSkeleton, "YyUu")) {
-            state.year = yearOpt;
-        }
-
-        if (containsOneOf(baseSkeleton, "ML")) {
-            state.month = monthOpt;
-        }
-
-        if (containsOneOf(baseSkeleton, "dDFg")) {
-            state.day = dayOpt;
-        }
-
-        if (containsOneOf(baseSkeleton, "hHKk")) {
-            state.hour = hourOpt;
-            state.hour12 = containsOneOf(baseSkeleton, "hK");
-            if (hour12Opt != null) {
-                if (containsOneOf(baseSkeleton, "HK")) {
-                    hc = hour12Opt ? IntlUtil.H11 : IntlUtil.H23;
-                } else {
-                    hc = hour12Opt ? IntlUtil.H12 : IntlUtil.H24;
-                }
-            }
-            state.hourCycle = hc;
-        }
-
-        if (baseSkeleton.contains("m")) {
-            state.minute = minuteOpt;
-        }
-
-        if (containsOneOf(baseSkeleton, "sSA")) {
-            state.second = secondOpt;
-        }
-
         String caType = normalizeCalendar(selectedLocale.getUnicodeLocaleType("ca"));
         String normCalendarOpt = normalizeCalendar(calendarOpt);
         if (caType != null && (normCalendarOpt == null || normCalendarOpt.equals(caType)) && isValidCAType(strippedLocale, caType)) {
@@ -267,9 +222,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             builder.setUnicodeLocaleKeyword("nu", nuType);
         }
 
-        Locale resolvedLocale = builder.build();
-
-        state.initialized = true;
+        state.locale = builder.build().toLanguageTag();
 
         if (normCalendarOpt != null && isValidCAType(strippedLocale, normCalendarOpt)) {
             state.calendar = normCalendarOpt;
@@ -287,9 +240,90 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             state.numberingSystem = IntlUtil.defaultNumberingSystemName(ctx, javaLocale);
         }
 
-        SimpleDateFormat dateFormat = new SimpleDateFormat(bestPattern, javaLocale);
+        state.dateStyle = dateStyleOpt;
+        state.timeStyle = timeStyleOpt;
+
+        DateFormat dateFormat;
+        if (timeStyleOpt == null) {
+            if (dateStyleOpt == null) {
+                String skeleton = makeSkeleton(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hc, hour12Opt, minuteOpt, secondOpt, tzNameOpt);
+
+                DateTimePatternGenerator patternGenerator = DateTimePatternGenerator.getInstance(strippedLocale);
+                String bestPattern = patternGenerator.getBestPattern(skeleton);
+                String baseSkeleton = patternGenerator.getBaseSkeleton(bestPattern);
+
+                if (containsOneOf(baseSkeleton, "eEc")) {
+                    state.weekday = weekdayOpt;
+                }
+
+                if (baseSkeleton.contains("G")) {
+                    state.era = eraOpt;
+                }
+
+                if (containsOneOf(baseSkeleton, "YyUu")) {
+                    state.year = yearOpt;
+                }
+
+                if (containsOneOf(baseSkeleton, "ML")) {
+                    state.month = monthOpt;
+                }
+
+                if (containsOneOf(baseSkeleton, "dDFg")) {
+                    state.day = dayOpt;
+                }
+
+                if (containsOneOf(baseSkeleton, "hHKk")) {
+                    state.hour = hourOpt;
+                    if (hour12Opt != null) {
+                        if (containsOneOf(baseSkeleton, "HK")) {
+                            hc = hour12Opt ? IntlUtil.H11 : IntlUtil.H23;
+                        } else {
+                            hc = hour12Opt ? IntlUtil.H12 : IntlUtil.H24;
+                        }
+                    }
+                    state.hourCycle = (hc == null) ? hourCycleFromPattern(baseSkeleton) : hc;
+                }
+
+                if (baseSkeleton.contains("m")) {
+                    state.minute = minuteOpt;
+                }
+
+                if (containsOneOf(baseSkeleton, "sSA")) {
+                    state.second = secondOpt;
+                }
+
+                dateFormat = new SimpleDateFormat(bestPattern, javaLocale);
+            } else {
+                dateFormat = DateFormat.getDateInstance(dateFormatStyle(dateStyleOpt), javaLocale);
+            }
+        } else {
+            if (dateStyleOpt == null) {
+                dateFormat = DateFormat.getTimeInstance(dateFormatStyle(timeStyleOpt), javaLocale);
+            } else {
+                dateFormat = DateFormat.getDateTimeInstance(dateFormatStyle(dateStyleOpt), dateFormatStyle(timeStyleOpt), javaLocale);
+            }
+            String pattern = ((SimpleDateFormat) dateFormat).toPattern();
+            if (hour12Opt != null) {
+                if (containsOneOf(pattern, "HK")) {
+                    hc = hour12Opt ? IntlUtil.H11 : IntlUtil.H23;
+                } else {
+                    hc = hour12Opt ? IntlUtil.H12 : IntlUtil.H24;
+                }
+            }
+            String patternHourCycle = hourCycleFromPattern(pattern);
+            if (hc == null) {
+                hc = patternHourCycle;
+            } else if (!hc.equals(patternHourCycle)) {
+                DateTimePatternGenerator patternGenerator = DateTimePatternGenerator.getInstance(strippedLocale);
+                String baseSkeleton = patternGenerator.getSkeleton(pattern);
+                String skeleton = replaceHourCycle(baseSkeleton, hc);
+                String bestPattern = patternGenerator.getBestPattern(skeleton);
+                dateFormat = new SimpleDateFormat(bestPattern, javaLocale);
+            }
+            state.hourCycle = hc;
+        }
+
         state.dateFormat = dateFormat;
-        state.locale = resolvedLocale.toLanguageTag();
 
         if (state.calendar == null) {
             state.calendar = normalizeCalendar(Calendar.getInstance(javaLocale).getType());
@@ -312,6 +346,62 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
         state.dateFormat.setTimeZone(timeZone);
         state.timeZone = timeZone.getID();
+        state.initialized = true;
+    }
+
+    private static int dateFormatStyle(String style) {
+        if (IntlUtil.FULL.equals(style)) {
+            return DateFormat.FULL;
+        } else if (IntlUtil.LONG.equals(style)) {
+            return DateFormat.LONG;
+        } else if (IntlUtil.MEDIUM.equals(style)) {
+            return DateFormat.MEDIUM;
+        } else {
+            assert IntlUtil.SHORT.equals(style);
+            return DateFormat.SHORT;
+        }
+    }
+
+    private static String hourCycleFromPattern(String pattern) {
+        if (pattern.indexOf('K') != -1) {
+            return IntlUtil.H11;
+        } else if (pattern.indexOf('h') != -1) {
+            return IntlUtil.H12;
+        } else if (pattern.indexOf('H') != -1) {
+            return IntlUtil.H23;
+        } else if (pattern.indexOf('k') != -1) {
+            return IntlUtil.H24;
+        } else {
+            return null;
+        }
+    }
+
+    private static String replaceHourCycle(String pattern, String hourCycle) {
+        StringBuilder sb = new StringBuilder();
+        char replacement;
+        if (IntlUtil.H11.equals(hourCycle)) {
+            replacement = 'K';
+        } else if (IntlUtil.H12.equals(hourCycle)) {
+            replacement = 'h';
+        } else if (IntlUtil.H23.equals(hourCycle)) {
+            replacement = 'H';
+        } else {
+            assert IntlUtil.H24.equals(hourCycle);
+            replacement = 'k';
+        }
+        for (char c : pattern.toCharArray()) {
+            switch (c) {
+                case 'K':
+                case 'h':
+                case 'H':
+                case 'k':
+                    sb.append(replacement);
+                    break;
+                default:
+                    sb.append(c);
+            }
+        }
+        return sb.toString();
     }
 
     private static boolean isValidHCType(String hcType) {
@@ -683,11 +773,13 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         private String minute;
         private String second;
 
-        private Boolean hour12;
         private String hourCycle;
 
         private String timeZoneName;
         private String timeZone;
+
+        private String dateStyle;
+        private String timeStyle;
 
         DynamicObject toResolvedOptionsObject(JSContext context) {
             DynamicObject result = JSUserObject.create(context);
@@ -701,8 +793,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             }
             if (hourCycle != null) {
                 JSObjectUtil.defineDataProperty(result, IntlUtil.HOUR_CYCLE, hourCycle, JSAttributes.getDefault());
-            }
-            if (hour12 != null) {
+                boolean hour12 = IntlUtil.H11.equals(hourCycle) || IntlUtil.H12.equals(hourCycle);
                 JSObjectUtil.defineDataProperty(result, IntlUtil.HOUR12, hour12, JSAttributes.getDefault());
             }
             if (weekday != null) {
@@ -731,6 +822,12 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             }
             if (timeZoneName != null) {
                 JSObjectUtil.defineDataProperty(result, IntlUtil.TIME_ZONE_NAME, timeZoneName, JSAttributes.getDefault());
+            }
+            if (dateStyle != null) {
+                JSObjectUtil.defineDataProperty(result, IntlUtil.DATE_STYLE, dateStyle, JSAttributes.getDefault());
+            }
+            if (timeStyle != null) {
+                JSObjectUtil.defineDataProperty(result, IntlUtil.TIME_STYLE, timeStyle, JSAttributes.getDefault());
             }
             return result;
         }

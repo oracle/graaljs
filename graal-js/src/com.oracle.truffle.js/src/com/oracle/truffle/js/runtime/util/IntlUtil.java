@@ -89,6 +89,7 @@ public final class IntlUtil {
     public static final String CONJUNCTION = "conjunction";
     public static final String CURRENCY = "currency";
     public static final String CURRENCY_DISPLAY = "currencyDisplay";
+    public static final String DATE_STYLE = "dateStyle";
     public static final String DAY = "day";
     public static final String DEFAULT = "default";
     public static final String DECIMAL = "decimal";
@@ -97,6 +98,7 @@ public final class IntlUtil {
     public static final String ERA = "era";
     public static final String FALSE = "false";
     public static final String FORMAT_MATCHER = "formatMatcher";
+    public static final String FULL = "full";
     public static final String GRANULARITY = "granularity";
     public static final String GRAPHEME = "grapheme";
     public static final String H11 = "h11";
@@ -117,6 +119,7 @@ public final class IntlUtil {
     public static final String LOWER = "lower";
     public static final String MAXIMUM_FRACTION_DIGITS = "maximumFractionDigits";
     public static final String MAXIMUM_SIGNIFICANT_DIGITS = "maximumSignificantDigits";
+    public static final String MEDIUM = "medium";
     public static final String MINIMUM_FRACTION_DIGITS = "minimumFractionDigits";
     public static final String MINIMUM_INTEGER_DIGITS = "minimumIntegerDigits";
     public static final String MINIMUM_SIGNIFICANT_DIGITS = "minimumSignificantDigits";
@@ -148,6 +151,7 @@ public final class IntlUtil {
     public static final String STYLE = "style";
     public static final String SYMBOL = "symbol";
     public static final String TERM = "term";
+    public static final String TIME_STYLE = "timeStyle";
     public static final String TIME_ZONE = "timeZone";
     public static final String TIME_ZONE_NAME = "timeZoneName";
     public static final String TYPE = "type";

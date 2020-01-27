@@ -35,26 +35,6 @@
     "status" : "FAIL",
     "comment" : "Off-spec, should be fixed by a next TestV8 update, see https://bugs.chromium.org/p/v8/issues/detail?id=9887"
   }, {
-    "filePath" : "intl/date-format/constructor-date-style-order.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl/date-format/constructor-date-time-style-order.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl/date-format/constructor-date-time-style.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl/date-format/constructor-no-style-order.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl/date-format/constructor-time-style-order.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
     "filePath" : "intl/date-format/en-format-range-to-parts.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
@@ -66,22 +46,6 @@
     "filePath" : "intl/date-format/format-range.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl/date-format/property-override-date-style.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl/date-format/property-override-date-time-style.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl/date-format/property-override-time-style.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl/date-format/property-override.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
     "filePath" : "intl/date-format/related-year.js",
     "status" : "FAIL",

@@ -3,6 +3,9 @@
 This changelog summarizes major changes between GraalVM versions of the GraalVM JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 
+## Version 21.0.0
+* Implemented the [Intl.DateTimeFormat dateStyle & timeStyle](https://github.com/tc39/proposal-intl-datetime-style) proposal.
+
 ## Version 20.0.0
 * Updated Node.js to version 12.14.0.
 * Added `name` property to anonymous functions.
