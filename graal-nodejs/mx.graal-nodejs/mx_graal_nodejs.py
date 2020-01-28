@@ -129,8 +129,15 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         lazy_generator = ['--lazy-generator'] if newest_generated_config_file_ts.isNewerThan(newest_config_file_ts) else []
 
         if _currentOs == 'windows':
-            if build_env.get('GYP_MSVS_OVERRIDE_PATH') is not None:
-                _setEnvVar('PATH', '%s%s%s' % (join(build_env['GYP_MSVS_OVERRIDE_PATH'], 'VC', 'bin', 'x64'), os.pathsep, build_env['PATH']), build_env)
+            devkit_root = build_env.get('DEVKIT_ROOT')
+            if devkit_root is not None:
+                _setEnvVar('GYP_MSVS_OVERRIDE_PATH', devkit_root, build_env)
+                _setEnvVar('GYP_MSVS_VERSION', build_env.get('DEVKIT_VERSION'), build_env)
+                _setEnvVar('PATH', '%s%s%s' % (join(devkit_root, 'VC', 'bin', 'x64'), os.pathsep, build_env['PATH']), build_env)
+                _setEnvVar('WINDOWSSDKDIR', join(devkit_root, '10'), build_env)
+                _setEnvVar('INCLUDE', r'{devkit}\VC\include;{devkit}\VC\atlmfc\include;{devkit}\10\include\shared;{devkit}\10\include\ucrt;{devkit}\10\include\um;{devkit}\10\include\winrt;{prev}'.format(devkit=devkit_root, prev=build_env['INCLUDE']), build_env)
+                _setEnvVar('LIB', r'{devkit}\VC\lib\x64;{devkit}\VC\atlmfc\lib\x64;{devkit}\10\lib\x64;{prev}'.format(devkit=devkit_root, prev=build_env['LIB']), build_env)
+
             _setEnvVar('PATH', os.pathsep.join([build_env['PATH']] + [mx.library(lib_name).get_path(True) for lib_name in ('NASM', 'NINJA')]), build_env)
             extra_flags = ['--ninja', '--dest-cpu=x64', '--without-etw', '--without-snapshot']
         else:
@@ -551,12 +558,12 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
 ))
 
 
-mx_sdk_vm.register_vm_config('node', ['nfi', 'njs', 'js', 'poly', 'tfl', 'rgx', 'sdk'], _suite, env_file=False)  # stage1
+mx_sdk_vm.register_vm_config('node1', ['llp', 'nfi', 'njs', 'js', 'poly', 'tfl', 'rgx', 'sdk', 'stage1'], _suite, env_file=False)
 mx_sdk_vm.register_vm_config('node', ['bjs', 'bpolyglot', 'nfi', 'njs', 'js', 'poly', 'tfl', 'rgx', 'sdk'], _suite, env_file=False)
 mx_sdk_vm.register_vm_config('node', ['bjs', 'bpolyglot', 'nfi', 'njs', 'js', 'llp', 'poly', 'tfl', 'rgx', 'sdk'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('node-ce', ['cmp', 'nfi', 'njs', 'js', 'llp', 'poly', 'tfl', 'rgx', 'sdk'], _suite, env_file=False)  # stage1
+mx_sdk_vm.register_vm_config('node1-ce', ['cmp', 'nfi', 'njs', 'js', 'llp', 'poly', 'tfl', 'rgx', 'sdk', 'stage1'], _suite, env_file=False)
 mx_sdk_vm.register_vm_config('node-ce', ['bjs', 'bpolyglot', 'cmp', 'nfi', 'njs', 'js', 'llp', 'poly', 'tfl', 'rgx', 'sdk'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('node-ee', ['cmp', 'cmpee', 'nfi', 'njs', 'js', 'llp', 'poly', 'tfl', 'rgx', 'sdk'], _suite, env_file=False)  # stage1
+mx_sdk_vm.register_vm_config('node1-ee', ['cmp', 'cmpee', 'nfi', 'njs', 'js', 'llp', 'poly', 'tfl', 'rgx', 'sdk', 'stage1'], _suite, env_file=False)
 mx_sdk_vm.register_vm_config('node-ee', ['bjs', 'bpolyglot', 'cmp', 'cmpee', 'nfi', 'njs', 'js', 'llp', 'poly', 'tfl', 'rgx', 'sdk'], _suite, env_file=False)
 
 mx.update_commands(_suite, {

@@ -96,8 +96,8 @@
       PATH: '$PATH;$NASM',
     },
     setup+: {
-      ['set-export', 'GYP_MSVS_OVERRIDE_PATH', '$VS2017_15_5_5_1_0_ROOT'],
-      ['set-export', 'GYP_MSVS_VERSION', '2017'],
+      ['set-export', 'DEVKIT_ROOT', '$VS2017_15_5_5_1_0_ROOT'],
+      ['set-export', 'DEVKIT_VERSION', '2017'],
     },
     capabilities: ['windows', 'amd64'],
   },
