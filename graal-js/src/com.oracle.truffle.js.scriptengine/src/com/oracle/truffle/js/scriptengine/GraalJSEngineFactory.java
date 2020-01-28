@@ -45,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineFactory;
@@ -173,13 +174,17 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
 
     @Override
     public String getMethodCallSyntax(final String obj, final String method, final String... args) {
+        Objects.requireNonNull(obj);
+        Objects.requireNonNull(method);
         final StringBuilder sb = new StringBuilder().append(obj).append('.').append(method).append('(');
         final int len = args.length;
 
         if (len > 0) {
+            Objects.requireNonNull(args[0]);
             sb.append(args[0]);
         }
         for (int i = 1; i < len; i++) {
+            Objects.requireNonNull(args[i]);
             sb.append(',').append(args[i]);
         }
         sb.append(')');
@@ -197,6 +202,7 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
         final StringBuilder sb = new StringBuilder();
 
         for (final String statement : statements) {
+            Objects.requireNonNull(statement);
             sb.append(statement).append(';');
         }
 
