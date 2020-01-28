@@ -444,12 +444,23 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
     @Override
     public <T> T getInterface(Class<T> clasz) {
+        checkInterface(clasz);
         return evalInternal(getPolyglotContext(), "this").as(clasz);
     }
 
     @Override
     public <T> T getInterface(Object thiz, Class<T> clasz) {
+        if (thiz == null) {
+            throw new IllegalArgumentException("this can not be null");
+        }
+        checkInterface(clasz);
         return getPolyglotContext().asValue(thiz).as(clasz);
+    }
+
+    private static void checkInterface(Class<?> clasz) {
+        if (clasz == null || !clasz.isInterface()) {
+            throw new IllegalArgumentException("interface Class expected in getInterface");
+        }
     }
 
     @Override
