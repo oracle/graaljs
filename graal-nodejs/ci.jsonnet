@@ -33,6 +33,16 @@ local common = import '../common.jsonnet';
     ],
   },
 
+  local gateSmokeTestGraalTip = buildGraalTip + {
+    run+: [
+      ['mx', 'node', '-e', 'console.log(\'Hello, World!\')'],
+      ['mx', 'npm', '--version'],
+      ['set-export', 'GRAALVM_HOME', ['mx', 'graalvm-home']],
+      ['${GRAALVM_HOME}/bin/node', '-e', 'console.log(\'Hello, World!\')'],
+      ['${GRAALVM_HOME}/bin/npm', '--version'],
+    ],
+  },
+
   local gateGraalTip = buildGraalTip + {
     run+: [
       gateCmd + ['--tags', 'all'],
@@ -90,8 +100,8 @@ local common = import '../common.jsonnet';
     graalNodeJs + common.jdk11 + gateGraalTip                                                                                  + common.gate + common.linux_aarch64  + {name: 'nodejs-gate-graal-tip-jdk11-linux-aarch64'},
     graalNodeJs + common.jdk8  + gateGraalTip                                                                                  + common.gate + common.darwin         + {name: 'nodejs-gate-graal-tip-jdk8-darwin-amd64'},
     graalNodeJs + common.jdk11 + gateGraalTip                                                                                  + common.gate + common.darwin         + {name: 'nodejs-gate-graal-tip-jdk11-darwin-amd64'},
-    graalNodeJs + common.jdk8  + gateGraalTip                                                                                  + common.gate + common.windows_vs2010 + {name: 'nodejs-gate-graal-tip-jdk8-windows-amd64'},
-    graalNodeJs + common.jdk11 + gateGraalTip                                                                                  + common.gate + common.windows_vs2017 + {name: 'nodejs-gate-graal-tip-jdk11-windows-amd64'},
+//  graalNodeJs + common.jdk8  + gateGraalTip                                                                                  + common.gate + common.windows_vs2010 + {name: 'nodejs-gate-graal-tip-jdk8-windows-amd64'},
+    graalNodeJs + common.jdk11 + gateSmokeTestGraalTip                                                                         + common.gate + common.windows_vs2017 + {name: 'nodejs-gate-graal-tip-jdk11-windows-amd64'},
     graalNodeJs + common.jdk8  + gateSubstrateVmTip                                                                            + common.gate + common.linux          + {name: 'nodejs-gate-substratevm-tip-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8  + gateSubstrateVmTip                                                                            + common.gate + common.darwin         + {name: 'nodejs-gate-substratevm-tip-jdk8-darwin-amd64'},
     graalNodeJs + common.jdk11 + gateSubstrateVmTip                                                                            + common.gate + common.linux          + {name: 'nodejs-gate-substratevm-tip-jdk11-linux-amd64'},
