@@ -43,7 +43,9 @@ package com.oracle.truffle.js.scriptengine;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineFactory;
@@ -55,38 +57,36 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
 
     private static final String ENGINE_NAME = "Graal.js";
     private static final String NAME = "javascript";
-    private static final String GRAALVM_VERSION;
     private static final String LANGUAGE = "ECMAScript";
     private static final String LANGUAGE_VERSION = "ECMA - 262 Edition 9";
 
     private static final String NASHORN_ENGINE_NAME = "Oracle Nashorn";
-    private static final List<String> names = new ArrayList<>(Arrays.asList("Graal.js", "graal.js", "Graal-js", "graal-js", "Graal.JS", "Graal-JS", "GraalJS", "GraalJSPolyglot", "js", "JS",
-                    "JavaScript", "javascript", "ECMAScript", "ecmascript"));
-    private static final List<String> mimeTypes = new ArrayList<>(Arrays.asList("application/javascript", "application/ecmascript", "text/javascript", "text/ecmascript"));
-    private static final List<String> extensions = new ArrayList<>(Arrays.asList("js"));
+    private static final List<String> names;
+    private static final List<String> mimeTypes;
+    private static final List<String> extensions;
 
     public static final boolean RegisterAsNashornScriptEngineFactory = Boolean.getBoolean("graaljs.RegisterGraalJSAsNashorn");
 
     static {
-        // Copied from `JSRealm`.
-        String version = System.getProperty("graalvm.version");
-        String altVersion = System.getProperty("org.graalvm.version");
-        GRAALVM_VERSION = version != null ? version : altVersion;
-    }
-
-    static {
+        List<String> nameList = new ArrayList<>(Arrays.asList("Graal.js", "graal.js", "Graal-js", "graal-js", "Graal.JS", "Graal-JS", "GraalJS", "GraalJSPolyglot", "js", "JS", "JavaScript",
+                        "javascript", "ECMAScript", "ecmascript"));
+        List<String> mimeTypeList = new ArrayList<>(Arrays.asList("application/javascript", "application/ecmascript", "text/javascript", "text/ecmascript"));
+        List<String> extensionList = new ArrayList<>(Arrays.asList("js"));
         boolean java8 = System.getProperty("java.specification.version").compareTo("1.9") < 0;
         if (java8) {
             ScriptEngineFactory nashornFactory = getNashornEngineFactory();
             if (nashornFactory != null) {
                 if (RegisterAsNashornScriptEngineFactory) {
-                    names.addAll(nashornFactory.getNames());
-                    mimeTypes.addAll(nashornFactory.getMimeTypes());
-                    extensions.addAll(nashornFactory.getExtensions());
+                    nameList.addAll(nashornFactory.getNames());
+                    mimeTypeList.addAll(nashornFactory.getMimeTypes());
+                    extensionList.addAll(nashornFactory.getExtensions());
                 }
                 clearEngineFactory(nashornFactory);
             }
         }
+        names = Collections.unmodifiableList(nameList);
+        mimeTypes = Collections.unmodifiableList(mimeTypeList);
+        extensions = Collections.unmodifiableList(extensionList);
     }
 
     private final Engine engine;
@@ -113,7 +113,7 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
 
     @Override
     public String getEngineVersion() {
-        return GRAALVM_VERSION;
+        return engine.getVersion();
     }
 
     @Override
@@ -166,13 +166,17 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
 
     @Override
     public String getMethodCallSyntax(final String obj, final String method, final String... args) {
+        Objects.requireNonNull(obj);
+        Objects.requireNonNull(method);
         final StringBuilder sb = new StringBuilder().append(obj).append('.').append(method).append('(');
         final int len = args.length;
 
         if (len > 0) {
+            Objects.requireNonNull(args[0]);
             sb.append(args[0]);
         }
         for (int i = 1; i < len; i++) {
+            Objects.requireNonNull(args[i]);
             sb.append(',').append(args[i]);
         }
         sb.append(')');
@@ -190,6 +194,7 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
         final StringBuilder sb = new StringBuilder();
 
         for (final String statement : statements) {
+            Objects.requireNonNull(statement);
             sb.append(statement).append(';');
         }
 
