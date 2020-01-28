@@ -55,18 +55,22 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
+/**
+ * Gets the value of a private field with a private name in a JS object. Throws a TypeError if the
+ * object does not have a field with this private name.
+ */
 public abstract class PrivateFieldGetNode extends JSTargetableNode implements ReadNode {
     @Child @Executed protected JavaScriptNode targetNode;
     @Child @Executed protected JavaScriptNode keyNode;
     protected final JSContext context;
 
-    public static PrivateFieldGetNode create(JavaScriptNode targetNode, JavaScriptNode indexNode, JSContext context) {
-        return PrivateFieldGetNodeGen.create(targetNode, indexNode, context);
+    public static PrivateFieldGetNode create(JavaScriptNode targetNode, JavaScriptNode keyNode, JSContext context) {
+        return PrivateFieldGetNodeGen.create(targetNode, keyNode, context);
     }
 
-    protected PrivateFieldGetNode(JavaScriptNode targetNode, JavaScriptNode indexNode, JSContext context) {
+    protected PrivateFieldGetNode(JavaScriptNode targetNode, JavaScriptNode keyNode, JSContext context) {
         this.targetNode = targetNode;
-        this.keyNode = indexNode;
+        this.keyNode = keyNode;
         this.context = context;
     }
 

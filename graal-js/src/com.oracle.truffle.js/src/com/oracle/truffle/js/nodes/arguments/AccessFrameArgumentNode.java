@@ -48,6 +48,9 @@ import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 
+/**
+ * Reads an indexed argument from a function frame.
+ */
 public final class AccessFrameArgumentNode extends JavaScriptNode implements RepeatableNode {
 
     @Child private ScopeFrameNode accessFrame;

@@ -46,6 +46,11 @@ import com.oracle.truffle.js.nodes.control.YieldNode.ExceptionYieldResultNode;
 import com.oracle.truffle.js.nodes.control.YieldNode.YieldResultNode;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
+/**
+ * A synthetic yield statement that suspends execution when the module function has successfully
+ * finished initializing the environment. Execution is resumed at this point when the module is
+ * evaluated.
+ */
 public class ModuleYieldNode extends JavaScriptNode implements ResumableNode, SuspendNode {
 
     @Child private YieldResultNode generatorYieldNode;

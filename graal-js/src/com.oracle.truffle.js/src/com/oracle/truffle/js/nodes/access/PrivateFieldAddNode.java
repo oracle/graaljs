@@ -51,6 +51,12 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 
+/**
+ * Adds a private field with a private name to a JS object (an instance of a JS class). Throws a
+ * TypeError if the object already has a private field with the same name.
+ *
+ * @see InitializeInstanceFieldsNode
+ */
 public abstract class PrivateFieldAddNode extends JavaScriptBaseNode {
     protected final JSContext context;
 
@@ -62,6 +68,13 @@ public abstract class PrivateFieldAddNode extends JavaScriptBaseNode {
         this.context = context;
     }
 
+    /**
+     * Adds a new private field to the target object.
+     *
+     * @param target the target object
+     * @param key a private name
+     * @param value the initial value of the added field
+     */
     public abstract void execute(Object target, Object key, Object value);
 
     @Specialization(guards = {"key == cachedKey", "isJSObject(target)"}, limit = "1")

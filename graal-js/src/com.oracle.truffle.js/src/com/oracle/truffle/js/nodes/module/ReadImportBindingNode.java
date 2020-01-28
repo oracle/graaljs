@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.module;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -57,7 +56,10 @@ import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord.Status;
 
-@ImportStatic(JSFrameUtil.class)
+/**
+ * Reads the value of a resolved import binding from a resolved binding record (module, binding
+ * name) returned by ResolveExport. Specializes on the imported module's FrameDescriptor.
+ */
 public abstract class ReadImportBindingNode extends JavaScriptNode {
 
     @Child @Executed JavaScriptNode resolutionNode;

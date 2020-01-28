@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,29 +53,17 @@ import com.oracle.js.parser.ir.Scope;
  */
 class ParserContextClassNode extends ParserContextBaseNode implements ParserContextScopableNode {
 
-    private final long token;
     private final Scope scope;
     protected EconomicMap<String, IdentNode> unresolvedPrivateIdentifiers;
 
     /**
      * Constructs a ParserContextClassNode.
      *
-     * @param token The first token of the class
      * @param scope The class's scope.
      */
-    ParserContextClassNode(final long token, Scope scope) {
-        this.token = token;
+    ParserContextClassNode(Scope scope) {
         this.scope = scope;
         assert scope.isClassScope();
-    }
-
-    /**
-     * Get token
-     *
-     * @return The first token of the block
-     */
-    public long getToken() {
-        return token;
     }
 
     @Override

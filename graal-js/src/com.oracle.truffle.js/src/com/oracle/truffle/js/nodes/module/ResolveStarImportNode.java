@@ -49,6 +49,10 @@ import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 
+/**
+ * Resolves a star import: gets the imported module's namespace object and initializes the local
+ * binding (frame slot) with it.
+ */
 public class ResolveStarImportNode extends StatementNode {
 
     private final JSContext context;

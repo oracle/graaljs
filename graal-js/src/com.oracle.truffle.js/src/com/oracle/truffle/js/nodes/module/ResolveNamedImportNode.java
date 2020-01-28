@@ -50,6 +50,12 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 
+/**
+ * Resolves a named import binding and writes the resolved binding into the frame. Throws a
+ * SyntaxError if the imported binding could not be found or was ambiguous.
+ *
+ * @see ReadImportBindingNode
+ */
 public class ResolveNamedImportNode extends StatementNode {
 
     private final JSContext context;

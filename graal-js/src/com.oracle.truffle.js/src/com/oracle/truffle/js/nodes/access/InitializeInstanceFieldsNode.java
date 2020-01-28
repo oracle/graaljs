@@ -60,6 +60,10 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 /**
  * InitializeInstanceFields (O, constructor.[[Fields]]).
  *
+ * Defines class instance fields using the provided field records from the constructor. For fields
+ * with an initializer, the initializer function is called to obtain the initial value and, if it's
+ * an anonymous function definition, its function name is set to the (computed) field name.
+ *
  * Relies on the following invariants:
  * <ul>
  * <li>The number of instance fields is constant.

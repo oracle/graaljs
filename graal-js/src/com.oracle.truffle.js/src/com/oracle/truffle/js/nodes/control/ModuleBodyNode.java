@@ -47,6 +47,10 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
+/**
+ * The entry point of module functions. Responsible for saving and restoring the module's
+ * environment frame and the target of {@link ModuleYieldNode}.
+ */
 public final class ModuleBodyNode extends JavaScriptNode {
 
     @Child private JavaScriptNode moduleBodyNode;

@@ -51,19 +51,23 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 
+/**
+ * Sets the value of a private field with a private name in a JS object. Throws a TypeError if the
+ * object does not have a field with this private name.
+ */
 public abstract class PrivateFieldSetNode extends JSTargetableNode {
     @Child @Executed protected JavaScriptNode targetNode;
     @Child @Executed protected JavaScriptNode keyNode;
     @Child @Executed protected JavaScriptNode valueNode;
     protected final JSContext context;
 
-    public static PrivateFieldSetNode create(JavaScriptNode targetNode, JavaScriptNode indexNode, JavaScriptNode valueNode, JSContext context) {
-        return PrivateFieldSetNodeGen.create(targetNode, indexNode, valueNode, context);
+    public static PrivateFieldSetNode create(JavaScriptNode targetNode, JavaScriptNode keyNode, JavaScriptNode valueNode, JSContext context) {
+        return PrivateFieldSetNodeGen.create(targetNode, keyNode, valueNode, context);
     }
 
-    protected PrivateFieldSetNode(JavaScriptNode targetNode, JavaScriptNode indexNode, JavaScriptNode valueNode, JSContext context) {
+    protected PrivateFieldSetNode(JavaScriptNode targetNode, JavaScriptNode keyNode, JavaScriptNode valueNode, JSContext context) {
         this.targetNode = targetNode;
-        this.keyNode = indexNode;
+        this.keyNode = keyNode;
         this.valueNode = valueNode;
         this.context = context;
     }

@@ -46,6 +46,8 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 
 /**
  * NewPrivateName (description).
+ *
+ * Creates a new private name with the given description.
  */
 public class NewPrivateNameNode extends JavaScriptNode {
     private final String description;

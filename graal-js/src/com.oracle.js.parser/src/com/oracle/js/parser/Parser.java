@@ -1529,7 +1529,7 @@ public class Parser extends AbstractParser {
         if (className != null) {
             classScope.putSymbol(new Symbol(className.getName(), Symbol.IS_CONST));
         }
-        ParserContextClassNode classNode = new ParserContextClassNode(token, classScope);
+        ParserContextClassNode classNode = new ParserContextClassNode(classScope);
         lc.push(classNode);
         try {
             Expression classHeritage = null;

@@ -44,6 +44,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 
+/**
+ * Returns the {@code import.meta} object of a module, initializing it if necessary.
+ */
 public class ImportMetaNode extends JavaScriptNode {
 
     @Child private JavaScriptNode moduleNode;
