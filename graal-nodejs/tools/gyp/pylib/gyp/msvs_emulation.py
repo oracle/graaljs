@@ -476,7 +476,7 @@ class MsvsSettings(object):
         prefix='/arch:')
     cflags.extend(['/FI' + f for f in self._Setting(
         ('VCCLCompilerTool', 'ForcedIncludeFiles'), config, default=[])])
-    if self.vs_version.project_version >= 12.0:
+    if float(self.vs_version.project_version) >= 12.0:
       # New flag introduced in VS2013 (project version 12.0) Forces writes to
       # the program database (PDB) to be serialized through MSPDBSRV.EXE.
       # https://msdn.microsoft.com/en-us/library/dn502518.aspx
