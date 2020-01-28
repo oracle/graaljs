@@ -57,7 +57,6 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
 
     private static final String ENGINE_NAME = "Graal.js";
     private static final String NAME = "javascript";
-    private static final String GRAALVM_VERSION;
     private static final String LANGUAGE = "ECMAScript";
     private static final String LANGUAGE_VERSION = "ECMA - 262 Edition 9";
 
@@ -67,13 +66,6 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
     private static final List<String> extensions;
 
     public static final boolean RegisterAsNashornScriptEngineFactory = Boolean.getBoolean("graaljs.RegisterGraalJSAsNashorn");
-
-    static {
-        // Copied from `JSRealm`.
-        String version = System.getProperty("graalvm.version");
-        String altVersion = System.getProperty("org.graalvm.version");
-        GRAALVM_VERSION = version != null ? version : altVersion;
-    }
 
     static {
         List<String> nameList = new ArrayList<>(Arrays.asList("Graal.js", "graal.js", "Graal-js", "graal-js", "Graal.JS", "Graal-JS", "GraalJS", "GraalJSPolyglot", "js", "JS", "JavaScript",
@@ -121,7 +113,7 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
 
     @Override
     public String getEngineVersion() {
-        return GRAALVM_VERSION;
+        return engine.getVersion();
     }
 
     @Override
