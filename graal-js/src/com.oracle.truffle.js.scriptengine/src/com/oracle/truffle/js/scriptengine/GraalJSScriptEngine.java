@@ -229,10 +229,10 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     private boolean evalCalled;
 
     GraalJSScriptEngine(GraalJSEngineFactory factory) {
-        this(factory.getPolyglotEngine(), null);
+        this(factory, factory.getPolyglotEngine(), null);
     }
 
-    GraalJSScriptEngine(Engine engine, Context.Builder contextConfig) {
+    GraalJSScriptEngine(GraalJSEngineFactory factory, Engine engine, Context.Builder contextConfig) {
         Engine engineToUse = engine;
         if (engineToUse == null) {
             engineToUse = Engine.newBuilder().allowExperimentalOptions(true).build();
@@ -245,7 +245,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
                 contextConfigToUse.allowAllAccess(true);
             }
         }
-        this.factory = new GraalJSEngineFactory(engineToUse);
+        this.factory = (factory == null) ? new GraalJSEngineFactory(engineToUse) : factory;
         this.contextConfig = contextConfigToUse.option(JS_SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_OPTION, "true").engine(engineToUse);
         this.context.setBindings(new GraalJSBindings(this.contextConfig), ScriptContext.ENGINE_SCOPE);
     }
@@ -567,7 +567,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
      *            context instances.
      */
     public static GraalJSScriptEngine create(Engine engine, Context.Builder newContextConfig) {
-        return new GraalJSScriptEngine(engine, newContextConfig);
+        return new GraalJSScriptEngine(null, engine, newContextConfig);
     }
 
     /**
