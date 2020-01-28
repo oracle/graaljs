@@ -107,9 +107,9 @@ public class TestScriptEngineInterop {
 
         expectIllegalState(() -> engine.eval(""));
         expectIllegalState(() -> engine.compile(""));
-        expectIllegalState(() -> engine.get(""));
+        expectIllegalState(() -> engine.get("key"));
         expectIllegalState(() -> {
-            engine.put("", "");
+            engine.put("key", "");
             return null;
         });
         expectIllegalState(() -> {
