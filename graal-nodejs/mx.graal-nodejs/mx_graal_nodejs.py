@@ -116,10 +116,8 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
     def build(self):
         pre_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=False)
 
-        pythonPath = join(_suite.mxDir, 'python2')
-        prevPATH = os.environ['PATH']
-        _setEnvVar('PATH', '%s%s%s' % (pythonPath, os.pathsep, prevPATH))
-
+        build_env = os.environ.copy()
+        _setEnvVar('PATH', '%s%s%s' % (join(_suite.mxDir, 'python2'), os.pathsep, build_env['PATH']), build_env)
 
         debug = ['--debug'] if self._debug_mode else []
         shared_library = ['--enable-shared-library'] if hasattr(self.args, 'sharedlibrary') and self.args.sharedlibrary else []
@@ -131,8 +129,9 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         lazy_generator = ['--lazy-generator'] if newest_generated_config_file_ts.isNewerThan(newest_config_file_ts) else []
 
         if _currentOs == 'windows':
-            newPATH = os.pathsep.join([os.environ['PATH']] + [mx.library(lib_name).get_path(True) for lib_name in ('NASM', 'NINJA')])
-            _setEnvVar('PATH', newPATH)
+            if build_env.get('GYP_MSVS_OVERRIDE_PATH') is not None:
+                _setEnvVar('PATH', '%s%s%s' % (join(build_env['GYP_MSVS_OVERRIDE_PATH'], 'VC', 'bin', 'x64'), os.pathsep, build_env['PATH']), build_env)
+            _setEnvVar('PATH', os.pathsep.join([build_env['PATH']] + [mx.library(lib_name).get_path(True) for lib_name in ('NASM', 'NINJA')]), build_env)
             extra_flags = ['--ninja', '--dest-cpu=x64', '--without-etw', '--without-snapshot']
         else:
             extra_flags = []
@@ -145,26 +144,27 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
                 '--without-node-snapshot',
                 '--java-home', _java_home()
                 ] + debug + shared_library + lazy_generator + extra_flags,
-                cwd=_suite.dir, verbose=True)
+                cwd=_suite.dir, verbose=True, env=build_env)
 
         if _currentOs == 'windows':
             verbose = ['-v'] if mx.get_opts().verbose else []
-            _mxrun(['ninja'] + verbose + ['-j%d' % self.parallelism, '-C', self._build_dir])
+            # The custom env is not used to resolve the location of the executable
+            _mxrun([join(mx.library('NINJA').get_path(True), 'ninja.exe')] + verbose + ['-j%d' % self.parallelism, '-C', self._build_dir], env=build_env)
         else:
             verbose = 'V={}'.format('1' if mx.get_opts().verbose else '')
-            _mxrun([mx.gmake_cmd(), '-j%d' % self.parallelism, verbose], cwd=_suite.dir, verbose=True)
+            _mxrun([mx.gmake_cmd(), '-j%d' % self.parallelism, verbose], cwd=_suite.dir, verbose=True, env=build_env)
 
         # put headers for native modules into out/headers
-        _setEnvVar('HEADERS_ONLY', '1')
+        _setEnvVar('HEADERS_ONLY', '1', build_env)
         out = None if mx.get_opts().verbose else open(os.devnull, 'w')
-        _mxrun([python_cmd(), join('tools', 'install.py'), 'install', join('out', 'headers'), '/'], out=out)
+        _mxrun([python_cmd(), join('tools', 'install.py'), 'install', join('out', 'headers'), '/'], out=out, env=build_env)
 
         post_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=True)
         mx.logv('Newest time-stamp before building: {}\nNewest time-stamp after building: {}\nHas built? {}'.format(pre_ts, post_ts, post_ts.isNewerThan(pre_ts)))
         built = post_ts.isNewerThan(pre_ts)
         if built and _currentOs == 'darwin':
             nodePath = join(self._build_dir, 'node')
-            _mxrun(['install_name_tool', '-add_rpath', join(_java_home(), 'jre', 'lib'), '-add_rpath', join(_java_home(), 'lib'), nodePath], verbose=True)
+            _mxrun(['install_name_tool', '-add_rpath', join(_java_home(), 'jre', 'lib'), '-add_rpath', join(_java_home(), 'lib'), nodePath], verbose=True, env=build_env)
         return built
 
     def needsBuild(self, newestInput):
@@ -409,11 +409,7 @@ def makeInNodeEnvironment(args):
     argGroups = setupNodeEnvironment(args)
     _setEnvVar('NODE_JVM_OPTIONS', ' '.join(argGroups[1]))
     if _currentOs == 'windows':
-        _mxrun([join(_suite.dir, 'vcbuild.bat'),
-                'noprojgen',
-                'nobuild',
-                'java-home', _java_home()
-            ] + argGroups[2], cwd=_suite.dir)
+        raise mx.abort('This command is not supported on Windows')
     else:
         makeCmd = mx.gmake_cmd()
         if _currentOs == 'solaris':
@@ -446,17 +442,17 @@ def parse_js_args(args):
 
     return vmArgs, progArgs
 
-def _mxrun(args, cwd=_suite.dir, verbose=False, out=None):
+def _mxrun(args, cwd=_suite.dir, verbose=False, out=None, env=None):
     if verbose:
         mx.log('Running \'{}\''.format(' '.join(args)))
-    status = mx.run(args, nonZeroIsFatal=False, cwd=cwd, out=out)
+    status = mx.run(args, nonZeroIsFatal=False, cwd=cwd, out=out, env=env)
     if status:
         mx.abort(status)
 
-def _setEnvVar(name, val):
+def _setEnvVar(name, val, env=os.environ):
     if val:
         mx.logv('Setting environment variable %s=%s' % (name, val))
-        os.environ[name] = val
+        env[name] = val
 
 def _java_home():
     return mx.get_jdk().home
