@@ -28,6 +28,8 @@
 
 import mx, mx_benchmark, mx_graal_js
 from mx_benchmark import GuestVm
+from mx_benchmark import JMHDistBenchmarkSuite
+from mx_benchmark import add_bm_suite
 
 class GraalJsVm(GuestVm):
     def __init__(self, config_name, options, host_vm=None):
@@ -60,3 +62,15 @@ def register_js_vms():
         import mx_js_benchmarks
         _suite = mx.suite('graal-js')
         mx_js_benchmarks.add_vm(GraalJsVm('default', []), _suite, 10)
+
+class JMHDistGraalJsBenchmarkSuite(JMHDistBenchmarkSuite):
+    def name(self):
+        return "js-interop-jmh"
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "graal-js"
+
+add_bm_suite(JMHDistGraalJsBenchmarkSuite())
