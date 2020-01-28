@@ -42,6 +42,7 @@ package com.oracle.truffle.js.scriptengine;
 
 import java.util.AbstractMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import javax.script.Bindings;
@@ -103,6 +104,7 @@ final class GraalJSBindings extends AbstractMap<String, Object> implements Bindi
 
     @Override
     public Object put(String name, Object v) {
+        checkKey(name);
         if (name.startsWith(GraalJSScriptEngine.MAGIC_OPTION_PREFIX)) {
             if (context == null) {
                 MagicBindingsOptionSetter optionSetter = GraalJSScriptEngine.MAGIC_BINDINGS_OPTION_MAP.get(name);
@@ -129,8 +131,16 @@ final class GraalJSBindings extends AbstractMap<String, Object> implements Bindi
 
     @Override
     public Object get(Object key) {
+        checkKey((String) key);
         requireContext();
         return global.get(key);
+    }
+
+    private static void checkKey(String key) {
+        Objects.requireNonNull(key, "key can not be null");
+        if (key.isEmpty()) {
+            throw new IllegalArgumentException("key can not be empty");
+        }
     }
 
     @Override

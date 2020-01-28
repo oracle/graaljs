@@ -230,10 +230,10 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     private boolean evalCalled;
 
     GraalJSScriptEngine(GraalJSEngineFactory factory) {
-        this(factory.getPolyglotEngine(), null);
+        this(factory, factory.getPolyglotEngine(), null);
     }
 
-    GraalJSScriptEngine(Engine engine, Context.Builder contextConfig) {
+    GraalJSScriptEngine(GraalJSEngineFactory factory, Engine engine, Context.Builder contextConfig) {
         Engine engineToUse = engine;
         if (engineToUse == null) {
             engineToUse = Engine.newBuilder().allowExperimentalOptions(true).build();
@@ -250,7 +250,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
                 contextConfigToUse.allowAllAccess(true);
             }
         }
-        this.factory = new GraalJSEngineFactory(engineToUse);
+        this.factory = (factory == null) ? new GraalJSEngineFactory(engineToUse) : factory;
         this.contextConfig = contextConfigToUse.option(JS_SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_OPTION, "true").engine(engineToUse);
         this.context.setBindings(new GraalJSBindings(this.contextConfig), ScriptContext.ENGINE_SCOPE);
     }
@@ -449,12 +449,23 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
     @Override
     public <T> T getInterface(Class<T> clasz) {
+        checkInterface(clasz);
         return evalInternal(getPolyglotContext(), "this").as(clasz);
     }
 
     @Override
     public <T> T getInterface(Object thiz, Class<T> clasz) {
+        if (thiz == null) {
+            throw new IllegalArgumentException("this can not be null");
+        }
+        checkInterface(clasz);
         return getPolyglotContext().asValue(thiz).as(clasz);
+    }
+
+    private static void checkInterface(Class<?> clasz) {
+        if (clasz == null || !clasz.isInterface()) {
+            throw new IllegalArgumentException("interface Class expected in getInterface");
+        }
     }
 
     @Override
@@ -561,7 +572,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
      *            context instances.
      */
     public static GraalJSScriptEngine create(Engine engine, Context.Builder newContextConfig) {
-        return new GraalJSScriptEngine(engine, newContextConfig);
+        return new GraalJSScriptEngine(null, engine, newContextConfig);
     }
 
     /**
