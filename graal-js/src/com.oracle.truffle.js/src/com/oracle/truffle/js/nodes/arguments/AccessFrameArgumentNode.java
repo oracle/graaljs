@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,53 +38,43 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.js.parser.ir;
+package com.oracle.truffle.js.nodes.arguments;
 
-import com.oracle.js.parser.ir.visitor.NodeVisitor;
-import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.RepeatableNode;
+import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
+import com.oracle.truffle.js.runtime.JSArguments;
 
 /**
- * Interface for nodes that can be part of the lexical context.
- *
- * @see LexicalContext
+ * Reads an indexed argument from a function frame.
  */
-public interface LexicalContextNode {
-    /**
-     * Accept function for the node given a lexical context. It must be prepared to replace itself
-     * if present in the lexical context
-     *
-     * @param lc lexical context
-     * @param visitor node visitor
-     *
-     * @return new node or same node depending on state change
-     */
-    Node accept(final LexicalContext lc, final NodeVisitor<? extends LexicalContext> visitor);
+public final class AccessFrameArgumentNode extends JavaScriptNode implements RepeatableNode {
 
-    <R> R accept(final LexicalContext lc, final TranslatorNodeVisitor<? extends LexicalContext, R> visitor);
+    @Child private ScopeFrameNode accessFrame;
+    private final int argIndex;
 
-    /**
-     * Helper method for accept for items of this lexical context, delegates to the subclass accept
-     * and makes sure that the node is on the context before accepting and gets popped after
-     * accepting (and that the stack is consistent in that the node has been replaced with the
-     * possible new node resulting in visitation)
-     */
-    default Node accept(final NodeVisitor<? extends LexicalContext> visitor) {
-        final LexicalContext lc = visitor.getLexicalContext();
-        lc.push(this);
-        try {
-            return this.accept(lc, visitor);
-        } finally {
-            lc.pop(this);
-        }
+    private AccessFrameArgumentNode(ScopeFrameNode accessFrame, int argIndex) {
+        this.accessFrame = accessFrame;
+        this.argIndex = argIndex;
     }
 
-    default <R> R accept(TranslatorNodeVisitor<? extends LexicalContext, R> visitor) {
-        final LexicalContext lc = visitor.getLexicalContext();
-        lc.push(this);
-        try {
-            return this.accept(lc, visitor);
-        } finally {
-            lc.pop(this);
-        }
+    public static JavaScriptNode create(int frameLevel, int argIndex) {
+        return new AccessFrameArgumentNode(ScopeFrameNode.create(frameLevel), argIndex);
+    }
+
+    @Override
+    public Object execute(VirtualFrame frame) {
+        Frame parentFrame = accessFrame.executeFrame(frame);
+        Object arg = JSArguments.getUserArgument(parentFrame.getArguments(), argIndex);
+        assert arg != null;
+        return arg;
+    }
+
+    @Override
+    protected JavaScriptNode copyUninitialized() {
+        return new AccessFrameArgumentNode(NodeUtil.cloneNode(accessFrame), argIndex);
     }
 }

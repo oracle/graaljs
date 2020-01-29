@@ -135,9 +135,10 @@ public final class JSTruffleOptions {
     public static final int ECMAScript2018 = 9;
     public static final int ECMAScript2019 = 10;
     public static final int ECMAScript2020 = 11;
+    public static final int ECMAScript2021 = 12;
     public static final int ECMAScriptNumberYearDelta = 2009; // ES6==ES2015
     public static final int LatestECMAScriptVersion = ECMAScript2019;
-    public static final int MaxECMAScriptVersion = integerOption("ECMAScriptVersion", ECMAScript2020);
+    public static final int MaxECMAScriptVersion = integerOption("ECMAScriptVersion", ECMAScript2021);
     /** Enable Annex B "Additional ECMAScript Features for Web Browsers". */
     public static final boolean AnnexB = booleanOption("AnnexB", true);
 

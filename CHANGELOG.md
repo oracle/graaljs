@@ -6,6 +6,10 @@ The main focus is on user-observable behavior of the engine.
 ## Version 21.0.0
 * Implemented the [Intl.DateTimeFormat dateStyle & timeStyle](https://github.com/tc39/proposal-intl-datetime-style) proposal.
 
+## Version 20.1.0
+* Implemented the [class fields](https://github.com/tc39/proposal-class-fields) proposal for public and private instance fields. This feature is available by default in Node.js and can be enabled using the experimental option `js.class-fields`.
+* Added option `js.global-arguments` (default: true) for the non-standard `arguments` global property (disabled in Node.js).
+
 ## Version 20.0.0
 * Updated Node.js to version 12.14.0.
 * Added `name` property to anonymous functions.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,53 +38,56 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.js.parser.ir;
+package com.oracle.truffle.js.nodes.control;
 
-import com.oracle.js.parser.ir.visitor.NodeVisitor;
-import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.control.YieldNode.ExceptionYieldResultNode;
+import com.oracle.truffle.js.nodes.control.YieldNode.YieldResultNode;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
- * Interface for nodes that can be part of the lexical context.
- *
- * @see LexicalContext
+ * A synthetic yield statement that suspends execution when the module function has successfully
+ * finished initializing the environment. Execution is resumed at this point when the module is
+ * evaluated.
  */
-public interface LexicalContextNode {
-    /**
-     * Accept function for the node given a lexical context. It must be prepared to replace itself
-     * if present in the lexical context
-     *
-     * @param lc lexical context
-     * @param visitor node visitor
-     *
-     * @return new node or same node depending on state change
-     */
-    Node accept(final LexicalContext lc, final NodeVisitor<? extends LexicalContext> visitor);
+public class ModuleYieldNode extends JavaScriptNode implements ResumableNode, SuspendNode {
 
-    <R> R accept(final LexicalContext lc, final TranslatorNodeVisitor<? extends LexicalContext, R> visitor);
+    @Child private YieldResultNode generatorYieldNode;
 
-    /**
-     * Helper method for accept for items of this lexical context, delegates to the subclass accept
-     * and makes sure that the node is on the context before accepting and gets popped after
-     * accepting (and that the stack is consistent in that the node has been replaced with the
-     * possible new node resulting in visitation)
-     */
-    default Node accept(final NodeVisitor<? extends LexicalContext> visitor) {
-        final LexicalContext lc = visitor.getLexicalContext();
-        lc.push(this);
-        try {
-            return this.accept(lc, visitor);
-        } finally {
-            lc.pop(this);
+    protected ModuleYieldNode() {
+        this.generatorYieldNode = new ExceptionYieldResultNode();
+    }
+
+    public static ModuleYieldNode create() {
+        return new ModuleYieldNode();
+    }
+
+    @Override
+    public Object execute(VirtualFrame frame) {
+        return generatorYield(frame);
+    }
+
+    protected final Object generatorYield(VirtualFrame frame) {
+        throw generatorYieldNode.generatorYield(frame, Undefined.instance);
+    }
+
+    @Override
+    public Object resume(VirtualFrame frame) {
+        int index = getStateAsInt(frame);
+        if (index == 0) {
+            setState(frame, 1);
+            return generatorYield(frame);
+        } else {
+            assert index == 1;
+            setState(frame, 0);
+            return Undefined.instance;
         }
     }
 
-    default <R> R accept(TranslatorNodeVisitor<? extends LexicalContext, R> visitor) {
-        final LexicalContext lc = visitor.getLexicalContext();
-        lc.push(this);
-        try {
-            return this.accept(lc, visitor);
-        } finally {
-            lc.pop(this);
-        }
+    @Override
+    protected JavaScriptNode copyUninitialized() {
+        return create();
     }
+
 }

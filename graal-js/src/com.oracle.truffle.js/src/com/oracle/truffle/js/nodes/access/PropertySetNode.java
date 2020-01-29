@@ -1326,7 +1326,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             } else if (superProperty) {
                 // define the property on the receiver; currently not handled, rewrite to generic
                 return createGenericPropertyNode();
-            } else if (JSShape.isExtensible(cacheShape)) {
+            } else if (JSShape.isExtensible(cacheShape) || key instanceof HiddenKey) {
                 return createDefinePropertyNode(key, shapeCheck, value, context, getAttributeFlags(), isDeclaration());
             } else {
                 return new ReadOnlyPropertySetNode(createShapeCheckNode(cacheShape, thisJSObj, depth, false, false), isStrict());

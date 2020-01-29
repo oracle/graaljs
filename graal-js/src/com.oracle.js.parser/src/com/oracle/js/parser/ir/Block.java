@@ -107,6 +107,11 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
     public static final int IS_EXPRESSION_BLOCK = 1 << 9;
 
     /**
+     * Marks the module body block.
+     */
+    public static final int IS_MODULE_BODY = 1 << 10;
+
+    /**
      * Constructor
      *
      * @param token The first token of the block
@@ -383,5 +388,9 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
 
     public boolean isExpressionBlock() {
         return getFlag(IS_EXPRESSION_BLOCK);
+    }
+
+    public boolean isModuleBody() {
+        return getFlag(IS_MODULE_BODY);
     }
 }

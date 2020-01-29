@@ -149,8 +149,8 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
         }
 
         @Override
-        public void executeVoid(VirtualFrame frame, DynamicObject obj, JSContext context) {
-            setNode.setValue(obj, value);
+        public void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSContext context) {
+            setNode.setValue(receiver, value);
         }
 
         @Override

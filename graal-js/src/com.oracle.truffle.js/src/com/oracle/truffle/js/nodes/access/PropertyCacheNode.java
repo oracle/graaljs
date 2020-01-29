@@ -1196,7 +1196,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         DynamicObject store = null;
         if (JSObject.isJSObject(thisObj)) {
-            if (!JSAdapter.isJSAdapter(thisObj) && !JSProxy.isProxy(thisObj)) {
+            if ((!JSAdapter.isJSAdapter(thisObj) && !JSProxy.isProxy(thisObj)) || key instanceof HiddenKey) {
                 store = (DynamicObject) thisObj;
             }
         } else if (JSRuntime.isForeignObject(thisObj)) {
@@ -1261,7 +1261,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     }
 
     private static boolean alwaysUseStore(DynamicObject store, Object key) {
-        return JSProxy.isProxy(store) || (JSArrayBufferView.isJSArrayBufferView(store) && isNonIntegerIndex(key));
+        return JSProxy.isProxy(store) || (JSArrayBufferView.isJSArrayBufferView(store) && isNonIntegerIndex(key)) || key instanceof HiddenKey;
     }
 
     protected final void deoptimize() {

@@ -41,6 +41,8 @@
 package com.oracle.truffle.js.runtime;
 
 import static com.oracle.truffle.js.runtime.JSContextOptions.ANNEX_B;
+import static com.oracle.truffle.js.runtime.JSContextOptions.BIGINT;
+import static com.oracle.truffle.js.runtime.JSContextOptions.CLASS_FIELDS;
 import static com.oracle.truffle.js.runtime.JSContextOptions.CONST_AS_VAR;
 import static com.oracle.truffle.js.runtime.JSContextOptions.ECMASCRIPT_VERSION;
 import static com.oracle.truffle.js.runtime.JSContextOptions.FUNCTION_STATEMENT_ERROR;
@@ -49,7 +51,6 @@ import static com.oracle.truffle.js.runtime.JSContextOptions.SCRIPTING;
 import static com.oracle.truffle.js.runtime.JSContextOptions.SHEBANG;
 import static com.oracle.truffle.js.runtime.JSContextOptions.STRICT;
 import static com.oracle.truffle.js.runtime.JSContextOptions.SYNTAX_EXTENSIONS;
-import static com.oracle.truffle.js.runtime.JSContextOptions.BIGINT;
 
 import org.graalvm.options.OptionValues;
 
@@ -67,6 +68,7 @@ public final class JSParserOptions {
     private final boolean emptyStatements;
     private final boolean annexB;
     private final boolean allowBigInt;
+    private final boolean classFields;
 
     public JSParserOptions() {
         this.strict = false;
@@ -79,11 +81,12 @@ public final class JSParserOptions {
         this.dumpOnError = false;
         this.emptyStatements = false;
         this.annexB = JSTruffleOptions.AnnexB;
-        this.allowBigInt = false;
+        this.allowBigInt = true;
+        this.classFields = true;
     }
 
     private JSParserOptions(boolean strict, boolean scripting, boolean shebang, int ecmaScriptVersion, boolean syntaxExtensions, boolean constAsVar, boolean functionStatementError,
-                    boolean dumpOnError, boolean emptyStatements, boolean annexB, boolean allowBigInt) {
+                    boolean dumpOnError, boolean emptyStatements, boolean annexB, boolean allowBigInt, boolean classFields) {
         this.strict = strict;
         this.scripting = scripting;
         this.shebang = shebang;
@@ -95,6 +98,7 @@ public final class JSParserOptions {
         this.emptyStatements = emptyStatements;
         this.annexB = annexB;
         this.allowBigInt = allowBigInt;
+        this.classFields = classFields;
     }
 
     public boolean isStrict() {
@@ -149,9 +153,14 @@ public final class JSParserOptions {
         return allowBigInt;
     }
 
+    public boolean isClassFields() {
+        return classFields;
+    }
+
     public JSParserOptions putOptions(OptionValues optionValues) {
         JSParserOptions opts = this;
-        opts = opts.putEcmaScriptVersion(ECMASCRIPT_VERSION.getValue(optionValues));
+        int ecmaScriptVersion = ECMASCRIPT_VERSION.getValue(optionValues);
+        opts = opts.putEcmaScriptVersion(ecmaScriptVersion);
         opts = opts.putSyntaxExtensions(SYNTAX_EXTENSIONS.hasBeenSet(optionValues) ? SYNTAX_EXTENSIONS.getValue(optionValues) : NASHORN_COMPATIBILITY_MODE.getValue(optionValues));
         opts = opts.putScripting(SCRIPTING.getValue(optionValues));
         opts = opts.putShebang(SHEBANG.getValue(optionValues));
@@ -160,6 +169,7 @@ public final class JSParserOptions {
         opts = opts.putFunctionStatementError(FUNCTION_STATEMENT_ERROR.getValue(optionValues));
         opts = opts.putAnnexB(ANNEX_B.getValue(optionValues));
         opts = opts.putAllowBigInt(BIGINT.getValue(optionValues));
+        opts = opts.putClassFields(CLASS_FIELDS.hasBeenSet(optionValues) ? CLASS_FIELDS.getValue(optionValues) : ecmaScriptVersion >= JSContextOptions.CLASS_FIELDS_ES_VERSION);
         return opts;
     }
 
@@ -169,42 +179,48 @@ public final class JSParserOptions {
 
     public JSParserOptions putStrict(boolean strict) {
         if (strict != this.strict) {
-            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
+            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
+                            classFields);
         }
         return this;
     }
 
     public JSParserOptions putScripting(boolean scripting) {
         if (scripting != this.scripting) {
-            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
+            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
+                            classFields);
         }
         return this;
     }
 
     public JSParserOptions putShebang(boolean shebang) {
         if (shebang != this.shebang) {
-            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
+            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
+                            classFields);
         }
         return this;
     }
 
     public JSParserOptions putEcmaScriptVersion(int ecmaScriptVersion) {
         if (ecmaScriptVersion != this.ecmaScriptVersion) {
-            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
+            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
+                            classFields);
         }
         return this;
     }
 
     public JSParserOptions putSyntaxExtensions(boolean syntaxExtensions) {
         if (syntaxExtensions != this.syntaxExtensions) {
-            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
+            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
+                            classFields);
         }
         return this;
     }
 
     public JSParserOptions putConstAsVar(boolean constAsVar) {
         if (constAsVar != this.constAsVar) {
-            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
+            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
+                            classFields);
         }
         return this;
     }
@@ -212,21 +228,31 @@ public final class JSParserOptions {
     public JSParserOptions putFunctionStatementError(boolean functionStatementError) {
         if (functionStatementError != this.functionStatementError) {
             return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements,
-                            annexB, allowBigInt);
+                            annexB, allowBigInt, classFields);
         }
         return this;
     }
 
     public JSParserOptions putAnnexB(boolean annexB) {
         if (annexB != this.annexB) {
-            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
+            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
+                            classFields);
         }
         return this;
     }
 
     public JSParserOptions putAllowBigInt(boolean allowBigInt) {
         if (allowBigInt != this.allowBigInt) {
-            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
+            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
+                            classFields);
+        }
+        return this;
+    }
+
+    public JSParserOptions putClassFields(boolean classFields) {
+        if (classFields != this.classFields) {
+            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
+                            classFields);
         }
         return this;
     }
@@ -246,6 +272,7 @@ public final class JSParserOptions {
         result = prime * result + (strict ? 1231 : 1237);
         result = prime * result + (syntaxExtensions ? 1231 : 1237);
         result = prime * result + (allowBigInt ? 1231 : 1237);
+        result = prime * result + (classFields ? 1231 : 1237);
         return result;
     }
 
@@ -279,6 +306,8 @@ public final class JSParserOptions {
         } else if (syntaxExtensions != other.syntaxExtensions) {
             return false;
         } else if (allowBigInt != other.allowBigInt) {
+            return false;
+        } else if (classFields != other.classFields) {
             return false;
         }
         return true;

@@ -709,6 +709,21 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorCannotGetPrivateMember(String name, Node originatingNode) {
+        return createTypeError(String.format("Cannot read private member %s from an object whose class did not declare it.", name), originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorCannotSetPrivateMember(String name, Node originatingNode) {
+        return createTypeError(String.format("Cannot write private member %s to an object whose class did not declare it.", name), originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorCannotAddPrivateMember(String name, Node originatingNode) {
+        return createTypeError(String.format("Duplicate private member %s.", name), originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createSIMDExpected() {
         return Errors.createTypeError("SIMD type expected");
     }

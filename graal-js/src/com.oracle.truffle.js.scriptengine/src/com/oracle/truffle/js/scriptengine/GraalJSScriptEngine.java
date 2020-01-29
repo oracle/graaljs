@@ -82,6 +82,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     private static final String JS_SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_OPTION = "js.script-engine-global-scope-import";
     private static final String JS_LOAD_OPTION = "js.load";
     private static final String JS_PRINT_OPTION = "js.print";
+    private static final String JS_GLOBAL_ARGUMENTS_OPTION = "js.global-arguments";
     private static final String SCRIPT_CONTEXT_GLOBAL_BINDINGS_IMPORT_FUNCTION_NAME = "importScriptEngineGlobalBindings";
     private static final String NASHORN_COMPATIBILITY_MODE_SYSTEM_PROPERTY = "polyglot.js.nashorn-compat";
     static final String MAGIC_OPTION_PREFIX = "polyglot.js.";
@@ -240,7 +241,11 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         Context.Builder contextConfigToUse = contextConfig;
         if (contextConfigToUse == null) {
             // default config
-            contextConfigToUse = Context.newBuilder(ID).allowExperimentalOptions(true).option(JS_SYNTAX_EXTENSIONS_OPTION, "true").option(JS_LOAD_OPTION, "true").option(JS_PRINT_OPTION, "true");
+            contextConfigToUse = Context.newBuilder(ID).allowExperimentalOptions(true);
+            contextConfigToUse.option(JS_SYNTAX_EXTENSIONS_OPTION, "true");
+            contextConfigToUse.option(JS_LOAD_OPTION, "true");
+            contextConfigToUse.option(JS_PRINT_OPTION, "true");
+            contextConfigToUse.option(JS_GLOBAL_ARGUMENTS_OPTION, "true");
             if (NASHORN_COMPATIBILITY_MODE) {
                 contextConfigToUse.allowAllAccess(true);
             }

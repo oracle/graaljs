@@ -44,8 +44,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -71,6 +69,7 @@ import com.oracle.truffle.js.nodes.access.GlobalObjectNode;
 import com.oracle.truffle.js.nodes.access.GlobalPropertyNode;
 import com.oracle.truffle.js.nodes.access.GlobalScopeNode;
 import com.oracle.truffle.js.nodes.access.GlobalScopeVarWrapperNode;
+import com.oracle.truffle.js.nodes.access.InitializeInstanceFieldsNode;
 import com.oracle.truffle.js.nodes.access.IteratorCompleteUnaryNode;
 import com.oracle.truffle.js.nodes.access.IteratorGetNextValueNode;
 import com.oracle.truffle.js.nodes.access.IteratorNextUnaryNode;
@@ -88,9 +87,12 @@ import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.LazyReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.LazyWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.LocalVarIncNode;
+import com.oracle.truffle.js.nodes.access.NewPrivateNameNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.MakeMethodNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
+import com.oracle.truffle.js.nodes.access.PrivateFieldGetNode;
+import com.oracle.truffle.js.nodes.access.PrivateFieldSetNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.RegExpLiteralNode;
@@ -105,6 +107,7 @@ import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
 import com.oracle.truffle.js.nodes.arguments.AccessArgumentsArrayDirectlyNode;
 import com.oracle.truffle.js.nodes.arguments.AccessDerivedConstructorThisNode;
+import com.oracle.truffle.js.nodes.arguments.AccessFrameArgumentNode;
 import com.oracle.truffle.js.nodes.arguments.AccessFunctionNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.arguments.AccessLevelFunctionNode;
@@ -166,6 +169,8 @@ import com.oracle.truffle.js.nodes.control.GeneratorWrapperNode;
 import com.oracle.truffle.js.nodes.control.IfNode;
 import com.oracle.truffle.js.nodes.control.IteratorCloseWrapperNode;
 import com.oracle.truffle.js.nodes.control.LabelNode;
+import com.oracle.truffle.js.nodes.control.ModuleBodyNode;
+import com.oracle.truffle.js.nodes.control.ModuleYieldNode;
 import com.oracle.truffle.js.nodes.control.ReturnNode;
 import com.oracle.truffle.js.nodes.control.ReturnTargetNode;
 import com.oracle.truffle.js.nodes.control.RuntimeErrorNode;
@@ -192,6 +197,10 @@ import com.oracle.truffle.js.nodes.function.JSFunctionExpressionNode;
 import com.oracle.truffle.js.nodes.function.JSNewNode;
 import com.oracle.truffle.js.nodes.function.NewTargetRootNode;
 import com.oracle.truffle.js.nodes.function.SpreadArgumentNode;
+import com.oracle.truffle.js.nodes.module.ImportMetaNode;
+import com.oracle.truffle.js.nodes.module.ReadImportBindingNode;
+import com.oracle.truffle.js.nodes.module.ResolveNamedImportNode;
+import com.oracle.truffle.js.nodes.module.ResolveStarImportNode;
 import com.oracle.truffle.js.nodes.promise.ImportCallNode;
 import com.oracle.truffle.js.nodes.unary.JSComplementNode;
 import com.oracle.truffle.js.nodes.unary.JSNotNode;
@@ -203,12 +212,10 @@ import com.oracle.truffle.js.nodes.unary.VoidNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
-import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 @GenerateDecoder
@@ -570,7 +577,7 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createFunctionCall(@SuppressWarnings("unused") JSContext context, JavaScriptNode expression, JavaScriptNode[] arguments) {
-        if (expression instanceof PropertyNode || expression instanceof ReadElementNode || expression instanceof WithVarWrapperNode) {
+        if (expression instanceof PropertyNode || expression instanceof ReadElementNode || expression instanceof WithVarWrapperNode || expression instanceof PrivateFieldGetNode) {
             if (expression instanceof PropertyNode) {
                 ((PropertyNode) expression).setMethod();
             }
@@ -635,6 +642,10 @@ public class NodeFactory {
 
     public JavaScriptNode createAccessNewTarget() {
         return AccessIndexedArgumentNode.create(0);
+    }
+
+    public JavaScriptNode createAccessFrameArgument(int frameLevel, int argIndex) {
+        return AccessFrameArgumentNode.create(frameLevel, argIndex);
     }
 
     public JavaScriptNode createAccessHomeObject(JSContext context) {
@@ -756,16 +767,16 @@ public class NodeFactory {
         return ObjectLiteralNode.newAccessorMember(keyName, isStatic, enumerable, getter, setter);
     }
 
-    public ObjectLiteralMemberNode createDataMember(String keyName, boolean isStatic, boolean enumerable, JavaScriptNode value) {
-        return ObjectLiteralNode.newDataMember(keyName, isStatic, enumerable, value);
+    public ObjectLiteralMemberNode createDataMember(String keyName, boolean isStatic, boolean enumerable, JavaScriptNode value, boolean isField) {
+        return ObjectLiteralNode.newDataMember(keyName, isStatic, enumerable, value, isField);
     }
 
     public ObjectLiteralMemberNode createProtoMember(String keyName, boolean isStatic, JavaScriptNode value) {
         return ObjectLiteralNode.newProtoMember(keyName, isStatic, value);
     }
 
-    public ObjectLiteralMemberNode createComputedDataMember(JavaScriptNode key, boolean isStatic, boolean enumerable, JavaScriptNode value) {
-        return ObjectLiteralNode.newComputedDataMember(key, isStatic, enumerable, value);
+    public ObjectLiteralMemberNode createComputedDataMember(JavaScriptNode key, boolean isStatic, boolean enumerable, JavaScriptNode value, boolean isField, boolean isAnonymousFunctionDefinition) {
+        return ObjectLiteralNode.newComputedDataMember(key, isStatic, enumerable, value, isField, isAnonymousFunctionDefinition);
     }
 
     public ObjectLiteralMemberNode createComputedAccessorMember(JavaScriptNode key, boolean isStatic, boolean enumerable, JavaScriptNode getter, JavaScriptNode setter) {
@@ -776,11 +787,12 @@ public class NodeFactory {
         return ObjectLiteralNode.newSpreadObjectMember(isStatic, value);
     }
 
-    public JavaScriptNode createClassDefinition(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members, String className) {
+    public JavaScriptNode createClassDefinition(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members, String className,
+                    int instanceFieldCount) {
         if (className != null) {
             constructorFunction.setFunctionName(className);
         }
-        return ClassDefinitionNode.create(context, constructorFunction, classHeritage, members, className != null);
+        return ClassDefinitionNode.create(context, constructorFunction, classHeritage, members, className != null, instanceFieldCount);
     }
 
     public JavaScriptNode createMakeMethod(JSContext context, JavaScriptNode function) {
@@ -1055,102 +1067,28 @@ public class NodeFactory {
         return JSGuardDisconnectedArgumentWrite.create(index, argumentsArrayAccess, argumentsArray, rhs, slot);
     }
 
-    public JavaScriptNode createSetModuleEnvironment(JavaScriptNode moduleRecordNode) {
-        return new StatementNode() {
-            @Child private JavaScriptNode moduleNode = moduleRecordNode;
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                JSModuleRecord module = (JSModuleRecord) moduleNode.execute(frame);
-                module.setEnvironment(frame.materialize());
-                return EMPTY;
-            }
-
-            @Override
-            protected JavaScriptNode copyUninitialized() {
-                return copy();
-            }
-        };
+    public JavaScriptNode createModuleBody(JavaScriptNode moduleBody) {
+        return ModuleBodyNode.create(moduleBody);
     }
 
-    public JavaScriptNode createReadModuleImportBinding(JSModuleRecord moduleRecord, String bindingName) {
-        class ModuleEnvFrameNode extends ScopeFrameNode {
-            private final JSModuleRecord module;
-
-            ModuleEnvFrameNode(JSModuleRecord module) {
-                this.module = module;
-            }
-
-            @Override
-            public Frame executeFrame(Frame f) {
-                return module.getEnvironment();
-            }
-        }
-        class ReadModuleImportBindingNode extends JavaScriptNode {
-            private final JSModuleRecord module;
-            private final FrameSlot frameSlot;
-            private final boolean hasTDZ;
-
-            ReadModuleImportBindingNode(JSModuleRecord module, FrameSlot frameSlot) {
-                assert frameSlot != null;
-                this.module = module;
-                this.frameSlot = frameSlot;
-                this.hasTDZ = JSFrameUtil.hasTemporalDeadZone(frameSlot);
-            }
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                if (module.getEnvironment() == null) {
-                    // Reading a binding from a module that is not evaluated yet (due to cyclic
-                    // dependencies).
-                    assert module.getStatus() == JSModuleRecord.Status.Evaluating;
-                    if (hasTDZ) {
-                        // Uninitialized binding
-                        throw Errors.createReferenceErrorNotDefined(bindingName, this);
-                    } else {
-                        return Undefined.instance;
-                    }
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    return replace(JSReadFrameSlotNode.create(frameSlot, new ModuleEnvFrameNode(module), hasTDZ)).execute(frame);
-                }
-            }
-
-            @Override
-            protected JavaScriptNode copyUninitialized() {
-                return new ReadModuleImportBindingNode(module, frameSlot);
-            }
-        }
-        return new JavaScriptNode() {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                FrameSlot frameSlot = moduleRecord.getFrameDescriptor().findFrameSlot(bindingName);
-                return replace(new ReadModuleImportBindingNode(moduleRecord, frameSlot)).execute(frame);
-            }
-
-            @Override
-            protected JavaScriptNode copyUninitialized() {
-                return copy();
-            }
-        };
+    public JavaScriptNode createModuleYield() {
+        return ModuleYieldNode.create();
     }
 
-    public JavaScriptNode createImportMeta(JavaScriptNode moduleRecordNode) {
-        return new StatementNode() {
-            @Child private JavaScriptNode moduleNode = moduleRecordNode;
+    public JavaScriptNode createImportMeta(JavaScriptNode moduleNode) {
+        return ImportMetaNode.create(moduleNode);
+    }
 
-            @Override
-            public Object execute(VirtualFrame frame) {
-                JSModuleRecord module = (JSModuleRecord) moduleNode.execute(frame);
-                return module.getImportMeta();
-            }
+    public JavaScriptNode createResolveStarImport(JSContext context, JavaScriptNode moduleNode, String moduleRequest, JSWriteFrameSlotNode writeLocalNode) {
+        return ResolveStarImportNode.create(context, moduleNode, moduleRequest, writeLocalNode);
+    }
 
-            @Override
-            protected JavaScriptNode copyUninitialized() {
-                return copy();
-            }
-        };
+    public JavaScriptNode createResolveNamedImport(JSContext context, JavaScriptNode moduleNode, String moduleRequest, String importName, JSWriteFrameSlotNode writeLocalNode) {
+        return ResolveNamedImportNode.create(context, moduleNode, moduleRequest, importName, writeLocalNode);
+    }
+
+    public JavaScriptNode createReadImportBinding(JavaScriptNode readLocal) {
+        return ReadImportBindingNode.create(readLocal);
     }
 
     public JavaScriptNode createImportCall(JSContext context, JavaScriptNode argument, JavaScriptNode activeScriptOrModule) {
@@ -1160,6 +1098,30 @@ public class NodeFactory {
     public JavaScriptNode createRestObject(JSContext context, JavaScriptNode source, JavaScriptNode excludedNames) {
         JavaScriptNode restObj = ObjectLiteralNode.create(context, ObjectLiteralMemberNode.EMPTY);
         return RestObjectNode.create(context, restObj, source, excludedNames);
+    }
+
+    public JavaScriptNode createAccessClassFields(JSContext context, JavaScriptNode functionObject) {
+        return PropertyNode.createProperty(context, functionObject, JSFunction.CLASS_FIELDS_ID);
+    }
+
+    public JavaScriptNode createInitializeInstanceFields(JSContext context, JavaScriptNode target, JavaScriptNode source) {
+        return InitializeInstanceFieldsNode.create(context, target, source);
+    }
+
+    public JavaScriptNode createNewPrivateName(String description) {
+        return NewPrivateNameNode.create(description);
+    }
+
+    public JavaScriptNode createPrivateFieldGet(JSContext context, JavaScriptNode target, JavaScriptNode key) {
+        return PrivateFieldGetNode.create(target, key, context);
+    }
+
+    public JavaScriptNode createPrivateFieldSet(JSContext context, JavaScriptNode targetNode, JavaScriptNode indexNode, JavaScriptNode valueNode) {
+        return PrivateFieldSetNode.create(targetNode, indexNode, valueNode, context);
+    }
+
+    public ObjectLiteralMemberNode createPrivateFieldMember(JavaScriptNode keyNode, boolean isStatic, JavaScriptNode valueNode) {
+        return ObjectLiteralNode.newPrivateFieldMember(keyNode, isStatic, valueNode);
     }
 
     public JavaScriptNode createToPropertyKey(JavaScriptNode key) {

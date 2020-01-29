@@ -83,8 +83,6 @@ public final class JSModuleRecord extends ScriptOrModule {
     /** Lazily initialized import.meta object ({@code [[ImportMeta]]}). */
     private DynamicObject importMeta;
 
-    private Runnable finishTranslation;
-
     /**
      * Auxiliary field used during Instantiate and Evaluate only. If [[Status]] is "instantiating"
      * or "evaluating", this nonnegative number records the point at which the module was first
@@ -98,11 +96,10 @@ public final class JSModuleRecord extends ScriptOrModule {
      */
     private int dfsAncestorIndex;
 
-    public JSModuleRecord(Object module, JSContext context, JSModuleLoader moduleLoader, Source source, Runnable finishTranslation) {
+    public JSModuleRecord(Object module, JSContext context, JSModuleLoader moduleLoader, Source source) {
         super(context, source);
         this.module = module;
         this.moduleLoader = moduleLoader;
-        this.finishTranslation = finishTranslation;
         setUninstantiated();
     }
 
@@ -173,12 +170,6 @@ public final class JSModuleRecord extends ScriptOrModule {
         assert this.environment == null;
         assert this.frameDescriptor == environment.getFrameDescriptor();
         this.environment = environment;
-    }
-
-    public void finishTranslation() {
-        assert getStatus() == Status.Instantiating;
-        finishTranslation.run();
-        finishTranslation = null;
     }
 
     public int getDFSIndex() {

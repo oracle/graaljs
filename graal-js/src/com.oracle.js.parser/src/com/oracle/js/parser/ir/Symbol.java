@@ -97,6 +97,8 @@ public final class Symbol implements Comparable<Symbol> {
     public static final int IS_CATCH_PARAMETER = 1 << 15;
     /** Is this symbol a block function declaration? */
     public static final int IS_BLOCK_FUNCTION_DECLARATION = 1 << 16;
+    /** Is this symbol a private name? */
+    public static final int IS_PRIVATE_NAME = 1 << 17;
 
     /** Null or name identifying symbol. */
     private final String name;
@@ -354,5 +356,12 @@ public final class Symbol implements Comparable<Symbol> {
      */
     public boolean isBlockFunctionDeclaration() {
         return (flags & IS_BLOCK_FUNCTION_DECLARATION) != 0;
+    }
+
+    /**
+     * Is this symbol a private name.
+     */
+    public boolean isPrivateName() {
+        return (flags & IS_PRIVATE_NAME) != 0;
     }
 }

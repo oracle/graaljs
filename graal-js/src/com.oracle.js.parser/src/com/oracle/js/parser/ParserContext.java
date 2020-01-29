@@ -317,6 +317,23 @@ class ParserContext {
         return iterator.hasNext() ? iterator.next().getScope() : null;
     }
 
+    /**
+     * Returns the current class node or null if not inside a class.
+     */
+    public ParserContextClassNode getCurrentClass() {
+        final Iterator<ParserContextClassNode> iter = new NodeIterator<>(ParserContextClassNode.class);
+        return iter.hasNext() ? iter.next() : null;
+    }
+
+    /**
+     * Returns an iterator over all classes in the context, with the innermost class first.
+     *
+     * @return an iterator over all classes in the context.
+     */
+    public Iterator<ParserContextClassNode> getClasses() {
+        return new NodeIterator<>(ParserContextClassNode.class);
+    }
+
     private class NodeIterator<T extends ParserContextNode> implements Iterator<T> {
         private int index;
         private T next;
