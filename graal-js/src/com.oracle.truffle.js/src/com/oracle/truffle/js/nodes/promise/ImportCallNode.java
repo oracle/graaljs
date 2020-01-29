@@ -100,7 +100,7 @@ public class ImportCallNode extends JavaScriptNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        Object referencingScriptOrModule = activeScriptOrModuleNode.execute(frame);
+        Object referencingScriptOrModule = getActiveScriptOrModule(frame);
         Object specifier = argRefNode.execute(frame);
         String specifierString;
         try {
@@ -113,6 +113,14 @@ public class ImportCallNode extends JavaScriptNode {
             }
         }
         return hostImportModuleDynamically(referencingScriptOrModule, specifierString);
+    }
+
+    private Object getActiveScriptOrModule(VirtualFrame frame) {
+        if (activeScriptOrModuleNode != null) {
+            return activeScriptOrModuleNode.execute(frame);
+        } else {
+            return new ScriptOrModule(context, getEncapsulatingSourceSection().getSource());
+        }
     }
 
     private DynamicObject hostImportModuleDynamically(Object referencingScriptOrModule, String specifier) {
@@ -185,8 +193,9 @@ public class ImportCallNode extends JavaScriptNode {
                 String specifier = request.getSecond();
 
                 JSModuleRecord moduleRecord = context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, specifier);
-                context.getEvaluator().moduleInstantiation(moduleRecord);
-                context.getEvaluator().moduleEvaluation(context.getRealm(), moduleRecord);
+                JSRealm realm = context.getRealm();
+                context.getEvaluator().moduleInstantiation(realm, moduleRecord);
+                context.getEvaluator().moduleEvaluation(realm, moduleRecord);
                 return finishDynamicImport(moduleRecord, referencingScriptOrModule, specifier);
             }
 

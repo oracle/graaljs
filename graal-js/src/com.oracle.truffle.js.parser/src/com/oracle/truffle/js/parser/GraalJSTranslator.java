@@ -77,6 +77,7 @@ import com.oracle.js.parser.ir.LexicalContextNode;
 import com.oracle.js.parser.ir.LexicalContextScope;
 import com.oracle.js.parser.ir.LiteralNode;
 import com.oracle.js.parser.ir.Module;
+import com.oracle.js.parser.ir.Module.ImportEntry;
 import com.oracle.js.parser.ir.ObjectNode;
 import com.oracle.js.parser.ir.ParameterNode;
 import com.oracle.js.parser.ir.PropertyNode;
@@ -174,7 +175,6 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.Dead;
-import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
 
@@ -197,8 +197,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     protected final Source source;
     private final boolean isParentStrict;
 
-    protected GraalJSTranslator(NodeFactory factory, JSContext context, Source source, Environment environment, boolean isParentStrict) {
-        super(new LexicalContext());
+    protected GraalJSTranslator(LexicalContext lc, NodeFactory factory, JSContext context, Source source, Environment environment, boolean isParentStrict) {
+        super(lc);
         this.context = context;
         this.environment = environment;
         this.factory = factory;
@@ -293,7 +293,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return transform(functionNode);
     }
 
-    protected abstract GraalJSTranslator newTranslator(Environment env);
+    protected abstract GraalJSTranslator newTranslator(Environment env, LexicalContext savedLC);
 
     // ---
 
@@ -307,10 +307,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         boolean isArrowFunction = functionNode.isArrow();
         boolean isGeneratorFunction = functionNode.isGenerator();
         boolean isAsyncFunction = functionNode.isAsync();
-        boolean isDerivedConstructor = functionNode.isSubclassConstructor();
+        boolean isDerivedConstructor = functionNode.isDerivedConstructor();
 
         boolean isMethod = functionNode.isMethod();
-        boolean needsNewTarget = functionNode.needsNewTarget() || functionNode.hasDirectSuper();
+        boolean needsNewTarget = functionNode.needsNewTarget();
         boolean isClassConstructor = functionNode.isClassConstructor();
         boolean isConstructor = !isArrowFunction && !isGeneratorFunction && !isAsyncFunction && ((!isMethod || context.getEcmaScriptVersion() == 5) || isClassConstructor);
         assert !isDerivedConstructor || isConstructor;
@@ -352,9 +352,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             functionData = factory.createFunctionData(context, functionNode.getLength(), functionName, isConstructor, isDerivedConstructor, isStrict, isBuiltin,
                             needsParentFrame, isGeneratorFunction, isAsyncFunction, isClassConstructor, strictFunctionProperties, needsNewTarget);
 
+            LexicalContext savedLC = lc.copy();
             Environment parentEnv = environment;
             functionData.setLazyInit(fd -> {
-                GraalJSTranslator translator = newTranslator(parentEnv);
+                GraalJSTranslator translator = newTranslator(parentEnv, savedLC);
                 translator.translateFunctionOnDemand(functionNode, fd, isStrict, isArrowFunction, isGeneratorFunction, isAsyncFunction, isDerivedConstructor, isGlobal,
                                 needsNewTarget, needsParentFrame, functionName);
             });
@@ -363,7 +364,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             try (EnvironmentCloseable functionEnv = enterFunctionEnvironment(isStrict, isArrowFunction, isGeneratorFunction, isDerivedConstructor, isAsyncFunction, isGlobal)) {
                 FunctionEnvironment currentFunction = currentFunction();
                 currentFunction.setFunctionName(functionName);
-                currentFunction.setInternalFunctionName(!functionName.isEmpty() ? functionName : functionNode.getIdent().getName());
+                currentFunction.setInternalFunctionName(functionNode.getInternalName());
                 currentFunction.setNamedFunctionExpression(functionNode.isNamedFunctionExpression());
 
                 declareParameters(functionNode);
@@ -376,8 +377,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     declarations = functionEnvInit(functionNode);
                 } else if (functionNode.isModule()) {
                     assert currentFunction.isGlobal();
-                    declarations = setupModuleEnvironment(functionNode);
-                    verifyModuleLocalExports(functionNode.getBody());
+                    declarations = Collections.emptyList();
                 } else {
                     assert currentFunction.isGlobal();
                     declarations = collectGlobalVars(functionNode, isEval);
@@ -390,7 +390,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 boolean needsParentFrame = functionNode.usesAncestorScope();
                 currentFunction.setNeedsParentFrame(needsParentFrame);
 
-                JavaScriptNode body = translateFunctionBody(functionNode, isArrowFunction, isGeneratorFunction, isAsyncFunction, isDerivedConstructor, needsNewTarget, currentFunction, declarations);
+                JavaScriptNode body = translateFunctionBody(functionNode, isGeneratorFunction, isAsyncFunction, isDerivedConstructor, needsNewTarget, currentFunction, declarations);
 
                 needsParentFrame = currentFunction.needsParentFrame();
                 currentFunction.freeze();
@@ -408,8 +408,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
 
         JavaScriptNode functionExpression;
-        if (isArrowFunction && functionNode.needsThis()) {
-            JavaScriptNode thisNode = !currentFunction().isGlobal() ? environment.findThisVar().createReadNode() : factory.createAccessThis();
+        if (isArrowFunction && functionNode.needsThis() && !currentFunction().getNonArrowParentFunction().isDerivedConstructor()) {
+            JavaScriptNode thisNode = createThisNode();
             functionExpression = factory.createFunctionExpressionLexicalThis(functionData, functionRoot, thisNode);
         } else {
             functionExpression = factory.createFunctionExpression(functionData, functionRoot);
@@ -423,8 +423,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return functionExpression;
     }
 
-    JavaScriptNode translateFunctionBody(FunctionNode functionNode, boolean isArrowFunction, boolean isGeneratorFunction, boolean isAsyncFunction, boolean isDerivedConstructor,
-                    boolean needsNewTarget, FunctionEnvironment currentFunction, List<JavaScriptNode> declarations) {
+    JavaScriptNode translateFunctionBody(FunctionNode functionNode, boolean isGeneratorFunction, boolean isAsyncFunction, boolean isDerivedConstructor, boolean needsNewTarget,
+                    FunctionEnvironment currentFunction, List<JavaScriptNode> declarations) {
         JavaScriptNode body = transform(functionNode.getBody());
 
         if (!isGeneratorFunction) {
@@ -447,7 +447,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             body = prepareParameters(body);
         }
         if (currentFunction.getThisSlot() != null && !isDerivedConstructor) {
-            body = prepareThis(body, isArrowFunction);
+            body = prepareThis(body, functionNode);
         }
         if (currentFunction.getSuperSlot() != null) {
             body = prepareSuper(body);
@@ -457,7 +457,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
 
         if (isDerivedConstructor) {
-            JavaScriptNode getThisBinding = checkThisBindingInitialized(functionNode.hasDirectSuper() ? environment.findThisVar().createReadNode() : factory.createConstantUndefined());
+            JavaScriptNode getThisBinding = checkThisBindingInitialized(
+                            (functionNode.hasDirectSuper() || functionNode.hasEval() || functionNode.hasArrowEval()) ? environment.findThisVar().createReadNode() : factory.createConstantUndefined());
             body = factory.createDerivedConstructorResult(body, getThisBinding);
         }
 
@@ -469,7 +470,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         try (EnvironmentCloseable functionEnv = enterFunctionEnvironment(isStrict, isArrowFunction, isGeneratorFunction, isDerivedConstructor, isAsyncFunction, isGlobal)) {
             FunctionEnvironment currentFunction = currentFunction();
             currentFunction.setFunctionName(functionName);
-            currentFunction.setInternalFunctionName(!functionName.isEmpty() ? functionName : functionNode.getIdent().getName());
+            currentFunction.setInternalFunctionName(functionNode.getInternalName());
             currentFunction.setNamedFunctionExpression(functionNode.isNamedFunctionExpression());
 
             currentFunction.setNeedsParentFrame(needsParentFrame);
@@ -483,15 +484,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             currentFunction.freeze();
             assert currentFunction.isDeepFrozen();
 
-            assert getLexicalContext().isEmpty();
-            getLexicalContext().push(functionNode);
-            try {
-                JavaScriptNode body = translateFunctionBody(functionNode, isArrowFunction, isGeneratorFunction, isAsyncFunction, isDerivedConstructor, needsNewTarget,
-                                currentFunction, Collections.emptyList());
-                return createFunctionRoot(functionNode, functionData, currentFunction, body);
-            } finally {
-                getLexicalContext().pop(functionNode);
-            }
+            JavaScriptNode body = translateFunctionBody(functionNode, isGeneratorFunction, isAsyncFunction, isDerivedConstructor, needsNewTarget, currentFunction, Collections.emptyList());
+            return createFunctionRoot(functionNode, functionData, currentFunction, body);
         }
     }
 
@@ -547,10 +541,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode handleGeneratorBody(JavaScriptNode body) {
         assert currentFunction().isGeneratorFunction() && !currentFunction().isAsyncGeneratorFunction();
+        JavaScriptNode instrumentedBody = instrumentSuspendNodes(body);
+        if (lc.getCurrentFunction().isModule()) {
+            return factory.createModuleBody(instrumentedBody);
+        }
         VarRef yieldVar = environment.findYieldValueVar();
         JSWriteFrameSlotNode writeYieldValueNode = (JSWriteFrameSlotNode) yieldVar.createWriteNode(null);
         JSReadFrameSlotNode readYieldResultNode = JSTruffleOptions.YieldResultInFrame ? (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getYieldResultSlot()).createReadNode() : null;
-        JavaScriptNode instrumentedBody = instrumentSuspendNodes(body);
         return factory.createGeneratorBody(context, instrumentedBody, writeYieldValueNode, readYieldResultNode);
     }
 
@@ -823,13 +820,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (context.getEcmaScriptVersion() < 6 && (functionNode.isGetter() || functionNode.isSetter())) {
             // strip getter/setter name prefix in ES5 mode
             assert !functionNode.isAnonymous();
-            String name = functionNode.getIdent().getName();
+            String name = functionNode.getName();
             if ((functionNode.isGetter() && name.startsWith("get ")) || (functionNode.isSetter() && name.startsWith("set "))) {
                 name = name.substring(4);
             }
             return name;
         }
-        return !functionNode.isAnonymous() ? functionNode.getIdent().getName() : "";
+        return functionNode.getName();
     }
 
     private JavaScriptNode prepareParameters(JavaScriptNode body) {
@@ -896,15 +893,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             }
         }
 
-        // reserve this slot if function uses this or has a direct eval that might use this
-        if (functionNode.needsThis() && !(functionNode.isArrow() && currentFunction.getNonArrowParentFunction().isDerivedConstructor())) {
+        // reserve this slot if function uses this or has super(). arrow functions and direct eval
+        // in a derived class constructor must use the constructor's this slot.
+        if (functionNode.needsThis() && !((functionNode.isArrow() || currentFunction.isDirectEval()) && currentFunction.getNonArrowParentFunction().isDerivedConstructor())) {
             currentFunction.reserveThisSlot();
         }
-        if (functionNode.hasDirectSuper()) {
-            assert !functionNode.isArrow();
-            currentFunction.reserveThisSlot();
-        }
-        if (functionNode.usesSuper()) {
+        if (functionNode.needsSuper()) {
             // arrow functions need to access [[HomeObject]] from outer non-arrow scope
             // note: an arrow function using <super> also needs <this> access
             assert !functionNode.isArrow();
@@ -912,8 +906,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             currentFunction.reserveThisSlot();
             currentFunction.reserveSuperSlot();
         }
-        if (functionNode.needsNewTarget() || functionNode.hasDirectSuper()) {
+        if (functionNode.needsNewTarget()) {
             currentFunction.reserveNewTargetSlot();
+        }
+
+        if (functionNode.isClassConstructor() && lc.getCurrentClass().hasInstanceFields()) {
+            // always allocate this value to ensure InitializeInstanceFields is performed
+            currentFunction.reserveThisSlot();
         }
 
         if (functionNode.needsDynamicScope() && !currentFunction.isDirectEval()) {
@@ -939,6 +938,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 return true;
             }
 
+            @Override
+            public boolean enterAccessNode(AccessNode accessNode) {
+                if (accessNode.isPrivate()) {
+                    findSymbol(accessNode.getPrivateName());
+                }
+                return true;
+            }
+
             private void findSymbol(String varName) {
                 boolean local = true;
                 FunctionNode lastFunction = null;
@@ -946,7 +953,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     LexicalContextNode node = iterator.next();
                     if (node instanceof LexicalContextScope) {
                         Symbol foundSymbol = ((LexicalContextScope) node).getScope().getExistingSymbol(varName);
-                        if (foundSymbol != null && !(foundSymbol.isGlobal() || foundSymbol.isImportBinding())) {
+                        if (foundSymbol != null && !foundSymbol.isGlobal()) {
                             if (!local) {
                                 markUsesAncestorScopeUntil(lastFunction, true);
                             }
@@ -963,7 +970,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                             FunctionNode nonArrowFunction = lc.getCurrentNonArrowFunction();
                             // `this` is read from the arrow function object,
                             // unless `this` is supplied by a subclass constructor
-                            if (!varName.equals(Environment.THIS_NAME) || nonArrowFunction.isSubclassConstructor()) {
+                            if (!varName.equals(Environment.THIS_NAME) || nonArrowFunction.isDerivedConstructor()) {
                                 if (!nonArrowFunction.isProgram()) {
                                     markUsesAncestorScopeUntil(nonArrowFunction, false);
                                 }
@@ -974,6 +981,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                             assert local;
                             break;
                         } else if (function.hasEval() && !function.isProgram()) {
+                            if (!local) {
+                                markUsesAncestorScopeUntil(lastFunction, true);
+                            }
+                        } else if (function.isModule() && isImport(varName)) {
+                            // needed for GetActiveScriptOrModule()
                             if (!local) {
                                 markUsesAncestorScopeUntil(lastFunction, true);
                             }
@@ -994,6 +1006,16 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     case Environment.NEW_TARGET_NAME:
                     case Environment.SUPER_NAME:
                     case Environment.THIS_NAME:
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+
+            private boolean isImport(String varName) {
+                switch (varName) {
+                    case "import":
+                    case "import.meta":
                         return true;
                     default:
                         return false;
@@ -1074,10 +1096,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return visitor.directArgumentsAccess;
     }
 
-    static boolean isApply(CallNode callNode) {
-        return callNode.getFunction() instanceof AccessNode && ((AccessNode) callNode.getFunction()).getProperty().equals("apply");
-    }
-
     private static void markTerminalReturnNodes(com.oracle.js.parser.ir.Node node) {
         if (node instanceof Block && ((Block) node).isTerminal()) {
             Statement lastStatement = ((Block) node).getLastStatement();
@@ -1117,24 +1135,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return nodes;
     }
 
-    @SuppressWarnings("unused")
-    protected List<JavaScriptNode> setupModuleEnvironment(FunctionNode functionNode) {
-        throw new UnsupportedOperationException();
-    }
-
-    protected void createImportBinding(String localName, JSModuleRecord module, String bindingName) {
-        currentFunction().addImportBinding(localName, module, bindingName);
-    }
-
-    @SuppressWarnings("unused")
-    protected void verifyModuleLocalExports(Block moduleBodyBlock) {
-        throw new UnsupportedOperationException();
-    }
-
-    protected JavaScriptNode getActiveScriptOrModule() {
-        throw new UnsupportedOperationException();
-    }
-
     private JavaScriptNode prepareArguments(JavaScriptNode body) {
         VarRef argumentsVar = environment.findLocalVar(Environment.ARGUMENTS_NAME);
         boolean unmappedArgumentsObject = currentFunction().isStrictMode() || !currentFunction().hasSimpleParameterList();
@@ -1146,11 +1146,17 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return factory.createExprBlock(setArgumentsNode, body);
     }
 
-    private JavaScriptNode prepareThis(JavaScriptNode body, boolean isLexicalThis) {
+    private JavaScriptNode prepareThis(JavaScriptNode body, FunctionNode functionNode) {
+        // In a derived class constructor, we cannot get the this value from the arguments.
+        assert !currentFunction().getNonArrowParentFunction().isDerivedConstructor();
         VarRef thisVar = environment.findThisVar();
+        boolean isLexicalThis = functionNode.isArrow();
         JavaScriptNode getThisNode = isLexicalThis ? factory.createAccessLexicalThis() : factory.createAccessThis();
         if (!environment.isStrictMode() && !isLexicalThis) {
             getThisNode = factory.createPrepareThisBinding(context, getThisNode);
+        }
+        if (functionNode.isClassConstructor()) {
+            getThisNode = initializeInstanceFields(getThisNode);
         }
         JavaScriptNode setThisNode = thisVar.createWriteNode(getThisNode);
         return factory.createExprBlock(setThisNode, body);
@@ -1222,7 +1228,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
      * Initialize block-scoped symbols with a <i>dead</i> marker value.
      */
     private List<JavaScriptNode> createTemporalDeadZoneInit(Block block) {
-        if (!block.getScope().hasBlockScopedOrRedeclaredSymbols() || environment instanceof GlobalEnvironment) {
+        if ((!block.getScope().hasBlockScopedOrRedeclaredSymbols() && !block.isModuleBody()) || environment instanceof GlobalEnvironment) {
             return Collections.emptyList();
         }
 
@@ -1244,7 +1250,29 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 blockWithInit.add(findScopeVar(symbol.getName(), true).createWriteNode(outerVar));
             }
         }
+        if (block.isModuleBody()) {
+            createResolveImports(lc.getCurrentFunction(), blockWithInit);
+        }
         return blockWithInit;
+    }
+
+    private void createResolveImports(FunctionNode functionNode, List<JavaScriptNode> declarations) {
+        assert functionNode.isModule();
+
+        // Assert: all named exports from module are resolvable.
+        for (ImportEntry importEntry : functionNode.getModule().getImportEntries()) {
+            String moduleRequest = importEntry.getModuleRequest();
+            String localName = importEntry.getLocalName();
+            JSWriteFrameSlotNode writeLocalNode = (JSWriteFrameSlotNode) environment.findLocalVar(localName).createWriteNode(null);
+            JavaScriptNode thisModule = getActiveModule();
+            if (importEntry.getImportName().equals(Module.STAR_NAME)) {
+                assert functionNode.getBody().getScope().hasSymbol(localName) && functionNode.getBody().getScope().getExistingSymbol(localName).hasBeenDeclared();
+                declarations.add(factory.createResolveStarImport(context, thisModule, moduleRequest, writeLocalNode));
+            } else {
+                assert functionNode.getBody().getScope().hasSymbol(localName) && functionNode.getBody().getScope().getExistingSymbol(localName).isImportBinding();
+                declarations.add(factory.createResolveNamedImport(context, thisModule, moduleRequest, importEntry.getImportName(), writeLocalNode));
+            }
+        }
     }
 
     /**
@@ -1310,10 +1338,22 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private EnvironmentCloseable enterBlockEnvironment(Block block) {
         // Global lexical environment is shared by scripts (but not eval).
-        if (block.isFunctionBody() && lc.getCurrentFunction().isScript() && !currentFunction().isEval()) {
-            GlobalEnvironment globalEnv = new GlobalEnvironment(environment, factory, context);
-            setupGlobalEnvironment(globalEnv, block);
-            return new EnvironmentCloseable(globalEnv);
+        // Note: indirect eval creates a new environment for lexically-scoped declarations.
+        if (block.isFunctionBody() && lc.getCurrentFunction().isScript()) {
+            FunctionEnvironment currentFunction = currentFunction();
+            if (!currentFunction.isEval()) {
+                GlobalEnvironment globalEnv = new GlobalEnvironment(environment, factory, context);
+                setupGlobalEnvironment(globalEnv, block);
+                return new EnvironmentCloseable(globalEnv);
+            } else if (currentFunction.isIndirectEval()) {
+                GlobalEnvironment globalEnv = new GlobalEnvironment(environment, factory, context);
+                BlockEnvironment blockEnv = new BlockEnvironment(globalEnv, factory, context);
+                blockEnv.addFrameSlotsFromSymbols(block.getScope().getSymbols());
+                return new EnvironmentCloseable(blockEnv);
+            } else {
+                assert currentFunction.isDirectEval();
+                // We already have a global environment.
+            }
         }
 
         return enterBlockEnvironment(block.getScope());
@@ -1326,7 +1366,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
              * the function has parameter expressions, then the function body gets a separate scope
              * and we populate the env with parameter vars (cf. FunctionDeclarationInstantiation).
              */
-            if (scope.isFunctionTopScope()) {
+            if (scope.isFunctionTopScope() || scope.isEvalScope()) {
                 assert environment instanceof FunctionEnvironment;
                 boolean onlyBlockScoped = currentFunction().isCallerContextEval();
                 environment.addFrameSlotsFromSymbols(scope.getSymbols(), onlyBlockScoped);
@@ -1412,9 +1452,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else if (identNode.isSuper()) {
             result = enterIdentNodeSuper(identNode);
         } else if (identNode.isNewTarget()) {
-            result = enterNewTarget(identNode);
+            result = enterNewTarget();
         } else if (identNode.isImportMeta()) {
-            result = factory.createImportMeta(getActiveScriptOrModule());
+            result = enterImportMeta();
         } else {
             String varName = identNode.getName();
             VarRef varRef = findScopeVarCheckTDZ(varName, false);
@@ -1423,13 +1463,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return tagExpression(result, identNode);
     }
 
-    private JavaScriptNode enterNewTarget(IdentNode identNode) {
-        VarRef newTargetVar = environment.findNewTargetVar();
-        if (newTargetVar == null) {
-            // While parsing eval code, we do not know if there is an outer non-arrow function.
-            throw Errors.createSyntaxError(error(com.oracle.js.parser.ECMAErrors.getMessage("parser.error.new.target.in.function"), identNode.getToken(), lc));
-        }
-        return newTargetVar.createReadNode();
+    private JavaScriptNode enterNewTarget() {
+        return environment.findNewTargetVar().createReadNode();
     }
 
     private JavaScriptNode enterIdentNodeSuper(IdentNode identNode) {
@@ -1442,7 +1477,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else {
             // ES6 12.3.5.2 Runtime Semantics: GetSuperConstructor()
             assert identNode.isDirectSuper(); // super accesses should not reach here
-            JavaScriptNode activeFunction = factory.createAccessCallee(currentFunction().getArrowFunctionLevel());
+            JavaScriptNode activeFunction = factory.createAccessCallee(currentFunction().getThisFunctionLevel());
             JavaScriptNode superConstructor = factory.createGetPrototype(activeFunction);
             JavaScriptNode receiver = environment.findThisVar().createReadNode();
             return factory.createTargetableWrapper(factory.createRequireConstructor(superConstructor), receiver);
@@ -1450,7 +1485,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode createThisNode() {
-        return !currentFunction().isGlobal() ? checkThisBindingInitialized(environment.findThisVar().createReadNode()) : factory.createAccessThis();
+        return currentFunction().isGlobal() ? factory.createAccessThis() : checkThisBindingInitialized(environment.findThisVar().createReadNode());
+    }
+
+    private JavaScriptNode createThisNodeUnchecked() {
+        return currentFunction().isGlobal() ? factory.createAccessThis() : environment.findThisVar().createReadNode();
     }
 
     private JavaScriptNode checkThisBindingInitialized(JavaScriptNode accessThisNode) {
@@ -1459,6 +1498,22 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             return factory.createDerivedConstructorThis(accessThisNode);
         }
         return accessThisNode;
+    }
+
+    private JavaScriptNode enterImportMeta() {
+        return factory.createImportMeta(getActiveModule());
+    }
+
+    private JavaScriptNode getActiveModule() {
+        assert lc.inModule();
+        return factory.createAccessFrameArgument(currentFunction().getOutermostFunctionLevel(), 0);
+    }
+
+    private JavaScriptNode getActiveScriptOrModule() {
+        if (lc.inModule()) {
+            return getActiveModule();
+        }
+        return null;
     }
 
     private VarRef findScopeVar(String name, boolean skipWith) {
@@ -1940,6 +1995,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode createYieldNode(UnaryNode unaryNode) {
         FunctionEnvironment currentFunction = currentFunction();
         assert currentFunction.isGeneratorFunction();
+        if (lc.getCurrentFunction().isModule()) {
+            currentFunction.addYield();
+            return factory.createModuleYield();
+        }
+
         boolean asyncGeneratorYield = currentFunction.isAsyncFunction();
         boolean yieldStar = unaryNode.tokenType() == TokenType.YIELD_STAR;
 
@@ -2143,8 +2203,20 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         // => return factory.createWriteNode(thisVarNode, thisValueNode, context);
         VarRef tempVar = environment.createTempVar();
         JavaScriptNode uninitialized = factory.createBinary(context, BinaryOperation.IDENTICAL, thisVar.createReadNode(), factory.createConstantUndefined());
-        return factory.createIf(factory.createDual(context, tempVar.createWriteNode(thisValueNode), uninitialized), thisVar.createWriteNode(tempVar.createReadNode()),
+        return factory.createIf(factory.createDual(context, tempVar.createWriteNode(thisValueNode), uninitialized),
+                        initializeInstanceFields(thisVar.createWriteNode(tempVar.createReadNode())),
                         factory.createThrowError(JSErrorType.ReferenceError, "super() called twice"));
+    }
+
+    private JavaScriptNode initializeInstanceFields(JavaScriptNode thisValueNode) {
+        ClassNode classNode = lc.getCurrentClass();
+        if (!classNode.hasInstanceFields()) {
+            return thisValueNode;
+        }
+
+        JavaScriptNode functionObject = factory.createAccessCallee(currentFunction().getThisFunctionLevel());
+        JavaScriptNode fields = factory.createAccessClassFields(context, functionObject);
+        return factory.createInitializeInstanceFields(context, thisValueNode, fields);
     }
 
     private JavaScriptNode createCallDefaultNode(JavaScriptNode function, JavaScriptNode[] args) {
@@ -2152,13 +2224,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode createCallEvalNode(JavaScriptNode function, JavaScriptNode[] args) {
-        if (!currentFunction().isGlobal() && !currentFunction().isStrictMode() && !currentFunction().isDirectEval()) {
-            assert environment.function().isDynamicallyScoped();
-        }
+        assert (currentFunction().isGlobal() || currentFunction().isStrictMode() || currentFunction().isDirectEval()) || currentFunction().isDynamicallyScoped();
         for (FunctionEnvironment func = currentFunction(); func.getParentFunction() != null; func = func.getParentFunction()) {
             func.setNeedsParentFrame(true);
         }
-        return EvalNode.create(context, environment, function, args, createThisNode());
+        return EvalNode.create(context, function, args, createThisNodeUnchecked(), new DirectEvalContext(lc.getCurrentScope(), environment, lc.getCurrentClass()));
     }
 
     private JavaScriptNode createCallApplyArgumentsNode(JavaScriptNode function, JavaScriptNode[] args) {
@@ -2424,7 +2494,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode target = transform(accessNode.getBase());
 
         if (binaryOp == null) {
-            assignedNode = factory.createWriteProperty(target, accessNode.getProperty(), assignedValue, context, environment.isStrictMode());
+            assignedNode = createWriteProperty(accessNode, target, assignedValue);
         } else {
             JavaScriptNode target1;
             JavaScriptNode target2;
@@ -2438,7 +2508,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             }
 
             VarRef prevValueTemp = null;
-            JavaScriptNode readNode = tagExpression(factory.createReadProperty(context, target2, accessNode.getProperty()), accessNode);
+            JavaScriptNode readNode = tagExpression(createReadProperty(accessNode, target2), accessNode);
             if (convertToNumeric) {
                 readNode = factory.createToNumeric(readNode);
             }
@@ -2447,7 +2517,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 readNode = prevValueTemp.createWriteNode(readNode);
             }
             JavaScriptNode binOpNode = tagExpression(factory.createBinary(context, binaryOp, readNode, assignedValue), accessNode);
-            JavaScriptNode writeNode = factory.createWriteProperty(target1, accessNode.getProperty(), binOpNode, context, environment.isStrictMode());
+            JavaScriptNode writeNode = createWriteProperty(accessNode, target1, binOpNode);
             if (returnOldValue) {
                 assignedNode = factory.createDual(context, writeNode, prevValueTemp.createReadNode());
             } else {
@@ -2613,9 +2683,29 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     @Override
     public JavaScriptNode enterAccessNode(AccessNode accessNode) {
-        String propertyName = accessNode.getProperty();
         JavaScriptNode base = transform(accessNode.getBase());
-        return tagExpression(factory.createReadProperty(context, base, propertyName), accessNode);
+        JavaScriptNode read = createReadProperty(accessNode, base);
+        return tagExpression(read, accessNode);
+    }
+
+    private JavaScriptNode createReadProperty(AccessNode accessNode, JavaScriptNode base) {
+        if (accessNode.isPrivate()) {
+            return factory.createPrivateFieldGet(context, base, getPrivateName(accessNode.getPrivateName()));
+        } else {
+            return factory.createReadProperty(context, base, accessNode.getProperty());
+        }
+    }
+
+    private JavaScriptNode createWriteProperty(AccessNode accessNode, JavaScriptNode base, JavaScriptNode rhs) {
+        if (accessNode.isPrivate()) {
+            return factory.createPrivateFieldSet(context, base, getPrivateName(accessNode.getPrivateName()), rhs);
+        } else {
+            return factory.createWriteProperty(base, accessNode.getProperty(), rhs, context, environment.isStrictMode());
+        }
+    }
+
+    private JavaScriptNode getPrivateName(String privateName) {
+        return environment.findLocalVar(privateName).createReadNode();
     }
 
     @Override
@@ -2635,29 +2725,31 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         ArrayList<ObjectLiteralMemberNode> members = new ArrayList<>(properties.size());
         for (int i = 0; i < properties.size(); i++) {
             PropertyNode property = properties.get(i);
-            String keyName = property.getKeyName();
 
             final ObjectLiteralMemberNode member;
-            if (property.getValue() != null) {
-                member = enterObjectPropertyNode(property, keyName, isClass, classNameSymbol);
+            if (property.getValue() != null || property.isClassField()) {
+                member = enterObjectPropertyNode(property, isClass, classNameSymbol);
             } else if (property.isRest()) {
-                member = factory.createSpreadObjectMember(property.isStatic(), transform(((UnaryNode) property.getKey()).getExpression()));
+                assert !isClass;
+                JavaScriptNode from = transform(((UnaryNode) property.getKey()).getExpression());
+                member = factory.createSpreadObjectMember(property.isStatic(), from);
             } else {
-                member = enterObjectAccessorNode(property, keyName, isClass);
+                member = enterObjectAccessorNode(property, isClass);
             }
             members.add(member);
         }
         return members;
     }
 
-    private ObjectLiteralMemberNode enterObjectAccessorNode(PropertyNode property, String keyName, boolean isClass) {
+    private ObjectLiteralMemberNode enterObjectAccessorNode(PropertyNode property, boolean isClass) {
+        assert property.getGetter() != null || property.getSetter() != null;
         JavaScriptNode getter = getAccessor(property.getGetter());
         JavaScriptNode setter = getAccessor(property.getSetter());
         boolean enumerable = !isClass;
         if (property.isComputed()) {
             return factory.createComputedAccessorMember(transform(property.getKey()), property.isStatic(), enumerable, getter, setter);
         } else {
-            return factory.createAccessorMember(keyName, property.isStatic(), enumerable, getter, setter);
+            return factory.createAccessorMember(property.getKeyName(), property.isStatic(), enumerable, getter, setter);
         }
     }
 
@@ -2666,35 +2758,51 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             return null;
         }
         JavaScriptNode function = transform(accessorFunction);
-        if (accessorFunction.usesSuper()) {
+        if (accessorFunction.needsSuper()) {
             assert accessorFunction.isMethod();
             function = factory.createMakeMethod(context, function);
         }
         return function;
     }
 
-    private ObjectLiteralMemberNode enterObjectPropertyNode(PropertyNode property, String keyName, boolean isClass, Symbol classNameSymbol) {
+    private JavaScriptNode transformPropertyValue(Expression propertyValue, Symbol classNameSymbol) {
+        if (propertyValue == null) {
+            // class field without an initializer
+            return factory.createConstantUndefined();
+        }
+
         // TDZ: class name symbol cannot be used as a key but may be used as a value.
         if (classNameSymbol != null) {
             classNameSymbol.setHasBeenDeclared(true);
         }
-        JavaScriptNode value = transform(property.getValue());
+        JavaScriptNode value = transform(propertyValue);
         if (classNameSymbol != null) {
             classNameSymbol.setHasBeenDeclared(false);
         }
 
-        if (property.getValue() instanceof FunctionNode && ((FunctionNode) property.getValue()).usesSuper()) {
-            assert ((FunctionNode) property.getValue()).isMethod();
+        if (propertyValue instanceof FunctionNode && ((FunctionNode) propertyValue).needsSuper()) {
+            assert ((FunctionNode) propertyValue).isMethod();
             value = factory.createMakeMethod(context, value);
         }
-        boolean enumerable = !isClass;
+        return value;
+    }
+
+    private ObjectLiteralMemberNode enterObjectPropertyNode(PropertyNode property, boolean isClass, Symbol classNameSymbol) {
+        JavaScriptNode value = transformPropertyValue(property.getValue(), classNameSymbol);
+
+        boolean enumerable = !isClass || property.isClassField();
         if (property.isComputed()) {
-            return factory.createComputedDataMember(transform(property.getKey()), property.isStatic(), enumerable, value);
+            JavaScriptNode computedKey = transform(property.getKey());
+            return factory.createComputedDataMember(computedKey, property.isStatic(), enumerable, value, property.isClassField(), property.isAnonymousFunctionDefinition());
         } else if (!isClass && property.isProto()) {
-            return factory.createProtoMember(keyName, property.isStatic(), value);
+            return factory.createProtoMember(property.getKeyName(), property.isStatic(), value);
+        } else if (property.isPrivate()) {
+            JavaScriptNode key = getPrivateName(property.getPrivateName());
+            return factory.createPrivateFieldMember(key, property.isStatic(), value);
         } else {
+            String keyName = property.getKeyName();
             setAnonymousFunctionName(value, keyName);
-            return factory.createDataMember(keyName, property.isStatic(), enumerable, value);
+            return factory.createDataMember(keyName, property.isStatic(), enumerable, value, property.isClassField());
         }
     }
 
@@ -3032,24 +3140,37 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     @Override
     public JavaScriptNode enterClassNode(ClassNode classNode) {
-        try (EnvironmentCloseable blockEnv = enterBlockEnvironment(classNode.getScope())) {
-            JavaScriptNode classHeritage = transform(classNode.getClassHeritage());
-            JavaScriptNode classFunction = transform(classNode.getConstructor().getValue());
-
+        Scope classScope = classNode.getScope();
+        try (EnvironmentCloseable blockEnv = enterBlockEnvironment(classScope)) {
             String className = null;
             Symbol classNameSymbol = null;
             if (classNode.getIdent() != null) {
                 className = classNode.getIdent().getName();
-                classNameSymbol = classNode.getScope().getExistingSymbol(className);
+                classNameSymbol = classScope.getExistingSymbol(className);
             }
+
+            JavaScriptNode classHeritage = transform(classNode.getClassHeritage());
+            JavaScriptNode classFunction = transform(classNode.getConstructor().getValue());
 
             ArrayList<ObjectLiteralMemberNode> members = transformPropertyDefinitionList(classNode.getClassElements(), true, classNameSymbol);
 
             JavaScriptNode classDefinition = factory.createClassDefinition(context, (JSFunctionExpressionNode) classFunction, classHeritage,
-                            members.toArray(ObjectLiteralMemberNode.EMPTY), className);
+                            members.toArray(ObjectLiteralMemberNode.EMPTY), className, classNode.getInstanceFieldCount());
             if (className != null) {
                 classDefinition = ensureHasSourceSection(findScopeVar(className, true).createWriteNode(classDefinition), classNode);
             }
+
+            if (classNode.hasInstanceFields()) {
+                List<JavaScriptNode> init = new ArrayList<>();
+                for (Symbol symbol : classScope.getSymbols()) {
+                    if (symbol.isPrivateName()) {
+                        init.add(environment.findLocalVar(symbol.getName()).createWriteNode(factory.createNewPrivateName(symbol.getName())));
+                    }
+                }
+                init.add(classDefinition);
+                classDefinition = factory.createExprBlock(init.toArray(EMPTY_NODE_ARRAY));
+            }
+
             return tagExpression(blockEnv.wrapBlockScope(classDefinition), classNode);
         }
     }
@@ -3134,7 +3255,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         @Override
         public void close() {
             assert environment == newEnv;
-            assert prevEnv == newEnv.getParent() || prevEnv == newEnv || prevEnv instanceof EvalEnvironment;
             assert newEnv == prevEnv || !(newEnv instanceof BlockEnvironment) || wrappedInBlockScopeNode == 1;
             environment = prevEnv;
         }

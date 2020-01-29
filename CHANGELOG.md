@@ -4,6 +4,8 @@ This changelog summarizes major changes between GraalVM versions of the GraalVM 
 The main focus is on user-observable behavior of the engine.
 
 ## Version 20.0.0
+* Implemented the [class fields](https://github.com/tc39/proposal-class-fields) proposal for public and private instance fields. This feature is available by default in Node.js and can be enabled using the experimental option `js.class-fields`.
+* Added option `js.global-arguments` (default: true) for the non-standard `arguments` global property (disabled in Node.js).
 * Updated Node.js to version 12.15.0.
 * Added `name` property to anonymous functions.
 * `String.prototype.matchAll` is available in ECMAScript 2020 mode (`--js.ecmascript-version=2020`) only.

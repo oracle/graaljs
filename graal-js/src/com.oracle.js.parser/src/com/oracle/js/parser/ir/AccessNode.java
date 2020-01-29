@@ -51,6 +51,9 @@ public final class AccessNode extends BaseNode {
     /** Property name. */
     private final String property;
 
+    /** Private member access. */
+    private final boolean isPrivate;
+
     /**
      * Constructor
      *
@@ -59,14 +62,21 @@ public final class AccessNode extends BaseNode {
      * @param base base node
      * @param property property
      */
-    public AccessNode(final long token, final int finish, final Expression base, final String property) {
-        super(token, finish, base, false, false);
+    public AccessNode(final long token, final int finish, final Expression base, final String property, final boolean isSuper, final boolean isPrivate) {
+        super(token, finish, base, false, isSuper);
         this.property = property;
+        this.isPrivate = isPrivate;
+        assert !(isSuper && isPrivate);
+    }
+
+    public AccessNode(final long token, final int finish, final Expression base, final String property) {
+        this(token, finish, base, property, false, false);
     }
 
     private AccessNode(final AccessNode accessNode, final Expression base, final String property, final boolean isFunction, final boolean isSuper) {
         super(accessNode, base, isFunction, isSuper);
         this.property = property;
+        this.isPrivate = accessNode.isPrivate;
     }
 
     /**
@@ -111,6 +121,15 @@ public final class AccessNode extends BaseNode {
      * @return the property name
      */
     public String getProperty() {
+        return property;
+    }
+
+    public boolean isPrivate() {
+        return isPrivate;
+    }
+
+    public String getPrivateName() {
+        assert isPrivate();
         return property;
     }
 

@@ -220,6 +220,10 @@ public final class JSContextOptions {
     @Option(name = GLOBAL_PROPERTY_NAME, category = OptionCategory.USER, help = "Provide 'global' global property.") //
     public static final OptionKey<Boolean> GLOBAL_PROPERTY = new OptionKey<>(false);
 
+    public static final String GLOBAL_ARGUMENTS_NAME = JS_OPTION_PREFIX + "global-arguments";
+    @Option(name = GLOBAL_ARGUMENTS_NAME, category = OptionCategory.USER, help = "Provide 'arguments' global property.") //
+    public static final OptionKey<Boolean> GLOBAL_ARGUMENTS = new OptionKey<>(true);
+
     public static final String CONSOLE_NAME = JS_OPTION_PREFIX + "console";
     @Option(name = CONSOLE_NAME, category = OptionCategory.USER, help = "Provide 'console' global property.") //
     public static final OptionKey<Boolean> CONSOLE = new OptionKey<>(true);
@@ -316,6 +320,11 @@ public final class JSContextOptions {
     public static final String BIGINT_NAME = JS_OPTION_PREFIX + "bigint";
     @Option(name = BIGINT_NAME, category = OptionCategory.USER, help = "Provide an implementation of the BigInt proposal.") //
     public static final OptionKey<Boolean> BIGINT = new OptionKey<>(true);
+
+    public static final String CLASS_FIELDS_NAME = JS_OPTION_PREFIX + "class-fields";
+    @Option(name = CLASS_FIELDS_NAME, category = OptionCategory.USER, help = "Enable the class public and private fields proposal.") //
+    public static final OptionKey<Boolean> CLASS_FIELDS = new OptionKey<>(false);
+    public static final int CLASS_FIELDS_ES_VERSION = JSTruffleOptions.ECMAScript2021;
 
     public static final String REGEX_DUMP_AUTOMATA_NAME = JS_OPTION_PREFIX + "regex.dump-automata";
     @Option(name = REGEX_DUMP_AUTOMATA_NAME, category = OptionCategory.INTERNAL, help = "Produce ASTs and automata in JSON, DOT (GraphViz) and LaTeX formats.") //
@@ -629,6 +638,11 @@ public final class JSContextOptions {
     public boolean isGlobalProperty() {
         CompilerAsserts.neverPartOfCompilation("Context patchable option global-property was assumed not to be accessed in compiled code.");
         return GLOBAL_PROPERTY.getValue(optionValues);
+    }
+
+    public boolean isGlobalArguments() {
+        CompilerAsserts.neverPartOfCompilation("Context patchable option " + GLOBAL_ARGUMENTS_NAME + " was assumed not to be accessed in compiled code.");
+        return GLOBAL_ARGUMENTS.getValue(optionValues);
     }
 
     public boolean isConsole() {

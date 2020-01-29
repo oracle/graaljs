@@ -827,7 +827,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
      */
     @TruffleBoundary
     public static PropertyDescriptor ordinaryGetOwnPropertyArray(DynamicObject thisObj, Object key) {
-        assert JSRuntime.isPropertyKey(key) || key instanceof HiddenKey;
+        assert JSRuntime.isPropertyKey(key);
 
         long idx = JSRuntime.propertyKeyToArrayIndex(key);
         if (JSRuntime.isArrayIndex(idx)) {

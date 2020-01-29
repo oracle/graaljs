@@ -70,6 +70,15 @@ public final class PropertyNode extends Node {
 
     private final boolean proto;
 
+    private final boolean classField;
+
+    private final boolean isAnonymousFunctionDefinition;
+
+    public PropertyNode(long token, int finish, Expression key, Expression value, FunctionNode getter, FunctionNode setter,
+                    boolean isStatic, boolean computed, boolean coverInitializedName, boolean proto) {
+        this(token, finish, key, value, getter, setter, isStatic, computed, coverInitializedName, proto, false, false);
+    }
+
     /**
      * Constructor
      *
@@ -81,7 +90,7 @@ public final class PropertyNode extends Node {
      * @param setter setter function body
      */
     public PropertyNode(long token, int finish, Expression key, Expression value, FunctionNode getter, FunctionNode setter,
-                    boolean isStatic, boolean computed, boolean coverInitializedName, boolean proto) {
+                    boolean isStatic, boolean computed, boolean coverInitializedName, boolean proto, boolean classField, boolean isAnonymousFunctionDefinition) {
         super(token, finish);
         this.key = key;
         this.value = value;
@@ -91,6 +100,8 @@ public final class PropertyNode extends Node {
         this.computed = computed;
         this.coverInitializedName = coverInitializedName;
         this.proto = proto;
+        this.classField = classField;
+        this.isAnonymousFunctionDefinition = isAnonymousFunctionDefinition;
     }
 
     private PropertyNode(PropertyNode propertyNode, Expression key, Expression value, FunctionNode getter, FunctionNode setter,
@@ -104,6 +115,8 @@ public final class PropertyNode extends Node {
         this.computed = computed;
         this.coverInitializedName = coverInitializedName;
         this.proto = proto;
+        this.classField = propertyNode.classField;
+        this.isAnonymousFunctionDefinition = propertyNode.isAnonymousFunctionDefinition;
     }
 
     /**
@@ -280,5 +293,22 @@ public final class PropertyNode extends Node {
 
     public boolean isRest() {
         return key != null && key.isTokenType(TokenType.SPREAD_OBJECT);
+    }
+
+    public boolean isClassField() {
+        return classField;
+    }
+
+    public boolean isAnonymousFunctionDefinition() {
+        return isAnonymousFunctionDefinition;
+    }
+
+    public boolean isPrivate() {
+        return key instanceof IdentNode && ((IdentNode) key).isPrivate();
+    }
+
+    public String getPrivateName() {
+        assert isPrivate();
+        return ((IdentNode) key).getName();
     }
 }

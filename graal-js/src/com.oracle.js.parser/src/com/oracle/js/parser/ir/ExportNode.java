@@ -50,49 +50,52 @@ public class ExportNode extends Node {
 
     private final FromNode from;
 
+    private final IdentNode exportIdent;
+
     private final VarNode var;
 
     private final Expression expression;
 
     private final boolean isDefault;
 
-    public ExportNode(final long token, final int start, final int finish, final ExportClauseNode exportClause) {
-        this(token, start, finish, exportClause, null, null, null, false);
-    }
-
     public ExportNode(final long token, final int start, final int finish, final FromNode from) {
-        this(token, start, finish, null, from, null, null, false);
+        this(token, start, finish, null, from, null, null, null, false);
     }
 
     public ExportNode(final long token, final int start, final int finish, final ExportClauseNode exportClause, final FromNode from) {
-        this(token, start, finish, exportClause, from, null, null, false);
+        this(token, start, finish, exportClause, from, null, null, null, false);
     }
 
-    public ExportNode(final long token, final int start, final int finish, final Expression expression, final boolean isDefault) {
-        this(token, start, finish, null, null, null, expression, isDefault);
+    public ExportNode(final long token, final int start, final int finish, final IdentNode ident, final Expression expression, final boolean isDefault) {
+        this(token, start, finish, null, null, ident, null, expression, isDefault);
     }
 
-    public ExportNode(final long token, final int start, final int finish, final VarNode var) {
-        this(token, start, finish, null, null, var, null, false);
+    public ExportNode(final long token, final int start, final int finish, final IdentNode ident, final VarNode var) {
+        this(token, start, finish, null, null, ident, var, null, false);
     }
 
     private ExportNode(final long token, final int start, final int finish, final ExportClauseNode exportClause,
-                    final FromNode from, final VarNode var, final Expression expression, final boolean isDefault) {
+                    final FromNode from, final IdentNode exportIdent, final VarNode var, final Expression expression, final boolean isDefault) {
         super(token, start, finish);
         this.exportClause = exportClause;
         this.from = from;
+        this.exportIdent = exportIdent;
         this.var = var;
         this.expression = expression;
         this.isDefault = isDefault;
+        assert (exportClause != null || from != null) != (exportIdent != null);
+        assert !isDefault || (exportClause == null && from == null);
+        assert (exportIdent == null && var == null && expression == null) || isDefault || (exportIdent != null && exportIdent == getIdent(var, expression));
     }
 
     private ExportNode(final ExportNode node, final ExportClauseNode exportClause,
-                    final FromNode from, final VarNode var, final Expression expression) {
+                    final FromNode from, final IdentNode exportIdent, final VarNode var, final Expression expression) {
         super(node);
         this.isDefault = node.isDefault;
 
         this.exportClause = exportClause;
         this.from = from;
+        this.exportIdent = exportIdent;
         this.var = var;
         this.expression = expression;
     }
@@ -103,6 +106,10 @@ public class ExportNode extends Node {
 
     public FromNode getFrom() {
         return from;
+    }
+
+    public IdentNode getExportIdentifier() {
+        return exportIdent;
     }
 
     public VarNode getVar() {
@@ -118,49 +125,47 @@ public class ExportNode extends Node {
     }
 
     public ExportNode setExportClause(ExportClauseNode exportClause) {
+        assert exportIdent == null;
         if (this.exportClause == exportClause) {
             return this;
         }
-        return new ExportNode(this, exportClause, from, var, expression);
+        return new ExportNode(this, exportClause, from, exportIdent, var, expression);
     }
 
     public ExportNode setFrom(FromNode from) {
+        assert exportIdent == null;
         if (this.from == from) {
             return this;
         }
-        return new ExportNode(this, exportClause, from, var, expression);
-    }
-
-    public ExportNode setVar(VarNode var) {
-        if (this.var == var) {
-            return this;
-        }
-        return new ExportNode(this, exportClause, from, var, expression);
-    }
-
-    public ExportNode setExpression(Expression expression) {
-        if (this.expression == expression) {
-            return this;
-        }
-        return new ExportNode(this, exportClause, from, var, expression);
+        return new ExportNode(this, exportClause, from, exportIdent, var, expression);
     }
 
     @Override
     public Node accept(NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterExportNode(this)) {
-            ExportClauseNode newExportClause = exportClause == null ? null
-                            : (ExportClauseNode) exportClause.accept(visitor);
-            FromNode newFrom = from == null ? null
-                            : (FromNode) from.accept(visitor);
-            VarNode newVar = var == null ? null
-                            : (VarNode) var.accept(visitor);
-            Expression newExpression = expression == null ? null
-                            : (Expression) expression.accept(visitor);
-            return visitor.leaveExportNode(
-                            setExportClause(newExportClause).setFrom(newFrom).setVar(newVar).setExpression(newExpression));
+            ExportClauseNode newExportClause = exportClause == null ? null : (ExportClauseNode) exportClause.accept(visitor);
+            FromNode newFrom = from == null ? null : (FromNode) from.accept(visitor);
+            VarNode newVar = var == null ? null : (VarNode) var.accept(visitor);
+            Expression newExpression = expression == null ? null : (Expression) expression.accept(visitor);
+            IdentNode newIdent = (exportIdent == null || isDefault()) ? exportIdent : getIdent(newVar, newExpression);
+            ExportNode newNode = (this.exportClause == newExportClause && this.from == newFrom && this.exportIdent == newIdent && this.var == newVar && this.expression == newExpression)
+                            ? this
+                            : new ExportNode(this, exportClause, from, exportIdent, var, expression);
+            return visitor.leaveExportNode(newNode);
         }
 
         return this;
+    }
+
+    private static IdentNode getIdent(VarNode newVar, Expression newExpression) {
+        if (newVar != null) {
+            return newVar.getName();
+        } else if (newExpression instanceof FunctionNode) {
+            return ((FunctionNode) newExpression).getIdent();
+        } else if (newExpression instanceof ClassNode) {
+            return ((ClassNode) newExpression).getIdent();
+        }
+        return null;
     }
 
     @Override

@@ -55,6 +55,7 @@ import org.graalvm.collections.EconomicMap;
 public final class Scope {
     private final Scope parent;
     private final int type;
+    private final int flags;
 
     private static final int BLOCK_SCOPE = 1 << 0;
     private static final int FUNCTION_BODY_SCOPE = 1 << 1;
@@ -64,6 +65,17 @@ public final class Scope {
     private static final int MODULE_SCOPE = 1 << 5;
     private static final int FUNCTION_TOP_SCOPE = 1 << 6;
     private static final int SWITCH_BLOCK_SCOPE = 1 << 7;
+    private static final int CLASS_SCOPE = 1 << 8;
+    private static final int EVAL_SCOPE = 1 << 9;
+
+    /** Scope is in a function context. {@code new.target} is available. */
+    private static final int IN_FUNCTION = 1 << 16;
+    /** Scope is in a method context. Super property accesses are allowed. */
+    private static final int IN_METHOD = 1 << 17;
+    /** Scope is in a derived class constructor. Super calls are allowed. */
+    private static final int IN_DERIVED_CONSTRUCTOR = 1 << 18;
+    /** Scope is in a class field initializer. 'arguments' is not allowed. */
+    private static final int IS_CLASS_FIELD_INITIALIZER = 1 << 19;
 
     /** Symbol table - keys must be returned in the order they were put in. */
     protected final EconomicMap<String, Symbol> symbols;
@@ -74,14 +86,33 @@ public final class Scope {
     private int declaredNames;
     private boolean closed;
 
-    private Scope(Scope parent, int type) {
+    private Scope(Scope parent, int type, int flags) {
         this.parent = parent;
         this.type = type | (isFunctionTopScope(type, parent) ? FUNCTION_TOP_SCOPE : 0);
         this.symbols = EconomicMap.create();
+        this.flags = flags;
+    }
+
+    private Scope(Scope parent, int type) {
+        this(parent, type, parent == null ? 0 : parent.flags);
     }
 
     private static boolean isFunctionTopScope(int type, Scope parent) {
         return (type & FUNCTION_PARAMETER_SCOPE) != 0 || ((type & FUNCTION_BODY_SCOPE) != 0 && (parent == null || !parent.isFunctionParameterScope()));
+    }
+
+    private static int computeFlags(Scope parent, int functionFlags) {
+        if ((functionFlags & FunctionNode.IS_ARROW) != 0) {
+            // propagate flags from enclosing function scope.
+            return parent.flags;
+        } else {
+            int flags = 0;
+            flags |= IN_FUNCTION;
+            flags |= ((functionFlags & FunctionNode.IS_METHOD) != 0) ? IN_METHOD : 0;
+            flags |= ((functionFlags & FunctionNode.IS_DERIVED_CONSTRUCTOR) != 0) ? IN_DERIVED_CONSTRUCTOR : 0;
+            flags |= ((functionFlags & FunctionNode.IS_CLASS_FIELD_INITIALIZER) != 0) ? IS_CLASS_FIELD_INITIALIZER : 0;
+            return flags;
+        }
     }
 
     public static Scope createGlobal() {
@@ -92,8 +123,8 @@ public final class Scope {
         return new Scope(null, FUNCTION_BODY_SCOPE | MODULE_SCOPE);
     }
 
-    public static Scope createFunctionBody(Scope parent) {
-        return new Scope(parent, FUNCTION_BODY_SCOPE);
+    public static Scope createFunctionBody(Scope parent, int functionFlags) {
+        return new Scope(parent, FUNCTION_BODY_SCOPE, computeFlags(parent, functionFlags));
     }
 
     public static Scope createBlock(Scope parent) {
@@ -104,12 +135,20 @@ public final class Scope {
         return new Scope(parent, CATCH_PARAMETER_SCOPE);
     }
 
-    public static Scope createParameter(Scope parent) {
-        return new Scope(parent, FUNCTION_PARAMETER_SCOPE);
+    public static Scope createParameter(Scope parent, int functionFlags) {
+        return new Scope(parent, FUNCTION_PARAMETER_SCOPE, computeFlags(parent, functionFlags));
     }
 
     public static Scope createSwitchBlock(Scope parent) {
         return new Scope(parent, BLOCK_SCOPE | SWITCH_BLOCK_SCOPE);
+    }
+
+    public static Scope createClass(Scope parent) {
+        return new Scope(parent, BLOCK_SCOPE | CLASS_SCOPE);
+    }
+
+    public static Scope createEval(Scope parent, boolean strict) {
+        return new Scope(parent, EVAL_SCOPE | (strict ? FUNCTION_BODY_SCOPE : 0));
     }
 
     public Scope getParent() {
@@ -155,21 +194,20 @@ public final class Scope {
     /**
      * Add or overwrite an existing symbol in the block
      */
-    public void putSymbol(final Symbol symbol) {
+    public Symbol putSymbol(final Symbol symbol) {
         assert !closed : "scope is closed";
         Symbol existing = symbols.put(symbol.getName(), symbol);
         if (existing != null) {
             assert (existing.getFlags() & Symbol.KINDMASK) == (symbol.getFlags() & Symbol.KINDMASK) : symbol;
-            return;
+            return existing;
         }
-        if (!symbol.isImportBinding()) {
-            if (symbol.isBlockScoped() || symbol.isVarRedeclaredHere()) {
-                blockScopedOrRedeclaredSymbols++;
-            }
-            if (symbol.isBlockScoped() || (symbol.isVar() && !symbol.isParam())) {
-                declaredNames++;
-            }
+        if (symbol.isBlockScoped() || symbol.isVarRedeclaredHere()) {
+            blockScopedOrRedeclaredSymbols++;
         }
+        if (symbol.isBlockScoped() || (symbol.isVar() && !symbol.isParam())) {
+            declaredNames++;
+        }
+        return null;
     }
 
     public boolean hasBlockScopedOrRedeclaredSymbols() {
@@ -237,7 +275,7 @@ public final class Scope {
     }
 
     public VarNode verifyHoistedVarDeclarations() {
-        if (hoistedVarDeclarations == null) {
+        if (!hasHoistedVarDeclarations()) {
             // nothing to do
             return null;
         }
@@ -259,6 +297,10 @@ public final class Scope {
         return null;
     }
 
+    public boolean hasHoistedVarDeclarations() {
+        return hoistedVarDeclarations != null;
+    }
+
     public void recordHoistableBlockFunctionDeclaration(final VarNode functionDeclaration, final Scope scope) {
         assert functionDeclaration.isFunctionDeclaration() && functionDeclaration.isBlockScoped();
         if (hoistableBlockFunctionDeclarations == null) {
@@ -278,11 +320,11 @@ public final class Scope {
             String varName = functionDecl.getName().getName();
             for (Scope current = functionDeclScope.getParent(); current != null; current = current.getParent()) {
                 Symbol existing = current.getExistingSymbol(varName);
-                if (existing != null && ((existing.isBlockScoped() && !existing.isCatchParameter()) || existing.isParam())) {
-                    // lexical declaration or parameter found, do not hoist
+                if (existing != null && (existing.isBlockScoped() && !existing.isCatchParameter())) {
+                    // lexical declaration found, do not hoist
                     continue next;
                 }
-                if (current.isFunctionTopScope()) {
+                if (current.isFunctionBodyScope()) {
                     break;
                 }
             }
@@ -292,6 +334,32 @@ public final class Scope {
             }
             functionDeclScope.getExistingSymbol(varName).setHoistedBlockFunctionDeclaration();
         }
+    }
+
+    /**
+     * Add a private bound identifier.
+     *
+     * @return true if the private name was added, false if it was already declared (duplicate name)
+     */
+    public boolean addPrivateName(String name) {
+        assert isClassScope();
+        // Register a declared private name.
+        if (hasSymbol(name)) {
+            assert getExistingSymbol(name).isPrivateName();
+            return false;
+        } else {
+            putSymbol(new Symbol(name, Symbol.IS_CONST | Symbol.IS_PRIVATE_NAME | Symbol.HAS_BEEN_DECLARED));
+            return true;
+        }
+    }
+
+    public boolean findPrivateName(String name) {
+        for (Scope current = this; current != null; current = current.parent) {
+            if (current.hasSymbol(name)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean isBlockScope() {
@@ -324,6 +392,30 @@ public final class Scope {
 
     public boolean isSwitchBlockScope() {
         return (type & SWITCH_BLOCK_SCOPE) != 0;
+    }
+
+    public boolean isClassScope() {
+        return (type & CLASS_SCOPE) != 0;
+    }
+
+    public boolean isEvalScope() {
+        return (type & EVAL_SCOPE) != 0;
+    }
+
+    public boolean inFunction() {
+        return (flags & IN_FUNCTION) != 0;
+    }
+
+    public boolean inMethod() {
+        return (flags & IN_METHOD) != 0;
+    }
+
+    public boolean inDerivedConstructor() {
+        return (flags & IN_DERIVED_CONSTRUCTOR) != 0;
+    }
+
+    public boolean inClassFieldInitializer() {
+        return (flags & IS_CLASS_FIELD_INITIALIZER) != 0;
     }
 
     /**
@@ -361,6 +453,10 @@ public final class Scope {
             return "Catch";
         } else if (isSwitchBlockScope()) {
             return "Switch";
+        } else if (isClassScope()) {
+            return "Class";
+        } else if (isEvalScope()) {
+            return "Eval";
         }
         return "";
     }

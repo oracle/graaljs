@@ -41,10 +41,8 @@
 package com.oracle.truffle.js.parser.env;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Map;
 import java.util.NoSuchElementException;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -56,7 +54,6 @@ import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.control.BreakTarget;
 import com.oracle.truffle.js.nodes.control.ContinueTarget;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 
 public class FunctionEnvironment extends Environment {
     private static final String RETURN_SLOT_IDENTIFIER = "<return>";
@@ -108,8 +105,6 @@ public class FunctionEnvironment extends Environment {
     private boolean simpleParameterList = true;
     private boolean isDynamicallyScoped;
     private final boolean inDirectEval;
-
-    private Map<String, ImportBindingRef> importBindings;
 
     public FunctionEnvironment(Environment parent, NodeFactory factory, JSContext context,
                     boolean isStrictMode, boolean isEval, boolean isDirectEval, boolean isArrowFunction, boolean isGeneratorFunction, boolean isDerivedConstructor, boolean isAsyncFunction,
@@ -435,10 +430,10 @@ public class FunctionEnvironment extends Environment {
     }
 
     public final FunctionEnvironment getNonArrowParentFunction() {
-        if (!isArrowFunction()) {
-            return this;
+        if (isArrowFunction() || isDirectEval()) {
+            return getParentFunction().getNonArrowParentFunction();
         }
-        return getParentFunction(getArrowFunctionLevel());
+        return this;
     }
 
     @Override
@@ -582,8 +577,27 @@ public class FunctionEnvironment extends Environment {
         return isDerivedConstructor;
     }
 
-    public int getArrowFunctionLevel() {
-        return isArrowFunction ? 1 + getParentFunction().getArrowFunctionLevel() : 0;
+    /**
+     * Returns the number of function levels to skip to reach the function with the [[ThisValue]].
+     * Loosely resembles GetThisEnvironment(), but we need to consider eval functions, too.
+     */
+    public int getThisFunctionLevel() {
+        int level = 0;
+        for (FunctionEnvironment currentFunction = this; currentFunction.isArrowFunction() || currentFunction.isDirectEval(); currentFunction = currentFunction.getParentFunction(), level++) {
+            currentFunction.setNeedsParentFrame(true);
+        }
+        return level;
+    }
+
+    /**
+     * Returns the number of frame levels to skip to reach the outermost function (module/script).
+     */
+    public int getOutermostFunctionLevel() {
+        int level = 0;
+        for (FunctionEnvironment currentFunction = this; currentFunction.getParentFunction() != null; currentFunction = currentFunction.getParentFunction(), level++) {
+            currentFunction.setNeedsParentFrame(true);
+        }
+        return level;
     }
 
     public boolean isAsyncFunction() {
@@ -592,18 +606,5 @@ public class FunctionEnvironment extends Environment {
 
     public boolean isAsyncGeneratorFunction() {
         return isAsyncFunction && isGeneratorFunction;
-    }
-
-    public void addImportBinding(String localName, JSModuleRecord module, String bindingName) {
-        Map<String, ImportBindingRef> map = importBindings;
-        if (map == null) {
-            importBindings = map = new HashMap<>();
-        }
-        map.put(localName, new ImportBindingRef(localName, module, bindingName));
-    }
-
-    public VarRef getImportBinding(String localName) {
-        Map<String, ImportBindingRef> map = importBindings;
-        return map != null ? map.get(localName) : null;
     }
 }

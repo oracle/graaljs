@@ -110,8 +110,11 @@ public final class ScriptEnvironment {
     /** Are Annex B Web Compatibility extensions enabled? */
     final boolean annexB;
 
+    /** Is class field support enabled. */
+    final boolean classFields;
+
     private ScriptEnvironment(boolean strict, int ecmaScriptVersion, boolean emptyStatements, boolean syntaxExtensions, boolean scripting, boolean shebang,
-                    boolean constAsVar, boolean allowBigInt, boolean annexB, FunctionStatementBehavior functionStatementBehavior, PrintWriter dumpOnError) {
+                    boolean constAsVar, boolean allowBigInt, boolean annexB, boolean classFields, FunctionStatementBehavior functionStatementBehavior, PrintWriter dumpOnError) {
         this.namespace = new Namespace();
         this.err = dumpOnError;
 
@@ -126,6 +129,7 @@ public final class ScriptEnvironment {
         this.ecmaScriptVersion = ecmaScriptVersion;
         this.allowBigInt = allowBigInt;
         this.annexB = annexB;
+        this.classFields = classFields;
     }
 
     /**
@@ -165,6 +169,7 @@ public final class ScriptEnvironment {
         private boolean strict;
         private boolean allowBigInt;
         private boolean annexB = true;
+        private boolean classFields = true;
         private FunctionStatementBehavior functionStatementBehavior = FunctionStatementBehavior.ERROR;
         private PrintWriter dumpOnError;
 
@@ -216,6 +221,11 @@ public final class ScriptEnvironment {
             return this;
         }
 
+        public Builder classFields(boolean classFields) {
+            this.classFields = classFields;
+            return this;
+        }
+
         public Builder functionStatementBehavior(FunctionStatementBehavior functionStatementBehavior) {
             this.functionStatementBehavior = functionStatementBehavior;
             return this;
@@ -228,7 +238,7 @@ public final class ScriptEnvironment {
 
         public ScriptEnvironment build() {
             return new ScriptEnvironment(strict, ecmaScriptVersion, emptyStatements, syntaxExtensions, scripting, shebang, constAsVar, allowBigInt, annexB,
-                            functionStatementBehavior, dumpOnError);
+                            classFields, functionStatementBehavior, dumpOnError);
         }
     }
 }
