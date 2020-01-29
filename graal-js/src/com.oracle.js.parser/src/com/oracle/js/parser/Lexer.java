@@ -1694,10 +1694,12 @@ public class Lexer extends Scanner {
         assert isPrivateIdentifierStart(ch0);
         skip(1);
 
-        scanIdentifier();
-
-        // Add PrivateIdentifier token.
-        add(TokenType.PRIVATE_IDENT, start);
+        if (scanIdentifier() != 0) {
+            // Add PrivateIdentifier token.
+            add(TokenType.PRIVATE_IDENT, start);
+        } else {
+            add(ERROR, start);
+        }
     }
 
     /**
