@@ -826,6 +826,10 @@ public class Parser extends AbstractParser {
         return env.ecmaScriptVersion >= 11;
     }
 
+    private boolean isClassFields() {
+        return ES2020_CLASS_FIELDS && env.classFields;
+    }
+
     private static boolean isArguments(final String name) {
         return ARGUMENTS_NAME.equals(name);
     }
@@ -1676,7 +1680,7 @@ public class Parser extends AbstractParser {
 
     private IdentNode parsePrivateIdentifier() {
         assert type == TokenType.PRIVATE_IDENT;
-        if (!isES2020()) {
+        if (!isClassFields()) {
             throw error(AbstractParser.message("unexpected.token", type.getNameOrType()));
         }
 
@@ -1721,7 +1725,7 @@ public class Parser extends AbstractParser {
     }
 
     private boolean isClassFieldDefinition(final TokenType nameTokenType) {
-        if (!ES2020_CLASS_FIELDS || !isES2020()) {
+        if (!isClassFields()) {
             return false;
         }
 

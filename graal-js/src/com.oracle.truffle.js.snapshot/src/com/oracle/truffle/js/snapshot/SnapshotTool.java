@@ -57,6 +57,7 @@ import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.parser.JavaScriptTranslator;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
@@ -95,7 +96,7 @@ public class SnapshotTool {
 
         SnapshotTool snapshotTool = new SnapshotTool();
         if (!srcFiles.isEmpty() && outDir != null) {
-            try (Context polyglotContext = Context.newBuilder(JavaScriptLanguage.ID).allowIO(true).build()) {
+            try (Context polyglotContext = Context.newBuilder(JavaScriptLanguage.ID).allowIO(true).allowExperimentalOptions(true).option(JSContextOptions.CLASS_FIELDS_NAME, "true").build()) {
                 polyglotContext.initialize(JavaScriptLanguage.ID);
                 polyglotContext.enter();
                 for (String srcFile : srcFiles) {

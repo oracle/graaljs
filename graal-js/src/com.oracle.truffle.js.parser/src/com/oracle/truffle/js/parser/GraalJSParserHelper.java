@@ -174,6 +174,7 @@ public final class GraalJSParserHelper {
         builder.constAsVar(parserOptions.isConstAsVar());
         builder.allowBigInt(parserOptions.isAllowBigInt());
         builder.annexB(parserOptions.isAnnexB());
+        builder.classFields(parserOptions.isClassFields());
         if (parserOptions.isFunctionStatementError()) {
             builder.functionStatementBehavior(FunctionStatementBehavior.ERROR);
         } else {

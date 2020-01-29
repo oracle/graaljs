@@ -321,6 +321,11 @@ public final class JSContextOptions {
     @Option(name = BIGINT_NAME, category = OptionCategory.USER, help = "Provide an implementation of the BigInt proposal.") //
     public static final OptionKey<Boolean> BIGINT = new OptionKey<>(true);
 
+    public static final String CLASS_FIELDS_NAME = JS_OPTION_PREFIX + "class-fields";
+    @Option(name = CLASS_FIELDS_NAME, category = OptionCategory.USER, help = "Enable the class public and private fields proposal.") //
+    public static final OptionKey<Boolean> CLASS_FIELDS = new OptionKey<>(false);
+    public static final int CLASS_FIELDS_ES_VERSION = JSTruffleOptions.ECMAScript2021;
+
     public static final String REGEX_DUMP_AUTOMATA_NAME = JS_OPTION_PREFIX + "regex.dump-automata";
     @Option(name = REGEX_DUMP_AUTOMATA_NAME, category = OptionCategory.INTERNAL, help = "Produce ASTs and automata in JSON, DOT (GraphViz) and LaTeX formats.") //
     public static final OptionKey<Boolean> REGEX_DUMP_AUTOMATA = new OptionKey<>(false);

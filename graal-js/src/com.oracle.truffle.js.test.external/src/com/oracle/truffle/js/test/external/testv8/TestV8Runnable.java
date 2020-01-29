@@ -114,8 +114,13 @@ public class TestV8Runnable extends TestRunnable {
         TestFile.EcmaVersion ecmaVersion = testFile.getEcmaVersion();
         if (ecmaVersion == null) {
             boolean requiresES2020 = flags.contains(HARMONY_IMPORT_META) || flags.contains(HARMONY_DYNAMIC_IMPORT) || flags.contains(HARMONY_NUMERIC_SEPARATOR) ||
-                            flags.contains(HARMONY_PROMISE_ALL_SETTLED) || flags.contains(HARMONY_PUBLIC_FIELDS) || flags.contains(HARMONY_PRIVATE_FIELDS);
+                            flags.contains(HARMONY_PROMISE_ALL_SETTLED);
             ecmaVersion = TestFile.EcmaVersion.forVersions(requiresES2020 ? JSTruffleOptions.ECMAScript2020 : JSTruffleOptions.LatestECMAScriptVersion);
+        }
+
+        if (flags.contains(HARMONY_PUBLIC_FIELDS) || flags.contains(HARMONY_PRIVATE_FIELDS) ||
+                        (ecmaVersion.getMinVersion() != null && ecmaVersion.getMinVersion() >= JSTruffleOptions.ECMAScript2020)) {
+            extraOptions.put(JSContextOptions.CLASS_FIELDS_NAME, "true");
         }
 
         // now run it

@@ -2068,7 +2068,7 @@ public class Lexer extends Scanner {
             } else if (isTemplateDelimiter(ch0) && scripting) {
                 // Scan and add an exec string ('`') in scripting mode.
                 scanString(true);
-            } else if (isPrivateIdentifierStart(ch0) && isES2020()) {
+            } else if (isPrivateIdentifierStart(ch0)) {
                 // Scan and add a PrivateIdentifier
                 scanPrivateIdentifier();
             } else {

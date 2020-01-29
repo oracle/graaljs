@@ -303,7 +303,6 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
                cwd=_suite.dir)
         if not (hasattr(self.args, "jdt") and self.args.jdt and not self.args.force_javac):
             mx.run_java(['-cp', mx.classpath([snapshotToolDistribution]),
-                    '-Dpolyglot.js.ecmascript-version=2020',
                     mx.distribution(snapshotToolDistribution).mainClass,
                     '--binary', '--outdir=' + outputDirBin, '--indir=' + outputDirBin] + ['--file=' + m for m in moduleSet],
                     cwd=outputDirBin)
