@@ -134,7 +134,6 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Child private JSToStringNode toStringNode;
         @Child private JSToIntegerNode toIntegerNode;
-        @Child private JSToNumberNode toNumberNode;
 
         protected Number getNumberValue(DynamicObject obj) {
             return JSNumber.valueOf(obj);
@@ -158,14 +157,6 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 toIntegerNode = insert(JSToIntegerNode.create());
             }
             return toIntegerNode.executeInt(target);
-        }
-
-        protected Number toNumber(Object target) {
-            if (toNumberNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toNumberNode = insert(JSToNumberNode.create());
-            }
-            return toNumberNode.executeNumber(target);
         }
     }
 
@@ -484,8 +475,9 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = {"isJSNumber(thisNumber)", "!isUndefined(precision)"})
-        protected String toPrecision(DynamicObject thisNumber, Object precision) {
-            long lPrecision = JSRuntime.toInteger(toNumber(precision));
+        protected String toPrecision(DynamicObject thisNumber, Object precision,
+                        @Shared("toNumber") @Cached("create()") JSToNumberNode toNumberNode) {
+            long lPrecision = JSRuntime.toInteger(toNumberNode.executeNumber(precision));
             double thisNumberVal = getDoubleValue(thisNumber);
             return toPrecisionIntl(thisNumberVal, lPrecision);
         }
@@ -497,8 +489,9 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = {"isJavaNumber(thisNumber)", "!isUndefined(precision)"})
-        protected String toPrecisionPrimitive(Object thisNumber, Object precision) {
-            long lPrecision = JSRuntime.toInteger(toNumber(precision));
+        protected String toPrecisionPrimitive(Object thisNumber, Object precision,
+                        @Shared("toNumber") @Cached("create()") JSToNumberNode toNumberNode) {
+            long lPrecision = JSRuntime.toInteger(toNumberNode.executeNumber(precision));
             double thisNumberVal = JSRuntime.doubleValue((Number) thisNumber);
             return toPrecisionIntl(thisNumberVal, lPrecision);
         }
