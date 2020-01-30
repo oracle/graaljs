@@ -78,6 +78,7 @@ public class TestV8Runnable extends TestRunnable {
     private static final String HARMONY_SHAREDARRAYBUFFER = "--harmony-sharedarraybuffer";
     private static final String HARMONY_PUBLIC_FIELDS = "--harmony-public-fields";
     private static final String HARMONY_PRIVATE_FIELDS = "--harmony-private-fields";
+    private static final String HARMONY_NAMESPACE_EXPORTS = "--harmony-namespace-exports";
 
     private static final String FLAGS_PREFIX = "// Flags: ";
     private static final Pattern FLAGS_FIND_PATTERN = Pattern.compile("// Flags: (.*)");
@@ -114,7 +115,7 @@ public class TestV8Runnable extends TestRunnable {
         TestFile.EcmaVersion ecmaVersion = testFile.getEcmaVersion();
         if (ecmaVersion == null) {
             boolean requiresES2020 = flags.contains(HARMONY_IMPORT_META) || flags.contains(HARMONY_DYNAMIC_IMPORT) || flags.contains(HARMONY_NUMERIC_SEPARATOR) ||
-                            flags.contains(HARMONY_PROMISE_ALL_SETTLED);
+                            flags.contains(HARMONY_PROMISE_ALL_SETTLED) || flags.contains(HARMONY_NAMESPACE_EXPORTS);
             ecmaVersion = TestFile.EcmaVersion.forVersions(requiresES2020 ? JSTruffleOptions.ECMAScript2020 : JSTruffleOptions.LatestECMAScriptVersion);
         }
 
