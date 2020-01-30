@@ -42,6 +42,9 @@ package com.oracle.truffle.js.runtime.objects;
 
 import java.util.Objects;
 
+import com.oracle.js.parser.ir.Module;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 /**
  * Result of the {@code ResolveExport} method of module records.
  */
@@ -63,10 +66,16 @@ public abstract class ExportResolution {
         return false;
     }
 
+    public boolean isNamespace() {
+        return false;
+    }
+
+    @TruffleBoundary
     public JSModuleRecord getModule() {
         throw new UnsupportedOperationException();
     }
 
+    @TruffleBoundary
     public String getBindingName() {
         throw new UnsupportedOperationException();
     }
@@ -103,6 +112,11 @@ public abstract class ExportResolution {
         @Override
         public String getBindingName() {
             return bindingName;
+        }
+
+        @Override
+        public boolean isNamespace() {
+            return bindingName.equals(Module.NAMESPACE_EXPORT_BINDING_NAME);
         }
 
         @Override

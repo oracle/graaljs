@@ -178,6 +178,9 @@ public final class JSModuleNamespace extends JSBuiltinObject {
             // Module has not been linked yet.
             throw Errors.createReferenceErrorNotDefined(binding.getBindingName(), null);
         }
+        if (binding.isNamespace()) {
+            return targetModule.getContext().getEvaluator().getModuleNamespace(targetModule);
+        }
         FrameSlot frameSlot = targetEnv.getFrameDescriptor().findFrameSlot(binding.getBindingName());
         if (JSFrameUtil.hasTemporalDeadZone(frameSlot) && targetEnv.isObject(frameSlot) && FrameUtil.getObjectSafe(targetEnv, frameSlot) == Dead.instance()) {
             // If it is an uninitialized binding, throw a ReferenceError

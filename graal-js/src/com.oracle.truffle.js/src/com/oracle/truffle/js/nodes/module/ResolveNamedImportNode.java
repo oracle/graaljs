@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.module;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.control.StatementNode;
@@ -63,6 +64,7 @@ public class ResolveNamedImportNode extends StatementNode {
     private final String importName;
     @Child private JavaScriptNode moduleNode;
     @Child private JSWriteFrameSlotNode writeLocalNode;
+    private final ValueProfile resolutionProfile = ValueProfile.createClassProfile();
 
     ResolveNamedImportNode(JSContext context, JavaScriptNode moduleNode, String moduleRequest, String importName, JSWriteFrameSlotNode writeLocalNode) {
         this.context = context;
@@ -82,12 +84,18 @@ public class ResolveNamedImportNode extends StatementNode {
         Evaluator evaluator = context.getEvaluator();
         JSModuleRecord importedModule = evaluator.hostResolveImportedModule(context, referencingScriptOrModule, moduleRequest);
         // Let resolution be importedModule.ResolveExport(in.[[ImportName]], << >>, << >>).
-        ExportResolution resolution = evaluator.resolveExport(importedModule, importName);
+        ExportResolution resolution = resolutionProfile.profile(evaluator.resolveExport(importedModule, importName));
         // If resolution is null or resolution is "ambiguous", throw SyntaxError.
         if (resolution.isNull() || resolution.isAmbiguous()) {
             throw Errors.createSyntaxError("Could not resolve import entry", this);
         }
-        writeLocalNode.executeWrite(frame, resolution);
+        Object resolutionOrNamespace;
+        if (resolution.isNamespace()) {
+            resolutionOrNamespace = evaluator.getModuleNamespace(resolution.getModule());
+        } else {
+            resolutionOrNamespace = resolution;
+        }
+        writeLocalNode.executeWrite(frame, resolutionOrNamespace);
         return EMPTY;
     }
 

@@ -409,19 +409,20 @@ public final class GraalJSEvaluator implements JSParser {
         }
         for (ExportEntry exportEntry : module.getIndirectExportEntries()) {
             if (exportEntry.getExportName().equals(exportName)) {
-                // Assert: module imports a specific binding for this export.
                 JSModuleRecord importedModule = hostResolveImportedModule(referencingModule, exportEntry.getModuleRequest());
-                ExportResolution indirectResolution = resolveExport(importedModule, exportEntry.getImportName(), resolveSet);
-                if (!indirectResolution.isNull()) {
-                    return indirectResolution;
+                if (exportEntry.getImportName().equals(Module.STAR_NAME)) {
+                    // Assert: module does not provide the direct binding for this export.
+                    return ExportResolution.resolved(importedModule, Module.NAMESPACE_EXPORT_BINDING_NAME);
+                } else {
+                    // Assert: module imports a specific binding for this export.
+                    return resolveExport(importedModule, exportEntry.getImportName(), resolveSet);
                 }
             }
         }
         if (exportName.equals(Module.DEFAULT_NAME)) {
             // Assert: A default export was not explicitly defined by this module.
-            // Throw a SyntaxError exception.
-            // NOTE A default export cannot be provided by an export *.
-            throw Errors.createSyntaxError("A default export cannot be provided by an export *");
+            return ExportResolution.notFound();
+            // NOTE: A default export cannot be provided by an `export *` or `export * from "mod"`.
         }
         ExportResolution starResolution = ExportResolution.notFound();
         for (ExportEntry exportEntry : module.getStarExportEntries()) {
