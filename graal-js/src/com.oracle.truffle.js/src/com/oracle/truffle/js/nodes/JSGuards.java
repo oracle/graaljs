@@ -62,6 +62,7 @@ import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
+import com.oracle.truffle.js.runtime.builtins.JSFinalizationGroup;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSListFormat;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
@@ -438,6 +439,14 @@ public final class JSGuards {
 
     public static boolean isJSWeakRef(Object value) {
         return JSWeakRef.isJSWeakRef(value);
+    }
+
+    public static boolean isJSFinalizationGroup(DynamicObject value) {
+        return JSFinalizationGroup.isJSFinalizationGroup(value);
+    }
+
+    public static boolean isJSFinalizationGroup(Object value) {
+        return JSFinalizationGroup.isJSFinalizationGroup(value);
     }
 
     public static boolean isJSWeakMap(DynamicObject value) {

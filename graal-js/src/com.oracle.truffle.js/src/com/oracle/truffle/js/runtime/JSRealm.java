@@ -110,6 +110,7 @@ import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.builtins.JSFinalizationGroup;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
@@ -262,6 +263,8 @@ public class JSRealm {
     private final DynamicObject javaImporterPrototype;
     private final DynamicObject proxyConstructor;
     private final DynamicObject proxyPrototype;
+    private final DynamicObject finalizationGroupConstructor;
+    private final DynamicObject finalizationGroupPrototype;
 
     private final DynamicObject iteratorPrototype;
     private final DynamicObject arrayIteratorPrototype;
@@ -272,6 +275,7 @@ public class JSRealm {
     private final DynamicObject regExpStringIteratorPrototype;
     private final DynamicObject enumerateIteratorPrototype;
     private final DynamicObject forInIteratorPrototype;
+    private final DynamicObject finalizationGroupCleanupIteratorPrototype;
 
     @CompilationFinal(dimensions = 1) private final JSConstructor[] simdTypeConstructors;
 
@@ -448,11 +452,6 @@ public class JSRealm {
             ctor = JSSet.createConstructor(this);
             this.setConstructor = ctor.getFunctionObject();
             this.setPrototype = ctor.getPrototype();
-
-            ctor = JSWeakRef.createConstructor(this);
-            this.weakRefConstructor = ctor.getFunctionObject();
-            this.weakRefPrototype = ctor.getPrototype();
-
             ctor = JSWeakMap.createConstructor(this);
             this.weakMapConstructor = ctor.getFunctionObject();
             this.weakMapPrototype = ctor.getPrototype();
@@ -472,8 +471,6 @@ public class JSRealm {
             this.mapPrototype = null;
             this.setConstructor = null;
             this.setPrototype = null;
-            this.weakRefConstructor = null;
-            this.weakRefPrototype = null;
             this.weakMapConstructor = null;
             this.weakMapPrototype = null;
             this.weakSetConstructor = null;
@@ -595,6 +592,26 @@ public class JSRealm {
             this.asyncGeneratorFunctionConstructor = null;
             this.asyncGeneratorFunctionPrototype = null;
             this.asyncGeneratorObjectPrototype = null;
+        }
+
+        boolean es12 = context.getContextOptions().getEcmaScriptVersion() >= 12;
+        if (es12) {
+            ctor = JSWeakRef.createConstructor(this);
+            this.weakRefConstructor = ctor.getFunctionObject();
+            this.weakRefPrototype = ctor.getPrototype();
+
+            ctor = JSFinalizationGroup.createConstructor(this);
+            this.finalizationGroupConstructor = ctor.getFunctionObject();
+            this.finalizationGroupPrototype = ctor.getPrototype();
+
+            this.finalizationGroupCleanupIteratorPrototype = JSFinalizationGroup.createCleanupIteratorPrototype(this);
+
+        } else {
+            this.weakRefConstructor = null;
+            this.weakRefPrototype = null;
+            this.finalizationGroupConstructor = null;
+            this.finalizationGroupPrototype = null;
+            this.finalizationGroupCleanupIteratorPrototype = null;
         }
 
         boolean nashornCompat = context.isOptionNashornCompatibilityMode();
@@ -854,6 +871,14 @@ public class JSRealm {
         return weakRefPrototype;
     }
 
+    public final DynamicObject getFinalizationGroupConstructor() {
+        return finalizationGroupConstructor;
+    }
+
+    public final DynamicObject getFinalizationGroupPrototype() {
+        return finalizationGroupPrototype;
+    }
+
     public final DynamicObject getWeakMapConstructor() {
         return weakMapConstructor;
     }
@@ -958,6 +983,10 @@ public class JSRealm {
 
     public final DynamicObject getForInIteratorPrototype() {
         return forInIteratorPrototype;
+    }
+
+    public final DynamicObject getFinalizationGroupCleanupIteratorPrototype() {
+        return finalizationGroupCleanupIteratorPrototype;
     }
 
     public final DynamicObject getGeneratorObjectPrototype() {
@@ -1212,6 +1241,7 @@ public class JSRealm {
         }
         if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2021) {
             putGlobalProperty(JSWeakRef.CLASS_NAME, getWeakRefConstructor());
+            putGlobalProperty(JSFinalizationGroup.CLASS_NAME, getFinalizationGroupConstructor());
         }
         if (context.getContextOptions().isGraalBuiltin()) {
             putGraalObject();
