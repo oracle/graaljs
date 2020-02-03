@@ -1557,6 +1557,7 @@ public class Parser extends AbstractParser {
             ArrayList<PropertyNode> classElements = new ArrayList<>();
             Map<ClassElementKey, Integer> keyToIndexMap = new HashMap<>();
             int instanceFieldCount = 0;
+            int staticFieldCount = 0;
             for (;;) {
                 if (type == SEMICOLON) {
                     next();
@@ -1589,9 +1590,13 @@ public class Parser extends AbstractParser {
                 final Expression classElementName = classElementName(yield, await);
 
                 PropertyNode classElement;
-                if (!generator && !async && !isStatic && isClassFieldDefinition(nameTokenType)) {
+                if (!generator && !async && isClassFieldDefinition(nameTokenType)) {
                     classElement = fieldDefinition(classElementName, isStatic, classElementToken, computed);
-                    instanceFieldCount++;
+                    if (isStatic) {
+                        staticFieldCount++;
+                    } else {
+                        instanceFieldCount++;
+                    }
                 } else {
                     if (privateIdent) {
                         // private methods not supported yet
@@ -1665,7 +1670,7 @@ public class Parser extends AbstractParser {
                 throw error(AbstractParser.message("invalid.private.ident"), invalidPrivateIdent.getToken());
             }
             classScope.close();
-            return new ClassNode(classToken, classFinish, className, classHeritage, constructor, classElements, classScope, instanceFieldCount);
+            return new ClassNode(classToken, classFinish, className, classHeritage, constructor, classElements, classScope, instanceFieldCount, staticFieldCount);
         } finally {
             lc.pop(classNode);
         }
@@ -1843,6 +1848,9 @@ public class Parser extends AbstractParser {
             String name = ((PropertyKey) propertyName).getPropertyName();
             if (CONSTRUCTOR_NAME.equals(name) || PRIVATE_CONSTRUCTOR_NAME.equals(name)) {
                 throw error(AbstractParser.message("constructor.field"), startToken);
+            }
+            if (isStatic && PROTOTYPE_NAME.equals(name)) {
+                throw error(AbstractParser.message("static.prototype.field"), startToken);
             }
         }
 

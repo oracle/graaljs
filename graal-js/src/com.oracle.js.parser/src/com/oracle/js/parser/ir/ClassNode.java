@@ -57,6 +57,7 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
     private final List<PropertyNode> classElements;
     private final Scope scope;
     private final int instanceFieldCount;
+    private final int staticFieldCount;
 
     /**
      * Constructor.
@@ -65,7 +66,7 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
      * @param finish finish
      */
     public ClassNode(final long token, final int finish, final IdentNode ident, final Expression classHeritage, final PropertyNode constructor, final List<PropertyNode> classElements,
-                    final Scope scope, final int instanceFieldCount) {
+                    final Scope scope, final int instanceFieldCount, final int staticFieldCount) {
         super(token, finish);
         this.ident = ident;
         this.classHeritage = classHeritage;
@@ -73,7 +74,9 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         this.classElements = classElements;
         this.scope = scope;
         this.instanceFieldCount = instanceFieldCount;
-        assert instanceFieldCount == instanceFieldCount(classElements);
+        this.staticFieldCount = staticFieldCount;
+        assert instanceFieldCount == fieldCount(classElements, false);
+        assert staticFieldCount == fieldCount(classElements, true);
     }
 
     private ClassNode(final ClassNode classNode, final IdentNode ident, final Expression classHeritage, final PropertyNode constructor, final List<PropertyNode> classElements) {
@@ -83,13 +86,14 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         this.constructor = constructor;
         this.classElements = classElements;
         this.scope = classNode.scope;
-        this.instanceFieldCount = instanceFieldCount(classElements);
+        this.instanceFieldCount = fieldCount(classElements, false);
+        this.staticFieldCount = fieldCount(classElements, true);
     }
 
-    private static int instanceFieldCount(List<PropertyNode> classElements) {
+    private static int fieldCount(List<PropertyNode> classElements, boolean isStatic) {
         int count = 0;
         for (PropertyNode classElement : classElements) {
-            if (classElement.isClassField()) {
+            if (classElement.isClassField() && classElement.isStatic() == isStatic) {
                 count++;
             }
         }
@@ -181,6 +185,14 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
 
     public int getInstanceFieldCount() {
         return instanceFieldCount;
+    }
+
+    public boolean hasStaticFields() {
+        return staticFieldCount != 0;
+    }
+
+    public int getStaticFieldCount() {
+        return staticFieldCount;
     }
 
     @Override
