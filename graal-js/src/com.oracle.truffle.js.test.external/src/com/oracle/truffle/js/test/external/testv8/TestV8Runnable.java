@@ -83,6 +83,7 @@ public class TestV8Runnable extends TestRunnable {
     private static final String FLAGS_PREFIX = "// Flags: ";
     private static final Pattern FLAGS_FIND_PATTERN = Pattern.compile("// Flags: (.*)");
     private static final Pattern FLAGS_SPLIT_PATTERN = Pattern.compile("\\s+");
+    private static final String MODULE_FILE_EXT = ".mjs";
 
     public TestV8Runnable(TestSuite suite, TestFile testFile) {
         super(suite, testFile);
@@ -95,7 +96,7 @@ public class TestV8Runnable extends TestRunnable {
         List<String> code = TestSuite.readFileContentList(file);
         boolean negative = isNegativeTest(code);
         boolean shouldThrow = shouldThrow(code);
-        boolean module = isModule(code);
+        boolean module = testFile.getFilePath().endsWith(MODULE_FILE_EXT);
         Set<String> flags = getFlags(code);
 
         Map<String, String> extraOptions = new HashMap<>(2);
@@ -274,15 +275,6 @@ public class TestV8Runnable extends TestRunnable {
     private static boolean shouldThrow(List<String> scriptCode) {
         for (String line : scriptCode) {
             if (line.contains("--throws")) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean isModule(List<String> scriptCode) {
-        for (String line : scriptCode) {
-            if (line.startsWith("// MODULE")) {
                 return true;
             }
         }
