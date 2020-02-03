@@ -100,9 +100,14 @@ namespace v8 {
         jobject java_buffer = graal_isolate->JNIGetObjectFieldOrCall(java_array_buffer, GraalAccessField::array_buffer_byte_buffer, GraalAccessMethod::array_buffer_get_contents);
         JNIEnv* env = graal_isolate->GetJNIEnv();
         ArrayBuffer::Contents contents;
-        contents.data_ = env->GetDirectBufferAddress(java_buffer);
-        contents.byte_length_ = env->GetDirectBufferCapacity(java_buffer);
-        env->DeleteLocalRef(java_buffer);
+        if (java_buffer == nullptr) {
+            contents.data_ = nullptr;
+            contents.byte_length_ = 0;
+        } else {
+            contents.data_ = env->GetDirectBufferAddress(java_buffer);
+            contents.byte_length_ = env->GetDirectBufferCapacity(java_buffer);
+            env->DeleteLocalRef(java_buffer);
+        }
         return contents;
     }
 
