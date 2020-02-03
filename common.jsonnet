@@ -87,6 +87,7 @@
   windows: common + {
     packages+: {
       'pip:ninja_syntax': '==1.7.2',
+      'devkit:VS2017-15.5.5+1': '==0',
     },
     downloads+: {
       NASM: {name: 'nasm', version: '2.14.02', platformspecific: true},
@@ -94,26 +95,16 @@
     environment+: {
       PATH: '$PATH;$NASM',
     },
+    setup+: {
+      ['set-export', 'GYP_MSVS_OVERRIDE_PATH', '$VS2017_15_5_5_1_0_ROOT'],
+      ['set-export', 'GYP_MSVS_VERSION', '2017'],
+    },
     capabilities: ['windows', 'amd64'],
   },
 
   windows_vs2010: self.windows + {
-    packages : {
-      msvc : '==10.0',
-    },
-    setup+: {
-      ['set-export', 'GYP_MSVS_OVERRIDE_PATH', '$MSVC_10_0_ROOT'],
-      ['set-export', 'GYP_MSVS_VERSION', '2010'],
-    },
-  },
-
-  windows_vs2017: self.windows + {
     packages+: {
-      'devkit:VS2017-15.5.5+1': '==0',
-    },
-    setup+: {
-      ['set-export', 'GYP_MSVS_OVERRIDE_PATH', '$VS2017_15_5_5_1_0_ROOT'],
-      ['set-export', 'GYP_MSVS_VERSION', '2017'],
+      msvc : '==10.0',
     },
   },
 }

@@ -173,8 +173,8 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
     def clean(self, forBuild=False):
         if not forBuild:
             if _currentOs == 'windows':
-                if exists (self._build_dir):
-                  mx.run([join(mx.library('NINJA').extract_path, 'ninja.exe'), '-C', self._build_dir, '-t', 'clean'])
+                if exists(self._build_dir):
+                    mx.run([join(mx.library('NINJA').extract_path, 'ninja.exe'), '-C', self._build_dir, '-t', 'clean'])
             else:
                 mx.run([mx.gmake_cmd(), 'clean'], nonZeroIsFatal=False, cwd=_suite.dir)
             for f in _generated_config_files:
