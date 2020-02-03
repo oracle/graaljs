@@ -131,7 +131,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         lazy_generator = ['--lazy-generator'] if newest_generated_config_file_ts.isNewerThan(newest_config_file_ts) else []
 
         if _currentOs == 'windows':
-            newPATH = os.pathsep.join([os.environ['PATH']] + [mx.library(lib_name).get_path(True) for lib_name in 'NASM', 'NINJA'])
+            newPATH = os.pathsep.join([os.environ['PATH']] + [mx.library(lib_name).get_path(True) for lib_name in ('NASM', 'NINJA')])
             _setEnvVar('PATH', newPATH)
             extra_flags = ['--ninja', '--dest-cpu=x64', '--without-etw', '--without-snapshot']
         else:
