@@ -917,8 +917,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             currentFunction.reserveNewTargetSlot();
         }
 
-        if (functionNode.isClassConstructor() && lc.getCurrentClass().hasInstanceFields()) {
-            // always allocate this value to ensure InitializeInstanceFields is performed
+        if (functionNode.isClassConstructor() && (lc.getCurrentClass().hasInstanceFields() || lc.getCurrentClass().hasPrivateInstanceMethods())) {
+            // Allocate the this slot to ensure InitializeInstanceElements is performed
+            // regardless of whether the class constructor itself uses `this`.
+            // Note: the this slot could be elided in this case.
             currentFunction.reserveThisSlot();
         }
 
@@ -1163,7 +1165,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             getThisNode = factory.createPrepareThisBinding(context, getThisNode);
         }
         if (functionNode.isClassConstructor()) {
-            getThisNode = initializeInstanceFields(getThisNode);
+            getThisNode = initializeInstanceElements(getThisNode);
         }
         JavaScriptNode setThisNode = thisVar.createWriteNode(getThisNode);
         return factory.createExprBlock(setThisNode, body);
@@ -2248,19 +2250,18 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         VarRef tempVar = environment.createTempVar();
         JavaScriptNode uninitialized = factory.createBinary(context, BinaryOperation.IDENTICAL, thisVar.createReadNode(), factory.createConstantUndefined());
         return factory.createIf(factory.createDual(context, tempVar.createWriteNode(thisValueNode), uninitialized),
-                        initializeInstanceFields(thisVar.createWriteNode(tempVar.createReadNode())),
+                        initializeInstanceElements(thisVar.createWriteNode(tempVar.createReadNode())),
                         factory.createThrowError(JSErrorType.ReferenceError, "super() called twice"));
     }
 
-    private JavaScriptNode initializeInstanceFields(JavaScriptNode thisValueNode) {
+    private JavaScriptNode initializeInstanceElements(JavaScriptNode thisValueNode) {
         ClassNode classNode = lc.getCurrentClass();
-        if (!classNode.hasInstanceFields()) {
+        if (!classNode.hasInstanceFields() && !classNode.hasPrivateInstanceMethods()) {
             return thisValueNode;
         }
 
-        JavaScriptNode functionObject = factory.createAccessCallee(currentFunction().getThisFunctionLevel());
-        JavaScriptNode fields = factory.createAccessClassFields(context, functionObject);
-        return factory.createInitializeInstanceFields(context, thisValueNode, fields);
+        JavaScriptNode constructor = factory.createAccessCallee(currentFunction().getThisFunctionLevel());
+        return factory.createInitializeInstanceElements(context, thisValueNode, constructor);
     }
 
     private JavaScriptNode createCallEvalNode(JavaScriptNode function, JavaScriptNode[] args) {
@@ -2745,7 +2746,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode createReadProperty(AccessNode accessNode, JavaScriptNode base) {
         if (accessNode.isPrivate()) {
-            return factory.createPrivateFieldGet(context, base, getPrivateName(accessNode.getPrivateName()));
+            return createPrivateFieldGet(accessNode, base);
         } else {
             return factory.createReadProperty(context, base, accessNode.getProperty(), accessNode.isFunction());
         }
@@ -2753,14 +2754,38 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode createWriteProperty(AccessNode accessNode, JavaScriptNode base, JavaScriptNode rhs) {
         if (accessNode.isPrivate()) {
-            return factory.createPrivateFieldSet(context, base, getPrivateName(accessNode.getPrivateName()), rhs);
+            return createPrivateFieldSet(accessNode, base, rhs);
         } else {
             return factory.createWriteProperty(base, accessNode.getProperty(), rhs, context, environment.isStrictMode());
         }
     }
 
-    private JavaScriptNode getPrivateName(String privateName) {
-        return environment.findLocalVar(privateName).createReadNode();
+    private JavaScriptNode createPrivateFieldGet(AccessNode accessNode, JavaScriptNode base) {
+        VarRef privateNameVar = environment.findLocalVar(accessNode.getPrivateName());
+        JavaScriptNode privateName = privateNameVar.createReadNode();
+        return factory.createPrivateFieldGet(context, insertPrivateBrandCheck(base, privateNameVar), privateName);
+    }
+
+    private JavaScriptNode createPrivateFieldSet(AccessNode accessNode, JavaScriptNode base, JavaScriptNode rhs) {
+        VarRef privateNameVar = environment.findLocalVar(accessNode.getPrivateName());
+        JavaScriptNode privateName = privateNameVar.createReadNode();
+        return factory.createPrivateFieldSet(context, insertPrivateBrandCheck(base, privateNameVar), privateName, rhs);
+    }
+
+    private JavaScriptNode insertPrivateBrandCheck(JavaScriptNode base, VarRef privateNameVar) {
+        FrameSlot frameSlot = privateNameVar.getFrameSlot();
+        if (JSFrameUtil.needsPrivateBrandCheck(frameSlot)) {
+            JavaScriptNode constructor = environment.findLocalVar(ClassNode.PRIVATE_CONSTRUCTOR_BINDING_NAME).createReadNode();
+            JavaScriptNode brand;
+            if (JSFrameUtil.isPrivateNameStatic(frameSlot)) {
+                brand = constructor;
+            } else {
+                brand = factory.createGetPrivateBrand(context, constructor);
+            }
+            return factory.createPrivateBrandCheck(base, brand);
+        } else {
+            return base;
+        }
     }
 
     @Override
@@ -2812,6 +2837,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         boolean enumerable = !isClass;
         if (property.isComputed()) {
             return factory.createComputedAccessorMember(transform(property.getKey()), property.isStatic(), enumerable, getter, setter);
+        } else if (property.isPrivate()) {
+            VarRef privateVar = environment.findLocalVar(property.getPrivateName());
+            JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(null);
+            return factory.createPrivateAccessorMember(property.isStatic(), getter, setter, writePrivateNode);
         } else {
             return factory.createAccessorMember(property.getKeyName(), property.isStatic(), enumerable, getter, setter);
         }
@@ -2861,8 +2890,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else if (!isClass && property.isProto()) {
             return factory.createProtoMember(property.getKeyName(), property.isStatic(), value);
         } else if (property.isPrivate()) {
-            JavaScriptNode key = getPrivateName(property.getPrivateName());
-            return factory.createPrivateFieldMember(key, property.isStatic(), value);
+            VarRef privateVar = environment.findLocalVar(property.getPrivateName());
+            if (property.isClassField()) {
+                JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(factory.createNewPrivateName(property.getPrivateName()));
+                return factory.createPrivateFieldMember(privateVar.createReadNode(), property.isStatic(), value, writePrivateNode);
+            } else {
+                JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(null);
+                return factory.createPrivateMethodMember(property.isStatic(), value, writePrivateNode);
+            }
         } else {
             String keyName = property.getKeyName();
             setAnonymousFunctionName(value, keyName);
@@ -3219,20 +3254,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             ArrayList<ObjectLiteralMemberNode> members = transformPropertyDefinitionList(classNode.getClassElements(), true, classNameSymbol);
 
             JavaScriptNode classDefinition = factory.createClassDefinition(context, (JSFunctionExpressionNode) classFunction, classHeritage,
-                            members.toArray(ObjectLiteralMemberNode.EMPTY), className, classNode.getInstanceFieldCount(), classNode.getStaticFieldCount());
+                            members.toArray(ObjectLiteralMemberNode.EMPTY), className,
+                            classNode.getInstanceFieldCount(), classNode.getStaticFieldCount(), classNode.hasPrivateInstanceMethods());
             if (className != null) {
                 classDefinition = ensureHasSourceSection(findScopeVar(className, true).createWriteNode(classDefinition), classNode);
             }
-
-            List<JavaScriptNode> init = new ArrayList<>();
-            for (Symbol symbol : classScope.getSymbols()) {
-                if (symbol.isPrivateName()) {
-                    init.add(environment.findLocalVar(symbol.getName()).createWriteNode(factory.createNewPrivateName(symbol.getName())));
-                }
-            }
-            if (!init.isEmpty()) {
-                init.add(classDefinition);
-                classDefinition = factory.createExprBlock(init.toArray(EMPTY_NODE_ARRAY));
+            if (classNode.hasPrivateMethods()) {
+                // internal constructor binding used for private brand checks.
+                classDefinition = environment.findLocalVar(ClassNode.PRIVATE_CONSTRUCTOR_BINDING_NAME).createWriteNode(classDefinition);
             }
 
             return tagExpression(blockEnv.wrapBlockScope(classDefinition), classNode);

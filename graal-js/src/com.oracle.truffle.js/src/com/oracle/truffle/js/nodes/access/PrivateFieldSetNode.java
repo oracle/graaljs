@@ -42,14 +42,20 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.objects.Accessor;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Sets the value of a private field with a private name in a JS object. Throws a TypeError if the
@@ -72,39 +78,47 @@ public abstract class PrivateFieldSetNode extends JSTargetableNode {
         this.context = context;
     }
 
-    public abstract Object execute(Object target, Object key, Object value);
-
-    @Specialization(guards = {"key == cachedKey", "isJSObject(target)"}, limit = "1")
-    Object doCachedKey(DynamicObject target, HiddenKey key, Object value,
-                    @Cached("key") @SuppressWarnings("unused") HiddenKey cachedKey,
+    @Specialization(guards = {"isJSObject(target)", "key == hasNode.getKey()"}, limit = "1")
+    Object doFieldCachedKey(DynamicObject target, HiddenKey key, Object value,
                     @Cached("create(key)") HasHiddenKeyCacheNode hasNode,
-                    @Cached("createSetHidden(key, context)") PropertySetNode setNode) {
+                    @Cached("createSetHidden(key, context)") PropertySetNode setNode,
+                    @Cached @Shared("errorBranch") BranchProfile errorBranch) {
         if (hasNode.executeHasHiddenKey(target)) {
             setNode.setValue(target, value);
         } else {
-            missing(key);
+            errorBranch.enter();
+            missing(target, key, value);
         }
         return value;
     }
 
     @TruffleBoundary
-    @Specialization(guards = {"isJSObject(target)"}, replaces = "doCachedKey")
-    Object doUncachedKey(DynamicObject target, HiddenKey key, Object value) {
+    @Specialization(guards = {"isJSObject(target)"}, replaces = "doFieldCachedKey")
+    Object doFieldUncachedKey(DynamicObject target, HiddenKey key, Object value,
+                    @Cached @Shared("errorBranch") BranchProfile errorBranch) {
         if (!target.set(key, value)) {
-            missing(key);
+            errorBranch.enter();
+            missing(target, key, value);
         }
         return value;
     }
 
-    @TruffleBoundary
-    private Object missing(HiddenKey key) {
-        throw Errors.createTypeErrorCannotSetPrivateMember(key.getName(), this);
+    @Specialization(guards = {"isJSObject(target)"})
+    Object doAccessor(DynamicObject target, Accessor accessor, Object value,
+                    @Cached("createCall()") JSFunctionCallNode callNode,
+                    @Cached @Shared("errorBranch") BranchProfile errorBranch) {
+        DynamicObject setter = accessor.getSetter();
+        if (setter == Undefined.instance) {
+            errorBranch.enter();
+            throw Errors.createTypeErrorCannotSetAccessorProperty(keyAsString(), target);
+        }
+        return callNode.executeCall(JSArguments.createOneArg(target, setter, value));
     }
 
     @TruffleBoundary
     @Fallback
-    Object doFallback(@SuppressWarnings("unused") Object target, @SuppressWarnings("unused") Object key, @SuppressWarnings("unused") Object value) {
-        throw Errors.createTypeErrorCannotSetProperty(keyAsString(), target, this);
+    Object missing(@SuppressWarnings("unused") Object target, @SuppressWarnings("unused") Object key, @SuppressWarnings("unused") Object value) {
+        throw Errors.createTypeErrorCannotSetPrivateMember(keyAsString(), this);
     }
 
     @TruffleBoundary

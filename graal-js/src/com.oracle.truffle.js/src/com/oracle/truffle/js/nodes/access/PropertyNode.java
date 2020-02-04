@@ -49,6 +49,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
@@ -58,6 +59,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 
 public class PropertyNode extends JSTargetableNode implements ReadNode {
 
@@ -99,20 +101,21 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
                 return this;
             }
             JavaScriptNode clonedTarget = JSTaggedExecutionNode.createForInput(target, this);
-            PropertyNode propertyNode = PropertyNode.createProperty(cache.getContext(), clonedTarget, cache.getKey(), cache.isMethod());
+            PropertyNode propertyNode = new PropertyNode(cache.getContext(), clonedTarget, cache.getKey(), cache.isOwnProperty(), cache.isMethod());
             transferSourceSectionAndTags(this, propertyNode);
             return propertyNode;
         }
         return this;
     }
 
-    protected PropertyNode(JSContext context, JavaScriptNode target, Object propertyKey, boolean method) {
+    protected PropertyNode(JSContext context, JavaScriptNode target, Object propertyKey, boolean getOwnProperty, boolean method) {
         this.target = target;
-        this.cache = PropertyGetNode.create(propertyKey, false, context, method);
+        this.cache = PropertyGetNode.create(propertyKey, false, context, getOwnProperty, method);
     }
 
     public static PropertyNode createProperty(JSContext ctx, JavaScriptNode target, Object propertyKey, boolean method) {
-        return new PropertyNode(ctx, target, propertyKey, method);
+        assert JSRuntime.isPropertyKey(propertyKey);
+        return new PropertyNode(ctx, target, propertyKey, false, method);
     }
 
     public static PropertyNode createProperty(JSContext ctx, JavaScriptNode target, Object propertyKey) {
@@ -121,6 +124,10 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
 
     public static PropertyNode createMethod(JSContext ctx, JavaScriptNode target, Object propertyKey) {
         return createProperty(ctx, target, propertyKey, true);
+    }
+
+    public static PropertyNode createGetHidden(JSContext ctx, JavaScriptNode target, HiddenKey hiddenKey) {
+        return new PropertyNode(ctx, target, hiddenKey, true, false);
     }
 
     @Override
@@ -192,7 +199,7 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new PropertyNode(cache.getContext(), cloneUninitialized(target), cache.getKey(), cache.isMethod());
+        return new PropertyNode(cache.getContext(), cloneUninitialized(target), cache.getKey(), cache.isOwnProperty(), cache.isMethod());
     }
 
     @Override
@@ -201,6 +208,10 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
             return Objects.toString(target.expressionToString(), INTERMEDIATE_VALUE) + "." + getPropertyKey();
         }
         return null;
+    }
+
+    public final boolean isOwnProperty() {
+        return cache.isOwnProperty();
     }
 
     public final boolean isMethod() {

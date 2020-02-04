@@ -341,14 +341,14 @@ public final class Scope {
      *
      * @return true if the private name was added, false if it was already declared (duplicate name)
      */
-    public boolean addPrivateName(String name) {
+    public boolean addPrivateName(String name, int symbolFlags) {
         assert isClassScope();
         // Register a declared private name.
         if (hasSymbol(name)) {
             assert getExistingSymbol(name).isPrivateName();
             return false;
         } else {
-            putSymbol(new Symbol(name, Symbol.IS_CONST | Symbol.IS_PRIVATE_NAME | Symbol.HAS_BEEN_DECLARED));
+            putSymbol(new Symbol(name, Symbol.IS_CONST | Symbol.IS_PRIVATE_NAME | Symbol.HAS_BEEN_DECLARED | symbolFlags));
             return true;
         }
     }

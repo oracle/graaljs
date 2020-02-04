@@ -42,71 +42,78 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
- * Adds a private field with a private name to a JS object (an instance of a JS class). Throws a
- * TypeError if the object already has a private field with the same name.
+ * Performs a private brand check. If the brand check succeeds, returns the target object, otherwise
+ * returns undefined.
  *
- * @see InitializeInstanceElementsNode
+ * <ul>
+ * <li>instance private methods: the object needs to contain the brand key of the class.
+ * <li>static private methods: the object needs to be {@code ==} the constructor.
+ * </ul>
  */
-public abstract class PrivateFieldAddNode extends JavaScriptBaseNode {
-    protected final JSContext context;
+public abstract class PrivateBrandCheckNode extends JSTargetableNode {
+    @Child @Executed protected JavaScriptNode targetNode;
+    @Child @Executed protected JavaScriptNode brandNode;
 
-    public static PrivateFieldAddNode create(JSContext context) {
-        return PrivateFieldAddNodeGen.create(context);
+    public static PrivateBrandCheckNode create(JavaScriptNode targetNode, JavaScriptNode brandNode) {
+        return PrivateBrandCheckNodeGen.create(targetNode, brandNode);
     }
 
-    protected PrivateFieldAddNode(JSContext context) {
-        this.context = context;
+    protected PrivateBrandCheckNode(JavaScriptNode targetNode, JavaScriptNode brandNode) {
+        this.targetNode = targetNode;
+        this.brandNode = brandNode;
     }
 
-    /**
-     * Adds a new private field to the target object.
-     *
-     * @param target the target object
-     * @param key a private name
-     * @param value the initial value of the added field
-     */
-    public abstract void execute(Object target, Object key, Object value);
-
-    @Specialization(guards = {"key == cachedKey", "isJSObject(target)"}, limit = "1")
-    void doCachedKey(DynamicObject target, HiddenKey key, Object value,
-                    @Cached("key") @SuppressWarnings("unused") HiddenKey cachedKey,
-                    @Cached("create(key)") HasHiddenKeyCacheNode hasNode,
-                    @Cached("createSetHidden(key, context)") PropertySetNode setNode) {
-        if (!hasNode.executeHasHiddenKey(target)) {
-            setNode.setValue(target, value);
+    @Specialization(guards = {"isJSObject(target)", "brandKey == hasNode.getKey()"}, limit = "1")
+    Object doCachedKey(DynamicObject target, @SuppressWarnings("unused") HiddenKey brandKey,
+                    @Cached("create(brandKey)") HasHiddenKeyCacheNode hasNode) {
+        if (hasNode.executeHasHiddenKey(target)) {
+            return target;
         } else {
-            duplicate(key);
+            return denied(target, brandKey);
         }
     }
 
     @TruffleBoundary
     @Specialization(guards = {"isJSObject(target)"}, replaces = "doCachedKey")
-    void doUncachedKey(DynamicObject target, HiddenKey key, Object value) {
-        if (!target.containsKey(key)) {
-            target.define(key, value, JSAttributes.getDefaultNotEnumerable());
+    Object doUncachedKey(DynamicObject target, HiddenKey brandKey) {
+        if (target.containsKey(brandKey)) {
+            return target;
         } else {
-            duplicate(key);
+            return denied(target, brandKey);
         }
     }
 
-    @TruffleBoundary
-    private Object duplicate(@SuppressWarnings("unused") HiddenKey key) {
-        throw Errors.createTypeErrorCannotAddPrivateMember(key.getName(), this);
+    @Specialization(guards = {"isJSObject(target)"})
+    Object doStatic(DynamicObject target, DynamicObject brand) {
+        if (target == brand) {
+            return target;
+        } else {
+            return denied(target, brand);
+        }
     }
 
-    @TruffleBoundary
     @Fallback
-    void doFallback(@SuppressWarnings("unused") Object target, @SuppressWarnings("unused") Object key, @SuppressWarnings("unused") Object value) {
-        throw Errors.createTypeErrorCannotSetProperty(key.toString(), target, this);
+    Object denied(@SuppressWarnings("unused") Object target, @SuppressWarnings("unused") Object brand) {
+        // PrivateFieldGet/PrivateFieldSet will throw the TypeError.
+        return Undefined.instance;
+    }
+
+    @Override
+    public final JavaScriptNode getTarget() {
+        return targetNode;
+    }
+
+    @Override
+    protected JavaScriptNode copyUninitialized() {
+        return create(cloneUninitialized(targetNode), cloneUninitialized(brandNode));
     }
 }

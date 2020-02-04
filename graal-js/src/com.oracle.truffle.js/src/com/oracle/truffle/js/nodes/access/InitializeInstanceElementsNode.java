@@ -42,8 +42,8 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
@@ -55,48 +55,67 @@ import com.oracle.truffle.js.nodes.function.SetFunctionNameNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
- * InitializeInstanceFields (O, constructor.[[Fields]]).
+ * InitializeInstanceElements (O, constructor).
  *
  * Defines class instance fields using the provided field records from the constructor. For fields
  * with an initializer, the initializer function is called to obtain the initial value and, if it's
- * an anonymous function definition, its function name is set to the (computed) field name.
+ * an anonymous function definition, its function name is set to the (computed) field name. Also
+ * performs PrivateBrandAdd(O, constructor.[[PrivateBrand]]) if the brand is not undefined.
  *
- * Relies on the following invariants:
+ * Relies on the following per-class invariants:
  * <ul>
  * <li>The number of instance fields is constant.
  * <li>For each field index, the key will either always or never be a private name.
  * <li>For each field index, an initializer will either always or never be present.
  * <li>For each field index, [[IsAnonymousFunctionDefinition]] will never change.
+ * <li>The [[Fields]] slot will either always or never be present.
+ * <li>The [[PrivateBrand]] slot will either always or never be present.
  * </ul>
+ *
+ * This node is also used to define static fields ({@link #executeStaticFields}).
  */
-public abstract class InitializeInstanceFieldsNode extends JavaScriptNode {
+public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
     @Child @Executed protected JavaScriptNode targetNode;
-    @Child @Executed protected JavaScriptNode sourceNode;
+    @Child @Executed protected JavaScriptNode constructorNode;
+    @Child @Executed(with = "constructorNode") protected JSTargetableNode fieldsNode;
+    @Child @Executed(with = "constructorNode") protected JSTargetableNode brandNode;
     protected final JSContext context;
 
-    protected InitializeInstanceFieldsNode(JSContext context, JavaScriptNode targetNode, JavaScriptNode sourceNode) {
+    protected InitializeInstanceElementsNode(JSContext context, JavaScriptNode targetNode, JavaScriptNode constructorNode) {
         this.context = context;
         this.targetNode = targetNode;
-        this.sourceNode = sourceNode;
+        this.constructorNode = constructorNode;
+        if (constructorNode != null) {
+            this.fieldsNode = PropertyNode.createGetHidden(context, null, JSFunction.CLASS_FIELDS_ID);
+            this.brandNode = PropertyNode.createGetHidden(context, null, JSFunction.PRIVATE_BRAND_ID);
+        }
     }
 
-    public static JavaScriptNode create(JSContext context, JavaScriptNode targetNode, JavaScriptNode sourceNode) {
-        return InitializeInstanceFieldsNodeGen.create(context, targetNode, sourceNode);
+    public static JavaScriptNode create(JSContext context, JavaScriptNode targetNode, JavaScriptNode constructorNode) {
+        return InitializeInstanceElementsNodeGen.create(context, targetNode, constructorNode);
     }
 
-    public static InitializeInstanceFieldsNode create(JSContext context) {
-        return InitializeInstanceFieldsNodeGen.create(context, null, null);
+    public static InitializeInstanceElementsNode create(JSContext context) {
+        return InitializeInstanceElementsNodeGen.create(context, null, null);
     }
 
-    public abstract Object executeEvaluated(Object target, Object[][] fields);
+    public final Object executeStaticFields(Object targetConstructor, Object[][] staticFields) {
+        return executeEvaluated(targetConstructor, Undefined.instance, staticFields, Undefined.instance);
+    }
+
+    protected abstract Object executeEvaluated(Object target, Object constructor, Object[][] fields, Object brand);
 
     @ExplodeLoop(kind = LoopExplosionKind.FULL_UNROLL)
     @Specialization
-    protected static Object doObject(Object target, Object[][] fields,
+    protected static Object withFields(Object target, Object constructor, Object[][] fields, Object brand,
+                    @Cached("createBrandAddNode(brand, context)") @Shared("privateBrandAdd") PrivateFieldAddNode privateBrandAddNode,
                     @Cached("createFieldNodes(fields, context)") DefineFieldNode[] fieldNodes) {
+        privateBrandAdd(target, constructor, fields, brand, privateBrandAddNode);
+
         int size = fieldNodes.length;
         assert size == fields.length;
         for (int i = 0; i < size; i++) {
@@ -108,22 +127,38 @@ public abstract class InitializeInstanceFieldsNode extends JavaScriptNode {
         return target;
     }
 
-    @Fallback
-    protected static Object doOther(Object target, @SuppressWarnings("unused") Object source) {
+    @Specialization
+    protected static Object privateBrandAdd(Object target, Object constructor, @SuppressWarnings("unused") Object fields, Object brand,
+                    @Cached("createBrandAddNode(brand, context)") @Shared("privateBrandAdd") PrivateFieldAddNode privateBrandAddNode) {
+        // If constructor.[[PrivateBrand]] is not undefined,
+        // Perform ? PrivateBrandAdd(O, constructor.[[PrivateBrand]]).
+        assert (privateBrandAddNode != null) == (brand != Undefined.instance);
+        if (privateBrandAddNode != null) {
+            privateBrandAddNode.execute(target, brand, constructor);
+        }
         return target;
     }
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return create(context, cloneUninitialized(targetNode), cloneUninitialized(sourceNode));
+        return create(context, cloneUninitialized(targetNode), cloneUninitialized(constructorNode));
     }
 
-    static DefineFieldNode[] createFieldNodes(Object[] fields, JSContext context) {
+    static PrivateFieldAddNode createBrandAddNode(Object brand, JSContext context) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (brand != Undefined.instance) {
+            return PrivateFieldAddNode.create(context);
+        } else {
+            return null;
+        }
+    }
+
+    static DefineFieldNode[] createFieldNodes(Object[][] fields, JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
         int size = fields.length;
         DefineFieldNode[] fieldNodes = new DefineFieldNode[size];
         for (int i = 0; i < size; i++) {
-            Object[] field = (Object[]) fields[i];
+            Object[] field = fields[i];
             Object key = field[0];
             Object initializer = field[1];
             boolean isAnonymousFunctionDefinition = (boolean) field[2];
