@@ -46,7 +46,7 @@ import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
 public class ExportNode extends Node {
 
-    private final ExportClauseNode namedExports;
+    private final NamedExportsNode namedExports;
 
     private final FromNode from;
 
@@ -62,7 +62,7 @@ public class ExportNode extends Node {
         this(token, start, finish, null, from, ident, null, null, false);
     }
 
-    public ExportNode(final long token, final int start, final int finish, final ExportClauseNode exportClause, final FromNode from) {
+    public ExportNode(final long token, final int start, final int finish, final NamedExportsNode exportClause, final FromNode from) {
         this(token, start, finish, exportClause, from, null, null, null, false);
     }
 
@@ -74,7 +74,7 @@ public class ExportNode extends Node {
         this(token, start, finish, null, null, ident, var, null, false);
     }
 
-    private ExportNode(final long token, final int start, final int finish, final ExportClauseNode namedExports,
+    private ExportNode(final long token, final int start, final int finish, final NamedExportsNode namedExports,
                     final FromNode from, final IdentNode exportIdent, final VarNode var, final Expression expression, final boolean isDefault) {
         super(token, start, finish);
         this.namedExports = namedExports;
@@ -88,7 +88,7 @@ public class ExportNode extends Node {
         assert (var == null && expression == null) || isDefault || (exportIdent != null && exportIdent == getIdent(var, expression));
     }
 
-    private ExportNode(final ExportNode node, final ExportClauseNode namedExports,
+    private ExportNode(final ExportNode node, final NamedExportsNode namedExports,
                     final FromNode from, final IdentNode exportIdent, final VarNode var, final Expression expression) {
         super(node);
         this.isDefault = node.isDefault;
@@ -100,11 +100,7 @@ public class ExportNode extends Node {
         this.expression = expression;
     }
 
-    public ExportClauseNode getNamedExports() {
-        return namedExports;
-    }
-
-    public ExportClauseNode getExportClause() {
+    public NamedExportsNode getNamedExports() {
         return namedExports;
     }
 
@@ -128,7 +124,7 @@ public class ExportNode extends Node {
         return isDefault;
     }
 
-    public ExportNode setExportClause(ExportClauseNode exportClause) {
+    public ExportNode setExportClause(NamedExportsNode exportClause) {
         assert exportIdent == null;
         if (this.namedExports == exportClause) {
             return this;
@@ -147,7 +143,7 @@ public class ExportNode extends Node {
     @Override
     public Node accept(NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterExportNode(this)) {
-            ExportClauseNode newExportClause = namedExports == null ? null : (ExportClauseNode) namedExports.accept(visitor);
+            NamedExportsNode newExportClause = namedExports == null ? null : (NamedExportsNode) namedExports.accept(visitor);
             FromNode newFrom = from == null ? null : (FromNode) from.accept(visitor);
             VarNode newVar = var == null ? null : (VarNode) var.accept(visitor);
             Expression newExpression = expression == null ? null : (Expression) expression.accept(visitor);

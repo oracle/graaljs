@@ -128,7 +128,7 @@ import com.oracle.js.parser.ir.ContinueNode;
 import com.oracle.js.parser.ir.DebuggerNode;
 import com.oracle.js.parser.ir.EmptyNode;
 import com.oracle.js.parser.ir.ErrorNode;
-import com.oracle.js.parser.ir.ExportClauseNode;
+import com.oracle.js.parser.ir.NamedExportsNode;
 import com.oracle.js.parser.ir.ExportNode;
 import com.oracle.js.parser.ir.ExportSpecifierNode;
 import com.oracle.js.parser.ir.Expression;
@@ -6468,7 +6468,7 @@ public class Parser extends AbstractParser {
                 break;
             }
             case LBRACE: {
-                ExportClauseNode exportClause = namedExports();
+                NamedExportsNode exportClause = namedExports();
                 FromNode from = null;
                 if (type == FROM) {
                     from = fromClause();
@@ -6578,7 +6578,7 @@ public class Parser extends AbstractParser {
      *
      * @return a list of ExportSpecifiers
      */
-    private ExportClauseNode namedExports() {
+    private NamedExportsNode namedExports() {
         final long startToken = token;
         assert type == LBRACE;
         next();
@@ -6614,7 +6614,7 @@ public class Parser extends AbstractParser {
             throw error(expectMessage(IDENT, reservedWordToken), reservedWordToken);
         }
 
-        return new ExportClauseNode(startToken, Token.descPosition(startToken), finish, optimizeList(exports));
+        return new NamedExportsNode(startToken, Token.descPosition(startToken), finish, optimizeList(exports));
     }
 
     private static boolean isReservedWord(TokenType type) {
