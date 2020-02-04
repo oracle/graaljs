@@ -101,12 +101,6 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         return DirectByteBufferHelper.cast((ByteBuffer) BYTE_BUFFER_PROPERTY.get(thisObj, condition));
     }
 
-    public static void setDirectByteBuffer(DynamicObject arrayBuffer, ByteBuffer buffer) {
-        assert isJSDirectArrayBuffer(arrayBuffer);
-        assert buffer != null;
-        BYTE_BUFFER_PROPERTY.setSafe(arrayBuffer, buffer, null);
-    }
-
     public static DynamicObject createDirectArrayBuffer(JSContext context, int length) {
         return createDirectArrayBuffer(context, DirectByteBufferHelper.allocateDirect(length));
     }
@@ -150,18 +144,26 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
                     DynamicObject buffer = (DynamicObject) obj;
                     if (isArrayBuffer.profile(isJSHeapArrayBuffer(buffer))) {
                         if (!context.getTypedArrayNotDetachedAssumption().isValid() && isDetachedBuffer(buffer)) {
-                            throw Errors.createTypeErrorDetachedBuffer();
+                            return handleDetachedBuffer();
                         }
                         return getByteLength(buffer);
                     } else if (isDirectByteBuffer.profile(isJSDirectArrayBuffer(buffer))) {
                         if (!context.getTypedArrayNotDetachedAssumption().isValid() && isDetachedBuffer(buffer)) {
-                            throw Errors.createTypeErrorDetachedBuffer();
+                            return handleDetachedBuffer();
                         }
                         return getDirectByteLength(buffer);
                     }
                 }
                 errorBranch.enter();
                 throw Errors.createTypeErrorArrayBufferExpected();
+            }
+
+            private Object handleDetachedBuffer() {
+                if (context.isOptionV8CompatibilityMode()) {
+                    return 0;
+                } else {
+                    throw Errors.createTypeErrorDetachedBuffer();
+                }
             }
         });
     }

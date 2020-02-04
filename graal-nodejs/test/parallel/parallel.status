@@ -80,7 +80,7 @@ test-util-format: FAIL
 
 # v8::Object::GetConstructorName() returns `Klass` for
 # Object.setPrototypeOf(new Klass(), null) (which graal-nodejs is unable to return) +
-# some differences in handling detach buffers and weak collections
+# some differences in the handling of weak collections
 test-util-inspect: FAIL
 
 # Tests a V8-specific option
