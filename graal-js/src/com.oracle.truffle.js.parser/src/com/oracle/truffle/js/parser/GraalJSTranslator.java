@@ -3155,18 +3155,18 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             ArrayList<ObjectLiteralMemberNode> members = transformPropertyDefinitionList(classNode.getClassElements(), true, classNameSymbol);
 
             JavaScriptNode classDefinition = factory.createClassDefinition(context, (JSFunctionExpressionNode) classFunction, classHeritage,
-                            members.toArray(ObjectLiteralMemberNode.EMPTY), className, classNode.getInstanceFieldCount());
+                            members.toArray(ObjectLiteralMemberNode.EMPTY), className, classNode.getInstanceFieldCount(), classNode.getStaticFieldCount());
             if (className != null) {
                 classDefinition = ensureHasSourceSection(findScopeVar(className, true).createWriteNode(classDefinition), classNode);
             }
 
-            if (classNode.hasInstanceFields()) {
-                List<JavaScriptNode> init = new ArrayList<>();
-                for (Symbol symbol : classScope.getSymbols()) {
-                    if (symbol.isPrivateName()) {
-                        init.add(environment.findLocalVar(symbol.getName()).createWriteNode(factory.createNewPrivateName(symbol.getName())));
-                    }
+            List<JavaScriptNode> init = new ArrayList<>();
+            for (Symbol symbol : classScope.getSymbols()) {
+                if (symbol.isPrivateName()) {
+                    init.add(environment.findLocalVar(symbol.getName()).createWriteNode(factory.createNewPrivateName(symbol.getName())));
                 }
+            }
+            if (!init.isEmpty()) {
                 init.add(classDefinition);
                 classDefinition = factory.createExprBlock(init.toArray(EMPTY_NODE_ARRAY));
             }

@@ -160,6 +160,8 @@ public class Test262Runnable extends TestRunnable {
                     "class",
                     "class-fields-private",
                     "class-fields-public",
+                    "class-static-fields-private",
+                    "class-static-fields-public",
                     "coalesce-expression",
                     "computed-property-names",
                     "const",
@@ -202,8 +204,6 @@ public class Test262Runnable extends TestRunnable {
                     "Intl.Locale",
                     "IsHTMLDDA",
                     "class-methods-private",
-                    "class-static-fields-private",
-                    "class-static-fields-public",
                     "class-static-methods-private",
                     "export-star-as-namespace-from-module",
                     "host-gc-required",
@@ -227,6 +227,8 @@ public class Test262Runnable extends TestRunnable {
                     "WeakRef",
                     "class-fields-private",
                     "class-fields-public",
+                    "class-static-fields-private",
+                    "class-static-fields-public",
     }));
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {

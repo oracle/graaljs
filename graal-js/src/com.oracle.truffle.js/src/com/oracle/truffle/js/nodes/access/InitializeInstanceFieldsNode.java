@@ -47,7 +47,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -55,6 +54,7 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.function.SetFunctionNameNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -87,14 +87,20 @@ public abstract class InitializeInstanceFieldsNode extends JavaScriptNode {
         return InitializeInstanceFieldsNodeGen.create(context, targetNode, sourceNode);
     }
 
+    public static InitializeInstanceFieldsNode create(JSContext context) {
+        return InitializeInstanceFieldsNodeGen.create(context, null, null);
+    }
+
+    public abstract Object executeEvaluated(Object target, Object[][] fields);
+
     @ExplodeLoop(kind = LoopExplosionKind.FULL_UNROLL)
     @Specialization
-    protected static Object doObject(Object target, Object[] fields,
-                    @Cached("createFieldNodes(fields)") FieldNode[] fieldNodes) {
+    protected static Object doObject(Object target, Object[][] fields,
+                    @Cached("createFieldNodes(fields, context)") DefineFieldNode[] fieldNodes) {
         int size = fieldNodes.length;
         assert size == fields.length;
         for (int i = 0; i < size; i++) {
-            Object[] field = (Object[]) fields[i];
+            Object[] field = fields[i];
             Object key = field[0];
             Object initializer = field[1];
             fieldNodes[i].defineField(target, key, initializer);
@@ -112,10 +118,10 @@ public abstract class InitializeInstanceFieldsNode extends JavaScriptNode {
         return create(context, cloneUninitialized(targetNode), cloneUninitialized(sourceNode));
     }
 
-    FieldNode[] createFieldNodes(Object[] fields) {
+    static DefineFieldNode[] createFieldNodes(Object[] fields, JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
         int size = fields.length;
-        FieldNode[] fieldNodes = new FieldNode[size];
+        DefineFieldNode[] fieldNodes = new DefineFieldNode[size];
         for (int i = 0; i < size; i++) {
             Object[] field = (Object[]) fields[i];
             Object key = field[0];
@@ -135,24 +141,24 @@ public abstract class InitializeInstanceFieldsNode extends JavaScriptNode {
             if (isAnonymousFunctionDefinition) {
                 setFunctionNameNode = SetFunctionNameNode.create();
             }
-            fieldNodes[i] = new FieldNode(writeNode, callNode, setFunctionNameNode);
+            fieldNodes[i] = new DefineFieldNode(writeNode, callNode, setFunctionNameNode);
         }
         return fieldNodes;
     }
 
-    static final class FieldNode extends Node {
+    static final class DefineFieldNode extends JavaScriptBaseNode {
         @Child JavaScriptBaseNode writeNode;
         @Child JSFunctionCallNode callNode;
         @Child SetFunctionNameNode setFunctionNameNode;
 
-        FieldNode(JavaScriptBaseNode writeNode, JSFunctionCallNode callNode, SetFunctionNameNode setFunctionNameNode) {
+        DefineFieldNode(JavaScriptBaseNode writeNode, JSFunctionCallNode callNode, SetFunctionNameNode setFunctionNameNode) {
             this.writeNode = writeNode;
             this.callNode = callNode;
             this.setFunctionNameNode = setFunctionNameNode;
         }
 
         void defineField(Object target, Object key, Object initializer) {
-            assert (writeNode instanceof PrivateFieldAddNode) == (key instanceof HiddenKey) && (callNode != null) == (initializer != Undefined.instance);
+            assert (callNode != null) == (initializer != Undefined.instance);
             Object value = Undefined.instance;
             if (callNode != null) {
                 value = callNode.executeCall(JSArguments.createZeroArg(target, initializer));
@@ -161,8 +167,10 @@ public abstract class InitializeInstanceFieldsNode extends JavaScriptNode {
                 }
             }
             if (writeNode instanceof PrivateFieldAddNode) {
+                assert key instanceof HiddenKey : key;
                 ((PrivateFieldAddNode) writeNode).execute(target, key, value);
             } else {
+                assert JSRuntime.isPropertyKey(key) : key;
                 ((WriteElementNode) writeNode).executeWithTargetAndIndexAndValue(target, key, value);
             }
         }
