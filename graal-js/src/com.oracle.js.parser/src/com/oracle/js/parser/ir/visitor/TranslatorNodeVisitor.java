@@ -55,7 +55,7 @@ import com.oracle.js.parser.ir.ContinueNode;
 import com.oracle.js.parser.ir.DebuggerNode;
 import com.oracle.js.parser.ir.EmptyNode;
 import com.oracle.js.parser.ir.ErrorNode;
-import com.oracle.js.parser.ir.ExportClauseNode;
+import com.oracle.js.parser.ir.NamedExportsNode;
 import com.oracle.js.parser.ir.ExportNode;
 import com.oracle.js.parser.ir.ExportSpecifierNode;
 import com.oracle.js.parser.ir.ExpressionStatement;
@@ -249,7 +249,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
         return enterDefault(errorNode);
     }
 
-    public R enterExportClauseNode(final ExportClauseNode exportClauseNode) {
+    public R enterNamedExportsNode(final NamedExportsNode exportClauseNode) {
         return enterDefault(exportClauseNode);
     }
 

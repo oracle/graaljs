@@ -46,16 +46,16 @@ import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 import java.util.Collections;
 import java.util.List;
 
-public class ExportClauseNode extends Node {
+public class NamedExportsNode extends Node {
 
     private final List<ExportSpecifierNode> exportSpecifiers;
 
-    public ExportClauseNode(final long token, final int start, final int finish, final List<ExportSpecifierNode> exportSpecifiers) {
+    public NamedExportsNode(final long token, final int start, final int finish, final List<ExportSpecifierNode> exportSpecifiers) {
         super(token, start, finish);
         this.exportSpecifiers = exportSpecifiers;
     }
 
-    private ExportClauseNode(final ExportClauseNode node, final List<ExportSpecifierNode> exportSpecifiers) {
+    private NamedExportsNode(final NamedExportsNode node, final List<ExportSpecifierNode> exportSpecifiers) {
         super(node);
         this.exportSpecifiers = exportSpecifiers;
     }
@@ -64,17 +64,17 @@ public class ExportClauseNode extends Node {
         return Collections.unmodifiableList(exportSpecifiers);
     }
 
-    public ExportClauseNode setExportSpecifiers(List<ExportSpecifierNode> exportSpecifiers) {
+    public NamedExportsNode setExportSpecifiers(List<ExportSpecifierNode> exportSpecifiers) {
         if (this.exportSpecifiers == exportSpecifiers) {
             return this;
         }
-        return new ExportClauseNode(this, exportSpecifiers);
+        return new NamedExportsNode(this, exportSpecifiers);
     }
 
     @Override
     public Node accept(NodeVisitor<? extends LexicalContext> visitor) {
-        if (visitor.enterExportClauseNode(this)) {
-            return visitor.leaveExportClauseNode(setExportSpecifiers(Node.accept(visitor, exportSpecifiers)));
+        if (visitor.enterNamedExportsNode(this)) {
+            return visitor.leaveNamedExportsNode(setExportSpecifiers(Node.accept(visitor, exportSpecifiers)));
         }
 
         return this;
@@ -82,7 +82,7 @@ public class ExportClauseNode extends Node {
 
     @Override
     public <R> R accept(TranslatorNodeVisitor<? extends LexicalContext, R> visitor) {
-        return visitor.enterExportClauseNode(this);
+        return visitor.enterNamedExportsNode(this);
     }
 
     @Override

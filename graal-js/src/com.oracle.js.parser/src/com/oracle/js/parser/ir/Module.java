@@ -53,6 +53,7 @@ public final class Module {
     public static final String DEFAULT_EXPORT_BINDING_NAME = "*default*";
     public static final String DEFAULT_NAME = "default";
     public static final String STAR_NAME = "*";
+    public static final String NAMESPACE_EXPORT_BINDING_NAME = "*namespace*";
 
     public static final class ExportEntry {
         private final String exportName;
@@ -69,6 +70,10 @@ public final class Module {
 
         public static ExportEntry exportStarFrom(String moduleRequest) {
             return new ExportEntry(null, moduleRequest, STAR_NAME, null);
+        }
+
+        public static ExportEntry exportStarAsNamespaceFrom(String exportName, String moduleRequest) {
+            return new ExportEntry(exportName, moduleRequest, STAR_NAME, null);
         }
 
         public static ExportEntry exportDefault() {

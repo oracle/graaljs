@@ -46,7 +46,7 @@ import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
 public class ExportNode extends Node {
 
-    private final ExportClauseNode exportClause;
+    private final NamedExportsNode namedExports;
 
     private final FromNode from;
 
@@ -58,11 +58,11 @@ public class ExportNode extends Node {
 
     private final boolean isDefault;
 
-    public ExportNode(final long token, final int start, final int finish, final FromNode from) {
-        this(token, start, finish, null, from, null, null, null, false);
+    public ExportNode(final long token, final int start, final int finish, final IdentNode ident, final FromNode from) {
+        this(token, start, finish, null, from, ident, null, null, false);
     }
 
-    public ExportNode(final long token, final int start, final int finish, final ExportClauseNode exportClause, final FromNode from) {
+    public ExportNode(final long token, final int start, final int finish, final NamedExportsNode exportClause, final FromNode from) {
         this(token, start, finish, exportClause, from, null, null, null, false);
     }
 
@@ -74,34 +74,34 @@ public class ExportNode extends Node {
         this(token, start, finish, null, null, ident, var, null, false);
     }
 
-    private ExportNode(final long token, final int start, final int finish, final ExportClauseNode exportClause,
+    private ExportNode(final long token, final int start, final int finish, final NamedExportsNode namedExports,
                     final FromNode from, final IdentNode exportIdent, final VarNode var, final Expression expression, final boolean isDefault) {
         super(token, start, finish);
-        this.exportClause = exportClause;
+        this.namedExports = namedExports;
         this.from = from;
         this.exportIdent = exportIdent;
         this.var = var;
         this.expression = expression;
         this.isDefault = isDefault;
-        assert (exportClause != null || from != null) != (exportIdent != null);
-        assert !isDefault || (exportClause == null && from == null);
-        assert (exportIdent == null && var == null && expression == null) || isDefault || (exportIdent != null && exportIdent == getIdent(var, expression));
+        assert (namedExports == null) || (exportIdent == null);
+        assert !isDefault || (namedExports == null && from == null);
+        assert (var == null && expression == null) || isDefault || (exportIdent != null && exportIdent == getIdent(var, expression));
     }
 
-    private ExportNode(final ExportNode node, final ExportClauseNode exportClause,
+    private ExportNode(final ExportNode node, final NamedExportsNode namedExports,
                     final FromNode from, final IdentNode exportIdent, final VarNode var, final Expression expression) {
         super(node);
         this.isDefault = node.isDefault;
 
-        this.exportClause = exportClause;
+        this.namedExports = namedExports;
         this.from = from;
         this.exportIdent = exportIdent;
         this.var = var;
         this.expression = expression;
     }
 
-    public ExportClauseNode getExportClause() {
-        return exportClause;
+    public NamedExportsNode getNamedExports() {
+        return namedExports;
     }
 
     public FromNode getFrom() {
@@ -124,9 +124,9 @@ public class ExportNode extends Node {
         return isDefault;
     }
 
-    public ExportNode setExportClause(ExportClauseNode exportClause) {
+    public ExportNode setExportClause(NamedExportsNode exportClause) {
         assert exportIdent == null;
-        if (this.exportClause == exportClause) {
+        if (this.namedExports == exportClause) {
             return this;
         }
         return new ExportNode(this, exportClause, from, exportIdent, var, expression);
@@ -137,20 +137,20 @@ public class ExportNode extends Node {
         if (this.from == from) {
             return this;
         }
-        return new ExportNode(this, exportClause, from, exportIdent, var, expression);
+        return new ExportNode(this, namedExports, from, exportIdent, var, expression);
     }
 
     @Override
     public Node accept(NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterExportNode(this)) {
-            ExportClauseNode newExportClause = exportClause == null ? null : (ExportClauseNode) exportClause.accept(visitor);
+            NamedExportsNode newExportClause = namedExports == null ? null : (NamedExportsNode) namedExports.accept(visitor);
             FromNode newFrom = from == null ? null : (FromNode) from.accept(visitor);
             VarNode newVar = var == null ? null : (VarNode) var.accept(visitor);
             Expression newExpression = expression == null ? null : (Expression) expression.accept(visitor);
             IdentNode newIdent = (exportIdent == null || isDefault()) ? exportIdent : getIdent(newVar, newExpression);
-            ExportNode newNode = (this.exportClause == newExportClause && this.from == newFrom && this.exportIdent == newIdent && this.var == newVar && this.expression == newExpression)
+            ExportNode newNode = (this.namedExports == newExportClause && this.from == newFrom && this.exportIdent == newIdent && this.var == newVar && this.expression == newExpression)
                             ? this
-                            : new ExportNode(this, exportClause, from, exportIdent, var, expression);
+                            : new ExportNode(this, namedExports, from, exportIdent, var, expression);
             return visitor.leaveExportNode(newNode);
         }
 
@@ -184,11 +184,17 @@ public class ExportNode extends Node {
             if (expression.isAssignment()) {
                 sb.append(';');
             }
+        } else if (var != null) {
+            var.toString(sb, printType);
+            sb.append(';');
         } else {
-            if (exportClause == null) {
+            if (namedExports == null) {
                 sb.append("* ");
+                if (exportIdent != null) {
+                    sb.append("as ").append(exportIdent).append(' ');
+                }
             } else {
-                exportClause.toString(sb, printType);
+                namedExports.toString(sb, printType);
             }
             if (from != null) {
                 from.toString(sb, printType);

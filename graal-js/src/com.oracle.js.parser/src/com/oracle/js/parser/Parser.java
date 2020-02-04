@@ -128,7 +128,7 @@ import com.oracle.js.parser.ir.ContinueNode;
 import com.oracle.js.parser.ir.DebuggerNode;
 import com.oracle.js.parser.ir.EmptyNode;
 import com.oracle.js.parser.ir.ErrorNode;
-import com.oracle.js.parser.ir.ExportClauseNode;
+import com.oracle.js.parser.ir.NamedExportsNode;
 import com.oracle.js.parser.ir.ExportNode;
 import com.oracle.js.parser.ir.ExportSpecifierNode;
 import com.oracle.js.parser.ir.Expression;
@@ -6440,9 +6440,8 @@ public class Parser extends AbstractParser {
      *
      * <pre>
      * ExportDeclaration :
-     *     export * FromClause ;
-     *     export ExportClause FromClause ;
-     *     export ExportClause ;
+     *     export ExportFromClause FromClause ;
+     *     export NamedExports ;
      *     export VariableStatement
      *     export Declaration
      *     export default HoistableDeclaration[Default]
@@ -6456,15 +6455,20 @@ public class Parser extends AbstractParser {
         switch (type) {
             case MUL: {
                 next();
+                IdentNode exportName = null;
+                if (type == AS && isES2020()) {
+                    next();
+                    exportName = getIdentifierName();
+                }
                 FromNode from = fromClause();
                 String moduleRequest = from.getModuleSpecifier().getValue();
                 module.addModuleRequest(moduleRequest);
-                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, from));
+                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportName, from));
                 endOfLine();
                 break;
             }
             case LBRACE: {
-                ExportClauseNode exportClause = exportClause();
+                NamedExportsNode exportClause = namedExports();
                 FromNode from = null;
                 if (type == FROM) {
                     from = fromClause();
@@ -6557,10 +6561,10 @@ public class Parser extends AbstractParser {
     }
 
     /**
-     * Parse an export clause.
+     * Parse a named exports clause.
      *
      * <pre>
-     * ExportClause :
+     * NamedExports :
      *     { }
      *     { ExportsList }
      *     { ExportsList , }
@@ -6574,7 +6578,7 @@ public class Parser extends AbstractParser {
      *
      * @return a list of ExportSpecifiers
      */
-    private ExportClauseNode exportClause() {
+    private NamedExportsNode namedExports() {
         final long startToken = token;
         assert type == LBRACE;
         next();
@@ -6595,11 +6599,8 @@ public class Parser extends AbstractParser {
                 next();
                 IdentNode exportName = getIdentifierName();
                 exports.add(new ExportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, exportName));
-                // exports.add(ExportEntry.exportSpecifier(exportName.getName(),
-                // localName.getName()));
             } else {
                 exports.add(new ExportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, null));
-                // exports.add(ExportEntry.exportSpecifier(localName.getName()));
             }
             if (type == COMMARIGHT) {
                 next();
@@ -6613,7 +6614,7 @@ public class Parser extends AbstractParser {
             throw error(expectMessage(IDENT, reservedWordToken), reservedWordToken);
         }
 
-        return new ExportClauseNode(startToken, Token.descPosition(startToken), finish, optimizeList(exports));
+        return new NamedExportsNode(startToken, Token.descPosition(startToken), finish, optimizeList(exports));
     }
 
     private static boolean isReservedWord(TokenType type) {

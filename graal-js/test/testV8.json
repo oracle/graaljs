@@ -773,6 +773,94 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
+    "filePath" : "mjsunit/harmony/modules-import-15-top-level-await.mjs",
+    "status" : "FAIL",
+    "comment" : "top-level await"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-15.mjs",
+    "status" : "FAIL",
+    "comment" : "test expects exact error message"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-16.mjs",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-rqstd-order-top-level-await-2.mjs",
+    "status" : "FAIL",
+    "comment" : "top-level await"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-rqstd-order-top-level-await-3.mjs",
+    "status" : "FAIL",
+    "comment" : "top-level await"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-rqstd-order-top-level-await-4.mjs",
+    "status" : "FAIL",
+    "comment" : "top-level await"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-rqstd-order-top-level-await-5.mjs",
+    "status" : "FAIL",
+    "comment" : "top-level await"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-rqstd-order-top-level-await-6.mjs",
+    "status" : "FAIL",
+    "comment" : "top-level await"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-rqstd-order-top-level-await-7.mjs",
+    "status" : "FAIL",
+    "comment" : "top-level await"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-rqstd-order-top-level-await-8.mjs",
+    "status" : "FAIL",
+    "comment" : "top-level await"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-top-level-await-1.mjs",
+    "status" : "FAIL",
+    "comment" : "top-level await"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-top-level-await-2.mjs",
+    "status" : "FAIL",
+    "comment" : "top-level await"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-top-level-await-3.mjs",
+    "status" : "FAIL",
+    "comment" : "top-level await"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-top-level-await-4.mjs",
+    "status" : "FAIL",
+    "comment" : "top-level await"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-top-level-await-5.mjs",
+    "status" : "FAIL",
+    "comment" : "top-level await"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-top-level-await-6.mjs",
+    "status" : "FAIL",
+    "comment" : "top-level await"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-top-level-await-7.mjs",
+    "status" : "FAIL",
+    "comment" : "top-level await"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-top-level-await-8.mjs",
+    "status" : "FAIL",
+    "comment" : "top-level await"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-top-level-await-cycle.mjs",
+    "status" : "FAIL",
+    "comment" : "top-level await"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-top-level-await-exception-1.mjs",
+    "status" : "FAIL",
+    "comment" : "top-level await"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-top-level-await-exception-2.mjs",
+    "status" : "FAIL",
+    "comment" : "top-level await"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-top-level-await-exception-3.mjs",
+    "status" : "FAIL",
+    "comment" : "top-level await"
+  }, {
     "filePath" : "mjsunit/harmony/nullish.js",
     "ecmaVersion" : {
       "minVersion" : 11
@@ -1117,6 +1205,10 @@
     "filePath" : "mjsunit/mjsunit-assertion-error.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/modules-init3.mjs",
+    "status" : "FAIL",
+    "comment" : "we throw a ReferenceError instead of the expected TypeError"
   }, {
     "filePath" : "mjsunit/number-tostring-big-integer.js",
     "status" : "FAIL"
@@ -2606,6 +2698,13 @@
     "filePath" : "mjsunit/string-pad.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+  }, {
+    "filePath" : "mjsunit/super_hole_check.mjs",
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS",
+    "comment" : "uses public class fields"
   }, {
     "filePath" : "mjsunit/switch.js",
     "status" : "FAIL",
