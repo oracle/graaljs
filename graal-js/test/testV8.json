@@ -504,10 +504,6 @@
     "filePath" : "mjsunit/es6/class-computed-property-names-super.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/classes-accesors.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
     "filePath" : "mjsunit/es6/classes-constructor.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
