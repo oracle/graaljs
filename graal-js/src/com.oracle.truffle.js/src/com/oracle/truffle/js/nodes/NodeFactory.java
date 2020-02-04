@@ -788,11 +788,11 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createClassDefinition(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members, String className,
-                    int instanceFieldCount) {
+                    int instanceFieldCount, int staticFieldCount) {
         if (className != null) {
             constructorFunction.setFunctionName(className);
         }
-        return ClassDefinitionNode.create(context, constructorFunction, classHeritage, members, className != null, instanceFieldCount);
+        return ClassDefinitionNode.create(context, constructorFunction, classHeritage, members, className != null, instanceFieldCount, staticFieldCount);
     }
 
     public JavaScriptNode createMakeMethod(JSContext context, JavaScriptNode function) {

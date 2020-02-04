@@ -109,7 +109,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.Pair;
@@ -1481,34 +1480,6 @@ public class Parser extends AbstractParser {
         }
     }
 
-    private static final class ClassElementKey {
-        private final boolean isStatic;
-        private final String propertyName;
-
-        private ClassElementKey(boolean isStatic, String propertyName) {
-            this.isStatic = isStatic;
-            this.propertyName = propertyName;
-        }
-
-        @Override
-        public int hashCode() {
-            final int prime = 31;
-            int result = 1;
-            result = prime * result + (isStatic ? 1231 : 1237);
-            result = prime * result + ((propertyName == null) ? 0 : propertyName.hashCode());
-            return result;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof ClassElementKey) {
-                ClassElementKey other = (ClassElementKey) obj;
-                return this.isStatic == other.isStatic && Objects.equals(this.propertyName, other.propertyName);
-            }
-            return false;
-        }
-    }
-
     /**
      * Parse ClassTail and ClassBody.
      *
@@ -1555,8 +1526,8 @@ public class Parser extends AbstractParser {
 
             PropertyNode constructor = null;
             ArrayList<PropertyNode> classElements = new ArrayList<>();
-            Map<ClassElementKey, Integer> keyToIndexMap = new HashMap<>();
             int instanceFieldCount = 0;
+            int staticFieldCount = 0;
             for (;;) {
                 if (type == SEMICOLON) {
                     next();
@@ -1589,54 +1560,41 @@ public class Parser extends AbstractParser {
                 final Expression classElementName = classElementName(yield, await);
 
                 PropertyNode classElement;
-                if (!generator && !async && !isStatic && isClassFieldDefinition(nameTokenType)) {
+                if (!generator && !async && isClassFieldDefinition(nameTokenType)) {
                     classElement = fieldDefinition(classElementName, isStatic, classElementToken, computed);
-                    instanceFieldCount++;
+                    if (isStatic) {
+                        staticFieldCount++;
+                    } else {
+                        instanceFieldCount++;
+                    }
                 } else {
                     if (privateIdent) {
                         // private methods not supported yet
                         throw error(AbstractParser.message("unexpected.token", type.getNameOrType()));
                     }
                     classElement = methodDefinition(classElementName, isStatic, classHeritage != null, generator, async, classElementToken, classElementLine, yield, await, nameTokenType, computed);
+
+                    // try to merge consecutive getter and setter pairs
+                    if (!computed && (classElement.getGetter() != null || classElement.getSetter() != null) && !classElements.isEmpty()) {
+                        PropertyNode lastElement = classElements.get(classElements.size() - 1);
+                        if (!lastElement.isComputed() && (lastElement.getGetter() != null || lastElement.getSetter() != null) && isStatic == lastElement.isStatic() &&
+                                        classElement.getKeyName().equals(lastElement.getKeyName())) {
+                            PropertyNode merged = classElement.getGetter() != null ? lastElement.setGetter(classElement.getGetter()) : lastElement.setSetter(classElement.getSetter());
+                            classElements.set(classElements.size() - 1, merged);
+                            continue;
+                        }
+                    }
                 }
 
-                if (classElement.isComputed() || classElement.isClassField()) {
-                    classElements.add(classElement);
-                } else if (!classElement.isStatic() && classElement.getKeyName().equals(CONSTRUCTOR_NAME)) {
+                if (!classElement.isStatic() && !classElement.isComputed() && classElement.getKeyName().equals(CONSTRUCTOR_NAME)) {
+                    assert !classElement.isClassField();
                     if (constructor == null) {
                         constructor = classElement;
                     } else {
                         throw error(AbstractParser.message("multiple.constructors"), classElementToken);
                     }
                 } else {
-                    // Check for duplicate method definitions and combine accessor methods.
-                    // In ES6, a duplicate is never an error regardless of strict mode
-                    // (in consequence of computed property names).
-
-                    final ClassElementKey key = new ClassElementKey(classElement.isStatic(), classElement.getKeyName());
-                    final Integer existing = keyToIndexMap.get(key);
-
-                    if (existing == null) {
-                        keyToIndexMap.put(key, classElements.size());
-                        classElements.add(classElement);
-                    } else {
-                        final PropertyNode existingProperty = classElements.get(existing);
-
-                        final Expression value = classElement.getValue();
-                        final FunctionNode getter = classElement.getGetter();
-                        final FunctionNode setter = classElement.getSetter();
-
-                        if (value != null || existingProperty.getValue() != null) {
-                            keyToIndexMap.put(key, classElements.size());
-                            classElements.add(classElement);
-                        } else if (getter != null) {
-                            assert existingProperty.getGetter() != null || existingProperty.getSetter() != null;
-                            classElements.set(existing, existingProperty.setGetter(getter));
-                        } else if (setter != null) {
-                            assert existingProperty.getGetter() != null || existingProperty.getSetter() != null;
-                            classElements.set(existing, existingProperty.setSetter(setter));
-                        }
-                    }
+                    classElements.add(classElement);
                 }
             }
 
@@ -1665,7 +1623,7 @@ public class Parser extends AbstractParser {
                 throw error(AbstractParser.message("invalid.private.ident"), invalidPrivateIdent.getToken());
             }
             classScope.close();
-            return new ClassNode(classToken, classFinish, className, classHeritage, constructor, classElements, classScope, instanceFieldCount);
+            return new ClassNode(classToken, classFinish, className, classHeritage, constructor, classElements, classScope, instanceFieldCount, staticFieldCount);
         } finally {
             lc.pop(classNode);
         }
@@ -1843,6 +1801,9 @@ public class Parser extends AbstractParser {
             String name = ((PropertyKey) propertyName).getPropertyName();
             if (CONSTRUCTOR_NAME.equals(name) || PRIVATE_CONSTRUCTOR_NAME.equals(name)) {
                 throw error(AbstractParser.message("constructor.field"), startToken);
+            }
+            if (isStatic && PROTOTYPE_NAME.equals(name)) {
+                throw error(AbstractParser.message("static.prototype.field"), startToken);
             }
         }
 

@@ -8,7 +8,7 @@ The main focus is on user-observable behavior of the engine.
 
 ## Version 20.1.0
 * Implemented support for `export * as ns from "mod"`. It is available in ECMAScript 2020 mode (`--js.ecmascript-version=2020`).
-* Implemented the [class fields](https://github.com/tc39/proposal-class-fields) proposal for public and private instance fields. This feature is available by default in Node.js and can be enabled using the experimental option `js.class-fields`.
+* Implemented support for public and private class fields, both instance and static (based on the [class fields](https://github.com/tc39/proposal-class-fields) and [static class features](https://github.com/tc39/proposal-static-class-features) proposals). This feature is available by default in Node.js and can be enabled using the experimental option `js.class-fields`.
 * Added option `js.global-arguments` (default: true) for the non-standard `arguments` global property (disabled in Node.js).
 
 ## Version 20.0.0

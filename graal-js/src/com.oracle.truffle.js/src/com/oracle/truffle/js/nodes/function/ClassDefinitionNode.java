@@ -40,11 +40,13 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
+import com.oracle.truffle.js.nodes.access.InitializeInstanceFieldsNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
@@ -71,18 +73,21 @@ public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameH
     @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
     @Child private DefineMethodNode defineConstructorMethodNode;
     @Child private PropertySetNode setFieldsNode;
+    @Child private InitializeInstanceFieldsNode staticFieldsNode;
 
     private final boolean hasName;
     private final int instanceFieldCount;
+    private final int staticFieldCount;
 
     protected ClassDefinitionNode(JSContext context, JSFunctionExpressionNode constructorFunctionNode, JavaScriptNode classHeritageNode, ObjectLiteralMemberNode[] memberNodes, boolean hasName,
-                    int instanceFieldCount) {
+                    int instanceFieldCount, int staticFieldCount) {
         this.context = context;
         this.constructorFunctionNode = constructorFunctionNode;
         this.classHeritageNode = classHeritageNode;
         this.memberNodes = memberNodes;
         this.hasName = hasName;
         this.instanceFieldCount = instanceFieldCount;
+        this.staticFieldCount = staticFieldCount;
 
         this.getPrototypeNode = PropertyGetNode.create(JSObject.PROTOTYPE, false, context);
         this.setConstructorNode = CreateMethodPropertyNode.create(context, JSObject.CONSTRUCTOR);
@@ -92,8 +97,8 @@ public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameH
     }
 
     public static ClassDefinitionNode create(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members, boolean hasName,
-                    int instanceFieldCount) {
-        return new ClassDefinitionNode(context, constructorFunction, classHeritage, members, hasName, instanceFieldCount);
+                    int instanceFieldCount, int staticFieldCount) {
+        return new ClassDefinitionNode(context, constructorFunction, classHeritage, members, hasName, instanceFieldCount, staticFieldCount);
     }
 
     @Override
@@ -142,36 +147,47 @@ public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameH
         /* Perform CreateMethodProperty(proto, "constructor", F). */
         setConstructorNode.executeVoid(proto, constructor);
 
-        Object[] fields = null;
+        Object[][] instanceFields = instanceFieldCount == 0 ? null : new Object[instanceFieldCount][];
+        Object[][] staticFields = staticFieldCount == 0 ? null : new Object[staticFieldCount][];
 
-        if (hasFields()) {
-            fields = new Object[instanceFieldCount];
+        initializeMembers(frame, proto, constructor, instanceFields, staticFields);
+
+        if (setFieldsNode != null) {
+            setFieldsNode.setValue(constructor, instanceFields);
         }
-
-        initializeMembers(frame, proto, constructor, fields);
-
-        if (hasFields()) {
-            setFieldsNode.setValue(constructor, fields);
+        if (staticFieldCount != 0) {
+            InitializeInstanceFieldsNode defineStaticFields = this.staticFieldsNode;
+            if (defineStaticFields == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                this.staticFieldsNode = defineStaticFields = InitializeInstanceFieldsNode.create(context);
+            }
+            defineStaticFields.executeEvaluated(constructor, staticFields);
         }
 
         return constructor;
     }
 
     @ExplodeLoop
-    private void initializeMembers(VirtualFrame frame, DynamicObject proto, DynamicObject constructor, Object[] fields) {
+    private void initializeMembers(VirtualFrame frame, DynamicObject proto, DynamicObject constructor, Object[][] instanceFields, Object[][] staticFields) {
         /* For each ClassElement e in order from NonConstructorMethodDefinitions of ClassBody */
-        int fieldIndex = 0;
+        int instanceFieldIndex = 0;
+        int staticFieldIndex = 0;
         for (ObjectLiteralMemberNode memberNode : memberNodes) {
             DynamicObject homeObject = memberNode.isStatic() ? constructor : proto;
             if (memberNode.isField()) {
                 Object key = memberNode.executeKey(frame);
                 Object value = memberNode.executeValue(frame, homeObject);
-                fields[fieldIndex++] = new Object[]{key, value, memberNode.isAnonymousFunctionDefinition()};
+                Object[] field = new Object[]{key, value, memberNode.isAnonymousFunctionDefinition()};
+                if (memberNode.isStatic()) {
+                    staticFields[staticFieldIndex++] = field;
+                } else {
+                    instanceFields[instanceFieldIndex++] = field;
+                }
             } else {
                 memberNode.executeVoid(frame, homeObject, context);
             }
         }
-        assert fieldIndex == instanceFieldCount;
+        assert instanceFieldIndex == instanceFieldCount && staticFieldIndex == staticFieldCount;
     }
 
     @Override
@@ -189,13 +205,9 @@ public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameH
         ((FunctionNameHolder) constructorFunctionNode).setFunctionName(name);
     }
 
-    private boolean hasFields() {
-        return setFieldsNode != null;
-    }
-
     @Override
     protected JavaScriptNode copyUninitialized() {
         return create(context, (JSFunctionExpressionNode) cloneUninitialized(constructorFunctionNode), cloneUninitialized(classHeritageNode), ObjectLiteralMemberNode.cloneUninitialized(memberNodes),
-                        hasName, instanceFieldCount);
+                        hasName, instanceFieldCount, staticFieldCount);
     }
 }
