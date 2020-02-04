@@ -144,7 +144,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
     /**
      * Implementation of the Set.prototype.clear().
      */
-    public abstract static class JSSetClearNode extends JSSetOperation {
+    public abstract static class JSSetClearNode extends JSBuiltinNode {
 
         public JSSetClearNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -229,7 +229,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
     }
 
-    public abstract static class JSSetForEachNode extends JSSetOperation {
+    public abstract static class JSSetForEachNode extends JSBuiltinNode {
 
         public JSSetForEachNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);

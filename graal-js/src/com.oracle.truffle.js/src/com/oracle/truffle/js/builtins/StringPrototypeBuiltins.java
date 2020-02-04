@@ -402,7 +402,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private RequireObjectCoercibleNode requireObjectCoercibleNode;
         @Child private JSToStringNode toStringNode;
         @Child private JSToIntegerNode toIntegerNode;
-        @Child private JSToNumberNode toNumberNode;
 
         protected static int within(int value, int min, int max) {
             assert min <= max;
@@ -451,14 +450,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 toIntegerNode = insert(JSToIntegerNode.create());
             }
             return toIntegerNode.executeInt(target);
-        }
-
-        protected Number toNumber(Object target) {
-            if (toNumberNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toNumberNode = insert(JSToNumberNode.create());
-            }
-            return toNumberNode.executeNumber(target);
         }
     }
 
@@ -623,10 +614,11 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(replaces = {"charCodeAtLazyString", "charCodeAtInBounds", "charCodeAtOutOfBounds"})
-        protected Object charCodeAtGeneric(Object thisObj, Object indexObj) {
+        protected Object charCodeAtGeneric(Object thisObj, Object indexObj,
+                        @Cached("create()") JSToNumberNode toNumberNode) {
             requireObjectCoercible(thisObj);
             String s = toString(thisObj);
-            Number index = toNumber(indexObj);
+            Number index = toNumberNode.executeNumber(indexObj);
             long lIndex = JSRuntime.toInteger(index);
             if (indexOutOfBounds.profile(0 > lIndex || lIndex >= s.length())) {
                 return Double.NaN;
@@ -647,7 +639,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
             @Override
             @Specialization
-            protected Object charCodeAtGeneric(Object thisObj, Object indexObj) {
+            protected Object charCodeAtGeneric(Object thisObj, Object indexObj,
+                            @Cached("create()") JSToNumberNode toNumberNode) {
                 throw rewriteToCall();
             }
 
@@ -700,6 +693,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(replaces = {"substring", "substringStart"})
         protected String substringGeneric(Object thisObj, Object start, Object end,
+                        @Cached("create()") JSToNumberNode toNumberNode,
                         @Cached("create()") JSToNumberNode toNumber2Node,
                         @Cached("createBinaryProfile()") ConditionProfile startUndefined,
                         @Cached("createBinaryProfile()") ConditionProfile endUndefined) {
@@ -711,7 +705,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (startUndefined.profile(start == Undefined.instance)) {
                 intStart = 0;
             } else {
-                intStart = withinNumber(toNumber(start), 0, len);
+                intStart = withinNumber(toNumberNode.executeNumber(start), 0, len);
             }
             if (endUndefined.profile(end == Undefined.instance)) {
                 intEnd = len;
@@ -734,6 +728,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             @Override
             @Specialization
             protected String substringGeneric(Object thisObj, Object start, Object end,
+                            @Cached("create()") JSToNumberNode toNumberNode,
                             @Cached("create()") JSToNumberNode toNumber2Node,
                             @Cached("createBinaryProfile()") ConditionProfile startUndefined,
                             @Cached("createBinaryProfile()") ConditionProfile endUndefined) {
@@ -828,13 +823,14 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(replaces = "lastIndexOfString")
         protected int lastIndexOf(Object thisObj, Object searchString, Object position,
                         @Cached("create()") JSToStringNode toString2Node,
+                        @Cached("create()") JSToNumberNode toNumberNode,
                         @Cached("createBinaryProfile()") ConditionProfile posNaN,
                         @Cached("createBinaryProfile()") ConditionProfile searchStrZero,
                         @Cached("createBinaryProfile()") ConditionProfile searchStrOne) {
             requireObjectCoercible(thisObj);
             String thisStr = toString(thisObj);
             String searchStr = toString2Node.executeString(searchString);
-            Number numPos = toNumber(position);
+            Number numPos = toNumberNode.executeNumber(position);
             int len = thisStr.length();
             int pos;
 
@@ -2482,10 +2478,11 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected String repeat(Object thisObj, Object count) {
+        protected String repeat(Object thisObj, Object count,
+                        @Cached("create()") JSToNumberNode toNumberNode) {
             requireObjectCoercible(thisObj);
             String thisStr = toString(thisObj);
-            Number repeatCountN = toNumber(count);
+            Number repeatCountN = toNumberNode.executeNumber(count);
             long repeatCount = JSRuntime.toInteger(repeatCountN);
             if (repeatCount < 0 || (repeatCountN instanceof Double && Double.isInfinite(repeatCountN.doubleValue()))) {
                 errorBranch.enter();

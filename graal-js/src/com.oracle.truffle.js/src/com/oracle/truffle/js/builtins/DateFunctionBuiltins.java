@@ -41,12 +41,14 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.DateFunctionBuiltinsFactory.DateNowNodeGen;
 import com.oracle.truffle.js.builtins.DateFunctionBuiltinsFactory.DateParseNodeGen;
 import com.oracle.truffle.js.builtins.DateFunctionBuiltinsFactory.DateUTCNodeGen;
-import com.oracle.truffle.js.builtins.NumberPrototypeBuiltins.JSNumberOperation;
+import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
+import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -95,7 +97,7 @@ public final class DateFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<D
         return null;
     }
 
-    public abstract static class DateParseNode extends JSNumberOperation {
+    public abstract static class DateParseNode extends JSBuiltinNode {
         private final ConditionProfile gotFieldsProfile = ConditionProfile.createBinaryProfile();
 
         public DateParseNode(JSContext context, JSBuiltin builtin) {
@@ -103,8 +105,9 @@ public final class DateFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<D
         }
 
         @Specialization
-        protected double parse(Object parseDate) {
-            String dateString = toString(parseDate);
+        protected double parse(Object parseDate,
+                        @Cached("create()") JSToStringNode toStringNode) {
+            String dateString = toStringNode.executeString(parseDate);
             Integer[] fields = getContext().getEvaluator().parseDate(getContext().getRealm(), dateString.trim());
             if (gotFieldsProfile.profile(fields != null)) {
                 return JSDate.makeDate(fields[0], fields[1], fields[2], fields[3], fields[4], fields[5], fields[6], fields[7], getContext());
@@ -126,17 +129,18 @@ public final class DateFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<D
         }
     }
 
-    public abstract static class DateUTCNode extends JSNumberOperation {
+    public abstract static class DateUTCNode extends JSBuiltinNode {
         public DateUTCNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected double utc(Object... args) {
+        protected double utc(Object[] args,
+                        @Cached("create()") JSToNumberNode toNumberNode) {
             double[] argsEvaluated = new double[args.length];
             boolean isNaN = false;
             for (int i = 0; i < args.length; i++) {
-                double d = JSRuntime.doubleValue(toNumber(args[i]));
+                double d = JSRuntime.doubleValue(toNumberNode.executeNumber(args[i]));
                 if (Double.isNaN(d)) {
                     isNaN = true;
                 }

@@ -42,6 +42,7 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.NumberPrototypeBuiltins.JSNumberOperation;
@@ -51,6 +52,7 @@ import com.oracle.truffle.js.builtins.StringFunctionBuiltinsFactory.StringRawNod
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt16Node;
@@ -150,17 +152,18 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    public abstract static class JSFromCodePointNode extends JSNumberOperation {
+    public abstract static class JSFromCodePointNode extends JSBuiltinNode {
 
         public JSFromCodePointNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected String fromCodePoint(Object[] args) {
+        protected String fromCodePoint(Object[] args,
+                        @Cached("create()") JSToNumberNode toNumberNode) {
             StringBuilder st = new StringBuilder(args.length);
             for (Object arg : args) {
-                Number value = toNumber(arg);
+                Number value = toNumberNode.executeNumber(arg);
                 double valueDouble = JSRuntime.doubleValue(value);
                 int valueInt = JSRuntime.intValue(value);
                 if (JSRuntime.isNegativeZero(valueDouble)) {

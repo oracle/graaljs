@@ -148,7 +148,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
     /**
      * Implementation of the Map.prototype.clear().
      */
-    public abstract static class JSMapClearNode extends JSMapOperation {
+    public abstract static class JSMapClearNode extends JSBuiltinNode {
 
         public JSMapClearNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -260,7 +260,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         }
     }
 
-    public abstract static class JSMapForEachNode extends JSMapOperation {
+    public abstract static class JSMapForEachNode extends JSBuiltinNode {
 
         public JSMapForEachNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
