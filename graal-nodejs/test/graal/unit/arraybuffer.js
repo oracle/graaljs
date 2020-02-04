@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,34 +39,22 @@
  * SOFTWARE.
  */
 
-#include "arguments.cc"
-#include "array.cc"
-#include "arraybuffer.cc"
-#include "bigint.cc"
-#include "boolean.cc"
-#include "bootstrap.cc"
-#include "cast.cc"
-#include "context.cc"
-#include "exception.cc"
-#include "external.cc"
-#include "function.cc"
-#include "function_template.cc"
-#include "gc.cc"
-#include "local.cc"
-#include "integer.cc"
-#include "isolate.cc"
-#include "message.cc"
-#include "null.cc"
-#include "object.cc"
-#include "object_new.cc"
-#include "object_template.cc"
-#include "persistent.cc"
-#include "script.cc"
-#include "set.cc"
-#include "stacktrace.cc"
-#include "string.cc"
-#include "symbol.cc"
-#include "try_catch.cc"
-#include "undefined.cc"
-#include "value.cc"
-#include "v8obj.cc"
+var assert = require('assert');
+var module = require('./_unit');
+
+describe('ArrayBuffer', function () {
+    describe('Detach', function () {
+        it('should set byteLength to 0', function () {
+            var buffer = new ArrayBuffer(10);
+            module.ArrayBuffer_Externalize(buffer);
+            module.ArrayBuffer_Detach(buffer);
+            assert.strictEqual(buffer.byteLength, 0);
+        });
+        it('should set content to null', function () {
+            var buffer = new ArrayBuffer(10);
+            module.ArrayBuffer_Externalize(buffer);
+            module.ArrayBuffer_Detach(buffer);
+            assert.strictEqual(module.ArrayBuffer_GetContentsDataPointerIsNull(buffer), true);
+        });
+    });
+});
