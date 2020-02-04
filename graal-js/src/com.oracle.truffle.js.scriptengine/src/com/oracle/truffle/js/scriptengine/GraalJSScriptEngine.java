@@ -45,6 +45,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.io.Writer;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.function.Predicate;
 
 import javax.script.AbstractScriptEngine;
@@ -450,22 +452,37 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     @Override
     public <T> T getInterface(Class<T> clasz) {
         checkInterface(clasz);
-        return evalInternal(getPolyglotContext(), "this").as(clasz);
+        return getInterfaceInner(evalInternal(getPolyglotContext(), "this"), clasz);
     }
 
     @Override
     public <T> T getInterface(Object thiz, Class<T> clasz) {
         if (thiz == null) {
-            throw new IllegalArgumentException("this can not be null");
+            throw new IllegalArgumentException("this cannot be null");
         }
         checkInterface(clasz);
-        return getPolyglotContext().asValue(thiz).as(clasz);
+        Value thisValue = getPolyglotContext().asValue(thiz);
+        checkThis(thisValue);
+        return getInterfaceInner(thisValue, clasz);
     }
 
     private static void checkInterface(Class<?> clasz) {
         if (clasz == null || !clasz.isInterface()) {
             throw new IllegalArgumentException("interface Class expected in getInterface");
         }
+    }
+
+    private static void checkThis(Value thiz) {
+        if (thiz.isHostObject() || !thiz.hasMembers()) {
+            throw new IllegalArgumentException("getInterface cannot be called on non-script object");
+        }
+    }
+
+    private static <T> T getInterfaceInner(Value thiz, Class<T> iface) {
+        if (!isInterfaceImplemented(iface, thiz)) {
+            return null;
+        }
+        return thiz.as(iface);
     }
 
     @Override
@@ -573,6 +590,25 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
      */
     public static GraalJSScriptEngine create(Engine engine, Context.Builder newContextConfig) {
         return new GraalJSScriptEngine(null, engine, newContextConfig);
+    }
+
+    private static boolean isInterfaceImplemented(final Class<?> iface, final Value obj) {
+        for (final Method method : iface.getMethods()) {
+            // ignore methods of java.lang.Object class
+            if (method.getDeclaringClass() == Object.class) {
+                continue;
+            }
+
+            // skip check for default methods - non-abstract, interface methods
+            if (!Modifier.isAbstract(method.getModifiers())) {
+                continue;
+            }
+
+            if (!obj.canInvokeMember(method.getName())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
