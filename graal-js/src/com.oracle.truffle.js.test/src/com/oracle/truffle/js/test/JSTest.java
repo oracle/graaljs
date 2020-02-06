@@ -40,8 +40,12 @@
  */
 package com.oracle.truffle.js.test;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.junit.After;
 import org.junit.Before;
+
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 
 public abstract class JSTest {
     protected TestHelper testHelper;
@@ -54,5 +58,13 @@ public abstract class JSTest {
     @After
     public void close() {
         testHelper.close();
+    }
+
+    public static Context.Builder newContextBuilder(String... permittedLanguages) {
+        return Context.newBuilder(permittedLanguages.length == 0 ? new String[]{JavaScriptLanguage.ID} : permittedLanguages).allowExperimentalOptions(true);
+    }
+
+    public static Engine.Builder newEngineBuilder() {
+        return Engine.newBuilder().allowExperimentalOptions(true);
     }
 }

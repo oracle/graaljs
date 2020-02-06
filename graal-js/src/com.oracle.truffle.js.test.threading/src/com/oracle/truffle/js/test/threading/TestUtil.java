@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,41 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.test.interop;
-
-import static org.junit.Assert.assertTrue;
+package com.oracle.truffle.js.test.threading;
 
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Value;
-import org.junit.Test;
+import org.graalvm.polyglot.Engine;
 
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.test.JSTest;
+public class TestUtil {
 
-public class ToNumberTest {
-
-    @Test
-    public void testForeignArrayLength() {
-        try (Context context = JSTest.newContextBuilder().allowAllAccess(true).build()) {
-            String jscode = "var array = [42,211];\n" +
-                            "array.length = new java.lang.StringBuilder('1');\n" +
-                            "array.length == 1 && array[0] == 42";
-            Value value = context.eval(JavaScriptLanguage.ID, jscode);
-            assertTrue(value.isBoolean());
-            assertTrue(value.asBoolean());
-        }
+    // Duplication from JSTest
+    static Context.Builder newContextBuilder(String... permittedLanguages) {
+        return Context.newBuilder(permittedLanguages.length == 0 ? new String[]{"js"} : permittedLanguages).allowExperimentalOptions(true);
     }
 
-    @Test
-    public void testForeignCompareFnResult() {
-        try (Context context = JSTest.newContextBuilder().allowAllAccess(true).build()) {
-            String jscode = "var array = [211,42];\n" +
-                            "array.sort(function(x,y) { return java.math.BigInteger.valueOf(x-y); })\n" +
-                            "array.length == 2 && array[0] == 42 && array[1] == 211";
-            Value value = context.eval(JavaScriptLanguage.ID, jscode);
-            assertTrue(value.isBoolean());
-            assertTrue(value.asBoolean());
-        }
+    // Duplication from JSTest
+    static Engine.Builder newEngineBuilder() {
+        return Engine.newBuilder().allowExperimentalOptions(true);
     }
-
 }

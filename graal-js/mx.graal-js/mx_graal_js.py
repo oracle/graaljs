@@ -44,7 +44,7 @@ class GraalJsDefaultTags:
 def _graal_js_gate_runner(args, tasks):
     with Task('TestJSCommand', tasks, tags=[GraalJsDefaultTags.default, GraalJsDefaultTags.all]) as t:
         if t:
-            js(['-Dtruffle.js.ProfileTime=true', '-e', '""'])
+            js(['-Dpolyglot.js.profile-time=true', '-e', '""'])
 
     with Task('UnitTests', tasks, tags=[GraalJsDefaultTags.default, GraalJsDefaultTags.all]) as t:
         if t:
@@ -52,10 +52,10 @@ def _graal_js_gate_runner(args, tasks):
 
     gateTestConfigs = {
         GraalJsDefaultTags.default: ['gate'],
-        'noic': ['-Dtruffle.js.PropertyCacheLimit=0', '-Dtruffle.js.FunctionCacheLimit=0', 'gate'],
-        'directbytebuffer': ['-Dtruffle.js.DirectByteBuffer=true', 'gate'],
-        'cloneuninitialized': ['-Dtruffle.js.TestCloneUninitialized=true', 'gate'],
-        'lazytranslation': ['-Dtruffle.js.LazyTranslation=true', 'gate'],
+        'noic': ['-Dpolyglot.js.property-cache-limit=0', '-Dpolyglot.js.function-cache-limit=0', 'gate'],
+        'directbytebuffer': ['-Dpolyglot.js.direct-byte-buffer=true', 'gate'],
+        'cloneuninitialized': ['-Dpolyglot.js.test-clone-uninitialized=true', 'gate'],
+        'lazytranslation': ['-Dpolyglot.js.lazy-translation=true', 'gate'],
         'shareengine': ['gate', 'shareengine'],
     }
 
@@ -187,9 +187,7 @@ def _run_test_suite(location, library_names, custom_args, default_vm_args, max_h
 def test262(args, nonZeroIsFatal=True):
     """run the test262 conformance suite"""
     _location = join(_suite.dir, 'lib', 'test262')
-    _default_vm_args = [
-        '-Dpolyglot.js.test262-mode=true',
-    ]
+    _default_vm_args = []
     _stack_size = '2m' if mx.get_arch() in ('aarch64', 'sparcv9') else '1m'
     return _run_test_suite(
         location=_location,

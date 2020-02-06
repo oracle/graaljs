@@ -52,7 +52,7 @@ import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JSConfig;
 
 @NodeInfo(shortName = "<<")
 public abstract class JSLeftShiftNode extends JSBinaryNode {
@@ -64,7 +64,7 @@ public abstract class JSLeftShiftNode extends JSBinaryNode {
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
         Truncatable.truncate(left);
         Truncatable.truncate(right);
-        if (JSTruffleOptions.UseSuperOperations && right instanceof JSConstantIntegerNode) {
+        if (JSConfig.UseSuperOperations && right instanceof JSConstantIntegerNode) {
             return JSLeftShiftConstantNode.create(left, right);
         }
         return JSLeftShiftNodeGen.create(left, right);

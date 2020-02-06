@@ -53,7 +53,6 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
 import com.oracle.truffle.js.nodes.promise.UnwrapPromiseNode;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -64,7 +63,6 @@ public final class InteropAsyncFunction extends InteropFunction {
 
     public InteropAsyncFunction(DynamicObject function) {
         super(function);
-        assert JSTruffleOptions.InteropCompletePromises;
     }
 
     @Override
@@ -97,6 +95,7 @@ public final class InteropAsyncFunction extends InteropFunction {
                     @Cached JSInteropExecuteNode callNode,
                     @Cached ExportValueNode exportNode,
                     @Cached(value = "create(realm.getContext())") UnwrapPromiseNode unwrapPromise) throws UnsupportedMessageException {
+        assert realm.getContext().getContextOptions().interopCompletePromises();
         language.interopBoundaryEnter(realm);
         Object result;
         try {

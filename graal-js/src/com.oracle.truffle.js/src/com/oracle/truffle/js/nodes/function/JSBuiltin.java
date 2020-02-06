@@ -47,8 +47,8 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.NodeFactory;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.Builtin;
@@ -194,7 +194,7 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
 
         JSFunctionData functionData = JSFunctionData.create(context, getLength(), getName(), isConstructor(), false, false, true);
 
-        if (JSTruffleOptions.LazyFunctionData) {
+        if (JSConfig.LazyFunctionData) {
             functionData.setLazyInit(this);
         } else {
             initializeEager(functionData);

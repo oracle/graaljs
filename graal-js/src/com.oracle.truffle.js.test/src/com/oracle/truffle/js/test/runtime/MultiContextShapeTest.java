@@ -52,6 +52,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.test.JSTest;
 
 public class MultiContextShapeTest {
 
@@ -91,10 +92,10 @@ public class MultiContextShapeTest {
     }
 
     private static void testSameShapeAcrossContexts(String source) {
-        try (Engine engine = Engine.create()) {
+        try (Engine engine = JSTest.newEngineBuilder().build()) {
             Shape lastShape = null;
             for (int i = 0; i < 2; i++) {
-                try (Context c = Context.newBuilder(ID).engine(engine).build()) {
+                try (Context c = JSTest.newContextBuilder().engine(engine).build()) {
                     Value object = c.eval(ID, source);
                     DynamicObject jsobject = unwrapJSObject(c, object);
                     Shape objShape = jsobject.getShape();

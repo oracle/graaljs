@@ -54,8 +54,6 @@ import java.util.SplittableRandom;
 import java.util.TimeZone;
 import java.util.WeakHashMap;
 
-import com.oracle.truffle.js.builtins.commonjs.CommonJSRequireBuiltin;
-import com.oracle.truffle.js.builtins.commonjs.GlobalCommonJSRequireBuiltins;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
 
@@ -89,6 +87,8 @@ import com.oracle.truffle.js.builtins.ReflectBuiltins;
 import com.oracle.truffle.js.builtins.RegExpStringIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.SetIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.StringIteratorPrototypeBuiltins;
+import com.oracle.truffle.js.builtins.commonjs.CommonJSRequireBuiltin;
+import com.oracle.truffle.js.builtins.commonjs.GlobalCommonJSRequireBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
@@ -133,8 +133,8 @@ import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSTest262;
 import com.oracle.truffle.js.runtime.builtins.JSTestV8;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
-import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
+import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
 import com.oracle.truffle.js.runtime.builtins.SIMDType;
 import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDTypeFactory;
@@ -432,7 +432,7 @@ public class JSRealm {
         this.dateConstructor = ctor.getFunctionObject();
         this.datePrototype = ctor.getPrototype();
         this.initialRegExpPrototypeShape = this.regExpPrototype.getShape();
-        boolean es6 = JSTruffleOptions.MaxECMAScriptVersion >= 6;
+        boolean es6 = context.getContextOptions().getEcmaScriptVersion() >= 6;
         if (es6) {
             ctor = JSSymbol.createConstructor(this);
             this.symbolConstructor = ctor.getFunctionObject();
@@ -516,7 +516,7 @@ public class JSRealm {
         this.setIteratorPrototype = es6 ? createSetIteratorPrototype() : null;
         this.mapIteratorPrototype = es6 ? createMapIteratorPrototype() : null;
         this.stringIteratorPrototype = es6 ? createStringIteratorPrototype() : null;
-        this.regExpStringIteratorPrototype = JSTruffleOptions.MaxECMAScriptVersion >= JSTruffleOptions.ECMAScript2019 ? createRegExpStringIteratorPrototype() : null;
+        this.regExpStringIteratorPrototype = context.getContextOptions().getEcmaScriptVersion() >= JSConfig.ECMAScript2019 ? createRegExpStringIteratorPrototype() : null;
 
         ctor = JSCollator.createConstructor(this);
         this.collatorConstructor = ctor.getFunctionObject();
@@ -566,7 +566,7 @@ public class JSRealm {
 
         this.mathObject = JSMath.create(this);
 
-        boolean es8 = JSTruffleOptions.MaxECMAScriptVersion >= 8;
+        boolean es8 = context.getContextOptions().getEcmaScriptVersion() >= 8;
         if (es8) {
             ctor = JSFunction.createAsyncFunctionConstructor(this);
             this.asyncFunctionConstructor = ctor.getFunctionObject();
@@ -576,7 +576,7 @@ public class JSRealm {
             this.asyncFunctionPrototype = null;
         }
 
-        boolean es9 = JSTruffleOptions.MaxECMAScriptVersion >= 9;
+        boolean es9 = context.getContextOptions().getEcmaScriptVersion() >= 9;
         if (es9) {
             this.asyncIteratorPrototype = JSFunction.createAsyncIteratorPrototype(this);
             this.asyncFromSyncIteratorPrototype = JSFunction.createAsyncFromSyncIteratorPrototype(this);
@@ -1099,7 +1099,7 @@ public class JSRealm {
 
     public void setupGlobals() {
         CompilerAsserts.neverPartOfCompilation("do not setup globals from compiled code");
-        long time = JSTruffleOptions.ProfileTime ? System.nanoTime() : 0L;
+        long time = context.getContextOptions().isProfileTime() ? System.nanoTime() : 0L;
 
         DynamicObject global = getGlobalObject();
         putGlobalProperty(JSUserObject.CLASS_NAME, getObjectConstructor());
@@ -1158,7 +1158,7 @@ public class JSRealm {
             setupPolyglot();
         }
         if (context.isOptionDebugBuiltin()) {
-            putGlobalProperty(JSTruffleOptions.DebugPropertyName, createDebugObject());
+            putGlobalProperty(context.getContextOptions().getDebugPropertyName(), createDebugObject());
         }
         if (context.getContextOptions().isTest262Mode()) {
             putGlobalProperty(JSTest262.GLOBAL_PROPERTY_NAME, JSTest262.create(this));
@@ -1197,16 +1197,16 @@ public class JSRealm {
         if (context.isOptionAtomics()) {
             putGlobalProperty(ATOMICS_CLASS_NAME, createAtomics());
         }
-        if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019) {
+        if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2019) {
             putGlobalProperty("globalThis", global);
         }
-        if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2021) {
+        if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2021) {
             putGlobalProperty(JSWeakRef.CLASS_NAME, getWeakRefConstructor());
         }
         if (context.getContextOptions().isGraalBuiltin()) {
             putGraalObject();
         }
-        if (JSTruffleOptions.ProfileTime) {
+        if (context.getContextOptions().isProfileTime()) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
         }
     }

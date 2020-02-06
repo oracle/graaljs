@@ -50,6 +50,8 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
 import org.junit.Test;
 
+import com.oracle.truffle.js.test.JSTest;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -216,7 +218,7 @@ public class ESModuleTest {
     @Test
     public void testFunctionExport() throws IOException {
         File[] allFilesArray = null;
-        try (Context context = Context.newBuilder(ID).allowIO(true).build()) {
+        try (Context context = JSTest.newContextBuilder().allowIO(true).build()) {
             allFilesArray = prepareTestFileAndModules("resources/functionexporttest.js", "resources" +
                             "/functionexportmodule.js");
             Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
@@ -234,7 +236,7 @@ public class ESModuleTest {
     @Test
     public void testFunctionExportNoMimeType() throws IOException {
         File[] allFilesArray = null;
-        try (Context context = Context.newBuilder(ID).allowIO(true).build()) {
+        try (Context context = JSTest.newContextBuilder().allowIO(true).build()) {
             allFilesArray = prepareTestFileAndModules("resources/functionexporttest.js", "resources" +
                             "/functionexportmodule.js");
             String mainFilePath = allFilesArray[0].getAbsolutePath();
@@ -256,7 +258,7 @@ public class ESModuleTest {
     @Test
     public void testDefaultFunctionExport() throws IOException {
         File[] allFilesArray = null;
-        try (Context context = Context.newBuilder(ID).allowIO(true).build()) {
+        try (Context context = JSTest.newContextBuilder().allowIO(true).build()) {
             allFilesArray = prepareTestFileAndModules("resources/defaultfunctionexporttest.js", "resources/diagmodule" +
                             ".js");
             Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
@@ -273,7 +275,7 @@ public class ESModuleTest {
     @Test
     public void testRenamedExport() throws IOException {
         File[] allFilesArray = null;
-        try (Context context = Context.newBuilder(ID).allowIO(true).build()) {
+        try (Context context = JSTest.newContextBuilder().allowIO(true).build()) {
 
             allFilesArray = prepareTestFileAndModules("resources/renamedexporttest.js", "resources" +
                             "/renamedexportmodule.js");
@@ -291,7 +293,7 @@ public class ESModuleTest {
     @Test
     public void testClassExport() throws IOException {
         File[] allFilesArray = null;
-        try (Context context = Context.newBuilder(ID).allowIO(true).build()) {
+        try (Context context = JSTest.newContextBuilder().allowIO(true).build()) {
             allFilesArray = prepareTestFileAndModules("resources/classexporttest.js", "resources/classexportmodule.js");
             Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
             Value v = context.eval(mainSource);
@@ -307,7 +309,7 @@ public class ESModuleTest {
     @Test
     public void testDefaultClassExport() throws IOException {
         File[] allFilesArray = null;
-        try (Context context = Context.newBuilder(ID).allowIO(true).build()) {
+        try (Context context = JSTest.newContextBuilder().allowIO(true).build()) {
             allFilesArray = prepareTestFileAndModules("resources/defaultclassexporttest.js", "resources/mymathmodule" +
                             ".js");
             Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
@@ -389,7 +391,7 @@ public class ESModuleTest {
             }
         };
 
-        try (Context context = Context.newBuilder(ID).allowIO(true).fileSystem(fileSystem).build()) {
+        try (Context context = JSTest.newContextBuilder().allowIO(true).fileSystem(fileSystem).build()) {
             allFilesArray = prepareTestFileAndModules("resources/importwithcustomfilesystemtest.js", "resources" +
                             "/functionexportmodule.js");
             Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();

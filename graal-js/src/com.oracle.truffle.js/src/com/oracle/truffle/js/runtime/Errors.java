@@ -727,5 +727,4 @@ public final class Errors {
     public static JSException createSIMDExpected() {
         return Errors.createTypeError("SIMD type expected");
     }
-
 }

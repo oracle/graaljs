@@ -97,7 +97,7 @@ public abstract class DeclareGlobalVariableNode extends DeclareGlobalNode {
 
     protected abstract void executeVoid(DynamicObject globalObject, JSContext context);
 
-    @Specialization(guards = {"PropertyCacheLimit > 0", "isJSGlobalObject(globalObject)"})
+    @Specialization(guards = {"context.getPropertyCacheLimit() > 0", "isJSGlobalObject(globalObject)"})
     protected void doCached(DynamicObject globalObject, @SuppressWarnings("unused") JSContext context,
                     @Cached("makeDefineOwnPropertyCache(context)") PropertySetNode cache) {
         cache.setValue(globalObject, Undefined.instance);

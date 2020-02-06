@@ -48,7 +48,7 @@ import java.time.format.DateTimeFormatter;
 
 import javax.management.MBeanServer;
 
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.sun.management.HotSpotDiagnosticMXBean;
 
 public final class HeapDump {
@@ -60,7 +60,7 @@ public final class HeapDump {
     // Derived from:
     // https://blogs.oracle.com/sundararajan/entry/programmatically_dumping_heap_from_java
     public static void dump(String fileName, boolean live) throws IOException {
-        if (JSTruffleOptions.SubstrateVM) {
+        if (JSConfig.SubstrateVM) {
             dumpSVM(fileName, live);
         } else {
             dumpHotSpot(fileName, live);

@@ -68,9 +68,9 @@ import com.oracle.truffle.js.nodes.function.SetFunctionNameNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -251,7 +251,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             }
         }
 
-        protected final void insertIntoCache(Shape oldShape, Shape newShape, Property property, Assumption newShapeNotObsoleteAssumption) {
+        protected final void insertIntoCache(Shape oldShape, Shape newShape, Property property, Assumption newShapeNotObsoleteAssumption, JSContext context) {
             CompilerAsserts.neverPartOfCompilation();
             Lock lock = getLock();
             lock.lock();
@@ -269,7 +269,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
                     } else if (c.oldShape.equals(oldShape) && c.newShape.equals(newShape) && c.property.equals(property)) {
                         // already in the cache
                         return;
-                    } else if (count >= JSTruffleOptions.PropertyCacheLimit) {
+                    } else if (count >= context.getPropertyCacheLimit()) {
                         setGeneric();
                         return;
                     }
@@ -375,7 +375,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
                 newShape = obj.getShape();
                 newProperty = newShape.getLastProperty();
             }
-            insertIntoCache(oldShape, newShape, newProperty, newShape.getValidAssumption());
+            insertIntoCache(oldShape, newShape, newProperty, newShape.getValidAssumption(), context);
         }
 
         @Override
@@ -465,7 +465,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
                 newShape = obj.getShape();
                 newProperty = newShape.getLastProperty();
             }
-            insertIntoCache(oldShape, newShape, newProperty, newShape.getValidAssumption());
+            insertIntoCache(oldShape, newShape, newProperty, newShape.getValidAssumption(), context);
         }
 
         private static Accessor mergedAccessor(DynamicObject obj, Property property, Object getterV, Object setterV) {
@@ -754,7 +754,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         if (members.length > 0 && members[0] instanceof ObjectLiteralProtoMemberNode) {
             return new ObjectLiteralNode(Arrays.copyOfRange(members, 1, members.length),
                             CreateObjectNode.createWithPrototype(context, ((ObjectLiteralProtoMemberNode) members[0]).valueNode));
-        } else if (JSTruffleOptions.DictionaryObject && members.length > JSTruffleOptions.DictionaryObjectThreshold && onlyDataMembers(members)) {
+        } else if (JSConfig.DictionaryObject && members.length > JSConfig.DictionaryObjectThreshold && onlyDataMembers(members)) {
             return createDictionaryObject(context, members);
         } else {
             return new ObjectLiteralNode(members, CreateObjectNode.create(context));

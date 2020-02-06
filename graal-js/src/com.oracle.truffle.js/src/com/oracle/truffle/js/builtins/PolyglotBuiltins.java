@@ -92,9 +92,9 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -228,12 +228,12 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                 case evalFile:
                     return PolyglotEvalFileNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
                 case createForeignObject:
-                    if (!JSTruffleOptions.SubstrateVM) {
+                    if (!JSConfig.SubstrateVM) {
                         return PolyglotCreateForeignObjectNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
                     }
                     break;
                 case createForeignDynamicObject:
-                    if (!JSTruffleOptions.SubstrateVM) {
+                    if (!JSConfig.SubstrateVM) {
                         return PolyglotCreateForeignDynamicObjectNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
                     }
                     break;
@@ -926,7 +926,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @Specialization
         @TruffleBoundary
         protected Object createForeignObject() {
-            if (!JSTruffleOptions.SubstrateVM) {
+            if (!JSConfig.SubstrateVM) {
                 try {
                     if (testMapClass == null) {
                         testMapClass = Class.forName("com.oracle.truffle.js.test.polyglot.ForeignTestMap");
@@ -958,7 +958,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @Specialization
         @TruffleBoundary
         protected Object createForeignDynamicObject() {
-            if (!JSTruffleOptions.SubstrateVM) {
+            if (!JSConfig.SubstrateVM) {
                 try {
                     if (testMapClass == null) {
                         testMapClass = Class.forName("com.oracle.truffle.js.test.polyglot.ForeignDynamicObject");

@@ -83,7 +83,7 @@ public class TestHelper implements AutoCloseable {
     private Context ctx;
 
     public TestHelper() {
-        this(Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).option(JSContextOptions.DEBUG_BUILTIN_NAME, "true"));
+        this(JSTest.newContextBuilder().option(JSContextOptions.DEBUG_BUILTIN_NAME, "true"));
     }
 
     public TestHelper(Context.Builder contextBuilder) {
@@ -178,7 +178,7 @@ public class TestHelper implements AutoCloseable {
     }
 
     public Value runRedirectOutput(String sourceCode, PrintStream writer, PrintStream errorWriter, boolean isInteractive, Map<String, Object> bindings) {
-        Context specialCtx = Context.newBuilder(JavaScriptLanguage.ID).out(writer).err(errorWriter).build();
+        Context specialCtx = JSTest.newContextBuilder().out(writer).err(errorWriter).build();
         Value jsBindings = specialCtx.getBindings(JavaScriptLanguage.ID);
         for (Map.Entry<String, Object> entry : bindings.entrySet()) {
             jsBindings.putMember(entry.getKey(), entry.getValue());

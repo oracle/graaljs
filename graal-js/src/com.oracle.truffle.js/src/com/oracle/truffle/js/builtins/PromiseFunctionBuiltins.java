@@ -55,14 +55,14 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseAllNode;
-import com.oracle.truffle.js.nodes.promise.PerformPromiseCombinatorNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseAllSettledNode;
+import com.oracle.truffle.js.nodes.promise.PerformPromiseCombinatorNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseRaceNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
@@ -102,7 +102,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Override
         public int getECMAScriptVersion() {
             if (this == allSettled) {
-                return JSTruffleOptions.ECMAScript2020;
+                return JSConfig.ECMAScript2020;
             }
             return 6;
         }

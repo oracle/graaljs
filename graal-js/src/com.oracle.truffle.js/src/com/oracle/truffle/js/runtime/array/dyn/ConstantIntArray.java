@@ -44,7 +44,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArr
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArray;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 
@@ -105,7 +105,7 @@ public final class ConstantIntArray extends AbstractConstantArray {
     public AbstractIntArray createWriteableInt(DynamicObject object, long index, int value, boolean condition, ProfileHolder profile) {
         int[] copyArray = ArrayCopy.intToInt(getArray(object, condition));
         ZeroBasedIntArray newArray = ZeroBasedIntArray.makeZeroBasedIntArray(object, copyArray.length, copyArray.length, copyArray, integrityLevel);
-        if (JSTruffleOptions.TraceArrayTransitions) {
+        if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
         }
         return newArray;
@@ -115,7 +115,7 @@ public final class ConstantIntArray extends AbstractConstantArray {
     public AbstractWritableArray createWriteableDouble(DynamicObject object, long index, double value, boolean condition, ProfileHolder profile) {
         double[] copyArray = ArrayCopy.intToDouble(getArray(object, condition));
         ZeroBasedDoubleArray newArray = ZeroBasedDoubleArray.makeZeroBasedDoubleArray(object, copyArray.length, copyArray.length, copyArray, integrityLevel);
-        if (JSTruffleOptions.TraceArrayTransitions) {
+        if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
         }
         return newArray;
@@ -130,7 +130,7 @@ public final class ConstantIntArray extends AbstractConstantArray {
     public AbstractWritableArray createWriteableObject(DynamicObject object, long index, Object value, boolean condition, ProfileHolder profile) {
         Object[] copyArray = ArrayCopy.intToObject(getArray(object, condition));
         ZeroBasedObjectArray newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, copyArray.length, copyArray.length, copyArray, integrityLevel);
-        if (JSTruffleOptions.TraceArrayTransitions) {
+        if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
         }
         return newArray;

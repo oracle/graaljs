@@ -54,8 +54,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContextOptions;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 public class TestExtProcessCallable extends AbstractTestCallable {
 
@@ -80,7 +80,7 @@ public class TestExtProcessCallable extends AbstractTestCallable {
 
     public TestExtProcessCallable(TestSuite suite, int ecmaScriptVersion, List<String> args, Map<String, String> extraOptions) {
         super(suite);
-        assert ecmaScriptVersion <= JSTruffleOptions.MaxECMAScriptVersion;
+        assert ecmaScriptVersion <= JSConfig.MaxECMAScriptVersion;
         this.cmd = createCommand(suite, ecmaScriptVersion, extraOptions, args);
     }
 

@@ -77,7 +77,7 @@ public class JavaBuiltinsTest extends JSTest {
     }
 
     private static String test(String sourceCode, String failedMessage, boolean allowAllAccess, Object arg, boolean nashornCompat) {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowAllAccess(allowAllAccess).allowExperimentalOptions(true).option(JSContextOptions.NASHORN_COMPATIBILITY_MODE_NAME,
+        try (Context context = JSTest.newContextBuilder().allowAllAccess(allowAllAccess).option(JSContextOptions.NASHORN_COMPATIBILITY_MODE_NAME,
                         String.valueOf(nashornCompat)).build()) {
             if (arg != null) {
                 context.getBindings("js").putMember("arg", arg);

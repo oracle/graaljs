@@ -45,7 +45,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetLen
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetUsedLength;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 
 public final class ZeroBasedObjectArray extends AbstractObjectArray {
@@ -81,7 +81,7 @@ public final class ZeroBasedObjectArray extends AbstractObjectArray {
     @Override
     public void setInBoundsFast(DynamicObject object, int index, Object value, boolean condition) {
         getArray(object, condition)[index] = checkNonNull(value);
-        if (JSTruffleOptions.TraceArrayWrites) {
+        if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBoundsFast", index, value);
         }
     }
@@ -115,7 +115,7 @@ public final class ZeroBasedObjectArray extends AbstractObjectArray {
         int usedLength = getUsedLength(object, condition);
 
         ContiguousObjectArray newArray = ContiguousObjectArray.makeContiguousObjectArray(object, length, array, 0, 0, usedLength, integrityLevel);
-        if (JSTruffleOptions.TraceArrayTransitions) {
+        if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
         }
         return newArray;
@@ -128,7 +128,7 @@ public final class ZeroBasedObjectArray extends AbstractObjectArray {
         int usedLength = getUsedLength(object, condition);
 
         HolesObjectArray newArray = HolesObjectArray.makeHolesObjectArray(object, length, array, 0, 0, usedLength, 0, integrityLevel);
-        if (JSTruffleOptions.TraceArrayTransitions) {
+        if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
         }
         return newArray;

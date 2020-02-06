@@ -45,6 +45,8 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
+import com.oracle.truffle.js.test.JSTest;
+
 import java.nio.ByteBuffer;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
@@ -56,7 +58,7 @@ public class InteropByteBufferTest {
     @Test
     public void testJavaBufferToTypedArray() {
         ByteBuffer buffer = ByteBuffer.wrap(new byte[]{1, 2, 3});
-        try (Context context = Context.create(ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             context.getBindings("js").putMember("buffer", buffer);
             Value jsBuffer = context.eval(ID, "new Int8Array(new ArrayBuffer(buffer));");
             assertEquals(jsBuffer.getArraySize(), 3);
@@ -71,7 +73,7 @@ public class InteropByteBufferTest {
         ByteBuffer buffer = ByteBuffer.allocateDirect(3);
         buffer.put(new byte[]{1, 2, 3});
         buffer.position(0);
-        try (Context context = Context.create(ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             context.getBindings("js").putMember("buffer", buffer);
             Value jsBuffer = context.eval(ID, "new Int8Array(new ArrayBuffer(buffer));");
             assertEquals(jsBuffer.getArraySize(), 3);
@@ -84,7 +86,7 @@ public class InteropByteBufferTest {
     @Test
     public void testJavaScriptCanWrite() {
         ByteBuffer buffer = ByteBuffer.wrap(new byte[]{1, 2, 3});
-        try (Context context = Context.create(ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             context.getBindings("js").putMember("buffer", buffer);
             Value jsBuffer = context.eval(ID, "(new Int8Array(new ArrayBuffer(buffer))).map(x => 42);");
             assertEquals(jsBuffer.getArraySize(), 3);
@@ -97,7 +99,7 @@ public class InteropByteBufferTest {
     @Test
     public void testSameBuffer() {
         ByteBuffer buffer = ByteBuffer.wrap(new byte[]{1, 2, 3});
-        try (Context context = Context.create(ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             context.getBindings("js").putMember("buffer", buffer);
             Value jsBuffer = context.eval(ID, "new Int8Array(new ArrayBuffer(buffer));");
             buffer.position(0);
@@ -111,7 +113,7 @@ public class InteropByteBufferTest {
     @Test
     public void testBufferAsArgument() {
         ByteBuffer buffer = ByteBuffer.wrap(new byte[]{1, 2, 3});
-        try (Context context = Context.create(ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value fun = context.eval(ID, "(function fun(buff) {return new Int8Array(new ArrayBuffer(buff))})");
             Value jsBuffer = fun.execute(buffer);
             buffer.position(0);
@@ -124,7 +126,7 @@ public class InteropByteBufferTest {
 
     @Test
     public void testJavaInteropDirect() {
-        try (Context cx = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowHostClassLookup(className -> true).build()) {
+        try (Context cx = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowHostClassLookup(className -> true).build()) {
             Value buffer = cx.eval("js", "const ByteBuffer = Java.type('java.nio.ByteBuffer');" +
                             "const bb = ByteBuffer.allocateDirect(3);" +
                             "const ab = new ArrayBuffer(bb);" +
@@ -143,7 +145,7 @@ public class InteropByteBufferTest {
 
     @Test
     public void testJavaInteropHeap() {
-        try (Context cx = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowHostClassLookup(className -> true).build()) {
+        try (Context cx = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowHostClassLookup(className -> true).build()) {
             Value buffer = cx.eval("js", "const ByteBuffer = Java.type('java.nio.ByteBuffer');" +
                             "const bb = ByteBuffer.allocate(3);" +
                             "const ab = new ArrayBuffer(bb);" +

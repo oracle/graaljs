@@ -41,19 +41,16 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 
-@ImportStatic(JSTruffleOptions.class)
 public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
-    private final JSContext context;
+    protected final JSContext context;
     protected final Object key;
     @Child protected IsJSObjectNode isObject;
 
@@ -69,13 +66,13 @@ public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
 
     public abstract void executeVoid(Object object, Object value);
 
-    @Specialization(guards = {"PropertyCacheLimit > 0", "isObject.executeBoolean(object)"})
+    @Specialization(guards = {"context.getPropertyCacheLimit() > 0", "isObject.executeBoolean(object)"})
     protected static void doCached(Object object, Object value,
                     @Cached("makeDefinePropertyCache()") PropertySetNode propertyCache) {
         propertyCache.setValue(object, value);
     }
 
-    @Specialization(guards = {"PropertyCacheLimit == 0", "isJSObject(object)"})
+    @Specialization(guards = {"context.getPropertyCacheLimit() == 0", "isJSObject(object)"})
     protected final void doUncached(DynamicObject object, Object value) {
         JSRuntime.createDataPropertyOrThrow(object, key, value);
     }

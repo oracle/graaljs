@@ -55,6 +55,8 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Test;
 
+import com.oracle.truffle.js.test.JSTest;
+
 /**
  * Various tests for accessing JavaScript object in Java and accessing Java Map as JavaScript object
  * in JavaScript.
@@ -113,7 +115,7 @@ public class JavaScriptObjectInteropTest {
      */
     @Test
     public void testBasic() {
-        try (Context context = Context.create(ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value v = context.eval(ID, "var o = " + JS_OBJECT_STRING + "; o;");
             Object o = v.as(Object.class);
             assertTrue(o instanceof Map<?, ?>);
@@ -130,7 +132,7 @@ public class JavaScriptObjectInteropTest {
     @Test
     public void testMapAsParameter() {
         final HostAccess hostAccess = HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).build();
-        try (Context context = Context.newBuilder(ID).allowHostAccess(hostAccess).build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).build()) {
             Value bindings = context.getBindings(ID);
             ToBePassedToJS objectFromJava = new ToBePassedToJS();
             bindings.putMember("objectFromJava", objectFromJava);
@@ -145,7 +147,7 @@ public class JavaScriptObjectInteropTest {
      */
     @Test
     public void testJavaMapInJS() {
-        try (Context context = Context.create(ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value bindings = context.getBindings(ID);
             bindings.putMember("javaMap", ProxyObject.fromMap(JAVA_MAP));
             Value v = context.eval(ID, "var recreatedObject = {};" +
@@ -165,7 +167,7 @@ public class JavaScriptObjectInteropTest {
     public void testJavaReturnMapAsJSObject() {
         final HostAccess hostAccess = HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).allowListAccess(
                         true).build();
-        try (Context context = Context.newBuilder(ID).allowHostAccess(hostAccess).build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).build()) {
             Value bindings = context.getBindings(ID);
             ToBePassedToJS objectFromJava = new ToBePassedToJS();
             bindings.putMember("objectFromJava", objectFromJava);

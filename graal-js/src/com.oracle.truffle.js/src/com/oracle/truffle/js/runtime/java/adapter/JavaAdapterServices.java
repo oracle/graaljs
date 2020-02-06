@@ -53,7 +53,7 @@ import java.util.Arrays;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JSConfig;
 
 /**
  * Provides static utility services to generated Java adapter classes.
@@ -72,7 +72,7 @@ public final class JavaAdapterServices {
     static final int BOOTSTRAP_VARARGS = 1 << 2;
 
     private JavaAdapterServices() {
-        assert !JSTruffleOptions.SubstrateVM;
+        assert !JSConfig.SubstrateVM;
     }
 
     /**

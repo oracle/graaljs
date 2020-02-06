@@ -50,8 +50,9 @@ import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContextOptions;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.test.JSTest;
 
 /**
  * String.prototype.* behavior not sufficiently tested by test262.
@@ -59,14 +60,14 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 public class StringPrototypeBuiltins {
 
     private static boolean testIntl(String sourceText) {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).build()) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value result = context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, "string-prototype-test").buildLiteral());
             return result.asBoolean();
         }
     }
 
     private static Value evalWithLocale(String code, String locale) {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).option("js.locale", locale).build()) {
+        try (Context context = JSTest.newContextBuilder().option("js.locale", locale).build()) {
             return context.eval(JavaScriptLanguage.ID, code);
         }
     }
@@ -93,7 +94,8 @@ public class StringPrototypeBuiltins {
 
     @Test
     public void testReplaceAllRedefinedFlags() {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).option(JSContextOptions.ECMASCRIPT_VERSION_NAME, Integer.toString(JSTruffleOptions.ECMAScript2020)).build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ECMASCRIPT_VERSION_NAME,
+                        Integer.toString(JSConfig.ECMAScript2020)).build()) {
             String code = "var re = /a/; Object.defineProperty(re, 'flags', {value: 'g'}); 'a'.replaceAll(re, 'b');";
             Value result = context.eval(JavaScriptLanguage.ID, code);
             assertTrue(result.isString());
@@ -103,7 +105,8 @@ public class StringPrototypeBuiltins {
 
     @Test
     public void testReplaceAllCustomNonGlobalRegExp() {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).option(JSContextOptions.ECMASCRIPT_VERSION_NAME, Integer.toString(JSTruffleOptions.ECMAScript2020)).build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ECMASCRIPT_VERSION_NAME,
+                        Integer.toString(JSConfig.ECMAScript2020)).build()) {
             String code = "var searchValue = { [Symbol.match]: true, flags: '' }; var expectedError = false; try { 'a'.replaceAll(searchValue, 'b') } catch (e) { expectedError = e instanceof TypeError }";
             Value result = context.eval(JavaScriptLanguage.ID, code);
             assertTrue(result.isBoolean());
@@ -113,7 +116,8 @@ public class StringPrototypeBuiltins {
 
     @Test
     public void testReplaceAllCustomGlobalRegExp() {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).option(JSContextOptions.ECMASCRIPT_VERSION_NAME, Integer.toString(JSTruffleOptions.ECMAScript2020)).build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ECMASCRIPT_VERSION_NAME,
+                        Integer.toString(JSConfig.ECMAScript2020)).build()) {
             String code = "var searchValue = { [Symbol.match]: true, flags: 'g', [Symbol.replace]: () => 42 }; 'a'.replaceAll(searchValue, 'b');";
             Value result = context.eval(JavaScriptLanguage.ID, code);
             assertTrue(result.isNumber());
@@ -123,7 +127,8 @@ public class StringPrototypeBuiltins {
 
     @Test
     public void testReplaceAllReplaceValueToString() {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).option(JSContextOptions.ECMASCRIPT_VERSION_NAME, Integer.toString(JSTruffleOptions.ECMAScript2020)).build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ECMASCRIPT_VERSION_NAME,
+                        Integer.toString(JSConfig.ECMAScript2020)).build()) {
             String code = "var toStringCount = 0; var replaceValue = { toString() { toStringCount++; return 'b'; } }; 'aa'.replaceAll('a', replaceValue); toStringCount;";
             Value result = context.eval(JavaScriptLanguage.ID, code);
             assertTrue(result.isNumber());

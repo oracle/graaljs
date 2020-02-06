@@ -49,6 +49,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.JSTest;
 
 /**
  * Number.prototype.* behavior not sufficiently tested by test262.
@@ -56,7 +57,7 @@ import com.oracle.truffle.js.runtime.JSContextOptions;
 public class NumberPrototypeBuiltins {
 
     private static boolean testIntl(String sourceText, String defaultLocale) {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).option(JSContextOptions.INTL_402_NAME, "true").option(JSContextOptions.LOCALE_NAME,
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.INTL_402_NAME, "true").option(JSContextOptions.LOCALE_NAME,
                         defaultLocale).build()) {
             Value result = context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, "number-prototype-test").buildLiteral());
             return result.asBoolean();

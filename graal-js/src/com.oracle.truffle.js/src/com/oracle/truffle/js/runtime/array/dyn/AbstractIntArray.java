@@ -47,7 +47,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArr
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArray;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 
 public abstract class AbstractIntArray extends AbstractWritableArray {
@@ -117,7 +117,7 @@ public abstract class AbstractIntArray extends AbstractWritableArray {
 
     public final void setInBounds(DynamicObject object, int index, int value, boolean condition, ProfileHolder profile) {
         getArray(object, condition)[prepareInBounds(object, index, condition, profile)] = value;
-        if (JSTruffleOptions.TraceArrayWrites) {
+        if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBounds", index, value);
         }
     }
@@ -125,7 +125,7 @@ public abstract class AbstractIntArray extends AbstractWritableArray {
     public final void setSupported(DynamicObject object, int index, int value, boolean condition, ProfileHolder profile) {
         int preparedIndex = prepareSupported(object, index, condition, profile);
         getArray(object)[preparedIndex] = value;
-        if (JSTruffleOptions.TraceArrayWrites) {
+        if (JSConfig.TraceArrayWrites) {
             traceWriteValue("Supported", index, value);
         }
     }

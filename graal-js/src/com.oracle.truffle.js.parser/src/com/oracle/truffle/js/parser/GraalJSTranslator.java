@@ -169,10 +169,10 @@ import com.oracle.truffle.js.parser.env.WithEnvironment;
 import com.oracle.truffle.js.parser.internal.ir.debug.PrintVisitor;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -266,7 +266,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode createBlock(JavaScriptNode[] statements, boolean terminal, boolean expressionBlock) {
-        if ((JSTruffleOptions.ReturnOptimizer && terminal) || expressionBlock || currentFunction().returnsLastStatementResult()) {
+        if ((JSConfig.ReturnOptimizer && terminal) || expressionBlock || currentFunction().returnsLastStatementResult()) {
             return factory.createExprBlock(statements);
         } else {
             return factory.createVoidBlock(statements);
@@ -299,7 +299,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     @Override
     public JavaScriptNode enterFunctionNode(FunctionNode functionNode) {
-        if (JSTruffleOptions.PrintParse) {
+        if (JSConfig.PrintParse) {
             printParse(functionNode);
         }
 
@@ -338,7 +338,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
         boolean functionMode = !isGlobal || (isStrict && isIndirectEval);
 
-        boolean lazyTranslation = JSTruffleOptions.LazyTranslation && functionMode && !functionNode.isProgram() && !inDirectEval;
+        boolean lazyTranslation = context.getContextOptions().isLazyTranslation() && functionMode && !functionNode.isProgram() && !inDirectEval;
 
         String functionName = getFunctionName(functionNode);
         JSFunctionData functionData;
@@ -384,7 +384,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 }
 
                 if (functionNode.isProgram()) {
-                    functionNeedsParentFramePass(functionNode);
+                    functionNeedsParentFramePass(functionNode, context);
                 }
 
                 boolean needsParentFrame = functionNode.usesAncestorScope();
@@ -495,7 +495,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         FunctionRootNode functionRoot = factory.createFunctionRootNode(functionBody, environment.getFunctionFrameDescriptor(), functionData, functionSourceSection,
                         currentFunction.getInternalFunctionName());
 
-        if (JSTruffleOptions.PrintAst) {
+        if (JSConfig.PrintAst) {
             printAST(functionRoot);
         }
         return functionRoot;
@@ -547,7 +547,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
         VarRef yieldVar = environment.findYieldValueVar();
         JSWriteFrameSlotNode writeYieldValueNode = (JSWriteFrameSlotNode) yieldVar.createWriteNode(null);
-        JSReadFrameSlotNode readYieldResultNode = JSTruffleOptions.YieldResultInFrame ? (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getYieldResultSlot()).createReadNode() : null;
+        JSReadFrameSlotNode readYieldResultNode = JSConfig.YieldResultInFrame ? (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getYieldResultSlot()).createReadNode() : null;
         return factory.createGeneratorBody(context, instrumentedBody, writeYieldValueNode, readYieldResultNode);
     }
 
@@ -556,7 +556,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JSWriteFrameSlotNode writeAsyncContextNode = (JSWriteFrameSlotNode) environment.findAsyncContextVar().createWriteNode(null);
         VarRef yieldVar = environment.findAsyncResultVar();
         JSWriteFrameSlotNode writeYieldValueNode = (JSWriteFrameSlotNode) yieldVar.createWriteNode(null);
-        JSReadFrameSlotNode readYieldResultNode = JSTruffleOptions.YieldResultInFrame ? (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getYieldResultSlot()).createReadNode() : null;
+        JSReadFrameSlotNode readYieldResultNode = JSConfig.YieldResultInFrame ? (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getYieldResultSlot()).createReadNode() : null;
         JavaScriptNode instrumentedBody = instrumentSuspendNodes(body);
         return factory.createAsyncGeneratorBody(context, instrumentedBody, writeYieldValueNode, readYieldResultNode, writeAsyncContextNode);
     }
@@ -767,7 +767,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             return wrapGetCompletionValue(body);
         }
         if (currentFunction().hasReturn()) {
-            if (JSTruffleOptions.ReturnValueInFrame) {
+            if (JSConfig.ReturnValueInFrame) {
                 return factory.createFrameReturnTarget(body, factory.createLocal(currentFunction().getReturnSlot(), 0, 0, ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY));
             } else {
                 return factory.createReturnTarget(body);
@@ -878,14 +878,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         FunctionEnvironment currentFunction = currentFunction();
         assert !currentFunction.isGlobal() || currentFunction.isIndirectEval();
 
-        if (JSTruffleOptions.ReturnOptimizer) {
+        if (JSConfig.ReturnOptimizer) {
             markTerminalReturnNodes(functionNode.getBody());
         }
 
         if (!functionNode.isArrow() && functionNode.needsArguments()) {
             currentFunction.reserveArgumentsSlot();
 
-            if (JSTruffleOptions.OptimizeApplyArguments && functionNode.getNumOfParams() == 0 && !functionNode.hasEval() && functionNode.hasApplyArgumentsCall() &&
+            if (JSConfig.OptimizeApplyArguments && functionNode.getNumOfParams() == 0 && !functionNode.hasEval() && functionNode.hasApplyArgumentsCall() &&
                             checkDirectArgumentsAccess(functionNode, currentFunction)) {
                 currentFunction.setDirectArgumentsAccess(true);
             } else {
@@ -923,8 +923,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return Collections.emptyList();
     }
 
-    private static void functionNeedsParentFramePass(FunctionNode rootFunctionNode) {
-        if (!JSTruffleOptions.LazyTranslation) {
+    private static void functionNeedsParentFramePass(FunctionNode rootFunctionNode, JSContext context) {
+        if (!context.getContextOptions().isLazyTranslation()) {
             return; // nothing to do
         }
 
@@ -1058,7 +1058,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
             @Override
             public boolean enterIdentNode(IdentNode identNode) {
-                if (JSTruffleOptions.OptimizeApplyArguments) {
+                if (JSConfig.OptimizeApplyArguments) {
                     if (identNode.isArguments() && !identNode.isPropertyName() && functionNode.needsArguments() && !currentFunction.isDirectEval() && !identNode.isApplyArguments()) {
                         // function.apply(_, arguments);
                         directArgumentsAccess = false;
@@ -1080,7 +1080,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 if (nestedFunctionNode == functionNode) {
                     return true;
                 }
-                if (JSTruffleOptions.OptimizeApplyArguments && (nestedFunctionNode.isArrow() || !currentFunction.isStrictMode())) {
+                if (JSConfig.OptimizeApplyArguments && (nestedFunctionNode.isArrow() || !currentFunction.isStrictMode())) {
                     // 1. arrow functions have lexical `arguments` binding;
                     // direct arguments access to outer frames currently not supported
                     // 2. if not in strict mode, nested functions might access mapped parameters;
@@ -1193,7 +1193,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private ReturnNode createReturnNode(JavaScriptNode expression) {
         FunctionEnvironment currentFunction = currentFunction();
         currentFunction.addReturn();
-        if (JSTruffleOptions.ReturnValueInFrame) {
+        if (JSConfig.ReturnValueInFrame) {
             JavaScriptNode writeReturnSlotNode = environment.findTempVar(currentFunction.getReturnSlot()).createWriteNode(expression);
             return factory.createFrameReturn(writeReturnSlotNode);
         } else {
@@ -1360,7 +1360,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private EnvironmentCloseable enterBlockEnvironment(Scope scope) {
-        if (scope != null && (scope.hasDeclarations() || JSTruffleOptions.ManyBlockScopes)) {
+        if (scope != null && (scope.hasDeclarations() || JSConfig.ManyBlockScopes)) {
             /*
              * The function environment is filled with top-level vars from the function body, unless
              * the function has parameter expressions, then the function body gets a separate scope
@@ -2017,7 +2017,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             }
         } else {
             currentFunction.addYield();
-            JSWriteFrameSlotNode writeYieldResultNode = JSTruffleOptions.YieldResultInFrame ? (JSWriteFrameSlotNode) environment.findTempVar(currentFunction.getYieldResultSlot()).createWriteNode(null)
+            JSWriteFrameSlotNode writeYieldResultNode = JSConfig.YieldResultInFrame ? (JSWriteFrameSlotNode) environment.findTempVar(currentFunction.getYieldResultSlot()).createWriteNode(null)
                             : null;
             return factory.createYield(context, expression, environment.findYieldValueVar().createReadNode(), yieldStar, returnNode, writeYieldResultNode);
         }
@@ -2053,7 +2053,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode enterUnaryIncDecNode(UnaryNode unaryNode) {
         JavaScriptNode operand = transform(unaryNode.getExpression());
 
-        if (JSTruffleOptions.LocalVarIncDecNode && isLocalVariableOperand(operand)) {
+        if (JSConfig.LocalVarIncDecNode && isLocalVariableOperand(operand)) {
             FrameSlot frameSlot = ((FrameSlotNode) operand).getFrameSlot();
             if (JSFrameUtil.isConst(frameSlot)) {
                 // we know this is going to throw. do the read and throw TypeError.
@@ -2891,7 +2891,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode switchBody;
         try (JumpTargetCloseable<BreakTarget> target = currentFunction().pushBreakTarget(null)) {
             // when this switch does not use fall-through, rewrite it to an if-else-cascade
-            if (JSTruffleOptions.OptimizeNoFallthroughSwitch && isNoFallthroughSwitch(switchNode)) {
+            if (JSConfig.OptimizeNoFallthroughSwitch && isNoFallthroughSwitch(switchNode)) {
                 switchBody = ifElseFromSwitch(switchNode, switchVar, isSwitchTypeofString);
             } else {
                 switchBody = defaultSwitchNode(switchNode, switchVar, isSwitchTypeofString);

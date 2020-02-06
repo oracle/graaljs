@@ -46,7 +46,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetUse
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 
 public final class ZeroBasedIntArray extends AbstractIntArray {
@@ -82,7 +82,7 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
     @Override
     public void setInBoundsFast(DynamicObject object, int index, int value, boolean condition) {
         getArray(object, condition)[index] = value;
-        if (JSTruffleOptions.TraceArrayWrites) {
+        if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBoundsFast", index, value);
         }
     }
@@ -122,7 +122,7 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
 
         double[] doubleCopy = ArrayCopy.intToDouble(array, 0, usedLength);
         ZeroBasedDoubleArray newArray = ZeroBasedDoubleArray.makeZeroBasedDoubleArray(object, length, usedLength, doubleCopy, integrityLevel);
-        if (JSTruffleOptions.TraceArrayTransitions) {
+        if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
         }
         return newArray;
@@ -136,7 +136,7 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
 
         Object[] doubleCopy = ArrayCopy.intToObject(array, 0, usedLength);
         ZeroBasedObjectArray newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, length, usedLength, doubleCopy, integrityLevel);
-        if (JSTruffleOptions.TraceArrayTransitions) {
+        if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
         }
         return newArray;
@@ -149,7 +149,7 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
         int usedLength = getUsedLength(object, condition);
 
         ContiguousIntArray newArray = ContiguousIntArray.makeContiguousIntArray(object, length, array, 0, 0, usedLength, integrityLevel);
-        if (JSTruffleOptions.TraceArrayTransitions) {
+        if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
         }
         return newArray;
@@ -167,7 +167,7 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
         } else {
             newArray = HolesIntArray.makeHolesIntArray(object, length, array, 0, 0, usedLength, 0, integrityLevel);
         }
-        if (JSTruffleOptions.TraceArrayTransitions) {
+        if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
         }
         return newArray;

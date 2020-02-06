@@ -53,6 +53,7 @@ import static org.junit.Assert.assertFalse;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.JSTest;
 
 /**
  * Those tests are not a comprehensive testsuite for SIMD.js code. This testsuite is (or was) part
@@ -64,14 +65,14 @@ public class SIMDTest {
     }
 
     private static boolean testIntl(String sourceText) {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).option(JSContextOptions.SIMDJS_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.SIMDJS_NAME, "true").build()) {
             Value result = context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, "simd-test").buildLiteral());
             return result.asBoolean();
         }
     }
 
     private static void testIntlFailed(String sourceText, String expectedMessage) {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).option(JSContextOptions.SIMDJS_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.SIMDJS_NAME, "true").build()) {
             context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, "simd-test").buildLiteral());
         } catch (PolyglotException ex) {
             Assert.assertTrue(ex.getMessage().contains(expectedMessage));

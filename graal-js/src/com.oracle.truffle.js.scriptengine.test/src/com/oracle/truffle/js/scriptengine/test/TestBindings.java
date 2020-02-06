@@ -47,6 +47,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeFalse;
 
+import java.util.function.Predicate;
+
 import javax.script.Bindings;
 import javax.script.ScriptContext;
 import javax.script.ScriptEngine;
@@ -54,12 +56,10 @@ import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import javax.script.SimpleBindings;
 
-import java.util.function.Predicate;
-
-import com.oracle.truffle.js.scriptengine.GraalJSScriptEngine;
-import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.junit.Test;
+
+import com.oracle.truffle.js.scriptengine.GraalJSScriptEngine;
 
 public class TestBindings {
 
@@ -400,7 +400,7 @@ public class TestBindings {
 
     @Test
     public void testSetContextBuilder() throws ScriptException {
-        ScriptEngine engine = GraalJSScriptEngine.create(null, Context.newBuilder("js").allowExperimentalOptions(true).allowHostAccess(HostAccess.ALL).allowHostClassLookup(s -> true));
+        ScriptEngine engine = GraalJSScriptEngine.create(null, TestUtil.newContextBuilder().allowHostAccess(HostAccess.ALL).allowHostClassLookup(s -> true));
         engine.put("javaObj", new Object());
         assertTrue((boolean) engine.eval("(javaObj instanceof Java.type('java.lang.Object'));"));
     }

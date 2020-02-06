@@ -59,21 +59,14 @@ import com.oracle.truffle.js.parser.JavaScriptTranslator;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 public class SnapshotTool {
-    static {
-        System.setProperty("truffle.js.LazyTranslation", "false");
-    }
-
     private final TimeStats timeStats = new TimeStats();
 
     public SnapshotTool() {
     }
 
     public static void main(String[] args) throws IOException {
-        assert !JSTruffleOptions.LazyTranslation;
-
         boolean binary = true;
         String outDir = null;
         String inDir = null;
@@ -96,7 +89,8 @@ public class SnapshotTool {
 
         SnapshotTool snapshotTool = new SnapshotTool();
         if (!srcFiles.isEmpty() && outDir != null) {
-            try (Context polyglotContext = Context.newBuilder(JavaScriptLanguage.ID).allowIO(true).allowExperimentalOptions(true).option(JSContextOptions.CLASS_FIELDS_NAME, "true").build()) {
+            try (Context polyglotContext = Context.newBuilder(JavaScriptLanguage.ID).allowIO(true).allowExperimentalOptions(true).option(JSContextOptions.CLASS_FIELDS_NAME, "true").option(
+                            JSContextOptions.LAZY_TRANSLATION_NAME, "false").build()) {
                 polyglotContext.initialize(JavaScriptLanguage.ID);
                 polyglotContext.enter();
                 for (String srcFile : srcFiles) {

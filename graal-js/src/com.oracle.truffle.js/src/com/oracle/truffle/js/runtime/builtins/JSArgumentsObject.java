@@ -46,9 +46,9 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.Accessor;
@@ -65,7 +65,7 @@ public final class JSArgumentsObject extends JSAbstractArgumentsObject {
 
     public static DynamicObject createStrict(JSContext context, JSRealm realm, Object[] elements) {
         // (array, arrayType, length, usedLength, indexOffset, arrayOffset, holeCount, length)
-        if (context.getEcmaScriptVersion() < JSTruffleOptions.ECMAScript2017) {
+        if (context.getEcmaScriptVersion() < JSConfig.ECMAScript2017) {
             return JSObject.createWithPrototype(context, context.getStrictArgumentsFactory(), realm, realm.getObjectPrototype(),
                             elements, ScriptArray.createConstantArray(elements), null, elements.length, 0, 0, 0, 0, elements.length, elements.length, realm.getArrayProtoValuesIterator(),
                             realm.getThrowerAccessor(), realm.getThrowerAccessor());
@@ -117,7 +117,7 @@ public final class JSArgumentsObject extends JSAbstractArgumentsObject {
 
         Accessor throwerAccessor = new Accessor(Undefined.instance, Undefined.instance);
         JSObjectUtil.putAccessorProperty(context, dummyArray, CALLEE, throwerAccessor, JSAttributes.notConfigurableNotEnumerable());
-        if (context.getEcmaScriptVersion() < JSTruffleOptions.ECMAScript2017) {
+        if (context.getEcmaScriptVersion() < JSConfig.ECMAScript2017) {
             JSObjectUtil.putAccessorProperty(context, dummyArray, CALLER, throwerAccessor, JSAttributes.notConfigurableNotEnumerable());
         }
         return dummyArray.getShape();

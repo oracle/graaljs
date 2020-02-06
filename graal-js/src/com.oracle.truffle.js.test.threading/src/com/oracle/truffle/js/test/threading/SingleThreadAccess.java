@@ -46,17 +46,31 @@ import java.util.concurrent.Callable;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 public class SingleThreadAccess {
+
+    public Context cx;
+
+    @Before
+    public void start() {
+        cx = TestUtil.newContextBuilder().build();
+    }
+
+    @After
+    public void end() {
+        if (cx != null) {
+            cx.close();
+        }
+    }
 
     /**
      * A primitive value created by one thread can be accessed from another thread.
      */
     @Test
     public void valueInTwoThreads() {
-        final Context cx = Context.create("js");
-
         TestingThread t = new TestingThread(new Callable<Value>() {
 
             @Override
@@ -75,8 +89,6 @@ public class SingleThreadAccess {
      */
     @Test
     public void functionInTwoThreads() {
-        final Context cx = Context.create("js");
-
         TestingThread t = new TestingThread(new Callable<Value>() {
 
             @Override
@@ -95,8 +107,6 @@ public class SingleThreadAccess {
      */
     @Test
     public void evalInTwoThreads() {
-        final Context cx = Context.create("js");
-
         cx.eval("js", "var foo = 42;");
 
         TestingThread t = new TestingThread(new Callable<Value>() {
@@ -122,8 +132,6 @@ public class SingleThreadAccess {
      */
     @Test
     public void createThread() {
-        final Context cx = Context.create("js");
-
         cx.eval("js", "var foo = 42;");
 
         TestingThread t = new TestingThread(new Callable<Value>() {

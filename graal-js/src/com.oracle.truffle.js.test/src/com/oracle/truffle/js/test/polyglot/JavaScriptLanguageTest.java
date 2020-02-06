@@ -53,13 +53,14 @@ import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.test.JSTest;
 
 public class JavaScriptLanguageTest {
 
     @Test
     public void testToStringNestingDepth() {
         // this tests that JavaScriptLanguage.toString() does not nest too deeply
-        try (Context context = Context.create(JavaScriptLanguage.ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             context.getBindings("js").putMember("array", new ProxyArray() {
                 @Override
                 public Object get(long index) {
@@ -82,7 +83,7 @@ public class JavaScriptLanguageTest {
 
     @Test
     public void testToStringForeignNull() {
-        try (Context context = Context.create(JavaScriptLanguage.ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             context.getBindings("js").putMember("NULL", ForeignTestMap.newNull());
             Value result = context.eval(JavaScriptLanguage.ID, "[NULL, NULL];");
             assertTrue(result.toString(), result.toString().contains("null,"));
@@ -93,7 +94,7 @@ public class JavaScriptLanguageTest {
 
     @Test
     public void testToStringForeignArray() {
-        try (Context context = Context.create(JavaScriptLanguage.ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             context.getBindings("js").putMember("array", new ProxyArray() {
                 @Override
                 public Object get(long index) {
@@ -120,7 +121,7 @@ public class JavaScriptLanguageTest {
 
     @Test
     public void testToStringForeignObject() {
-        try (Context context = Context.create(JavaScriptLanguage.ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             context.getBindings("js").putMember("obj", ProxyObject.fromMap(Collections.singletonMap("answer", 42)));
             Value result = context.eval(JavaScriptLanguage.ID, "[obj];");
             assertTrue(result.toString(), result.toString().contains("{answer: 42}"));
@@ -133,7 +134,7 @@ public class JavaScriptLanguageTest {
 
     @Test
     public void testToStringNestedArray() {
-        try (Context context = Context.create(JavaScriptLanguage.ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[1,[2,[3,[4,[5]]]]];");
             assertEquals("(2)[1, [2, [3, Array(2)]]]", result.toString());
         }

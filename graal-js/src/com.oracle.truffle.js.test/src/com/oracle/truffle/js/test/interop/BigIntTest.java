@@ -49,13 +49,14 @@ import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.test.JSTest;
 
 public class BigIntTest {
 
     @Test
     public void testByte() {
         Value value;
-        try (Context context = Context.create(JavaScriptLanguage.ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             value = context.eval(JavaScriptLanguage.ID, "-129n");
             assertFalse(value.fitsInByte());
 
@@ -79,7 +80,7 @@ public class BigIntTest {
     @Test
     public void testShort() {
         Value value;
-        try (Context context = Context.create(JavaScriptLanguage.ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             value = context.eval(JavaScriptLanguage.ID, "-32769n");
             assertFalse(value.fitsInShort());
 
@@ -103,7 +104,7 @@ public class BigIntTest {
     @Test
     public void testInt() {
         Value value;
-        try (Context context = Context.create(JavaScriptLanguage.ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             value = context.eval(JavaScriptLanguage.ID, "-2147483649n");
             assertFalse(value.fitsInInt());
 
@@ -127,7 +128,7 @@ public class BigIntTest {
     @Test
     public void testLong() {
         Value value;
-        try (Context context = Context.create(JavaScriptLanguage.ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             value = context.eval(JavaScriptLanguage.ID, "-9223372036854775809n");
             assertFalse(value.fitsInLong());
 
@@ -151,7 +152,7 @@ public class BigIntTest {
     @Test
     public void testFloat() {
         Value value;
-        try (Context context = Context.create(JavaScriptLanguage.ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             value = context.eval(JavaScriptLanguage.ID, "0n");
             assertTrue(value.fitsInFloat());
             assertTrue(0 == value.asFloat());
@@ -175,7 +176,7 @@ public class BigIntTest {
     @Test
     public void testDouble() {
         Value value;
-        try (Context context = Context.create(JavaScriptLanguage.ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             value = context.eval(JavaScriptLanguage.ID, "0n");
             assertTrue(value.fitsInDouble());
             assertTrue(0 == value.asDouble());

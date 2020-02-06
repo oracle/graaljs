@@ -49,8 +49,8 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 @ExportLibrary(InteropLibrary.class)
 public final class JSLazyString implements CharSequence, TruffleObject, JSLazyStringFlattened, JSLazyStringRaw {
@@ -58,7 +58,7 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
     public static CharSequence create(CharSequence left, CharSequence right) {
         assert JSRuntime.isString(left);
         assert JSRuntime.isString(right);
-        if (JSTruffleOptions.LazyStrings) {
+        if (JSConfig.LazyStrings) {
             if (left.length() == 0) {
                 return right;
             } else if (right.length() == 0) {
@@ -68,7 +68,7 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
             if (resultLength > JavaScriptLanguage.getCurrentJSRealm().getContext().getStringLengthLimit()) {
                 throw Errors.createRangeErrorInvalidStringLength();
             }
-            if (resultLength < JSTruffleOptions.MinLazyStringLength) {
+            if (resultLength < JSConfig.MinLazyStringLength) {
                 return left.toString().concat(right.toString());
             }
             return new JSLazyString(left, right, resultLength);
@@ -88,12 +88,12 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
 
     @TruffleBoundary
     private static boolean assertChecked(CharSequence left, CharSequence right, int length) {
-        assert JSTruffleOptions.LazyStrings;
+        assert JSConfig.LazyStrings;
         assert JSRuntime.isString(left) && JSRuntime.isString(right);
         assert length == left.length() + right.length();
         assert left.length() > 0 && right.length() > 0;
         assert left.length() + right.length() <= JavaScriptLanguage.getCurrentJSRealm().getContext().getStringLengthLimit();
-        assert length >= JSTruffleOptions.MinLazyStringLength;
+        assert length >= JSConfig.MinLazyStringLength;
         return true;
     }
 
@@ -116,7 +116,7 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
         assert assertChecked(left, right, length);
         CharSequence ll = left.left;
         CharSequence lr = left.right;
-        if (lr != null && lr instanceof String && lr.length() + right.length() <= JSTruffleOptions.ConcatToLeafLimit) {
+        if (lr != null && lr instanceof String && lr.length() + right.length() <= JSConfig.ConcatToLeafLimit) {
             return createChecked(ll, lr.toString().concat(right), length);
         }
         return null;
@@ -127,7 +127,7 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
         assert assertChecked(left, right, length);
         CharSequence ll = right.left;
         CharSequence lr = right.right;
-        if (lr != null && ll instanceof String && left.length() + ll.length() <= JSTruffleOptions.ConcatToLeafLimit) {
+        if (lr != null && ll instanceof String && left.length() + ll.length() <= JSConfig.ConcatToLeafLimit) {
             return createChecked(left.concat(ll.toString()), lr, length);
         }
         return null;
@@ -140,7 +140,7 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
     @TruffleBoundary
     public static CharSequence createLazyInt(CharSequence left, int right) {
         assert JSRuntime.isString(left);
-        assert JSTruffleOptions.LazyStrings;
+        assert JSConfig.LazyStrings;
         if (left.length() == 0) {
             return String.valueOf(right); // bailout
         }
@@ -154,7 +154,7 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
     @TruffleBoundary
     public static CharSequence createLazyInt(int left, CharSequence right) {
         assert JSRuntime.isString(right);
-        assert JSTruffleOptions.LazyStrings;
+        assert JSConfig.LazyStrings;
         if (right.length() == 0) {
             return String.valueOf(left); // bailout
         }

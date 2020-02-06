@@ -58,6 +58,8 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import com.oracle.truffle.js.test.JSTest;
+
 /**
  * Various tests for controlling access from JavaScript to Java classes and methods. Using host
  * access policy and {@link Builder#allowHostClassLookup(Predicate)}.
@@ -96,7 +98,7 @@ public class ClassFilterInteropTest {
      */
     @Test
     public void testHostClassLookupPositive() {
-        try (Context context = Context.newBuilder(ID).allowHostClassLookup(c -> c.equals("com" +
+        try (Context context = JSTest.newContextBuilder().allowHostClassLookup(c -> c.equals("com" +
                         ".oracle.truffle.js.test.interop" +
                         ".ClassFilterInteropTest$MyClass")).build()) {
             int result = context.eval("js", "" +
@@ -116,7 +118,7 @@ public class ClassFilterInteropTest {
     public void testHostClassLookupNegativeInaccessibleMethod() {
         expectedException.expect(PolyglotException.class);
         expectedException.expectMessage("Arity error - expected: 0 actual: 1");
-        try (Context context = Context.newBuilder(ID).allowHostClassLookup(c -> c.equals("com" +
+        try (Context context = JSTest.newContextBuilder().allowHostClassLookup(c -> c.equals("com" +
                         ".oracle.truffle.js.test.interop" +
                         ".ClassFilterInteropTest$MyClass")).build()) {
             context.eval("js", "" +
@@ -139,7 +141,7 @@ public class ClassFilterInteropTest {
     public void testHostClassLookupNegativeHostClassLookupDisallowed1() {
         expectedException.expect(PolyglotException.class);
         expectedException.expectMessage("ReferenceError: Java is not defined");
-        try (Context context = Context.create(ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             context.eval("js", "" +
                             "var MyClass = Java.type('com.oracle.truffle.js.test.interop.ClassFilterInteropTest$MyClass');" +
                             "(new MyClass()).accessibleMethod();").asInt();
@@ -160,7 +162,7 @@ public class ClassFilterInteropTest {
     public void testHostClassLookupNegativeHostClassLookupDisallowed2() {
         expectedException.expect(PolyglotException.class);
         expectedException.expectMessage("ReferenceError: com is not defined");
-        try (Context context = Context.create(ID)) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             context.eval("js", "" +
                             "(new com.oracle.truffle.js.test.interop.ClassFilterInteropTest$MyClass()).accessibleMethod()" +
                             "").asInt();
@@ -176,7 +178,7 @@ public class ClassFilterInteropTest {
     @Test
     public void testPublicAccessIsPowerfull() {
         final HostAccess hostAccess = HostAccess.newBuilder().allowPublicAccess(true).allowArrayAccess(true).build();
-        try (Context context = Context.newBuilder(ID).allowHostAccess(hostAccess).build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).build()) {
             Value bindings = context.getBindings(ID);
             MyClass myClass = new MyClass();
             bindings.putMember("myClass", myClass);
@@ -197,7 +199,7 @@ public class ClassFilterInteropTest {
     @Test
     public void testPublicAccessIsReallyPowerfull() {
         final HostAccess hostAccess = HostAccess.newBuilder().allowPublicAccess(true).build();
-        try (Context context = Context.newBuilder(ID).allowHostAccess(hostAccess).build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).build()) {
             Value bindings = context.getBindings(ID);
             MyClass myClass = new MyClass();
             bindings.putMember("myClass", myClass);
@@ -237,7 +239,7 @@ public class ClassFilterInteropTest {
         expectedException.expect(PolyglotException.class);
         expectedException.expectMessage("Unknown identifier: getClassLoader");
         final HostAccess hostAccess = HostAccess.newBuilder().allowPublicAccess(true).allowArrayAccess(true).denyAccess(Class.class).build();
-        try (Context context = Context.newBuilder(ID).allowHostAccess(hostAccess).build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).build()) {
             Value bindings = context.getBindings(ID);
             MyClass myClass = new MyClass();
             bindings.putMember("myClass", myClass);
@@ -256,7 +258,7 @@ public class ClassFilterInteropTest {
         expectedException.expect(PolyglotException.class);
         expectedException.expectMessage("Unknown identifier: forName");
         final HostAccess hostAccess = HostAccess.newBuilder().allowPublicAccess(true).allowArrayAccess(true).denyAccess(Class.class).build();
-        try (Context context = Context.newBuilder(ID).allowHostAccess(hostAccess).build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).build()) {
             Value bindings = context.getBindings(ID);
             MyClass myClass = new MyClass();
             bindings.putMember("myClass", myClass);

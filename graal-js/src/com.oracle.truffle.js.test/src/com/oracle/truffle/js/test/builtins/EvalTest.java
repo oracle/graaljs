@@ -52,12 +52,13 @@ import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.JSTest;
 
 public class EvalTest {
 
     @Test
     public void testNestedIndirectEvalCaller() {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).option(JSContextOptions.V8_COMPATIBILITY_MODE_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.V8_COMPATIBILITY_MODE_NAME, "true").build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "" +
                             "var obj = {toString() {return (0, eval)(`'return 42;'`);}};\n" +
                             "var fn = new Function(obj);\n" +

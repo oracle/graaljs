@@ -46,7 +46,6 @@ import javax.script.ScriptContext;
 import javax.script.ScriptException;
 import javax.script.SimpleScriptContext;
 
-import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.junit.Assert;
 import org.junit.Test;
@@ -61,7 +60,7 @@ public class TestScriptEngineInterop {
     public void testCustomBuilder() throws ScriptException {
         Engine graalEngine = Engine.newBuilder().build();
         GraalJSScriptEngine graalJSScriptEngine = GraalJSScriptEngine.create(graalEngine,
-                        org.graalvm.polyglot.Context.newBuilder("js").engine(graalEngine));
+                        TestUtil.newContextBuilder().engine(graalEngine));
         Assert.assertEquals(42, graalJSScriptEngine.eval("42"));
 
         graalEngine.close();
@@ -69,7 +68,7 @@ public class TestScriptEngineInterop {
 
     @Test
     public void testInterop() throws ScriptException {
-        GraalJSScriptEngine engine = GraalJSScriptEngine.create(null, Context.newBuilder(ID).allowExperimentalOptions(true));
+        GraalJSScriptEngine engine = GraalJSScriptEngine.create(null, TestUtil.newContextBuilder());
         Object result = engine.eval("a = 42");
         Assert.assertEquals(42, result);
         Assert.assertEquals(42, engine.get("a"));

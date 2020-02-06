@@ -82,7 +82,6 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -203,7 +202,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
         private Object apply(Object target, Object thisArgument, Object argumentsList) {
             Object[] applyUserArgs = toObjectArray.executeObjectArray(argumentsList);
-            assert applyUserArgs.length <= JSTruffleOptions.MaxApplyArgumentLength;
+            assert applyUserArgs.length <= getContext().getContextOptions().getMaxApplyArgumentLength();
             Object[] passedOnArguments = JSArguments.create(thisArgument, target, applyUserArgs);
             return call.executeCall(passedOnArguments);
         }

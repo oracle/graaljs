@@ -50,6 +50,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.JSTest;
 
 public class NullishCoalescingTest {
 
@@ -75,13 +76,13 @@ public class NullishCoalescingTest {
     private static Value testIntl(String source) {
         testFail("2019", "Expected ; but found ??", source);
 
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2020").build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2020").build()) {
             return context.eval(JavaScriptLanguage.ID, source);
         }
     }
 
     private static void testFail(String version, String expectedFail, String source) {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).option(JSContextOptions.ECMASCRIPT_VERSION_NAME, version).build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ECMASCRIPT_VERSION_NAME, version).build()) {
             try {
                 context.eval(JavaScriptLanguage.ID, source);
                 fail();

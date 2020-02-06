@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.scriptengine.test;
 
-import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -52,7 +51,6 @@ import javax.script.Bindings;
 import javax.script.ScriptContext;
 import javax.script.ScriptException;
 
-import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
 import org.junit.Test;
@@ -101,9 +99,10 @@ public class ScriptEngineInteropArrayTest {
     @Test
     public void testArrayBasic() throws ScriptException {
         final HostAccess hostAccess = HostAccess.newBuilder().targetTypeMapping(List.class, Object.class, null, (v) -> v).build();
-        try (Engine graalEngine = Engine.newBuilder().build(); GraalJSScriptEngine graalJSScriptEngine = GraalJSScriptEngine.create(
-                        graalEngine,
-                        Context.newBuilder(ID).allowHostAccess(hostAccess))) {
+        try (Engine graalEngine = Engine.newBuilder().build();
+                        GraalJSScriptEngine graalJSScriptEngine = GraalJSScriptEngine.create(
+                                        graalEngine,
+                                        TestUtil.newContextBuilder().allowHostAccess(hostAccess))) {
             Object o = graalJSScriptEngine.eval(JS_ARRAY_STRING);
             assertTrue(o instanceof List);
             List<?> list = (List<?>) o;
@@ -135,9 +134,10 @@ public class ScriptEngineInteropArrayTest {
      */
     private static void testArrayAsParameter(String methodName) throws ScriptException {
         final HostAccess hostAccess = HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).build();
-        try (Engine graalEngine = Engine.newBuilder().build(); GraalJSScriptEngine graalJSScriptEngine = GraalJSScriptEngine.create(
-                        graalEngine,
-                        Context.newBuilder(ID).allowHostAccess(hostAccess))) {
+        try (Engine graalEngine = Engine.newBuilder().build();
+                        GraalJSScriptEngine graalJSScriptEngine = GraalJSScriptEngine.create(
+                                        graalEngine,
+                                        TestUtil.newContextBuilder().allowHostAccess(hostAccess))) {
             Bindings bindings = graalJSScriptEngine.getBindings(ScriptContext.ENGINE_SCOPE);
             ToBePassedToJS objectFromJava = new ToBePassedToJS();
             bindings.put("objectFromJava", objectFromJava);
@@ -154,9 +154,10 @@ public class ScriptEngineInteropArrayTest {
     @Test
     public void testJavaArrayAsJSArray() throws ScriptException {
         final HostAccess hostAccess = HostAccess.newBuilder().targetTypeMapping(List.class, Object.class, null, (v) -> v).allowArrayAccess(true).build();
-        try (Engine graalEngine = Engine.newBuilder().build(); GraalJSScriptEngine graalJSScriptEngine = GraalJSScriptEngine.create(
-                        graalEngine,
-                        Context.newBuilder(ID).allowHostAccess(hostAccess))) {
+        try (Engine graalEngine = Engine.newBuilder().build();
+                        GraalJSScriptEngine graalJSScriptEngine = GraalJSScriptEngine.create(
+                                        graalEngine,
+                                        TestUtil.newContextBuilder().allowHostAccess(hostAccess))) {
             Bindings bindings = graalJSScriptEngine.getBindings(ScriptContext.ENGINE_SCOPE);
             bindings.put("arrayFromJava", JAVA_ARRAY);
             Object o = graalJSScriptEngine.eval("var recreatedArray = [];" +
@@ -176,9 +177,10 @@ public class ScriptEngineInteropArrayTest {
     @Test
     public void testJavaListAsJSArray() throws ScriptException {
         final HostAccess hostAccess = HostAccess.newBuilder().targetTypeMapping(List.class, Object.class, null, (v) -> v).allowListAccess(true).build();
-        try (Engine graalEngine = Engine.newBuilder().build(); GraalJSScriptEngine graalJSScriptEngine = GraalJSScriptEngine.create(
-                        graalEngine,
-                        Context.newBuilder(ID).allowHostAccess(hostAccess))) {
+        try (Engine graalEngine = Engine.newBuilder().build();
+                        GraalJSScriptEngine graalJSScriptEngine = GraalJSScriptEngine.create(
+                                        graalEngine,
+                                        TestUtil.newContextBuilder().allowHostAccess(hostAccess))) {
             Bindings bindings = graalJSScriptEngine.getBindings(ScriptContext.ENGINE_SCOPE);
             bindings.put("arrayFromJava", JAVA_LIST);
             Object o = graalJSScriptEngine.eval("var recreatedArray = [];" +
@@ -209,9 +211,10 @@ public class ScriptEngineInteropArrayTest {
         final HostAccess.Builder hostAccessBuilder = HostAccess.newBuilder().targetTypeMapping(List.class, Object.class, null, (v) -> v).allowAccessAnnotatedBy(HostAccess.Export.class);
         final HostAccess hostAccess = (isArray ? hostAccessBuilder.allowArrayAccess(true) : hostAccessBuilder.allowListAccess(true)).build();
         String methodName = isArray ? "methodThatReturnsArray" : "methodThatReturnsList";
-        try (Engine graalEngine = Engine.newBuilder().build(); GraalJSScriptEngine graalJSScriptEngine = GraalJSScriptEngine.create(
-                        graalEngine,
-                        Context.newBuilder(ID).allowHostAccess(hostAccess))) {
+        try (Engine graalEngine = Engine.newBuilder().build();
+                        GraalJSScriptEngine graalJSScriptEngine = GraalJSScriptEngine.create(
+                                        graalEngine,
+                                        TestUtil.newContextBuilder().allowHostAccess(hostAccess))) {
             Bindings bindings = graalJSScriptEngine.getBindings(ScriptContext.ENGINE_SCOPE);
             ToBePassedToJS objectFromJava = new ToBePassedToJS();
             bindings.put("objectFromJava", objectFromJava);

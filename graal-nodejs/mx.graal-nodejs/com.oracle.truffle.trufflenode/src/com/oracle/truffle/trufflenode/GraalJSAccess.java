@@ -158,7 +158,7 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.PrepareStackTraceCallback;
@@ -2927,7 +2927,7 @@ public final class GraalJSAccess {
     }
 
     public Object[] findDynamicObjectFields(Object context) {
-        if (!JSTruffleOptions.SubstrateVM) {
+        if (!JSConfig.SubstrateVM) {
             Object arrayBuffer = arrayBufferNew(context, 4);
             Object typedArray = uint8ArrayNew(arrayBuffer, 2, 1);
 
@@ -2944,7 +2944,7 @@ public final class GraalJSAccess {
     }
 
     private static String findObjectFieldName(Object object, Object search) throws Exception {
-        if (!JSTruffleOptions.SubstrateVM) {
+        if (!JSConfig.SubstrateVM) {
             Field[] declaredFields = object.getClass().getDeclaredFields();
             for (Field field : declaredFields) {
                 if (field.getType() != Object.class) {

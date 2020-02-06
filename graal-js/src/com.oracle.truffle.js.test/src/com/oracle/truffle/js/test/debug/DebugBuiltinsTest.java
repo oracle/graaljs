@@ -47,11 +47,13 @@ import java.io.File;
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
+import com.oracle.truffle.js.test.JSTest;
+
 public class DebugBuiltinsTest {
 
     @Test
     public void testDebugBuiltin() {
-        Context ctx = Context.newBuilder("js").allowExperimentalOptions(true).option("js.debug-builtin", "true").build();
+        Context ctx = JSTest.newContextBuilder().option("js.debug-builtin", "true").build();
         ctx.eval("js", "Debug.class(); Debug.class({}); Debug.class([]);");
         ctx.eval("js", "Debug.className(); Debug.className({}); Debug.className([]);");
         ctx.eval("js", "Debug.getClass(); Debug.getClass({}); Debug.getClass([]);");

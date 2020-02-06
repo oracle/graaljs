@@ -51,8 +51,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 public final class JSFunctionData {
 
@@ -341,7 +341,7 @@ public final class JSFunctionData {
     }
 
     public void setLazyInit(Initializer lazyInit) {
-        assert JSTruffleOptions.LazyFunctionData;
+        assert JSConfig.LazyFunctionData;
         assert this.lazyInit == null;
         this.lazyInit = lazyInit;
     }

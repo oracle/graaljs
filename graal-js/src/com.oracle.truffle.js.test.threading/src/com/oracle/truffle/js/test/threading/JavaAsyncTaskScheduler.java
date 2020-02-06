@@ -82,7 +82,7 @@ public class JavaAsyncTaskScheduler {
         }
 
         public static Object evalJsCode() {
-            Context context = Context.newBuilder("js").build();
+            Context context = TestUtil.newContextBuilder().build();
             return context.eval("js", "42;");
         }
     }
@@ -92,7 +92,7 @@ public class JavaAsyncTaskScheduler {
      */
     @Test
     public void testJavaWakeup() {
-        Context cx = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).build();
+        Context cx = TestUtil.newContextBuilder().allowHostAccess(HostAccess.ALL).build();
         Queue<Object> sharedQueue = new LinkedBlockingDeque<>();
         Example async = new Example(sharedQueue);
 

@@ -68,7 +68,6 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -309,12 +308,12 @@ public abstract class InstanceofNode extends JSBinaryNode {
             return doJSObject(left, right, getPrototype1Node, getPrototype2Node, getPrototype3Node, firstTrue, firstFalse, need2Hops, need3Hops, errorBranch, invalidPrototypeBranch);
         }
 
-        private static boolean doJSObject4(DynamicObject obj, DynamicObject check, GetPrototypeNode getPrototypeNode, BranchProfile errorBranch) {
+        private boolean doJSObject4(DynamicObject obj, DynamicObject check, GetPrototypeNode getLoopedPrototypeNode, BranchProfile errorBranch) {
             DynamicObject proto = obj;
             int counter = 0;
-            while ((proto = getPrototypeNode.executeJSObject(proto)) != Null.instance) {
+            while ((proto = getLoopedPrototypeNode.executeJSObject(proto)) != Null.instance) {
                 counter++;
-                if (counter > JSTruffleOptions.MaxExpectedPrototypeChainLength) {
+                if (counter > context.getContextOptions().getMaxPrototypeChainLength()) {
                     errorBranch.enter();
                     throw Errors.createRangeError("prototype chain length exceeded");
                 }

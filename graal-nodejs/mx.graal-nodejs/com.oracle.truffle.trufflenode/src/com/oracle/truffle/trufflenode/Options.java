@@ -55,7 +55,7 @@ import org.graalvm.options.OptionCategory;
 import org.graalvm.polyglot.Context;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JSConfig;
 
 public final class Options {
     private final Context.Builder contextBuilder;
@@ -68,7 +68,7 @@ public final class Options {
 
     public static Options parseArguments(String[] args) throws Exception {
         Function<String[], Object[]> parser;
-        if (JSTruffleOptions.SubstrateVM) {
+        if (JSConfig.SubstrateVM) {
             parser = new OptionsParser();
         } else {
             // AbstractLanguageLauncher is not accessible through

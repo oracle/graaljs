@@ -50,6 +50,8 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.test.JSTest;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -62,7 +64,7 @@ import org.junit.Test;
 public class ParseWithArgsTest {
     @Test
     public void sourceRemainsHiddenAndProperlyNamed() {
-        Context ctx = Context.newBuilder().build();
+        Context ctx = JSTest.newContextBuilder().build();
         ParsingInstrument inst = ctx.getEngine().getInstruments().get("parsingInstrument").lookup(ParsingInstrument.class);
         assertNotNull(inst);
         Value x = ctx.eval("js", "var x = 42; debugger; x.toString()");

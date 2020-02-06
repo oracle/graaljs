@@ -55,8 +55,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.SparseArray;
@@ -179,7 +179,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
     }
 
     public final boolean isSupportedHoles(DynamicObject object, long index, boolean condition) {
-        return index >= firstElementIndex(object, condition) - JSTruffleOptions.MaxArrayHoleSize && index <= lastElementIndex(object, condition) + JSTruffleOptions.MaxArrayHoleSize;
+        return index >= firstElementIndex(object, condition) - JSConfig.MaxArrayHoleSize && index <= lastElementIndex(object, condition) + JSConfig.MaxArrayHoleSize;
     }
 
     protected abstract int prepareSupported(DynamicObject object, int index, boolean condition, ProfileHolder profile);
@@ -381,7 +381,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
 
     public final SparseArray toSparse(DynamicObject object, long index, Object value) {
         SparseArray newArray = SparseArray.makeSparseArray(object, this);
-        if (JSTruffleOptions.TraceArrayTransitions) {
+        if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
         }
         return newArray;
@@ -724,7 +724,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
 
     private ScriptArray ensureHolesArray(DynamicObject object, int length, Object newArray, long indexOffset, int arrayOffset, int usedLength, int holesCount) {
         AbstractWritableArray newArrayObject = sameTypeHolesArray(object, length, newArray, indexOffset, arrayOffset, usedLength, holesCount);
-        if (newArrayObject != this && JSTruffleOptions.TraceArrayTransitions) {
+        if (newArrayObject != this && JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArrayObject, 0, null);
         }
         return newArrayObject;

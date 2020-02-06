@@ -58,12 +58,14 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.truffle.js.test.JSTest;
+
 public class ProxyObjectTest {
     private Context context;
 
     @Before
     public void setUp() {
-        context = Context.create(ID);
+        context = JSTest.newContextBuilder().build();
     }
 
     @After

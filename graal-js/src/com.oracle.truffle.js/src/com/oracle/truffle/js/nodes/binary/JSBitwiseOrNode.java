@@ -50,7 +50,7 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.LargeInteger;
 
 @NodeInfo(shortName = "|")
@@ -66,7 +66,7 @@ public abstract class JSBitwiseOrNode extends JSBinaryNode {
             int rightValue = ((JSConstantIntegerNode) right).executeInt(null);
             if (rightValue == 0) {
                 return JSToInt32Node.create(left);
-            } else if (JSTruffleOptions.UseSuperOperations) {
+            } else if (JSConfig.UseSuperOperations) {
                 return JSBitwiseOrConstantNode.create(left, rightValue);
             }
         }

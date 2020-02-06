@@ -47,13 +47,14 @@ import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.JSTest;
 
 public class AtomicsBuiltinsTest {
 
     @Test
     public void testNotify() {
         int agentCount = 10;
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).option(JSContextOptions.TEST262_MODE_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.TEST262_MODE_NAME, "true").build()) {
             String code = "let agentCount = " + agentCount + ";\n" //
                             + "for (let i = 0; i < agentCount; i++) {\n" //
                             + "  $262.agent.start(`\n" //

@@ -54,12 +54,12 @@ import java.util.StringJoiner;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.js.runtime.JSContextOptions;
 import org.graalvm.polyglot.Source;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.ExitException;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.external.suite.TestCallable;
 import com.oracle.truffle.js.test.external.suite.TestExtProcessCallable;
 import com.oracle.truffle.js.test.external.suite.TestFile;
@@ -117,11 +117,11 @@ public class TestV8Runnable extends TestRunnable {
         if (ecmaVersion == null) {
             boolean requiresES2020 = flags.contains(HARMONY_IMPORT_META) || flags.contains(HARMONY_DYNAMIC_IMPORT) || flags.contains(HARMONY_NUMERIC_SEPARATOR) ||
                             flags.contains(HARMONY_PROMISE_ALL_SETTLED) || flags.contains(HARMONY_NAMESPACE_EXPORTS);
-            ecmaVersion = TestFile.EcmaVersion.forVersions(requiresES2020 ? JSTruffleOptions.ECMAScript2020 : JSTruffleOptions.LatestECMAScriptVersion);
+            ecmaVersion = TestFile.EcmaVersion.forVersions(requiresES2020 ? JSConfig.ECMAScript2020 : JSConfig.LatestECMAScriptVersion);
         }
 
         if (flags.contains(HARMONY_PUBLIC_FIELDS) || flags.contains(HARMONY_PRIVATE_FIELDS) ||
-                        (ecmaVersion.getMinVersion() != null && ecmaVersion.getMinVersion() >= JSTruffleOptions.ECMAScript2020)) {
+                        (ecmaVersion.getMinVersion() != null && ecmaVersion.getMinVersion() >= JSConfig.ECMAScript2020)) {
             extraOptions.put(JSContextOptions.CLASS_FIELDS_NAME, "true");
         }
 

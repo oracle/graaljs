@@ -111,7 +111,7 @@ public class MaterializedNodes {
 
     @Before
     public void init() {
-        polyContext = Context.create("js");
+        polyContext = TestUtil.newContextBuilder().build();
         polyContext.enter();
         JSRealm jsRealm = JavaScriptLanguage.getJSRealm(polyContext);
         this.jsContext = jsRealm.getContext();

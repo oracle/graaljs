@@ -93,10 +93,10 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
@@ -165,7 +165,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return 6;
             }
             if (this.equals(_matchAll)) {
-                return JSTruffleOptions.ECMAScript2019;
+                return JSConfig.ECMAScript2019;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
@@ -1610,7 +1610,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     return 6;
                 }
                 if (this.equals(dotAll)) {
-                    return JSTruffleOptions.ECMAScript2018;
+                    return JSConfig.ECMAScript2018;
                 }
                 return BuiltinEnum.super.getECMAScriptVersion();
             }

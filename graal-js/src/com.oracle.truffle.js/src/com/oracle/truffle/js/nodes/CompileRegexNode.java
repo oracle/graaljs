@@ -44,12 +44,12 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.RegexCompilerInterface;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
-@ImportStatic(JSTruffleOptions.class)
+@ImportStatic(JSConfig.class)
 @ReportPolymorphism
 public abstract class CompileRegexNode extends JavaScriptBaseNode {
 

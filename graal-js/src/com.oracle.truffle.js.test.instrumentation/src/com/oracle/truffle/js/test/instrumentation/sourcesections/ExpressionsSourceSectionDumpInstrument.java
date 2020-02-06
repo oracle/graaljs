@@ -53,6 +53,7 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
+import com.oracle.truffle.js.test.instrumentation.TestUtil;
 
 /**
  * Utility instrument tracing expressions in Graal.js.
@@ -65,7 +66,7 @@ public class ExpressionsSourceSectionDumpInstrument extends TruffleInstrument {
     private Env environment;
 
     public static void main(String[] args) throws IOException {
-        try (Context c = Context.create("js")) {
+        try (Context c = TestUtil.newContextBuilder().build()) {
             c.getEngine().getInstruments().get(ID).lookup(ExpressionsSourceSectionDumpInstrument.class);
             c.eval(Source.newBuilder("js", new File(args[0])).build());
         }

@@ -49,12 +49,13 @@ import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.test.JSTest;
 
 public class ArrayBufferViewTest {
 
     @Test
     public void testGetInfinity() {
-        try (Context context = Context.newBuilder().build()) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             // Infinity should not be read from the prototype
             Value value = context.eval(JavaScriptLanguage.ID, "var array = new Uint8Array(); Object.setPrototypeOf(array, { Infinity: 42 }); array.Infinity === undefined;");
             assertTrue(value.isBoolean());
@@ -64,7 +65,7 @@ public class ArrayBufferViewTest {
 
     @Test
     public void testHasInfinity() {
-        try (Context context = Context.newBuilder().build()) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             // [[HasProperty]] should not look in the prototype for Infinity
             Value value = context.eval(JavaScriptLanguage.ID, "var array = new Uint8Array(); Object.setPrototypeOf(array, { Infinity: 42 }); with (array) Infinity");
             assertTrue(value.isNumber());
@@ -74,7 +75,7 @@ public class ArrayBufferViewTest {
 
     @Test
     public void testSetInfinity() {
-        try (Context context = Context.newBuilder().build()) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             // Infinity setter from the prototype should not be invoked
             Value value = context.eval(JavaScriptLanguage.ID,
                             "var array = new Uint8Array(); var called = false; Object.setPrototypeOf(array, { set Infinity(x) { called = true; } }); array.Infinity = 42; called;");

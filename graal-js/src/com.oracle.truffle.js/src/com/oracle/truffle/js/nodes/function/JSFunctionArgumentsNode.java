@@ -45,8 +45,8 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 class JSFunctionArgumentsNode extends AbstractFunctionArgumentsNode {
@@ -187,7 +187,7 @@ class SpreadFunctionArgumentsNode extends JSFunctionArgumentsNode {
     @ExplodeLoop
     public Object[] executeFillObjectArray(VirtualFrame frame, Object[] arguments, int fixedArgumentsLength) {
         // assume size that avoids growing
-        SimpleArrayList<Object> argList = SimpleArrayList.create(fixedArgumentsLength + args.length + JSTruffleOptions.SpreadArgumentPlaceholderCount);
+        SimpleArrayList<Object> argList = SimpleArrayList.create(fixedArgumentsLength + args.length + JSConfig.SpreadArgumentPlaceholderCount);
         for (int i = 0; i < fixedArgumentsLength; i++) {
             argList.addUnchecked(arguments[i]);
         }

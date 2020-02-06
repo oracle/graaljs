@@ -48,6 +48,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.JSTest;
 
 /**
  * String.prototype.split, String.prototype.match, String.prototype.search, and
@@ -61,7 +62,7 @@ public class RegExpES5 {
     }
 
     private static boolean testIntl(String sourceText) {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "5").build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "5").build()) {
             Value result = context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, "regexp-es5-test").buildLiteral());
             return result.asBoolean();
         }

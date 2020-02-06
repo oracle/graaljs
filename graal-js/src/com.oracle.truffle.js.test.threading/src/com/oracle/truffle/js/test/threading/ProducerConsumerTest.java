@@ -86,7 +86,7 @@ public class ProducerConsumerTest {
 
         @Override
         public void run() {
-            Context cx = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).build();
+            Context cx = TestUtil.newContextBuilder().allowHostAccess(HostAccess.ALL).build();
             cx.getBindings("js").putMember("queue", queue);
             try {
                 sent = cx.eval("js", " var sent = 0;" +
@@ -114,7 +114,7 @@ public class ProducerConsumerTest {
 
         @Override
         public void run() {
-            Context cx = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).build();
+            Context cx = TestUtil.newContextBuilder().allowHostAccess(HostAccess.ALL).build();
             cx.getBindings("js").putMember("queue", queue);
             try {
                 received = cx.eval("js", "var received = 0;" +

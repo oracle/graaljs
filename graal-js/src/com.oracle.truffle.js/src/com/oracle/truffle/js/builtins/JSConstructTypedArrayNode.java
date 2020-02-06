@@ -75,7 +75,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
@@ -485,7 +484,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     }
 
     private int checkLengthLimit(long length, int elementSize) {
-        if (length > JSTruffleOptions.MaxTypedArrayLength / elementSize) {
+        if (length > getContext().getContextOptions().getMaxTypedArrayLength() / elementSize) {
             errorBranch.enter();
             throw throwInappropriateLengthError(length);
         }

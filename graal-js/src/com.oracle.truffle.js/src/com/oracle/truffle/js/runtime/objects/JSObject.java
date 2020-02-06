@@ -56,10 +56,10 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
@@ -462,7 +462,7 @@ public final class JSObject {
     @TruffleBoundary
     public static List<String> enumerableOwnNames(DynamicObject thisObj) {
         JSClass jsclass = JSObject.getJSClass(thisObj);
-        if (JSTruffleOptions.FastOwnKeys && jsclass.hasOnlyShapeProperties(thisObj)) {
+        if (JSConfig.FastOwnKeys && jsclass.hasOnlyShapeProperties(thisObj)) {
             return JSShape.getEnumerablePropertyNames(thisObj.getShape());
         }
         Iterable<Object> ownKeys = jsclass.ownPropertyKeys(thisObj);

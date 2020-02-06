@@ -66,9 +66,9 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -355,7 +355,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         final boolean isES2019OrLater() {
-            return getContext().getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019;
+            return getContext().getEcmaScriptVersion() >= JSConfig.ECMAScript2019;
         }
 
         @TruffleBoundary
@@ -396,7 +396,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         private Object apply(Object function, Object target, Object args) {
             Object[] applyUserArgs = toObjectArray.executeObjectArray(args);
-            assert applyUserArgs.length <= JSTruffleOptions.MaxApplyArgumentLength;
+            assert applyUserArgs.length <= getContext().getContextOptions().getMaxApplyArgumentLength();
             Object[] passedOnArguments = JSArguments.create(target, function, applyUserArgs);
             return call.executeCall(passedOnArguments);
         }

@@ -48,11 +48,13 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
+import com.oracle.truffle.js.test.JSTest;
+
 public class JSONParseTest {
 
     @Test
     public void testJSONParseNumber() {
-        try (Context context = Context.newBuilder().build()) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value result = context.eval(ID, "JSON.parse('9007199254740992')");
             assertTrue(result.fitsInDouble());
             assertEquals(9007199254740992d, result.asDouble(), 0.0);

@@ -51,8 +51,8 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 
 public abstract class JSConcatStringsNode extends JavaScriptBaseNode {
@@ -94,12 +94,12 @@ public abstract class JSConcatStringsNode extends JavaScriptBaseNode {
                     @Cached("createBinaryProfile()") ConditionProfile stringLength,
                     @Cached("createBinaryProfile()") ConditionProfile shortStringAppend,
                     @Cached BranchProfile errorBranch) {
-        if (JSTruffleOptions.LazyStrings) {
+        if (JSConfig.LazyStrings) {
             int leftLength = JSRuntime.length(left, leftIsString, leftIsLazyString);
             int rightLength = JSRuntime.length(right, rightIsString, rightIsLazyString);
             int resultLength = leftLength + rightLength;
             validateStringLength(resultLength, errorBranch);
-            if (stringLength.profile(resultLength >= JSTruffleOptions.MinLazyStringLength)) {
+            if (stringLength.profile(resultLength >= JSConfig.MinLazyStringLength)) {
                 if (shortStringAppend.profile(leftLength == 1 || rightLength == 1)) {
                     JSLazyString result = JSLazyString.concatToLeafMaybe(left, right, resultLength);
                     if (result != null) {
@@ -111,7 +111,7 @@ public abstract class JSConcatStringsNode extends JavaScriptBaseNode {
         }
         String leftString = toString(left, leftIsString, leftIsLazyString, leftIsFlat);
         String rightString = toString(right, rightIsString, rightIsLazyString, rightIsFlat);
-        if (!JSTruffleOptions.LazyStrings) {
+        if (!JSConfig.LazyStrings) {
             validateStringLength(leftString.length() + rightString.length(), errorBranch);
         }
         return Boundaries.stringConcat(leftString, rightString);

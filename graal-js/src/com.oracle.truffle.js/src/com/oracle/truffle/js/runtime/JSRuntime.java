@@ -966,7 +966,7 @@ public final class JSRuntime {
         if (isArrayLike) {
             if (length > 0) {
                 boolean topLevel = depth == TO_STRING_MAX_DEPTH;
-                if (depth <= 0 || (!topLevel && length > JSTruffleOptions.MaxConsolePrintProperties)) {
+                if (depth <= 0 || (!topLevel && length > JSConfig.MaxConsolePrintProperties)) {
                     if (name == null) {
                         sb.append("Array");
                     }
@@ -992,7 +992,7 @@ public final class JSRuntime {
             }
             if (propertyCount > 0) {
                 sb.append(", ");
-                if (propertyCount >= JSTruffleOptions.MaxConsolePrintProperties) {
+                if (propertyCount >= JSConfig.MaxConsolePrintProperties) {
                     sb.append("...");
                     break;
                 }
@@ -1004,7 +1004,7 @@ public final class JSRuntime {
                     if ((index < length) && fillEmptyArrayElements(sb, index, prevArrayIndex, false)) {
                         sb.append(", ");
                         propertyCount++;
-                        if (propertyCount >= JSTruffleOptions.MaxConsolePrintProperties) {
+                        if (propertyCount >= JSConfig.MaxConsolePrintProperties) {
                             sb.append("...");
                             break;
                         }
@@ -1014,7 +1014,7 @@ public final class JSRuntime {
                     if (fillEmptyArrayElements(sb, length, prevArrayIndex, false)) {
                         sb.append(", ");
                         propertyCount++;
-                        if (propertyCount >= JSTruffleOptions.MaxConsolePrintProperties) {
+                        if (propertyCount >= JSConfig.MaxConsolePrintProperties) {
                             sb.append("...");
                             break;
                         }
@@ -1039,7 +1039,7 @@ public final class JSRuntime {
             sb.append(valueStr);
             propertyCount++;
         }
-        if (isArray && propertyCount < JSTruffleOptions.MaxConsolePrintProperties) {
+        if (isArray && propertyCount < JSConfig.MaxConsolePrintProperties) {
             // fill "empty (times) (count)" entries at the end of the array
             if (fillEmptyArrayElements(sb, length, prevArrayIndex, propertyCount > 0)) {
                 propertyCount++;
@@ -1130,7 +1130,7 @@ public final class JSRuntime {
         for (long i = 0; i < size; i++) {
             if (i > 0) {
                 sb.append(", ");
-                if (i >= JSTruffleOptions.MaxConsolePrintProperties) {
+                if (i >= JSConfig.MaxConsolePrintProperties) {
                     sb.append("...");
                     break;
                 }
@@ -1159,7 +1159,7 @@ public final class JSRuntime {
         for (long i = 0; i < keyCount; i++) {
             if (i > 0) {
                 sb.append(", ");
-                if (i >= JSTruffleOptions.MaxConsolePrintProperties) {
+                if (i >= JSConfig.MaxConsolePrintProperties) {
                     sb.append("...");
                     break;
                 }
@@ -1763,7 +1763,7 @@ public final class JSRuntime {
     @SuppressWarnings("unused")
     public static boolean isWhiteSpace(char cp) {
         return (0x0009 <= cp && cp <= 0x000D) || (0x2000 <= cp && cp <= 0x200A) || cp == 0x0020 || cp == 0x00A0 || cp == 0x1680 || cp == 0x2028 || cp == 0x2029 || cp == 0x202F ||
-                        cp == 0x205F || cp == 0x3000 || cp == 0xFEFF || (JSTruffleOptions.U180EWhitespace && cp == 0x180E);
+                        cp == 0x205F || cp == 0x3000 || cp == 0xFEFF || (JSConfig.U180EWhitespace && cp == 0x180E);
     }
 
     private static boolean isLineTerminator(char codePoint) {

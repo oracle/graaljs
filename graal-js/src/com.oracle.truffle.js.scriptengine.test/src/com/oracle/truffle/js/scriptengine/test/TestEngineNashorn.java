@@ -82,7 +82,7 @@ public class TestEngineNashorn {
     }
 
     private static ScriptEngine getEngineNashornCompat() {
-        Context.Builder contextBuilder = Context.newBuilder("js").allowExperimentalOptions(true);
+        Context.Builder contextBuilder = TestUtil.newContextBuilder();
         contextBuilder.allowHostAccess(HostAccess.ALL).allowHostClassLookup(s -> true);
         contextBuilder.option("js.nashorn-compat", "true");
         contextBuilder.option("js.global-arguments", "true");

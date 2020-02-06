@@ -41,14 +41,21 @@
 package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.object.*;
-import com.oracle.truffle.js.nodes.*;
-import com.oracle.truffle.js.nodes.access.*;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.DefineMethodNodeFactory.FunctionCreateNodeGen;
-import com.oracle.truffle.js.runtime.*;
-import com.oracle.truffle.js.runtime.builtins.*;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionFactory;
 
 public class DefineMethodNode extends JavaScriptBaseNode {
 
@@ -78,7 +85,6 @@ public class DefineMethodNode extends JavaScriptBaseNode {
         return closure;
     }
 
-    @ImportStatic(JSTruffleOptions.class)
     protected abstract static class FunctionCreateNode extends JavaScriptBaseNode {
         private final JSFunctionData functionData;
 
@@ -94,7 +100,7 @@ public class DefineMethodNode extends JavaScriptBaseNode {
         public abstract DynamicObject executeWithPrototype(VirtualFrame frame, Object prototype);
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!getContext().isMultiContext()", "prototype == cachedPrototype", "isJSObject(cachedPrototype)"}, limit = "PropertyCacheLimit")
+        @Specialization(guards = {"!getContext().isMultiContext()", "prototype == cachedPrototype", "isJSObject(cachedPrototype)"}, limit = "getContext().getPropertyCacheLimit()")
         protected final DynamicObject doCached(VirtualFrame frame, DynamicObject prototype,
                         @Cached("prototype") DynamicObject cachedPrototype,
                         @Cached("makeFactory(prototype)") JSFunctionFactory factory) {

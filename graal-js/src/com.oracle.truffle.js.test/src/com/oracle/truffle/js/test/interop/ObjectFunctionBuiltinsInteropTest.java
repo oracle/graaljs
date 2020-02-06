@@ -49,6 +49,7 @@ import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.test.JSTest;
 
 public class ObjectFunctionBuiltinsInteropTest {
 
@@ -71,7 +72,7 @@ public class ObjectFunctionBuiltinsInteropTest {
 
     @Test
     public void testGetOwnPropertyDescriptor() {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowAllAccess(true).build()) {
+        try (Context context = JSTest.newContextBuilder().allowAllAccess(true).build()) {
             String code = "Object.getOwnPropertyDescriptor(new java.awt.Point(42, 211), 'x')";
             Value desc = context.eval(JavaScriptLanguage.ID, code);
             assertTrue(desc.hasMember("value"));
@@ -95,7 +96,7 @@ public class ObjectFunctionBuiltinsInteropTest {
 
     @Test
     public void testGetOwnPropertyDescriptorArray() {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowAllAccess(true).build()) {
+        try (Context context = JSTest.newContextBuilder().allowAllAccess(true).build()) {
             String code = "var byteArray = Java.type('byte[]'); var array = new byteArray(2); array[0] = 42; Object.getOwnPropertyDescriptor(array, 0)";
             Value desc = context.eval(JavaScriptLanguage.ID, code);
 
@@ -113,7 +114,7 @@ public class ObjectFunctionBuiltinsInteropTest {
 
     @Test
     public void testGetOwnPropertyDescriptors() {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowAllAccess(true).build()) {
+        try (Context context = JSTest.newContextBuilder().allowAllAccess(true).build()) {
             String code = "Object.getOwnPropertyDescriptors(new java.awt.Point(42, 211))";
             Value result = context.eval(JavaScriptLanguage.ID, code);
 
@@ -138,7 +139,7 @@ public class ObjectFunctionBuiltinsInteropTest {
 
     @Test
     public void testGetOwnPropertyDescriptorsArray() {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowAllAccess(true).build()) {
+        try (Context context = JSTest.newContextBuilder().allowAllAccess(true).build()) {
             String code = "var byteArray = Java.type('byte[]'); var array = new byteArray(2); array[0] = 42; Object.getOwnPropertyDescriptors(array)";
             Value result = context.eval(JavaScriptLanguage.ID, code);
 

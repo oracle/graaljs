@@ -51,7 +51,7 @@ import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JSConfig;
 
 @NodeInfo(shortName = "-")
 public abstract class JSUnaryMinusNode extends JSUnaryNode {
@@ -61,7 +61,7 @@ public abstract class JSUnaryMinusNode extends JSUnaryNode {
     }
 
     public static JavaScriptNode create(JavaScriptNode operand) {
-        if (JSTruffleOptions.UseSuperOperations && operand instanceof JSConstantIntegerNode) {
+        if (JSConfig.UseSuperOperations && operand instanceof JSConstantIntegerNode) {
             int value = ((JSConstantIntegerNode) operand).executeInt(null);
             if (value == 0) {
                 return JSConstantNode.createDouble(-0.0); // negative zero

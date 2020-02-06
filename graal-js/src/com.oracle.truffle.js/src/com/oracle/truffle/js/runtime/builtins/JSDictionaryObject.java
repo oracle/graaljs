@@ -55,9 +55,9 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -270,12 +270,12 @@ public final class JSDictionaryObject extends JSBuiltinObject {
 
     public static void makeDictionaryObject(DynamicObject obj, String reason) {
         CompilerAsserts.neverPartOfCompilation();
-        assert JSTruffleOptions.DictionaryObject;
+        assert JSConfig.DictionaryObject;
         if (!JSUserObject.isJSUserObject(obj)) {
             return;
         }
 
-        if (JSTruffleOptions.TraceDictionaryObject) {
+        if (JSConfig.TraceDictionaryObject) {
             System.out.printf("transitioning to dictionary object: %s\n%s\n", reason, obj.getShape());
         }
 
@@ -343,7 +343,7 @@ public final class JSDictionaryObject extends JSBuiltinObject {
 
     private static void makeOrdinaryObject(DynamicObject obj, String reason) {
         CompilerAsserts.neverPartOfCompilation();
-        if (JSTruffleOptions.TraceDictionaryObject) {
+        if (JSConfig.TraceDictionaryObject) {
             System.out.printf("transitioning from dictionary object to ordinary object: %s\n", reason);
         }
 

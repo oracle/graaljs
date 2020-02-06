@@ -320,8 +320,16 @@ public final class JSGuards {
         return JSRuntime.isJavaNumber(operand);
     }
 
-    public static boolean isNumberInteger(Object thisObj) {
-        return thisObj instanceof Integer;
+    public static boolean isNumberInteger(Object operand) {
+        return operand instanceof Integer;
+    }
+
+    public static boolean isNumberLong(Object operand) {
+        return operand instanceof Long;
+    }
+
+    public static boolean isNumberDouble(Object operand) {
+        return operand instanceof Double;
     }
 
     /**

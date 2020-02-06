@@ -95,7 +95,7 @@ public abstract class DeclareGlobalLexicalVariableNode extends DeclareGlobalNode
 
     protected abstract void executeVoid(DynamicObject globalScope, JSContext context);
 
-    @Specialization(guards = {"PropertyCacheLimit > 0"})
+    @Specialization(guards = {"context.getPropertyCacheLimit() > 0"})
     protected void doCached(DynamicObject globalScope, @SuppressWarnings("unused") JSContext context,
                     @Cached("makeDefineOwnPropertyCache(context)") PropertySetNode cache) {
         cache.setValue(globalScope, Dead.instance());

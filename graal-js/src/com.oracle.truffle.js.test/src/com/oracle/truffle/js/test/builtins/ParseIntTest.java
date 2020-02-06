@@ -48,11 +48,13 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
+import com.oracle.truffle.js.test.JSTest;
+
 public class ParseIntTest {
 
     @Test
     public void testJSONParseNumber() {
-        try (Context context = Context.newBuilder().build()) {
+        try (Context context = JSTest.newContextBuilder().build()) {
             Value result;
             result = context.eval(ID, "parseInt('-0')");
             assertTrue(result.fitsInDouble());

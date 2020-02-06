@@ -63,9 +63,9 @@ import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -173,7 +173,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                     boolean fastOwnKeys;
                     List<?> list;
                     int size;
-                    if (fastOwnKeysProfile.profile(JSTruffleOptions.FastOwnKeys && hasOnlyShapePropertiesNode.execute(object, jsclass))) {
+                    if (fastOwnKeysProfile.profile(JSConfig.FastOwnKeys && hasOnlyShapePropertiesNode.execute(object, jsclass))) {
                         fastOwnKeys = true;
                         // if the object does not have enumerable properties, no need to enumerate
                         list = JSShape.getPropertiesIfHasEnumerablePropertyNames(objectShape);

@@ -48,12 +48,13 @@ import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.JSTest;
 
 public class RealmBuiltinTest {
 
     @Test
     public void testRealmBuiltinNotShared() {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).option(JSContextOptions.V8_REALM_BUILTIN_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.V8_REALM_BUILTIN_NAME, "true").build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "const id = Realm.create(); Realm.eval(id, 'Realm') === Realm");
             Assert.assertTrue(result.isBoolean());
             Assert.assertFalse(result.asBoolean());
@@ -62,7 +63,7 @@ public class RealmBuiltinTest {
 
     @Test
     public void testRealmCurrent1() {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).option(JSContextOptions.V8_REALM_BUILTIN_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.V8_REALM_BUILTIN_NAME, "true").build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "const id = Realm.create(); Realm.eval(id, 'Realm.current()') === id");
             Assert.assertTrue(result.isBoolean());
             Assert.assertTrue(result.asBoolean());
@@ -71,7 +72,7 @@ public class RealmBuiltinTest {
 
     @Test
     public void testRealmCurrent2() {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).option(JSContextOptions.V8_REALM_BUILTIN_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.V8_REALM_BUILTIN_NAME, "true").build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "const id = Realm.create(); Realm.eval(id, 'Realm.current')() === 0");
             Assert.assertTrue(result.isBoolean());
             Assert.assertTrue(result.asBoolean());
@@ -80,7 +81,7 @@ public class RealmBuiltinTest {
 
     @Test
     public void testRealmShared() {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).option(JSContextOptions.V8_REALM_BUILTIN_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.V8_REALM_BUILTIN_NAME, "true").build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "Realm.shared === undefined");
             Assert.assertTrue(result.isBoolean());
             Assert.assertTrue(result.asBoolean());
@@ -95,7 +96,7 @@ public class RealmBuiltinTest {
 
     @Test
     public void testInvalidRealmIndex() {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).option(JSContextOptions.V8_REALM_BUILTIN_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.V8_REALM_BUILTIN_NAME, "true").build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "let passed = false; try { Realm.eval(1, '6*7'); } catch (e) { passed = e instanceof TypeError; } passed");
             Assert.assertTrue(result.isBoolean());
             Assert.assertTrue(result.asBoolean());

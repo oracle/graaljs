@@ -53,7 +53,6 @@ import org.graalvm.polyglot.Source;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.test.external.suite.TestCallable;
 import com.oracle.truffle.js.test.external.suite.TestSuite;
 
@@ -85,7 +84,6 @@ public class TestNashornCallable extends TestCallable {
         checkOptions(getScriptFileContent());
 
         int ecmaScriptVersion = languageES6 ? 6 : TESTNASHORN_ECMASCRIPT_VERSION;
-        assert ecmaScriptVersion <= JSTruffleOptions.MaxECMAScriptVersion;
 
         Context.Builder contextBuilder = Context.newBuilder(JavaScriptLanguage.ID);
         ByteArrayOutputStream out = new ByteArrayOutputStream();

@@ -44,7 +44,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JSConfig;
 
 public abstract class DebugCounter {
     private DebugCounter() {
@@ -55,11 +55,11 @@ public abstract class DebugCounter {
     public abstract void inc();
 
     public static DebugCounter create(String name) {
-        return JSTruffleOptions.DebugCounters ? DebugCounterImpl.createImpl(name) : Dummy.INSTANCE;
+        return JSConfig.DebugCounters ? DebugCounterImpl.createImpl(name) : Dummy.INSTANCE;
     }
 
     public static void dumpCounters() {
-        if (JSTruffleOptions.DebugCounters) {
+        if (JSConfig.DebugCounters) {
             DebugCounterImpl.dumpCounters(System.out);
         }
     }
@@ -67,7 +67,7 @@ public abstract class DebugCounter {
     private static final class DebugCounterImpl extends DebugCounter {
         private static final ArrayList<DebugCounter> allCounters = new ArrayList<>();
         static {
-            assert JSTruffleOptions.DebugCounters;
+            assert JSConfig.DebugCounters;
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 dumpCounters(System.out);
             }));

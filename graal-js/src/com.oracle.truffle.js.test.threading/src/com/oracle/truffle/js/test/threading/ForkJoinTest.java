@@ -66,7 +66,7 @@ public class ForkJoinTest {
         pool.shutdown();
     }
 
-    private final Engine engine = Engine.create();
+    private final Engine engine = TestUtil.newEngineBuilder().build();
     private final ThreadLocal<Value> tl = ThreadLocal.withInitial(new Supplier<Value>() {
 
         @Override
@@ -80,7 +80,7 @@ public class ForkJoinTest {
                             "   return f2.compute() + f1.join();" +
                             "})";
 
-            Context cx = Context.newBuilder("js").engine(engine).allowHostAccess(HostAccess.ALL).build();
+            Context cx = TestUtil.newContextBuilder().engine(engine).allowHostAccess(HostAccess.ALL).build();
             cx.getBindings("js").putMember("fib", new FibTaskCreator(tl));
             return cx.eval("js", src);
         }
