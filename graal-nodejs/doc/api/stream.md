@@ -1080,6 +1080,8 @@ buffer will be returned.
 If the `size` argument is not specified, all of the data contained in the
 internal buffer will be returned.
 
+The `size` argument must be less than or equal to 1 GB.
+
 The `readable.read()` method should only be called on `Readable` streams
 operating in paused mode. In flowing mode, `readable.read()` is called
 automatically until the internal buffer is fully drained.
@@ -1675,6 +1677,13 @@ The implementation code for a stream should *never* call the "public" methods
 of a stream that are intended for use by consumers (as described in the
 [API for Stream Consumers][] section). Doing so may lead to adverse side effects
 in application code consuming the stream.
+
+Avoid overriding public methods such as `write()`, `end()`, `cork()`,
+`uncork()`, `read()` and `destroy()`, or emitting internal events such
+as `'error'`, `'data'`, `'end'`, `'finish'` and `'close'` through `.emit()`.
+Doing so can break current and future stream invariants leading to behavior
+and/or compatibility issues with other streams, stream utilities, and user
+expectations.
 
 ### Simplified Construction
 <!-- YAML

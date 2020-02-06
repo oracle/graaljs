@@ -102,6 +102,9 @@ if (process.argv.length === 2 &&
 
 const isWindows = process.platform === 'win32';
 const isAIX = process.platform === 'aix';
+// On IBMi, process.platform and os.platform() both return 'aix',
+// It is not enough to differentiate between IBMi and real AIX system.
+const isIBMi = os.type() === 'OS400';
 const isLinuxPPCBE = (process.platform === 'linux') &&
                      (process.arch === 'ppc64') &&
                      (os.endianness() === 'BE');
@@ -119,8 +122,9 @@ const enoughTestCpu = Array.isArray(cpus) &&
 
 const rootDir = isWindows ? 'c:\\' : '/';
 
-const buildType = process.config.target_defaults.default_configuration;
-
+const buildType = process.config.target_defaults ?
+  process.config.target_defaults.default_configuration :
+  'Release';
 
 // If env var is set then enable async_hook hooks for all tests.
 if (process.env.NODE_TEST_WITH_ASYNC_HOOKS) {
@@ -762,6 +766,7 @@ module.exports = {
   isAIX,
   isAlive,
   isFreeBSD,
+  isIBMi,
   isLinux,
   isLinuxPPCBE,
   isMainThread,

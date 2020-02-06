@@ -21,10 +21,23 @@
 
 'use strict';
 
-const { Math, Object, Reflect } = primordials;
-const apply = Reflect.apply;
+const {
+  Math: {
+    min: MathMin
+  },
+  Object: {
+    defineProperty: ObjectDefineProperty,
+    getPrototypeOf: ObjectGetPrototypeOf,
+    create: ObjectCreate,
+    keys: ObjectKeys,
+  },
+  Reflect: {
+    apply: ReflectApply,
+    ownKeys: ReflectOwnKeys,
+  }
+} = primordials;
 
-var spliceOne;
+let spliceOne;
 
 const {
   kEnhanceStackBeforeInspector,
@@ -57,7 +70,7 @@ EventEmitter.prototype._maxListeners = undefined;
 
 // By default EventEmitters will print a warning if more than 10 listeners are
 // added to it. This is a useful default which helps finding memory leaks.
-var defaultMaxListeners = 10;
+let defaultMaxListeners = 10;
 
 function checkListener(listener) {
   if (typeof listener !== 'function') {
@@ -65,7 +78,7 @@ function checkListener(listener) {
   }
 }
 
-Object.defineProperty(EventEmitter, 'defaultMaxListeners', {
+ObjectDefineProperty(EventEmitter, 'defaultMaxListeners', {
   enumerable: true,
   get: function() {
     return defaultMaxListeners;
@@ -83,8 +96,8 @@ Object.defineProperty(EventEmitter, 'defaultMaxListeners', {
 EventEmitter.init = function() {
 
   if (this._events === undefined ||
-      this._events === Object.getPrototypeOf(this)._events) {
-    this._events = Object.create(null);
+      this._events === ObjectGetPrototypeOf(this)._events) {
+    this._events = ObjectCreate(null);
     this._eventsCount = 0;
   }
 
@@ -114,14 +127,14 @@ EventEmitter.prototype.getMaxListeners = function getMaxListeners() {
 // Returns the length and line number of the first sequence of `a` that fully
 // appears in `b` with a length of at least 4.
 function identicalSequenceRange(a, b) {
-  for (var i = 0; i < a.length - 3; i++) {
+  for (let i = 0; i < a.length - 3; i++) {
     // Find the first entry of b that matches the current entry of a.
     const pos = b.indexOf(a[i]);
     if (pos !== -1) {
       const rest = b.length - pos;
       if (rest > 3) {
         let len = 1;
-        const maxLen = Math.min(a.length - i, rest);
+        const maxLen = MathMin(a.length - i, rest);
         // Count the number of consecutive entries.
         while (maxLen > len && a[i + len] === b[pos + len]) {
           len++;
@@ -176,7 +189,7 @@ EventEmitter.prototype.emit = function emit(type, ...args) {
         const capture = {};
         // eslint-disable-next-line no-restricted-syntax
         Error.captureStackTrace(capture, EventEmitter.prototype.emit);
-        Object.defineProperty(er, kEnhanceStackBeforeInspector, {
+        ObjectDefineProperty(er, kEnhanceStackBeforeInspector, {
           value: enhanceStackTrace.bind(this, er, capture),
           configurable: true
         });
@@ -207,27 +220,27 @@ EventEmitter.prototype.emit = function emit(type, ...args) {
     return false;
 
   if (typeof handler === 'function') {
-    apply(handler, this, args);
+    ReflectApply(handler, this, args);
   } else {
     const len = handler.length;
     const listeners = arrayClone(handler, len);
-    for (var i = 0; i < len; ++i)
-      apply(listeners[i], this, args);
+    for (let i = 0; i < len; ++i)
+      ReflectApply(listeners[i], this, args);
   }
 
   return true;
 };
 
 function _addListener(target, type, listener, prepend) {
-  var m;
-  var events;
-  var existing;
+  let m;
+  let events;
+  let existing;
 
   checkListener(listener);
 
   events = target._events;
   if (events === undefined) {
-    events = target._events = Object.create(null);
+    events = target._events = ObjectCreate(null);
     target._eventsCount = 0;
   } else {
     // To avoid recursion in the case that type === "newListener"! Before
@@ -341,7 +354,7 @@ EventEmitter.prototype.removeListener =
 
       if (list === listener || list.listener === listener) {
         if (--this._eventsCount === 0)
-          this._events = Object.create(null);
+          this._events = ObjectCreate(null);
         else {
           delete events[type];
           if (events.removeListener)
@@ -350,7 +363,7 @@ EventEmitter.prototype.removeListener =
       } else if (typeof list !== 'function') {
         let position = -1;
 
-        for (var i = list.length - 1; i >= 0; i--) {
+        for (let i = list.length - 1; i >= 0; i--) {
           if (list[i] === listener || list[i].listener === listener) {
             originalListener = list[i].listener;
             position = i;
@@ -390,11 +403,11 @@ EventEmitter.prototype.removeAllListeners =
       // Not listening for removeListener, no need to emit
       if (events.removeListener === undefined) {
         if (arguments.length === 0) {
-          this._events = Object.create(null);
+          this._events = ObjectCreate(null);
           this._eventsCount = 0;
         } else if (events[type] !== undefined) {
           if (--this._eventsCount === 0)
-            this._events = Object.create(null);
+            this._events = ObjectCreate(null);
           else
             delete events[type];
         }
@@ -403,12 +416,12 @@ EventEmitter.prototype.removeAllListeners =
 
       // Emit removeListener for all listeners on all events
       if (arguments.length === 0) {
-        for (const key of Object.keys(events)) {
+        for (const key of ObjectKeys(events)) {
           if (key === 'removeListener') continue;
           this.removeAllListeners(key);
         }
         this.removeAllListeners('removeListener');
-        this._events = Object.create(null);
+        this._events = ObjectCreate(null);
         this._eventsCount = 0;
         return this;
       }
@@ -419,7 +432,7 @@ EventEmitter.prototype.removeAllListeners =
         this.removeListener(type, listeners);
       } else if (listeners !== undefined) {
         // LIFO order
-        for (var i = listeners.length - 1; i >= 0; i--) {
+        for (let i = listeners.length - 1; i >= 0; i--) {
           this.removeListener(type, listeners[i]);
         }
       }
@@ -478,19 +491,19 @@ function listenerCount(type) {
 }
 
 EventEmitter.prototype.eventNames = function eventNames() {
-  return this._eventsCount > 0 ? Reflect.ownKeys(this._events) : [];
+  return this._eventsCount > 0 ? ReflectOwnKeys(this._events) : [];
 };
 
 function arrayClone(arr, n) {
   const copy = new Array(n);
-  for (var i = 0; i < n; ++i)
+  for (let i = 0; i < n; ++i)
     copy[i] = arr[i];
   return copy;
 }
 
 function unwrapListeners(arr) {
   const ret = new Array(arr.length);
-  for (var i = 0; i < ret.length; ++i) {
+  for (let i = 0; i < ret.length; ++i) {
     ret[i] = arr[i].listener || arr[i];
   }
   return ret;

@@ -69,6 +69,7 @@ set openssl_no_asm=
 set doc=
 set extra_msbuild_args=
 set java_home=
+set exit_code=0
 
 :next-arg
 if "%1"=="" goto args-done
@@ -640,9 +641,11 @@ if defined no_cctest echo Skipping cctest because no-cctest was specified && got
 if not exist "%config%\cctest.exe" echo cctest.exe not found. Run "vcbuild test" or "vcbuild cctest" to build it. && goto run-test-py
 echo running 'cctest %cctest_args%'
 "%config%\cctest" %cctest_args%
+if %errorlevel% neq 0 set exit_code=%errorlevel%
 :run-test-py
 echo running 'python tools\test.py %test_args%'
 python tools\test.py %test_args%
+if %errorlevel% neq 0 set exit_code=%errorlevel%
 goto test-v8
 
 :test-v8
@@ -725,7 +728,7 @@ echo   vcbuild.bat no-cctest                : skip building cctest.exe
 goto exit
 
 :exit
-goto :EOF
+exit /b %exit_code%
 
 
 rem ***************

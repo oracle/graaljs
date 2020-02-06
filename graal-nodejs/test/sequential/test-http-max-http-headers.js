@@ -25,7 +25,7 @@ function once(cb) {
 }
 
 function finished(client, callback) {
-  'abort error end'.split(' ').forEach((e) => {
+  ['abort', 'error', 'end'].forEach((e) => {
     client.on(e, once(() => setImmediate(callback)));
   });
 }
@@ -94,7 +94,7 @@ function test1() {
   headers = fillHeaders(headers, currentSize);
 
   const server = net.createServer((sock) => {
-    sock.once('data', (chunk) => {
+    sock.once('data', () => {
       writeHeaders(sock, headers);
       sock.resume();
     });
@@ -139,7 +139,7 @@ const test2 = common.mustCall(() => {
       client.resume();
     });
 
-    finished(client, common.mustCall((err) => {
+    finished(client, common.mustCall(() => {
       server.close(test3);
     }));
   }));

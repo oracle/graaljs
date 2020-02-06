@@ -109,8 +109,8 @@ function convertProtocols(protocols) {
     return p + 1 + len;
   }, 0));
 
-  var offset = 0;
-  for (var i = 0, c = protocols.length; i < c; i++) {
+  let offset = 0;
+  for (let i = 0, c = protocols.length; i < c; i++) {
     buff[offset++] = lens[i];
     buff.write(protocols[i], offset);
     offset += lens[i];
@@ -163,7 +163,7 @@ function check(hostParts, pattern, wildcards) {
     return false;
 
   // Check host parts from right to left first.
-  for (var i = hostParts.length - 1; i > 0; i -= 1) {
+  for (let i = hostParts.length - 1; i > 0; i -= 1) {
     if (hostParts[i] !== patternParts[i])
       return false;
   }
@@ -243,19 +243,28 @@ exports.checkServerIdentity = function checkServerIdentity(hostname, cert) {
   let valid = false;
   let reason = 'Unknown reason';
 
+  const hasAltNames =
+    dnsNames.length > 0 || ips.length > 0 || uriNames.length > 0;
+
+  hostname = unfqdn(hostname);  // Remove trailing dot for error messages.
+
   if (net.isIP(hostname)) {
     valid = ips.includes(canonicalizeIP(hostname));
     if (!valid)
       reason = `IP: ${hostname} is not in the cert's list: ${ips.join(', ')}`;
     // TODO(bnoordhuis) Also check URI SANs that are IP addresses.
-  } else if (subject) {
-    hostname = unfqdn(hostname);  // Remove trailing dot for error messages.
+  } else if (hasAltNames || subject) {
     const hostParts = splitHost(hostname);
     const wildcard = (pattern) => check(hostParts, pattern, true);
-    const noWildcard = (pattern) => check(hostParts, pattern, false);
 
-    // Match against Common Name only if no supported identifiers are present.
-    if (dnsNames.length === 0 && ips.length === 0 && uriNames.length === 0) {
+    if (hasAltNames) {
+      const noWildcard = (pattern) => check(hostParts, pattern, false);
+      valid = dnsNames.some(wildcard) || uriNames.some(noWildcard);
+      if (!valid)
+        reason =
+          `Host: ${hostname}. is not in the cert's altnames: ${altNames}`;
+    } else {
+      // Match against Common Name only if no supported identifiers exist.
       const cn = subject.CN;
 
       if (Array.isArray(cn))
@@ -265,11 +274,6 @@ exports.checkServerIdentity = function checkServerIdentity(hostname, cert) {
 
       if (!valid)
         reason = `Host: ${hostname}. is not cert's CN: ${cn}`;
-    } else {
-      valid = dnsNames.some(wildcard) || uriNames.some(noWildcard);
-      if (!valid)
-        reason =
-          `Host: ${hostname}. is not in the cert's altnames: ${altNames}`;
     }
   } else {
     reason = 'Cert is empty';

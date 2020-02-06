@@ -23,7 +23,6 @@
 #include "async_wrap-inl.h"
 #include "env-inl.h"
 #include "util-inl.h"
-#include "node.h"
 
 namespace node {
 
@@ -116,6 +115,7 @@ HandleWrap::HandleWrap(Environment* env,
       handle_(handle) {
   handle_->data = this;
   HandleScope scope(env->isolate());
+  CHECK(env->has_run_bootstrapping_code());
   env->handle_wrap_queue()->PushBack(this);
 }
 
