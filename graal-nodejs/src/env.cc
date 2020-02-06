@@ -7,7 +7,6 @@
 #include "node_errors.h"
 #include "node_file.h"
 #include "node_internals.h"
-#include "node_native_module.h"
 #include "node_options-inl.h"
 #include "node_process.h"
 #include "node_v8_platform-inl.h"
@@ -636,7 +635,7 @@ void Environment::RunAtExitCallbacks() {
 }
 
 void Environment::AtExit(void (*cb)(void* arg), void* arg) {
-  at_exit_functions_.push_back(ExitCallback{cb, arg});
+  at_exit_functions_.push_front(ExitCallback{cb, arg});
 }
 
 void Environment::RunAndClearNativeImmediates() {

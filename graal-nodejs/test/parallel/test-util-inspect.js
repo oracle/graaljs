@@ -690,6 +690,35 @@ assert.strictEqual(util.inspect(-5e-324), '-5e-324');
   );
 }
 
+// Tampered error stack or name property (different type than string).
+// Note: Symbols are not supported by `Error#toString()` which is called by
+// accessing the `stack` property.
+[
+  [404, '404: foo', '[404]'],
+  [0, '0: foo', '[RangeError: foo]'],
+  [0n, '0: foo', '[RangeError: foo]'],
+  [null, 'null: foo', '[RangeError: foo]'],
+  [undefined, 'RangeError: foo', '[RangeError: foo]'],
+  [false, 'false: foo', '[RangeError: foo]'],
+  ['', 'foo', '[RangeError: foo]'],
+  [[1, 2, 3], '1,2,3: foo', '[1,2,3]'],
+].forEach(([value, outputStart, stack]) => {
+  let err = new RangeError('foo');
+  err.name = value;
+  assert(
+    util.inspect(err).startsWith(outputStart),
+    util.format(
+      'The name set to %o did not result in the expected output "%s"',
+      value,
+      outputStart
+    )
+  );
+
+  err = new RangeError('foo');
+  err.stack = value;
+  assert.strictEqual(util.inspect(err), stack);
+});
+
 // https://github.com/nodejs/node-v0.x-archive/issues/1941
 assert.strictEqual(util.inspect(Object.create(Date.prototype)), 'Date {}');
 
@@ -1363,7 +1392,7 @@ if (typeof Symbol !== 'undefined') {
   const arr = new Array(101).fill();
   const obj = { a: { a: { a: { a: 1 } } } };
 
-  const oldOptions = Object.assign({}, util.inspect.defaultOptions);
+  const oldOptions = { ...util.inspect.defaultOptions };
 
   // Set single option through property assignment.
   util.inspect.defaultOptions.maxArrayLength = null;
@@ -2511,8 +2540,13 @@ assert.strictEqual(
   // Tracing class respects inspect depth.
   try {
     const trace = require('trace_events').createTracing({ categories: ['fo'] });
-    const actual = util.inspect({ trace }, { depth: 0 });
-    assert.strictEqual(actual, '{ trace: [Tracing] }');
+    const actualDepth0 = util.inspect({ trace }, { depth: 0 });
+    assert.strictEqual(actualDepth0, '{ trace: [Tracing] }');
+    const actualDepth1 = util.inspect({ trace }, { depth: 1 });
+    assert.strictEqual(
+      actualDepth1,
+      "{ trace: Tracing { enabled: false, categories: 'fo' } }"
+    );
   } catch (err) {
     if (err.code !== 'ERR_TRACE_EVENTS_UNAVAILABLE')
       throw err;

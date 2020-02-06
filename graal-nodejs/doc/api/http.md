@@ -1672,8 +1672,8 @@ added: v0.3.0
 * `error` {Error}
 
 Calls `destroy()` on the socket that received the `IncomingMessage`. If `error`
-is provided, an `'error'` event is emitted and `error` is passed as an argument
-to any listeners on the event.
+is provided, an `'error'` event is emitted on the socket and `error` is passed
+as an argument to any listeners on the event.
 
 ### message.headers
 <!-- YAML
@@ -1917,6 +1917,9 @@ Found'`.
 <!-- YAML
 added: v0.1.13
 changes:
+  - version: v12.15.0
+    pr-url: https://github.com/nodejs/node/pull/31448
+    description: The `insecureHTTPParser` option is supported now.
   - version: v9.6.0, v8.12.0
     pr-url: https://github.com/nodejs/node/pull/15752
     description: The `options` argument is supported now.
@@ -1929,6 +1932,10 @@ changes:
   * `ServerResponse` {http.ServerResponse} Specifies the `ServerResponse` class
     to be used. Useful for extending the original `ServerResponse`. **Default:**
     `ServerResponse`.
+  * `insecureHTTPParser` {boolean} Use an insecure HTTP parser that accepts
+    invalid HTTP headers when `true`. Using the insecure parser should be
+    avoided. See [`--insecure-http-parser`][] for more information.
+    **Default:** `false`
 * `requestListener` {Function}
 
 * Returns: {http.Server}
@@ -2031,6 +2038,9 @@ Defaults to 8KB. Configurable using the [`--max-http-header-size`][] CLI option.
 <!-- YAML
 added: v0.3.6
 changes:
+  - version: v12.15.0
+    pr-url: https://github.com/nodejs/node/pull/31448
+    description: The `insecureHTTPParser` option is supported now.
   - version: v10.9.0
     pr-url: https://github.com/nodejs/node/pull/21616
     description: The `url` parameter can now be passed along with a separate
@@ -2064,7 +2074,12 @@ changes:
     request to. **Default:** `'localhost'`.
   * `hostname` {string} Alias for `host`. To support [`url.parse()`][],
     `hostname` will be used if both `host` and `hostname` are specified.
+  * `insecureHTTPParser` {boolean} Use an insecure HTTP parser that accepts
+    invalid HTTP headers when `true`. Using the insecure parser should be
+    avoided. See [`--insecure-http-parser`][] for more information.
+    **Default:** `false`
   * `localAddress` {string} Local interface to bind for network connections.
+  * `lookup` {Function} Custom lookup function. **Default:** [`dns.lookup()`][].
   * `method` {string} A string specifying the HTTP request method. **Default:**
     `'GET'`.
   * `path` {string} Request path. Should include query string if any.
@@ -2215,6 +2230,7 @@ Setting the `timeout` option or using the `setTimeout()` function will
 not abort the request or do anything besides add a `'timeout'` event.
 
 [`--http-server-default-timeout`]: cli.html#cli_http_server_default_timeout_milliseconds
+[`--insecure-http-parser`]: cli.html#cli_insecure_http_parser
 [`--max-http-header-size`]: cli.html#cli_max_http_header_size_size
 [`'checkContinue'`]: #http_event_checkcontinue
 [`'request'`]: #http_event_request
@@ -2227,6 +2243,7 @@ not abort the request or do anything besides add a `'timeout'` event.
 [`agent.createConnection()`]: #http_agent_createconnection_options_callback
 [`agent.getName()`]: #http_agent_getname_options
 [`destroy()`]: #http_agent_destroy
+[`dns.lookup()`]: dns.html#dns_dns_lookup_hostname_options_callback
 [`'finish'`]: #http_event_finish
 [`getHeader(name)`]: #http_request_getheader_name
 [`http.Agent`]: #http_class_http_agent

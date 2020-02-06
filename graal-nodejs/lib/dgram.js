@@ -211,8 +211,21 @@ Socket.prototype.bind = function(port_, address_ /* , callback */) {
 
   state.bindState = BIND_STATE_BINDING;
 
-  if (arguments.length && typeof arguments[arguments.length - 1] === 'function')
-    this.once('listening', arguments[arguments.length - 1]);
+  const cb = arguments.length && arguments[arguments.length - 1];
+  if (typeof cb === 'function') {
+    function removeListeners() {
+      this.removeListener('error', removeListeners);
+      this.removeListener('listening', onListening);
+    }
+
+    function onListening() {
+      removeListeners.call(this);
+      cb.call(this);
+    }
+
+    this.on('error', removeListeners);
+    this.on('listening', onListening);
+  }
 
   if (port instanceof UDP) {
     replaceHandle(this, port);
@@ -240,8 +253,8 @@ Socket.prototype.bind = function(port_, address_ /* , callback */) {
       }, (err) => {
         // Callback to handle error.
         const ex = errnoException(err, 'open');
-        this.emit('error', ex);
         state.bindState = BIND_STATE_UNBOUND;
+        this.emit('error', ex);
       });
       return this;
     }
@@ -309,8 +322,8 @@ Socket.prototype.bind = function(port_, address_ /* , callback */) {
       }, (err) => {
         // Callback to handle error.
         const ex = exceptionWithHostPort(err, 'bind', ip, port);
-        this.emit('error', ex);
         state.bindState = BIND_STATE_UNBOUND;
+        this.emit('error', ex);
       });
     } else {
       if (!state.handle)
@@ -319,8 +332,8 @@ Socket.prototype.bind = function(port_, address_ /* , callback */) {
       const err = state.handle.bind(ip, port || 0, flags);
       if (err) {
         const ex = exceptionWithHostPort(err, 'bind', ip, port);
-        this.emit('error', ex);
         state.bindState = BIND_STATE_UNBOUND;
+        this.emit('error', ex);
         // Todo: close?
         return;
       }
