@@ -23,6 +23,9 @@ test-gc-http-client: SKIP
 test-heapdump: SKIP
 test-heapdump-flag: SKIP
 
+# Profiling is not supported
+test-worker-prof: FAIL
+
 [$system==solaris]
 
 # runs out of memory

@@ -116,6 +116,38 @@ function nextdir() {
   );
 }
 
+// base64 encoding error does not crash application.
+{
+  const coverageDirectory = nextdir();
+  const output = spawnSync(process.execPath, [
+    require.resolve('../fixtures/source-map/inline-base64-type-error.js')
+  ], { env: { ...process.env, NODE_V8_COVERAGE: coverageDirectory } });
+  assert.strictEqual(output.status, 0);
+  assert.strictEqual(output.stderr.toString(), '');
+  const sourceMap = getSourceMapFromCache(
+    'inline-base64-type-error.js',
+    coverageDirectory
+  );
+
+  assert.strictEqual(sourceMap.data, null);
+}
+
+// JSON error does not crash application.
+{
+  const coverageDirectory = nextdir();
+  const output = spawnSync(process.execPath, [
+    require.resolve('../fixtures/source-map/inline-base64-json-error.js')
+  ], { env: { ...process.env, NODE_V8_COVERAGE: coverageDirectory } });
+  assert.strictEqual(output.status, 0);
+  assert.strictEqual(output.stderr.toString(), '');
+  const sourceMap = getSourceMapFromCache(
+    'inline-base64-json-error.js',
+    coverageDirectory
+  );
+
+  assert.strictEqual(sourceMap.data, null);
+}
+
 // Does not apply source-map to stack trace if --experimental-modules
 // is not set.
 {
@@ -221,6 +253,18 @@ function nextdir() {
   } else {
     assert.deepStrictEqual(sourceMap.lineLengths, [1085, 30, 184, 648, 0]);
   }
+}
+
+// trace.length === 0 .
+{
+  const output = spawnSync(process.execPath, [
+    '--enable-source-maps',
+    require.resolve('../fixtures/source-map/emptyStackError.js')
+  ]);
+
+  assert.ok(
+    output.stderr.toString().match('emptyStackError')
+  );
 }
 
 function getSourceMapFromCache(fixtureFile, coverageDirectory) {
