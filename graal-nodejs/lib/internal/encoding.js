@@ -36,7 +36,7 @@ const {
   encodeUtf8String
 } = internalBinding('buffer');
 
-var Buffer;
+let Buffer;
 function lazyBuffer() {
   if (Buffer === undefined)
     Buffer = require('buffer').Buffer;
@@ -281,8 +281,8 @@ const encodings = new Map([
 // Unfortunately, String.prototype.trim also removes non-ascii whitespace,
 // so we have to do this manually
 function trimAsciiWhitespace(label) {
-  var s = 0;
-  var e = label.length;
+  let s = 0;
+  let e = label.length;
   while (s < e && (
     label[s] === '\u0009' ||
     label[s] === '\u000a' ||
@@ -378,7 +378,7 @@ function makeTextDecoderICU() {
       if (enc === undefined)
         throw new ERR_ENCODING_NOT_SUPPORTED(encoding);
 
-      var flags = 0;
+      let flags = 0;
       if (options !== null) {
         flags |= options.fatal ? CONVERTER_FLAGS_FATAL : 0;
         flags |= options.ignoreBOM ? CONVERTER_FLAGS_IGNORE_BOM : 0;
@@ -406,7 +406,7 @@ function makeTextDecoderICU() {
       }
       validateArgument(options, 'object', 'options', 'Object');
 
-      var flags = 0;
+      let flags = 0;
       if (options !== null)
         flags |= options.stream ? 0 : CONVERTER_FLAGS_FLUSH;
 
@@ -422,7 +422,7 @@ function makeTextDecoderICU() {
 }
 
 function makeTextDecoderJS() {
-  var StringDecoder;
+  let StringDecoder;
   function lazyStringDecoder() {
     if (StringDecoder === undefined)
       ({ StringDecoder } = require('string_decoder'));
@@ -444,7 +444,7 @@ function makeTextDecoderJS() {
       if (enc === undefined || !hasConverter(enc))
         throw new ERR_ENCODING_NOT_SUPPORTED(encoding);
 
-      var flags = 0;
+      let flags = 0;
       if (options !== null) {
         if (options.fatal) {
           throw new ERR_NO_ICU('"fatal" option');
@@ -484,25 +484,22 @@ function makeTextDecoderJS() {
         this[kFlags] |= CONVERTER_FLAGS_FLUSH;
       }
 
-      if (!this[kBOMSeen] && !(this[kFlags] & CONVERTER_FLAGS_IGNORE_BOM)) {
-        if (this[kEncoding] === 'utf-8') {
-          if (input.length >= 3 &&
-              input[0] === 0xEF && input[1] === 0xBB && input[2] === 0xBF) {
-            input = input.slice(3);
-          }
-        } else if (this[kEncoding] === 'utf-16le') {
-          if (input.length >= 2 && input[0] === 0xFF && input[1] === 0xFE) {
-            input = input.slice(2);
-          }
+      let result = this[kFlags] & CONVERTER_FLAGS_FLUSH ?
+        this[kHandle].end(input) :
+        this[kHandle].write(input);
+
+      if (result.length > 0 &&
+          !this[kBOMSeen] &&
+          !(this[kFlags] & CONVERTER_FLAGS_IGNORE_BOM)) {
+        // If the very first result in the stream is a BOM, and we are not
+        // explicitly told to ignore it, then we discard it.
+        if (result[0] === '\ufeff') {
+          result = result.slice(1);
         }
         this[kBOMSeen] = true;
       }
 
-      if (this[kFlags] & CONVERTER_FLAGS_FLUSH) {
-        return this[kHandle].end(input);
-      }
-
-      return this[kHandle].write(input);
+      return result;
     }
   }
 

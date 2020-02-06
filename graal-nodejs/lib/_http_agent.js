@@ -40,10 +40,18 @@ const { async_id_symbol } = require('internal/async_hooks').symbols;
 // ClientRequest.onSocket(). The Agent is now *strictly*
 // concerned with managing a connection pool.
 
+const kReusedHandle = Symbol('kReusedHandle');
 class ReusedHandle {
   constructor(type, handle) {
     this.type = type;
     this.handle = handle;
+    // We need keep the resource object alive from this object, because
+    // domains rely on GC of the resource object for lifetime tracking.
+    // TODO(addaleax): This should really apply to all uses of
+    // AsyncWrap::AsyncReset() when the resource is not the AsyncWrap object
+    // itself. However, HTTPClientAsyncResource and HTTPServerAsyncResource
+    // hold on to other objects, inhibiting GC.
+    handle[kReusedHandle] = this;
   }
 }
 
@@ -83,14 +91,14 @@ function Agent(options) {
     } else {
       // If there are no pending requests, then put it in
       // the freeSockets pool, but only if we're allowed to do so.
-      var req = socket._httpMessage;
+      const req = socket._httpMessage;
       if (req &&
           req.shouldKeepAlive &&
           socket.writable &&
           this.keepAlive) {
-        var freeSockets = this.freeSockets[name];
-        var freeLen = freeSockets ? freeSockets.length : 0;
-        var count = freeLen;
+        let freeSockets = this.freeSockets[name];
+        const freeLen = freeSockets ? freeSockets.length : 0;
+        let count = freeLen;
         if (this.sockets[name])
           count += this.sockets[name].length;
 
@@ -122,7 +130,7 @@ Agent.prototype.createConnection = net.createConnection;
 
 // Get the key for a given set of request options
 Agent.prototype.getName = function getName(options) {
-  var name = options.host || 'localhost';
+  let name = options.host || 'localhost';
 
   name += ':';
   if (options.port)
@@ -171,7 +179,7 @@ Agent.prototype.addRequest = function addRequest(req, options, port/* legacy */,
 
   if (freeLen) {
     // We have a free socket, so use that.
-    var socket = this.freeSockets[name].shift();
+    const socket = this.freeSockets[name].shift();
     // Guard against an uninitialized or user supplied Socket.
     const handle = socket._handle;
     if (handle && typeof handle.asyncReset === 'function') {
@@ -214,7 +222,7 @@ Agent.prototype.createSocket = function createSocket(req, options, cb) {
 
   debug('createConnection', name, options);
   options.encoding = null;
-  var called = false;
+  let called = false;
 
   const oncreate = (err, s) => {
     if (called)
@@ -300,11 +308,11 @@ Agent.prototype.removeSocket = function removeSocket(s, options) {
   if (!s.writable)
     sets.push(this.freeSockets);
 
-  for (var sk = 0; sk < sets.length; sk++) {
-    var sockets = sets[sk];
+  for (let sk = 0; sk < sets.length; sk++) {
+    const sockets = sets[sk];
 
     if (sockets[name]) {
-      var index = sockets[name].indexOf(s);
+      const index = sockets[name].indexOf(s);
       if (index !== -1) {
         sockets[name].splice(index, 1);
         // Don't leak
@@ -337,12 +345,12 @@ Agent.prototype.reuseSocket = function reuseSocket(socket, req) {
 
 Agent.prototype.destroy = function destroy() {
   const sets = [this.freeSockets, this.sockets];
-  for (var s = 0; s < sets.length; s++) {
-    var set = sets[s];
-    var keys = Object.keys(set);
-    for (var v = 0; v < keys.length; v++) {
-      var setName = set[keys[v]];
-      for (var n = 0; n < setName.length; n++) {
+  for (let s = 0; s < sets.length; s++) {
+    const set = sets[s];
+    const keys = Object.keys(set);
+    for (let v = 0; v < keys.length; v++) {
+      const setName = set[keys[v]];
+      for (let n = 0; n < setName.length; n++) {
         setName[n].destroy();
       }
     }

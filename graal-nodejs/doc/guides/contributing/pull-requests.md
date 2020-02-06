@@ -73,7 +73,7 @@ $ git remote add upstream https://github.com/nodejs/node.git
 $ git fetch upstream
 ```
 
-It is recommended to configure `git` so that it knows who you are:
+Configure `git` so that it knows who you are:
 
 ```text
 $ git config user.name "J. Random User"
@@ -121,11 +121,13 @@ in the API docs will also be checked when running `make lint` (or
 use `REPLACEME` for the version number in the documentation YAML.
 
 For contributing C++ code, you may want to look at the
-[C++ Style Guide](../../../CPP_STYLE_GUIDE.md).
+[C++ Style Guide](../../../CPP_STYLE_GUIDE.md), as well as the
+[README of `src/`](../../../src/README.md) for an overview over Node.js
+C++ internals.
 
 ### Step 4: Commit
 
-It is a recommended best practice to keep your changes as logically grouped
+It is a best practice to keep your changes as logically grouped
 as possible within individual commits. There is no limit to the number of
 commits any single Pull Request may have, and many contributors find it easier
 to review changes that are split across multiple commits.

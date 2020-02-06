@@ -214,6 +214,7 @@ constexpr size_t kFsStatsBufferLength =
   V(done_string, "done")                                                       \
   V(duration_string, "duration")                                               \
   V(emit_warning_string, "emitWarning")                                        \
+  V(empty_object_string, "{}")                                                 \
   V(encoding_string, "encoding")                                               \
   V(entries_string, "entries")                                                 \
   V(entry_type_string, "entryType")                                            \
@@ -872,7 +873,8 @@ class Environment : public MemoryRetainer {
 #if HAVE_INSPECTOR
   // If the environment is created for a worker, pass parent_handle and
   // the ownership if transferred into the Environment.
-  int InitializeInspector(inspector::ParentInspectorHandle* parent_handle);
+  int InitializeInspector(
+      std::unique_ptr<inspector::ParentInspectorHandle> parent_handle);
 #endif
 
   v8::MaybeLocal<v8::Value> BootstrapInternalLoaders();

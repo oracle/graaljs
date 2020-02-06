@@ -151,32 +151,6 @@ bool v8_is_profiling = false;
 struct V8Platform v8_platform;
 }  // namespace per_process
 
-#ifdef __POSIX__
-static const unsigned kMaxSignal = 32;
-#endif
-
-void WaitForInspectorDisconnect(Environment* env) {
-#if HAVE_INSPECTOR
-  profiler::EndStartedProfilers(env);
-
-  if (env->inspector_agent()->IsActive()) {
-    // Restore signal dispositions, the app is done and is no longer
-    // capable of handling signals.
-#if defined(__POSIX__) && !defined(NODE_SHARED_MODE)
-    struct sigaction act;
-    memset(&act, 0, sizeof(act));
-    for (unsigned nr = 1; nr < kMaxSignal; nr += 1) {
-      if (nr == SIGKILL || nr == SIGSTOP || nr == SIGPROF)
-        continue;
-      act.sa_handler = (nr == SIGPIPE) ? SIG_IGN : SIG_DFL;
-      CHECK_EQ(0, sigaction(nr, &act, nullptr));
-    }
-#endif
-    env->inspector_agent()->WaitForDisconnect();
-  }
-#endif
-}
-
 void SignalExit(int signo) {
   ResetStdio();
 #ifdef __FreeBSD__
@@ -222,13 +196,12 @@ MaybeLocal<Value> ExecuteBootstrapper(Environment* env,
 
 #if HAVE_INSPECTOR
 int Environment::InitializeInspector(
-    inspector::ParentInspectorHandle* parent_handle) {
+    std::unique_ptr<inspector::ParentInspectorHandle> parent_handle) {
   std::string inspector_path;
-  if (parent_handle != nullptr) {
+  if (parent_handle) {
     DCHECK(!is_main_thread());
     inspector_path = parent_handle->url();
-    inspector_agent_->SetParentHandle(
-        std::unique_ptr<inspector::ParentInspectorHandle>(parent_handle));
+    inspector_agent_->SetParentHandle(std::move(parent_handle));
   } else {
     inspector_path = argv_.size() > 1 ? argv_[1].c_str() : "";
   }
@@ -363,7 +336,8 @@ MaybeLocal<Value> Environment::RunBootstrapping() {
 
   // Make sure that no request or handle is created during bootstrap -
   // if necessary those should be done in pre-execution.
-  // TODO(joyeecheung): print handles/requests before aborting
+  // Usually, doing so would trigger the checks present in the ReqWrap and
+  // HandleWrap classes, so this is only a consistency check.
   CHECK(req_wrap_queue()->IsEmpty());
   CHECK(handle_wrap_queue()->IsEmpty());
 
@@ -523,6 +497,7 @@ inline void PlatformInit() {
   CHECK_EQ(err, 0);
 #endif  // HAVE_INSPECTOR
 
+  // TODO(addaleax): NODE_SHARED_MODE does not really make sense here.
 #ifndef NODE_SHARED_MODE
   // Restore signal dispositions, the parent process may have changed them.
   struct sigaction act;

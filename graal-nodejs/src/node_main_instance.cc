@@ -7,6 +7,10 @@
 #include <sanitizer/lsan_interface.h>
 #endif
 
+#if HAVE_INSPECTOR
+#include "inspector/worker_inspector.h"  // ParentInspectorHandle
+#endif
+
 namespace node {
 
 using v8::Context;
@@ -128,8 +132,6 @@ int NodeMainInstance::Run() {
         more = uv_loop_alive(env->event_loop());
         if (more && !env->is_stopping()) continue;
 
-        env->RunBeforeExitCallbacks();
-
         if (!uv_loop_alive(env->event_loop())) {
           EmitBeforeExit(env.get());
         }
@@ -144,13 +146,26 @@ int NodeMainInstance::Run() {
 
     env->set_trace_sync_io(false);
     exit_code = EmitExit(env.get());
-    WaitForInspectorDisconnect(env.get());
   }
 
   env->set_can_call_into_js(false);
   env->stop_sub_worker_contexts();
   ResetStdio();
   env->RunCleanup();
+
+  // TODO(addaleax): Neither NODE_SHARED_MODE nor HAVE_INSPECTOR really
+  // make sense here.
+#if HAVE_INSPECTOR && defined(__POSIX__) && !defined(NODE_SHARED_MODE)
+  struct sigaction act;
+  memset(&act, 0, sizeof(act));
+  for (unsigned nr = 1; nr < kMaxSignal; nr += 1) {
+    if (nr == SIGKILL || nr == SIGSTOP || nr == SIGPROF)
+      continue;
+    act.sa_handler = (nr == SIGPIPE) ? SIG_IGN : SIG_DFL;
+    CHECK_EQ(0, sigaction(nr, &act, nullptr));
+  }
+#endif
+
   RunAtExit(env.get());
 
   per_process::v8_platform.DrainVMTasks(isolate_);
@@ -204,7 +219,7 @@ std::unique_ptr<Environment> NodeMainInstance::CreateMainEnvironment(
   // TODO(joyeecheung): when we snapshot the bootstrapped context,
   // the inspector and diagnostics setup should after after deserialization.
 #if HAVE_INSPECTOR
-  *exit_code = env->InitializeInspector(nullptr);
+  *exit_code = env->InitializeInspector({});
 #endif
   if (env->options()->debug_options().break_node_first_line) {
       isolate_->SchedulePauseOnNextStatement();
