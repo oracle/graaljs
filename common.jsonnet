@@ -86,7 +86,6 @@
 
   windows: common + {
     packages+: {
-      'pip:ninja_syntax': '==1.7.2',
       'devkit:VS2017-15.5.5+1': '==0',
     },
     downloads+: {
@@ -95,10 +94,10 @@
     environment+: {
       PATH: '$PATH;$NASM',
     },
-    setup+: {
+    setup+: [
       ['set-export', 'DEVKIT_ROOT', '$VS2017_15_5_5_1_0_ROOT'],
       ['set-export', 'DEVKIT_VERSION', '2017'],
-    },
+    ],
     capabilities: ['windows', 'amd64'],
   },
 
