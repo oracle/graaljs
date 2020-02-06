@@ -456,10 +456,11 @@ def _mxrun(args, cwd=_suite.dir, verbose=False, out=None, env=None):
     if status:
         mx.abort(status)
 
-def _setEnvVar(name, val, env=os.environ):
+def _setEnvVar(name, val, env=None):
+    _env = env or os.environ
     if val:
         mx.logv('Setting environment variable %s=%s' % (name, val))
-        env[name] = val
+        _env[name] = val
 
 def _java_home():
     return mx.get_jdk().home
