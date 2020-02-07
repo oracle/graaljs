@@ -75,6 +75,7 @@
 #define LIBJVM_RELPATH     "/lib/server/libjvm.so"
 #define LIBJVM_RELPATH2    "/lib/sparcv9/server/libjvm.so"
 #elif defined(_WIN32)
+#define LIBNODESVM_RELPATH "\\lib\\polyglot\\polyglot.dll"
 #define LIBJVM_RELPATH     "\\bin\\server\\jvm.dll"
 #else
 #define LIBNODESVM_RELPATH "/lib/polyglot/libpolyglot.so"
@@ -262,7 +263,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
         fprintf(stderr, "JAVA_HOME is not set. Specify JAVA_HOME so $JAVA_HOME%s exists.\n", LIBJVM_RELPATH);
         exit(1);
     }
-    std::string jre_sub_dir = jdk_path + "/jre";
+    std::string jre_sub_dir = jdk_path + file_separator + "jre";
     if (access(jre_sub_dir.c_str(), F_OK) != -1) {
         jdk_path = jre_sub_dir;
     }
