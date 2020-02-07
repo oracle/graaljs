@@ -40,7 +40,7 @@ local common = import '../common.jsonnet';
 
   local buildCompilerTip = cloneGraalTip + {
     run+: [
-      ['mx', 'build', '--dynamicimports', '/compiler', '--force-javac'],
+      ['mx', '--dynamicimports', '/compiler', 'build', '--force-javac'],
     ],
   },
 

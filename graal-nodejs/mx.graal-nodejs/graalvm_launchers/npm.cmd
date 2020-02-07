@@ -21,7 +21,7 @@ call :dirname "%bin_dir%" parent_bin_dir
 
 set "PATH=%PATH%;%bin_dir%"
 
-set "vm_args=--experimental-options "--engine.Mode=latency""
+set "node_args=--experimental-options "--engine.Mode=latency""
 set "node_dir="--nodedir=%parent_bin_dir%""
 
 for %%a in (%*) do (
@@ -30,20 +30,20 @@ for %%a in (%*) do (
   set "arg=%%a"
   set "u_arg=%%~a"
 
-  set "vm_arg=false"
+  set "node_arg=false"
 
   rem Unfortunately, parsing of `--vm`, `--jvm`, and `--native` arguments has to be done blind:
   rem Maybe some of those arguments where not really intended for the launcher but were application arguments
   if "!u_arg:~0,4!"=="--vm" (
-    set "vm_arg=true"
+    set "node_arg=true"
   ) else  if "!u_arg:~0,5!"=="--jvm" (
-    set "vm_arg=true"
+    set "node_arg=true"
   ) else if "!u_arg:~0,8!"=="--native" (
-    set "vm_arg=true"
+    set "node_arg=true"
   )
 
-  if "!vm_arg!"=="true" (
-    set "vm_args=!vm_args! !arg!"
+  if "!node_arg!"=="true" (
+    set "node_args=!node_args! !arg!"
   ) else if "!u_arg:~0,10!"=="--nodedir=" (
     set "node_dir=!arg!"
   ) else if "!u_arg!"=="--nodedir" (
@@ -60,7 +60,7 @@ for %%a in (%*) do (
 
 if "%VERBOSE_GRAALVM_LAUNCHERS%"=="true" echo on
 
-"%node_exe%" %vm_args% "%parent_bin_dir%/npm/bin/npm-cli.js" %node_dir% %prog_args%
+"%node_exe%" %node_args% "%parent_bin_dir%/npm/bin/npm-cli.js" %node_dir% %prog_args%
 
 @goto :eof
 
