@@ -80,6 +80,8 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
+import com.oracle.truffle.js.nodes.access.InitErrorObjectNodeFactory;
+import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BuiltinRootTag;
@@ -622,6 +624,8 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             Class.forName(JSException.class.getName());
             Class.forName(TruffleStackTrace.class.getName());
             Class.forName(TruffleStackTraceElement.class.getName());
+            Class.forName(InitErrorObjectNodeFactory.DefineStackPropertyNodeGen.class.getName());
+            Class.forName(TryCatchNode.GetErrorObjectNode.class.getName());
         } catch (Exception ex) {
             ex.printStackTrace();
         }

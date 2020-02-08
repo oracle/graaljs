@@ -100,7 +100,7 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
     }
 
     @ImportStatic(JSError.class)
-    abstract static class DefineStackPropertyNode extends JavaScriptBaseNode {
+    public abstract static class DefineStackPropertyNode extends JavaScriptBaseNode {
         static DefineStackPropertyNode create() {
             return DefineStackPropertyNodeGen.create();
         }
