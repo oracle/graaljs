@@ -16,8 +16,8 @@ test-net-connect-options-port: PASS,FLAKY
 test-assert-first-line: FAIL
 test-error-reporting: FAIL
 
-# Triggers stack-overflow that is not handled well
-test-async-wrap-pop-id-during-load: SKIP # (async function fn() { fn(); })() fails in class initialization
+# Triggers stack-overflow that may not be handled well
+test-async-wrap-pop-id-during-load: SKIP
 test-promise-reject-callback-exception: SKIP
 test-ttywrap-stack: SKIP
 
@@ -33,9 +33,6 @@ test-repl-pretty-stack: FAIL
 
 # Suspicious (V8 specific?) test checking whether ArrayBufferView lives on heap
 test-buffer-backing-arraybuffer: FAIL
-
-# RangeError caused by stack-overflow does not honor Error.stackTraceLimit
-test-cli-node-options: FAIL
 
 # Tests the content of Node.js original help (--help option).
 # We print a different help message.
@@ -64,6 +61,7 @@ test-http2-ping-settings-heapdump: SKIP
 test-worker-sharedarraybuffer-from-worker-thread: SKIP
 
 # Profiling is not supported
+test-cli-node-options: FAIL
 test-tick-processor-arguments: FAIL
 
 # v8::Object::GetConstructorName() returns `Klass` for
