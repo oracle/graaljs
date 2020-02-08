@@ -468,6 +468,11 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     @Override
     protected void disposeContext(JSRealm realm) {
         CompilerAsserts.neverPartOfCompilation();
+        JSContext context = realm.getContext();
+        JSContextOptions options = context.getContextOptions();
+        if (options.isProfileTime() && options.isProfileTimePrintCumulative()) {
+            context.getTimeProfiler().printCumulative();
+        }
         realm.setGlobalObject(Undefined.instance);
     }
 

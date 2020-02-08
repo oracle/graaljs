@@ -42,23 +42,12 @@ package com.oracle.truffle.js.runtime.util;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.oracle.truffle.js.runtime.JSContext;
-
 public final class TimeProfiler {
     private static final String CLASS_NAME = "[" + TimeProfiler.class.getSimpleName() + "] ";
     private final AtomicLong counter;
 
-    public TimeProfiler(JSContext context) {
+    public TimeProfiler() {
         counter = new AtomicLong();
-
-        if (context.getContextOptions().isProfileTimePrintCumulative()) {
-            Runtime.getRuntime().addShutdownHook(new Thread() {
-                @Override
-                public void run() {
-                    System.out.println(CLASS_NAME + "cumulative: " + TimeUtil.format(counter.get()));
-                }
-            });
-        }
     }
 
     public void printElapsed(long startTime, String event) {
@@ -66,4 +55,9 @@ public final class TimeProfiler {
         counter.addAndGet(elapsed);
         System.out.println(CLASS_NAME + event + " took: " + TimeUtil.format(elapsed));
     }
+
+    public void printCumulative() {
+        System.out.println(CLASS_NAME + "cumulative: " + TimeUtil.format(counter.get()));
+    }
+
 }
