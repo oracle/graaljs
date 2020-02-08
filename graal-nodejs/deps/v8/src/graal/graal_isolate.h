@@ -601,18 +601,19 @@ public:
     void SchedulePauseOnNextStatement();
 
     static void SetFlags(int argc, char** argv) {
-        if (GraalIsolate::argv != nullptr) {
-            for (int i = 0; i < GraalIsolate::argc; i++) {
-                delete[] GraalIsolate::argv[i];
-            }
-            delete[] GraalIsolate::argv;
-        }
-        GraalIsolate::argc = argc;
-        GraalIsolate::argv = new char*[argc];
+        char** old_argv = GraalIsolate::argv;
+        int old_argc = GraalIsolate::argc;
+        int new_argc = argc + old_argc;
+        GraalIsolate::argc = new_argc;
+        GraalIsolate::argv = new char*[new_argc];
+        memcpy(GraalIsolate::argv, old_argv, old_argc * sizeof (char*));
         for (int i = 0; i < argc; i++) {
             int len = strlen(argv[i]) + 1;
-            GraalIsolate::argv[i] = new char[len];
-            strncpy(GraalIsolate::argv[i], argv[i], len);
+            GraalIsolate::argv[i + old_argc] = new char[len];
+            strncpy(GraalIsolate::argv[i + old_argc], argv[i], len);
+        }
+        if (old_argv != nullptr) {
+            delete[] old_argv;
         }
     }
 
