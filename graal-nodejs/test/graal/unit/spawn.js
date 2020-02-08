@@ -55,9 +55,17 @@ describe('Spawn', function () {
         checkTheAnswerToLifeTheUniverseAndEverything(result);
     });
     it('should accept max_old_space_size option', function () {
-        var result = spawnSync(process.execPath, ['--max_old_space_size=1024', '-p', '6*7'], {env: {}});
+        var result = spawnSync(process.execPath, ['--max_old_space_size=1024', '-p', '6*7']);
         checkTheAnswerToLifeTheUniverseAndEverything(result);
-    })
+    });
+    it('should accept --stack-trace-limit option', function () {
+        var result = spawnSync(process.execPath, ['--stack-trace-limit=42', '-p', 'Error.stackTraceLimit']);
+        checkTheAnswerToLifeTheUniverseAndEverything(result);
+    });
+    it('should accept --stack-trace-limit option in NODE_OPTIONS', function () {
+        var result = spawnSync(process.execPath, ['-p', 'Error.stackTraceLimit'], {env: { NODE_OPTIONS: '--stack-trace-limit=42' }});
+        checkTheAnswerToLifeTheUniverseAndEverything(result);
+    });
     if (typeof java === 'object') {
         it('should finish gracefully when a native method is called from a wrong thread', function () {
             var code = `var vm = require('vm');
