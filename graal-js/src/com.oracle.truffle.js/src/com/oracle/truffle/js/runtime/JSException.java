@@ -47,6 +47,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JSException extends GraalJSException {
@@ -109,7 +110,10 @@ public final class JSException extends GraalJSException {
     }
 
     public static int getStackTraceLimit() {
-        return JavaScriptLanguage.getCurrentJSRealm().getContext().getContextOptions().getStackTraceLimit();
+        JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
+        DynamicObject errorConstructor = realm.getErrorConstructor(JSErrorType.Error);
+        Object stackTraceLimit = JSObject.get(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME);
+        return Math.max(0, (int) JSRuntime.toInteger(stackTraceLimit));
     }
 
     @Override
