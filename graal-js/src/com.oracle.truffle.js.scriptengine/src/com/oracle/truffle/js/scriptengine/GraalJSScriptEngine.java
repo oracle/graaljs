@@ -45,6 +45,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.io.Writer;
+import java.util.Objects;
 import java.util.function.Predicate;
 
 import javax.script.AbstractScriptEngine;
@@ -206,7 +207,10 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
                         @Override
                         public Builder setOption(Builder builder, Object value) {
                             boolean val = toBoolean(this, value);
-                            return (val ? builder.allowAllAccess(true) : builder).option("js.nashorn-compat", String.valueOf(val));
+                            if (val) {
+                                updateForNashornCompatibilityMode(builder);
+                            }
+                            return builder.option("js.nashorn-compat", String.valueOf(val));
                         }
                     }
     };
@@ -242,12 +246,18 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
             // default config
             contextConfigToUse = Context.newBuilder(ID).allowExperimentalOptions(true).option(JS_SYNTAX_EXTENSIONS_OPTION, "true").option(JS_LOAD_OPTION, "true").option(JS_PRINT_OPTION, "true");
             if (NASHORN_COMPATIBILITY_MODE) {
-                contextConfigToUse.allowAllAccess(true);
+                updateForNashornCompatibilityMode(contextConfigToUse);
             }
         }
         this.factory = new GraalJSEngineFactory(engineToUse);
         this.contextConfig = contextConfigToUse.option(JS_SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_OPTION, "true").engine(engineToUse);
         this.context.setBindings(new GraalJSBindings(this.contextConfig), ScriptContext.ENGINE_SCOPE);
+    }
+
+    private static void updateForNashornCompatibilityMode(Context.Builder builder) {
+        builder.allowAllAccess(true);
+        HostAccess hostAccess = HostAccess.newBuilder(HostAccess.ALL).targetTypeMapping(Object.class, String.class, Objects::nonNull, String::valueOf).build();
+        builder.allowHostAccess(hostAccess);
     }
 
     static Context createDefaultContext(Context.Builder builder) {
