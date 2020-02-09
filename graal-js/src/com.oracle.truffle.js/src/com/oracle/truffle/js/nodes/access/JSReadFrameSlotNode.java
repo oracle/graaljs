@@ -81,6 +81,14 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
         return create(slot, ScopeFrameNode.create(frameLevel, scopeLevel, parentSlots), hasTemporalDeadZone);
     }
 
+    public static JSReadFrameSlotNode create(FrameSlot slot) {
+        if (JSFrameUtil.hasTemporalDeadZone(slot)) {
+            return JSReadScopeFrameSlotWithTDZNodeGen.create(slot, ScopeFrameNode.create(0));
+        } else {
+            return JSReadCurrentFrameSlotNodeGen.create(slot);
+        }
+    }
+
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
         if ((tag == ReadVariableTag.class || tag == StandardTags.ReadVariableTag.class)) {

@@ -24,6 +24,7 @@ const {
 } = internalBinding('serdes');
 const assert = require('internal/assert');
 const { copy } = internalBinding('buffer');
+const { inspect } = require('internal/util/inspect');
 const { FastBuffer } = require('internal/buffer');
 const { getValidatedPath } = require('internal/fs/utils');
 const { toNamespacedPath } = require('path');
@@ -164,7 +165,7 @@ function getHeapSpaceStatistics() {
   const buffer = heapSpaceStatisticsBuffer;
   updateHeapSpaceStatisticsArrayBuffer();
 
-  for (var i = 0; i < kNumberOfHeapSpaces; i++) {
+  for (let i = 0; i < kNumberOfHeapSpaces; i++) {
     const propertyOffset = i * kHeapSpaceStatisticsPropertiesCount;
     heapSpaceStatistics[i] = {
       space_name: kHeapSpaces[i],
@@ -242,7 +243,8 @@ class DefaultSerializer extends Serializer {
       i = arrayBufferViewTypeToIndex.get(tag);
 
       if (i === undefined) {
-        throw new this._getDataCloneError(`Unknown host object type: ${tag}`);
+        throw new this._getDataCloneError(
+          `Unserializable host object: ${inspect(abView)}`);
       }
     }
     this.writeUint32(i);

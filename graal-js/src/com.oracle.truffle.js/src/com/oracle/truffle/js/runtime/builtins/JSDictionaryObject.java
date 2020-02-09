@@ -239,7 +239,7 @@ public final class JSDictionaryObject extends JSBuiltinObject {
     @TruffleBoundary
     @Override
     public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object key) {
-        assert JSRuntime.isPropertyKey(key) || key instanceof HiddenKey;
+        assert JSRuntime.isPropertyKey(key);
         PropertyDescriptor prop = getHashMap(thisObj).get(key);
         if (prop != null) {
             return prop;

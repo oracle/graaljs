@@ -2155,18 +2155,6 @@
     },
     "status" : "PASS"
   }, {
-    "filePath" : "language/eval-code/direct/super-prop-method.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/eval-code/direct/var-env-lower-lex-non-strict.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/eval-code/indirect/lex-env-heritage.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/arrow-function/scope-body-lex-distinct.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/expressions/arrow-function/scope-param-elem-var-close.js",
     "status" : "FAIL"
   }, {
@@ -2349,9 +2337,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
-    "filePath" : "language/expressions/function/scope-body-lex-distinct.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/expressions/function/scope-param-elem-var-close.js",
     "status" : "FAIL"
   }, {
@@ -2362,9 +2347,6 @@
     "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/function/scope-param-rest-elem-var-open.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/generators/scope-body-lex-distinct.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/generators/scope-param-elem-var-close.js",
@@ -2379,9 +2361,6 @@
     "filePath" : "language/expressions/generators/scope-param-rest-elem-var-open.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/expressions/object/scope-gen-meth-body-lex-distinct.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/expressions/object/scope-gen-meth-param-elem-var-close.js",
     "status" : "FAIL"
   }, {
@@ -2394,12 +2373,6 @@
     "filePath" : "language/expressions/object/scope-gen-meth-param-rest-elem-var-open.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/expressions/object/scope-getter-body-lex-distinc.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/object/scope-meth-body-lex-distinct.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/expressions/object/scope-meth-param-elem-var-close.js",
     "status" : "FAIL"
   }, {
@@ -2410,9 +2383,6 @@
     "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/object/scope-meth-param-rest-elem-var-open.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/object/scope-setter-body-lex-distinc.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/postfix-decrement/target-cover-newtarget.js",
@@ -2486,18 +2456,6 @@
       "minVersion" : 11
     },
     "status" : "PASS"
-  }, {
-    "filePath" : "language/expressions/super/prop-dot-cls-val-from-eval.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/super/prop-dot-obj-val-from-eval.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/super/prop-expr-cls-val-from-eval.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/super/prop-expr-obj-val-from-eval.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/this/S11.1.1_A1.js",
     "ecmaVersion" : {
@@ -2592,9 +2550,6 @@
     "filePath" : "language/statements/for-of/scope-head-lex-open.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/statements/function/scope-body-lex-distinct.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/statements/function/scope-param-elem-var-close.js",
     "status" : "FAIL"
   }, {
@@ -2605,9 +2560,6 @@
     "status" : "FAIL"
   }, {
     "filePath" : "language/statements/function/scope-param-rest-elem-var-open.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/generators/scope-body-lex-distinct.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/statements/generators/scope-param-elem-var-close.js",

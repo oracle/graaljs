@@ -90,7 +90,6 @@ void PrintCaughtException(v8::Isolate* isolate,
                           v8::Local<v8::Context> context,
                           const v8::TryCatch& try_catch);
 
-void WaitForInspectorDisconnect(Environment* env);
 void ResetStdio();  // Safe to call more than once and from signal handlers.
 void SignalExit(int signo);
 #ifdef __POSIX__
@@ -161,7 +160,11 @@ v8::MaybeLocal<v8::Object> New(Environment* env,
                                char* data,
                                size_t length,
                                bool uses_malloc);
-
+// Creates a Buffer instance over an existing Uint8Array.
+v8::MaybeLocal<v8::Uint8Array> New(Environment* env,
+                                   v8::Local<v8::ArrayBuffer> ab,
+                                   size_t byte_offset,
+                                   size_t length);
 // Construct a Buffer from a MaybeStackBuffer (and also its subclasses like
 // Utf8Value and TwoByteValue).
 // If |buf| is invalidated, an empty MaybeLocal is returned, and nothing is
@@ -306,9 +309,14 @@ void SetIsolateCreateParamsForNode(v8::Isolate::CreateParams* params);
 #if HAVE_INSPECTOR
 namespace profiler {
 void StartProfilers(Environment* env);
-void EndStartedProfilers(Environment* env);
 }
 #endif  // HAVE_INSPECTOR
+
+#ifdef __POSIX__
+static constexpr unsigned kMaxSignal = 32;
+#endif
+
+bool HasSignalJSHandler(int signum);
 
 #ifdef _WIN32
 typedef SYSTEMTIME TIME_TYPE;

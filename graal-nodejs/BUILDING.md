@@ -67,17 +67,14 @@ There are three support tiers:
 
 * **Tier 1**: These platforms represent the majority of Node.js users. The
   Node.js Build Working Group maintains infrastructure for full test coverage.
-  Maintenance is supported by the Node.js core team. All commits to the
-  Node.js repository are tested on multiple variants of these platforms. Test
+  All commits to the Node.js repository are tested on these platforms. Test
   failures on tier 1 platforms will block releases.
 * **Tier 2**: These platforms represent smaller segments of the Node.js user
   base. The Node.js Build Working Group maintains infrastructure for full test
-  coverage. Maintenance is supported by smaller groups or individuals within
-  the Node.js core team, or the vendor of the platform itself. All commits to
-  the Node.js repository are tested on multiple variants of these platforms
-  where practical. Test failures on tier 2 platforms will block releases.
-  Delays in release of binaries for these platforms are acceptable
-  where necessary due to infrastructure concerns.
+  coverage. All commits to the Node.js repository are tested on these platforms.
+  Test failures on tier 2 platforms will block releases. Delays in release of
+  binaries for these platforms are acceptable where necessary due to
+  infrastructure concerns.
 * **Experimental**: May not compile or test suite may not pass. The core team
   does not create releases for these platforms. Test failures on experimental
   platforms do not block releases. Contributions to improve support for these
@@ -117,7 +114,7 @@ platforms. This is true regardless of entries in the table below.
 | macOS            | x64              | >= 10.11                        | Tier 1       |                                   |
 | SmartOS          | x64              | >= 18                           | Tier 2       |                                   |
 | AIX              | ppc64be >=power7 | >= 7.2 TL02                     | Tier 2       |                                   |
-| FreeBSD          | x64              | >= 11                           | Experimental | Downgraded as of Node.js 12       |
+| FreeBSD          | x64              | >= 11                           | Experimental | Downgraded as of Node.js 12  <sup>[7](#fn7)</sup>     |
 
 <em id="fn1">1</em>: GCC 6 is not provided on the base platform, users will
   need the
@@ -150,6 +147,10 @@ platforms. This is true regardless of entries in the table below.
 are provided. However, tests in our infrastructure only run on WoW64.
 Furthermore, compiling on x86 Windows is currently considered Experimental and
 may not be possible.
+
+<em id="fn7">7</em>: The default FreeBSD 12.0 compiler is Clang 6.0.1, but
+FreeBSD 12.1 upgrades to 8.0.1. Other Clang/LLVM versions are provided
+via the system's package manager, including Clang 9.0.
 
 ### Supported toolchains
 
@@ -215,9 +216,10 @@ Supported platforms and toolchains change with each major version of Node.js.
 This document is only valid for the current major version of Node.js.
 Consult previous versions of this document for older versions of Node.js:
 
+* [Node.js 13](https://github.com/nodejs/node/blob/v13.x/BUILDING.md)
+* [Node.js 12](https://github.com/nodejs/node/blob/v12.x/BUILDING.md)
 * [Node.js 10](https://github.com/nodejs/node/blob/v10.x/BUILDING.md)
 * [Node.js 8](https://github.com/nodejs/node/blob/v8.x/BUILDING.md)
-* [Node.js 6](https://github.com/nodejs/node/blob/v6.x/BUILDING.md)
 
 ## Building Node.js on supported platforms
 
@@ -369,6 +371,10 @@ loopback interface on Ubuntu:
 sudo sysctl -w net.ipv6.conf.lo.disable_ipv6=0
 ```
 
+You can use
+[node-code-ide-configs](https://github.com/nodejs/node-code-ide-configs)
+to run/debug tests, if your IDE configs are present.
+
 #### Running Coverage
 
 It's good practice to ensure any code you add or change is covered by tests.
@@ -473,7 +479,7 @@ To use the debug build with all the normal dependencies overwrite the release
 version in the install directory:
 
 ``` console
-$ make install --prefix=/opt/node-debug/
+$ make install PREFIX=/opt/node-debug/
 $ cp -a -f out/Debug/node /opt/node-debug/node
 ```
 

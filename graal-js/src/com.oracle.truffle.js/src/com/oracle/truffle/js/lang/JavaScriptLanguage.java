@@ -419,6 +419,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                     JSContextOptions.SHELL,
                     JSContextOptions.V8_COMPATIBILITY_MODE,
                     JSContextOptions.GLOBAL_PROPERTY,
+                    JSContextOptions.GLOBAL_ARGUMENTS,
                     JSContextOptions.SCRIPTING,
                     JSContextOptions.DIRECT_BYTE_BUFFER,
                     JSContextOptions.INTL_402,
@@ -426,6 +427,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                     JSContextOptions.PRINT,
                     JSContextOptions.CONSOLE,
                     JSContextOptions.PERFORMANCE,
+                    JSContextOptions.CLASS_FIELDS,
     };
 
     /**

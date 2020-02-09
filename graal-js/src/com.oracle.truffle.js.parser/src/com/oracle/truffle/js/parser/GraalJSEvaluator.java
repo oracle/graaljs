@@ -60,7 +60,6 @@ import java.util.function.Supplier;
 import com.oracle.js.parser.ir.Expression;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ExportEntry;
-import com.oracle.js.parser.ir.Module.ImportEntry;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
@@ -90,7 +89,6 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.parser.date.DateParser;
 import com.oracle.truffle.js.parser.env.DebugEnvironment;
 import com.oracle.truffle.js.parser.env.Environment;
-import com.oracle.truffle.js.parser.env.EvalEnvironment;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -127,7 +125,7 @@ public final class GraalJSEvaluator implements JSParser {
     @Override
     public Object evaluate(JSRealm realm, Node lastNode, Source source) {
         Object thisObj = realm.getGlobalObject();
-        return doEvaluate(realm, lastNode, null, thisObj, JSFrameUtil.NULL_MATERIALIZED_FRAME, source, false);
+        return doEvaluate(realm, lastNode, thisObj, JSFrameUtil.NULL_MATERIALIZED_FRAME, source, false, null);
     }
 
     /**
@@ -167,7 +165,7 @@ public final class GraalJSEvaluator implements JSParser {
         code.append("})");
         Source source = Source.newBuilder(JavaScriptLanguage.ID, code.toString(), sourceName).build();
 
-        return parseEval(context, null, null, source, false);
+        return parseEval(context, null, source, false, null);
     }
 
     /**
@@ -175,13 +173,10 @@ public final class GraalJSEvaluator implements JSParser {
      */
     @TruffleBoundary(transferToInterpreterOnException = false)
     @Override
-    public Object evaluate(JSRealm realm, Node lastNode, Source source, Object currEnvironment, MaterializedFrame frame, Object thisObj) {
-        assert currEnvironment != null;
-        assert currEnvironment instanceof Environment;
+    public Object evaluate(JSRealm realm, Node lastNode, Source source, MaterializedFrame frame, Object thisObj, Object evalEnv) {
         assert frame != null;
-
-        Environment outerEnv = (Environment) currEnvironment;
-        return doEvaluate(realm, lastNode, outerEnv, thisObj, frame.materialize(), source, outerEnv.isStrictMode());
+        DirectEvalContext directEval = (DirectEvalContext) evalEnv;
+        return doEvaluate(realm, lastNode, thisObj, frame, source, directEval.env.isStrictMode(), directEval);
     }
 
     @Override
@@ -201,9 +196,9 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     @TruffleBoundary
-    private static Object doEvaluate(JSRealm realm, Node lastNode, Environment env, Object thisObj, MaterializedFrame materializedFrame, Source source, boolean isStrict) {
+    private static Object doEvaluate(JSRealm realm, Node lastNode, Object thisObj, MaterializedFrame materializedFrame, Source source, boolean isStrict, DirectEvalContext directEval) {
         JSContext context = realm.getContext();
-        ScriptNode scriptNode = parseEval(context, lastNode, env, source, isStrict);
+        ScriptNode scriptNode = parseEval(context, lastNode, source, isStrict, directEval);
         return runParsed(scriptNode, realm, thisObj, materializedFrame);
     }
 
@@ -212,12 +207,11 @@ public final class GraalJSEvaluator implements JSParser {
         return scriptNode.run(JSArguments.createZeroArg(thisObj, functionObj));
     }
 
-    private static ScriptNode parseEval(JSContext context, Node lastNode, Environment env, Source source, boolean isStrict) {
+    private static ScriptNode parseEval(JSContext context, Node lastNode, Source source, boolean isStrict, DirectEvalContext directEval) {
         context.checkEvalAllowed();
         NodeFactory nodeFactory = NodeFactory.getInstance(context);
-        EvalEnvironment evalEnv = new EvalEnvironment(env, nodeFactory, context, env != null);
         try {
-            return JavaScriptTranslator.translateEvalScript(nodeFactory, context, evalEnv, source, isStrict);
+            return JavaScriptTranslator.translateEvalScript(nodeFactory, context, source, isStrict, directEval);
         } catch (com.oracle.js.parser.ParserException e) {
             throw parserToJSError(lastNode, e, context);
         }
@@ -282,7 +276,7 @@ public final class GraalJSEvaluator implements JSParser {
             @TruffleBoundary
             private Object evalModule(JSRealm realm) {
                 JSModuleRecord moduleRecord = realm.getModuleLoader().loadModule(source);
-                moduleInstantiation(moduleRecord);
+                moduleInstantiation(realm, moduleRecord);
                 return moduleEvaluation(realm, moduleRecord);
             }
         };
@@ -379,6 +373,8 @@ public final class GraalJSEvaluator implements JSParser {
         return exportedNames;
     }
 
+    @TruffleBoundary
+    @Override
     public ExportResolution resolveExport(JSModuleRecord referencingModule, String exportName) {
         return resolveExport(referencingModule, exportName, new HashSet<>());
     }
@@ -475,12 +471,12 @@ public final class GraalJSEvaluator implements JSParser {
 
     @TruffleBoundary
     @Override
-    public void moduleInstantiation(JSModuleRecord moduleRecord) {
+    public void moduleInstantiation(JSRealm realm, JSModuleRecord moduleRecord) {
         assert moduleRecord.getStatus() != Status.Instantiating && moduleRecord.getStatus() != Status.Evaluating;
         Deque<JSModuleRecord> stack = new ArrayDeque<>(4);
 
         try {
-            innerModuleInstantiation(moduleRecord, stack, 0);
+            innerModuleInstantiation(realm, moduleRecord, stack, 0);
         } catch (GraalJSException e) {
             for (JSModuleRecord m : stack) {
                 assert m.getStatus() == Status.Instantiating;
@@ -494,7 +490,7 @@ public final class GraalJSEvaluator implements JSParser {
         assert stack.isEmpty();
     }
 
-    private int innerModuleInstantiation(JSModuleRecord moduleRecord, Deque<JSModuleRecord> stack, int index0) {
+    private int innerModuleInstantiation(JSRealm realm, JSModuleRecord moduleRecord, Deque<JSModuleRecord> stack, int index0) {
         int index = index0;
         if (moduleRecord.getStatus() == Status.Instantiating || moduleRecord.getStatus() == Status.Instantiated || moduleRecord.getStatus() == Status.Evaluated) {
             return index;
@@ -509,7 +505,7 @@ public final class GraalJSEvaluator implements JSParser {
         Module module = (Module) moduleRecord.getModule();
         for (String requestedModule : module.getRequestedModules()) {
             JSModuleRecord requiredModule = hostResolveImportedModule(moduleRecord, requestedModule);
-            index = innerModuleInstantiation(requiredModule, stack, index);
+            index = innerModuleInstantiation(realm, requiredModule, stack, index);
             assert requiredModule.getStatus() == Status.Instantiating || requiredModule.getStatus() == Status.Instantiated ||
                             requiredModule.getStatus() == Status.Evaluated : requiredModule.getStatus();
             assert (requiredModule.getStatus() == Status.Instantiating) == stack.contains(requiredModule);
@@ -517,7 +513,7 @@ public final class GraalJSEvaluator implements JSParser {
                 moduleRecord.setDFSAncestorIndex(Math.min(moduleRecord.getDFSAncestorIndex(), requiredModule.getDFSAncestorIndex()));
             }
         }
-        moduleDeclarationEnvironmentSetup(moduleRecord);
+        moduleInitializeEnvironment(realm, moduleRecord);
 
         assert occursExactlyOnce(moduleRecord, stack);
         assert moduleRecord.getDFSAncestorIndex() <= moduleRecord.getDFSIndex();
@@ -533,7 +529,7 @@ public final class GraalJSEvaluator implements JSParser {
         return index;
     }
 
-    private void moduleDeclarationEnvironmentSetup(JSModuleRecord moduleRecord) {
+    private void moduleInitializeEnvironment(JSRealm realm, JSModuleRecord moduleRecord) {
         assert moduleRecord.getStatus() == Status.Instantiating;
         Module module = (Module) moduleRecord.getModule();
         for (ExportEntry exportEntry : module.getIndirectExportEntries()) {
@@ -542,30 +538,10 @@ public final class GraalJSEvaluator implements JSParser {
                 throw Errors.createSyntaxError("Could not resolve indirect export entry");
             }
         }
-        // Assert: all named exports from module are resolvable.
-        for (ImportEntry importEntry : module.getImportEntries()) {
-            JSModuleRecord importedModule = hostResolveImportedModule(moduleRecord, importEntry.getModuleRequest());
-            if (importEntry.getImportName().equals(Module.STAR_NAME)) {
-                // GetModuleNamespace(importedModule)
-                DynamicObject namespace = getModuleNamespace(importedModule);
-                assert JSModuleNamespace.isJSModuleNamespace(namespace);
-                // envRec.CreateImmutableBinding(in.[[LocalName]], true).
-                // Call envRec.InitializeBinding(in.[[LocalName]], namespace).
-                // bindings initialized in the translator
-            } else {
-                // Let resolution be importedModule.ResolveExport(in.[[ImportName]], << >>, << >>).
-                ExportResolution resolution = resolveExport(importedModule, importEntry.getImportName());
-                // If resolution is null or resolution is "ambiguous", throw SyntaxError.
-                if (resolution.isNull() || resolution.isAmbiguous()) {
-                    throw Errors.createSyntaxError("Could not resolve import entry");
-                }
-                // Call envRec.CreateImportBinding(in.[[LocalName]], resolution.[[module]],
-                // resolution.[[bindingName]]).
-                // bindings initialized in the translator
-            }
-        }
 
-        moduleRecord.finishTranslation();
+        // Initialize the environment by executing the module function.
+        // It will automatically yield when the module is instantiated.
+        moduleExecution(realm, moduleRecord);
     }
 
     @TruffleBoundary

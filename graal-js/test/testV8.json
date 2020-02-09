@@ -529,10 +529,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "mjsunit/compiler/regress-9017.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
     "filePath" : "mjsunit/compiler/string-add-try-catch.js",
     "runInIsolation" : true,
     "comment" : "memory intensive test"
@@ -636,16 +632,9 @@
     "filePath" : "mjsunit/es6/class-computed-property-names-super.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/classes-accesors.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
     "filePath" : "mjsunit/es6/classes-constructor.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "mjsunit/es6/classes-lazy-parsing.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/classes-subclass-builtins.js",
     "status" : "FAIL"
@@ -726,9 +715,6 @@
     "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
     "filePath" : "mjsunit/es6/regress/regress-2322.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/es6/regress/regress-4522.js",
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/regress/regress-576662.js",
@@ -834,10 +820,6 @@
     "filePath" : "mjsunit/es8/async-destructuring.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es8/async-function-try-finally.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
     "filePath" : "mjsunit/es8/object-get-own-property-descriptors.js",
     "status" : "FAIL"
   }, {
@@ -881,17 +863,15 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
-    "filePath" : "mjsunit/harmony/async-generators-basic.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
     "filePath" : "mjsunit/harmony/atomics-value-check.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
     "filePath" : "mjsunit/harmony/atomics.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "mjsunit/harmony/bigint/regressions.js",
     "status" : "FAIL",
@@ -925,8 +905,10 @@
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
     "filePath" : "mjsunit/harmony/numeric-separator.js",
-    "status" : "FAIL",
-    "comment" : "Expects 09_1_3 to parse as 913 (but is SyntaxError according to the spec)."
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "mjsunit/harmony/optional-chaining.js",
     "status" : "FAIL",
@@ -937,20 +919,27 @@
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
     "filePath" : "mjsunit/harmony/private-fields-ic.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "mjsunit/harmony/private-fields-special-object.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "mjsunit/harmony/private-fields-static.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
     "filePath" : "mjsunit/harmony/private-fields.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS",
+    "comment" : "--harmony-private-fields"
   }, {
     "filePath" : "mjsunit/harmony/private-methods.js",
     "status" : "FAIL",
@@ -967,8 +956,11 @@
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/harmony/public-instance-class-fields.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS",
+    "comment" : "--harmony-public-fields"
   }, {
     "filePath" : "mjsunit/harmony/public-static-class-fields.js",
     "status" : "FAIL",
@@ -1315,10 +1307,6 @@
     "status" : "SKIP",
     "comment" : "Tests specificities of V8's RegExp implementation (the use of different tiers)."
   }, {
-    "filePath" : "mjsunit/regress-930045.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
     "filePath" : "mjsunit/regress-966460.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
@@ -1607,10 +1595,6 @@
     "status" : "SKIP",
     "comment" : "Calls v8StringMaxLength. Checks that longer strings cannot be parsed as RegExps by V8."
   }, {
-    "filePath" : "mjsunit/regress/regress-7642.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "mjsunit/regress/regress-779407.js",
     "runInIsolation" : true,
     "comment" : "memory intensive test"
@@ -1633,8 +1617,7 @@
   }, {
     "filePath" : "mjsunit/regress/regress-800651.js",
     "ecmaVersion" : {
-      "minVersion" : 11,
-      "maxVersion" : 11
+      "minVersion" : 11
     },
     "status" : "PASS",
     "comment" : "ECMAScript 2020 feature"
@@ -1701,8 +1684,10 @@
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
     "filePath" : "mjsunit/regress/regress-899537.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "mjsunit/regress/regress-900585.js",
     "ecmaVersion" : {
@@ -1873,9 +1858,6 @@
     "status" : "SKIP",
     "comment" : "stack overflow, recursion"
   }, {
-    "filePath" : "mjsunit/regress/regress-crbug-658528.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/regress/regress-crbug-669850.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -1934,10 +1916,6 @@
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-772056.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-crbug-774994.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
@@ -2711,8 +2689,10 @@
     "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/reindexing-in-classes.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "mjsunit/serialize-embedded-error.js",
     "status" : "FAIL"

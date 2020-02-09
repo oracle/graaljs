@@ -65,12 +65,7 @@ test-worker-sharedarraybuffer-from-worker-thread: SKIP
 
 # Profiling is not supported
 test-tick-processor-arguments: FAIL
-test-worker-prof: FAIL
 
-# Class field declaration is not supported yet
-test-events-once: FAIL
-
-# Class field declaration is not supported yet +
 # v8::Object::GetConstructorName() returns `Klass` for
 # Object.setPrototypeOf(new Klass(), null) (which graal-nodejs is unable to return)
 test-util-format: FAIL
@@ -221,3 +216,7 @@ test-async-hooks-http-parser-destroy: PASS,FLAKY
 [$system==freebsd]
 
 [$system==aix]
+
+[$mode==debug]
+# https://github.com/nodejs/node/issues/30498
+test-domain-error-types: PASS,FLAKY

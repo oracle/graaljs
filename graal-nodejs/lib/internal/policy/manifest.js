@@ -52,12 +52,12 @@ function REACTION_LOG(error) {
 }
 
 class Manifest {
+  #integrities = new SafeMap();
+  #dependencies = new SafeMap();
+  #reaction = null;
   constructor(obj, manifestURL) {
-    this._integrities = new SafeMap();
-    this._dependencies = new SafeMap();
-    this._reaction = null;
-    const integrities = this._integrities;
-    const dependencies = this._dependencies;
+    const integrities = this.#integrities;
+    const dependencies = this.#dependencies;
     let reaction = REACTION_THROW;
 
     if (obj.onerror) {
@@ -72,11 +72,11 @@ class Manifest {
       }
     }
 
-    this._reaction = reaction;
+    this.#reaction = reaction;
     const manifestEntries = entries(obj.resources);
 
     const parsedURLs = new SafeMap();
-    for (var i = 0; i < manifestEntries.length; i++) {
+    for (let i = 0; i < manifestEntries.length; i++) {
       let resourceHREF = manifestEntries[i][0];
       const originalHREF = resourceHREF;
       let resourceURL;
@@ -105,8 +105,8 @@ class Manifest {
               mismatch = true;
             } else {
               compare:
-              for (var sriI = 0; sriI < sri.length; sriI++) {
-                for (var oldI = 0; oldI < old.length; oldI++) {
+              for (let sriI = 0; sriI < sri.length; sriI++) {
+                for (let oldI = 0; oldI < old.length; oldI++) {
                   if (sri[sriI].algorithm === old[oldI].algorithm &&
                     BufferEquals(sri[sriI].value, old[oldI].value) &&
                     sri[sriI].options === old[oldI].options) {
@@ -185,11 +185,11 @@ class Manifest {
 
   getRedirector(requester) {
     requester = `${requester}`;
-    const dependencies = this._dependencies;
+    const dependencies = this.#dependencies;
     if (dependencies.has(requester)) {
       return {
         resolve: (to) => dependencies.get(requester)(`${to}`),
-        reaction: this._reaction
+        reaction: this.#reaction
       };
     }
     return null;
@@ -198,14 +198,14 @@ class Manifest {
   assertIntegrity(url, content) {
     const href = `${url}`;
     debug(`Checking integrity of ${href}`);
-    const integrities = this._integrities;
+    const integrities = this.#integrities;
     const realIntegrities = new Map();
 
     if (integrities.has(href)) {
       const integrityEntries = integrities.get(href);
       if (integrityEntries === true) return true;
       // Avoid clobbered Symbol.iterator
-      for (var i = 0; i < integrityEntries.length; i++) {
+      for (let i = 0; i < integrityEntries.length; i++) {
         const {
           algorithm,
           value: expected
@@ -225,7 +225,7 @@ class Manifest {
       }
     }
     const error = new ERR_MANIFEST_ASSERT_INTEGRITY(url, realIntegrities);
-    this._reaction(error);
+    this.#reaction(error);
   }
 }
 

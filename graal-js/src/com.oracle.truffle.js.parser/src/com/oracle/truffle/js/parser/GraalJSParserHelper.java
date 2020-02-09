@@ -54,6 +54,7 @@ import com.oracle.js.parser.Token;
 import com.oracle.js.parser.TokenType;
 import com.oracle.js.parser.ir.Expression;
 import com.oracle.js.parser.ir.FunctionNode;
+import com.oracle.js.parser.ir.Scope;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.builtins.helper.TruffleJSONParser;
@@ -76,19 +77,20 @@ public final class GraalJSParserHelper {
     }
 
     public static FunctionNode parseScript(JSContext context, com.oracle.truffle.api.source.Source truffleSource, JSParserOptions parserOptions) {
-        return parseScript(context, truffleSource, parserOptions, false, false);
+        return parseScript(context, truffleSource, parserOptions, false, false, null);
     }
 
-    public static FunctionNode parseScript(JSContext context, com.oracle.truffle.api.source.Source truffleSource, JSParserOptions parserOptions, boolean eval, boolean evalInGlobalScope) {
-        return parseSource(context, truffleSource, parserOptions, false, eval, evalInGlobalScope);
+    public static FunctionNode parseScript(JSContext context, com.oracle.truffle.api.source.Source truffleSource, JSParserOptions parserOptions, boolean eval, boolean evalInFunction,
+                    Scope evalScope) {
+        return parseSource(context, truffleSource, parserOptions, false, eval, evalInFunction, evalScope);
     }
 
     public static FunctionNode parseModule(JSContext context, com.oracle.truffle.api.source.Source truffleSource, JSParserOptions parserOptions) {
-        return parseSource(context, truffleSource, parserOptions, true, false, false);
+        return parseSource(context, truffleSource, parserOptions, true, false, false, null);
     }
 
     private static FunctionNode parseSource(JSContext context, com.oracle.truffle.api.source.Source truffleSource, JSParserOptions parserOptions,
-                    boolean parseModule, boolean eval, boolean evalInGlobalScope) {
+                    boolean parseModule, boolean eval, boolean evalInFunction, Scope evalScope) {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         CharSequence code = truffleSource.getCharacters();
         com.oracle.js.parser.Source source = com.oracle.js.parser.Source.sourceFor(truffleSource.getName(), code, eval);
@@ -108,7 +110,7 @@ public final class GraalJSParserHelper {
         if (parseModule) {
             parsed = parser.parseModule(":module");
         } else if (eval) {
-            parsed = parser.parseEval(!evalInGlobalScope);
+            parsed = parser.parseEval(evalInFunction, evalScope);
         } else {
             parsed = parser.parse();
         }
@@ -172,6 +174,7 @@ public final class GraalJSParserHelper {
         builder.constAsVar(parserOptions.isConstAsVar());
         builder.allowBigInt(parserOptions.isAllowBigInt());
         builder.annexB(parserOptions.isAnnexB());
+        builder.classFields(parserOptions.isClassFields());
         if (parserOptions.isFunctionStatementError()) {
             builder.functionStatementBehavior(FunctionStatementBehavior.ERROR);
         } else {

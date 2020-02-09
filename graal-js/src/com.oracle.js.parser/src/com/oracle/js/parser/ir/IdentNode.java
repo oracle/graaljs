@@ -64,6 +64,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     private static final int IMPORT_META       = 1 << 10;
     private static final int ARGUMENTS         = 1 << 11;
     private static final int APPLY_ARGUMENTS   = 1 << 12;
+    private static final int PRIVATE_IDENT     = 1 << 13;
     //@formatter:on
 
     /** Identifier. */
@@ -293,5 +294,13 @@ public final class IdentNode extends Expression implements PropertyKey, Function
 
     public boolean isApplyArguments() {
         return (flags & APPLY_ARGUMENTS) != 0;
+    }
+
+    public IdentNode setIsPrivate() {
+        return new IdentNode(this, name, flags | PRIVATE_IDENT);
+    }
+
+    public boolean isPrivate() {
+        return (flags & PRIVATE_IDENT) != 0;
     }
 }

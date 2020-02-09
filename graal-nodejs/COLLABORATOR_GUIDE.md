@@ -172,24 +172,36 @@ the comment anyway to avoid any doubt.
 All fixes must have a test case which demonstrates the defect. The test should
 fail before the change, and pass after the change.
 
-All pull requests must pass continuous integration tests on the
-[project CI server](https://ci.nodejs.org/).
+All pull requests must pass continuous integration tests. Code changes must pass
+on [project CI server](https://ci.nodejs.org/). Pull requests that only change
+documentation and comments can use Travis CI results.
+
+Travis CI jobs have a fixed running time limit that building Node.js sometimes
+exceeds. If the `Compile Node.js` Travis CI job has timed out it will fail after
+around 45 minutes. The exit code will be 143, indicating that a `SIGTERM` signal
+terminated the `make` command. When this happens, restart the timed out job. It
+will reuse built artifacts from the previous timed-out run, and thus take less
+time to complete.
 
 Do not land any pull requests without passing (green or yellow) CI runs. If
 there are CI failures unrelated to the change in the pull request, try "Resume
 Build". It is in the left navigation of the relevant `node-test-pull-request`
 job. It will preserve all the green results from the current job but re-run
-everything else.
+everything else. Start a fresh CI if more than seven days have elapsed since
+the original failing CI as the compiled binaries for the Windows and ARM
+platforms are only kept for seven days.
+
+Some of the CI Jobs may require `GIT_REMOTE_REF` which is the remote portion
+of Git refspec. To specify the branch this way `refs/heads/BRANCH` is used
+(i.e for `master` -> `refs/heads/master`).
+For pull requests it will look like `refs/pull/PR_NUMBER/head`
+(i.e. for PR#42 -> `refs/pull/42/head`).
 
 #### Useful CI Jobs
 
 * [`node-test-pull-request`](https://ci.nodejs.org/job/node-test-pull-request/)
 is the CI job to test pull requests. It runs the `build-ci` and `test-ci`
 targets on all supported platforms.
-
-* [`node-test-pull-request-lite-pipeline`](https://ci.nodejs.org/job/node-test-pull-request-lite-pipeline/)
-runs the linter job. It also runs the tests on a very fast host. This is useful
-for changes that only affect comments or documentation.
 
 * [`citgm-smoker`](https://ci.nodejs.org/job/citgm-smoker/)
 uses [`CitGM`](https://github.com/nodejs/citgm) to allow you to run

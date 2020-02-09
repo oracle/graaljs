@@ -216,6 +216,7 @@ public enum TokenType {
     TEMPLATE_HEAD  (LITERAL,      null),
     TEMPLATE_MIDDLE(LITERAL,      null),
     TEMPLATE_TAIL  (LITERAL,      null),
+    PRIVATE_IDENT  (LITERAL,      null),
 
     COMMALEFT      (IR,           null),
     DECPOSTFIX     (IR,           null),
