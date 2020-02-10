@@ -44,7 +44,6 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.test.JSTest;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
@@ -53,7 +52,7 @@ public class GR21174 {
 
     @Test
     public void test() {
-        try (Context context = JSTest.newContextBuilder().build()) {
+        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).build()) {
             String code = "var foo = { bar: 'baz' };\n" //
                             + "class C { set a(value) {}; get [foo.bar]() { return 42; } };\n" //
                             + "new C().baz;";
