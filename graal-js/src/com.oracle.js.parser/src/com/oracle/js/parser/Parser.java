@@ -1575,7 +1575,7 @@ public class Parser extends AbstractParser {
                     classElement = methodDefinition(classElementName, isStatic, classHeritage != null, generator, async, classElementToken, classElementLine, yield, await, nameTokenType, computed);
 
                     // try to merge consecutive getter and setter pairs
-                    if (!computed && (classElement.getGetter() != null || classElement.getSetter() != null) && !classElements.isEmpty()) {
+                    if (!classElement.isComputed() && (classElement.getGetter() != null || classElement.getSetter() != null) && !classElements.isEmpty()) {
                         PropertyNode lastElement = classElements.get(classElements.size() - 1);
                         if (!lastElement.isComputed() && (lastElement.getGetter() != null || lastElement.getSetter() != null) && isStatic == lastElement.isStatic() &&
                                         classElement.getKeyName().equals(lastElement.getKeyName())) {
