@@ -425,7 +425,7 @@ public class JSContext {
 
         this.builtinFunctionData = new JSFunctionData[BuiltinFunctionKey.values().length];
 
-        this.timeProfiler = contextOptions.isProfileTime() ? new TimeProfiler(this) : null;
+        this.timeProfiler = contextOptions.isProfileTime() ? new TimeProfiler() : null;
 
         this.singleRealmAssumption = Truffle.getRuntime().createAssumption("single realm");
         this.noChildRealmsAssumption = Truffle.getRuntime().createAssumption("no child realms");
