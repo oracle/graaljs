@@ -78,12 +78,6 @@ public class TestEngineNashorn {
         return manager.getEngineByName(TestEngine.TESTED_ENGINE_NAME);
     }
 
-    private ScriptEngine getEngineNashornCompat() {
-        ScriptEngine engine = getEngine();
-        engine.getBindings(ScriptContext.ENGINE_SCOPE).put("polyglot.js.nashorn-compat", true);
-        return engine;
-    }
-
     private static void invertedAssertEquals(Object actual, Object expected) {
         org.junit.Assert.assertEquals(expected, actual);
     }
@@ -107,7 +101,7 @@ public class TestEngineNashorn {
 
     @Test
     public void argumentsWithTest() {
-        final ScriptEngine e = getEngineNashornCompat();
+        final ScriptEngine e = TestUtil.getEngineNashornCompat(manager);
 
         String[] args = new String[]{"hello", "world"};
         try {
