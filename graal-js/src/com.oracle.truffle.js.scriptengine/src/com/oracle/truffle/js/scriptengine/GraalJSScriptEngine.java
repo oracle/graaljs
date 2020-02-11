@@ -86,7 +86,6 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     private static final String JS_LOAD_OPTION = "js.load";
     private static final String JS_PRINT_OPTION = "js.print";
     private static final String JS_GLOBAL_ARGUMENTS_OPTION = "js.global-arguments";
-    private static final String SCRIPT_CONTEXT_GLOBAL_BINDINGS_IMPORT_FUNCTION_NAME = "importScriptEngineGlobalBindings";
     private static final String NASHORN_COMPATIBILITY_MODE_SYSTEM_PROPERTY = "polyglot.js.nashorn-compat";
     static final String MAGIC_OPTION_PREFIX = "polyglot.js.";
 
@@ -260,7 +259,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         }
         this.factory = (factory == null) ? new GraalJSEngineFactory(engineToUse) : factory;
         this.contextConfig = contextConfigToUse.option(JS_SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_OPTION, "true").engine(engineToUse);
-        this.context.setBindings(new GraalJSBindings(this.contextConfig), ScriptContext.ENGINE_SCOPE);
+        this.context.setBindings(new GraalJSBindings(this.contextConfig, this.context), ScriptContext.ENGINE_SCOPE);
     }
 
     private static void updateForNashornCompatibilityMode(Context.Builder builder) {
@@ -322,7 +321,21 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
     @Override
     public Bindings createBindings() {
-        return new GraalJSBindings(contextConfig);
+        return new GraalJSBindings(contextConfig, null);
+    }
+
+    @Override
+    public void setBindings(Bindings bindings, int scope) {
+        if (scope == ScriptContext.ENGINE_SCOPE) {
+            Bindings oldBindings = getBindings(scope);
+            if (oldBindings instanceof GraalJSBindings) {
+                ((GraalJSBindings) oldBindings).updateEngineScriptContext(null);
+            }
+        }
+        super.setBindings(bindings, scope);
+        if (scope == ScriptContext.ENGINE_SCOPE && (bindings instanceof GraalJSBindings)) {
+            ((GraalJSBindings) bindings).updateEngineScriptContext(getContext());
+        }
     }
 
     @Override
@@ -362,7 +375,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
             if (!evalCalled) {
                 jrunscriptInitWorkaround(source, polyglotContext);
             }
-            importGlobalBindings(scriptContext, engineBindings);
+            engineBindings.importGlobalBindings(scriptContext);
             return polyglotContext.eval(source).as(Object.class);
         } catch (PolyglotException e) {
             throw new ScriptException(e);
@@ -371,19 +384,12 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         }
     }
 
-    private static void importGlobalBindings(ScriptContext scriptContext, GraalJSBindings graalJSBindings) {
-        Bindings globalBindings = scriptContext.getBindings(ScriptContext.GLOBAL_SCOPE);
-        if (globalBindings != null && !globalBindings.isEmpty() && graalJSBindings != globalBindings) {
-            graalJSBindings.getContext().getBindings(ID).getMember(SCRIPT_CONTEXT_GLOBAL_BINDINGS_IMPORT_FUNCTION_NAME).execute(globalBindings);
-        }
-    }
-
     private GraalJSBindings getOrCreateGraalJSBindings(ScriptContext scriptContext) {
         Bindings engineB = scriptContext.getBindings(ScriptContext.ENGINE_SCOPE);
         if (engineB instanceof GraalJSBindings) {
             return ((GraalJSBindings) engineB);
         } else {
-            GraalJSBindings bindings = new GraalJSBindings(createContext(engineB));
+            GraalJSBindings bindings = new GraalJSBindings(createContext(engineB), scriptContext);
             bindings.putAll(engineB);
             return bindings;
         }
@@ -417,7 +423,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
             throw new IllegalArgumentException("thiz is not a valid object.");
         }
         GraalJSBindings engineBindings = getOrCreateGraalJSBindings(context);
-        importGlobalBindings(context, engineBindings);
+        engineBindings.importGlobalBindings(context);
         Value thisValue = engineBindings.getContext().asValue(thiz);
 
         if (!thisValue.canInvokeMember(name)) {
@@ -437,7 +443,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     @Override
     public Object invokeFunction(String name, Object... args) throws ScriptException, NoSuchMethodException {
         GraalJSBindings engineBindings = getOrCreateGraalJSBindings(context);
-        importGlobalBindings(context, engineBindings);
+        engineBindings.importGlobalBindings(context);
         Value function = engineBindings.getContext().getBindings(ID).getMember(name);
 
         if (function == null) {
