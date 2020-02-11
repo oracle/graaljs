@@ -59,7 +59,7 @@ import org.openjdk.jmh.annotations.Warmup;
 public class JMHArrayInteropBenchmark {
     @State(Scope.Thread)
     public static class MyState {
-        public static final int ARRAY_SIZE = 10000;
+        protected static final int ARRAY_SIZE = 10000;
 
         Context context;
         Source preSizedArraySource;

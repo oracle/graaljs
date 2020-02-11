@@ -104,7 +104,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
     public static final JSNumberFormat INSTANCE = new JSNumberFormat();
 
-    public static final List<String> BCP47_CU_KEYS = Arrays.asList(new String[]{
+    protected static final List<String> BCP47_CU_KEYS = Arrays.asList(new String[]{
                     "ADP",
                     "AED",
                     "AFA",

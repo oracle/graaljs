@@ -255,7 +255,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
         private String locale;
         private Locale javaLocale;
 
-        public Granularity granularity = Granularity.GRAPHEME;
+        Granularity granularity = Granularity.GRAPHEME;
 
         DynamicObject toResolvedOptionsObject(JSContext context) {
             DynamicObject result = JSUserObject.create(context);

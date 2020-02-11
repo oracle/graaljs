@@ -62,12 +62,12 @@ import org.openjdk.jmh.annotations.Warmup;
 public class JMHJsObjectInteropBenchmark {
     @State(Scope.Thread)
     public static class MyState {
-        public static final int MIN_PROPERTY_KEY_LENGTH = 3;
-        public static final int MAX_PROPERTY_KEY_LENGTH = 10;
-        public static final int MIN_PROPERTY_VALUE_LENGTH = 3;
-        public static final int MAX_PROPERTY_VALUE_LENGTH = 50;
-        public static final int PROPERTIES_COUNT = 10;
-        public static final Character[] ALLOWED_CHARS = IntStream.range(0, 256).filter(i -> Character.isAlphabetic(i) || Character.isDigit(i)).mapToObj(i -> (char) i).toArray(Character[]::new);
+        protected static final int MIN_PROPERTY_KEY_LENGTH = 3;
+        protected static final int MAX_PROPERTY_KEY_LENGTH = 10;
+        protected static final int MIN_PROPERTY_VALUE_LENGTH = 3;
+        protected static final int MAX_PROPERTY_VALUE_LENGTH = 50;
+        protected static final int PROPERTIES_COUNT = 10;
+        protected static final Character[] ALLOWED_CHARS = IntStream.range(0, 256).filter(i -> Character.isAlphabetic(i) || Character.isDigit(i)).mapToObj(i -> (char) i).toArray(Character[]::new);
 
         String generateString(int length) {
             StringBuilder sb = new StringBuilder();

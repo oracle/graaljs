@@ -101,7 +101,9 @@ public class ShellWithStats extends RepeatingLauncher {
         File dumpFile = new File(dumpName);
         if (dumpFile.exists()) {
             System.out.println("Deleting existing file: " + dumpName);
-            dumpFile.delete();
+            if (!dumpFile.delete()) {
+                System.out.println("could not delete");
+            }
         }
     }
 }
