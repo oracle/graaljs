@@ -1583,6 +1583,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
         Symbol symbol = null;
         if (varNode.isBlockScoped()) {
+            // below, `symbol!=null` implies `isBlockScoped`
             symbol = lc.getCurrentScope().getExistingSymbol(varName);
             assert symbol != null : varName;
         }
@@ -1590,7 +1591,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode assignment;
         if (varNode.isAssignment()) {
             assignment = createVarAssignNode(varNode, varName);
-        } else if (varNode.isBlockScoped() && (!varNode.isDestructuring() || symbol.isDeclaredInSwitchBlock()) && !symbol.hasBeenDeclared()) {
+        } else if (symbol != null && (!varNode.isDestructuring() || symbol.isDeclaredInSwitchBlock()) && !symbol.hasBeenDeclared()) {
+            assert varNode.isBlockScoped();
             assignment = findScopeVar(varName, false).createWriteNode(factory.createConstantUndefined());
         } else {
             assignment = factory.createEmpty();
@@ -1598,7 +1600,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         // mark block-scoped symbols as declared, except:
         // (a) symbols declared in a switch case always need the dynamic TDZ check
         // (b) destructuring: the symbol does not come alive until the destructuring assignment
-        if (varNode.isBlockScoped() && (!symbol.isDeclaredInSwitchBlock() && !varNode.isDestructuring())) {
+        if (symbol != null && (!symbol.isDeclaredInSwitchBlock() && !varNode.isDestructuring())) {
+            assert varNode.isBlockScoped();
             symbol.setHasBeenDeclared();
         }
         return assignment;
@@ -2308,7 +2311,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         Expression assignmentDest = binaryNode.getAssignmentDest();
         JavaScriptNode assignedValue = transform(binaryNode.getAssignmentSource());
         JavaScriptNode assignment = transformAssignment(binaryNode, assignmentDest, assignedValue, binaryNode.isTokenType(TokenType.ASSIGN_INIT));
-        assert assignedValue.hasTag(StandardTags.ExpressionTag.class) || !assignedValue.isInstrumentable() : "ExpressionTag expected but not found for: " + assignedValue;
+        assert assignedValue != null && (assignedValue.hasTag(StandardTags.ExpressionTag.class) || !assignedValue.isInstrumentable()) : "ExpressionTag expected but not found for: " + assignedValue;
         return tagExpression(assignment, binaryNode);
     }
 

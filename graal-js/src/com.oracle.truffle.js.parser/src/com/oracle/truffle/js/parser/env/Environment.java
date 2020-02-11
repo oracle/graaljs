@@ -335,7 +335,9 @@ public abstract class Environment {
                 } else {
                     throw new IllegalArgumentException();
                 }
-                JavaScriptNode withTarget = factory.createWithTarget(context, name, findInternalSlot(withVarName).createReadNode());
+                VarRef withVarNameRef = findInternalSlot(withVarName);
+                Objects.requireNonNull(withVarNameRef);
+                JavaScriptNode withTarget = factory.createWithTarget(context, name, withVarNameRef.createReadNode());
                 return factory.createWithVarWrapper(name, withTarget, withAccessNode, delegateNode);
             }
 
