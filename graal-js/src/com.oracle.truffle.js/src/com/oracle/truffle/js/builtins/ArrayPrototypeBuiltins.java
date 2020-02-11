@@ -1550,7 +1550,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             String first = toStringOrEmpty(thisObject, read(thisObject, 0));
             String second = toStringOrEmpty(thisObject, read(thisObject, 1));
 
-            long resultLength = first.length() + (appendSep ? joinSeparator.length() : 0) + second.length();
+            long resultLength = first.length() + (appendSep ? joinSeparator.length() : 0L) + second.length();
             if (resultLength > getContext().getStringLengthLimit()) {
                 CompilerDirectives.transferToInterpreter();
                 throw Errors.createRangeErrorInvalidStringLength();

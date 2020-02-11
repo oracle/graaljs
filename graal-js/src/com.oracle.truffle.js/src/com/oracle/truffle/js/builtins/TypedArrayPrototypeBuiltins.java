@@ -566,7 +566,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode) {
             checkHasDetachedBuffer(thisObj);
             long len = getLength(thisObj);
-            long middle = (long) JSRuntime.mathFloor(len / 2);
+            long middle = (long) JSRuntime.mathFloor(len / 2d);
             long lower = 0;
 
             while (lower != middle) {

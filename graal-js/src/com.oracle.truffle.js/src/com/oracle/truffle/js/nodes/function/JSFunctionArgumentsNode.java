@@ -187,7 +187,7 @@ class SpreadFunctionArgumentsNode extends JSFunctionArgumentsNode {
     @ExplodeLoop
     public Object[] executeFillObjectArray(VirtualFrame frame, Object[] arguments, int fixedArgumentsLength) {
         // assume size that avoids growing
-        SimpleArrayList<Object> argList = SimpleArrayList.create(fixedArgumentsLength + args.length + JSConfig.SpreadArgumentPlaceholderCount);
+        SimpleArrayList<Object> argList = SimpleArrayList.create((long) fixedArgumentsLength + args.length + JSConfig.SpreadArgumentPlaceholderCount);
         for (int i = 0; i < fixedArgumentsLength; i++) {
             argList.addUnchecked(arguments[i]);
         }

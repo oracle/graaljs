@@ -499,7 +499,7 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
         long m = doubleToLong(min);
         long s = doubleToLong(sec);
         long milli = doubleToLong(ms);
-        return h * MS_PER_HOUR + m * MS_PER_MINUTE + s * MS_PER_SECOND + milli;
+        return h * MS_PER_HOUR + m * MS_PER_MINUTE + s * MS_PER_SECOND + (double) milli;
     }
 
     // 15.9.1.12
