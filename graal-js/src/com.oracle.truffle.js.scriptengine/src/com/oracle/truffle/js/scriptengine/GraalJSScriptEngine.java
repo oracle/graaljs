@@ -508,6 +508,20 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
             throw new IllegalStateException("Context already closed.");
         }
         Source source = createSource(script, getContext());
+        return compile(source);
+    }
+
+    @Override
+    public CompiledScript compile(Reader reader) throws ScriptException {
+        if (closed) {
+            throw new IllegalStateException("Context already closed.");
+        }
+        Source source = createSource(reader, getContext());
+        return compile(source);
+    }
+
+    private CompiledScript compile(Source source) throws ScriptException {
+        checkSyntax(source);
         return new CompiledScript() {
             @Override
             public ScriptEngine getEngine() {
@@ -521,23 +535,15 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         };
     }
 
-    @Override
-    public CompiledScript compile(Reader reader) throws ScriptException {
-        if (closed) {
-            throw new IllegalStateException("Context already closed.");
+    private void checkSyntax(Source source) throws ScriptException {
+        GraalJSBindings engineBindings = getOrCreateGraalJSBindings(context);
+        Context polyglotContext = engineBindings.getContext();
+        Value syntaxChecker = polyglotContext.getBindings("js").getMember("checkSyntaxForScriptEngine");
+        try {
+            syntaxChecker.execute(source.getCharacters());
+        } catch (PolyglotException pex) {
+            throw new ScriptException(pex);
         }
-        Source source = createSource(reader, getContext());
-        return new CompiledScript() {
-            @Override
-            public ScriptEngine getEngine() {
-                return GraalJSScriptEngine.this;
-            }
-
-            @Override
-            public Object eval(ScriptContext ctx) throws ScriptException {
-                return GraalJSScriptEngine.this.eval(source, ctx);
-            }
-        };
     }
 
     private static class DelegatingInputStream extends InputStream implements Proxy {
