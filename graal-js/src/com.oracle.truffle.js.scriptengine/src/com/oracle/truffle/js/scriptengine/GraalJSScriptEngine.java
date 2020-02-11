@@ -90,6 +90,8 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     private static final String NASHORN_COMPATIBILITY_MODE_SYSTEM_PROPERTY = "polyglot.js.nashorn-compat";
     static final String MAGIC_OPTION_PREFIX = "polyglot.js.";
 
+    private static final HostAccess NASHORN_HOST_ACCESS = HostAccess.newBuilder(HostAccess.ALL).targetTypeMapping(Object.class, String.class, Objects::nonNull, String::valueOf).build();
+
     interface MagicBindingsOptionSetter {
 
         String getOptionKey();
@@ -263,8 +265,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
     private static void updateForNashornCompatibilityMode(Context.Builder builder) {
         builder.allowAllAccess(true);
-        HostAccess hostAccess = HostAccess.newBuilder(HostAccess.ALL).targetTypeMapping(Object.class, String.class, Objects::nonNull, String::valueOf).build();
-        builder.allowHostAccess(hostAccess);
+        builder.allowHostAccess(NASHORN_HOST_ACCESS);
     }
 
     static Context createDefaultContext(Context.Builder builder) {
