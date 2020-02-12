@@ -1151,8 +1151,10 @@ public class JSRealm {
             removeNashornIncompatibleBuiltins();
         }
         if (context.getContextOptions().isScriptEngineGlobalScopeImport()) {
-            JSObjectUtil.putDataProperty(context, getScriptEngineImportScope(), "importScriptEngineGlobalBindings",
-                            lookupFunction(GlobalBuiltins.GLOBAL_NASHORN_EXTENSIONS, "importScriptEngineGlobalBindings"), JSAttributes.notConfigurableNotEnumerableNotWritable());
+            for (String builtin : new String[]{"importScriptEngineGlobalBindings", "checkSyntaxForScriptEngine"}) {
+                JSObjectUtil.putDataProperty(context, getScriptEngineImportScope(), builtin,
+                                lookupFunction(GlobalBuiltins.GLOBAL_NASHORN_EXTENSIONS, builtin), JSAttributes.notConfigurableNotEnumerableNotWritable());
+            }
         }
         if (context.getContextOptions().isPolyglotBuiltin() && (getEnv().isPolyglotEvalAllowed() || getEnv().isPolyglotBindingsAccessAllowed())) {
             setupPolyglot();

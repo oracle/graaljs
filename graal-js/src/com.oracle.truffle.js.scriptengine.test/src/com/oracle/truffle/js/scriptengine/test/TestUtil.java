@@ -40,54 +40,23 @@
  */
 package com.oracle.truffle.js.scriptengine.test;
 
-import java.awt.Point;
-import javax.script.Bindings;
 import javax.script.ScriptContext;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
-import javax.script.ScriptException;
-import org.junit.Assert;
-import org.junit.Test;
 
-public class TestNashornTypeConversion {
+import org.graalvm.polyglot.Context;
 
-    private static void testToString(Object value, String expectedResult) throws ScriptException {
-        ScriptEngineManager manager = new ScriptEngineManager();
-        ScriptEngine engine = TestUtil.getEngineNashornCompat(manager);
-        ValueHolder holder = new ValueHolder();
-        Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
-        bindings.put("holder", holder);
-        bindings.put("value", value);
-        engine.eval("holder.setValue(value)");
-        Assert.assertEquals(expectedResult, holder.getValue());
+public class TestUtil {
+
+    // Duplication from JSTest
+    static Context.Builder newContextBuilder(String... permittedLanguages) {
+        return Context.newBuilder(permittedLanguages.length == 0 ? new String[]{"js"} : permittedLanguages).allowExperimentalOptions(true);
     }
 
-    @Test
-    public void testNumberToString() throws ScriptException {
-        testToString(42, "42");
-    }
-
-    @Test
-    public void testBooleanToString() throws ScriptException {
-        testToString(true, "true");
-    }
-
-    @Test
-    public void testObjectToString() throws ScriptException {
-        Point p = new java.awt.Point(42, 211);
-        testToString(p, p.toString());
-    }
-
-    public static class ValueHolder {
-        private String value;
-
-        public void setValue(String value) {
-            this.value = value;
-        }
-
-        public String getValue() {
-            return value;
-        }
+    static ScriptEngine getEngineNashornCompat(ScriptEngineManager manager) {
+        ScriptEngine engine = manager.getEngineByName(TestEngine.TESTED_ENGINE_NAME);
+        engine.getBindings(ScriptContext.ENGINE_SCOPE).put("polyglot.js.nashorn-compat", true);
+        return engine;
     }
 
 }
