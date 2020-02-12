@@ -92,10 +92,16 @@ public final class GraalJSParserHelper {
     private static FunctionNode parseSource(JSContext context, com.oracle.truffle.api.source.Source truffleSource, JSParserOptions parserOptions,
                     boolean parseModule, boolean eval, boolean evalInFunction, Scope evalScope, String prologue, String epilogue) {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
-        StringBuilder code = new StringBuilder();
-        code.append(prologue);
-        code.append(truffleSource.getCharacters());
-        code.append(epilogue);
+        CharSequence code;
+        if (prologue.isEmpty() && epilogue.isEmpty()) {
+            code = truffleSource.getCharacters();
+        } else {
+            StringBuilder all = new StringBuilder();
+            all.append(prologue);
+            all.append(truffleSource.getCharacters());
+            all.append(epilogue);
+            code = all;
+        }
         com.oracle.js.parser.Source source = com.oracle.js.parser.Source.sourceFor(truffleSource.getName(), code, eval);
 
         ScriptEnvironment env = makeScriptEnvironment(parserOptions);
