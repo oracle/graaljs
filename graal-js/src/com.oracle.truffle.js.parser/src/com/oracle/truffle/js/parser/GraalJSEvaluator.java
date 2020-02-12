@@ -239,7 +239,7 @@ public final class GraalJSEvaluator implements JSParser {
     public ScriptNode evalCompile(JSContext context, String sourceCode, String name) {
         try {
             context.checkEvalAllowed();
-            return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, Source.newBuilder(JavaScriptLanguage.ID, sourceCode, name).build(), false);
+            return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, Source.newBuilder(JavaScriptLanguage.ID, sourceCode, name).build(), false, "", "");
         } catch (com.oracle.js.parser.ParserException e) {
             throw Errors.createSyntaxError(e.getMessage());
         }
@@ -254,12 +254,12 @@ public final class GraalJSEvaluator implements JSParser {
     // JSParser methods below
 
     @Override
-    public ScriptNode parseScriptNode(JSContext context, Source source) {
+    public ScriptNode parseScriptNode(JSContext context, String prolog, String epilog, Source source, boolean alwaysReturnValue) {
         if (MODULE_MIME_TYPE.equals(source.getMimeType()) || source.getName().endsWith(MODULE_SOURCE_NAME_SUFFIX)) {
             return fakeScriptForModule(context, source);
         }
         try {
-            return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, source, context.getParserOptions().isStrict());
+            return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, source, context.getParserOptions().isStrict(), prolog, epilog);
         } catch (com.oracle.js.parser.ParserException e) {
             throw Errors.createSyntaxError(e.getMessage());
         }
@@ -287,7 +287,7 @@ public final class GraalJSEvaluator implements JSParser {
     @Override
     public ScriptNode parseScriptNode(JSContext context, String sourceCode) {
         try {
-            return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, Source.newBuilder(JavaScriptLanguage.ID, sourceCode, "<unknown>").build(), false);
+            return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, Source.newBuilder(JavaScriptLanguage.ID, sourceCode, "<unknown>").build(), false, "", "");
         } catch (com.oracle.js.parser.ParserException e) {
             throw Errors.createSyntaxError(e.getMessage());
         }
@@ -315,7 +315,7 @@ public final class GraalJSEvaluator implements JSParser {
      */
     public static Supplier<ScriptNode> internalParseForTiming(JSContext context, Source source) {
         com.oracle.js.parser.ir.FunctionNode ast = GraalJSParserHelper.parseScript(context, source, new JSParserOptions());
-        return () -> JavaScriptTranslator.translateFunction(NodeFactory.getInstance(context), context, null, source, false, ast);
+        return () -> JavaScriptTranslator.translateFunction(NodeFactory.getInstance(context), context, null, source, 0, false, ast);
     }
 
     @TruffleBoundary
@@ -628,7 +628,7 @@ public final class GraalJSEvaluator implements JSParser {
     @Override
     public ScriptNode parseScriptNode(JSContext context, Source source, ByteBuffer binary) {
         if (binary == null) {
-            return parseScriptNode(context, source);
+            return parseScriptNode(context, "", "", source, false);
         }
         return ScriptNode.fromFunctionRoot(context, (FunctionRootNode) new BinarySnapshotProvider(binary).apply(NodeFactory.getInstance(context), context, source));
     }
@@ -636,7 +636,7 @@ public final class GraalJSEvaluator implements JSParser {
     @Override
     public ScriptNode parseScriptNode(JSContext context, Source source, SnapshotProvider snapshotProvider) {
         if (snapshotProvider == null) {
-            return parseScriptNode(context, source);
+            return parseScriptNode(context, "", "", source, false);
         }
         return ScriptNode.fromFunctionRoot(context, (FunctionRootNode) snapshotProvider.apply(NodeFactory.getInstance(context), context, source));
     }

@@ -107,7 +107,11 @@ public interface Evaluator {
      */
     ScriptNode parseFunction(JSContext context, String parameterList, String body, boolean generatorFunction, boolean asyncFunction, String sourceName);
 
-    ScriptNode parseScriptNode(JSContext context, Source source);
+    default ScriptNode parseScriptNode(JSContext context, Source source) {
+        return parseScriptNode(context, "", "", source, false);
+    }
+
+    ScriptNode parseScriptNode(JSContext context, String prelude, String overtude, Source source, boolean alwaysReturnValue);
 
     ScriptNode parseScriptNode(JSContext context, String sourceString);
 

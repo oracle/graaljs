@@ -124,7 +124,7 @@ public class SnapshotTool {
         final Recording rec;
         try (TimerCloseable timer = timeStats.file(fileName)) {
             rec = new Recording();
-            ScriptNode program = JavaScriptTranslator.translateScript(RecordingProxy.createRecordingNodeFactory(rec, NodeFactory.getInstance(context)), context, source, false);
+            ScriptNode program = JavaScriptTranslator.translateScript(RecordingProxy.createRecordingNodeFactory(rec, NodeFactory.getInstance(context)), context, source, false, "", "");
             rec.finish(program.getRootNode());
             outputFile.getParentFile().mkdirs();
             try (FileOutputStream outs = new FileOutputStream(outputFile)) {

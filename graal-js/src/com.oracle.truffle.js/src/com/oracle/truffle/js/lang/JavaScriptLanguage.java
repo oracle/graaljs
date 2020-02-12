@@ -210,11 +210,11 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             final JSContext context = getJSContext();
 
             if (context.isOptionParseOnly()) {
-                parseInContext(source, context);
+                parseInContext(source, context, "", "", false);
                 return createEmptyScript(context).getCallTarget();
             }
 
-            final ScriptNode program = parseInContext(source, context);
+            final ScriptNode program = parseInContext(source, context, "", "", false);
 
             RootNode rootNode = new RootNode(this) {
                 @Child private DirectCallNode directCallNode = DirectCallNode.create(program.getCallTarget());
@@ -312,10 +312,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                     code.append(argumentNames.get(i));
                 }
                 code.append(") {\n");
-                code.append("return eval(").append(JSRuntime.quote(source.getCharacters().toString())).append(");\n");
-                code.append("})");
-                Source wrappedSource = Source.newBuilder(source).content(code.toString()).build();
-                Object function = parseInContext(wrappedSource, realm.getContext()).run(realm);
+                Object function = parseInContext(source, realm.getContext(), code.toString(), "})", true).run(realm);
                 return JSRuntime.jsObjectToJavaObject(JSFunction.call(JSArguments.create(Undefined.instance, function, arguments)));
             }
         };
@@ -343,10 +340,10 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     }
 
     @TruffleBoundary
-    protected static ScriptNode parseInContext(Source code, JSContext context) {
+    protected static ScriptNode parseInContext(Source code, JSContext context, String prolog, String epilog, boolean alwaysReturnValue) {
         long startTime = context.getContextOptions().isProfileTime() ? System.nanoTime() : 0L;
         try {
-            return context.getEvaluator().parseScriptNode(context, code);
+            return context.getEvaluator().parseScriptNode(context, prolog, epilog, code, alwaysReturnValue);
         } finally {
             if (context.getContextOptions().isProfileTime()) {
                 context.getTimeProfiler().printElapsed(startTime, "parsing " + code.getName());

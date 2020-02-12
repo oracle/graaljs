@@ -195,15 +195,17 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     protected final JSContext context;
     protected final NodeFactory factory;
     protected final Source source;
+    protected final int prologLength;
     private final boolean isParentStrict;
 
-    protected GraalJSTranslator(LexicalContext lc, NodeFactory factory, JSContext context, Source source, Environment environment, boolean isParentStrict) {
+    protected GraalJSTranslator(LexicalContext lc, NodeFactory factory, JSContext context, Source source, int prologLength, Environment environment, boolean isParentStrict) {
         super(lc);
         this.context = context;
         this.environment = environment;
         this.factory = factory;
         this.source = source;
         this.isParentStrict = isParentStrict;
+        this.prologLength = prologLength;
     }
 
     protected final JavaScriptNode transform(com.oracle.js.parser.ir.Node node) {
@@ -3206,8 +3208,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     // ---
 
     private SourceSection createSourceSection(FunctionNode functionNode) {
-        int start = functionNode.getStartWithoutParens();
-        int finish = functionNode.getFinishWithoutParens();
+        int start = functionNode.getStartWithoutParens() - prologLength;
+        int finish = functionNode.getFinishWithoutParens() - prologLength;
+        if (start < 0 || finish > source.getLength()) {
+            return source.createSection(1);
+        }
         return source.createSection(start, finish - start);
     }
 
@@ -3222,7 +3227,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private void assignSourceSection(JavaScriptNode resultNode, com.oracle.js.parser.ir.Node parseNode) {
-        resultNode.setSourceSection(source, parseNode.getStart(), parseNode.getFinish() - parseNode.getStart());
+        if (parseNode.getStart() >= prologLength && parseNode.getFinish() - prologLength <= source.getLength()) {
+            resultNode.setSourceSection(source, parseNode.getStart() - prologLength, parseNode.getFinish() - parseNode.getStart());
+        } else {
+            resultNode.setSourceSection(source.createSection(1));
+        }
     }
 
     private String makeUniqueTempVarNameForStatement(Statement statement) {
