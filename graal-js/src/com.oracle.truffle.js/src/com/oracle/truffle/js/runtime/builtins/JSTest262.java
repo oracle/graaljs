@@ -61,6 +61,7 @@ public final class JSTest262 {
         JSObjectUtil.putDataProperty(obj, "detachArrayBuffer", realm.lookupFunction(Test262Builtins.BUILTINS, "detachArrayBuffer"), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(obj, "evalScript", realm.lookupFunction(Test262Builtins.BUILTINS, "evalScript"), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(obj, "global", realm.getGlobalObject(), JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(obj, "gc", realm.lookupFunction(Test262Builtins.BUILTINS, "gc"), JSAttributes.getDefaultNotEnumerable());
         DynamicObject agent = createAgent(realm);
         JSObjectUtil.putDataProperty(obj, "agent", agent, JSAttributes.getDefaultNotEnumerable());
         return obj;

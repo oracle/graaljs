@@ -199,6 +199,8 @@ public class Test262Runnable extends TestRunnable {
                     "WeakRef",
                     "regexp-match-indices",
                     "for-in-order",
+                    "FinalizationGroup",
+                    "host-gc-required",
     }));
     private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "FinalizationRegistry",
@@ -218,6 +220,7 @@ public class Test262Runnable extends TestRunnable {
     private static final Set<String> ES2021_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "FinalizationGroup",
                     "WeakRef",
+                    "host-gc-required",
                     "class-fields-private",
                     "class-fields-public",
                     "class-static-fields-private",
