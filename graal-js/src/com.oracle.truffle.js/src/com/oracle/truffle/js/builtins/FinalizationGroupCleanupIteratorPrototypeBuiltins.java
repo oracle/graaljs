@@ -115,7 +115,7 @@ public final class FinalizationGroupCleanupIteratorPrototypeBuiltins
             }
             FinalizationRecord record = JSFinalizationGroup.removeCellEmptyTarget((DynamicObject) finalizationGroup);
             if (record != null) {
-                return createIterResultObject(record.getHoldings(), false);
+                return createIterResultObject(record.getHeldValue(), false);
             }
             return createIterResultObject(Undefined.instance, true);
         }

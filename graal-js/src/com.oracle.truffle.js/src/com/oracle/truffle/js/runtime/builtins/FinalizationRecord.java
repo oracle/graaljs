@@ -40,30 +40,32 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import java.lang.ref.WeakReference;
+
 /**
  * A record specified for FinalizationGroup entries.
  *
  */
 public class FinalizationRecord {
-    private Object target;
-    private Object holdings;
-    private Object unregisterToken;
+    private WeakReference<Object> weakRefTarget;
+    private Object heldValue;
+    private WeakReference<Object> unregisterToken;
 
-    public FinalizationRecord(Object target, Object holdings, Object unregisterToken) {
-        this.target = target;
-        this.holdings = holdings;
-        this.unregisterToken = unregisterToken;
+    public FinalizationRecord(Object target, Object heldValue, Object unregisterToken) {
+        this.weakRefTarget = new WeakReference<>(target);
+        this.heldValue = heldValue;
+        this.unregisterToken = new WeakReference<>(unregisterToken);
     }
 
-    public Object getTarget() {
-        return target;
+    public WeakReference<Object> getWeakRefTarget() {
+        return weakRefTarget;
     }
 
-    public Object getHoldings() {
-        return holdings;
+    public Object getHeldValue() {
+        return heldValue;
     }
 
-    public Object getUnregisterToken() {
+    public WeakReference<Object> getUnregisterToken() {
         return unregisterToken;
     }
 }

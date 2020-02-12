@@ -99,6 +99,7 @@ public final class JSFinalizationGroup extends JSBuiltinObject implements JSCons
     public static DynamicObject create(JSContext context, TruffleObject cleanupCallback) {
         DynamicObject obj = JSObject.create(context, context.getFinalizationGroupFactory(), context.getRealm(), cleanupCallback, new ArrayList<>(), false);
         assert isJSFinalizationGroup(obj);
+        context.getRealm().getAgent().registerFinalizationGroup(obj);
         return obj;
     }
 
@@ -199,7 +200,7 @@ public final class JSFinalizationGroup extends JSBuiltinObject implements JSCons
         boolean removed = false;
         for (Iterator<FinalizationRecord> iterator = cells.iterator(); iterator.hasNext();) {
             FinalizationRecord record = iterator.next();
-            if (JSRuntime.isSameValue(record.getUnregisterToken(), unregisterToken)) {
+            if (JSRuntime.isSameValue(record.getUnregisterToken().get(), unregisterToken)) {
                 iterator.remove();
                 removed = true;
             }
@@ -232,7 +233,7 @@ public final class JSFinalizationGroup extends JSBuiltinObject implements JSCons
         assert JSFinalizationGroup.isJSFinalizationGroup(finalizationGroup);
         List<FinalizationRecord> cells = getCells(finalizationGroup);
         for (FinalizationRecord record : cells) {
-            if (record.getTarget() == Undefined.instance) {
+            if (record.getWeakRefTarget().get() == Undefined.instance) {
                 return true;
             }
         }
@@ -255,7 +256,7 @@ public final class JSFinalizationGroup extends JSBuiltinObject implements JSCons
     private static int getEmptyIndex(List<FinalizationRecord> cells) {
         for (int i = 0; i < cells.size(); i++) {
             FinalizationRecord record = cells.get(i);
-            if (record.getTarget() == Undefined.instance) {
+            if (record.getWeakRefTarget().get() == Undefined.instance) {
                 return i;
             }
         }
@@ -273,6 +274,19 @@ public final class JSFinalizationGroup extends JSBuiltinObject implements JSCons
         final Property finalizationGroupProperty = JSObjectUtil.makeHiddenProperty(JSRuntime.FINALIZATION_GROUP_CLEANUP_ITERATOR_ID,
                         JSShape.makeAllocator(JSObject.LAYOUT).locationForType(DynamicObject.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
         return JSObjectUtil.getProtoChildShape(cleanupIteratorPrototype, JSUserObject.INSTANCE, context).addProperty(finalizationGroupProperty);
+    }
+
+    /**
+     * 4.1.3 Execution and 4.1.4.1 HostCleanupFinalizationGroup.
+     */
+    public static void hostCleanupFinalizationGroup(DynamicObject finalizationGroup) {
+        List<FinalizationRecord> records = getCells(finalizationGroup);
+        for (FinalizationRecord record : records) {
+            Object target = record.getWeakRefTarget().get();
+            if (target == null) {
+                cleanupFinalizationGroup(JSFinalizationGroup.getRealm(finalizationGroup).getContext(), finalizationGroup, null);
+            }
+        }
     }
 
 }
