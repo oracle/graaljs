@@ -566,6 +566,8 @@ mx_sdk_vm.register_vm_config('node1-ce', ['cmp', 'nfi', 'njs', 'js', 'llp', 'pol
 mx_sdk_vm.register_vm_config('node-ce', ['bjs', 'bpolyglot', 'cmp', 'nfi', 'njs', 'js', 'llp', 'poly', 'tfl', 'rgx', 'sdk'], _suite, env_file=False)
 mx_sdk_vm.register_vm_config('node1-ee', ['cmp', 'cmpee', 'nfi', 'njs', 'js', 'llp', 'poly', 'tfl', 'rgx', 'sdk', 'stage1'], _suite, env_file=False)
 mx_sdk_vm.register_vm_config('node-ee', ['bjs', 'bpolyglot', 'cmp', 'cmpee', 'nfi', 'njs', 'js', 'llp', 'poly', 'tfl', 'rgx', 'sdk'], _suite, env_file=False)
+mx_sdk_vm.register_vm_config('n', ['bjs', 'bpolyglot', 'cmp', 'nfi', 'njs', 'js', 'llp', 'poly', 'tfl', 'rgx', 'sdk', 'bnative-image', 'bnative-image-configure', 'lg', 'libpoly', 'ni', 'nic', 'nil', 'nju', 'polynative', 'sjvmcicompiler', 'snative-image-agent', 'svm', 'tflm'], _suite, env_file=False)
+mx_sdk_vm.register_vm_config('n1', ['cmp', 'nfi', 'njs', 'js', 'llp', 'poly', 'tfl', 'rgx', 'sdk', 'stage1', 'lg', 'libpoly', 'ni', 'nic', 'nil', 'nju', 'polynative', 'svm', 'tflm'], _suite, env_file=False)
 
 mx.update_commands(_suite, {
     'node' : [node, ''],
