@@ -46,6 +46,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import javax.script.Bindings;
+import javax.script.ScriptContext;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.TypeLiteral;
@@ -54,6 +55,7 @@ import org.graalvm.polyglot.Value;
 import com.oracle.truffle.js.scriptengine.GraalJSScriptEngine.MagicBindingsOptionSetter;
 
 final class GraalJSBindings extends AbstractMap<String, Object> implements Bindings, AutoCloseable {
+    private static final String SCRIPT_CONTEXT_GLOBAL_BINDINGS_IMPORT_FUNCTION_NAME = "importScriptEngineGlobalBindings";
 
     private static final TypeLiteral<Map<String, Object>> STRING_MAP = new TypeLiteral<Map<String, Object>>() {
     };
@@ -63,14 +65,18 @@ final class GraalJSBindings extends AbstractMap<String, Object> implements Bindi
     private Value deleteProperty;
     private Value clear;
     private Context.Builder contextBuilder;
+    // ScriptContext of the ScriptEngine where these bindings form ENGINE_SCOPE bindings
+    private ScriptContext engineScriptContext;
 
-    GraalJSBindings(Context.Builder contextBuilder) {
+    GraalJSBindings(Context.Builder contextBuilder, ScriptContext scriptContext) {
         this.contextBuilder = contextBuilder;
+        this.engineScriptContext = scriptContext;
     }
 
-    GraalJSBindings(Context context) {
+    GraalJSBindings(Context context, ScriptContext scriptContext) {
         this.context = context;
         initGlobal();
+        this.engineScriptContext = scriptContext;
     }
 
     private void requireContext() {
@@ -133,6 +139,9 @@ final class GraalJSBindings extends AbstractMap<String, Object> implements Bindi
     public Object get(Object key) {
         checkKey((String) key);
         requireContext();
+        if (engineScriptContext != null) {
+            importGlobalBindings(engineScriptContext);
+        }
         return global.get(key);
     }
 
@@ -172,4 +181,16 @@ final class GraalJSBindings extends AbstractMap<String, Object> implements Bindi
     private static IllegalStateException magicOptionContextInitializedError(String name) {
         return new IllegalStateException(String.format("failed to set graal-js option \"%s\": js context is already initialized", name));
     }
+
+    void importGlobalBindings(ScriptContext scriptContext) {
+        Bindings globalBindings = scriptContext.getBindings(ScriptContext.GLOBAL_SCOPE);
+        if (globalBindings != null && !globalBindings.isEmpty() && this != globalBindings) {
+            getContext().getBindings("js").getMember(SCRIPT_CONTEXT_GLOBAL_BINDINGS_IMPORT_FUNCTION_NAME).execute(globalBindings);
+        }
+    }
+
+    void updateEngineScriptContext(ScriptContext scriptContext) {
+        engineScriptContext = scriptContext;
+    }
+
 }

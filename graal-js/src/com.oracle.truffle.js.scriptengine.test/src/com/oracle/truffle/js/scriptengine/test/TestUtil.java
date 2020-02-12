@@ -40,6 +40,10 @@
  */
 package com.oracle.truffle.js.scriptengine.test;
 
+import javax.script.ScriptContext;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+
 import org.graalvm.polyglot.Context;
 
 public class TestUtil {
@@ -48,4 +52,11 @@ public class TestUtil {
     static Context.Builder newContextBuilder(String... permittedLanguages) {
         return Context.newBuilder(permittedLanguages.length == 0 ? new String[]{"js"} : permittedLanguages).allowExperimentalOptions(true);
     }
+
+    static ScriptEngine getEngineNashornCompat(ScriptEngineManager manager) {
+        ScriptEngine engine = manager.getEngineByName(TestEngine.TESTED_ENGINE_NAME);
+        engine.getBindings(ScriptContext.ENGINE_SCOPE).put("polyglot.js.nashorn-compat", true);
+        return engine;
+    }
+
 }

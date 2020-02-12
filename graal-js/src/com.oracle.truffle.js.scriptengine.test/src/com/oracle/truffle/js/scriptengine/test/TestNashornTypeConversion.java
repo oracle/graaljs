@@ -51,15 +51,9 @@ import org.junit.Test;
 
 public class TestNashornTypeConversion {
 
-    private static ScriptEngine getEngineNashornCompat() {
-        ScriptEngineManager manager = new ScriptEngineManager();
-        ScriptEngine engine = manager.getEngineByName(TestEngine.TESTED_ENGINE_NAME);
-        engine.getBindings(ScriptContext.ENGINE_SCOPE).put("polyglot.js.nashorn-compat", true);
-        return engine;
-    }
-
     private static void testToString(Object value, String expectedResult) throws ScriptException {
-        ScriptEngine engine = getEngineNashornCompat();
+        ScriptEngineManager manager = new ScriptEngineManager();
+        ScriptEngine engine = TestUtil.getEngineNashornCompat(manager);
         ValueHolder holder = new ValueHolder();
         Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
         bindings.put("holder", holder);
