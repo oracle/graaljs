@@ -77,22 +77,25 @@ public final class GraalJSParserHelper {
     }
 
     public static FunctionNode parseScript(JSContext context, com.oracle.truffle.api.source.Source truffleSource, JSParserOptions parserOptions) {
-        return parseScript(context, truffleSource, parserOptions, false, false, null);
+        return parseScript(context, truffleSource, parserOptions, false, false, null, "", "");
     }
 
     public static FunctionNode parseScript(JSContext context, com.oracle.truffle.api.source.Source truffleSource, JSParserOptions parserOptions, boolean eval, boolean evalInFunction,
-                    Scope evalScope) {
-        return parseSource(context, truffleSource, parserOptions, false, eval, evalInFunction, evalScope);
+                    Scope evalScope, String prologue, String epilogue) {
+        return parseSource(context, truffleSource, parserOptions, false, eval, evalInFunction, evalScope, prologue, epilogue);
     }
 
     public static FunctionNode parseModule(JSContext context, com.oracle.truffle.api.source.Source truffleSource, JSParserOptions parserOptions) {
-        return parseSource(context, truffleSource, parserOptions, true, false, false, null);
+        return parseSource(context, truffleSource, parserOptions, true, false, false, null, "", "");
     }
 
     private static FunctionNode parseSource(JSContext context, com.oracle.truffle.api.source.Source truffleSource, JSParserOptions parserOptions,
-                    boolean parseModule, boolean eval, boolean evalInFunction, Scope evalScope) {
+                    boolean parseModule, boolean eval, boolean evalInFunction, Scope evalScope, String prologue, String epilogue) {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
-        CharSequence code = truffleSource.getCharacters();
+        StringBuilder code = new StringBuilder();
+        code.append(prologue);
+        code.append(truffleSource.getCharacters());
+        code.append(epilogue);
         com.oracle.js.parser.Source source = com.oracle.js.parser.Source.sourceFor(truffleSource.getName(), code, eval);
 
         ScriptEnvironment env = makeScriptEnvironment(parserOptions);
