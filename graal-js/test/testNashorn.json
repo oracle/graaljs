@@ -100,6 +100,10 @@
     "status" : "SKIP",
     "comment" : "Using 'jdk.nashorn.internal.runtime.Source'"
   }, {
+    "filePath" : "basic/funcconstructor.js",
+    "status" : "FAIL",
+    "comment" : "Graal.js adds newline after parameterList when creating function code"
+  }, {
     "filePath" : "basic/hideLocationProperties.js",
     "status" : "FAIL",
     "comment" : "Prints the absolute name of the script"
@@ -671,6 +675,10 @@
     "filePath" : "basic/NASHORN-768.js",
     "status" : "SKIP",
     "comment" : "Loading the 'nashorn' engine"
+  }, {
+    "filePath" : "basic/NASHORN-90.js",
+    "status" : "FAIL",
+    "comment" : "Graal.js adds newline after parameterList when creating function code"
   }, {
     "filePath" : "basic/number.js",
     "status" : "FAIL",
