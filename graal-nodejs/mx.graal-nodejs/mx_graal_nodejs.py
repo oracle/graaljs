@@ -416,7 +416,11 @@ def makeInNodeEnvironment(args):
     argGroups = setupNodeEnvironment(args)
     _setEnvVar('NODE_JVM_OPTIONS', ' '.join(argGroups[1]))
     if _currentOs == 'windows':
-        raise mx.abort('This command is not supported on Windows')
+        _mxrun([join('.', 'vcbuild.bat'),
+                'noprojgen',
+                'nobuild',
+                'java-home', _java_home()
+            ] + argGroups[2], cwd=_suite.dir)
     else:
         makeCmd = mx.gmake_cmd()
         if _currentOs == 'solaris':
