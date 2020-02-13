@@ -562,16 +562,23 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     installable=False,
 ))
 
-
-mx_sdk_vm.register_vm_config('node1', ['llp', 'nfi', 'njs', 'js', 'poly', 'tfl', 'rgx', 'sdk', 'stage1'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('node', ['bjs', 'bpolyglot', 'nfi', 'njs', 'js', 'poly', 'tfl', 'rgx', 'sdk'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('node', ['bjs', 'bpolyglot', 'nfi', 'njs', 'js', 'llp', 'poly', 'tfl', 'rgx', 'sdk'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('node1-ce', ['cmp', 'nfi', 'njs', 'js', 'llp', 'poly', 'tfl', 'rgx', 'sdk', 'stage1'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('node-ce', ['bjs', 'bpolyglot', 'cmp', 'nfi', 'njs', 'js', 'llp', 'poly', 'tfl', 'rgx', 'sdk'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('node1-ee', ['cmp', 'cmpee', 'nfi', 'njs', 'js', 'llp', 'poly', 'tfl', 'rgx', 'sdk', 'stage1'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('node-ee', ['bjs', 'bpolyglot', 'cmp', 'cmpee', 'nfi', 'njs', 'js', 'llp', 'poly', 'tfl', 'rgx', 'sdk'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('n', ['bjs', 'bpolyglot', 'cmp', 'nfi', 'njs', 'js', 'llp', 'poly', 'tfl', 'rgx', 'sdk', 'bnative-image', 'bnative-image-configure', 'lg', 'libpoly', 'ni', 'nic', 'nil', 'nju', 'polynative', 'sjvmcicompiler', 'snative-image-agent', 'svm', 'tflm'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('n1', ['cmp', 'nfi', 'njs', 'js', 'llp', 'poly', 'tfl', 'rgx', 'sdk', 'stage1', 'lg', 'libpoly', 'ni', 'nic', 'nil', 'nju', 'polynative', 'svm', 'tflm'], _suite, env_file=False)
+# pylint: disable=line-too-long
+# GraalVM configs to build without the Graal compiler
+mx_sdk_vm.register_vm_config('node1', ['js', 'llp', 'nfi', 'njs', 'poly', 'rgx', 'sdk', 'stage1', 'tfl'], _suite, env_file=False)
+mx_sdk_vm.register_vm_config('node', ['bjs', 'bpolyglot', 'js', 'llp', 'nfi', 'njs', 'poly', 'rgx', 'sdk', 'tfl'], _suite, env_file=False)
+# GraalVM configs to build with the Graal compiler
+mx_sdk_vm.register_vm_config('node1-ce', ['cmp', 'js', 'llp', 'nfi', 'njs', 'poly', 'rgx', 'sdk', 'stage1', 'tfl'], _suite, env_file=False)
+mx_sdk_vm.register_vm_config('node-ce', ['bjs', 'bpolyglot', 'cmp', 'js', 'llp', 'nfi', 'njs', 'poly', 'rgx', 'sdk', 'tfl'], _suite, env_file=False)
+# GraalVM configs to build with the Enterprise Graal compiler
+mx_sdk_vm.register_vm_config('node1-ee', ['cmp', 'cmpee', 'js', 'llp', 'nfi', 'njs', 'poly', 'rgx', 'sdk', 'stage1', 'tfl'], _suite, env_file=False)
+mx_sdk_vm.register_vm_config('node-ee', ['bjs', 'bpolyglot', 'cmp', 'cmpee', 'js', 'llp', 'nfi', 'njs', 'poly', 'rgx', 'sdk', 'tfl'], _suite, env_file=False)
+# GraalVM configs to build with Native Image
+mx_sdk_vm.register_vm_config('n-ce', ['bjs', 'bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'js', 'lg', 'libpoly', 'llp', 'nfi', 'ni', 'nic', 'nil', 'njs', 'nju', 'poly', 'polynative', 'rgx', 'sdk', 'sjvmcicompiler', 'snative-image-agent', 'svm', 'tfl', 'tflm'], _suite, env_file=False)
+mx_sdk_vm.register_vm_config('n1-ce', ['cmp', 'js', 'lg', 'libpoly', 'llp', 'nfi', 'ni', 'nic', 'nil', 'njs', 'nju', 'poly', 'polynative', 'rgx', 'sdk', 'stage1', 'svm', 'tfl', 'tflm'], _suite, env_file=False)
+# GraalVM configs to build with Native Image Enterprise
+mx_sdk_vm.register_vm_config('n-ee', ['bjs', 'bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'cmpee', 'js', 'lg', 'libpoly', 'llp', 'nfi', 'ni', 'nic', 'niee', 'nil', 'njs', 'nju', 'poly', 'polynative', 'rgx', 'sdk', 'sjvmcicompiler', 'snative-image-agent', 'svm', 'svmee', 'tfl', 'tflm'], _suite, env_file=False)
+mx_sdk_vm.register_vm_config('n1-ee', ['cmp', 'cmpee', 'js', 'lg', 'libpoly', 'llp', 'nfi', 'ni', 'nic', 'niee', 'nil', 'njs', 'nju', 'poly', 'polynative', 'rgx', 'sdk', 'stage1', 'svm', 'svmee', 'tfl', 'tflm'], _suite, env_file=False)
+# pylint: enable=line-too-long
 
 mx.update_commands(_suite, {
     'node' : [node, ''],
