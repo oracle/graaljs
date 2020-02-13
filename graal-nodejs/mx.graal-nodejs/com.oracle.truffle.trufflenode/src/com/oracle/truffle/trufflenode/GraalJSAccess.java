@@ -1789,7 +1789,10 @@ public final class GraalJSAccess {
         code.append("(function (");
         code.append(parameterList);
         code.append(") {");
-        code.append(body);
+
+        String prefix = code.toString();
+
+        code = new StringBuilder();
         code.append("\n});");
 
         if (anyExtension) {
@@ -1800,21 +1803,24 @@ public final class GraalJSAccess {
             code.append(";})");
         }
 
+        String suffix = code.toString();
+
         Source source;
         if (hostDefinedOptions == null) {
             // sources of built-in modules
-            source = Source.newBuilder(JavaScriptLanguage.ID, code.toString(), sourceName).build();
+            source = Source.newBuilder(JavaScriptLanguage.ID, body, sourceName).build();
         } else {
             TruffleFile truffleFile = realm.getEnv().getPublicTruffleFile(sourceName);
-            source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(code.toString()).name(sourceName).build();
+            source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(body).name(sourceName).build();
             hostDefinedOptionsMap.put(source, hostDefinedOptions);
         }
 
         if (snapshot == null) {
-            DynamicObject fn = (DynamicObject) nodeEvaluator.evaluate(realm, null, source);
+            ScriptNode scriptNode = nodeEvaluator.parseScriptNode(jsContext, prefix, suffix, source, false);
+            DynamicObject fn = (DynamicObject) scriptNode.run(realm);
             return anyExtension ? JSFunction.call(fn, Undefined.instance, extensions) : fn;
         } else {
-            ScriptNode scriptNode = parseScriptNodeFromSnapshot(jsContext, source, snapshot);
+            ScriptNode scriptNode = parseScriptNodeFromSnapshot(jsContext, source, prefix, suffix, snapshot);
             return scriptNode.run(realm);
         }
     }
@@ -1973,7 +1979,7 @@ public final class GraalJSAccess {
                 }
             }
         } else {
-            scriptNode = parseScriptNodeFromSnapshot(jsContext, source, (ByteBuffer) parseResult);
+            scriptNode = parseScriptNodeFromSnapshot(jsContext, source, "", "", (ByteBuffer) parseResult);
         }
         return new Script(scriptNode, parseResult, jsRealm, unboundScript.getId());
     }
@@ -1992,7 +1998,7 @@ public final class GraalJSAccess {
         return entry;
     }
 
-    private ScriptNode parseScriptNodeFromSnapshot(JSContext context, Source source, ByteBuffer snapshotBinary) {
+    private ScriptNode parseScriptNodeFromSnapshot(JSContext context, Source source, String prefix, String suffix, ByteBuffer snapshotBinary) {
         JSParser parser = (JSParser) context.getEvaluator();
         try {
             return parser.parseScriptNode(context, source, snapshotBinary);
@@ -2002,7 +2008,7 @@ public final class GraalJSAccess {
                 System.err.printf("error when parsing binary snapshot for %s: %s\n", moduleName, e);
                 System.err.printf("falling back to parsing %s at runtime\n", moduleName);
             }
-            return parser.parseScriptNode(context, source);
+            return parser.parseScriptNode(context, prefix, suffix, source, false);
         }
     }
 
