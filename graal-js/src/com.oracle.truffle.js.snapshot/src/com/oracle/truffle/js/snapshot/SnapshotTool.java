@@ -68,6 +68,7 @@ public class SnapshotTool {
 
     public static void main(String[] args) throws IOException {
         boolean binary = true;
+        boolean wrapped = false;
         String outDir = null;
         String inDir = null;
         List<String> srcFiles = new ArrayList<>();
@@ -77,6 +78,8 @@ public class SnapshotTool {
                     binary = false;
                 } else if (arg.equals("--binary")) {
                     binary = true;
+                } else if (arg.equals("--wrapped")) {
+                    wrapped = true;
                 } else if (arg.startsWith("--file=")) {
                     srcFiles.add(arg.substring(arg.indexOf('=') + 1));
                 } else if (arg.startsWith("--outdir=")) {
@@ -99,7 +102,7 @@ public class SnapshotTool {
                     if (!sourceFile.isFile()) {
                         throw new IllegalArgumentException("Not a file: " + sourceFile);
                     }
-                    snapshotTool.snapshotScriptFileTo(srcFile, sourceFile, outputFile, binary);
+                    snapshotTool.snapshotScriptFileTo(srcFile, sourceFile, outputFile, binary, wrapped);
                 }
                 snapshotTool.timeStats.print();
                 polyglotContext.leave();
@@ -116,15 +119,33 @@ public class SnapshotTool {
         return dir;
     }
 
-    private void snapshotScriptFileTo(String fileName, File sourceFile, File outputFile, boolean binary) throws IOException {
+    private void snapshotScriptFileTo(String fileName, File sourceFile, File outputFile, boolean binary, boolean wrapped) throws IOException {
         JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
         JSContext context = realm.getContext();
         Recording.logv("recording snapshot of %s", fileName);
-        Source source = Source.newBuilder(JavaScriptLanguage.ID, realm.getEnv().getPublicTruffleFile(sourceFile.getPath())).name(fileName).build();
+        Source.SourceBuilder builder = Source.newBuilder(JavaScriptLanguage.ID, realm.getEnv().getPublicTruffleFile(sourceFile.getPath())).name(fileName);
+        Source source = builder.build();
+        String prefix;
+        String suffix;
+        if (wrapped) {
+            // Wrapped source, i.e., source in the form
+            // delimiter + prefix + delimiter + body + delimiter + suffix
+            String code = source.getCharacters().toString();
+            char delimiter = code.charAt(0);
+            int prefixEnd = code.indexOf(delimiter, 1);
+            int suffixStart = code.indexOf(delimiter, prefixEnd + 1);
+            prefix = code.substring(1, prefixEnd);
+            String body = code.substring(prefixEnd + 1, suffixStart);
+            suffix = code.substring(suffixStart + 1);
+            source = Source.newBuilder(JavaScriptLanguage.ID, body, fileName).build();
+        } else {
+            prefix = "";
+            suffix = "";
+        }
         final Recording rec;
         try (TimerCloseable timer = timeStats.file(fileName)) {
             rec = new Recording();
-            ScriptNode program = JavaScriptTranslator.translateScript(RecordingProxy.createRecordingNodeFactory(rec, NodeFactory.getInstance(context)), context, source, false, "", "");
+            ScriptNode program = JavaScriptTranslator.translateScript(RecordingProxy.createRecordingNodeFactory(rec, NodeFactory.getInstance(context)), context, source, false, prefix, suffix);
             rec.finish(program.getRootNode());
             outputFile.getParentFile().mkdirs();
             try (FileOutputStream outs = new FileOutputStream(outputFile)) {
