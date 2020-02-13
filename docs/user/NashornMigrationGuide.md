@@ -95,11 +95,16 @@ GraalVM JavaScript will always select the overloaded method with the narrowest p
 If no such overloaded method is available, GraalVM JavaScript throws a `TypeError` instead of lossy conversion.
 In general, this affects which overloaded method is executed.
 
+Custom `targetTypeMapping`s can be used to customize behavior, see [HostAccess.Builder#targetTypeMapping](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#targetTypeMapping-java.lang.Class-java.lang.Class-java.util.function.Predicate-java.util.function.Function-).
+
 ### `ScriptObjectMirror` objects
 GraalVM JavaScript does not provide objects of the class `ScriptObjectMirror`.
 Instead, JavaScript objects are exposed to Java code as objects implementing Java's `Map` interface.
 
 Code referencing `ScriptObjectMirror` instances can be rewritten by changing the type to either an interface (`Map`, `List`) or the polyglot [Value](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html) class which provides similar capabilities.
+
+### `Object.bindProperties` ###
+GraalVM JavaScript does not support the `Object.bindProperties` function.
 
 ### Multithreading
 GraalVM JavaScript supports multithreading by creating several `Context` objects from Java code.

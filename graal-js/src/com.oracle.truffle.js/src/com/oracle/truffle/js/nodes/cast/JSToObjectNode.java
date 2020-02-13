@@ -232,11 +232,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
 
     @TruffleBoundary
     private void throwWithError() {
-        String message = "Cannot apply \"with\" to non script object";
-        if (getContext().isOptionNashornCompatibilityMode()) {
-            message += ". Consider using \"with(Object.bindProperties({}, nonScriptObject))\".";
-        }
-        throw Errors.createTypeError(message, this);
+        throw Errors.createTypeError("Cannot apply \"with\" to non script object", this);
     }
 
     public abstract static class JSToObjectWrapperNode extends JSUnaryNode {

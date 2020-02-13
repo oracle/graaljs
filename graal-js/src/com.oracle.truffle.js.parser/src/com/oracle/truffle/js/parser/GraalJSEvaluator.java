@@ -155,9 +155,7 @@ public final class GraalJSEvaluator implements JSParser {
         }
         code.append('(');
         code.append(parameterList);
-        if (!context.isOptionNashornCompatibilityMode()) {
-            code.append(JSRuntime.LINE_SEPARATOR);
-        }
+        code.append(JSRuntime.LINE_SEPARATOR);
         code.append(") {");
         code.append(JSRuntime.LINE_SEPARATOR);
         code.append(body);
