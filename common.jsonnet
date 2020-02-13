@@ -83,4 +83,27 @@
     },
     capabilities: ['darwin', 'amd64'],
   },
+
+  windows: common + {
+    packages+: {
+      'devkit:VS2017-15.5.5+1': '==0',
+    },
+    downloads+: {
+      NASM: {name: 'nasm', version: '2.14.02', platformspecific: true},
+    },
+    environment+: {
+      PATH: '$PATH;$NASM',
+    },
+    setup+: [
+      ['set-export', 'DEVKIT_ROOT', '$VS2017_15_5_5_1_0_ROOT'],
+      ['set-export', 'DEVKIT_VERSION', '2017'],
+    ],
+    capabilities: ['windows', 'amd64'],
+  },
+
+  windows_vs2010: self.windows + {
+    packages+: {
+      msvc : '==10.0',
+    },
+  },
 }

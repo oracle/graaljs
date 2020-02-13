@@ -41,26 +41,36 @@ suite = {
 
   "defaultLicense" : "UPL",
 
+  "libraries" : {
+    "NASM" : {
+      "packedResource": True,
+      "os_arch" : {
+        "windows" : {
+          "amd64" : {
+            "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/nodejs/nasm-2.14.02-windows-amd64.tar.gz"],
+            "sha1": "2a7caf509b5d9f56fad303538d2a5f0e783e7a1e",
+          },
+          "<others>": {
+            "optional": True,
+          }
+        },
+        "<others>": {
+          "<others>": {
+            "optional": True,
+          }
+        },
+      },
+    },
+  },
+
   "projects" : {
     "trufflenodeNative" : {
       "dependencies" : [
         "coremodules",
       ],
       "class" : "GraalNodeJsProject",
-      "os_arch": {
-        "windows": {
-          "<others>": {
-            "results" : ["Release/node.exe", "out/headers/include"],
-            "output" : "."
-          },
-        },
-        "<others>": {
-          "<others>": {
-            "results" : ["Release/node", "headers/include"],
-            "output" : "out"
-          },
-        },
-      },
+      "results" : ["Release/<exe:node>", "headers/include"],
+      "output" : "out"
     },
     "com.oracle.truffle.trufflenode" : {
       "subDir" : "mx.graal-nodejs",
@@ -146,39 +156,21 @@ suite = {
       "native" : True,
       "platformDependent" : True,
       "description" : "Graal.nodejs support distribution for the GraalVM",
-      "os_arch": {
-        "windows": {
-          "<others>": {
-            "layout" : {
-              "./" : [
-                "file:deps/npm",
-                "dependency:trufflenodeNative/out/headers/include",
-              ],
-              "NODE_README.md" : "file:README.md",
-              "bin/" : [
-                "dependency:trufflenodeNative/Release/node.exe"
-              ],
-              "bin/npm" : "file:mx.graal-nodejs/graalvm_launchers/npm",
-              "include/src/graal/" : "file:deps/v8/src/graal/graal_handle_content.h",
-            },
+      "layout" : {
+        "./" : [
+          {
+            "source_type": "file",
+            "path": "deps/npm",
+            "exclude": ["deps/npm/test"]
           },
-        },
-        "<others>": {
-          "<others>": {
-            "layout" : {
-              "./" : [
-                "file:deps/npm",
-                "dependency:trufflenodeNative/headers/include",
-              ],
-              "NODE_README.md" : "file:README.md",
-              "bin/" : [
-                "dependency:trufflenodeNative/Release/node"
-              ],
-              "bin/npm" : "file:mx.graal-nodejs/graalvm_launchers/npm",
-              "include/src/graal/" : "file:deps/v8/src/graal/graal_handle_content.h",
-            },
-          },
-        },
+          "dependency:trufflenodeNative/headers/include",
+        ],
+        "NODE_README.md" : "file:README.md",
+        "bin/" : [
+          "dependency:trufflenodeNative/Release/<exe:node>",
+          "file:mx.graal-nodejs/graalvm_launchers/<cmd:npm>",
+        ],
+        "include/src/graal/" : "file:deps/v8/src/graal/graal_handle_content.h",
       },
     },
   },

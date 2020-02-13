@@ -980,6 +980,8 @@ def configure_node(o):
   o['variables']['node_report'] = b(not options.without_report)
   o['default_configuration'] = 'Debug' if options.debug else 'Release'
 
+  o['variables']['ninja'] = 'true' if options.use_ninja else 'false'
+
   host_arch = host_arch_win() if os.name == 'nt' else host_arch_cc()
   target_arch = options.dest_cpu or host_arch
   # ia32 is preferred by the build tools (GYP) over x86 even if we prefer the latter

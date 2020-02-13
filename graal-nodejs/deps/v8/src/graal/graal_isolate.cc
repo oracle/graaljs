@@ -75,6 +75,7 @@
 #define LIBJVM_RELPATH     "/lib/server/libjvm.so"
 #define LIBJVM_RELPATH2    "/lib/sparcv9/server/libjvm.so"
 #elif defined(_WIN32)
+#define LIBNODESVM_RELPATH "\\lib\\polyglot\\polyglot.dll"
 #define LIBJVM_RELPATH     "\\bin\\server\\jvm.dll"
 #else
 #define LIBNODESVM_RELPATH "/lib/polyglot/libpolyglot.so"
@@ -138,6 +139,14 @@ GraalIsolate* CurrentIsolate() {
 typedef jint(*InitJVM)(JavaVM **, void **, void *);
 typedef jint(*CreatedJVMs)(JavaVM **vmBuffer, jsize bufferLength, jsize *written);
 
+#ifdef __POSIX__
+    static const std::string file_separator = "/";
+    static const std::string path_separator = ":";
+#else
+    static const std::string file_separator = "\\";
+    static const std::string path_separator = ";";
+#endif
+
 std::string getstdenv(const char* var) {
     std::string ret;
     char* value = getenv(var);
@@ -161,7 +170,7 @@ std::string nodeExe() {
 std::string up(std::string path, int cnt = 1) {
     int at = path.length();
     while (cnt-- > 0) {
-        at = path.find_last_of('/', at - 1);
+        at = path.find_last_of(file_separator, at - 1);
     }
     if (at >= 0) {
         return path.substr(0, at);
@@ -216,8 +225,8 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
     std::string node = nodeExe();
 
     std::string node_path = up(node);
-    bool graalvm8 = ends_with(node_path, "/jre/languages/js/bin");
-    bool graalvm11plus = ends_with(node_path, "/languages/js/bin");
+    bool graalvm8 = ends_with(node_path, file_separator + "jre" + file_separator + "languages" + file_separator + "js" + file_separator + "bin");
+    bool graalvm11plus = ends_with(node_path, file_separator + "languages" + file_separator + "js" + file_separator + "bin");
     if (graalvm8 || graalvm11plus) {
         // Part of GraalVM: take precedence over any JAVA_HOME.
         // We set environment variables to ensure these values are correctly
@@ -227,7 +236,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
 
 #       ifdef LIBNODESVM_RELPATH
             bool force_native = false;
-            std::string node_jvm_lib = graalvm_home + (graalvm8 ? "/jre" : "") + LIBNODESVM_RELPATH;
+            std::string node_jvm_lib = graalvm_home + (graalvm8 ? file_separator + "jre" : "") + LIBNODESVM_RELPATH;
             if (mode == kModeJVM) {
                  // will be set to appropriate libjvm path below
                 UnsetEnv("NODE_JVM_LIB");
@@ -254,7 +263,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
         fprintf(stderr, "JAVA_HOME is not set. Specify JAVA_HOME so $JAVA_HOME%s exists.\n", LIBJVM_RELPATH);
         exit(1);
     }
-    std::string jre_sub_dir = jdk_path + "/jre";
+    std::string jre_sub_dir = jdk_path + file_separator + "jre";
     if (access(jre_sub_dir.c_str(), F_OK) != -1) {
         jdk_path = jre_sub_dir;
     }
@@ -327,11 +336,6 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
             exit(1);
         }
 
-#ifdef __POSIX__
-        const char* const path_separator = ":";
-#else
-        const char* const path_separator = ";";
-#endif
         std::string extra_jvm_path = getstdenv("NODE_JVM_CLASSPATH");
         if (use_classpath_env_var) {
             std::string classpath = getstdenv("CLASSPATH");
@@ -428,7 +432,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
                             uv__cloexec(2, 0);
 #endif
                             // Delegate to java -help
-                            std::string java = jdk_path + "/bin/java";
+                            std::string java = jdk_path + file_separator + "bin" + file_separator + "java";
                             char * argv[] = {const_cast<char*> (java.c_str()), (char*) "-help", nullptr};
                             execv(java.c_str(), argv);
                             perror(java.c_str());
