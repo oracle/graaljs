@@ -457,7 +457,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     @ExplodeLoop
     protected static Object[] executeFillObjectArraySpread(JavaScriptNode[] arguments, VirtualFrame frame, Object[] args, int fixedArgumentsLength, BranchProfile growProfile) {
         // assume size that avoids growing
-        SimpleArrayList<Object> argList = SimpleArrayList.create(fixedArgumentsLength + arguments.length + JSConfig.SpreadArgumentPlaceholderCount);
+        SimpleArrayList<Object> argList = SimpleArrayList.create((long) fixedArgumentsLength + arguments.length + JSConfig.SpreadArgumentPlaceholderCount);
         for (int i = 0; i < fixedArgumentsLength; i++) {
             argList.addUnchecked(args[i]);
         }

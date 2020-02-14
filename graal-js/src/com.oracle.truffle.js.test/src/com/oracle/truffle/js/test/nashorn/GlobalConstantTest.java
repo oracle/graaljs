@@ -38,50 +38,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.jmh;
+package com.oracle.truffle.js.test.nashorn;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-import org.openjdk.jmh.annotations.Benchmark;
-import org.openjdk.jmh.annotations.Fork;
-import org.openjdk.jmh.annotations.Level;
-import org.openjdk.jmh.annotations.Measurement;
-import org.openjdk.jmh.annotations.Scope;
-import org.openjdk.jmh.annotations.Setup;
-import org.openjdk.jmh.annotations.State;
-import org.openjdk.jmh.annotations.TearDown;
-import org.openjdk.jmh.annotations.Warmup;
+import org.junit.Assert;
+import org.junit.Test;
 
-@Warmup(iterations = 5)
-@Measurement(iterations = 5)
-@Fork(2)
-public class JMHArrayInteropBenchmark {
-    @State(Scope.Thread)
-    public static class MyState {
-        protected static final int ARRAY_SIZE = 10000;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.JSTest;
 
-        Context context;
-        Source preSizedArraySource;
-
-        @Setup(Level.Trial)
-        public void doSetup() {
-            context = Context.create("js");
-            preSizedArraySource = Source.create("js", "new Array(" + ARRAY_SIZE + ")");
-        }
-
-        @TearDown(Level.Trial)
-        public void doTearDown() {
-            context.close();
+public class GlobalConstantTest {
+    private static String testIntl(String sourceText) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.NASHORN_COMPATIBILITY_MODE_NAME, "true").allowAllAccess(true).build()) {
+            Value result = context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, "global-constant-test").buildLiteral());
+            Assert.assertTrue(result.isString());
+            return result.asString();
         }
     }
 
-    @Benchmark
-    public Value testPopulateJSArrayFromJava(MyState state) {
-        Value array = state.context.eval(state.preSizedArraySource);
-        for (int i = 0; i < MyState.ARRAY_SIZE; i++) {
-            array.setArrayElement(i, i);
-        }
-        return array;
+    @Test
+    public void globalConstantTest() {
+        Assert.assertEquals("global-constant-test", testIntl("__FILE__"));
+        Assert.assertEquals("1", testIntl("''+__LINE__"));
+        testIntl("__DIR__"); // dummy
     }
+
 }

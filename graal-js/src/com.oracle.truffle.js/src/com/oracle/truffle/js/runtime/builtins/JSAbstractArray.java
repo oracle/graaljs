@@ -170,6 +170,11 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         ARRAY_TYPE_PROPERTY.setSafe(thisObj, arrayType, null);
     }
 
+    public static void arraySetLength(DynamicObject thisObj, int length) {
+        assert length >= 0;
+        LENGTH_PROPERTY.setSafe(thisObj, length, null);
+    }
+
     public static void arraySetLength(DynamicObject thisObj, long length) {
         assert JSRuntime.isRepresentableAsUnsignedInt(length);
         LENGTH_PROPERTY.setSafe(thisObj, (int) length, null);

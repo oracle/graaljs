@@ -178,10 +178,12 @@ public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameH
                 Object key = memberNode.executeKey(frame);
                 Object value = memberNode.executeValue(frame, homeObject);
                 Object[] field = new Object[]{key, value, memberNode.isAnonymousFunctionDefinition()};
-                if (memberNode.isStatic()) {
+                if (memberNode.isStatic() && staticFields != null) {
                     staticFields[staticFieldIndex++] = field;
-                } else {
+                } else if (instanceFields != null) {
                     instanceFields[instanceFieldIndex++] = field;
+                } else {
+                    throw Errors.shouldNotReachHere();
                 }
             } else {
                 memberNode.executeVoid(frame, homeObject, context);

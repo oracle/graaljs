@@ -584,7 +584,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 return Double.NaN;
             }
             int daysAfter1970 = localDayNode.execute((long) t);
-            return JSDate.yearFromDays(daysAfter1970) - 1900;
+            return JSDate.yearFromDays(daysAfter1970) - 1900d;
         }
     }
 
