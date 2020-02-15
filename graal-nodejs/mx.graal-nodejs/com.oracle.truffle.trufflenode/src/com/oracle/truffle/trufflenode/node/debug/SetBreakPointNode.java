@@ -46,6 +46,10 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -85,7 +89,8 @@ public class SetBreakPointNode extends JavaScriptRootNode {
     @CompilerDirectives.TruffleBoundary
     private int addBreakPoint(RootCallTarget callTarget, Object[] args) {
         int numArgs = JSArguments.getUserArgumentCount(args);
-        SourceSection sourceSection = callTarget.getRootNode().getSourceSection();
+        Node rootNode = callTarget.getRootNode();
+        SourceSection sourceSection = rootNode.getSourceSection();
         Source source = sourceSection.getSource();
         int lineNo = sourceSection.getStartLine();
         int columnNo = sourceSection.getStartColumn();
@@ -98,12 +103,7 @@ public class SetBreakPointNode extends JavaScriptRootNode {
             }
         }
         if (userLine > 0) {
-            columnNo = 1; // ignore the section column
-        } else {
-            // skip "function"
-            if (startsWith(sourceSection, "function")) {
-                columnNo += 9;
-            }
+            columnNo = 1; // ignore the start column of root node's source section
         }
         if (numArgs >= 3) {
             Object arg2 = JSArguments.getUserArgument(args, 2);
@@ -118,8 +118,52 @@ public class SetBreakPointNode extends JavaScriptRootNode {
             Object arg4 = JSArguments.getUserArgument(args, 4);
             oneShot = JSRuntime.toBoolean(arg4);
         }
+
+        // Heuristics used by the debugger to resolve the statement
+        // for the given breakpoint considers all call targets =>
+        // it sometimes places the breakpoint into a nested function (incorrectly).
+        // This code attempts to help the debugger to place the breakpoint
+        // correctly by providing the exact offset of the desired statement
+        // (within the specified callTarget).
+        lineNo = Math.max(1, Math.min(lineNo, source.getLineCount()));
+        columnNo = Math.max(1, Math.min(columnNo, source.getLineLength(lineNo)));
+        int offset = source.getLineStartOffset(lineNo) + columnNo - 1;
+        BreakPointOffsetFinder visitor = new BreakPointOffsetFinder(offset);
+        rootNode.accept(visitor);
+        int bestOffset = visitor.getBestOffset();
+        lineNo = source.getLineNumber(bestOffset);
+        columnNo = bestOffset - source.getLineStartOffset(lineNo) + 1;
+
         addBreakPoint(source, lineNo, columnNo, oneShot);
         return 0;
+    }
+
+    static class BreakPointOffsetFinder implements NodeVisitor {
+        private final int expectedOffset;
+        private int bestOffset = Integer.MAX_VALUE;
+
+        BreakPointOffsetFinder(int expectedOffset) {
+            this.expectedOffset = expectedOffset;
+        }
+
+        int getBestOffset() {
+            return (bestOffset == Integer.MAX_VALUE) ? expectedOffset : bestOffset;
+        }
+
+        @Override
+        public boolean visit(Node node) {
+            if (node instanceof InstrumentableNode && ((InstrumentableNode) node).hasTag(StandardTags.StatementTag.class)) {
+                SourceSection section = node.getSourceSection();
+                if (section != null && section.isAvailable()) {
+                    int offset = section.getCharIndex();
+                    if (expectedOffset <= offset && offset < bestOffset) {
+                        bestOffset = offset;
+                    }
+                }
+            }
+            return true;
+        }
+
     }
 
     @CompilerDirectives.TruffleBoundary

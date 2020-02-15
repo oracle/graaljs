@@ -3213,10 +3213,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private SourceSection createSourceSection(FunctionNode functionNode) {
         int start = functionNode.getStartWithoutParens() - prologLength;
         int finish = functionNode.getFinishWithoutParens() - prologLength;
-        if (start < 0 || finish > source.getLength()) {
-            return source.createSection(1);
+        int length = source.getLength();
+        if (finish <= 0 || length <= start) {
+            return source.createUnavailableSection();
+        } else {
+            start = Math.max(0, start);
+            finish = Math.min(length, finish);
+            return source.createSection(start, finish - start);
         }
-        return source.createSection(start, finish - start);
     }
 
     private JavaScriptNode ensureHasSourceSection(JavaScriptNode resultNode, com.oracle.js.parser.ir.Node parseNode) {
@@ -3230,10 +3234,15 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private void assignSourceSection(JavaScriptNode resultNode, com.oracle.js.parser.ir.Node parseNode) {
-        if (parseNode.getStart() >= prologLength && parseNode.getFinish() - prologLength <= source.getLength()) {
-            resultNode.setSourceSection(source, parseNode.getStart() - prologLength, parseNode.getFinish() - parseNode.getStart());
+        int start = parseNode.getStart() - prologLength;
+        int finish = parseNode.getFinish() - prologLength;
+        int length = source.getLength();
+        if (finish <= 0 || length <= start) {
+            resultNode.setSourceSection(source.createUnavailableSection());
         } else {
-            resultNode.setSourceSection(source.createSection(1));
+            start = Math.max(0, start);
+            finish = Math.min(length, finish);
+            resultNode.setSourceSection(source, start, finish - start);
         }
     }
 

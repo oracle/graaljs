@@ -52,16 +52,19 @@ import sys
 from os.path import join
 
 def WrapModule(module_path, module_code):
+    delimiter = u'\u237f' # "random" character (vertical line with middle dot)
+    wrapped_module_code = delimiter + module_code + delimiter
     if module_path in [join('lib', 'internal', 'per_context', 'primordials.js'), join('lib', 'internal', 'per_context', 'setup.js'), join('lib', 'internal', 'per_context', 'domexception.js')]:
-        return "(function (global, exports, primordials) {" + module_code + "\n});"
+        result = "(function (global, exports, primordials) {" + wrapped_module_code + "\n});"
     elif module_path in [join('lib', 'internal', 'main', 'inspect.js'), join('lib', 'internal', 'main', 'print_help.js'), join('lib', 'internal', 'main', 'print_bash_completion.js'), join('lib', 'internal', 'main', 'prof_process.js'), join('lib', 'internal', 'main', 'eval_string.js'), join('lib', 'internal', 'main', 'check_syntax.js'), join('lib', 'internal', 'main', 'run_main_module.js'), join('lib', 'internal', 'main', 'repl.js'), join('lib', 'internal', 'main', 'eval_stdin.js')]:
-        return "(function (process, require, internalBinding, primordials, markBootstrapComplete) {" + module_code + "\n});"
+        result = "(function (process, require, internalBinding, primordials, markBootstrapComplete) {" + wrapped_module_code + "\n});"
     elif module_path == join('lib', 'internal', 'bootstrap', 'node.js'):
-        return "(function (process, require, internalBinding, isMainThread, ownsProcessState, primordials) {" + module_code + "\n});"
+        result = "(function (process, require, internalBinding, isMainThread, ownsProcessState, primordials) {" + wrapped_module_code + "\n});"
     elif module_path == join('lib', 'internal', 'bootstrap', 'loaders.js'):
-        return "(function (process, getLinkedBinding, getInternalBinding, primordials) {" + module_code + "\n});"
+        result = "(function (process, getLinkedBinding, getInternalBinding, primordials) {" + wrapped_module_code + "\n});"
     else:
-        return "(function (exports, require, module, process, internalBinding, primordials) {" + module_code + "\n});"
+        result = "(function (exports, require, module, process, internalBinding, primordials) {" + wrapped_module_code + "\n});"
+    return delimiter + result;
 
 def EnsureDirExists(dirpath):
     try:

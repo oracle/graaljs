@@ -12,10 +12,6 @@ test-net-connect-options-port: PASS,FLAKY
 
 ### Graal.js-specific ###
 
-# The code of module wrapper is visible in the source
-test-assert-first-line: FAIL
-test-error-reporting: FAIL
-
 # Triggers stack-overflow that may not be handled well
 test-async-wrap-pop-id-during-load: SKIP
 test-promise-reject-callback-exception: SKIP
