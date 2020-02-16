@@ -50,6 +50,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -1230,6 +1231,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             if (interop.hasMembers(source)) {
                 try {
                     boolean extensible = JSObject.isExtensible(target, targetProfile);
+                    boolean hostObject = getContext().getRealm().getEnv().isHostObject(source);
                     Object keysObj = interop.getMembers(source);
                     long size = members.getArraySize(keysObj);
                     for (int i = 0; i < size; i++) {
@@ -1246,6 +1248,37 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                             }
                             JSObjectUtil.defineProxyProperty(target, key, new ForeignBoundProperty(source, stringKey), JSAttributes.getDefault());
                         }
+                        if (hostObject) {
+                            // Special handling of bean properties: when there is "getProp",
+                            // "setProp" or "isProp" but not "prop" in the source then define also
+                            // "prop" in the target (unless the target has "prop" already).
+                            String beanProperty;
+                            if (stringKey.length() > 3 && (stringKey.charAt(0) == 's' || stringKey.charAt(0) == 'g') && stringKey.charAt(1) == 'e' && stringKey.charAt(2) == 't' &&
+                                            Boundaries.characterIsUpperCase(stringKey.charAt(3))) {
+                                beanProperty = beanProperty(stringKey, 3);
+                            } else if (stringKey.length() > 2 && stringKey.charAt(0) == 'i' && stringKey.charAt(1) == 's' && Boundaries.characterIsUpperCase(stringKey.charAt(2))) {
+                                beanProperty = beanProperty(stringKey, 2);
+                            } else {
+                                continue;
+                            }
+                            if (!JSObject.hasOwnProperty(target, beanProperty, targetProfile) && !interop.isMemberExisting(source, beanProperty)) {
+                                String getKey = beanAccessor("get", beanProperty);
+                                String getter;
+                                if (interop.isMemberExisting(source, getKey)) {
+                                    getter = getKey;
+                                } else {
+                                    String isKey = beanAccessor("is", beanProperty);
+                                    if (interop.isMemberExisting(source, isKey)) {
+                                        getter = isKey;
+                                    } else {
+                                        getter = null;
+                                    }
+                                }
+                                String setKey = beanAccessor("set", beanProperty);
+                                String setter = interop.isMemberExisting(source, setKey) ? setKey : null;
+                                JSObjectUtil.defineProxyProperty(target, beanProperty, new ForeignBoundBeanProperty(source, getter, setter), JSAttributes.getDefault());
+                            }
+                        }
                     }
                 } catch (UnsupportedMessageException | InvalidArrayIndexException ex) {
                 }
@@ -1261,6 +1294,17 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 enumerableOwnPropertyNamesNode = insert(EnumerableOwnPropertyNamesNode.createKeys(getContext()));
             }
             return enumerableOwnPropertyNamesNode.execute(obj);
+        }
+
+        @TruffleBoundary
+        private static String beanProperty(String accessor, int prefixLength) {
+            char c = accessor.charAt(prefixLength);
+            return Character.toLowerCase(c) + accessor.substring(prefixLength + 1);
+        }
+
+        @TruffleBoundary
+        private static String beanAccessor(String prefix, String beanProperty) {
+            return prefix + Character.toUpperCase(beanProperty.charAt(0)) + beanProperty.substring(1);
         }
 
         static class BoundProperty implements PropertyProxy {
@@ -1319,7 +1363,48 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 }
                 return false;
             }
+        }
 
+        static class ForeignBoundBeanProperty implements PropertyProxy {
+            private final Object source;
+            private final String getKey;
+            private final String setKey;
+
+            ForeignBoundBeanProperty(Object source, String getKey, String setKey) {
+                assert getKey != null || setKey != null;
+                this.source = source;
+                this.getKey = getKey;
+                this.setKey = setKey;
+            }
+
+            @Override
+            public Object get(DynamicObject store) {
+                if (getKey != null) {
+                    InteropLibrary library = InteropLibrary.getFactory().getUncached(source);
+                    if (library.isMemberInvocable(source, getKey)) {
+                        try {
+                            return JSRuntime.importValue(library.invokeMember(source, getKey));
+                        } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException ex) {
+                        }
+                    }
+                }
+                return Undefined.instance;
+            }
+
+            @Override
+            public boolean set(DynamicObject store, Object value) {
+                if (setKey != null) {
+                    InteropLibrary library = InteropLibrary.getFactory().getUncached(source);
+                    if (library.isMemberInvocable(source, setKey)) {
+                        try {
+                            library.invokeMember(source, setKey, JSRuntime.exportValue(value));
+                            return true;
+                        } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException ex) {
+                        }
+                    }
+                }
+                return false;
+            }
         }
 
     }

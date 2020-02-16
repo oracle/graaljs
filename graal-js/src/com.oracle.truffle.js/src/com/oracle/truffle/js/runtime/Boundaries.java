@@ -250,6 +250,11 @@ public final class Boundaries {
     }
 
     @TruffleBoundary
+    public static boolean characterIsUpperCase(char ch) {
+        return Character.isUpperCase(ch);
+    }
+
+    @TruffleBoundary
     public static boolean equals(Object a, Object b) {
         return a.equals(b);
     }
