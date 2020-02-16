@@ -667,6 +667,9 @@ public class JSRealm {
         DynamicObject objectConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, JSUserObject.CLASS_NAME);
         JSObjectUtil.putConstructorPrototypeProperty(context, objectConstructor, objectPrototype);
         JSObjectUtil.putFunctionsFromContainer(realm, objectConstructor, ObjectFunctionBuiltins.BUILTINS);
+        if (context.isOptionNashornCompatibilityMode()) {
+            JSObjectUtil.putFunctionsFromContainer(realm, objectConstructor, ObjectFunctionBuiltins.BUILTINS_NASHORN_COMPAT);
+        }
         return objectConstructor;
     }
 
