@@ -48,7 +48,7 @@ def _graal_js_gate_runner(args, tasks):
 
     with Task('UnitTests', tasks, tags=[GraalJsDefaultTags.default, GraalJsDefaultTags.all]) as t:
         if t:
-            unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.js.scriptengine.test'])
+            unittest(['--enable-timing', '--very-verbose', '--suite', _suite.name, 'com.oracle.truffle.js.scriptengine.test'])
 
     gateTestConfigs = {
         GraalJsDefaultTags.default: ['gate'],
@@ -235,7 +235,7 @@ def testv8(args, nonZeroIsFatal=True):
     )
 
 def testunittests(args, nonZeroIsFatal=True):
-    unittest(['--enable-timing', '--very-verbose'] + args + ['com.oracle.truffle.js.test'])
+    unittest(['--enable-timing', '--very-verbose', '--suite', _suite.name, 'com.oracle.truffle.js.test'])
 
 def deploy_binary_if_master(args):
     """If the active branch is 'master', deploy binaries for the primary suite to remote maven repository."""
