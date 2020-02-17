@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.scriptengine.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
 
@@ -51,7 +52,6 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class TestInvocable {
@@ -100,7 +100,6 @@ public class TestInvocable {
     }
 
     @Test
-    @Ignore("Not supported by the polyglot API.")
     public void getInterface1() throws Exception {
         ScriptEngine engine = getEngine();
         Invocable inv = (Invocable) engine;
@@ -113,7 +112,6 @@ public class TestInvocable {
     }
 
     @Test
-    @Ignore("Not supported by the polyglot API.")
     public void getInterface2() throws Exception {
         ScriptEngine engine = getEngine();
         Invocable inv = (Invocable) engine;
@@ -123,5 +121,47 @@ public class TestInvocable {
         Callable<?> c = inv.getInterface(obj, Callable.class);
 
         assertEquals(arg, c.call());
+    }
+
+    @Test
+    public void getInterfaceNotImplemented() throws Exception {
+        ScriptEngine engine = getEngine();
+        Invocable inv = (Invocable) engine;
+
+        // getInterface() returns null if no "call" method is available.
+        Object obj = engine.eval("({})");
+        assertNull(inv.getInterface(obj, Callable.class));
+        assertNull(inv.getInterface(Callable.class));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void getInterfaceNotAnInterface() throws Exception {
+        ScriptEngine engine = getEngine();
+        Invocable inv = (Invocable) engine;
+
+        Object obj = engine.eval("({})");
+        inv.getInterface(obj, String.class);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void getInterfaceNull1() throws Exception {
+        ScriptEngine engine = getEngine();
+        Invocable inv = (Invocable) engine;
+        inv.getInterface(null);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void getInterfaceNull2() throws Exception {
+        ScriptEngine engine = getEngine();
+        Invocable inv = (Invocable) engine;
+        Object obj = engine.eval("({})");
+        inv.getInterface(obj, null);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void getInterfaceNonScriptObject() throws Exception {
+        ScriptEngine engine = getEngine();
+        Invocable inv = (Invocable) engine;
+        inv.getInterface(new Object(), Comparable.class);
     }
 }

@@ -56,7 +56,9 @@ import javax.script.ScriptException;
 
 import org.graalvm.polyglot.Source;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import com.oracle.truffle.js.scriptengine.GraalJSScriptEngine;
 
@@ -65,6 +67,8 @@ public class TestEngine {
     static final String TESTED_ENGINE_NAME = "JavaScript";
 
     private final ScriptEngineManager manager = new ScriptEngineManager();
+
+    @Rule public ExpectedException expectedException = ExpectedException.none();
 
     private ScriptEngine getEngine() {
         return manager.getEngineByName(TESTED_ENGINE_NAME);
@@ -83,6 +87,12 @@ public class TestEngine {
     @Test
     public void compileAndEval2() throws ScriptException {
         assertEquals(true, ((Compilable) getEngine()).compile("true").eval());
+    }
+
+    @Test
+    public void compileSyntaxError() throws ScriptException {
+        expectedException.expect(ScriptException.class);
+        ((Compilable) getEngine()).compile(":-(");
     }
 
     @Test
@@ -190,4 +200,13 @@ public class TestEngine {
         // null is returned for unknown parameters (i.e. no exception is thrown)
         assertEquals(null, factory.getParameter("noValueIsAssignedToThisKey"));
     }
+
+    @Test
+    public void twoNashornEngines() throws ScriptException {
+        // Checks for a regression that causes the initialization of the second
+        // ScriptEngine to fail.
+        assertEquals("foo", TestUtil.getEngineNashornCompat(manager).eval("'foo'"));
+        assertEquals("bar", TestUtil.getEngineNashornCompat(manager).eval("'bar'"));
+    }
+
 }

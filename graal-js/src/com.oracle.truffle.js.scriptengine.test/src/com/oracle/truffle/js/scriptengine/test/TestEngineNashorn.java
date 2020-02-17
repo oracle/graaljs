@@ -63,12 +63,9 @@ import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import javax.script.SimpleScriptContext;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.HostAccess;
 import org.junit.Test;
 
 import com.oracle.truffle.js.scriptengine.GraalJSEngineFactory;
-import com.oracle.truffle.js.scriptengine.GraalJSScriptEngine;
 
 /**
  * Tests for JSR-223 script engine from the Nashorn test suite.
@@ -79,14 +76,6 @@ public class TestEngineNashorn {
 
     private ScriptEngine getEngine() {
         return manager.getEngineByName(TestEngine.TESTED_ENGINE_NAME);
-    }
-
-    private static ScriptEngine getEngineNashornCompat() {
-        Context.Builder contextBuilder = Context.newBuilder("js").allowExperimentalOptions(true);
-        contextBuilder.allowHostAccess(HostAccess.ALL).allowHostClassLookup(s -> true);
-        contextBuilder.option("js.nashorn-compat", "true");
-        contextBuilder.option("js.global-arguments", "true");
-        return GraalJSScriptEngine.create(null, contextBuilder);
     }
 
     private static void invertedAssertEquals(Object actual, Object expected) {
@@ -112,7 +101,7 @@ public class TestEngineNashorn {
 
     @Test
     public void argumentsWithTest() {
-        final ScriptEngine e = getEngineNashornCompat();
+        final ScriptEngine e = TestUtil.getEngineNashornCompat(manager);
 
         String[] args = new String[]{"hello", "world"};
         try {

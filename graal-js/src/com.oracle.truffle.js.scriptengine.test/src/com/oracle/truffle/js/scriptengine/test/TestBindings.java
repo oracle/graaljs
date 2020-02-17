@@ -416,4 +416,14 @@ public class TestBindings {
         // should not throw
         engine.eval("JavaImporter");
     }
+
+    @Test
+    public void globalPutEngineGet() {
+        ScriptEngine engine = getEngine();
+        Bindings globalBindings = engine.getBindings(ScriptContext.GLOBAL_SCOPE);
+        Bindings engineBindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        globalBindings.put("foo", "bar");
+        assertEquals("bar", engineBindings.get("foo"));
+    }
+
 }

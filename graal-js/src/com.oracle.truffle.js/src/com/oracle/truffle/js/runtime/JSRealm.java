@@ -56,6 +56,7 @@ import java.util.WeakHashMap;
 
 import com.oracle.truffle.js.builtins.commonjs.CommonJSRequireBuiltin;
 import com.oracle.truffle.js.builtins.commonjs.GlobalCommonJSRequireBuiltins;
+import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -171,16 +172,7 @@ public class JSRealm {
     public static final String DEBUG_CLASS_NAME = "Debug";
     public static final String CONSOLE_CLASS_NAME = "Console";
 
-    private static final String ALT_GRAALVM_VERSION_PROPERTY = "graalvm.version";
-    private static final String GRAALVM_VERSION_PROPERTY = "org.graalvm.version";
-    private static final String GRAALVM_VERSION;
-
-    static {
-        // Copied from `Launcher`. See GR-6243.
-        String version = System.getProperty(GRAALVM_VERSION_PROPERTY);
-        String altVersion = System.getProperty(ALT_GRAALVM_VERSION_PROPERTY);
-        GRAALVM_VERSION = version != null ? version : altVersion;
-    }
+    private static final String GRAALVM_VERSION = HomeFinder.getInstance().getVersion();
 
     private final JSContext context;
 
@@ -1159,8 +1151,10 @@ public class JSRealm {
             removeNashornIncompatibleBuiltins();
         }
         if (context.getContextOptions().isScriptEngineGlobalScopeImport()) {
-            JSObjectUtil.putDataProperty(context, getScriptEngineImportScope(), "importScriptEngineGlobalBindings",
-                            lookupFunction(GlobalBuiltins.GLOBAL_NASHORN_EXTENSIONS, "importScriptEngineGlobalBindings"), JSAttributes.notConfigurableNotEnumerableNotWritable());
+            for (String builtin : new String[]{"importScriptEngineGlobalBindings", "checkSyntaxForScriptEngine"}) {
+                JSObjectUtil.putDataProperty(context, getScriptEngineImportScope(), builtin,
+                                lookupFunction(GlobalBuiltins.GLOBAL_NASHORN_EXTENSIONS, builtin), JSAttributes.notConfigurableNotEnumerableNotWritable());
+            }
         }
         if (context.getContextOptions().isPolyglotBuiltin() && (getEnv().isPolyglotEvalAllowed() || getEnv().isPolyglotBindingsAccessAllowed())) {
             setupPolyglot();
@@ -1366,10 +1360,9 @@ public class JSRealm {
         DynamicObject graalObject = JSUserObject.createInit(this);
         int flags = JSAttributes.notConfigurableEnumerableNotWritable();
         JSObjectUtil.putDataProperty(context, graalObject, "language", JavaScriptLanguage.NAME, flags);
-        if (GRAALVM_VERSION != null) {
-            JSObjectUtil.putDataProperty(context, graalObject, "versionGraalVM", GRAALVM_VERSION, flags);
-            JSObjectUtil.putDataProperty(context, graalObject, "versionJS", GRAALVM_VERSION, flags);
-        }
+        assert GRAALVM_VERSION != null;
+        JSObjectUtil.putDataProperty(context, graalObject, "versionGraalVM", GRAALVM_VERSION, flags);
+        JSObjectUtil.putDataProperty(context, graalObject, "versionJS", GRAALVM_VERSION, flags);
         JSObjectUtil.putDataProperty(context, graalObject, "isGraalRuntime", JSFunction.create(this, isGraalRuntimeFunction(context)), flags);
         putGlobalProperty("Graal", graalObject);
     }
