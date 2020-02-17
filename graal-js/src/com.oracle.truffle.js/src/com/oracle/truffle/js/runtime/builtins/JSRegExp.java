@@ -84,6 +84,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     public static final String INPUT = "input";
     public static final String GROUPS = "groups";
     public static final String INDEX = "index";
+    public static final String INDICES = "indices";
 
     private static final HiddenKey COMPILED_REGEX_ID = new HiddenKey("compiledRegex");
     private static final Property COMPILED_REGEX_PROPERTY;
@@ -363,6 +364,15 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         initialShape = initialShape.addProperty(LAZY_INDEX_PROXY);
         initialShape = initialShape.addProperty(JSObjectUtil.makeDataProperty(GROUPS, initialShape.allocator().locationForType(DynamicObject.class,
                         EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)), JSAttributes.getDefault()));
+        initialShape = initialShape.addProperty(JSObjectUtil.makeDataProperty(INDICES, initialShape.allocator().locationForType(DynamicObject.class,
+                        EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)), JSAttributes.getDefault()));
+        return initialShape;
+    }
+
+    public static Shape makeLazyRegexIndicesArrayShape(JSContext ctx, DynamicObject prototype) {
+        Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSArray.INSTANCE, ctx);
+        initialShape = JSArray.addArrayProperties(initialShape);
+        initialShape = initialShape.addProperty(JSAbstractArray.LAZY_REGEX_RESULT_PROPERTY);
         return initialShape;
     }
 

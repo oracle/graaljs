@@ -113,6 +113,7 @@ import com.oracle.truffle.js.runtime.array.dyn.HolesIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesJSObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultArray;
+import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultIndicesArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
@@ -700,6 +701,8 @@ public class WriteElementNode extends JSTargetableNode {
         }
         if (array instanceof LazyRegexResultArray) {
             return new LazyRegexResultArrayWriteElementCacheNode(array, next);
+        } else if (array instanceof LazyRegexResultIndicesArray) {
+            return new LazyRegexResultIndicesArrayWriteElementCacheNode(array, next);
         } else if (array instanceof AbstractConstantArray) {
             return new ConstantArrayWriteElementCacheNode(array, next);
         } else if (array instanceof HolesIntArray) {
@@ -883,6 +886,29 @@ public class WriteElementNode extends JSTargetableNode {
         protected boolean executeSetArray(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition, WriteElementNode root) {
             LazyRegexResultArray lazyRegexResultArray = (LazyRegexResultArray) cast(array);
             ScriptArray newArray = lazyRegexResultArray.createWritable(materializeResultNode, target, index, value, arrayCondition);
+            if (inBoundsProfile.profile(index >= 0 && index < 0x7fff_ffff)) {
+                return setArrayAndWrite(newArray, target, index, value, arrayCondition, root);
+            } else {
+                arraySetArrayType(target, SparseArray.makeSparseArray(target, newArray).setElement(target, index, value, root.isStrict, arrayCondition));
+                return true;
+            }
+        }
+    }
+
+    private static class LazyRegexResultIndicesArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
+
+        private final ConditionProfile inBoundsProfile = ConditionProfile.createBinaryProfile();
+
+        @Child private TRegexUtil.TRegexResultAccessor resultAccessor = TRegexUtil.TRegexResultAccessor.create();
+
+        LazyRegexResultIndicesArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
+            super(arrayType, arrayCacheNext);
+        }
+
+        @Override
+        protected boolean executeSetArray(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition, WriteElementNode root) {
+            LazyRegexResultIndicesArray lazyRegexResultIndicesArray = (LazyRegexResultIndicesArray) cast(array);
+            ScriptArray newArray = lazyRegexResultIndicesArray.createWritable(resultAccessor, target, index, value, arrayCondition);
             if (inBoundsProfile.profile(index >= 0 && index < 0x7fff_ffff)) {
                 return setArrayAndWrite(newArray, target, index, value, arrayCondition, root);
             } else {

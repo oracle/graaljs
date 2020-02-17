@@ -329,6 +329,7 @@ public class JSContext {
     private final JSObjectFactory ordinaryObjectFactory;
     private final JSObjectFactory arrayFactory;
     private final JSObjectFactory lazyRegexArrayFactory;
+    private final JSObjectFactory lazyRegexIndicesArrayFactory;
     private final JSObjectFactory booleanFactory;
     private final JSObjectFactory numberFactory;
     private final JSObjectFactory bigIntFactory;
@@ -454,6 +455,7 @@ public class JSContext {
         this.ordinaryObjectFactory = builder.create(JSUserObject.INSTANCE);
         this.arrayFactory = builder.create(JSArray.INSTANCE);
         this.lazyRegexArrayFactory = builder.create(JSArray.INSTANCE, JSRegExp::makeLazyRegexArrayShape);
+        this.lazyRegexIndicesArrayFactory = builder.create(JSArray.INSTANCE, JSRegExp::makeLazyRegexIndicesArrayShape);
         this.booleanFactory = builder.create(JSBoolean.INSTANCE);
         this.numberFactory = builder.create(JSNumber.INSTANCE);
         this.bigIntFactory = builder.create(JSBigInt.INSTANCE);
@@ -714,6 +716,10 @@ public class JSContext {
 
     public final JSObjectFactory getLazyRegexArrayFactory() {
         return lazyRegexArrayFactory;
+    }
+
+    public final JSObjectFactory getLazyRegexIndicesArrayFactory() {
+        return lazyRegexIndicesArrayFactory;
     }
 
     public final JSObjectFactory getStringFactory() {
