@@ -177,8 +177,7 @@ public final class GraalJSEvaluator implements JSParser {
         return doEvaluate(realm, lastNode, thisObj, frame, source, directEval.env.isStrictMode(), directEval);
     }
 
-    @Override
-    public JavaScriptNode parseInlineScript(JSContext context, Source source, Environment env, boolean isStrict) {
+    private static JavaScriptNode parseInlineScript(JSContext context, Source source, Environment env, boolean isStrict) {
         ScriptNode script = JavaScriptTranslator.translateInlineScript(NodeFactory.getInstance(context), context, env, source, isStrict);
         RootCallTarget callTarget = script.getCallTarget();
         JSFunctionData functionData = script.getFunctionData();

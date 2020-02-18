@@ -43,18 +43,11 @@ package com.oracle.truffle.js.parser;
 import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
-import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSContext;
 
 public interface JSParser extends Evaluator {
-
-    /**
-     * Creates a script that will be evaluated in a specified lexical context.
-     */
-    JavaScriptNode parseInlineScript(JSContext context, Source source, Environment environment, boolean isStrict);
 
     ScriptNode parseScript(JSContext context, Source source, ByteBuffer binary);
 
