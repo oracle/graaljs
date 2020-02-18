@@ -78,8 +78,8 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
     }
 
     public static ScriptNode translateInlineScript(NodeFactory factory, JSContext context, Environment env, Source source, boolean isParentStrict) {
-        boolean evalInGlobalScope = env.getParent() != null;
-        return translateScript(factory, context, env, source, isParentStrict, true, evalInGlobalScope, null, "", "");
+        boolean evalInFunction = env.getParent() != null;
+        return translateScript(factory, context, env, source, isParentStrict, true, evalInFunction, null, "", "");
     }
 
     private static ScriptNode translateScript(NodeFactory nodeFactory, JSContext context, Environment env, Source source, boolean isParentStrict,
