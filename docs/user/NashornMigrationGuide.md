@@ -103,9 +103,6 @@ Instead, JavaScript objects are exposed to Java code as objects implementing Jav
 
 Code referencing `ScriptObjectMirror` instances can be rewritten by changing the type to either an interface (`Map`, `List`) or the polyglot [Value](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html) class which provides similar capabilities.
 
-### `Object.bindProperties` ###
-GraalVM JavaScript does not support the `Object.bindProperties` function.
-
 ### Multithreading
 GraalVM JavaScript supports multithreading by creating several `Context` objects from Java code.
 Contexts can be shared between threads, but each context must be accessed by a single thread at a time.

@@ -1,9 +1,5 @@
 {
   "testFiles" : [ {
-    "filePath" : "basic/8024180/with_java_object.js",
-    "status" : "FAIL",
-    "comment" : "Object.bindProperties mentioned in error message"
-  }, {
     "filePath" : "basic/arrays.js",
     "status" : "FAIL",
     "comment" : "Java interop migration"
