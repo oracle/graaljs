@@ -284,6 +284,20 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     }
 
     private RootNode parseWithArgumentNames(Source source, List<String> argumentNames) {
+        StringBuilder prolog = new StringBuilder();
+        prolog.append("'use strict';");
+        prolog.append("(function");
+        prolog.append(" (");
+        for (int i = 0; i < argumentNames.size(); i++) {
+            if (i != 0) {
+                prolog.append(", ");
+            }
+            prolog.append(argumentNames.get(i));
+        }
+        prolog.append(") {\n");
+
+        ScriptNode program = parseScript(getJSContext(), source, prolog.toString(), "})", true);
+
         return new RootNode(this) {
             @CompilationFinal private ContextReference<JSRealm> contextReference;
 
@@ -299,18 +313,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
             @TruffleBoundary
             private Object executeImpl(JSRealm realm, Object[] arguments) {
-                StringBuilder code = new StringBuilder();
-                code.append("'use strict';");
-                code.append("(function");
-                code.append(" (");
-                assert !argumentNames.isEmpty();
-                code.append(argumentNames.get(0));
-                for (int i = 1; i < argumentNames.size(); i++) {
-                    code.append(", ");
-                    code.append(argumentNames.get(i));
-                }
-                code.append(") {\n");
-                Object function = parseScript(getJSContext(), source, code.toString(), "})", true).run(realm);
+                Object function = program.run(realm);
                 return JSRuntime.jsObjectToJavaObject(JSFunction.call(JSArguments.create(Undefined.instance, function, arguments)));
             }
         };
