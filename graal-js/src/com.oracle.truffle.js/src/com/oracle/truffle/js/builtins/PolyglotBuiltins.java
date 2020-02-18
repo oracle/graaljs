@@ -304,7 +304,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             try {
                 return importValueNode.executeWithTarget(interop.readMember(polyglotBindings, identifier));
             } catch (UnknownIdentifierException e) {
-                throw Errors.createReferenceErrorNotDefined(getContext(), identifier, this);
+                return Undefined.instance;
             } catch (UnsupportedMessageException e) {
                 throw Errors.createTypeErrorInteropException(polyglotBindings, e, "readMember", identifier, this);
             }

@@ -354,7 +354,7 @@ var rubyHelloWorld = Polyglot.import("helloRubyWorld");
 rubyHelloWorld();
 ```
 
-If no language has exported a value identified by `key`, `null` is returned.
+If no language has exported a value identified by `key`, `undefined` is returned.
 Throws a `TypeError` if `key` is not a string or missing.
 
 #### `Polyglot.eval(languageId, sourceCode)`
