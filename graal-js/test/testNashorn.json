@@ -192,10 +192,6 @@
     "status" : "SKIP",
     "comment" : "Using 'jdk.nashorn.api.scripting.NashornScriptEngineFactory'"
   }, {
-    "filePath" : "basic/JDK-8014785.js",
-    "status" : "SKIP",
-    "comment" : "Object.bindProperties"
-  }, {
     "filePath" : "basic/JDK-8014953.js",
     "status" : "FAIL",
     "comment" : "Java interop migration"
@@ -244,20 +240,16 @@
     "status" : "FAIL"
   }, {
     "filePath" : "basic/JDK-8020324.js",
-    "status" : "SKIP",
-    "comment" : "nashorn class not found"
+    "status" : "FAIL",
+    "comment" : "Nashorn maps void Java calls to undefined while truffle maps them to null."
   }, {
     "filePath" : "basic/JDK-8020325.js",
     "status" : "FAIL",
     "comment" : "Java interop migration"
   }, {
     "filePath" : "basic/JDK-8020508.js",
-    "status" : "SKIP",
-    "comment" : "Object.bindProperties"
-  }, {
-    "filePath" : "basic/JDK-8021122.js",
-    "status" : "SKIP",
-    "comment" : "Object.bindProperties"
+    "status" : "FAIL",
+    "comment" : "Expects Nashorn-specific access control check"
   }, {
     "filePath" : "basic/JDK-8022731.js",
     "status" : "FAIL"
@@ -269,10 +261,6 @@
     "filePath" : "basic/JDK-8023551.js",
     "status" : "SKIP",
     "comment" : "Loading the 'nashorn' engine"
-  }, {
-    "filePath" : "basic/JDK-8023780.js",
-    "status" : "SKIP",
-    "comment" : "Object.bindProperties"
   }, {
     "filePath" : "basic/JDK-8024120.js",
     "status" : "SKIP",
@@ -422,10 +410,6 @@
     "status" : "SKIP",
     "comment" : "Fails on SPARC, JDK does not provide netscape.javascript.JSObject and the instancof check seems to be wrong\nThe exception thrown by Java.type(\"netscape.javascript.JSObject\") is not a ClassCastException object\nbut a \"TypeError: java.lang.ClassNotFoundException: netscape.javascript.JSObject\". The test fails also on openjdk1.8.0_121-graalvm-jvmci-0.30."
   }, {
-    "filePath" : "basic/JDK-8058422.js",
-    "status" : "SKIP",
-    "comment" : "context and engine variables"
-  }, {
     "filePath" : "basic/JDK-8060101.js",
     "status" : "FAIL"
   }, {
@@ -494,10 +478,6 @@
   }, {
     "filePath" : "basic/JDK-8079470.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "basic/JDK-8080848.js",
-    "status" : "SKIP",
-    "comment" : "Object.bindProperties"
   }, {
     "filePath" : "basic/JDK-8081156.js",
     "status" : "FAIL"
