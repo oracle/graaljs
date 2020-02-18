@@ -56,7 +56,7 @@ public interface JSParser extends Evaluator {
      */
     JavaScriptNode parseInlineScript(JSContext context, Source source, Environment environment, boolean isStrict);
 
-    ScriptNode parseScriptNode(JSContext context, Source source, ByteBuffer binary);
+    ScriptNode parseScript(JSContext context, Source source, ByteBuffer binary);
 
-    ScriptNode parseScriptNode(JSContext context, Source source, SnapshotProvider snapshotProvider);
+    ScriptNode parseScript(JSContext context, Source source, SnapshotProvider snapshotProvider);
 }

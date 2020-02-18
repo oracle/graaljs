@@ -252,7 +252,7 @@ public final class GraalJSEvaluator implements JSParser {
     // JSParser methods below
 
     @Override
-    public ScriptNode parseScriptNode(JSContext context, String prolog, String epilog, Source source, boolean alwaysReturnValue) {
+    public ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog, boolean alwaysReturnValue) {
         if (MODULE_MIME_TYPE.equals(source.getMimeType()) || source.getName().endsWith(MODULE_SOURCE_NAME_SUFFIX)) {
             return fakeScriptForModule(context, source);
         }
@@ -283,7 +283,7 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     @Override
-    public ScriptNode parseScriptNode(JSContext context, String sourceCode) {
+    public ScriptNode parseScript(JSContext context, String sourceCode) {
         try {
             return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, Source.newBuilder(JavaScriptLanguage.ID, sourceCode, "<unknown>").build(), false, "", "");
         } catch (com.oracle.js.parser.ParserException e) {
@@ -624,18 +624,12 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     @Override
-    public ScriptNode parseScriptNode(JSContext context, Source source, ByteBuffer binary) {
-        if (binary == null) {
-            return parseScriptNode(context, "", "", source, false);
-        }
+    public ScriptNode parseScript(JSContext context, Source source, ByteBuffer binary) {
         return ScriptNode.fromFunctionRoot(context, (FunctionRootNode) new BinarySnapshotProvider(binary).apply(NodeFactory.getInstance(context), context, source));
     }
 
     @Override
-    public ScriptNode parseScriptNode(JSContext context, Source source, SnapshotProvider snapshotProvider) {
-        if (snapshotProvider == null) {
-            return parseScriptNode(context, "", "", source, false);
-        }
+    public ScriptNode parseScript(JSContext context, Source source, SnapshotProvider snapshotProvider) {
         return ScriptNode.fromFunctionRoot(context, (FunctionRootNode) snapshotProvider.apply(NodeFactory.getInstance(context), context, source));
     }
 

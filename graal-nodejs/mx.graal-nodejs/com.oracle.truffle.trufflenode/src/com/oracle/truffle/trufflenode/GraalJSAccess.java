@@ -1816,11 +1816,11 @@ public final class GraalJSAccess {
         }
 
         if (snapshot == null) {
-            ScriptNode scriptNode = nodeEvaluator.parseScriptNode(jsContext, prefix, suffix, source, false);
+            ScriptNode scriptNode = nodeEvaluator.parseScript(jsContext, source, prefix, suffix);
             DynamicObject fn = (DynamicObject) scriptNode.run(realm);
             return anyExtension ? JSFunction.call(fn, Undefined.instance, extensions) : fn;
         } else {
-            ScriptNode scriptNode = parseScriptNodeFromSnapshot(jsContext, source, prefix, suffix, snapshot);
+            ScriptNode scriptNode = parseScriptFromSnapshot(jsContext, source, prefix, suffix, snapshot);
             return scriptNode.run(realm);
         }
     }
@@ -1979,7 +1979,7 @@ public final class GraalJSAccess {
                 }
             }
         } else {
-            scriptNode = parseScriptNodeFromSnapshot(jsContext, source, "", "", (ByteBuffer) parseResult);
+            scriptNode = parseScriptFromSnapshot(jsContext, source, "", "", (ByteBuffer) parseResult);
         }
         return new Script(scriptNode, parseResult, jsRealm, unboundScript.getId());
     }
@@ -1998,17 +1998,17 @@ public final class GraalJSAccess {
         return entry;
     }
 
-    private ScriptNode parseScriptNodeFromSnapshot(JSContext context, Source source, String prefix, String suffix, ByteBuffer snapshotBinary) {
+    private ScriptNode parseScriptFromSnapshot(JSContext context, Source source, String prefix, String suffix, ByteBuffer snapshotBinary) {
         JSParser parser = (JSParser) context.getEvaluator();
         try {
-            return parser.parseScriptNode(context, source, snapshotBinary);
+            return parser.parseScript(context, source, snapshotBinary);
         } catch (IllegalArgumentException e) {
             if (VERBOSE) {
                 String moduleName = source.getName();
                 System.err.printf("error when parsing binary snapshot for %s: %s\n", moduleName, e);
                 System.err.printf("falling back to parsing %s at runtime\n", moduleName);
             }
-            return parser.parseScriptNode(context, prefix, suffix, source, false);
+            return parser.parseScript(context, source, prefix, suffix);
         }
     }
 
@@ -3015,7 +3015,7 @@ public final class GraalJSAccess {
                         "    Object.defineProperty(promise, rejectKey, { value : reject });\n" +
                         "    return promise;\n" +
                         "})";
-        ScriptNode scriptNode = parser.parseScriptNode(context, code);
+        ScriptNode scriptNode = parser.parseScript(context, code);
         return (DynamicObject) scriptNode.run(realm);
     }
 

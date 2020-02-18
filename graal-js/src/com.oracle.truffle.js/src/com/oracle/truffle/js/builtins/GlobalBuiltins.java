@@ -1609,7 +1609,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @Specialization
         @TruffleBoundary(transferToInterpreterOnException = false)
         protected final boolean checkSyntax(Object code) {
-            getContext().getEvaluator().parseScriptNode(getContext(), code.toString());
+            getContext().getEvaluator().parseScript(getContext(), code.toString());
             return true;
         }
     }
