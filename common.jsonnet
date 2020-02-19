@@ -27,7 +27,7 @@
 
   local python3 = {
     environment+: {
-      MX_PYTHON_VERSION: "3",
+      MX_PYTHON: "python3",
     },
   },
 
