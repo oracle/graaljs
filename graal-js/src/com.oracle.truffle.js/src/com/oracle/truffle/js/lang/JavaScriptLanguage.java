@@ -208,13 +208,11 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         List<String> argumentNames = parsingRequest.getArgumentNames();
         if (argumentNames == null || argumentNames.isEmpty()) {
             final JSContext context = getJSContext();
+            final ScriptNode program = parseScript(context, source, "", "", false);
 
             if (context.isOptionParseOnly()) {
-                parseInContext(source, context, "", "", false);
                 return createEmptyScript(context).getCallTarget();
             }
-
-            final ScriptNode program = parseInContext(source, context, "", "", false);
 
             RootNode rootNode = new RootNode(this) {
                 @Child private DirectCallNode directCallNode = DirectCallNode.create(program.getCallTarget());
@@ -262,7 +260,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         final JSContext context = getJSContext();
         final boolean strict = isStrictLocation(request.getLocation());
         final ExecutableNode executableNode = new ExecutableNode(this) {
-            @Child private JavaScriptNode expression = insert(parseInline(source, context, requestFrame, strict));
+            @Child private JavaScriptNode expression = insert(parseInlineScript(context, source, requestFrame, strict));
             @Child private ExportValueNode exportValueNode = ExportValueNode.create();
 
             @Override
@@ -286,6 +284,20 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     }
 
     private RootNode parseWithArgumentNames(Source source, List<String> argumentNames) {
+        StringBuilder prolog = new StringBuilder();
+        prolog.append("'use strict';");
+        prolog.append("(function");
+        prolog.append(" (");
+        for (int i = 0; i < argumentNames.size(); i++) {
+            if (i != 0) {
+                prolog.append(", ");
+            }
+            prolog.append(argumentNames.get(i));
+        }
+        prolog.append(") {\n");
+
+        ScriptNode program = parseScript(getJSContext(), source, prolog.toString(), "})", true);
+
         return new RootNode(this) {
             @CompilationFinal private ContextReference<JSRealm> contextReference;
 
@@ -301,18 +313,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
             @TruffleBoundary
             private Object executeImpl(JSRealm realm, Object[] arguments) {
-                StringBuilder code = new StringBuilder();
-                code.append("'use strict';");
-                code.append("(function");
-                code.append(" (");
-                assert !argumentNames.isEmpty();
-                code.append(argumentNames.get(0));
-                for (int i = 1; i < argumentNames.size(); i++) {
-                    code.append(", ");
-                    code.append(argumentNames.get(i));
-                }
-                code.append(") {\n");
-                Object function = parseInContext(source, realm.getContext(), code.toString(), "})", true).run(realm);
+                Object function = program.run(realm);
                 return JSRuntime.jsObjectToJavaObject(JSFunction.call(JSArguments.create(Undefined.instance, function, arguments)));
             }
         };
@@ -340,24 +341,26 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     }
 
     @TruffleBoundary
-    protected static ScriptNode parseInContext(Source code, JSContext context, String prolog, String epilog, boolean alwaysReturnValue) {
-        long startTime = context.getContextOptions().isProfileTime() ? System.nanoTime() : 0L;
+    protected static ScriptNode parseScript(JSContext context, Source code, String prolog, String epilog, boolean alwaysReturnValue) {
+        boolean profileTime = context.getContextOptions().isProfileTime();
+        long startTime = profileTime ? System.nanoTime() : 0L;
         try {
-            return context.getEvaluator().parseScriptNode(context, prolog, epilog, code, alwaysReturnValue);
+            return context.getEvaluator().parseScript(context, code, prolog, epilog, alwaysReturnValue);
         } finally {
-            if (context.getContextOptions().isProfileTime()) {
+            if (profileTime) {
                 context.getTimeProfiler().printElapsed(startTime, "parsing " + code.getName());
             }
         }
     }
 
     @TruffleBoundary
-    protected static JavaScriptNode parseInline(Source code, JSContext context, MaterializedFrame lexicalContextFrame, boolean strict) {
-        long startTime = context.getContextOptions().isProfileTime() ? System.nanoTime() : 0L;
+    protected static JavaScriptNode parseInlineScript(JSContext context, Source code, MaterializedFrame lexicalContextFrame, boolean strict) {
+        boolean profileTime = context.getContextOptions().isProfileTime();
+        long startTime = profileTime ? System.nanoTime() : 0L;
         try {
             return context.getEvaluator().parseInlineScript(context, code, lexicalContextFrame, strict);
         } finally {
-            if (context.getContextOptions().isProfileTime()) {
+            if (profileTime) {
                 context.getTimeProfiler().printElapsed(startTime, "parsing " + code.getName());
             }
         }

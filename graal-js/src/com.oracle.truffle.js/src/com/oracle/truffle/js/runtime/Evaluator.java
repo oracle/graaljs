@@ -107,13 +107,17 @@ public interface Evaluator {
      */
     ScriptNode parseFunction(JSContext context, String parameterList, String body, boolean generatorFunction, boolean asyncFunction, String sourceName);
 
-    default ScriptNode parseScriptNode(JSContext context, Source source) {
-        return parseScriptNode(context, "", "", source, false);
+    default ScriptNode parseScript(JSContext context, Source source) {
+        return parseScript(context, source, "", "");
     }
 
-    ScriptNode parseScriptNode(JSContext context, String prelude, String overtude, Source source, boolean alwaysReturnValue);
+    default ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog) {
+        return parseScript(context, source, prolog, epilog, false);
+    }
 
-    ScriptNode parseScriptNode(JSContext context, String sourceString);
+    ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog, boolean alwaysReturnValue);
+
+    ScriptNode parseScript(JSContext context, String sourceString);
 
     Expression parseExpression(JSContext context, String sourceString);
 

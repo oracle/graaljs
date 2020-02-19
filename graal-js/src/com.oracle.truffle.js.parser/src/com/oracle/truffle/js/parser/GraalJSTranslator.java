@@ -195,6 +195,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     protected final JSContext context;
     protected final NodeFactory factory;
     protected final Source source;
+    protected final int sourceLength;
     protected final int prologLength;
     private final boolean isParentStrict;
 
@@ -205,6 +206,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         this.factory = factory;
         this.source = source;
         this.isParentStrict = isParentStrict;
+        this.sourceLength = source.getCharacters().length();
         this.prologLength = prologLength;
     }
 
@@ -3213,7 +3215,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private SourceSection createSourceSection(FunctionNode functionNode) {
         int start = functionNode.getStartWithoutParens() - prologLength;
         int finish = functionNode.getFinishWithoutParens() - prologLength;
-        int length = source.getLength();
+        int length = sourceLength;
         if (finish <= 0 || length <= start) {
             return source.createUnavailableSection();
         } else {
@@ -3236,7 +3238,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private void assignSourceSection(JavaScriptNode resultNode, com.oracle.js.parser.ir.Node parseNode) {
         int start = parseNode.getStart() - prologLength;
         int finish = parseNode.getFinish() - prologLength;
-        int length = source.getLength();
+        int length = sourceLength;
         if (finish <= 0 || length <= start) {
             resultNode.setSourceSection(source.createUnavailableSection());
         } else {

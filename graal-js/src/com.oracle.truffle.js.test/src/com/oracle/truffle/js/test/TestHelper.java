@@ -158,7 +158,7 @@ public class TestHelper implements AutoCloseable {
         enterContext();
         Object result = null;
         try {
-            ScriptNode program = getParser().parseScriptNode(getJSContext(), source);
+            ScriptNode program = getParser().parseScript(getJSContext(), source);
             result = runNoPolyglot(program);
         } finally {
             leaveContext();
@@ -273,7 +273,7 @@ public class TestHelper implements AutoCloseable {
     }
 
     public ScriptNode parse(String script) {
-        return getParser().parseScriptNode(getJSContext(), script);
+        return getParser().parseScript(getJSContext(), script);
     }
 
     public static Object toHostValue(final Value value) {
