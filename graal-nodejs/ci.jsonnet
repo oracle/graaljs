@@ -130,6 +130,6 @@ local common = import '../common.jsonnet';
     graalNodeJs + common.jdk8  + buildTruffleTip                    + testNodeTruffleTip + {environment+: {SUITE: parallelNoHttp2, PART: '-r4,5'}} + common.gate + common.linux          + {name: 'nodejs-gate-parallel-5-graal-tip-jdk8-linux-amd64'},
 
     // post-merges
-    graalNodeJs + common.jdk8 + testNodeTruffleTip + {environment+: {SUITE: parallelHttp2, PART: '-r0,1'}}  + common.postMerge + common.linux + {name: 'nodejs-postmerge-parallel-http2-graal-tip-jdk8-linux-amd64'},
+    graalNodeJs + common.jdk8  + buildTruffleTip                    + testNodeTruffleTip + {environment+: {SUITE: parallelHttp2, PART: '-r0,1'}}   + common.postMerge + common.linux     + {name: 'nodejs-postmerge-parallel-http2-graal-tip-jdk8-linux-amd64'},
   ],
 }
