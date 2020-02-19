@@ -26,7 +26,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-import mx, mx_gate, mx_subst, mx_sdk, mx_sdk_vm, mx_graal_js, os, tarfile, tempfile
+import mx, mx_gate, mx_subst, mx_sdk, mx_sdk_vm, mx_graal_js, os, tarfile, tempfile, subprocess, sys
 
 import mx_graal_nodejs_benchmark
 
@@ -83,11 +83,32 @@ def _graal_nodejs_post_gate_runner(args, tasks):
 
 mx_gate.add_gate_runner(_suite, _graal_nodejs_post_gate_runner)
 
+
+_python_cmd = None
 def python_cmd():
-    if _currentOs == 'windows':
-        return 'python.exe'
-    else:
-        return join(_suite.mxDir, 'python2', 'python')
+    """:rtype: list[str]"""
+    global _python_cmd
+
+    def _can_exec(cmd):
+        try:
+            subprocess.check_output(cmd + ['--version'], stderr=subprocess.STDOUT)
+            return True
+        except OSError:
+            return False
+
+    def _get_python_cmd():
+        if _currentOs == 'windows':
+            if sys.version_info[0] >= 3:
+                for _cmd in ['py', '-2'], ['python2']:
+                    if _can_exec(_cmd):
+                        return _cmd
+            return ['python']
+        else:
+            return [join(_suite.mxDir, 'python2', 'python')]
+
+    if _python_cmd is None:
+        _python_cmd = _get_python_cmd()
+    return _python_cmd
 
 
 class GraalNodeJsProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
@@ -143,8 +164,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         else:
             extra_flags = []
 
-        _mxrun(['python',
-                join(_suite.dir, 'configure'),
+        _mxrun(python_cmd() + [join(_suite.dir, 'configure'),
                 '--partly-static',
                 '--without-dtrace',
                 '--without-snapshot',
@@ -164,7 +184,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         # put headers for native modules into out/headers
         _setEnvVar('HEADERS_ONLY', '1', build_env)
         out = None if mx.get_opts().verbose else open(os.devnull, 'w')
-        _mxrun([python_cmd(), join('tools', 'install.py'), 'install', join('out', 'headers'), '/'], out=out, env=build_env)
+        _mxrun(python_cmd() + [join('tools', 'install.py'), 'install', join('out', 'headers'), '/'], out=out, env=build_env)
 
         post_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=True)
         mx.logv('Newest time-stamp before building: {}\nNewest time-stamp after building: {}\nHas built? {}'.format(pre_ts, post_ts, post_ts.isNewerThan(pre_ts)))
@@ -314,14 +334,14 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
         if _currentOs != 'windows':
             macroFiles.append(join('tools', 'js2c_macros', 'notrace_macros.py'))
 
-        mx.run([python_cmd(), join('tools', 'expand-js-modules.py'), outputDir] + [join('lib', m) for m in moduleSet] + macroFiles,
+        mx.run(python_cmd() + [join('tools', 'expand-js-modules.py'), outputDir] + [join('lib', m) for m in moduleSet] + macroFiles,
                cwd=_suite.dir)
         if not (hasattr(self.args, "jdt") and self.args.jdt and not self.args.force_javac):
             mx.run_java(['-cp', mx.classpath([snapshotToolDistribution]),
                     mx.distribution(snapshotToolDistribution).mainClass,
                     '--binary', '--wrapped', '--outdir=' + outputDirBin, '--indir=' + outputDirBin] + ['--file=' + m for m in moduleSet],
                     cwd=outputDirBin)
-        mx.run([python_cmd(), join(_suite.dir, 'tools', 'snapshot2c.py'), 'node_snapshots.h'] + [join('lib', m + '.bin') for m in moduleSet],
+        mx.run(python_cmd() + [join(_suite.dir, 'tools', 'snapshot2c.py'), 'node_snapshots.h'] + [join('lib', m + '.bin') for m in moduleSet],
                cwd=outputDir)
 
     def clean(self, forBuild=False):
@@ -348,7 +368,7 @@ def testnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     _setEnvVar('NODE_JVM_OPTIONS', ' '.join(['-ea', '-esa', '-Xrs', '-Xmx8g'] + vmArgs))
     _setEnvVar('NODE_STACK_SIZE', '4000000')
     _setEnvVar('NODE_INTERNAL_ERROR_CHECK', 'true')
-    return mx.run([python_cmd(), join('tools', 'test.py')] + progArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=(_suite.dir if cwd is None else cwd))
+    return mx.run(python_cmd() + [join('tools', 'test.py')] + progArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=(_suite.dir if cwd is None else cwd))
 
 def setLibraryPath(additionalPath=None):
     javaHome = _java_home()
