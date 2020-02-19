@@ -51,8 +51,8 @@ public class FinalizationRecord {
     private Object heldValue;
     private WeakReference<Object> unregisterToken;
 
-    public FinalizationRecord(Object target, Object heldValue, Object unregisterToken) {
-        this.weakRefTarget = new WeakReference<>(target);
+    public FinalizationRecord(WeakReference<Object> weakRefTarget, Object heldValue, Object unregisterToken) {
+        this.weakRefTarget = weakRefTarget;
         this.heldValue = heldValue;
         this.unregisterToken = new WeakReference<>(unregisterToken);
     }

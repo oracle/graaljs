@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.Iterator;
@@ -82,6 +84,8 @@ public final class JSFinalizationGroup extends JSBuiltinObject implements JSCons
     private static final Property CELLS_PROPERTY;
     private static final HiddenKey CLEANUP_JOB_ACTIVE_ID = new HiddenKey("cleanup_job_active");
     private static final Property CLEANUP_JOB_ACTIVE_PROPERTY;
+    private static final HiddenKey REFERENCE_QUEUE_ID = new HiddenKey("reference_queue");
+    private static final Property REFERENCE_QUEUE_PROPERTY;
 
     public static final HiddenKey FINALIZATION_GROUP_ITERATION_KIND_ID = new HiddenKey("FinalizationGroupIterationKind");
 
@@ -91,13 +95,14 @@ public final class JSFinalizationGroup extends JSBuiltinObject implements JSCons
         CLEANUP_CALLBACK_PROPERTY = JSObjectUtil.makeHiddenProperty(CLEANUP_CALLBACK_ID, allocator.locationForType(DynamicObject.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
         CELLS_PROPERTY = JSObjectUtil.makeHiddenProperty(CELLS_ID, allocator.locationForType(List.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
         CLEANUP_JOB_ACTIVE_PROPERTY = JSObjectUtil.makeHiddenProperty(CLEANUP_JOB_ACTIVE_ID, allocator.locationForType(boolean.class, EnumSet.of(LocationModifier.NonNull)));
+        REFERENCE_QUEUE_PROPERTY = JSObjectUtil.makeHiddenProperty(REFERENCE_QUEUE_ID, allocator.locationForType(ReferenceQueue.class, EnumSet.of(LocationModifier.NonNull)));
     }
 
     private JSFinalizationGroup() {
     }
 
     public static DynamicObject create(JSContext context, TruffleObject cleanupCallback) {
-        DynamicObject obj = JSObject.create(context, context.getFinalizationGroupFactory(), context.getRealm(), cleanupCallback, new ArrayList<>(), false);
+        DynamicObject obj = JSObject.create(context, context.getFinalizationGroupFactory(), context.getRealm(), cleanupCallback, new ArrayList<>(), false, new ReferenceQueue<>());
         assert isJSFinalizationGroup(obj);
         context.getRealm().getAgent().registerFinalizationGroup(obj);
         return obj;
@@ -134,6 +139,12 @@ public final class JSFinalizationGroup extends JSBuiltinObject implements JSCons
         return (DynamicObject) CLEANUP_CALLBACK_PROPERTY.get(obj, isJSFinalizationGroup(obj));
     }
 
+    @SuppressWarnings("unchecked")
+    public static ReferenceQueue<Object> getReferenceQueue(DynamicObject obj) {
+        assert isJSFinalizationGroup(obj);
+        return (ReferenceQueue<Object>) REFERENCE_QUEUE_PROPERTY.get(obj, isJSFinalizationGroup(obj));
+    }
+
     @Override
     public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
@@ -154,6 +165,7 @@ public final class JSFinalizationGroup extends JSBuiltinObject implements JSCons
         initialShape = initialShape.addProperty(CLEANUP_CALLBACK_PROPERTY);
         initialShape = initialShape.addProperty(CELLS_PROPERTY);
         initialShape = initialShape.addProperty(CLEANUP_JOB_ACTIVE_PROPERTY);
+        initialShape = initialShape.addProperty(REFERENCE_QUEUE_PROPERTY);
         return initialShape;
     }
 
@@ -192,7 +204,9 @@ public final class JSFinalizationGroup extends JSBuiltinObject implements JSCons
 
     public static void appendToCells(DynamicObject finalizationGroup, Object target, Object holdings, Object unregisterToken) {
         List<FinalizationRecord> cells = getCells(finalizationGroup);
-        cells.add(new FinalizationRecord(target, holdings, unregisterToken));
+        ReferenceQueue<Object> queue = getReferenceQueue(finalizationGroup);
+        WeakReference<Object> weakTarget = new WeakReference<>(target, queue);
+        cells.add(new FinalizationRecord(weakTarget, holdings, unregisterToken));
     }
 
     public static boolean removeFromCells(DynamicObject finalizationGroup, Object unregisterToken) {
@@ -233,7 +247,7 @@ public final class JSFinalizationGroup extends JSBuiltinObject implements JSCons
         assert JSFinalizationGroup.isJSFinalizationGroup(finalizationGroup);
         List<FinalizationRecord> cells = getCells(finalizationGroup);
         for (FinalizationRecord record : cells) {
-            if (record.getWeakRefTarget().get() == Undefined.instance) {
+            if (record.getWeakRefTarget().get() == null) {
                 return true;
             }
         }
@@ -256,7 +270,7 @@ public final class JSFinalizationGroup extends JSBuiltinObject implements JSCons
     private static int getEmptyIndex(List<FinalizationRecord> cells) {
         for (int i = 0; i < cells.size(); i++) {
             FinalizationRecord record = cells.get(i);
-            if (record.getWeakRefTarget().get() == Undefined.instance) {
+            if (record.getWeakRefTarget().get() == null) {
                 return i;
             }
         }
@@ -280,12 +294,10 @@ public final class JSFinalizationGroup extends JSBuiltinObject implements JSCons
      * 4.1.3 Execution and 4.1.4.1 HostCleanupFinalizationGroup.
      */
     public static void hostCleanupFinalizationGroup(DynamicObject finalizationGroup) {
-        List<FinalizationRecord> records = getCells(finalizationGroup);
-        for (FinalizationRecord record : records) {
-            Object target = record.getWeakRefTarget().get();
-            if (target == null) {
-                cleanupFinalizationGroup(JSFinalizationGroup.getRealm(finalizationGroup).getContext(), finalizationGroup, null);
-            }
+        ReferenceQueue<Object> queue = getReferenceQueue(finalizationGroup);
+        while (queue.poll() != null) {
+            // if something can be polled, clean up the finalizationGroup
+            cleanupFinalizationGroup(JSFinalizationGroup.getRealm(finalizationGroup).getContext(), finalizationGroup, null);
         }
     }
 
