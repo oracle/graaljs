@@ -163,6 +163,21 @@ describe('Object', function () {
             var names = module.Object_GetOwnPropertyNames(o);
             assert.strictEqual(names.length, 0);
         });
+        if (typeof java === 'object') {
+            it('should work for foreign objects', function () {
+                var point = new java.awt.Point();
+                var names = module.Object_GetOwnPropertyNames(point);
+                assert.ok(names.includes('x'));
+                assert.ok(names.includes('y'));
+                assert.ok(!names.includes('z'));
+            });
+            it('should work for foreign arrays', function () {
+                var intArrayClass = Java.type('int[]');
+                var intArray = new intArrayClass(3);
+                var names = module.Object_GetOwnPropertyNames(intArray);
+                assert.deepEqual(names, [0, 1, 2]);
+            });
+        }
     });
     describe('GetPropertyNames', function () {
         it('should return an empty array for {}', function () {
@@ -211,6 +226,21 @@ describe('Object', function () {
             assert.strictEqual(names[1], 'b');
             assert.strictEqual(names[2], 'c');
         });
+        if (typeof java === 'object') {
+            it('should work for foreign objects', function () {
+                var point = new java.awt.Point();
+                var names = module.Object_GetPropertyNames(point);
+                assert.ok(names.includes('x'));
+                assert.ok(names.includes('y'));
+                assert.ok(!names.includes('z'));
+            });
+            it('should work for foreign arrays', function () {
+                var intArrayClass = Java.type('int[]');
+                var intArray = new intArrayClass(3);
+                var names = module.Object_GetPropertyNames(intArray);
+                assert.deepEqual(names, [0, 1, 2]);
+            });
+        }
     });
     describe('Has by name', function () {
         it('querying simple properties by name', function () {
