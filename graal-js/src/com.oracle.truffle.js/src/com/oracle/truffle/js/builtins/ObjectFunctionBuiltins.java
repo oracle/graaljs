@@ -50,11 +50,13 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -119,8 +121,10 @@ import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
+import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
@@ -133,6 +137,7 @@ import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
  */
 public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<ObjectFunctionBuiltins.ObjectFunction> {
     public static final JSBuiltinsContainer BUILTINS = new ObjectFunctionBuiltins();
+    public static final JSBuiltinsContainer BUILTINS_NASHORN_COMPAT = new ObjectFunctionNashornCompatBuiltins();
 
     protected ObjectFunctionBuiltins() {
         super(JSUserObject.CLASS_NAME, ObjectFunction.class);
@@ -239,6 +244,36 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return ObjectFromEntriesNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
+    }
+
+    public static final class ObjectFunctionNashornCompatBuiltins extends JSBuiltinsContainer.SwitchEnum<ObjectFunctionNashornCompatBuiltins.ObjectNashornCompat> {
+        protected ObjectFunctionNashornCompatBuiltins() {
+            super(ObjectNashornCompat.class);
+        }
+
+        public enum ObjectNashornCompat implements BuiltinEnum<ObjectNashornCompat> {
+            bindProperties(2);
+
+            private final int length;
+
+            ObjectNashornCompat(int length) {
+                this.length = length;
+            }
+
+            @Override
+            public int getLength() {
+                return length;
+            }
+        }
+
+        @Override
+        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, ObjectNashornCompat builtinEnum) {
+            switch (builtinEnum) {
+                case bindProperties:
+                    return ObjectFunctionBuiltinsFactory.ObjectBindPropertiesNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+            }
+            return null;
+        }
     }
 
     public abstract static class ObjectGetPrototypeOfNode extends ObjectOperation {
@@ -1124,6 +1159,254 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
             iteratorCloseNode.executeAbrupt(iterator);
         }
+    }
+
+    public abstract static class ObjectBindPropertiesNode extends ObjectOperation {
+        @Child private EnumerableOwnPropertyNamesNode enumerableOwnPropertyNamesNode;
+        private final JSClassProfile sourceProfile = JSClassProfile.create();
+        private final JSClassProfile targetProfile = JSClassProfile.create();
+
+        public ObjectBindPropertiesNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = "!isJSObject(target)")
+        protected DynamicObject bindPropertiesInvalidTarget(Object target, @SuppressWarnings("unused") Object source) {
+            throw Errors.createTypeErrorNotAnObject(target, this);
+        }
+
+        @Specialization(guards = {"isJSObject(target)", "isJSType(source)"})
+        protected DynamicObject bindPropertiesDynamicObject(DynamicObject target, DynamicObject source) {
+            DynamicObject sourceObject = toJSObject(source);
+            boolean extensible = JSObject.isExtensible(target, targetProfile);
+            JSClass sourceClass = sourceProfile.getJSClass(sourceObject);
+            UnmodifiableArrayList<? extends Object> keys = enumerableOwnPropertyNames(sourceObject);
+            int length = keys.size();
+            for (int i = 0; i < length; i++) {
+                Object key = keys.get(i);
+                if (!JSObject.hasOwnProperty(target, key, targetProfile)) {
+                    if (!extensible) {
+                        throw Errors.createTypeErrorNotExtensible(target, key);
+                    }
+                    PropertyDescriptor desc = JSObject.getOwnProperty(sourceObject, key, sourceProfile);
+                    if (desc.isAccessorDescriptor()) {
+                        JSObject.defineOwnProperty(target, key, desc);
+                    } else {
+                        JSObjectUtil.defineProxyProperty(target, key, new BoundProperty(source, key, sourceClass), desc.getFlags());
+                    }
+                }
+            }
+            return target;
+        }
+
+        @Specialization(guards = "isJSObject(target)")
+        protected DynamicObject bindProperties(DynamicObject target, Symbol source) {
+            return bindPropertiesDynamicObject(target, toJSObject(source));
+        }
+
+        @Specialization(guards = "isJSObject(target)")
+        protected DynamicObject bindProperties(DynamicObject target, JSLazyString source) {
+            return bindPropertiesDynamicObject(target, toJSObject(source));
+        }
+
+        @Specialization(guards = "isJSObject(target)")
+        protected DynamicObject bindProperties(DynamicObject target, LargeInteger source) {
+            return bindPropertiesDynamicObject(target, toJSObject(source));
+        }
+
+        @Specialization(guards = "isJSObject(target)")
+        protected DynamicObject bindProperties(DynamicObject target, BigInt source) {
+            return bindPropertiesDynamicObject(target, toJSObject(source));
+        }
+
+        @Specialization(guards = {"isJSObject(target)", "!isTruffleObject(source)"})
+        protected DynamicObject bindProperties(DynamicObject target, Object source) {
+            return bindPropertiesDynamicObject(target, toJSObject(source));
+        }
+
+        @Specialization(guards = {"isJSObject(target)", "isForeignObject(source)"}, limit = "3")
+        protected DynamicObject bindProperties(DynamicObject target, Object source,
+                        @CachedLibrary("source") InteropLibrary interop,
+                        @CachedLibrary(limit = "3") InteropLibrary members) {
+            if (interop.hasMembers(source)) {
+                try {
+                    boolean extensible = JSObject.isExtensible(target, targetProfile);
+                    boolean hostObject = getContext().getRealm().getEnv().isHostObject(source);
+                    Object keysObj = interop.getMembers(source);
+                    long size = members.getArraySize(keysObj);
+                    for (int i = 0; i < size; i++) {
+                        Object key = members.readArrayElement(keysObj, i);
+                        String stringKey;
+                        if (key instanceof String) {
+                            stringKey = (String) key;
+                        } else {
+                            stringKey = InteropLibrary.getFactory().getUncached().asString(key);
+                        }
+                        if (!JSObject.hasOwnProperty(target, key, targetProfile)) {
+                            if (!extensible) {
+                                throw Errors.createTypeErrorNotExtensible(target, key);
+                            }
+                            JSObjectUtil.defineProxyProperty(target, key, new ForeignBoundProperty(source, stringKey), JSAttributes.getDefault());
+                        }
+                        if (hostObject) {
+                            // Special handling of bean properties: when there is "getProp",
+                            // "setProp" or "isProp" but not "prop" in the source then define also
+                            // "prop" in the target (unless the target has "prop" already).
+                            String beanProperty;
+                            if (stringKey.length() > 3 && (stringKey.charAt(0) == 's' || stringKey.charAt(0) == 'g') && stringKey.charAt(1) == 'e' && stringKey.charAt(2) == 't' &&
+                                            Boundaries.characterIsUpperCase(stringKey.charAt(3))) {
+                                beanProperty = beanProperty(stringKey, 3);
+                            } else if (stringKey.length() > 2 && stringKey.charAt(0) == 'i' && stringKey.charAt(1) == 's' && Boundaries.characterIsUpperCase(stringKey.charAt(2))) {
+                                beanProperty = beanProperty(stringKey, 2);
+                            } else {
+                                continue;
+                            }
+                            if (!JSObject.hasOwnProperty(target, beanProperty, targetProfile) && !interop.isMemberExisting(source, beanProperty)) {
+                                String getKey = beanAccessor("get", beanProperty);
+                                String getter;
+                                if (interop.isMemberExisting(source, getKey)) {
+                                    getter = getKey;
+                                } else {
+                                    String isKey = beanAccessor("is", beanProperty);
+                                    if (interop.isMemberExisting(source, isKey)) {
+                                        getter = isKey;
+                                    } else {
+                                        getter = null;
+                                    }
+                                }
+                                String setKey = beanAccessor("set", beanProperty);
+                                String setter = interop.isMemberExisting(source, setKey) ? setKey : null;
+                                JSObjectUtil.defineProxyProperty(target, beanProperty, new ForeignBoundBeanProperty(source, getter, setter), JSAttributes.getDefault());
+                            }
+                        }
+                    }
+                } catch (UnsupportedMessageException | InvalidArrayIndexException ex) {
+                }
+            } else {
+                throw Errors.createTypeErrorNotAnObject(target, this);
+            }
+            return target;
+        }
+
+        private UnmodifiableArrayList<? extends Object> enumerableOwnPropertyNames(DynamicObject obj) {
+            if (enumerableOwnPropertyNamesNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                enumerableOwnPropertyNamesNode = insert(EnumerableOwnPropertyNamesNode.createKeys(getContext()));
+            }
+            return enumerableOwnPropertyNamesNode.execute(obj);
+        }
+
+        @TruffleBoundary
+        private static String beanProperty(String accessor, int prefixLength) {
+            char c = accessor.charAt(prefixLength);
+            return Character.toLowerCase(c) + accessor.substring(prefixLength + 1);
+        }
+
+        @TruffleBoundary
+        private static String beanAccessor(String prefix, String beanProperty) {
+            return prefix + Character.toUpperCase(beanProperty.charAt(0)) + beanProperty.substring(1);
+        }
+
+        static class BoundProperty implements PropertyProxy {
+            private final DynamicObject source;
+            private final Object key;
+            private final JSClass sourceClass;
+
+            BoundProperty(DynamicObject source, Object key, JSClass sourceClass) {
+                this.source = source;
+                this.key = key;
+                this.sourceClass = sourceClass;
+            }
+
+            @Override
+            public Object get(DynamicObject store) {
+                return sourceClass.get(source, key);
+            }
+
+            @Override
+            public boolean set(DynamicObject store, Object value) {
+                return sourceClass.set(source, key, value, source, false);
+            }
+
+        }
+
+        static class ForeignBoundProperty implements PropertyProxy {
+            private final Object source;
+            private final String key;
+
+            ForeignBoundProperty(Object source, String key) {
+                this.source = source;
+                this.key = key;
+            }
+
+            @Override
+            public Object get(DynamicObject store) {
+                InteropLibrary library = InteropLibrary.getFactory().getUncached(source);
+                if (library.isMemberReadable(source, key)) {
+                    try {
+                        return JSRuntime.importValue(library.readMember(source, key));
+                    } catch (UnsupportedMessageException | UnknownIdentifierException ex) {
+                    }
+                }
+                return Undefined.instance;
+            }
+
+            @Override
+            public boolean set(DynamicObject store, Object value) {
+                InteropLibrary library = InteropLibrary.getFactory().getUncached(source);
+                if (library.isMemberWritable(source, key)) {
+                    try {
+                        library.writeMember(source, key, JSRuntime.exportValue(value));
+                        return true;
+                    } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException ex) {
+                    }
+                }
+                return false;
+            }
+        }
+
+        static class ForeignBoundBeanProperty implements PropertyProxy {
+            private final Object source;
+            private final String getKey;
+            private final String setKey;
+
+            ForeignBoundBeanProperty(Object source, String getKey, String setKey) {
+                assert getKey != null || setKey != null;
+                this.source = source;
+                this.getKey = getKey;
+                this.setKey = setKey;
+            }
+
+            @Override
+            public Object get(DynamicObject store) {
+                if (getKey != null) {
+                    InteropLibrary library = InteropLibrary.getFactory().getUncached(source);
+                    if (library.isMemberInvocable(source, getKey)) {
+                        try {
+                            return JSRuntime.importValue(library.invokeMember(source, getKey));
+                        } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException ex) {
+                        }
+                    }
+                }
+                return Undefined.instance;
+            }
+
+            @Override
+            public boolean set(DynamicObject store, Object value) {
+                if (setKey != null) {
+                    InteropLibrary library = InteropLibrary.getFactory().getUncached(source);
+                    if (library.isMemberInvocable(source, setKey)) {
+                        try {
+                            library.invokeMember(source, setKey, JSRuntime.exportValue(value));
+                            return true;
+                        } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException ex) {
+                        }
+                    }
+                }
+                return false;
+            }
+        }
+
     }
 
 }
