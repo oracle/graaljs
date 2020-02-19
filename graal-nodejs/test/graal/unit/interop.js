@@ -40,6 +40,7 @@
  */
 
 var assert = require('assert');
+var repl = require('repl');
 var vm = require('vm');
 
 describe('Polyglot', function () {
@@ -49,6 +50,26 @@ describe('Polyglot', function () {
         });
         it('export/import should work in a new context', function () {
             assert.strictEqual(require('vm').runInNewContext("Polyglot.export('obj', { foo: 'bar' }); Polyglot.import('obj').foo"), 'bar');
+        });
+    }
+    if (typeof java === 'object') {
+        it('auto-completion in REPL should work for foreign objects', function () {
+            var theREPL = repl.start('');
+            try {
+                theREPL.complete('java.lang.System.out.pr', function (error, data) {
+                    assert.ifError(error);
+                    assert.deepEqual(data, [
+                        [
+                            'java.lang.System.out.print',
+                            'java.lang.System.out.printf',
+                            'java.lang.System.out.println'
+                        ],
+                        'java.lang.System.out.pr'
+                    ]);
+                });
+            } finally {
+                theREPL.close();
+            }
         });
     }
 });

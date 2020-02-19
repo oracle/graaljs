@@ -124,6 +124,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ControlFlowException;
@@ -924,57 +925,133 @@ public final class GraalJSAccess {
         return name;
     }
 
+    private static String foreignStringToString(Object foreignString) throws UnsupportedMessageException {
+        if (foreignString instanceof String) {
+            return (String) foreignString;
+        } else {
+            return InteropLibrary.getFactory().getUncached(foreignString).asString(foreignString);
+        }
+    }
+
     public Object objectGetOwnPropertyNames(Object object) {
-        DynamicObject dynamicObject = (DynamicObject) object;
-        List<String> names = JSObject.enumerableOwnNames(dynamicObject);
-        Object[] namesArray = names.toArray();
-        convertArrayIndicesToNumbers(namesArray);
-        JSContext context = JSObject.getJSContext(dynamicObject);
-        return JSArray.createConstantObjectArray(context, namesArray);
+        Object[] namesArray;
+        if (JSObject.isJSObject(object)) {
+            DynamicObject dynamicObject = (DynamicObject) object;
+            List<String> names = JSObject.enumerableOwnNames(dynamicObject);
+            namesArray = names.toArray();
+            convertArrayIndicesToNumbers(namesArray);
+        } else {
+            assert JSRuntime.isForeignObject(object);
+            try {
+                List<Object> names = new ArrayList<>();
+                InteropLibrary library = InteropLibrary.getFactory().getUncached(object);
+                if (library.hasMembers(object)) {
+                    Object members = library.getMembers(object);
+                    InteropLibrary membersLibrary = InteropLibrary.getFactory().getUncached(members);
+                    long size = membersLibrary.getArraySize(members);
+                    for (long i = 0; i < size; i++) {
+                        Object key = membersLibrary.readArrayElement(members, i);
+                        names.add(foreignStringToString(key));
+                    }
+                }
+                if (library.hasArrayElements(object)) {
+                    long size = library.getArraySize(object);
+                    for (long i = 0; i < size; i++) {
+                        if (library.isArrayElementExisting(object, i)) {
+                            names.add(JSRuntime.longToIntOrDouble(i));
+                        }
+                    }
+                }
+                namesArray = names.toArray();
+            } catch (UnsupportedMessageException | InvalidArrayIndexException ex) {
+                namesArray = new Object[0];
+            }
+        }
+        return JSArray.createConstantObjectArray(mainJSContext, namesArray);
     }
 
     public Object objectGetPropertyNames(Object object, boolean ownOnly,
                     boolean enumerableOnly, boolean configurableOnly, boolean writableOnly,
                     boolean skipIndices, boolean skipSymbols, boolean skipStrings,
                     boolean keepNumbers) {
-        Set<Object> keys = new LinkedHashSet<>();
-        DynamicObject dynamicObject = (DynamicObject) object;
-        JSContext context = JSObject.getJSContext(dynamicObject);
-        do {
-            JSClass jsclass = JSObject.getJSClass(dynamicObject);
-            Iterable<Object> ownKeys = jsclass.ownPropertyKeys(dynamicObject);
-            for (Object key : ownKeys) {
-                Object keyToStore = key;
-                if (key instanceof String) {
-                    boolean index = JSRuntime.isArrayIndex((String) key);
-                    if (index) {
-                        if (skipIndices) {
-                            continue;
-                        }
-                        if (keepNumbers) {
-                            keyToStore = JSRuntime.stringToNumber((String) key);
+        Object[] propertyNames;
+        if (JSObject.isJSObject(object)) {
+            Set<Object> keys = new LinkedHashSet<>();
+            DynamicObject dynamicObject = (DynamicObject) object;
+            do {
+                JSClass jsclass = JSObject.getJSClass(dynamicObject);
+                Iterable<Object> ownKeys = jsclass.ownPropertyKeys(dynamicObject);
+                for (Object key : ownKeys) {
+                    Object keyToStore = key;
+                    if (key instanceof String) {
+                        boolean index = JSRuntime.isArrayIndex((String) key);
+                        if (index) {
+                            if (skipIndices) {
+                                continue;
+                            }
+                            if (keepNumbers) {
+                                keyToStore = JSRuntime.stringToNumber((String) key);
+                            }
+                        } else {
+                            if (skipStrings) {
+                                continue;
+                            }
                         }
                     } else {
-                        if (skipStrings) {
+                        assert key instanceof Symbol;
+                        if (skipSymbols) {
                             continue;
                         }
                     }
-                } else {
-                    assert key instanceof Symbol;
-                    if (skipSymbols) {
+                    PropertyDescriptor desc = jsclass.getOwnProperty(dynamicObject, key);
+                    if ((enumerableOnly && (desc == null || !desc.getEnumerable())) || (configurableOnly && (desc == null || !desc.getConfigurable())) ||
+                                    (writableOnly && (desc == null || !desc.getWritable()))) {
                         continue;
                     }
+                    keys.add(keyToStore);
                 }
-                PropertyDescriptor desc = jsclass.getOwnProperty(dynamicObject, key);
-                if ((enumerableOnly && (desc == null || !desc.getEnumerable())) || (configurableOnly && (desc == null || !desc.getConfigurable())) ||
-                                (writableOnly && (desc == null || !desc.getWritable()))) {
-                    continue;
+                dynamicObject = JSObject.getPrototype(dynamicObject);
+            } while (!ownOnly && dynamicObject != Null.instance);
+            propertyNames = keys.toArray();
+        } else {
+            assert JSRuntime.isForeignObject(object);
+            try {
+                List<Object> keys = new ArrayList<>();
+                InteropLibrary library = InteropLibrary.getFactory().getUncached(object);
+                if (!skipStrings && library.hasMembers(object)) {
+                    Object members = library.getMembers(object);
+                    InteropLibrary membersLibrary = InteropLibrary.getFactory().getUncached(members);
+                    long size = membersLibrary.getArraySize(members);
+                    for (long i = 0; i < size; i++) {
+                        Object key = membersLibrary.readArrayElement(members, i);
+                        String stringKey = foreignStringToString(key);
+                        if (!writableOnly || library.isMemberWritable(object, stringKey)) {
+                            keys.add(stringKey);
+                        }
+                    }
                 }
-                keys.add(keyToStore);
+                if (!skipIndices && library.hasArrayElements(object)) {
+                    long size = library.getArraySize(object);
+                    for (long i = 0; i < size; i++) {
+                        if (library.isArrayElementExisting(object, i)) {
+                            Object key;
+                            if (keepNumbers) {
+                                key = JSRuntime.longToIntOrDouble(i);
+                            } else {
+                                key = String.valueOf(i);
+                            }
+                            if (!writableOnly || library.isArrayElementWritable(object, i)) {
+                                keys.add(key);
+                            }
+                        }
+                    }
+                }
+                propertyNames = keys.toArray();
+            } catch (UnsupportedMessageException | InvalidArrayIndexException ex) {
+                propertyNames = new Object[0];
             }
-            dynamicObject = JSObject.getPrototype(dynamicObject);
-        } while (!ownOnly && dynamicObject != Null.instance);
-        return JSArray.createConstantObjectArray(context, keys.toArray());
+        }
+        return JSArray.createConstantObjectArray(mainJSContext, propertyNames);
     }
 
     private void convertArrayIndicesToNumbers(Object[] namesArray) {
