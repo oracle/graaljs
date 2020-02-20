@@ -352,7 +352,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         return create(context, SparseArray.createSparseArray(), SparseArray.createArrayMap(), length);
     }
 
-    public static DynamicObject createLazyRegexArray(JSContext context, int length, Object regexResult, String input, DynamicObject groups) {
+    public static DynamicObject createLazyRegexArray(JSContext context, int length, Object regexResult, String input, DynamicObject groups, DynamicObject indicesGroups) {
         assert JSRuntime.isRepresentableAsUnsignedInt(length);
         ScriptArray arrayType = LazyRegexResultArray.createLazyRegexResultArray();
         Object array = new Object[length];
@@ -362,13 +362,13 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         int arrayOffset = 0;
         int holeCount = 0;
         JSObjectFactory factory = context.getLazyRegexArrayFactory();
-        DynamicObject indices = createLazyRegexIndicesArray(context, length, regexResult);
+        DynamicObject indices = createLazyRegexIndicesArray(context, length, regexResult, indicesGroups);
         DynamicObject obj = JSObject.create(context, factory, array, arrayType, site, length, usedLength, indexOffset, arrayOffset, holeCount, regexResult, input, input, groups, indices);
         assert isJSArray(obj);
         return obj;
     }
 
-    private static DynamicObject createLazyRegexIndicesArray(JSContext context, int length, Object regexResult) {
+    private static DynamicObject createLazyRegexIndicesArray(JSContext context, int length, Object regexResult, DynamicObject indicesGroups) {
         assert JSRuntime.isRepresentableAsUnsignedInt(length);
         ScriptArray arrayType = LazyRegexResultIndicesArray.createLazyRegexResultIndicesArray();
         Object array = new Object[length];
@@ -378,7 +378,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         int arrayOffset = 0;
         int holeCount = 0;
         JSObjectFactory factory = context.getLazyRegexIndicesArrayFactory();
-        DynamicObject arrayObject = JSObject.create(context, factory, array, arrayType, site, length, usedLength, indexOffset, arrayOffset, holeCount, regexResult);
+        DynamicObject arrayObject = JSObject.create(context, factory, array, arrayType, site, length, usedLength, indexOffset, arrayOffset, holeCount, regexResult, indicesGroups);
         return arrayObject;
     }
 

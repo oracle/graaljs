@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,20 +40,20 @@
  */
 package com.oracle.truffle.js.runtime.array.dyn;
 
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArray;
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayType;
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetLength;
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetRegexResult;
+
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.Constants;
-
-import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArray;
-import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayType;
-import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetLength;
-import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetRegexResult;
 
 public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
 
@@ -71,31 +71,33 @@ public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
         return (Object[]) arrayGetArray(object, condition);
     }
 
-    // FIXME: is it needed to be static?
     public static Object materializeGroup(TRegexUtil.TRegexResultAccessor resultAccessor, DynamicObject object, int index, boolean condition) {
         Object[] internalArray = getArray(object, condition);
         if (internalArray[index] == null) {
-            final int beginIndex = resultAccessor.captureGroupStart(arrayGetRegexResult(object, condition), index);
-            if (beginIndex == Constants.CAPTURE_GROUP_NO_MATCH) {
-                assert index > 0;
-                return Undefined.instance;
-            }
-            int[] intArray = new int[]{beginIndex,
-                            resultAccessor.captureGroupEnd(arrayGetRegexResult(object, condition), index)};
-            DynamicObject matchArray = JSArray.createConstantIntArray(JavaScriptLanguage.getCurrentJSRealm().getContext(), intArray);
-            internalArray[index] = matchArray;
+            internalArray[index] = getIntIndicesArray(resultAccessor, arrayGetRegexResult(object, condition), index);
         }
         return internalArray[index];
     }
 
+    public static Object getIntIndicesArray(TRegexUtil.TRegexResultAccessor resultAccessor, Object regexResult, int index) {
+        final int beginIndex = resultAccessor.captureGroupStart(regexResult, index);
+        if (beginIndex == Constants.CAPTURE_GROUP_NO_MATCH) {
+            assert index > 0;
+            return Undefined.instance;
+        }
+        int[] intArray = new int[]{beginIndex, resultAccessor.captureGroupEnd(regexResult, index)};
+        return JSArray.createConstantIntArray(JavaScriptLanguage.getCurrentJSRealm().getContext(), intArray);
+    }
+
     public ScriptArray createWritable(TRegexUtil.TRegexResultAccessor resultAccessor, DynamicObject object, long index, Object value, boolean condition) {
-        boolean lrraCondition = condition && arrayGetArrayType(object, condition) instanceof LazyRegexResultIndicesArray;
+        boolean arrayTypeCondition = condition && arrayGetArrayType(object, condition) instanceof LazyRegexResultIndicesArray;
         for (int i = 0; i < lengthInt(object); i++) {
-            materializeGroup(resultAccessor, object, i, lrraCondition);
+            materializeGroup(resultAccessor, object, i, arrayTypeCondition);
         }
         final Object[] internalArray = getArray(object, condition);
         AbstractObjectArray newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, internalArray.length, internalArray.length, internalArray, integrityLevel);
-        if (JSTruffleOptions.TraceArrayTransitions) {
+        if (JSConfig.TraceArrayTransitions) {
+
             traceArrayTransition(this, newArray, index, value);
         }
         return newArray;
@@ -103,21 +105,8 @@ public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
 
     @Override
     public Object getElementInBounds(DynamicObject object, int index, boolean condition) {
-        boolean lrraCondition = condition && arrayGetArrayType(object, condition) instanceof LazyRegexResultIndicesArray;
-        final Object[] internalArray = getArray(object, condition);
-        if (internalArray[index] == null) {
-            TRegexUtil.TRegexResultAccessor resultAccessor = TRegexUtil.TRegexResultAccessor.getUncached();
-            final int beginIndex = resultAccessor.captureGroupStart(arrayGetRegexResult(object, lrraCondition), index);
-            if (beginIndex == Constants.CAPTURE_GROUP_NO_MATCH) {
-                assert index > 0;
-                return Undefined.instance;
-            }
-            int[] intArray = new int[]{beginIndex,
-                            resultAccessor.captureGroupEnd(arrayGetRegexResult(object, lrraCondition), index)};
-            DynamicObject matchArray = JSArray.createConstantIntArray(JavaScriptLanguage.getCurrentJSRealm().getContext(), intArray);
-            internalArray[index] = matchArray;
-        }
-        return internalArray[index];
+        boolean arrayTypeCondition = condition && arrayGetArrayType(object, condition) instanceof LazyRegexResultIndicesArray;
+        return materializeGroup(TRegexUtil.TRegexResultAccessor.getUncached(), object, index, arrayTypeCondition);
     }
 
     @Override
@@ -135,7 +124,7 @@ public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
         Object[] array = materializeFull(TRegexUtil.TRegexResultAccessor.getUncached(), object, lengthInt(object, condition));
         AbstractObjectArray newArray;
         newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, array.length, array.length, array, integrityLevel);
-        if (JSTruffleOptions.TraceArrayTransitions) {
+        if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
         }
         return newArray;
@@ -188,16 +177,10 @@ public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
 
     protected static Object[] materializeFull(TRegexUtil.TRegexResultAccessor resultAccessor, DynamicObject object, int groupCount) {
         Object[] result = new Object[groupCount];
-        // is this check actually needed?
         boolean condition = arrayGetArrayType(object) instanceof LazyRegexResultIndicesArray;
         for (int i = 0; i < groupCount; ++i) {
             result[i] = materializeGroup(resultAccessor, object, i, condition);
         }
-// FIXME: is it possible to do like this? It would prevent creating new array but may be unsafe
-// for (int i = 0; i < groupCount; ++i) {
-// materializeGroup(resultAccessor, object, i, condition);
-// }
-// return getArray(object, condition);
         return result;
     }
 
