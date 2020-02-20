@@ -1,4 +1,4 @@
-# GraalVM JavaScript Options
+# Options
 
 GraalVM JavaScript can be configured with several options provided when starting the engine.
 Additional options control the behaviour of the `js` binary launcher.

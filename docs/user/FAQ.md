@@ -1,4 +1,4 @@
-# GraalVM JavaScript Frequently Asked Questions
+# Frequently Asked Questions
 
 This file lists frequently asked questions and answers around GraalVM JavaScript.
 

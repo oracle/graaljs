@@ -1,4 +1,4 @@
-# GraalVM JavaScript Node.js Runtime
+# Node.js Runtime
 
 GraalVM can run unmodified Node.js applications.
 Applications can freely import and use Npm packages, including native ones.

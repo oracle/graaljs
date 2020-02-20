@@ -1,4 +1,4 @@
-# GraalVM JavaScript to Java Interoperability
+# Java Interoperability
 
 GraalVM JavaScript is a JavaScript (ECMAScript) language execution runtime.
 It allows interoperability with Java code.

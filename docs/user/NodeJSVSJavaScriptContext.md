@@ -1,4 +1,4 @@
-# Differences Between Node.js and Java Embeddings in GraalVM JavaScript
+# Differences Between Node.js and Java Embeddings
 
 GraalVM's JavaScript engine is a fully-compliant ECMA2020 language runtime.
 As such, it can run JavaScript code in a variety of embedding scenarios, including the Oracle [RDBMS](https://www.graalvm.org/docs/examples/mle-oracle/), any Java-based application, and Node.js.
