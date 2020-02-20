@@ -1926,7 +1926,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private Object builtinSearch(Object thisObj, Object regex) {
             String thisStr = toString(thisObj);
             Object cRe = getCompileRegexNode().compile(regex == Undefined.instance ? "" : toString(regex));
-            DynamicObject regExp = getCreateRegExpNode().execute(cRe);
+            DynamicObject regExp = getCreateRegExpNode().createRegExp(cRe);
             return invoke(regExp, Symbol.SYMBOL_SEARCH, thisStr);
         }
 
@@ -2062,7 +2062,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private Object builtinMatch(Object thisObj, Object regex) {
             String thisStr = toString(thisObj);
             Object cRe = getCompileRegexNode().compile(regex == Undefined.instance ? "" : toString(regex), matchAll ? "g" : "");
-            DynamicObject regExp = getCreateRegExpNode().execute(cRe);
+            DynamicObject regExp = getCreateRegExpNode().createRegExp(cRe);
             return invoke(regExp, matchSymbol(), thisStr);
         }
 

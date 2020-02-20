@@ -91,6 +91,10 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     private static final Property COMPILED_REGEX_PROPERTY;
     private static final HiddenKey GROUPS_FACTORY_ID = new HiddenKey("groupsFactory");
     private static final Property GROUPS_FACTORY_PROPERTY;
+    private static final HiddenKey REALM_ID = new HiddenKey("realm");
+    private static final Property REALM_PROPERTY;
+    private static final HiddenKey LEGACY_FEATURES_ENABLED_ID = new HiddenKey("legacyFeaturesEnabled");
+    private static final Property LEGACY_FEATURES_ENABLED_PROPERTY;
 
     private static final Property LAZY_INDEX_PROXY = JSObjectUtil.makeProxyProperty(INDEX, new LazyRegexResultIndexProxyProperty(), JSAttributes.getDefault());
 
@@ -156,6 +160,9 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         regExpAllocator.addLocation(JSObject.PROTO_PROPERTY.getLocation());
         COMPILED_REGEX_PROPERTY = JSObjectUtil.makeHiddenProperty(COMPILED_REGEX_ID, regExpAllocator.locationForType(Object.class, EnumSet.of(LocationModifier.NonNull)));
         GROUPS_FACTORY_PROPERTY = JSObjectUtil.makeHiddenProperty(GROUPS_FACTORY_ID, regExpAllocator.locationForType(JSObjectFactory.class));
+        REALM_PROPERTY = JSObjectUtil.makeHiddenProperty(REALM_ID, regExpAllocator.locationForType(JSRealm.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
+        LEGACY_FEATURES_ENABLED_PROPERTY = JSObjectUtil.makeHiddenProperty(LEGACY_FEATURES_ENABLED_ID,
+                        regExpAllocator.locationForType(boolean.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
 
         Shape.Allocator resultAllocator = JSShape.makeAllocator(JSObject.LAYOUT);
         GROUPS_RESULT_PROPERTY = JSObjectUtil.makeHiddenProperty(GROUPS_RESULT_ID, resultAllocator.locationForType(Object.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
@@ -186,6 +193,26 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         return (JSObjectFactory) GROUPS_FACTORY_PROPERTY.get(thisObj, guard);
     }
 
+    public static Object getRealm(DynamicObject thisObj) {
+        assert isJSRegExp(thisObj);
+        return REALM_PROPERTY.get(thisObj, isJSRegExp(thisObj));
+    }
+
+    public static Object getRealmUnchecked(DynamicObject thisObj, boolean guard) {
+        assert isJSRegExp(thisObj);
+        return REALM_PROPERTY.get(thisObj, guard);
+    }
+
+    public static boolean getLegacyFeaturesEnabled(DynamicObject thisObj) {
+        assert isJSRegExp(thisObj);
+        return (boolean) LEGACY_FEATURES_ENABLED_PROPERTY.get(thisObj, isJSRegExp(thisObj));
+    }
+
+    public static boolean getLegacyFeaturesEnabledUnchecked(DynamicObject thisObj, boolean guard) {
+        assert isJSRegExp(thisObj);
+        return (boolean) LEGACY_FEATURES_ENABLED_PROPERTY.get(thisObj, guard);
+    }
+
     /**
      * Creates a new JavaScript RegExp object (with a {@code lastIndex} of 0).
      * <p>
@@ -204,8 +231,15 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
      * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
      */
     public static DynamicObject create(JSContext ctx, Object compiledRegex, JSObjectFactory groupsFactory) {
-        // (compiledRegex, groupsFactory)
-        DynamicObject regExp = JSObject.create(ctx, ctx.getRegExpFactory(), compiledRegex, groupsFactory);
+        return create(ctx, compiledRegex, groupsFactory, true);
+    }
+
+    /**
+     * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
+     */
+    public static DynamicObject create(JSContext ctx, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
+        // (compiledRegex, groupsFactory, realm, legacyFeaturesEnabled)
+        DynamicObject regExp = JSObject.create(ctx, ctx.getRegExpFactory(), compiledRegex, groupsFactory, ctx.getRealm(), legacyFeaturesEnabled);
         assert isJSRegExp(regExp);
         return regExp;
     }
@@ -313,7 +347,9 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         // @formatter:off
         return JSObjectUtil.getProtoChildShape(thisObj, INSTANCE, ctx).
                         addProperty(COMPILED_REGEX_PROPERTY).
-                        addProperty(GROUPS_FACTORY_PROPERTY);
+                        addProperty(GROUPS_FACTORY_PROPERTY).
+                        addProperty(REALM_PROPERTY).
+                        addProperty(LEGACY_FEATURES_ENABLED_PROPERTY);
         // @formatter:on
     }
 

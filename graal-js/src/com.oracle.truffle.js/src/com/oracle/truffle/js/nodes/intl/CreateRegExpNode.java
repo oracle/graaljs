@@ -65,19 +65,27 @@ public abstract class CreateRegExpNode extends JavaScriptBaseNode {
         return CreateRegExpNodeGen.create(context);
     }
 
-    public abstract DynamicObject execute(Object compiledRegex);
+    public DynamicObject createRegExp(Object compiledRegex) {
+        return createRegExp(compiledRegex, true);
+    }
+
+    public DynamicObject createRegExp(Object compiledRegex, boolean legacyFeaturesEnabled) {
+        return execute(compiledRegex, legacyFeaturesEnabled);
+    }
+
+    protected abstract DynamicObject execute(Object compiledRegex, boolean legacyFeaturesEnabled);
 
     @Specialization(guards = {"!hasNamedCG(compiledRegex)"})
-    protected DynamicObject createWithoutNamedCG(Object compiledRegex) {
-        DynamicObject reObj = JSRegExp.create(context, compiledRegex, null);
+    protected DynamicObject createWithoutNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled) {
+        DynamicObject reObj = JSRegExp.create(context, compiledRegex, null, legacyFeaturesEnabled);
         setLastIndex.setValueInt(reObj, 0);
         return reObj;
     }
 
     @Specialization(guards = {"hasNamedCG(compiledRegex)"})
-    protected DynamicObject createWithNamedCG(Object compiledRegex) {
+    protected DynamicObject createWithNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled) {
         Object namedCaptureGroups = readNamedCG.execute(compiledRegex, TRegexUtil.Props.CompiledRegex.GROUPS);
-        DynamicObject reObj = JSRegExp.create(context, compiledRegex, JSRegExp.buildGroupsFactory(context, namedCaptureGroups));
+        DynamicObject reObj = JSRegExp.create(context, compiledRegex, JSRegExp.buildGroupsFactory(context, namedCaptureGroups), legacyFeaturesEnabled);
         setLastIndex.setValueInt(reObj, 0);
         return reObj;
     }

@@ -93,7 +93,7 @@ public class RegExpLiteralNode extends JavaScriptNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             regex = RegexCompilerInterface.compile(pattern, flags, context, getCompileRegExpNode());
         }
-        return getCreateRegExpNode().execute(regex);
+        return getCreateRegExpNode().createRegExp(regex);
     }
 
     private CompileRegexNode getCompileRegExpNode() {
