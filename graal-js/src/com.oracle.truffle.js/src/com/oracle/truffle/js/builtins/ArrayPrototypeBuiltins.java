@@ -64,6 +64,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -870,15 +871,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected Object pop(Object thisObj,
                         @Cached("create(getContext())") DeleteAndSetLengthNode deleteAndSetLength,
-                        @Cached("createBinaryProfile()") ConditionProfile lengthIsZero,
-                        @Cached("createBinaryProfile()") ConditionProfile indexInIntRangeCondition) {
+                        @Cached("createBinaryProfile()") ConditionProfile lengthIsZero) {
             final Object thisObject = toObject(thisObj);
             final long length = getLength(thisObject);
             if (lengthIsZero.profile(length > 0)) {
                 long newLength = length - 1;
-                Object boxedIndex = JSRuntime.boxIndex(newLength, indexInIntRangeCondition);
                 Object result = read(thisObject, newLength);
-                deleteAndSetLength.execute(thisObject, boxedIndex);
+                deleteAndSetLength.executeVoid(thisObject, newLength);
                 return result;
             } else {
                 assert length == 0;
@@ -888,7 +887,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    @ImportStatic(JSGuards.class)
+    @ImportStatic(JSRuntime.class)
     protected abstract static class DeleteAndSetLengthNode extends JavaScriptBaseNode {
         protected static final boolean THROW_ERROR = true;  // DeletePropertyOrThrow
 
@@ -902,7 +901,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return DeleteAndSetLengthNodeGen.create(context);
         }
 
-        public abstract Object execute(Object target, Object value);
+        public abstract void executeVoid(Object target, long newLength);
 
         protected final WritePropertyNode createWritePropertyNode() {
             return WritePropertyNode.create(null, JSArray.LENGTH, null, context, THROW_ERROR);
@@ -913,43 +912,44 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return JSArray.isJSFastArray(object);
         }
 
-        @Specialization(guards = "isArray(object)")
-        protected static int setArrayLength(DynamicObject object, int length,
+        @Specialization(guards = {"isArray(object)", "longIsRepresentableAsInt(longLength)"})
+        protected static void setArrayLength(DynamicObject object, long longLength,
                         @Cached("createArrayLengthWriteNode()") ArrayLengthWriteNode arrayLengthWriteNode) {
-            arrayLengthWriteNode.executeVoid(object, length, isArray(object));
-            return length;
+            arrayLengthWriteNode.executeVoid(object, (int) longLength, isArray(object));
         }
 
         protected static final ArrayLengthWriteNode createArrayLengthWriteNode() {
             return ArrayLengthWriteNode.createSetOrDelete(THROW_ERROR);
         }
 
-        @Specialization
-        protected static int setIntLength(DynamicObject object, int length,
+        @Specialization(guards = {"isJSObject(object)", "longIsRepresentableAsInt(longLength)"})
+        protected static void setIntLength(DynamicObject object, long longLength,
                         @Cached("create(THROW_ERROR, context)") DeletePropertyNode deletePropertyNode,
                         @Cached("createWritePropertyNode()") WritePropertyNode setLengthProperty) {
-            deletePropertyNode.executeEvaluated(object, length);
-            setLengthProperty.executeIntWithValue(object, length);
-            return length;
+            int intLength = (int) longLength;
+            deletePropertyNode.executeEvaluated(object, intLength);
+            setLengthProperty.executeIntWithValue(object, intLength);
         }
 
-        @Specialization(replaces = "setIntLength")
-        protected static Object setLength(DynamicObject object, Object length,
+        @Specialization(guards = {"isJSObject(object)"}, replaces = "setIntLength")
+        protected static void setLength(DynamicObject object, long longLength,
                         @Cached("create(THROW_ERROR, context)") DeletePropertyNode deletePropertyNode,
-                        @Cached("createWritePropertyNode()") WritePropertyNode setLengthProperty) {
-            deletePropertyNode.executeEvaluated(object, length);
-            setLengthProperty.executeWithValue(object, length);
-            return length;
+                        @Cached("createWritePropertyNode()") WritePropertyNode setLengthProperty,
+                        @Cached("createBinaryProfile()") ConditionProfile indexInIntRangeCondition) {
+            Object boxedLength = JSRuntime.boxIndex(longLength, indexInIntRangeCondition);
+            deletePropertyNode.executeEvaluated(object, boxedLength);
+            setLengthProperty.executeWithValue(object, boxedLength);
         }
 
-        @Specialization(guards = "!isDynamicObject(object)")
-        protected static Object setLength(Object object, Object length,
-                        @Cached("create(THROW_ERROR, context)") DeletePropertyNode deletePropertyNode) {
-            deletePropertyNode.executeEvaluated(object, length);
-            // No SET_SIZE in interop
-            return length;
+        @Specialization(guards = {"!isJSObject(object)"})
+        protected static void foreignArray(Object object, long newLength,
+                        @CachedLibrary(limit = "3") InteropLibrary arrays) {
+            try {
+                arrays.removeArrayElement(object, newLength);
+            } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+                throw Errors.createTypeErrorInteropException(object, e, "removeArrayElement", null);
+            }
         }
-
     }
 
     public abstract static class JSArraySliceNode extends ArrayForEachIndexCallOperation {
