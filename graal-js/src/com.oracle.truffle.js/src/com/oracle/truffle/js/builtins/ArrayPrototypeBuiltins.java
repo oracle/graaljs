@@ -1099,7 +1099,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        @Specialization(guards = "!isJSArray(thisObj)")
+        @Specialization(guards = {"!isJSArray(thisObj)", "!isForeignObject(thisObj)"})
         protected Object shiftGeneric(Object thisObj,
                         @Shared("deleteProperty") @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deleteNode,
                         @Shared("lengthIsZero") @Cached("createBinaryProfile()") ConditionProfile lengthIsZero) {
@@ -1122,6 +1122,28 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             deleteNode.executeEvaluated(thisJSObj, len - 1);
             setLength(thisJSObj, len - 1);
             return firstObj;
+        }
+
+        @Specialization(guards = {"isForeignObject(thisObj)"})
+        protected Object shiftForeign(Object thisObj,
+                        @CachedLibrary(limit = "3") InteropLibrary arrays,
+                        @Shared("lengthIsZero") @Cached("createBinaryProfile()") ConditionProfile lengthIsZero) {
+            long len = JSInteropUtil.getArraySize(thisObj, arrays, this);
+            if (lengthIsZero.profile(len == 0)) {
+                return Undefined.instance;
+            }
+
+            try {
+                Object firstObj = arrays.readArrayElement(thisObj, 0);
+                for (long i = 1; i < len; i++) {
+                    Object val = arrays.readArrayElement(thisObj, i);
+                    arrays.writeArrayElement(thisObj, i - 1, val);
+                }
+                arrays.removeArrayElement(thisObj, len - 1);
+                return firstObj;
+            } catch (UnsupportedMessageException | InvalidArrayIndexException | UnsupportedTypeException e) {
+                throw Errors.createTypeErrorInteropException(thisObj, e, "shift", this);
+            }
         }
     }
 
