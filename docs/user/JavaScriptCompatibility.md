@@ -1,4 +1,4 @@
-# GraalVM JavaScript Language Compatibility
+# JavaScript Compatibility
 
 GraalVM JavaScript is a JavaScript (ECMAScript) language execution runtime.
 This document explains the public API it provides to user applications written in JavaScript.

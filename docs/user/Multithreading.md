@@ -1,4 +1,4 @@
-# Multithreading in GraalVM JavaScript
+# Multithreading
 
 GraalVM JavaScript supports multithreading.
 Depending on the usage scenario, threads can be used to execute parallel JavaScript code using multiple [`Context`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html) objects, or multiple [Worker](https://nodejs.org/api/worker_threads.html) threads.
