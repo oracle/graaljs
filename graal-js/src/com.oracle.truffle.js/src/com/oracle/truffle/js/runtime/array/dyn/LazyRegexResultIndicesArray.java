@@ -97,7 +97,6 @@ public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
         final Object[] internalArray = getArray(object, condition);
         AbstractObjectArray newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, internalArray.length, internalArray.length, internalArray, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
-
             traceArrayTransition(this, newArray, index, value);
         }
         return newArray;
