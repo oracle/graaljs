@@ -7,6 +7,8 @@ The main focus is on user-observable behavior of the engine.
 * Implemented the [Intl.DateTimeFormat dateStyle & timeStyle](https://github.com/tc39/proposal-intl-datetime-style) proposal.
 * Implemented support for `export * as ns from "mod"`. It is available in ECMAScript 2020 mode (`--js.ecmascript-version=2020`).
 * Implemented Nashorn extension `Object.bindProperties()`. It is available in Nashorn compatibility mode (`--js.nashorn-compat`).
+* Changed `Polyglot.eval[File]` to propagate syntax errors from the source language.
+* Changed `Polyglot.import` to return `undefined` for missing polyglot bindings.
 
 ## Version 20.0.0
 * Implemented support for public and private class fields, both instance and static (based on the [class fields](https://github.com/tc39/proposal-class-fields) and [static class features](https://github.com/tc39/proposal-static-class-features) proposals). This feature is available by default in Node.js and can be enabled using the experimental option `js.class-fields`.
