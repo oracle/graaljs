@@ -61,6 +61,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
@@ -303,7 +304,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             try {
                 return importValueNode.executeWithTarget(interop.readMember(polyglotBindings, identifier));
             } catch (UnknownIdentifierException e) {
-                throw Errors.createReferenceErrorNotDefined(getContext(), identifier, this);
+                return Undefined.instance;
             } catch (UnsupportedMessageException e) {
                 throw Errors.createTypeErrorInteropException(polyglotBindings, e, "readMember", identifier, this);
             }
@@ -768,30 +769,30 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @TruffleBoundary
         protected Object evalCachedLanguage(String language, String source,
                         @Cached("language") String cachedLanguage,
-                        @Cached("getLanguageIdAndMimeType(language)") Pair<String, String> languagePair) {
-            return evalStringIntl(source, languagePair.getFirst(), languagePair.getSecond());
+                        @Cached("getLanguageIdAndMimeType(language)") Pair<String, String> languagePair,
+                        @Cached @Shared("callNode") IndirectCallNode callNode) {
+            return callNode.call(evalStringIntl(source, languagePair.getFirst(), languagePair.getSecond()));
         }
 
         @Specialization(replaces = "evalCachedLanguage")
         @TruffleBoundary
-        protected Object evalString(String language, String source) {
+        protected Object evalString(String language, String source,
+                        @Cached @Shared("callNode") IndirectCallNode callNode) {
             Pair<String, String> pair = getLanguageIdAndMimeType(language);
-            return evalStringIntl(source, pair.getFirst(), pair.getSecond());
+            return callNode.call(evalStringIntl(source, pair.getFirst(), pair.getSecond()));
         }
 
-        private Object evalStringIntl(String sourceText, String languageId, String mimeType) {
+        private CallTarget evalStringIntl(String sourceText, String languageId, String mimeType) {
             CompilerAsserts.neverPartOfCompilation();
             getContext().checkEvalAllowed();
             Source source = Source.newBuilder(languageId, sourceText, Evaluator.EVAL_SOURCE_NAME).mimeType(mimeType).build();
 
-            CallTarget callTarget;
+            TruffleLanguage.Env env = getContext().getRealm().getEnv();
             try {
-                callTarget = getContext().getRealm().getEnv().parsePublic(source);
-            } catch (Exception e) {
-                throw Errors.createErrorFromException(e);
+                return env.parsePublic(source);
+            } catch (IllegalStateException ex) {
+                throw Errors.createErrorFromException(ex);
             }
-
-            return callTarget.call();
         }
 
         @SuppressWarnings("unused")
@@ -812,18 +813,20 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @TruffleBoundary
         protected Object evalFileCachedLanguage(String language, String file,
                         @Cached("language") String cachedLanguage,
-                        @Cached("getLanguageIdAndMimeType(language)") Pair<String, String> languagePair) {
-            return evalFileIntl(file, languagePair.getFirst(), languagePair.getSecond());
+                        @Cached("getLanguageIdAndMimeType(language)") Pair<String, String> languagePair,
+                        @Cached @Shared("callNode") IndirectCallNode callNode) {
+            return callNode.call(evalFileIntl(file, languagePair.getFirst(), languagePair.getSecond()));
         }
 
         @Specialization(replaces = "evalFileCachedLanguage")
         @TruffleBoundary
-        protected Object evalFileString(String language, String file) {
+        protected Object evalFileString(String language, String file,
+                        @Cached @Shared("callNode") IndirectCallNode callNode) {
             Pair<String, String> pair = getLanguageIdAndMimeType(language);
-            return evalFileIntl(file, pair.getFirst(), pair.getSecond());
+            return callNode.call(evalFileIntl(file, pair.getFirst(), pair.getSecond()));
         }
 
-        private Object evalFileIntl(String fileName, String languageId, String mimeType) {
+        private CallTarget evalFileIntl(String fileName, String languageId, String mimeType) {
             CompilerAsserts.neverPartOfCompilation();
             TruffleLanguage.Env env = getContext().getRealm().getEnv();
             Source source;
@@ -837,14 +840,11 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                 throw Errors.createError("Cannot evaluate file: " + e.getMessage());
             }
 
-            CallTarget callTarget;
             try {
-                callTarget = env.parsePublic(source);
-            } catch (Exception e) {
-                throw Errors.createErrorFromException(e);
+                return env.parsePublic(source);
+            } catch (IllegalStateException ex) {
+                throw Errors.createErrorFromException(ex);
             }
-
-            return callTarget.call();
         }
 
         @SuppressWarnings("unused")
