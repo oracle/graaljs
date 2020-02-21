@@ -625,26 +625,31 @@ public abstract class JSClass extends ObjectType {
     static Object readArrayElement(DynamicObject target, long index,
                     @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
                     @Cached(value = "create(languageRef.get().getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
-                    @Shared("exportValue") @Cached ExportValueNode exportNode) throws InvalidArrayIndexException, UnsupportedMessageException {
+                    @Shared("exportValue") @Cached ExportValueNode exportNode,
+                    @CachedLibrary("target") InteropLibrary thisLibrary) throws InvalidArrayIndexException, UnsupportedMessageException {
         if (!hasArrayElements(target)) {
             throw UnsupportedMessageException.create();
         }
+        if (index < 0 || index >= thisLibrary.getArraySize(target)) {
+            throw InvalidArrayIndexException.create(index);
+        }
         Object result;
         if (readNode == null) {
-            result = JSObject.getOrDefault(target, index, target, null, JSClassProfile.getUncached());
+            result = JSObject.getOrDefault(target, index, target, Undefined.instance, JSClassProfile.getUncached());
         } else {
-            result = readNode.executeWithTargetAndIndexOrDefault(target, index, null);
-        }
-        if (result == null) {
-            throw InvalidArrayIndexException.create(index);
+            result = readNode.executeWithTargetAndIndexOrDefault(target, index, Undefined.instance);
         }
         return exportNode.execute(result);
     }
 
     @ExportMessage
     static boolean isArrayElementReadable(DynamicObject target, long index,
-                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
-        return hasArrayElements(target) && keyInfo.execute(target, index, KeyInfoNode.READABLE);
+                    @CachedLibrary("target") InteropLibrary thisLibrary) {
+        try {
+            return hasArrayElements(target) && (index >= 0 && index < thisLibrary.getArraySize(target));
+        } catch (UnsupportedMessageException e) {
+            throw Errors.shouldNotReachHere(e);
+        }
     }
 
     @ExportMessage

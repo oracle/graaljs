@@ -184,6 +184,26 @@ public class InteropArrayTest {
         }
     }
 
+    /**
+     * Test that holes in JS arrays are readable and writable (i.e. getArrayElement and
+     * setArrayElement work on them, respectively).
+     */
+    @Test
+    public void testArrayHoles() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Value array = context.eval(ID, "[3,,,5]");
+            assertEquals(4, array.getArraySize());
+            assertEquals(3, array.getArrayElement(0).asInt());
+            assertEquals(5, array.getArrayElement(3).asInt());
+            assertTrue(array.getArrayElement(1).isNull());
+            assertTrue(array.getArrayElement(2).isNull());
+            array.setArrayElement(1, 4);
+            array.setArrayElement(2, 1);
+            assertEquals(4, array.getArrayElement(1).asInt());
+            assertEquals(1, array.getArrayElement(2).asInt());
+        }
+    }
+
     private static final int[] JAVA_ARRAY = new int[]{3, 4, 1, 5};
     private static final List<Integer> JAVA_LIST = Arrays.stream(JAVA_ARRAY).boxed().collect(Collectors.toList());
     private static final String JS_ARRAY_STRING = Arrays.toString(JAVA_ARRAY);
