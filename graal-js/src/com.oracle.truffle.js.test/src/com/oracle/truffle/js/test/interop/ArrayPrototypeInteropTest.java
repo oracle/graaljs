@@ -157,6 +157,70 @@ public class ArrayPrototypeInteropTest {
                         4);
     }
 
+    @Test
+    public void testReverse() {
+        testWithArray("Array.prototype.reverse.call(a)",
+                        Arrays.asList(10, 20, 30, 40, 50),
+                        Arrays.asList(50, 40, 30, 20, 10),
+                        Arrays.asList(50, 40, 30, 20, 10));
+    }
+
+    @Test
+    public void testSort() {
+        testWithArray("Array.prototype.sort.call(a)",
+                        Arrays.asList(50, 40, 30, 20, 10),
+                        Arrays.asList(10, 20, 30, 40, 50),
+                        Arrays.asList(10, 20, 30, 40, 50));
+        testWithArray("Array.prototype.sort.call(a, (x, y) => y - x)",
+                        Arrays.asList(10, 20, 30, 40, 50),
+                        Arrays.asList(50, 40, 30, 20, 10),
+                        Arrays.asList(50, 40, 30, 20, 10));
+    }
+
+    @Test
+    public void testUnshift() {
+        testWithArray("Array.prototype.unshift.call(a, 80)",
+                        Arrays.asList(10, 20, 30, 40),
+                        Arrays.asList(80, 10, 20, 30, 40),
+                        5);
+        testWithArray("Array.prototype.unshift.call(a, 10)",
+                        Arrays.asList(),
+                        Arrays.asList(10),
+                        1);
+        testWithArray("Array.prototype.unshift.call(a)",
+                        Arrays.asList(10, 20, 30, 40),
+                        Arrays.asList(10, 20, 30, 40),
+                        4);
+        testWithArray("Array.prototype.unshift.call(a, 80, 90)",
+                        Arrays.asList(10, 20),
+                        Arrays.asList(80, 90, 10, 20),
+                        4);
+    }
+
+    @Test
+    public void testCopyWithin() {
+        testWithArray("Array.prototype.copyWithin.call(a, 4, 1, 3)",
+                        Arrays.asList(10, 20, 30, 40, 50, 60),
+                        Arrays.asList(10, 20, 30, 40, 20, 30),
+                        Arrays.asList(10, 20, 30, 40, 20, 30));
+        testWithArray("Array.prototype.copyWithin.call(a, 1, 4)",
+                        Arrays.asList(10, 20, 30, 40, 50, 60),
+                        Arrays.asList(10, 50, 60, 40, 50, 60),
+                        Arrays.asList(10, 50, 60, 40, 50, 60));
+    }
+
+    @Test
+    public void testFill() {
+        testWithArray("Array.prototype.fill.call(a, 69)",
+                        Arrays.asList(10, 20, 30, 40, 50, 60),
+                        Arrays.asList(69, 69, 69, 69, 69, 69),
+                        Arrays.asList(69, 69, 69, 69, 69, 69));
+        testWithArray("Array.prototype.fill.call(a, 69)",
+                        Arrays.asList(),
+                        Arrays.asList(),
+                        Arrays.asList());
+    }
+
     private void testWithArray(String test, List<Integer> before, List<Integer> afterExpected, List<Integer> expectedResult) {
         testWithArray(test, before, afterExpected, actualResult -> assertEquals("result", expectedResult, actualResult.as(LIST_OF_INTEGER)));
     }
@@ -195,7 +259,11 @@ public class ArrayPrototypeInteropTest {
             Object val = devalue(value);
             if (idx < getSize()) {
                 values.set(idx, val);
-            } else if (idx == getSize()) {
+            } else {
+                while (idx > getSize()) {
+                    values.add(null);
+                }
+                assert idx == getSize();
                 values.add(val);
             }
         }
@@ -226,6 +294,11 @@ public class ArrayPrototypeInteropTest {
             } else {
                 return value;
             }
+        }
+
+        @Override
+        public String toString() {
+            return values.toString();
         }
     }
 }
