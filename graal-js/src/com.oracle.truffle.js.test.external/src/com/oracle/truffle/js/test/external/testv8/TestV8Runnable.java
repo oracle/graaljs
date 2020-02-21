@@ -44,6 +44,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -81,8 +82,10 @@ public class TestV8Runnable extends TestRunnable {
     private static final String HARMONY_NAMESPACE_EXPORTS = "--harmony-namespace-exports";
 
     private static final String FLAGS_PREFIX = "// Flags: ";
+    private static final String FILES_PREFIX = "// Files: ";
     private static final Pattern FLAGS_FIND_PATTERN = Pattern.compile("// Flags: (.*)");
-    private static final Pattern FLAGS_SPLIT_PATTERN = Pattern.compile("\\s+");
+    private static final Pattern FILES_FIND_PATTERN = Pattern.compile("// Files: (.*)");
+    private static final Pattern SPLIT_PATTERN = Pattern.compile("\\s+");
     private static final String MODULE_FILE_EXT = ".mjs";
 
     public TestV8Runnable(TestSuite suite, TestFile testFile) {
@@ -98,6 +101,7 @@ public class TestV8Runnable extends TestRunnable {
         boolean shouldThrow = shouldThrow(code);
         boolean module = testFile.getFilePath().endsWith(MODULE_FILE_EXT);
         Set<String> flags = getFlags(code);
+        List<String> setupFiles = getFiles(code, getConfig().getSuiteLoc());
 
         Map<String, String> extraOptions = new HashMap<>(2);
         if (flags.contains(HARMONY_HASHBANG_FLAG)) {
@@ -126,19 +130,19 @@ public class TestV8Runnable extends TestRunnable {
         }
 
         // now run it
-        testFile.setResult(runTest(ecmaVersion, version -> runInternal(version, file, negative, shouldThrow, module, extraOptions)));
+        testFile.setResult(runTest(ecmaVersion, version -> runInternal(version, file, negative, shouldThrow, module, extraOptions, setupFiles)));
     }
 
-    private TestFile.Result runInternal(int ecmaVersion, File file, boolean negative, boolean shouldThrow, boolean module, Map<String, String> extraOptions) {
+    private TestFile.Result runInternal(int ecmaVersion, File file, boolean negative, boolean shouldThrow, boolean module, Map<String, String> extraOptions, List<String> setupFiles) {
         suite.logVerbose(getName() + ecmaVersionToString(ecmaVersion));
         TestFile.Result testResult;
 
         long startDate = System.currentTimeMillis();
         reportStart();
         if (suite.getConfig().isExtLauncher()) {
-            testResult = runExtLauncher(ecmaVersion, file, negative, shouldThrow, module, extraOptions);
+            testResult = runExtLauncher(ecmaVersion, file, negative, shouldThrow, module, extraOptions, setupFiles);
         } else {
-            testResult = runInJVM(ecmaVersion, file, negative, shouldThrow, module, extraOptions);
+            testResult = runInJVM(ecmaVersion, file, negative, shouldThrow, module, extraOptions, setupFiles);
         }
         if (negative) {
             if (!testResult.isFailure()) {
@@ -159,9 +163,17 @@ public class TestV8Runnable extends TestRunnable {
         return testResult;
     }
 
-    private TestFile.Result runInJVM(int ecmaVersion, File file, boolean negative, boolean shouldThrow, boolean module, Map<String, String> extraOptions) {
+    private TestFile.Result runInJVM(int ecmaVersion, File file, boolean negative, boolean shouldThrow, boolean module, Map<String, String> extraOptions, List<String> setupFiles) {
         Source[] prequelSources = loadHarnessSources(ecmaVersion);
-        Source[] sources = Arrays.copyOf(prequelSources, prequelSources.length + 2);
+        Source[] sources = Arrays.copyOf(prequelSources, prequelSources.length + 2 + setupFiles.size());
+        int sourceIdx = prequelSources.length;
+        try {
+            for (String setupFile : setupFiles) {
+                sources[sourceIdx++] = Source.newBuilder(JavaScriptLanguage.ID, new File(setupFile)).build();
+            }
+        } catch (IOException ioex) {
+            return TestFile.Result.failed(ioex);
+        }
         sources[sources.length - 1] = Source.newBuilder(JavaScriptLanguage.ID, createTestFileNamePrefix(file), "").buildLiteral();
         sources[sources.length - 2] = ((TestV8) suite).getMockupSource();
 
@@ -184,11 +196,14 @@ public class TestV8Runnable extends TestRunnable {
         }
     }
 
-    private TestFile.Result runExtLauncher(int ecmaVersion, File file, boolean negative, boolean shouldThrow, boolean module, Map<String, String> extraOptions) {
+    private TestFile.Result runExtLauncher(int ecmaVersion, File file, boolean negative, boolean shouldThrow, boolean module, Map<String, String> extraOptions, List<String> setupFiles) {
         Source[] prequelSources = loadHarnessSources(ecmaVersion);
         List<String> args = new ArrayList<>(prequelSources.length + (module ? 5 : 4));
         for (Source prequelSrc : prequelSources) {
             args.add(prequelSrc.getPath());
+        }
+        for (String setupFile : setupFiles) {
+            args.add(setupFile);
         }
         args.add("--eval");
         args.add(createTestFileNamePrefix(file));
@@ -282,7 +297,11 @@ public class TestV8Runnable extends TestRunnable {
     }
 
     private static Set<String> getFlags(List<String> scriptCode) {
-        return getStrings(scriptCode, FLAGS_PREFIX, FLAGS_FIND_PATTERN, FLAGS_SPLIT_PATTERN).collect(Collectors.toSet());
+        return getStrings(scriptCode, FLAGS_PREFIX, FLAGS_FIND_PATTERN, SPLIT_PATTERN).collect(Collectors.toSet());
+    }
+
+    private static List<String> getFiles(List<String> scriptCode, String suiteLocation) {
+        return getStrings(scriptCode, FILES_PREFIX, FILES_FIND_PATTERN, SPLIT_PATTERN).map(file -> Paths.get(suiteLocation, file).toString()).collect(Collectors.toList());
     }
 
     private static final OutputStream DUMMY_OUTPUT_STREAM = new OutputStream() {
