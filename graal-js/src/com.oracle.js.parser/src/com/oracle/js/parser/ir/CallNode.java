@@ -51,7 +51,7 @@ import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 /**
  * IR representation for a function call.
  */
-public final class CallNode extends Expression {
+public final class CallNode extends OptionalExpression {
 
     /** Function identifier or function body. */
     private final Expression function;
@@ -71,6 +71,12 @@ public final class CallNode extends Expression {
     /** Does this look like an apply call? */
     private static final int IS_APPLY_ARGUMENTS = 1 << 3;
 
+    /** Is this an optional call ({@code a?.()}). */
+    private static final int IS_OPTIONAL = 1 << 4;
+
+    /** Is this call part of an optional chain. */
+    private static final int IS_OPTIONAL_CHAIN = 1 << 5;
+
     private final int flags;
 
     private final int lineNumber;
@@ -88,7 +94,7 @@ public final class CallNode extends Expression {
     public CallNode(final int lineNumber, final long token, final int finish, final Expression function, final List<Expression> args, final boolean isNew) {
         super(Token.withDelimiter(token), finish);
 
-        this.function = function;
+        this.function = setIsFunction(function);
         this.args = args;
         this.flags = isNew ? IS_NEW : 0;
         this.lineNumber = lineNumber;
@@ -105,23 +111,25 @@ public final class CallNode extends Expression {
      * @param args args to the call
      * @param isNew true if this is a constructor call with the "new" keyword
      */
-    public CallNode(final int lineNumber, final long token, final int start, final int finish, final Expression function, final List<Expression> args, final boolean isNew) {
-        this(lineNumber, token, start, finish, function, args, isNew ? IS_NEW : 0);
+    public CallNode(int lineNumber, long token, int start, int finish, Expression function, List<Expression> args,
+                    boolean isNew, boolean optional, boolean optionalChain) {
+        this(lineNumber, token, start, finish, function, args, isNew, optional, optionalChain, false, false);
     }
 
-    public CallNode(final int lineNumber, final long token, final int start, final int finish, final Expression function, final List<Expression> args, final boolean isNew,
-                    final boolean isEval, final boolean isApplyArguments) {
-        this(lineNumber, token, start, finish, function, args, (isNew ? IS_NEW : 0) | (isEval ? IS_EVAL : 0) | (isApplyArguments ? IS_APPLY_ARGUMENTS : 0));
+    public CallNode(int lineNumber, long token, int start, int finish, Expression function, List<Expression> args,
+                    boolean isNew, boolean optional, boolean optionalChain, boolean isEval, boolean isApplyArguments) {
+        this(lineNumber, token, start, finish, function, args,
+                        (isNew ? IS_NEW : 0) | (optional ? IS_OPTIONAL : 0) | (optionalChain ? IS_OPTIONAL_CHAIN : 0) | (isEval ? IS_EVAL : 0) | (isApplyArguments ? IS_APPLY_ARGUMENTS : 0));
     }
 
     public static Expression forImport(int lineNumber, long token, int start, int finish, IdentNode importIdent, List<Expression> args) {
         return new CallNode(lineNumber, token, start, finish, importIdent, args, IS_IMPORT);
     }
 
-    private CallNode(final int lineNumber, final long token, final int start, final int finish, final Expression function, final List<Expression> args, final int flags) {
+    private CallNode(int lineNumber, long token, int start, int finish, Expression function, List<Expression> args, int flags) {
         super(token, start, finish);
 
-        this.function = function;
+        this.function = setIsFunction(function);
         this.args = args;
         this.flags = flags;
         this.lineNumber = lineNumber;
@@ -133,6 +141,10 @@ public final class CallNode extends Expression {
         this.function = function;
         this.args = args;
         this.flags = flags;
+    }
+
+    private static Expression setIsFunction(final Expression function) {
+        return function instanceof BaseNode ? ((BaseNode) function).setIsFunction() : function;
     }
 
     /**
@@ -170,6 +182,10 @@ public final class CallNode extends Expression {
         final StringBuilder fsb = new StringBuilder();
         function.toString(fsb, printType);
         sb.append(fsb);
+
+        if (isOptional()) {
+            sb.append('?').append('.');
+        }
 
         sb.append('(');
 
@@ -262,5 +278,15 @@ public final class CallNode extends Expression {
      */
     public boolean isApplyArguments() {
         return (flags & IS_APPLY_ARGUMENTS) != 0;
+    }
+
+    @Override
+    public boolean isOptional() {
+        return (flags & IS_OPTIONAL) != 0;
+    }
+
+    @Override
+    public boolean isOptionalChain() {
+        return (flags & IS_OPTIONAL_CHAIN) != 0;
     }
 }

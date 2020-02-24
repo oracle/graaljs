@@ -62,19 +62,19 @@ public final class AccessNode extends BaseNode {
      * @param base base node
      * @param property property
      */
-    public AccessNode(final long token, final int finish, final Expression base, final String property, final boolean isSuper, final boolean isPrivate) {
-        super(token, finish, base, false, isSuper);
+    public AccessNode(final long token, final int finish, final Expression base, final String property, boolean isSuper, boolean isPrivate, boolean optional, boolean optionalChain) {
+        super(token, finish, base, isSuper, optional, optionalChain);
         this.property = property;
         this.isPrivate = isPrivate;
         assert !(isSuper && isPrivate);
     }
 
     public AccessNode(final long token, final int finish, final Expression base, final String property) {
-        this(token, finish, base, property, false, false);
+        this(token, finish, base, property, false, false, false, false);
     }
 
-    private AccessNode(final AccessNode accessNode, final Expression base, final String property, final boolean isFunction, final boolean isSuper) {
-        super(accessNode, base, isFunction, isSuper);
+    private AccessNode(final AccessNode accessNode, final Expression base, final String property, boolean isSuper) {
+        super(accessNode, base, isSuper, accessNode.isOptional(), accessNode.isOptionalChain());
         this.property = property;
         this.isPrivate = accessNode.isPrivate;
     }
@@ -110,6 +110,10 @@ public final class AccessNode extends BaseNode {
         if (needsParen) {
             sb.append(')');
         }
+
+        if (isOptional()) {
+            sb.append('?');
+        }
         sb.append('.');
 
         sb.append(property);
@@ -137,15 +141,7 @@ public final class AccessNode extends BaseNode {
         if (this.base == base) {
             return this;
         }
-        return new AccessNode(this, base, property, isFunction(), isSuper());
-    }
-
-    @Override
-    public AccessNode setIsFunction() {
-        if (isFunction()) {
-            return this;
-        }
-        return new AccessNode(this, base, property, true, isSuper());
+        return new AccessNode(this, base, property, isSuper());
     }
 
     @Override
@@ -153,6 +149,6 @@ public final class AccessNode extends BaseNode {
         if (isSuper()) {
             return this;
         }
-        return new AccessNode(this, base, property, isFunction(), true);
+        return new AccessNode(this, base, property, true);
     }
 }
