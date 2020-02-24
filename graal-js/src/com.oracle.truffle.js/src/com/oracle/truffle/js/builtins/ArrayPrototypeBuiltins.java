@@ -1733,7 +1733,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private final ConditionProfile argsLength1Profile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile offsetProfile = ConditionProfile.createBinaryProfile();
         private final BranchProfile needMoveDeleteBranch = BranchProfile.create();
-        private final BranchProfile needLoopDeleteBranch = BranchProfile.create();
         private final BranchProfile needInsertBranch = BranchProfile.create();
         private final ValueProfile arrayTypeProfile = ValueProfile.createClassProfile();
         @Child private InteropLibrary arrayInterop;
@@ -1903,12 +1902,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
 
             k = len - 1;
-            if (k >= len + delta) {
-                needLoopDeleteBranch.enter();
-                while (k >= len + delta) {
-                    deletePropertyNode.executeEvaluated(thisObj, k);
-                    k = previousElementIndex(thisObj, k);
-                }
+            while (k >= len + delta) {
+                deletePropertyNode.executeEvaluated(thisObj, k);
+                k = previousElementIndex(thisObj, k);
             }
         }
 
