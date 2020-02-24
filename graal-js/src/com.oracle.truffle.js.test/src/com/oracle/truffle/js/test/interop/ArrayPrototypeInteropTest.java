@@ -42,6 +42,7 @@ package com.oracle.truffle.js.test.interop;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
@@ -219,6 +220,18 @@ public class ArrayPrototypeInteropTest {
                         Arrays.asList(),
                         Arrays.asList(),
                         Arrays.asList());
+    }
+
+    @Test
+    public void testDelete() {
+        testWithArray("delete a[0]",
+                        Arrays.asList(10, 20, 30, 40, 50),
+                        Arrays.asList(10, 20, 30, 40, 50),
+                        result -> assertFalse(result.asBoolean()));
+        testWithArray("delete a[5]",
+                        Arrays.asList(10, 20, 30, 40, 50),
+                        Arrays.asList(10, 20, 30, 40, 50),
+                        result -> assertTrue(result.asBoolean()));
     }
 
     private void testWithArray(String test, List<Integer> before, List<Integer> afterExpected, List<Integer> expectedResult) {
