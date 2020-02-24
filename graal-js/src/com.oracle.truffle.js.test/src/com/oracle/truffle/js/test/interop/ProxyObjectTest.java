@@ -297,4 +297,14 @@ public class ProxyObjectTest {
         assertEquals(value.asString(), "foo");
     }
 
+    @Test
+    public void proxyObjectToString() {
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("42", "foo");
+        ProxyObject proxyObject = ProxyObject.fromMap(map);
+        context.getBindings(ID).putMember("proxyObj", proxyObject);
+        Value value = context.eval(ID, "proxyObj.toString = function() { return 'executed'; }; ''+proxyObj;");
+        assertEquals(value.asString(), "executed");
+    }
+
 }

@@ -341,7 +341,7 @@ public final class JSRuntime {
         } else if (interop.isBoolean(tObj) || interop.isString(tObj) || interop.isNumber(tObj)) {
             return JSInteropUtil.toPrimitiveOrDefault(tObj, Null.instance, interop, null);
         } else {
-            return JSRuntime.foreignToString(tObj, depth);
+            return JSRuntime.foreignToString(tObj, depth, false);
         }
     }
 
@@ -928,7 +928,7 @@ public final class JSRuntime {
             return safeToStringImpl(((InteropFunction) value).getFunction(), depth, parent, quoteString);
         } else if (value instanceof TruffleObject) {
             assert !isJSNative(value) : value;
-            return foreignToString(value, depth);
+            return foreignToString(value, depth, true);
         } else {
             return String.valueOf(value);
         }
@@ -1061,10 +1061,10 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static String foreignToString(Object value) {
-        return foreignToString(value, TO_STRING_MAX_DEPTH);
+        return foreignToString(value, TO_STRING_MAX_DEPTH, false);
     }
 
-    private static String foreignToString(Object value, int depth) {
+    private static String foreignToString(Object value, int depth, boolean avoidSideeffects) {
         CompilerAsserts.neverPartOfCompilation();
         TruffleLanguage.Env env;
         try {
@@ -1099,7 +1099,7 @@ public final class JSRuntime {
             } else if (interop.isExecutable(value)) {
                 return "Executable";
             } else if (interop.hasMembers(value)) {
-                return foreignObjectToString(value, depth);
+                return foreignObjectToString(value, depth, avoidSideeffects);
             } else if (interop.isPointer(value)) {
                 long pointer = interop.asPointer(value);
                 return "Pointer[0x" + Long.toHexString(pointer) + "]";
@@ -1142,10 +1142,13 @@ public final class JSRuntime {
         return sb.toString();
     }
 
-    private static String foreignObjectToString(Object truffleObject, int depth) throws InteropException {
+    private static String foreignObjectToString(Object truffleObject, int depth, boolean avoidSideeffects) throws InteropException {
         CompilerAsserts.neverPartOfCompilation();
         InteropLibrary objInterop = InteropLibrary.getFactory().getUncached(truffleObject);
         assert objInterop.hasMembers(truffleObject);
+        if (!avoidSideeffects && objInterop.isMemberInvocable(truffleObject, TO_STRING)) {
+            return objInterop.invokeMember(truffleObject, TO_STRING).toString();
+        }
         Object keys = objInterop.getMembers(truffleObject);
         InteropLibrary keysInterop = InteropLibrary.getFactory().getUncached(keys);
         long keyCount = keysInterop.getArraySize(keys);
