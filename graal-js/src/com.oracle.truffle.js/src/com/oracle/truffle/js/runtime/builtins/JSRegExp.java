@@ -366,14 +366,12 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     }
 
     public static Shape makeLazyRegexArrayShape(JSContext ctx, DynamicObject prototype) {
-        Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSArray.INSTANCE, ctx);
-        initialShape = JSArray.addArrayProperties(initialShape);
+        Shape initialShape = JSArray.INSTANCE.makeInitialShape(ctx, prototype);
         initialShape = initialShape.addProperty(JSAbstractArray.LAZY_REGEX_RESULT_PROPERTY);
         initialShape = initialShape.addProperty(JSAbstractArray.LAZY_REGEX_ORIGINAL_INPUT_PROPERTY);
         final Property inputProperty = JSObjectUtil.makeDataProperty(JSRegExp.INPUT, initialShape.allocator().locationForType(String.class, EnumSet.of(LocationModifier.NonNull)),
                         JSAttributes.getDefault());
         initialShape = initialShape.addProperty(inputProperty);
-        initialShape = initialShape.addProperty(JSArray.ARRAY_LENGTH_PROXY_PROPERTY);
         initialShape = initialShape.addProperty(LAZY_INDEX_PROXY);
         initialShape = initialShape.addProperty(JSObjectUtil.makeDataProperty(GROUPS, initialShape.allocator().locationForType(DynamicObject.class,
                         EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)), JSAttributes.getDefault()));
@@ -383,8 +381,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     }
 
     public static Shape makeLazyRegexIndicesArrayShape(JSContext ctx, DynamicObject prototype) {
-        Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSArray.INSTANCE, ctx);
-        initialShape = JSArray.addArrayProperties(initialShape);
+        Shape initialShape = JSArray.INSTANCE.makeInitialShape(ctx, prototype);
         initialShape = initialShape.addProperty(JSAbstractArray.LAZY_REGEX_RESULT_PROPERTY);
         initialShape = initialShape.addProperty(JSObjectUtil.makeDataProperty(GROUPS, initialShape.allocator().locationForType(DynamicObject.class,
                         EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)), JSAttributes.getDefault()));
