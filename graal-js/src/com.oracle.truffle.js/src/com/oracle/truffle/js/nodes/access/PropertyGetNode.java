@@ -1446,6 +1446,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Child private PropertyGetNode getIsIndicesNode;
         @Child private TRegexMaterializeResultNode materializeNode = TRegexMaterializeResultNode.create();
         @Child private TRegexResultAccessor resultAccessor = TRegexResultAccessor.create();
+        private final ConditionProfile isIndicesObject = ConditionProfile.createBinaryProfile();
 
         public LazyNamedCaptureGroupPropertyGetNode(Property property, ReceiverCheckNode receiverCheck, JSContext context, int groupIndex) {
             super(receiverCheck);
@@ -1460,13 +1461,11 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             DynamicObject store = receiverCheck.getStore(thisObj);
             Object regexResult = getResultNode.getValue(store);
-            boolean isIndices = (boolean) getIsIndicesNode.getValue(store);
-            // maybe should I put ConditionProfile here?
-            if (!isIndices) {
+            if (isIndicesObject.profile((boolean) getIsIndicesNode.getValue(store))) {
+                return LazyRegexResultIndicesArray.getIntIndicesArray(resultAccessor, regexResult, groupIndex);
+            } else {
                 String input = (String) getOriginalInputNode.getValue(store);
                 return materializeNode.materializeGroup(regexResult, groupIndex, input);
-            } else {
-                return LazyRegexResultIndicesArray.getIntIndicesArray(resultAccessor, regexResult, groupIndex);
             }
         }
     }

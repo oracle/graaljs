@@ -50,6 +50,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultIndicesArray;
@@ -132,6 +133,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
 
         private final String groupName;
         private final int groupIndex;
+        private final ConditionProfile isIndicesObject = ConditionProfile.createBinaryProfile();
 
         public LazyNamedCaptureGroupProperty(String groupName, int groupIndex) {
             this.groupName = groupName;
@@ -147,13 +149,11 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         @Override
         public Object get(DynamicObject object) {
             Object regexResult = GROUPS_RESULT_PROPERTY.get(object, false);
-            boolean isIndices = (boolean) GROUPS_IS_INDICES_PROPERTY.get(object, false);
-            // maybe should I put ConditionProfile here?
-            if (!isIndices) {
+            if (isIndicesObject.profile((boolean) GROUPS_IS_INDICES_PROPERTY.get(object, false))) {
+                return LazyRegexResultIndicesArray.getIntIndicesArray(TRegexResultAccessor.getUncached(), regexResult, groupIndex);
+            } else {
                 String input = (String) GROUPS_ORIGINAL_INPUT_PROPERTY.get(object, false);
                 return materializeNode.materializeGroup(regexResult, groupIndex, input);
-            } else {
-                return LazyRegexResultIndicesArray.getIntIndicesArray(TRegexResultAccessor.getUncached(), regexResult, groupIndex);
             }
         }
 
