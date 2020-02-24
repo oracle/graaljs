@@ -91,6 +91,7 @@ import com.oracle.truffle.js.nodes.access.NewPrivateNameNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.MakeMethodNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
+import com.oracle.truffle.js.nodes.access.OptionalChainNode;
 import com.oracle.truffle.js.nodes.access.PrivateFieldGetNode;
 import com.oracle.truffle.js.nodes.access.PrivateFieldSetNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
@@ -577,7 +578,8 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createFunctionCall(@SuppressWarnings("unused") JSContext context, JavaScriptNode expression, JavaScriptNode[] arguments) {
-        if (expression instanceof PropertyNode || expression instanceof ReadElementNode || expression instanceof WithVarWrapperNode || expression instanceof PrivateFieldGetNode) {
+        if (expression instanceof PropertyNode || expression instanceof ReadElementNode || expression instanceof WithVarWrapperNode || expression instanceof PrivateFieldGetNode ||
+                        expression instanceof OptionalChainNode.ShortCircuitTargetableNode) {
             if (expression instanceof PropertyNode) {
                 ((PropertyNode) expression).setMethod();
             }
@@ -1126,6 +1128,14 @@ public class NodeFactory {
 
     public JavaScriptNode createToPropertyKey(JavaScriptNode key) {
         return JSToPropertyKeyWrapperNode.create(key);
+    }
+
+    public JavaScriptNode createOptionalChain(JavaScriptNode accessNode) {
+        return OptionalChainNode.createTarget(accessNode);
+    }
+
+    public JavaScriptNode createOptionalChainShortCircuit(JavaScriptNode valueNode) {
+        return OptionalChainNode.createShortCircuit(valueNode);
     }
 
     public IfNode copyIfWithCondition(IfNode origIfNode, JavaScriptNode condition) {

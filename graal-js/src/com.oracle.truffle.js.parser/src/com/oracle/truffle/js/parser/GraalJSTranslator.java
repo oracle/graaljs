@@ -55,6 +55,7 @@ import com.oracle.js.parser.Lexer;
 import com.oracle.js.parser.Token;
 import com.oracle.js.parser.TokenType;
 import com.oracle.js.parser.ir.AccessNode;
+import com.oracle.js.parser.ir.BaseNode;
 import com.oracle.js.parser.ir.BinaryNode;
 import com.oracle.js.parser.ir.Block;
 import com.oracle.js.parser.ir.BlockExpression;
@@ -121,6 +122,7 @@ import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.LazyReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
+import com.oracle.truffle.js.nodes.access.OptionalChainNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
@@ -2120,37 +2122,55 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode enterDelete(UnaryNode unaryNode) {
         Expression rhs = unaryNode.getExpression();
-        JavaScriptNode result;
         if (rhs instanceof AccessNode) {
-            result = enterDeleteAccess(rhs);
+            AccessNode accessNode = (AccessNode) rhs;
+            JavaScriptNode target = transform(accessNode.getBase());
+            JavaScriptNode key = factory.createConstantString(accessNode.getProperty());
+            return createDeleteProperty(unaryNode, accessNode, target, key);
         } else if (rhs instanceof IndexNode) {
-            result = enterDeleteIndex(rhs);
-        } else if (rhs instanceof IdentNode) {
-            result = enterDeleteIdent(rhs);
+            IndexNode indexNode = (IndexNode) rhs;
+            JavaScriptNode target = transform(indexNode.getBase());
+            JavaScriptNode element = transform(indexNode.getIndex());
+            return createDeleteProperty(unaryNode, indexNode, target, element);
         } else {
-            // deleting variables is (thankfully) not supported, so always true
-            result = factory.createConstantBoolean(true);
+            return enterDeleteIdent(unaryNode);
+        }
+    }
+
+    private JavaScriptNode enterDeleteIdent(UnaryNode unaryNode) {
+        Expression rhs = unaryNode.getExpression();
+        JavaScriptNode result;
+        if (rhs instanceof IdentNode) {
+            // attempt to delete a binding
+            String varName = ((IdentNode) rhs).getName();
+            VarRef varRef = findScopeVar(varName, varName.equals(Environment.THIS_NAME));
+            result = varRef.createDeleteNode();
+        } else {
+            // deleting a non-reference, always returns true
+            result = factory.createDual(context, transform(rhs), factory.createConstantBoolean(true));
         }
         return tagExpression(result, unaryNode);
     }
 
-    private JavaScriptNode enterDeleteIdent(Expression rhs) {
-        String varName = ((IdentNode) rhs).getName();
-        VarRef varRef = findScopeVar(varName, varName.equals(Environment.THIS_NAME));
-        return varRef.createDeleteNode();
+    private JavaScriptNode createDeleteProperty(UnaryNode deleteNode, BaseNode baseNode, JavaScriptNode target, JavaScriptNode key) {
+        JavaScriptNode base = target;
+        if (baseNode.isOptionalChain()) {
+            base = filterOptionalChainTarget(base, baseNode.isOptional());
+        }
+        JavaScriptNode delete = factory.createDeleteProperty(base, key, environment.isStrictMode(), context);
+        tagExpression(delete, deleteNode);
+        if (baseNode.isOptionalChain()) {
+            delete = factory.createOptionalChain(delete);
+        }
+        return delete;
     }
 
-    private JavaScriptNode enterDeleteIndex(Expression rhs) {
-        IndexNode indexNode = (IndexNode) rhs;
-        JavaScriptNode target = transform(indexNode.getBase());
-        JavaScriptNode element = transform(indexNode.getIndex());
-        return factory.createDeleteProperty(target, element, environment.isStrictMode(), context);
-    }
-
-    private JavaScriptNode enterDeleteAccess(Expression rhs) {
-        AccessNode accessNode = (AccessNode) rhs;
-        JavaScriptNode target = transform(accessNode.getBase());
-        return factory.createDeleteProperty(target, factory.createConstantString(accessNode.getProperty()), environment.isStrictMode(), context);
+    private JavaScriptNode filterOptionalChainTarget(JavaScriptNode target, boolean optional) {
+        JavaScriptNode innerAccess = target instanceof OptionalChainNode ? ((OptionalChainNode) target).getAccessNode() : target;
+        if (optional) {
+            innerAccess = factory.createOptionalChainShortCircuit(innerAccess);
+        }
+        return innerAccess;
     }
 
     private JavaScriptNode[] transformArgs(List<Expression> argList) {
@@ -2177,20 +2197,26 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     public JavaScriptNode enterCallNode(CallNode callNode) {
         JavaScriptNode function = transform(callNode.getFunction());
         JavaScriptNode[] args = transformArgs(callNode.getArgs());
+        if (callNode.isOptionalChain()) {
+            function = filterOptionalChainTarget(function, callNode.isOptional());
+        }
         JavaScriptNode call;
         if (callNode.isEval() && args.length >= 1) {
             call = createCallEvalNode(function, args);
         } else if (callNode.isApplyArguments() && currentFunction().isDirectArgumentsAccess()) {
             call = createCallApplyArgumentsNode(function, args);
         } else if (callNode.getFunction() instanceof IdentNode && ((IdentNode) callNode.getFunction()).isDirectSuper()) {
-            args = insertNewTargetArg(args);
-            call = initializeThis(factory.createFunctionCallWithNewTarget(context, function, args));
+            call = createCallDirectSuper(function, args);
         } else if (callNode.isImport()) {
             call = createImportCallNode(args);
         } else {
-            call = createCallDefaultNode(function, args);
+            call = factory.createFunctionCall(context, function, args);
         }
-        return tagExpression(tagCall(call), callNode);
+        tagExpression(tagCall(call), callNode);
+        if (callNode.isOptionalChain()) {
+            call = factory.createOptionalChain(call);
+        }
+        return call;
     }
 
     private JavaScriptNode[] insertNewTargetArg(JavaScriptNode[] args) {
@@ -2226,10 +2252,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return factory.createInitializeInstanceFields(context, thisValueNode, fields);
     }
 
-    private JavaScriptNode createCallDefaultNode(JavaScriptNode function, JavaScriptNode[] args) {
-        return factory.createFunctionCall(context, function, args);
-    }
-
     private JavaScriptNode createCallEvalNode(JavaScriptNode function, JavaScriptNode[] args) {
         assert (currentFunction().isGlobal() || currentFunction().isStrictMode() || currentFunction().isDirectEval()) || currentFunction().isDynamicallyScoped();
         for (FunctionEnvironment func = currentFunction(); func.getParentFunction() != null; func = func.getParentFunction()) {
@@ -2239,7 +2261,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode createCallApplyArgumentsNode(JavaScriptNode function, JavaScriptNode[] args) {
-        return factory.createCallApplyArguments(context, (JSFunctionCallNode) createCallDefaultNode(function, args));
+        return factory.createCallApplyArguments(context, (JSFunctionCallNode) factory.createFunctionCall(context, function, args));
+    }
+
+    private JavaScriptNode createCallDirectSuper(JavaScriptNode function, JavaScriptNode[] args) {
+        return initializeThis(factory.createFunctionCallWithNewTarget(context, function, insertNewTargetArg(args)));
     }
 
     private JavaScriptNode createImportCallNode(JavaScriptNode[] args) {
@@ -2691,8 +2717,19 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     @Override
     public JavaScriptNode enterAccessNode(AccessNode accessNode) {
         JavaScriptNode base = transform(accessNode.getBase());
+        if (accessNode.isOptionalChain()) {
+            return createOptionalAccessNode(accessNode, base);
+        }
         JavaScriptNode read = createReadProperty(accessNode, base);
-        return tagExpression(read, accessNode);
+        tagExpression(read, accessNode);
+        return read;
+    }
+
+    private JavaScriptNode createOptionalAccessNode(AccessNode accessNode, JavaScriptNode base) {
+        assert !accessNode.isPrivate();
+        JavaScriptNode read = factory.createReadProperty(context, filterOptionalChainTarget(base, accessNode.isOptional()), accessNode.getProperty());
+        tagExpression(read, accessNode);
+        return factory.createOptionalChain(read);
     }
 
     private JavaScriptNode createReadProperty(AccessNode accessNode, JavaScriptNode base) {
@@ -2719,7 +2756,16 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     public JavaScriptNode enterIndexNode(IndexNode indexNode) {
         JavaScriptNode base = transform(indexNode.getBase());
         JavaScriptNode index = transform(indexNode.getIndex());
+        if (indexNode.isOptionalChain()) {
+            return createOptionalIndexNode(indexNode, base, index);
+        }
         return tagExpression(factory.createReadElementNode(context, base, index), indexNode);
+    }
+
+    private JavaScriptNode createOptionalIndexNode(IndexNode indexNode, JavaScriptNode base, JavaScriptNode index) {
+        JavaScriptNode read = factory.createReadElementNode(context, filterOptionalChainTarget(base, indexNode.isOptional()), index);
+        tagExpression(read, indexNode);
+        return factory.createOptionalChain(read);
     }
 
     @Override

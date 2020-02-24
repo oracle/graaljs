@@ -115,8 +115,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     private static final DebugCounter megamorphicCount = DebugCounter.create("Megamorphic call site count");
 
     static final byte CALL = 0;
-    static final byte NEW = 1;
-    static final byte NEW_TARGET = 2;
+    static final byte NEW = 1 << 0;
+    static final byte NEW_TARGET = 1 << 1;
 
     protected final byte flags;
     @Child protected AbstractCacheNode cacheNode;
@@ -146,33 +146,35 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     private static byte createFlags(boolean isNew, boolean isNewTarget) {
-        return isNewTarget ? NEW_TARGET : (isNew ? NEW : CALL);
+        return (isNewTarget ? NEW_TARGET : (isNew ? NEW : CALL));
     }
 
     public static JSFunctionCallNode createCall(JavaScriptNode function, JavaScriptNode target, JavaScriptNode[] arguments, boolean isNew, boolean isNewTarget) {
+        byte flags = createFlags(isNew, isNewTarget);
         boolean spread = hasSpreadArgument(arguments);
         if (spread) {
-            return new CallSpreadNode(target, function, arguments, createFlags(isNew, isNewTarget));
+            return new CallSpreadNode(target, function, arguments, flags);
         }
         if (arguments.length == 0) {
-            return new Call0Node(target, function, createFlags(isNew, isNewTarget));
+            return new Call0Node(target, function, flags);
         } else if (arguments.length == 1) {
-            return new Call1Node(target, function, arguments[0], createFlags(isNew, isNewTarget));
+            return new Call1Node(target, function, arguments[0], flags);
         }
-        return new CallNNode(target, function, arguments, createFlags(isNew, isNewTarget));
+        return new CallNNode(target, function, arguments, flags);
     }
 
     public static JSFunctionCallNode createInvoke(JSTargetableNode targetFunction, JavaScriptNode[] arguments, boolean isNew, boolean isNewTarget) {
+        byte flags = createFlags(isNew, isNewTarget);
         boolean spread = hasSpreadArgument(arguments);
         if (spread) {
-            return new InvokeSpreadNode(targetFunction, arguments, createFlags(isNew, isNewTarget));
+            return new InvokeSpreadNode(targetFunction, arguments, flags);
         }
         if (arguments.length == 0) {
-            return new Invoke0Node(targetFunction, createFlags(isNew, isNewTarget));
+            return new Invoke0Node(targetFunction, flags);
         } else if (arguments.length == 1) {
-            return new Invoke1Node(targetFunction, arguments[0], createFlags(isNew, isNewTarget));
+            return new Invoke1Node(targetFunction, arguments[0], flags);
         }
-        return new InvokeNNode(targetFunction, arguments, createFlags(isNew, isNewTarget));
+        return new InvokeNNode(targetFunction, arguments, flags);
     }
 
     static boolean isNewTarget(byte flags) {
