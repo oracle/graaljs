@@ -52,23 +52,21 @@ import com.oracle.truffle.js.test.JSTest;
 
 public class HereDocumentTest {
     private static String testIntl(String sourceText) {
-        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.NASHORN_COMPATIBILITY_MODE_NAME, "true").option(JSContextOptions.SCRIPTING_NAME, "true").allowAllAccess(
-                        true).build()) {
-            Value result = context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, "javaadapter-test").buildLiteral());
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.NASHORN_COMPATIBILITY_MODE_NAME, "true").option(JSContextOptions.SCRIPTING_NAME, "true").build()) {
+            Value result = context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, "here-document-test").buildLiteral());
             Assert.assertTrue(result.isString());
             return result.asString();
         }
     }
 
     @Test
-    public void javaAdapterTest() {
+    public void hereDocumentTest() {
         String sourceCode = "var str = <<EOD\n" +
                         "line1\n" +
                         "  line2\n" +
                         "    line3\n" +
                         "EOD\n" +
                         "str;";
-
         Assert.assertEquals("line1\n  line2\n    line3", testIntl(sourceCode));
     }
 }

@@ -92,10 +92,6 @@ public class TestNashorn extends TestSuite {
     }
 
     @Override
-    protected void setupTestFile(TestFile testFile) {
-    }
-
-    @Override
     protected File getTestsConfigFile() {
         return Paths.get(getConfig().getSuiteConfigLoc(), TESTS_CONFIG_FILE).toFile();
     }
