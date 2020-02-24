@@ -151,8 +151,6 @@ public abstract class TestSuite {
 
     protected abstract TestRunnable createTestRunnable(TestFile file);
 
-    protected abstract void setupTestFile(TestFile testFile);
-
     protected abstract File getTestsConfigFile();
 
     protected abstract File getUnexpectedlyFailedTestsFile();
@@ -348,7 +346,6 @@ public abstract class TestSuite {
         TestFile testFile = new TestFile(relativizeTestPath(file));
         testFile.setStatus(TestFile.Status.PASS);
         testFile.setRunInIsolation(false);
-        setupTestFile(testFile);
         // possibly merge with config
         final String filePath = testFile.getFilePath();
         TestFile configuredTestFile = testsConfig.get(filePath);
