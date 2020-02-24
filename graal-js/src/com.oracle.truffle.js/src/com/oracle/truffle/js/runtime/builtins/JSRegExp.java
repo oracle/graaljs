@@ -374,20 +374,20 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         putConstructorSpeciesGetter(realm, constructor);
         if (context.isOptionRegexpStaticResult()) {
             if (context.isOptionNashornCompatibilityMode()) {
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpInput, "input");
+                putRegExpStaticPropertyAccessor(realm, constructor, null, "input");
                 putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpMultiLine, "multiline");
                 putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpLastMatch, "lastMatch");
                 putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpLastParen, "lastParen");
                 putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpLeftContext, "leftContext");
                 putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpRightContext, "rightContext");
             } else {
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpInput, "input");
+                putRegExpStaticPropertyAccessor(realm, constructor, null, "input");
                 putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpLastMatch, "lastMatch");
                 putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpLastParen, "lastParen");
                 putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpLeftContext, "leftContext");
                 putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpRightContext, "rightContext");
 
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$_, "input", "$_");
+                putRegExpStaticPropertyAccessor(realm, constructor, null, "input", "$_");
                 putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$And, "lastMatch", "$&");
                 putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$Plus, "lastParen", "$+");
                 putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$Apostrophe, "leftContext", "$`");
@@ -413,11 +413,17 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         JSContext ctx = realm.getContext();
         DynamicObject getter = realm.lookupFunction(RegExpBuiltins.BUILTINS, getterName);
 
-        // set empty setter for V8 compatibility, see testv8/mjsunit/regress/regress-5566.js
-        String setterName = "set " + propertyName;
-        JSFunctionData setterData = ctx.getOrCreateBuiltinFunctionData(builtinKey,
-                        (c) -> JSFunctionData.createCallOnly(c, ctx.getEmptyFunctionCallTarget(), 0, setterName));
-        DynamicObject setter = JSFunction.create(realm, setterData);
+        DynamicObject setter;
+        if (propertyName.equals("input") || propertyName.equals("$_")) {
+            setter = realm.lookupFunction(RegExpBuiltins.BUILTINS, "setInput");
+        } else {
+            // set empty setter for V8 compatibility, see testv8/mjsunit/regress/regress-5566.js
+            String setterName = "set " + propertyName;
+            JSFunctionData setterData = ctx.getOrCreateBuiltinFunctionData(builtinKey,
+                            (c) -> JSFunctionData.createCallOnly(c, ctx.getEmptyFunctionCallTarget(), 0, setterName));
+            setter = JSFunction.create(realm, setterData);
+        }
+
         JSObjectUtil.putConstantAccessorProperty(ctx, constructor, propertyName, getter, setter, getRegExpStaticResultPropertyAccessorJSAttributes(ctx));
     }
 

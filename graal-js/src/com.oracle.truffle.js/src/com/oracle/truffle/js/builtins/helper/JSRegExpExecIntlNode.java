@@ -268,6 +268,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         private final ConditionProfile stickyProfile = ConditionProfile.createBinaryProfile();
         private final int ecmaScriptVersion;
 
+        @Child protected IsJSClassNode isJSRegExpNode;
         @Child private JSToLengthNode toLengthNode;
         @Child private PropertyGetNode getLastIndexNode;
         @Child private PropertySetNode setLastIndexNode;
@@ -291,17 +292,15 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
 
         public abstract Object execute(DynamicObject regExp, String input);
 
-        @Specialization(guards = "getCompiledRegexUnchecked(regExp, isJSRegExpNode.executeBoolean(regExp)) == cachedCompiledRegex")
+        @Specialization(guards = "getCompiledRegexUnchecked(regExp, isJSRegExp(regExp)) == cachedCompiledRegex")
         Object doCached(DynamicObject regExp, String input,
-                        @Cached("getCompiledRegex(regExp)") Object cachedCompiledRegex,
-                        @Cached("createIsJSRegExpNode()") @SuppressWarnings("unused") IsJSClassNode isJSRegExpNode) {
+                        @Cached("getCompiledRegex(regExp)") Object cachedCompiledRegex) {
             return doExec(regExp, cachedCompiledRegex, input);
         }
 
         @Specialization(replaces = "doCached")
-        Object doDynamic(DynamicObject regExp, String input,
-                        @Cached("createIsJSRegExpNode()") IsJSClassNode isJSRegExpNode) {
-            return doExec(regExp, JSRegExp.getCompiledRegexUnchecked(regExp, isJSRegExpNode.executeBoolean(regExp)), input);
+        Object doDynamic(DynamicObject regExp, String input) {
+            return doExec(regExp, JSRegExp.getCompiledRegexUnchecked(regExp, isJSRegExp(regExp)), input);
         }
 
         // Implements 21.2.5.2.2 Runtime Semantics: RegExpBuiltinExec ( R, S )
@@ -321,7 +320,14 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
 
             Object result = executeCompiledRegex(compiledRegex, input, lastIndex, compiledRegexAccessor);
             if (context.isOptionRegexpStaticResult() && regexResultAccessor.isMatch(result)) {
-                context.getRealm().setStaticRegexResult(context, compiledRegex, input, lastIndex, result);
+                boolean isJSRegExp = isJSRegExp(regExp);
+                if (context.getRealm() == JSRegExp.getRealmUnchecked(regExp, isJSRegExp)) {
+                    if (JSRegExp.getLegacyFeaturesEnabledUnchecked(regExp, isJSRegExp)) {
+                        context.getRealm().setStaticRegexResult(context, compiledRegex, input, lastIndex, result);
+                    } else {
+                        context.getRealm().invalidateStaticRegexResult();
+                    }
+                }
             }
             if (match.profile(regexResultAccessor.isMatch(result))) {
                 if (stickyProfile.profile(sticky && regexResultAccessor.captureGroupStart(result, 0) != lastIndex)) {
@@ -383,6 +389,14 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                 setLastIndexNode = insert(PropertySetNode.create(JSRegExp.LAST_INDEX, false, context, true));
             }
             setLastIndexNode.setValueInt(regExp, value);
+        }
+
+        protected boolean isJSRegExp(DynamicObject regExp) {
+            if (isJSRegExpNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                isJSRegExpNode = createIsJSRegExpNode();
+            }
+            return isJSRegExpNode.executeBoolean(regExp);
         }
     }
 

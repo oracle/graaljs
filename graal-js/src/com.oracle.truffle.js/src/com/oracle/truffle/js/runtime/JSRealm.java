@@ -323,10 +323,12 @@ public class JSRealm {
     private Object embedderData;
 
     /** Support for RegExp.$1. */
-    private Object regexResult;
-    private Object lazyStaticRegexResultCompiledRegex;
-    private String lazyStaticRegexResultInputString = "";
-    private long lazyStaticRegexResultFromIndex;
+    private Object staticRegexResult;
+    private String staticRegexResultInputString = "";
+    private Object staticRegexResultCompiledRegex;
+    private boolean staticRegexResultInvalidated;
+    private long staticRegexResultFromIndex;
+    private String staticRegexResultOriginalInputString;
 
     /**
      * Local time zone information. Initialized lazily.
@@ -1788,33 +1790,17 @@ public class JSRealm {
         this.embedderData = embedderData;
     }
 
-    public Object getRegexResult() {
+    public Object getStaticRegexResult(TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor) {
         assert context.isOptionRegexpStaticResult();
-        if (regexResult == null) {
-            regexResult = TRegexUtil.getTRegexEmptyResult();
+        if (staticRegexResultCompiledRegex != null && context.getRegExpStaticResultUnusedAssumption().isValid()) {
+            // switch from lazy to eager static RegExp result
+            context.getRegExpStaticResultUnusedAssumption().invalidate();
+            staticRegexResult = compiledRegexAccessor.exec(staticRegexResultCompiledRegex, staticRegexResultOriginalInputString, staticRegexResultFromIndex);
         }
-        return regexResult;
-    }
-
-    public Object getLazyStaticRegexResultCompiledRegex() {
-        return lazyStaticRegexResultCompiledRegex;
-    }
-
-    public String getLazyStaticRegexResultInputString() {
-        return lazyStaticRegexResultInputString;
-    }
-
-    public long getLazyStaticRegexResultFromIndex() {
-        return lazyStaticRegexResultFromIndex;
-    }
-
-    public void setRegexResult(Object tRegexCompiledRegex, String input, Object regexResult) {
-        assert context.isOptionRegexpStaticResult();
-        assert !context.getRegExpStaticResultUnusedAssumption().isValid();
-        assert TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(regexResult, TRegexUtil.Props.RegexResult.IS_MATCH);
-        lazyStaticRegexResultCompiledRegex = tRegexCompiledRegex;
-        lazyStaticRegexResultInputString = input;
-        this.regexResult = regexResult;
+        if (staticRegexResult == null) {
+            staticRegexResult = TRegexUtil.getTRegexEmptyResult();
+        }
+        return staticRegexResult;
     }
 
     /**
@@ -1822,21 +1808,43 @@ public class JSRealm {
      * globally. Instead, we store the values needed to calculate the result on demand, under the
      * assumption that this non-standard feature is often not used at all.
      */
-    private void setRegexResultLazy(Object tRegexCompiledRegex, String inputString, long fromIndex) {
-        assert context.isOptionRegexpStaticResult();
-        assert context.getRegExpStaticResultUnusedAssumption().isValid();
-        lazyStaticRegexResultCompiledRegex = tRegexCompiledRegex;
-        lazyStaticRegexResultInputString = inputString;
-        lazyStaticRegexResultFromIndex = fromIndex;
-    }
-
     public void setStaticRegexResult(JSContext context, Object compiledRegex, String input, long fromIndex, Object result) {
         CompilerAsserts.partialEvaluationConstant(context);
+        assert context.isOptionRegexpStaticResult();
+        staticRegexResultInvalidated = false;
+        staticRegexResultCompiledRegex = compiledRegex;
+        staticRegexResultInputString = input;
+        staticRegexResultOriginalInputString = input;
         if (context.getRegExpStaticResultUnusedAssumption().isValid()) {
-            setRegexResultLazy(compiledRegex, input, fromIndex);
+            staticRegexResultFromIndex = fromIndex;
         } else {
-            setRegexResult(compiledRegex, input, result);
+            assert TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(result, TRegexUtil.Props.RegexResult.IS_MATCH);
+            staticRegexResult = result;
         }
+    }
+
+    public void invalidateStaticRegexResult() {
+        staticRegexResultInvalidated = true;
+    }
+
+    public boolean isRegexResultInvalidated() {
+        return staticRegexResultInvalidated;
+    }
+
+    public Object getStaticRegexResultCompiledRegex() {
+        return staticRegexResultCompiledRegex;
+    }
+
+    public String getStaticRegexResultInputString() {
+        return staticRegexResultInputString;
+    }
+
+    public void setStaticRegexResultInputString(String inputString) {
+        staticRegexResultInputString = inputString;
+    }
+
+    public String getStaticRegexResultOriginalInputString() {
+        return staticRegexResultOriginalInputString;
     }
 
     public OptionValues getOptions() {
