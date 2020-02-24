@@ -204,6 +204,18 @@ public class InteropArrayTest {
         }
     }
 
+    /**
+     * Test reading out of bounds.
+     */
+    @Test(expected = ArrayIndexOutOfBoundsException.class)
+    public void testArrayIndexOutOfBounds() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Value array = context.eval(ID, "[3, 4, 1, 5]");
+            assertEquals(4, array.getArraySize());
+            array.getArrayElement(4);
+        }
+    }
+
     private static final int[] JAVA_ARRAY = new int[]{3, 4, 1, 5};
     private static final List<Integer> JAVA_LIST = Arrays.stream(JAVA_ARRAY).boxed().collect(Collectors.toList());
     private static final String JS_ARRAY_STRING = Arrays.toString(JAVA_ARRAY);
