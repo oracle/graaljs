@@ -236,6 +236,13 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             String pattern;
             String flags;
 
+            boolean thisRegExpIsRegExp = JSRegExp.isJSRegExp(thisRegExp);
+            if (getContext().getRealm() != JSRegExp.getRealmUnchecked(thisRegExp, thisRegExpIsRegExp)) {
+                throw Errors.createTypeError("RegExp.prototype.compile cannot be used on a RegExp from a different Realm.");
+            }
+            if (!JSRegExp.getLegacyFeaturesEnabledUnchecked(thisRegExp, thisRegExpIsRegExp)) {
+                throw Errors.createTypeError("RegExp.prototype.compile cannot be used on subclasses of RegExp.");
+            }
             boolean isRegExp = isRegExpProfile.profile(JSRegExp.isJSRegExp(patternObj));
             if (isRegExp) {
                 if (flagsObj != Undefined.instance) {
