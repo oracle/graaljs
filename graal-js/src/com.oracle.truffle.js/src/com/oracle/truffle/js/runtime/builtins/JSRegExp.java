@@ -416,12 +416,14 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         DynamicObject setter;
         if (propertyName.equals("input") || propertyName.equals("$_")) {
             setter = realm.lookupFunction(RegExpBuiltins.BUILTINS, "setInput");
-        } else {
+        } else if (realm.getContext().isOptionV8CompatibilityModeInContextInit()) {
             // set empty setter for V8 compatibility, see testv8/mjsunit/regress/regress-5566.js
             String setterName = "set " + propertyName;
             JSFunctionData setterData = ctx.getOrCreateBuiltinFunctionData(builtinKey,
                             (c) -> JSFunctionData.createCallOnly(c, ctx.getEmptyFunctionCallTarget(), 0, setterName));
             setter = JSFunction.create(realm, setterData);
+        } else {
+            setter = Undefined.instance;
         }
 
         JSObjectUtil.putConstantAccessorProperty(ctx, constructor, propertyName, getter, setter, getRegExpStaticResultPropertyAccessorJSAttributes(ctx));

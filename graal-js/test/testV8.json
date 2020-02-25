@@ -719,10 +719,6 @@
     "filePath" : "mjsunit/function.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/fuzz-accessors.js",
-    "status" : "FAIL",
-    "comment" : "With the legacy-regexp-features proposal, it is no longer valid to try to access the static RegExp result properties on subclasses of RegExps or other objects different from %RegExp%."
-  }, {
     "filePath" : "mjsunit/generated-transition-stub.js",
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."

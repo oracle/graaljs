@@ -146,14 +146,18 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
     }
 
     private static void checkStaticRegexResultPropertyGet(JSRealm realm, Object thisValue) {
-        if (thisValue != realm.getRegExpConstructor() || realm.isRegexResultInvalidated()) {
-            throw Errors.createTypeError("Static RegExp result properties cannot be used with subclasses of RegExp.");
+        if (!realm.getContext().isOptionV8CompatibilityMode()) {
+            if (thisValue != realm.getRegExpConstructor() || realm.isRegexResultInvalidated()) {
+                throw Errors.createTypeError("Static RegExp result properties cannot be used with subclasses of RegExp.");
+            }
         }
     }
 
     private static void checkStaticRegexResultPropertySet(JSRealm realm, Object thisValue) {
-        if (thisValue != realm.getRegExpConstructor()) {
-            throw Errors.createTypeError("Static RegExp result properties cannot be used with subclasses of RegExp.");
+        if (!realm.getContext().isOptionV8CompatibilityMode()) {
+            if (thisValue != realm.getRegExpConstructor()) {
+                throw Errors.createTypeError("Static RegExp result properties cannot be used with subclasses of RegExp.");
+            }
         }
     }
 

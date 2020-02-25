@@ -1711,6 +1711,9 @@ public class JSRealm {
         }
         initTimeOffsetAndRandom();
 
+        // Patch the RegExp constructor's static result properties
+        JSRegExp.INSTANCE.fillConstructor(this, getRegExpConstructor());
+
         return true;
     }
 
