@@ -1,0 +1,4 @@
+mx.graal-js/mx_graal_js.py,oracle.gpl2.copyright
+mx.graal-js/mx_graal_js_benchmark.py,oracle.gpl2.copyright
+mx.graal-js/suite.py,no.copyright
+src/com.oracle.truffle.js/src/com/oracle/truffle/js/runtime/external/DToA.java,dtoa.copyright
