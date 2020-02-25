@@ -53,7 +53,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -69,6 +68,8 @@ import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Boundaries;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -232,22 +233,32 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     @Specialization(guards = {"isForeignObject(target)"})
     protected boolean arrayElementInt(Object target, int index,
                     @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
-        try {
-            interop.removeArrayElement(target, index);
-            return true;
-        } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
-            return false;
-        }
+        return arrayElementLong(target, index, interop);
     }
 
     @Specialization(guards = {"isForeignObject(target)", "isNumber(index)"}, replaces = "arrayElementInt")
     protected boolean arrayElement(Object target, Number index,
                     @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
+        return arrayElementLong(target, index.longValue(), interop);
+    }
+
+    private boolean arrayElementLong(Object target, long index, InteropLibrary interop) {
+        long length;
         try {
-            interop.removeArrayElement(target, index.longValue());
-            return true;
-        } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
+            length = interop.getArraySize(target);
+        } catch (UnsupportedMessageException e) {
             return false;
+        }
+        // Foreign arrays cannot have holes, so we do not support deleting elements.
+        // Therefore, we treat them like Typed Arrays: array elements are not configurable
+        // and cannot be deleted but deleting out of bounds is always successful.
+        if (index >= 0 && index < length) {
+            if (strict) {
+                throw Errors.createTypeErrorNotConfigurableProperty(Boundaries.stringValueOf(index));
+            }
+            return false;
+        } else {
+            return true;
         }
     }
 
@@ -260,7 +271,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
             if (interopKey.isString(key)) {
                 return member(target, interopKey.asString(key), interop);
             } else if (interopKey.fitsInInt(key)) {
-                return arrayElement(target, interopKey.asInt(key), interop);
+                return arrayElementInt(target, interopKey.asInt(key), interop);
             }
             return false;
         } catch (UnsupportedMessageException e) {

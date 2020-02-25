@@ -84,6 +84,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -624,26 +625,31 @@ public abstract class JSClass extends ObjectType {
     static Object readArrayElement(DynamicObject target, long index,
                     @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
                     @Cached(value = "create(languageRef.get().getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
-                    @Shared("exportValue") @Cached ExportValueNode exportNode) throws InvalidArrayIndexException, UnsupportedMessageException {
+                    @Shared("exportValue") @Cached ExportValueNode exportNode,
+                    @CachedLibrary("target") InteropLibrary thisLibrary) throws InvalidArrayIndexException, UnsupportedMessageException {
         if (!hasArrayElements(target)) {
             throw UnsupportedMessageException.create();
         }
+        if (index < 0 || index >= thisLibrary.getArraySize(target)) {
+            throw InvalidArrayIndexException.create(index);
+        }
         Object result;
         if (readNode == null) {
-            result = JSObject.getOrDefault(target, index, target, null, JSClassProfile.getUncached());
+            result = JSObject.getOrDefault(target, index, target, Undefined.instance, JSClassProfile.getUncached());
         } else {
-            result = readNode.executeWithTargetAndIndexOrDefault(target, index, null);
-        }
-        if (result == null) {
-            throw InvalidArrayIndexException.create(index);
+            result = readNode.executeWithTargetAndIndexOrDefault(target, index, Undefined.instance);
         }
         return exportNode.execute(result);
     }
 
     @ExportMessage
     static boolean isArrayElementReadable(DynamicObject target, long index,
-                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
-        return hasArrayElements(target) && keyInfo.execute(target, index, KeyInfoNode.READABLE);
+                    @CachedLibrary("target") InteropLibrary thisLibrary) {
+        try {
+            return hasArrayElements(target) && (index >= 0 && index < thisLibrary.getArraySize(target));
+        } catch (UnsupportedMessageException e) {
+            throw Errors.shouldNotReachHere(e);
+        }
     }
 
     @ExportMessage
@@ -679,17 +685,35 @@ public abstract class JSClass extends ObjectType {
     }
 
     @ExportMessage
-    static void removeArrayElement(DynamicObject target, long index) throws UnsupportedMessageException {
-        if (!hasArrayElements(target)) {
-            throw UnsupportedMessageException.create();
+    static boolean isArrayElementRemovable(DynamicObject target, long index) {
+        if (JSArray.isJSArray(target)) {
+            ScriptArray arrayType = JSObject.getArray(target);
+            if (!arrayType.isSealed() && !arrayType.isLengthNotWritable()) {
+                long length = arrayType.length(target);
+                if (index >= 0 && index < length) {
+                    return true;
+                }
+            }
         }
-        JSObject.delete(target, index, true);
+        return false;
     }
 
     @ExportMessage
-    static boolean isArrayElementRemovable(DynamicObject target, long index,
-                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
-        return hasArrayElements(target) && keyInfo.execute(target, index, KeyInfoNode.REMOVABLE);
+    static void removeArrayElement(DynamicObject target, long index) throws UnsupportedMessageException {
+        if (JSArray.isJSArray(target)) {
+            ScriptArray arrayType = JSObject.getArray(target);
+            if (!arrayType.isSealed() && !arrayType.isLengthNotWritable()) {
+                long length = arrayType.length(target);
+                if (index >= 0 && index < length) {
+                    arrayType = arrayType.removeRange(target, index, index + 1);
+                    JSObject.setArray(target, arrayType);
+                    arrayType = arrayType.setLength(target, length - 1, true);
+                    JSObject.setArray(target, arrayType);
+                    return;
+                }
+            }
+        }
+        throw UnsupportedMessageException.create();
     }
 
     @ExportMessage

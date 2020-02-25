@@ -155,9 +155,9 @@ public class PolyglotBuiltinTest extends JSTest {
 
     @Test
     public void testRemove() {
-        assertEquals("true", test("var a = [1,2,3]; ''+(Polyglot.remove(a,1) && a[1] === undefined);"));
+        assertEquals("1,3", test("var a = [1,2,3]; ''+(Polyglot.remove(a,1) && a);"));
         assertEquals("true", test("var o = {a:1, b:'foo'}; ''+(Polyglot.remove(o,'a') && o.a === undefined && o.b === 'foo');"));
-        test("''+Polyglot.remove(false,0);", "non-interop object");
+        test("''+Polyglot.remove(false, 0);", "non-interop object");
     }
 
     @Test

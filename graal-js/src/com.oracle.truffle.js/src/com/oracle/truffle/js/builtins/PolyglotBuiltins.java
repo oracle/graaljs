@@ -611,7 +611,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                 if (keyInterop.isString(key)) {
                     return member(obj, keyInterop.asString(key), interop);
                 } else if (keyInterop.fitsInInt(key)) {
-                    return arrayElement(obj, keyInterop.asInt(key), interop);
+                    return arrayElementInt(obj, keyInterop.asInt(key), interop);
                 }
             } catch (UnsupportedMessageException e) {
                 throw Errors.createTypeErrorUnboxException(obj, e, this);
