@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,20 +40,11 @@
  */
 package com.oracle.truffle.js.runtime.truffleinterop;
 
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 
-@ExportLibrary(InteropLibrary.class)
-public class InteropFunction implements TruffleObject {
-    final DynamicObject function;
+public abstract class InteropFunction implements TruffleObject {
+    private final DynamicObject function;
 
     InteropFunction(DynamicObject function) {
         this.function = function;
@@ -61,95 +52,5 @@ public class InteropFunction implements TruffleObject {
 
     public final DynamicObject getFunction() {
         return function;
-    }
-
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    final Boolean hasMembers() {
-        return true;
-    }
-
-    @ExportMessage
-    final Object getMembers(@SuppressWarnings("unused") boolean includeInternal,
-                    @CachedLibrary("this.function") InteropLibrary delegate) throws UnsupportedMessageException {
-        return delegate.getMembers(function);
-    }
-
-    @ExportMessage
-    final boolean isMemberInvocable(String key,
-                    @CachedLibrary("this.function") InteropLibrary delegate) {
-        return delegate.isMemberInvocable(function, key);
-    }
-
-    @ExportMessage
-    final Object invokeMember(String key, Object[] arguments,
-                    @CachedLibrary("this.function") InteropLibrary delegate)
-                    throws UnsupportedTypeException, ArityException, UnsupportedMessageException, UnknownIdentifierException {
-        return delegate.invokeMember(function, key, arguments);
-    }
-
-    @ExportMessage
-    final boolean isMemberReadable(String key,
-                    @CachedLibrary("this.function") InteropLibrary delegate) {
-        return delegate.isMemberReadable(function, key);
-    }
-
-    @ExportMessage
-    final Object readMember(String key,
-                    @CachedLibrary("this.function") InteropLibrary delegate) throws UnsupportedMessageException, UnknownIdentifierException {
-        return delegate.readMember(function, key);
-    }
-
-    @ExportMessage
-    final boolean isMemberModifiable(String key,
-                    @CachedLibrary("this.function") InteropLibrary delegate) {
-        return delegate.isMemberModifiable(function, key);
-    }
-
-    @ExportMessage
-    final boolean isMemberInsertable(String key,
-                    @CachedLibrary("this.function") InteropLibrary delegate) {
-        return delegate.isMemberInsertable(function, key);
-    }
-
-    @ExportMessage
-    final void writeMember(String key, Object value,
-                    @CachedLibrary("this.function") InteropLibrary delegate) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
-        delegate.writeMember(function, key, value);
-    }
-
-    @ExportMessage
-    final boolean isMemberRemovable(String key,
-                    @CachedLibrary("this.function") InteropLibrary delegate) {
-        return delegate.isMemberRemovable(function, key);
-    }
-
-    @ExportMessage
-    final void removeMember(String key,
-                    @CachedLibrary("this.function") InteropLibrary delegate) throws UnsupportedMessageException, UnknownIdentifierException {
-        delegate.removeMember(function, key);
-    }
-
-    @ExportMessage
-    final boolean hasMemberReadSideEffects(String key,
-                    @CachedLibrary("this.function") InteropLibrary delegate) {
-        return delegate.hasMemberReadSideEffects(function, key);
-    }
-
-    @ExportMessage
-    final boolean hasMemberWriteSideEffects(String key,
-                    @CachedLibrary("this.function") InteropLibrary delegate) {
-        return delegate.hasMemberWriteSideEffects(function, key);
-    }
-
-    @ExportMessage
-    final boolean isInstantiable(@CachedLibrary("this.function") InteropLibrary delegate) {
-        return delegate.isInstantiable(function);
-    }
-
-    @ExportMessage
-    final Object instantiate(Object[] args,
-                    @CachedLibrary("this.function") InteropLibrary delegate) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
-        return delegate.instantiate(function, args);
     }
 }

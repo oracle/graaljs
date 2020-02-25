@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,92 +38,71 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.objects;
+package com.oracle.truffle.js.runtime.truffleinterop;
 
-import java.util.Objects;
-
-import org.graalvm.collections.EconomicMap;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSRuntime;
 
-@ExportLibrary(InteropLibrary.class)
-public final class JSMetaObject implements TruffleObject {
-    private final String type;
-    private final String subtype;
-    private final String className;
-    private final Env env;
-    private EconomicMap<String, String> map;
+/**
+ * JavaScript language view on JS values and foreign objects.
+ */
+@ExportLibrary(value = InteropLibrary.class, delegateTo = "delegate")
+public final class JavaScriptLanguageView implements TruffleObject {
 
-    public JSMetaObject(String type, String subtype, String className, TruffleLanguage.Env env) {
-        this.type = Objects.requireNonNull(type);
-        this.subtype = subtype;
-        this.className = className;
-        this.env = env;
+    protected final Object delegate;
+
+    private JavaScriptLanguageView(Object delegate) {
+        this.delegate = delegate;
     }
 
-    public String getType() {
-        return type;
-    }
-
-    public String getSubtype() {
-        return subtype;
-    }
-
-    public String getClassName() {
-        return className;
-    }
-
-    EconomicMap<String, String> getMap() {
-        if (map == null) {
-            map = EconomicMap.create();
-            map.put("type", type);
-            if (subtype != null) {
-                map.put("subtype", subtype);
-            }
-            if (className != null) {
-                map.put("className", className);
-            }
-        }
-        return map;
+    public static JavaScriptLanguageView create(Object delegate) {
+        return new JavaScriptLanguageView(delegate);
     }
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    boolean hasMembers() {
+    boolean hasLanguage() {
         return true;
     }
 
+    @SuppressWarnings("static-method")
     @ExportMessage
-    @TruffleBoundary
-    Object readMember(String key) throws UnknownIdentifierException {
-        String value = getMap().get(key);
-        if (value == null) {
-            throw UnknownIdentifierException.create(key);
-        }
-        return value;
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return JavaScriptLanguage.class;
     }
 
     @ExportMessage
-    @TruffleBoundary
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        String[] keys = new String[getMap().size()];
-        int i = 0;
-        for (String key : getMap().getKeys()) {
-            keys[i++] = key;
-        }
-        return env.asGuestValue(keys);
+    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return JSRuntime.safeToString(delegate);
     }
 
     @ExportMessage
-    @TruffleBoundary
-    boolean isMemberReadable(String key) {
-        return getMap().containsKey(key);
+    @ExplodeLoop
+    boolean hasMetaObject(@CachedLibrary("this.delegate") InteropLibrary delegateLibrary) {
+        for (JSMetaType type : JSMetaType.KNOWN_TYPES) {
+            if (type.isInstance(delegate, delegateLibrary)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @ExportMessage
+    @ExplodeLoop
+    Object getMetaObject(@CachedLibrary("this.delegate") InteropLibrary delegateLibrary) throws UnsupportedMessageException {
+        for (JSMetaType type : JSMetaType.KNOWN_TYPES) {
+            if (type.isInstance(delegate, delegateLibrary)) {
+                return type;
+            }
+        }
+        throw UnsupportedMessageException.create();
     }
 }

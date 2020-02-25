@@ -47,7 +47,10 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.dsl.Cached;
@@ -68,6 +71,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
@@ -987,6 +991,121 @@ public abstract class JSClass extends ObjectType {
         } else {
             throw UnsupportedMessageException.create();
         }
+    }
+
+    @ExportMessage
+    static boolean hasLanguage(@SuppressWarnings("unused") DynamicObject receiver) {
+        return true;
+    }
+
+    @ExportMessage
+    static Class<? extends TruffleLanguage<?>> getLanguage(@SuppressWarnings("unused") DynamicObject receiver) {
+        return JavaScriptLanguage.class;
+    }
+
+    @ExportMessage
+    static Object toDisplayString(DynamicObject receiver, @SuppressWarnings("unused") boolean allowSideEffects) {
+        return JSRuntime.safeToString(receiver);
+    }
+
+    @ExportMessage
+    static boolean hasSourceLocation(DynamicObject receiver) {
+        return getSourceLocationImpl(receiver) != null;
+    }
+
+    @ExportMessage
+    static SourceSection getSourceLocation(DynamicObject receiver) throws UnsupportedMessageException {
+        SourceSection sourceSection = getSourceLocationImpl(receiver);
+        if (sourceSection == null) {
+            throw UnsupportedMessageException.create();
+        }
+        return sourceSection;
+    }
+
+    @TruffleBoundary
+    private static SourceSection getSourceLocationImpl(DynamicObject receiver) {
+        if (JSFunction.isJSFunction(receiver)) {
+            DynamicObject func = receiver;
+            CallTarget ct = JSFunction.getCallTarget(func);
+            if (JSFunction.isBoundFunction(func)) {
+                func = JSFunction.getBoundTargetFunction(func);
+                ct = JSFunction.getCallTarget(func);
+            }
+
+            if (ct instanceof RootCallTarget) {
+                return ((RootCallTarget) ct).getRootNode().getSourceSection();
+            }
+        }
+        return null;
+    }
+
+    @ExportMessage
+    static boolean hasMetaObject(DynamicObject receiver) {
+        return getMetaObjectImpl(receiver) != null;
+    }
+
+    @ExportMessage
+    static Object getMetaObject(DynamicObject receiver) throws UnsupportedMessageException {
+        Object metaObject = getMetaObjectImpl(receiver);
+        if (metaObject != null) {
+            return metaObject;
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @TruffleBoundary
+    private static Object getMetaObjectImpl(DynamicObject receiver) {
+        if (hasMembers(receiver)) {
+            Object metaObject = JSRuntime.getDataProperty(receiver, JSObject.CONSTRUCTOR);
+            if (metaObject != null && metaObject instanceof DynamicObject && isMetaObject((DynamicObject) metaObject)) {
+                return metaObject;
+            }
+        }
+        return null;
+    }
+
+    @ExportMessage
+    static boolean isMetaObject(DynamicObject receiver) {
+        return JSFunction.isJSFunction(receiver);
+    }
+
+    @TruffleBoundary
+    @ExportMessage(name = "getMetaQualifiedName")
+    @ExportMessage(name = "getMetaSimpleName")
+    static Object getMetaObjectName(DynamicObject receiver) throws UnsupportedMessageException {
+        if (isMetaObject(receiver)) {
+            Object name = JSRuntime.getDataProperty(receiver, JSFunction.NAME);
+            if (JSRuntime.isString(name)) {
+                return JSRuntime.javaToString(name);
+            }
+            return "";
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @TruffleBoundary
+    @ExportMessage
+    static boolean isMetaInstance(DynamicObject receiver, Object instance) throws UnsupportedMessageException {
+        if (!isMetaObject(receiver)) {
+            throw UnsupportedMessageException.create();
+        }
+        Object constructorPrototype = JSRuntime.getDataProperty(receiver, JSObject.PROTOTYPE);
+        if (JSGuards.isJSObject(constructorPrototype)) {
+            if (JSGuards.isJSObject(instance) && !JSProxy.isProxy(instance)) {
+                DynamicObject proto = JSObject.getPrototype((DynamicObject) instance);
+                while (proto != Null.instance) {
+                    if (proto == constructorPrototype) {
+                        return true;
+                    }
+                    if (JSProxy.isProxy(proto)) {
+                        break;
+                    }
+                    proto = JSObject.getPrototype(proto);
+                }
+            }
+        }
+        return false;
     }
 
     static ReadElementNode getUncachedRead() {
