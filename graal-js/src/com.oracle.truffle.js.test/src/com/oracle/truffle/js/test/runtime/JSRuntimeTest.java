@@ -52,11 +52,15 @@ import org.junit.Test;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.binary.JSEqualNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
+import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
+import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.nodes.unary.TypeOfNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -322,5 +326,17 @@ public class JSRuntimeTest extends JSTest {
         } catch (Exception ex) {
             assertTrue(ex.getMessage().contains("not a function"));
         }
+    }
+
+    @Test
+    public void testNodeToString() {
+        ScriptNode scriptNode = testHelper.parse("1+2");
+        Node node = scriptNode.getRootNode();
+        FunctionRootNode frn = (FunctionRootNode) node;
+        FunctionBodyNode fbn = (FunctionBodyNode) frn.getBody();
+        JavaScriptNode jsnode = fbn.getBody();
+        String str = jsnode.toString();
+        assertTrue(str.contains("DualNode"));
+        assertTrue(str.contains(":program"));
     }
 }
