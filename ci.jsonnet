@@ -6,7 +6,7 @@ local common = import 'common.jsonnet';
   // Used to run fewer jobs
   local debug = false,
 
-  local overlay = 'f7dc6ec145f82f1a3d4a7a31537db24353b30c0a',
+  local overlay = '60b6cf373a6bac2d0780060c563a4c1c1830c8c0',
 
   local no_overlay = 'cb733e564850cd37b685fcef6f3c16b59802b22c',
 
@@ -21,7 +21,7 @@ local common = import 'common.jsonnet';
       ['mx', '-p', 'graal-js', 'deploy-binary-if-master', '--skip-existing', 'graaljs-lafo'],
       ['mx', '-p', 'graal-nodejs', 'deploy-binary-if-master', '--skip-existing', 'graalnodejs-lafo'],
     ],
-    timelimit: '15:00',
+    timelimit: '30:00',
   },
 
   builds: graalJs.builds + graalNodeJs.builds + [

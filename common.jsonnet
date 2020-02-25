@@ -23,6 +23,7 @@
   bench:       {targets+: ['bench', 'post-merge']},
   dailyBench:  {targets+: ['bench', 'daily']},
   weeklyBench: {targets+: ['bench', 'weekly']},
+  manualBench: {targets+: ['bench']},
   weekly:      {targets+: ['weekly']},
 
   local python3 = {
