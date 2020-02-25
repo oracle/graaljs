@@ -21,7 +21,7 @@ local common = import 'common.jsonnet';
       ['mx', '-p', 'graal-js', 'deploy-binary-if-master', '--skip-existing', 'graaljs-lafo'],
       ['mx', '-p', 'graal-nodejs', 'deploy-binary-if-master', '--skip-existing', 'graalnodejs-lafo'],
     ],
-    timelimit: '15:00',
+    timelimit: '30:00',
   },
 
   builds: graalJs.builds + graalNodeJs.builds + [
