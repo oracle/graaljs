@@ -40,14 +40,16 @@
  */
 package com.oracle.truffle.js.test.polyglot;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.test.JSTest;
 
-public class ForeignTestMapTest {
+public class ForeignTestMapTest extends JSTest {
 
     @Test
     public void equalTest() {
@@ -66,5 +68,22 @@ public class ForeignTestMapTest {
         assertFalse(JSRuntime.equal(a2, b));
         assertFalse(JSRuntime.equal(a, 0));
         assertFalse(JSRuntime.equal(a, true));
+    }
+
+    @Test
+    public void foreignTestMapTests() {
+        ForeignTestMap map = new ForeignTestMap();
+        map.getContainer().put("value", "boxed");
+
+        testHelper.getPolyglotContext().getBindings("js").putMember("foreign", map);
+
+        assertEquals("boxed", testHelper.run("foreign.value"));
+        assertEquals(42, testHelper.run("foreign.othervalue=42"));
+        assertEquals(42, testHelper.run("foreign.othervalue"));
+        assertEquals(true, testHelper.run("delete foreign.othervalue"));
+        assertEquals(true, testHelper.run("foreign.othervalue === undefined"));
+        assertEquals(84, testHelper.run("foreign.fn = (a)=>{ return a+a; }; foreign.fn(42);"));
+
+        assertEquals(true, testHelper.run("foreign.length=10; foreign[0]=42; foreign[1]=41; Array.prototype.sort.call(foreign); foreign[0]===41 && foreign[1]===42 && foreign[2]===undefined;"));
     }
 }
