@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,11 +46,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.WithVarWrapperNode;
 import com.oracle.truffle.js.nodes.access.GlobalConstantNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
+import com.oracle.truffle.js.nodes.access.WithVarWrapperNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.InputNodeTag;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -144,13 +144,12 @@ public abstract class JSMaterializedInvokeTargetableNode extends JSTargetableNod
      *
      */
     private static class MaterializedTargetablePropertyNode extends PropertyNode {
-        protected MaterializedTargetablePropertyNode(JSContext context, JavaScriptNode target, Object propertyKey) {
-            super(context, target, propertyKey);
-            this.setMethod();
+        protected MaterializedTargetablePropertyNode(JSContext context, JavaScriptNode target, Object propertyKey, boolean method) {
+            super(context, target, propertyKey, method);
         }
 
         MaterializedTargetablePropertyNode(PropertyNode target) {
-            this(target.getContext(), new EchoTargetValueNode(), target.getPropertyKey());
+            this(target.getContext(), new EchoTargetValueNode(), target.getPropertyKey(), target.isMethod());
         }
 
         @Override
@@ -184,7 +183,7 @@ public abstract class JSMaterializedInvokeTargetableNode extends JSTargetableNod
 
         @Override
         protected JavaScriptNode copyUninitialized() {
-            return new MaterializedTargetablePropertyNode(getContext(), cloneUninitialized(getTarget()), getPropertyKey());
+            return new MaterializedTargetablePropertyNode(getContext(), cloneUninitialized(getTarget()), getPropertyKey(), isMethod());
         }
     }
 

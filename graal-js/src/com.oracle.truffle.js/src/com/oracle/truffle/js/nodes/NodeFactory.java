@@ -580,9 +580,7 @@ public class NodeFactory {
     public JavaScriptNode createFunctionCall(@SuppressWarnings("unused") JSContext context, JavaScriptNode expression, JavaScriptNode[] arguments) {
         if (expression instanceof PropertyNode || expression instanceof ReadElementNode || expression instanceof WithVarWrapperNode || expression instanceof PrivateFieldGetNode ||
                         expression instanceof OptionalChainNode.ShortCircuitTargetableNode) {
-            if (expression instanceof PropertyNode) {
-                ((PropertyNode) expression).setMethod();
-            }
+            assert !(expression instanceof PropertyNode) || ((PropertyNode) expression).isMethod();
             return JSFunctionCallNode.createInvoke((JSTargetableNode) expression, arguments, false, false);
         } else if (expression instanceof JSTargetableWrapperNode) {
             JavaScriptNode function = ((JSTargetableWrapperNode) expression).getDelegate();
@@ -609,6 +607,7 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createNew(JSContext context, JavaScriptNode function, JavaScriptNode[] arguments) {
+        assert !(function instanceof PropertyNode) || !((PropertyNode) function).isMethod();
         return JSNewNode.create(context, function, arguments);
     }
 
@@ -671,16 +670,12 @@ public class NodeFactory {
 
     // ##### Property nodes
 
-    public JavaScriptNode createReadProperty(JSContext context, JavaScriptNode base, String propertyName) {
+    public JSTargetableNode createReadProperty(JSContext context, JavaScriptNode base, String propertyName) {
         return PropertyNode.createProperty(context, base, propertyName);
     }
 
-    public PropertyNode createProperty(JSContext context, JavaScriptNode base, Object propertyKey) {
-        return PropertyNode.createProperty(context, base, propertyKey);
-    }
-
-    public PropertyNode createMethod(JSContext jsContext, JavaScriptNode object, Object string) {
-        return PropertyNode.createMethod(jsContext, object, string);
+    public JSTargetableNode createReadProperty(JSContext context, JavaScriptNode base, String propertyName, boolean method) {
+        return PropertyNode.createProperty(context, base, propertyName, method);
     }
 
     public WritePropertyNode createWriteProperty(JavaScriptNode target, Object propertyKey, JavaScriptNode rhs, JSContext context, boolean strictMode) {
