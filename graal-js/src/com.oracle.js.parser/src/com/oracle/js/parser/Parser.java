@@ -3521,7 +3521,7 @@ public class Parser extends AbstractParser {
                 break;
         }
 
-        throw error(AbstractParser.message("unexpected.token", type.getNameOrType()));
+        throw error(AbstractParser.message(MESSAGE_EXPECTED_OPERAND, type.getNameOrType()));
     }
 
     /**
