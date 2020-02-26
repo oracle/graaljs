@@ -53,6 +53,10 @@
     "filePath" : "built-ins/RegExp/lookBehind/word-boundary.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "built-ins/RegExp/match-indices/indices-array-unicode-match.js",
+    "status" : "FAIL",
+    "comment" : "The regular expressions use both backreferences (TRegex bails out) and the Unicode flag (Joni bails out)."
+  }, {
     "filePath" : "built-ins/RegExp/named-groups/lookbehind.js",
     "status" : "FAIL",
     "comment" : "Fails because Joni matches lookbehind left-to-right and so the rightmost match of a capture group in a lookbehind wins. In ECMAScript, lookbehind is to be matched right-to-left and the leftmost match of a capture group in a lookbehind should be kept."
