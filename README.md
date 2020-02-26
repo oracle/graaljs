@@ -1,4 +1,4 @@
-[![Join the chat at https://gitter.im/graalvm/graaljs](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/graalvm/graaljs?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![https://graalvm.slack.com](https://img.shields.io/badge/slack-join%20channel-active)](https://www.graalvm.org/slack-invitation/)
 
 A high performance implementation of the JavaScript programming language.
 Built on the GraalVM by Oracle Labs.
