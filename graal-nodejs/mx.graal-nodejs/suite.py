@@ -117,6 +117,17 @@ suite = {
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,JavaScript,NodeJS",
     },
+    "com.oracle.truffle.trufflenode.test" : {
+      "subDir" : "mx.graal-nodejs",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.trufflenode"
+      ],
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "checkstyle" : "com.oracle.truffle.trufflenode",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Truffle,JavaScript,NodeJS",
+    },
     "coremodules" : {
       "subDir" : "trufflenode",
       "buildDependencies" : [
@@ -172,6 +183,17 @@ suite = {
         ],
         "include/src/graal/" : "file:deps/v8/src/graal/graal_handle_content.h",
       },
+    },
+    "TRUFFLENODE_TEST" : {
+      "subdir" : "mx.graal-nodejs",
+      "dependencies" : ["com.oracle.truffle.trufflenode.test"],
+      "distDependencies" : [
+        "TRUFFLENODE"
+      ],
+      "description" : "Graal Node.js testing",
+      "maven" : {
+        "artifactId" : "graal-nodejs-test",
+      }
     },
   },
 }

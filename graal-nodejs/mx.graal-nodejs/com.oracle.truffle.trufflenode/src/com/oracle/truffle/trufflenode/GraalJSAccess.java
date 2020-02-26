@@ -336,6 +336,7 @@ public final class GraalJSAccess {
         assert mainJSContext != null : "JSContext initialized";
         agent = new NodeJSAgent();
         mainJSRealm.setAgent(agent);
+        agent.interopBoundaryEnter();
         deallocator = new Deallocator();
         envForInstruments = mainJSRealm.getEnv();
         // Disallow importing dynamically unless ESM Loader (--experimental-modules) is enabled.
