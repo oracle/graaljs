@@ -50,10 +50,8 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.builtins.RegExpBuiltins;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.joni.JoniRegexEngine;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -370,68 +368,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
 
     @Override
     public void fillConstructor(JSRealm realm, DynamicObject constructor) {
-        final JSContext context = realm.getContext();
         putConstructorSpeciesGetter(realm, constructor);
-        if (context.isOptionRegexpStaticResult()) {
-            if (context.isOptionNashornCompatibilityMode()) {
-                putRegExpStaticPropertyAccessor(realm, constructor, null, "input");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpMultiLine, "multiline");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpLastMatch, "lastMatch");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpLastParen, "lastParen");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpLeftContext, "leftContext");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpRightContext, "rightContext");
-            } else {
-                putRegExpStaticPropertyAccessor(realm, constructor, null, "input");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpLastMatch, "lastMatch");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpLastParen, "lastParen");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpLeftContext, "leftContext");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpRightContext, "rightContext");
-
-                putRegExpStaticPropertyAccessor(realm, constructor, null, "input", "$_");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$And, "lastMatch", "$&");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$Plus, "lastParen", "$+");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$Apostrophe, "leftContext", "$`");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$Quote, "rightContext", "$'");
-            }
-            putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$1, "$1");
-            putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$2, "$2");
-            putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$3, "$3");
-            putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$4, "$4");
-            putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$5, "$5");
-            putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$6, "$6");
-            putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$7, "$7");
-            putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$8, "$8");
-            putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$9, "$9");
-        }
-    }
-
-    private static void putRegExpStaticPropertyAccessor(JSRealm realm, DynamicObject constructor, BuiltinFunctionKey builtinKey, String getterName) {
-        putRegExpStaticPropertyAccessor(realm, constructor, builtinKey, getterName, getterName);
-    }
-
-    private static void putRegExpStaticPropertyAccessor(JSRealm realm, DynamicObject constructor, BuiltinFunctionKey builtinKey, String getterName, String propertyName) {
-        JSContext ctx = realm.getContext();
-        DynamicObject getter = realm.lookupFunction(RegExpBuiltins.BUILTINS, getterName);
-
-        DynamicObject setter;
-        if (propertyName.equals("input") || propertyName.equals("$_")) {
-            setter = realm.lookupFunction(RegExpBuiltins.BUILTINS, "setInput");
-        } else if (realm.getContext().isOptionV8CompatibilityModeInContextInit()) {
-            // set empty setter for V8 compatibility, see testv8/mjsunit/regress/regress-5566.js
-            String setterName = "set " + propertyName;
-            JSFunctionData setterData = ctx.getOrCreateBuiltinFunctionData(builtinKey,
-                            (c) -> JSFunctionData.createCallOnly(c, ctx.getEmptyFunctionCallTarget(), 0, setterName));
-            setter = JSFunction.create(realm, setterData);
-        } else {
-            setter = Undefined.instance;
-        }
-
-        JSObjectUtil.putConstantAccessorProperty(ctx, constructor, propertyName, getter, setter, getRegExpStaticResultPropertyAccessorJSAttributes(ctx));
-    }
-
-    // https://github.com/tc39/proposal-regexp-legacy-features#additional-properties-of-the-regexp-constructor
-    private static int getRegExpStaticResultPropertyAccessorJSAttributes(JSContext context) {
-        return context.isOptionNashornCompatibilityMode() ? JSAttributes.notConfigurableEnumerableWritable() : JSAttributes.configurableNotEnumerableWritable();
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
