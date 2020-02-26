@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2007, 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2007, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,11 @@ class GraalJsDefaultTags:
     all = 'all'
 
 def _graal_js_gate_runner(args, tasks):
+    with Task('CheckCopyrights', tasks, tags=['style']) as t:
+        if t:
+            if mx.checkcopyrights(['--primary']) != 0:
+                t.abort('Copyright errors found. Please run "mx checkcopyrights --primary -- --fix" to fix them.')
+
     with Task('TestJSCommand', tasks, tags=[GraalJsDefaultTags.default, GraalJsDefaultTags.all]) as t:
         if t:
             js(['-Dpolyglot.js.profile-time=true', '-e', '""'])
