@@ -5258,21 +5258,7 @@ public class Parser extends AbstractParser {
                     throw error(AbstractParser.message("unexpected.token", type.getNameOrType()));
                 }
 
-                if (expr instanceof BaseNode || expr instanceof IdentNode) {
-                    if (isStrictMode) {
-                        if (expr instanceof IdentNode) {
-                            IdentNode ident = (IdentNode) expr;
-                            if (!ident.isThis() && !ident.isMetaProperty()) {
-                                throw error(AbstractParser.message("strict.cant.delete.ident", ident.getName()), unaryToken);
-                            }
-                        } else if (expr instanceof AccessNode && ((AccessNode) expr).isPrivate()) {
-                            throw error(AbstractParser.message("strict.cant.delete.private"), unaryToken);
-                        }
-                    }
-                    return new UnaryNode(unaryToken, expr);
-                }
-                appendStatement(new ExpressionStatement(unaryLine, unaryToken, finish, expr));
-                return LiteralNode.newInstance(unaryToken, finish, true);
+                return verifyDeleteExpression(unaryLine, unaryToken, expr);
             }
             case VOID:
             case TYPEOF:
@@ -5323,6 +5309,24 @@ public class Parser extends AbstractParser {
         }
 
         return expression;
+    }
+
+    private Expression verifyDeleteExpression(final int unaryLine, final long unaryToken, final Expression expr) {
+        if (expr instanceof BaseNode || expr instanceof IdentNode) {
+            if (isStrictMode) {
+                if (expr instanceof IdentNode) {
+                    IdentNode ident = (IdentNode) expr;
+                    if (!ident.isThis() && !ident.isMetaProperty()) {
+                        throw error(AbstractParser.message("strict.cant.delete.ident", ident.getName()), unaryToken);
+                    }
+                } else if (expr instanceof AccessNode && ((AccessNode) expr).isPrivate()) {
+                    throw error(AbstractParser.message("strict.cant.delete.private"), unaryToken);
+                }
+            }
+            return new UnaryNode(unaryToken, expr);
+        }
+        appendStatement(new ExpressionStatement(unaryLine, unaryToken, finish, expr));
+        return LiteralNode.newInstance(unaryToken, finish, true);
     }
 
     private Expression verifyIncDecExpression(final long unaryToken, final TokenType opType, final Expression lhs, final boolean isPostfix) {
