@@ -3509,7 +3509,7 @@ public class Parser extends AbstractParser {
                 break;
         }
 
-        return null;
+        throw error(AbstractParser.message("unexpected.token", type.getNameOrType()));
     }
 
     /**
@@ -4245,9 +4245,7 @@ public class Parser extends AbstractParser {
         // Get function base.
         final int callLine = line;
         final Expression constructor = memberExpression(yield, await);
-        if (constructor == null) {
-            return null;
-        }
+
         // Get arguments.
         ArrayList<Expression> arguments;
 
@@ -4401,10 +4399,6 @@ public class Parser extends AbstractParser {
                     break;
                 }
                 case PERIOD: {
-                    if (lhs == null) {
-                        throw error(AbstractParser.message(MESSAGE_EXPECTED_OPERAND, type.getNameOrType()));
-                    }
-
                     next();
 
                     final boolean isPrivate = type == TokenType.PRIVATE_IDENT;
@@ -4427,9 +4421,6 @@ public class Parser extends AbstractParser {
                 case TEMPLATE:
                 case TEMPLATE_HEAD: {
                     // tagged template literal
-                    if (lhs == null) {
-                        throw error(AbstractParser.message(MESSAGE_EXPECTED_OPERAND, type.getNameOrType()));
-                    }
 
                     final int callLine = line;
                     final List<Expression> arguments = templateLiteralArgumentList(yield, await);
