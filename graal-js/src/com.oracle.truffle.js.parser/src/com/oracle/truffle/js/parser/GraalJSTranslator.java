@@ -2122,16 +2122,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode enterDelete(UnaryNode unaryNode) {
         Expression rhs = unaryNode.getExpression();
-        if (rhs instanceof AccessNode) {
-            AccessNode accessNode = (AccessNode) rhs;
-            JavaScriptNode target = transform(accessNode.getBase());
-            JavaScriptNode key = factory.createConstantString(accessNode.getProperty());
-            return createDeleteProperty(unaryNode, accessNode, target, key);
-        } else if (rhs instanceof IndexNode) {
-            IndexNode indexNode = (IndexNode) rhs;
-            JavaScriptNode target = transform(indexNode.getBase());
-            JavaScriptNode element = transform(indexNode.getIndex());
-            return createDeleteProperty(unaryNode, indexNode, target, element);
+        if (rhs instanceof AccessNode || rhs instanceof IndexNode) {
+            return enterDeleteProperty(unaryNode);
         } else {
             return enterDeleteIdent(unaryNode);
         }
@@ -2152,12 +2144,28 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return tagExpression(result, unaryNode);
     }
 
-    private JavaScriptNode createDeleteProperty(UnaryNode deleteNode, BaseNode baseNode, JavaScriptNode target, JavaScriptNode key) {
-        JavaScriptNode base = target;
-        if (baseNode.isOptionalChain()) {
-            base = filterOptionalChainTarget(base, baseNode.isOptional());
+    private JavaScriptNode enterDeleteProperty(UnaryNode deleteNode) {
+        BaseNode baseNode = (BaseNode) deleteNode.getExpression();
+        if (baseNode.isSuper()) {
+            return tagExpression(factory.createThrowError(JSErrorType.ReferenceError, "Unsupported reference to 'super'"), deleteNode);
         }
-        JavaScriptNode delete = factory.createDeleteProperty(base, key, environment.isStrictMode(), context);
+
+        JavaScriptNode target = transform(baseNode.getBase());
+        JavaScriptNode key;
+        if (baseNode instanceof AccessNode) {
+            AccessNode accessNode = (AccessNode) baseNode;
+            assert !accessNode.isPrivate();
+            key = factory.createConstantString(accessNode.getProperty());
+        } else {
+            assert baseNode instanceof IndexNode;
+            IndexNode indexNode = (IndexNode) baseNode;
+            key = transform(indexNode.getIndex());
+        }
+
+        if (baseNode.isOptionalChain()) {
+            target = filterOptionalChainTarget(target, baseNode.isOptional());
+        }
+        JavaScriptNode delete = factory.createDeleteProperty(target, key, environment.isStrictMode(), context);
         tagExpression(delete, deleteNode);
         if (baseNode.isOptionalChain()) {
             delete = factory.createOptionalChain(delete);
