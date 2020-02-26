@@ -1730,7 +1730,7 @@ public class Parser extends AbstractParser {
             IdentNode superIdent = new IdentNode(identToken, ctorFinish, SUPER.getName()).setIsDirectSuper();
             IdentNode argsIdent = new IdentNode(identToken, ctorFinish, "args").setIsRestParameter();
             Expression spreadArgs = new UnaryNode(Token.recast(classToken, TokenType.SPREAD_ARGUMENT), argsIdent);
-            CallNode superCall = new CallNode(classLineNumber, classToken, ctorFinish, superIdent, Collections.singletonList(spreadArgs), false);
+            Expression superCall = CallNode.forCall(classLineNumber, classToken, Token.descPosition(classToken), ctorFinish, superIdent, Collections.singletonList(spreadArgs));
             statements = Collections.singletonList(new ExpressionStatement(classLineNumber, classToken, ctorFinish, superCall));
             parameters = Collections.singletonList(argsIdent);
         } else {
@@ -3530,7 +3530,7 @@ public class Parser extends AbstractParser {
      * @param primaryToken Original string token.
      * @return callNode to $EXEC.
      */
-    CallNode execString(final int primaryLine, final long primaryToken) {
+    private Expression execString(final int primaryLine, final long primaryToken) {
         // Synthesize an ident to call $EXEC.
         final IdentNode execIdent = new IdentNode(primaryToken, finish, EXEC_NAME);
         // Skip over EXECSTRING.
@@ -3543,7 +3543,8 @@ public class Parser extends AbstractParser {
         // Skip ending of edit string expression.
         expect(RBRACE);
 
-        return new CallNode(primaryLine, primaryToken, finish, execIdent, arguments, false);
+        long tokenWithDelimiter = Token.withDelimiter(primaryToken);
+        return CallNode.forCall(primaryLine, tokenWithDelimiter, Token.descPosition(tokenWithDelimiter), finish, execIdent, arguments);
     }
 
     /**
@@ -4158,7 +4159,7 @@ public class Parser extends AbstractParser {
                 }
             }
 
-            lhs = new CallNode(callLine, callToken, lhs.getStart(), finish, lhs, optimizeList(arguments), false, false, false, eval, applyArguments);
+            lhs = CallNode.forCall(callLine, callToken, lhs.getStart(), finish, lhs, optimizeList(arguments), false, false, eval, applyArguments);
         }
 
         boolean optionalChain = false;
@@ -4169,11 +4170,9 @@ public class Parser extends AbstractParser {
 
             switch (type) {
                 case LPAREN: {
-                    // Get NEW or FUNCTION arguments.
                     final List<Expression> arguments = optimizeList(argumentList(yield, await));
 
-                    // Create call node.
-                    lhs = new CallNode(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false, false, optionalChain);
+                    lhs = CallNode.forCall(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false, optionalChain);
 
                     break;
                 }
@@ -4208,16 +4207,15 @@ public class Parser extends AbstractParser {
                 }
                 case TEMPLATE:
                 case TEMPLATE_HEAD: {
+                    // tagged template literal
                     if (optionalChain) {
                         // TemplateLiteral not allowed in OptionalChain
                         throw error(AbstractParser.message("optional.chain.template"));
                     }
 
-                    // tagged template literal
                     final List<Expression> arguments = templateLiteralArgumentList(yield, await);
 
-                    // Create call node.
-                    lhs = new CallNode(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false, false, optionalChain);
+                    lhs = CallNode.forCall(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false, optionalChain);
 
                     break;
                 }
@@ -4233,7 +4231,7 @@ public class Parser extends AbstractParser {
                         case LPAREN: {
                             final List<Expression> arguments = optimizeList(argumentList(yield, await));
 
-                            lhs = new CallNode(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false, true, optionalChain);
+                            lhs = CallNode.forCall(callLine, callToken, lhs.getStart(), finish, lhs, arguments, true, optionalChain);
                             break;
                         }
                         case LBRACKET: {
@@ -4326,7 +4324,7 @@ public class Parser extends AbstractParser {
             arguments.add(objectLiteral(yield, await));
         }
 
-        final CallNode callNode = new CallNode(callLine, constructor.getToken(), finish, constructor, optimizeList(arguments), true);
+        final Expression callNode = CallNode.forNew(callLine, newToken, Token.descPosition(newToken), finish, constructor, optimizeList(arguments));
 
         return new UnaryNode(newToken, callNode);
     }
@@ -4482,7 +4480,7 @@ public class Parser extends AbstractParser {
                     final int callLine = line;
                     final List<Expression> arguments = templateLiteralArgumentList(yield, await);
 
-                    lhs = new CallNode(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false, false, false);
+                    lhs = CallNode.forCall(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false, false);
 
                     break;
                 }
