@@ -5295,10 +5295,6 @@ public class Parser extends AbstractParser {
                 next();
 
                 final Expression lhs = unaryExpression(yield, await);
-                // ++, -- without operand..
-                if (lhs == null) {
-                    throw error(AbstractParser.message("expected.lvalue", type.getNameOrType()));
-                }
 
                 return verifyIncDecExpression(unaryToken, opType, lhs, false);
 
@@ -5318,20 +5314,12 @@ public class Parser extends AbstractParser {
                     final long opToken = token;
                     final TokenType opType = type;
                     final Expression lhs = expression;
-                    // ++, -- without operand..
-                    if (lhs == null) {
-                        throw error(AbstractParser.message("expected.lvalue", type.getNameOrType()));
-                    }
                     next();
 
                     return verifyIncDecExpression(opToken, opType, lhs, true);
                 default:
                     break;
             }
-        }
-
-        if (expression == null) {
-            throw error(AbstractParser.message(MESSAGE_EXPECTED_OPERAND, type.getNameOrType()));
         }
 
         return expression;
