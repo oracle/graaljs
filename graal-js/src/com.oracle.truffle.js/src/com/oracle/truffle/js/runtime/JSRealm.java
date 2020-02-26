@@ -1855,12 +1855,12 @@ public class JSRealm {
         this.embedderData = embedderData;
     }
 
-    public Object getStaticRegexResult(JSContext context, TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor) {
-        CompilerAsserts.partialEvaluationConstant(context);
-        assert context.isOptionRegexpStaticResult();
-        if (staticRegexResultCompiledRegex != null && context.getRegExpStaticResultUnusedAssumption().isValid()) {
+    public Object getStaticRegexResult(JSContext ctx, TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor) {
+        CompilerAsserts.partialEvaluationConstant(ctx);
+        assert ctx.isOptionRegexpStaticResult();
+        if (staticRegexResultCompiledRegex != null && ctx.getRegExpStaticResultUnusedAssumption().isValid()) {
             // switch from lazy to eager static RegExp result
-            context.getRegExpStaticResultUnusedAssumption().invalidate();
+            ctx.getRegExpStaticResultUnusedAssumption().invalidate();
             staticRegexResult = compiledRegexAccessor.exec(staticRegexResultCompiledRegex, staticRegexResultOriginalInputString, staticRegexResultFromIndex);
         }
         if (staticRegexResult == null) {
@@ -1874,14 +1874,14 @@ public class JSRealm {
      * globally. Instead, we store the values needed to calculate the result on demand, under the
      * assumption that this non-standard feature is often not used at all.
      */
-    public void setStaticRegexResult(JSContext context, Object compiledRegex, String input, long fromIndex, Object result) {
-        CompilerAsserts.partialEvaluationConstant(context);
-        assert context.isOptionRegexpStaticResult();
+    public void setStaticRegexResult(JSContext ctx, Object compiledRegex, String input, long fromIndex, Object result) {
+        CompilerAsserts.partialEvaluationConstant(ctx);
+        assert ctx.isOptionRegexpStaticResult();
         staticRegexResultInvalidated = false;
         staticRegexResultCompiledRegex = compiledRegex;
         staticRegexResultInputString = input;
         staticRegexResultOriginalInputString = input;
-        if (context.getRegExpStaticResultUnusedAssumption().isValid()) {
+        if (ctx.getRegExpStaticResultUnusedAssumption().isValid()) {
             staticRegexResultFromIndex = fromIndex;
         } else {
             assert TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(result, TRegexUtil.Props.RegexResult.IS_MATCH);
