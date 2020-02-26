@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -145,16 +146,20 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
         }
     }
 
-    private static void checkStaticRegexResultPropertyGet(JSRealm realm, Object thisValue) {
-        if (!realm.getContext().isOptionV8CompatibilityMode()) {
+    private static void checkStaticRegexResultPropertyGet(JSContext context, Object thisValue) {
+        CompilerAsserts.partialEvaluationConstant(context);
+        if (!context.isOptionV8CompatibilityMode()) {
+            JSRealm realm = context.getRealm();
             if (thisValue != realm.getRegExpConstructor() || realm.isRegexResultInvalidated()) {
                 throw Errors.createTypeError("Static RegExp result properties cannot be used with subclasses of RegExp.");
             }
         }
     }
 
-    private static void checkStaticRegexResultPropertySet(JSRealm realm, Object thisValue) {
-        if (!realm.getContext().isOptionV8CompatibilityMode()) {
+    private static void checkStaticRegexResultPropertySet(JSContext context, Object thisValue) {
+        CompilerAsserts.partialEvaluationConstant(context);
+        if (!context.isOptionV8CompatibilityMode()) {
+            JSRealm realm = context.getRealm();
             if (thisValue != realm.getRegExpConstructor()) {
                 throw Errors.createTypeError("Static RegExp result properties cannot be used with subclasses of RegExp.");
             }
@@ -178,7 +183,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
 
         @Specialization
         Object get() {
-            return context.getRealm().getStaticRegexResult(compiledRegexAccessor);
+            return context.getRealm().getStaticRegexResult(context, compiledRegexAccessor);
         }
     }
 
@@ -190,7 +195,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
 
         @Specialization
         String getInputProp(VirtualFrame frame) {
-            checkStaticRegexResultPropertyGet(getContext().getRealm(), JSFrameUtil.getThisObj(frame));
+            checkStaticRegexResultPropertyGet(getContext(), JSFrameUtil.getThisObj(frame));
             return getContext().getRealm().getStaticRegexResultInputString();
         }
     }
@@ -205,7 +210,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
 
         @Specialization
         Object setInputProp(VirtualFrame frame, Object val) {
-            checkStaticRegexResultPropertySet(getContext().getRealm(), JSFrameUtil.getThisObj(frame));
+            checkStaticRegexResultPropertySet(getContext(), JSFrameUtil.getThisObj(frame));
             getContext().getRealm().setStaticRegexResultInputString(toStringNode.executeString(val));
             return Undefined.instance;
         }
@@ -295,7 +300,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
 
         @Specialization
         String getGroup(VirtualFrame frame) {
-            checkStaticRegexResultPropertyGet(getContext().getRealm(), JSFrameUtil.getThisObj(frame));
+            checkStaticRegexResultPropertyGet(getContext(), JSFrameUtil.getThisObj(frame));
             Object result = getResultNode.execute();
             if (resultAccessor.isMatch(result) && compiledRegexAccessor.groupCount(getContext().getRealm().getStaticRegexResultCompiledRegex()) > groupNumber) {
                 int start = resultAccessor.captureGroupStart(result, groupNumber);
@@ -315,7 +320,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
 
         @Specialization
         String lastParen(VirtualFrame frame) {
-            checkStaticRegexResultPropertyGet(getContext().getRealm(), JSFrameUtil.getThisObj(frame));
+            checkStaticRegexResultPropertyGet(getContext(), JSFrameUtil.getThisObj(frame));
             Object result = getResultNode.execute();
             if (resultAccessor.isMatch(result)) {
                 int groupNumber = compiledRegexAccessor.groupCount(getContext().getRealm().getStaticRegexResultCompiledRegex()) - 1;
@@ -338,7 +343,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
 
         @Specialization
         String leftContext(VirtualFrame frame) {
-            checkStaticRegexResultPropertyGet(getContext().getRealm(), JSFrameUtil.getThisObj(frame));
+            checkStaticRegexResultPropertyGet(getContext(), JSFrameUtil.getThisObj(frame));
             Object result = getResultNode.execute();
             if (resultAccessor.isMatch(result)) {
                 int start = resultAccessor.captureGroupStart(result, 0);
@@ -357,7 +362,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
 
         @Specialization
         String rightContext(VirtualFrame frame) {
-            checkStaticRegexResultPropertyGet(getContext().getRealm(), JSFrameUtil.getThisObj(frame));
+            checkStaticRegexResultPropertyGet(getContext(), JSFrameUtil.getThisObj(frame));
             Object result = getResultNode.execute();
             if (resultAccessor.isMatch(result)) {
                 int end = resultAccessor.captureGroupEnd(result, 0);

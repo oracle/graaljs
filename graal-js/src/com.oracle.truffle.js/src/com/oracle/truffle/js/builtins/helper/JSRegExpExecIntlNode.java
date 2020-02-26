@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,6 +61,7 @@ import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
@@ -321,11 +322,12 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             Object result = executeCompiledRegex(compiledRegex, input, lastIndex, compiledRegexAccessor);
             if (context.isOptionRegexpStaticResult() && regexResultAccessor.isMatch(result)) {
                 boolean isJSRegExp = isJSRegExp(regExp);
-                if (context.getRealm() == JSRegExp.getRealmUnchecked(regExp, isJSRegExp)) {
+                JSRealm thisRealm = context.getRealm();
+                if (thisRealm == JSRegExp.getRealmUnchecked(regExp, isJSRegExp)) {
                     if (JSRegExp.getLegacyFeaturesEnabledUnchecked(regExp, isJSRegExp)) {
-                        context.getRealm().setStaticRegexResult(context, compiledRegex, input, lastIndex, result);
+                        thisRealm.setStaticRegexResult(context, compiledRegex, input, lastIndex, result);
                     } else {
-                        context.getRealm().invalidateStaticRegexResult();
+                        thisRealm.invalidateStaticRegexResult();
                     }
                 }
             }

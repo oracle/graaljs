@@ -1793,7 +1793,8 @@ public class JSRealm {
         this.embedderData = embedderData;
     }
 
-    public Object getStaticRegexResult(TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor) {
+    public Object getStaticRegexResult(JSContext context, TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor) {
+        CompilerAsserts.partialEvaluationConstant(context);
         assert context.isOptionRegexpStaticResult();
         if (staticRegexResultCompiledRegex != null && context.getRegExpStaticResultUnusedAssumption().isValid()) {
             // switch from lazy to eager static RegExp result
