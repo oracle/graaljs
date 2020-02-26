@@ -1167,6 +1167,10 @@ public class JSContext {
         return contextOptions.isIntl402();
     }
 
+    public boolean isOptionRegexpMatchIndices() {
+        return contextOptions.isRegexpMatchIndices();
+    }
+
     public boolean isOptionRegexpStaticResult() {
         assert !(getEnv() != null && getEnv().isPreInitialization()) : "Patchable option static-regex-result accessed during context pre-initialization.";
         return contextOptions.isRegexpStaticResult();

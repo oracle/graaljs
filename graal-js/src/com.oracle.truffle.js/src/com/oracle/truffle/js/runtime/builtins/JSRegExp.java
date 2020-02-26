@@ -375,8 +375,10 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         initialShape = initialShape.addProperty(LAZY_INDEX_PROXY);
         initialShape = initialShape.addProperty(JSObjectUtil.makeDataProperty(GROUPS, initialShape.allocator().locationForType(DynamicObject.class,
                         EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)), JSAttributes.getDefault()));
-        initialShape = initialShape.addProperty(JSObjectUtil.makeDataProperty(INDICES, initialShape.allocator().locationForType(DynamicObject.class,
-                        EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)), JSAttributes.getDefault()));
+        if (ctx.isOptionRegexpMatchIndices()) {
+            initialShape = initialShape.addProperty(JSObjectUtil.makeDataProperty(INDICES, initialShape.allocator().locationForType(DynamicObject.class,
+                            EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)), JSAttributes.getDefault()));
+        }
         return initialShape;
     }
 

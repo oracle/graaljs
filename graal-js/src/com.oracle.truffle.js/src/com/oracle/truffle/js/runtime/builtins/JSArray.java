@@ -362,8 +362,13 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         int arrayOffset = 0;
         int holeCount = 0;
         JSObjectFactory factory = context.getLazyRegexArrayFactory();
-        DynamicObject indices = createLazyRegexIndicesArray(context, length, regexResult, indicesGroups);
-        DynamicObject obj = JSObject.create(context, factory, array, arrayType, site, length, usedLength, indexOffset, arrayOffset, holeCount, regexResult, input, input, groups, indices);
+        DynamicObject obj = null;
+        if (context.isOptionRegexpMatchIndices()) {
+            DynamicObject indices = createLazyRegexIndicesArray(context, length, regexResult, indicesGroups);
+            obj = JSObject.create(context, factory, array, arrayType, site, length, usedLength, indexOffset, arrayOffset, holeCount, regexResult, input, input, groups, indices);
+        } else {
+            obj = JSObject.create(context, factory, array, arrayType, site, length, usedLength, indexOffset, arrayOffset, holeCount, regexResult, input, input, groups);
+        }
         assert isJSArray(obj);
         return obj;
     }
