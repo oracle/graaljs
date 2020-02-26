@@ -452,8 +452,9 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
         return JavaScriptLanguage.class;
     }
 
+    @TruffleBoundary
     @ExportMessage
     Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        return toString();
+        return toString() + 'n';
     }
 }
