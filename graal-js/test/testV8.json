@@ -870,10 +870,6 @@
     },
     "status" : "PASS"
   }, {
-    "filePath" : "mjsunit/harmony/optional-chaining.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
     "filePath" : "mjsunit/harmony/private-accessors.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"

@@ -199,7 +199,10 @@ public final class TokenLookup {
                     case 2:
                         // Two character entry.
                         if (name.charAt(1) == ch1) {
-                            return tokenType;
+                            // OptionalChainingPunctuator :: ?.[lookahead not in DecimalDigit]
+                            if (tokenType != TokenType.OPTIONAL_CHAIN || ch2 < '0' || '9' < ch2) {
+                                return tokenType;
+                            }
                         }
                         break;
                     case 3:

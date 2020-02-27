@@ -59,17 +59,17 @@ public final class IndexNode extends BaseNode {
      * @param base base node for access
      * @param index index for access
      */
-    public IndexNode(final long token, final int finish, final Expression base, final Expression index, final boolean isSuper) {
-        super(token, finish, base, false, isSuper);
+    public IndexNode(long token, int finish, Expression base, Expression index, boolean isSuper, boolean optional, boolean optionalChain) {
+        super(token, finish, base, isSuper, optional, optionalChain);
         this.index = index;
     }
 
     public IndexNode(final long token, final int finish, final Expression base, final Expression index) {
-        this(token, finish, base, index, false);
+        this(token, finish, base, index, false, false, false);
     }
 
-    private IndexNode(final IndexNode indexNode, final Expression base, final Expression index, final boolean isFunction, final boolean isSuper) {
-        super(indexNode, base, isFunction, isSuper);
+    private IndexNode(final IndexNode indexNode, final Expression base, final Expression index, final boolean isSuper) {
+        super(indexNode, base, isSuper, indexNode.isOptional(), indexNode.isOptionalChain());
         this.index = index;
     }
 
@@ -104,6 +104,9 @@ public final class IndexNode extends BaseNode {
             sb.append(')');
         }
 
+        if (isOptional()) {
+            sb.append('?').append('.');
+        }
         sb.append('[');
         index.toString(sb, printType);
         sb.append(']');
@@ -122,7 +125,7 @@ public final class IndexNode extends BaseNode {
         if (this.base == base) {
             return this;
         }
-        return new IndexNode(this, base, index, isFunction(), isSuper());
+        return new IndexNode(this, base, index, isSuper());
     }
 
     /**
@@ -135,15 +138,7 @@ public final class IndexNode extends BaseNode {
         if (this.index == index) {
             return this;
         }
-        return new IndexNode(this, base, index, isFunction(), isSuper());
-    }
-
-    @Override
-    public IndexNode setIsFunction() {
-        if (isFunction()) {
-            return this;
-        }
-        return new IndexNode(this, base, index, true, isSuper());
+        return new IndexNode(this, base, index, isSuper());
     }
 
     @Override
@@ -151,6 +146,6 @@ public final class IndexNode extends BaseNode {
         if (isSuper()) {
             return this;
         }
-        return new IndexNode(this, base, index, isFunction(), true);
+        return new IndexNode(this, base, index, true);
     }
 }

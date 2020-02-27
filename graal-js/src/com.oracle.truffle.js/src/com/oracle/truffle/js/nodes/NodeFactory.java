@@ -91,6 +91,7 @@ import com.oracle.truffle.js.nodes.access.NewPrivateNameNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.MakeMethodNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
+import com.oracle.truffle.js.nodes.access.OptionalChainNode;
 import com.oracle.truffle.js.nodes.access.PrivateFieldGetNode;
 import com.oracle.truffle.js.nodes.access.PrivateFieldSetNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
@@ -577,10 +578,9 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createFunctionCall(@SuppressWarnings("unused") JSContext context, JavaScriptNode expression, JavaScriptNode[] arguments) {
-        if (expression instanceof PropertyNode || expression instanceof ReadElementNode || expression instanceof WithVarWrapperNode || expression instanceof PrivateFieldGetNode) {
-            if (expression instanceof PropertyNode) {
-                ((PropertyNode) expression).setMethod();
-            }
+        if (expression instanceof PropertyNode || expression instanceof ReadElementNode || expression instanceof WithVarWrapperNode || expression instanceof PrivateFieldGetNode ||
+                        expression instanceof OptionalChainNode.ShortCircuitTargetableNode) {
+            assert !(expression instanceof PropertyNode) || ((PropertyNode) expression).isMethod();
             return JSFunctionCallNode.createInvoke((JSTargetableNode) expression, arguments, false, false);
         } else if (expression instanceof JSTargetableWrapperNode) {
             JavaScriptNode function = ((JSTargetableWrapperNode) expression).getDelegate();
@@ -607,6 +607,7 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createNew(JSContext context, JavaScriptNode function, JavaScriptNode[] arguments) {
+        assert !(function instanceof PropertyNode) || !((PropertyNode) function).isMethod();
         return JSNewNode.create(context, function, arguments);
     }
 
@@ -669,16 +670,12 @@ public class NodeFactory {
 
     // ##### Property nodes
 
-    public JavaScriptNode createReadProperty(JSContext context, JavaScriptNode base, String propertyName) {
+    public JSTargetableNode createReadProperty(JSContext context, JavaScriptNode base, String propertyName) {
         return PropertyNode.createProperty(context, base, propertyName);
     }
 
-    public PropertyNode createProperty(JSContext context, JavaScriptNode base, Object propertyKey) {
-        return PropertyNode.createProperty(context, base, propertyKey);
-    }
-
-    public PropertyNode createMethod(JSContext jsContext, JavaScriptNode object, Object string) {
-        return PropertyNode.createMethod(jsContext, object, string);
+    public JSTargetableNode createReadProperty(JSContext context, JavaScriptNode base, String propertyName, boolean method) {
+        return PropertyNode.createProperty(context, base, propertyName, method);
     }
 
     public WritePropertyNode createWriteProperty(JavaScriptNode target, Object propertyKey, JavaScriptNode rhs, JSContext context, boolean strictMode) {
@@ -1126,6 +1123,14 @@ public class NodeFactory {
 
     public JavaScriptNode createToPropertyKey(JavaScriptNode key) {
         return JSToPropertyKeyWrapperNode.create(key);
+    }
+
+    public JavaScriptNode createOptionalChain(JavaScriptNode accessNode) {
+        return OptionalChainNode.createTarget(accessNode);
+    }
+
+    public JavaScriptNode createOptionalChainShortCircuit(JavaScriptNode valueNode) {
+        return OptionalChainNode.createShortCircuit(valueNode);
     }
 
     public IfNode copyIfWithCondition(IfNode origIfNode, JavaScriptNode condition) {

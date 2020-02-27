@@ -40,10 +40,14 @@
  */
 package com.oracle.truffle.js.test.builtins;
 
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
+import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.test.JSTest;
 import com.oracle.truffle.js.test.polyglot.ForeignTestMap;
 
@@ -91,7 +95,7 @@ public class DeleteTest extends JSTest {
         map.getContainer().put("bar", "test");
         map.getContainer().put("1", "test");
         map.getContainer().put("1.5", "test");
-        testHelper.getPolyglotContext().getBindings("js").putMember("foreign", map);
+        testHelper.getPolyglotContext().getBindings(ID).putMember("foreign", map);
 
         assertEquals(false, testHelper.run("delete foreign.nonExistentProperty;"));
         assertEquals(true, testHelper.run("delete foreign.foo;"));
@@ -100,5 +104,46 @@ public class DeleteTest extends JSTest {
         assertEquals(false, testHelper.run("delete foreign[foreign];"));
         assertEquals(false, testHelper.run("delete foreign[new String('test')];"));
         assertEquals(false, testHelper.run("delete foreign[new Number(123)];"));
+    }
+
+    @Test
+    public void testDeleteSuperReference() {
+        final String expectedErrorMessage = "Unsupported reference";
+        try (Context c = JSTest.newContextBuilder(ID).build()) {
+            assertTrue(c.eval(ID, "" +
+                            "let success = false;" +
+                            "class C extends class {} {" +
+                            "  constructor() {" +
+                            "    super();" +
+                            "    delete super.x;" +
+                            "  }" +
+                            "}" +
+                            "try {" +
+                            "  new C();" +
+                            "} catch (e) {" +
+                            "  if (e instanceof ReferenceError) {" +
+                            "    success = e.message.includes(" + JSRuntime.quote(expectedErrorMessage) + ");" +
+                            "  }" +
+                            "}" +
+                            "success;").asBoolean());
+        }
+        try (Context c = JSTest.newContextBuilder(ID).build()) {
+            assertTrue(c.eval(ID, "" +
+                            "let success = false, sideEffect = false;" +
+                            "class C extends class {} {" +
+                            "  constructor() {" +
+                            "    super();" +
+                            "    delete super[sideEffect = true, 'x'];" +
+                            "  }" +
+                            "}" +
+                            "try {" +
+                            "  new C();" +
+                            "} catch (e) {" +
+                            "  if (e instanceof ReferenceError) {" +
+                            "    success = !sideEffect && e.message.includes(" + JSRuntime.quote(expectedErrorMessage) + ");" +
+                            "  }" +
+                            "}" +
+                            "success;").asBoolean());
+        }
     }
 }

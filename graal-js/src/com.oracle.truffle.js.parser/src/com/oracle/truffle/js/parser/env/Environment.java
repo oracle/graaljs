@@ -56,7 +56,6 @@ import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.nodes.access.EvalVariableNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
-import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
@@ -310,7 +309,7 @@ public abstract class Environment {
                     scopeAccessNode = factory.createWriteProperty(null, name, null, context, isStrictMode());
                 } else if (access == WrapAccess.Read) {
                     assert delegateNode instanceof ReadNode || delegateNode instanceof RepeatableNode : delegateNode;
-                    scopeAccessNode = factory.createProperty(context, null, name);
+                    scopeAccessNode = factory.createReadProperty(context, null, name);
                 } else {
                     throw new IllegalArgumentException();
                 }
@@ -331,7 +330,7 @@ public abstract class Environment {
                     withAccessNode = factory.createWriteProperty(null, name, null, context, isStrictMode());
                 } else if (access == WrapAccess.Read) {
                     assert delegateNode instanceof ReadNode || delegateNode instanceof RepeatableNode : delegateNode;
-                    withAccessNode = factory.createProperty(context, null, name);
+                    withAccessNode = factory.createReadProperty(context, null, name);
                 } else {
                     throw new IllegalArgumentException();
                 }
@@ -349,7 +348,7 @@ public abstract class Environment {
                 Supplier<JavaScriptNode> innerReadSupplier = suppliers.getFirst();
                 UnaryOperator<JavaScriptNode> innerWriteSupplier = suppliers.getSecond();
                 Supplier<JavaScriptNode> readSupplier = () -> {
-                    PropertyNode readWithProperty = factory.createProperty(context, null, name);
+                    JSTargetableNode readWithProperty = factory.createReadProperty(context, null, name);
                     return factory.createWithVarWrapper(name, withTargetTempVar.createReadNode(), readWithProperty, innerReadSupplier.get());
                 };
                 UnaryOperator<JavaScriptNode> writeSupplier = (rhs) -> {
@@ -374,7 +373,7 @@ public abstract class Environment {
                     scopeAccessNode = factory.createWriteProperty(null, name, null, context, true);
                 } else if (access == WrapAccess.Read) {
                     assert delegateNode instanceof ReadNode || delegateNode instanceof RepeatableNode : delegateNode;
-                    scopeAccessNode = factory.createProperty(context, null, name);
+                    scopeAccessNode = factory.createReadProperty(context, null, name);
                 } else {
                     throw new IllegalArgumentException();
                 }

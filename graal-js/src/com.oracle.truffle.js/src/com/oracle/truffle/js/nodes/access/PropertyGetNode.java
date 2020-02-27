@@ -132,27 +132,35 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     public static PropertyGetNode create(Object key, boolean isGlobal, JSContext context) {
         final boolean getOwnProperty = false;
-        return createImpl(key, isGlobal, context, getOwnProperty);
+        final boolean isMethod = false;
+        return createImpl(key, isGlobal, context, getOwnProperty, isMethod);
     }
 
-    private static PropertyGetNode createImpl(Object key, boolean isGlobal, JSContext context, boolean getOwnProperty) {
-        return new PropertyGetNode(key, context, isGlobal, getOwnProperty);
+    public static PropertyGetNode create(Object key, boolean isGlobal, JSContext context, boolean isMethod) {
+        final boolean getOwnProperty = false;
+        return createImpl(key, isGlobal, context, getOwnProperty, isMethod);
+    }
+
+    private static PropertyGetNode createImpl(Object key, boolean isGlobal, JSContext context, boolean getOwnProperty, boolean isMethod) {
+        return new PropertyGetNode(key, context, isGlobal, getOwnProperty, isMethod);
     }
 
     public static PropertyGetNode createGetOwn(Object key, JSContext context) {
         final boolean global = false;
         final boolean getOwnProperty = true;
-        return createImpl(key, global, context, getOwnProperty);
+        final boolean isMethod = false;
+        return createImpl(key, global, context, getOwnProperty, isMethod);
     }
 
     public static PropertyGetNode createGetHidden(HiddenKey key, JSContext context) {
         return createGetOwn(key, context);
     }
 
-    protected PropertyGetNode(Object key, JSContext context, boolean isGlobal, boolean getOwnProperty) {
+    protected PropertyGetNode(Object key, JSContext context, boolean isGlobal, boolean getOwnProperty, boolean isMethod) {
         super(key, context);
         this.isGlobal = isGlobal;
         this.getOwnProperty = getOwnProperty;
+        this.isMethod = isMethod;
     }
 
     public final Object getValue(Object obj) {

@@ -1621,8 +1621,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     @Override
     public String expressionToString() {
-        if (targetNode != null && getIndexNode() != null) {
-            return Objects.toString(targetNode.expressionToString(), INTERMEDIATE_VALUE) + "[" + Objects.toString(getIndexNode().expressionToString(), INTERMEDIATE_VALUE) + "]";
+        if (targetNode != null && indexNode != null) {
+            return Objects.toString(targetNode.expressionToString(), INTERMEDIATE_VALUE) + "[" + Objects.toString(indexNode.expressionToString(), INTERMEDIATE_VALUE) + "]";
         }
         return null;
     }

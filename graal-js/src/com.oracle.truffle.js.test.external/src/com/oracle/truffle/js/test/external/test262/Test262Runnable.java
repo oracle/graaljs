@@ -184,6 +184,7 @@ public class Test262Runnable extends TestRunnable {
                     "object-rest",
                     "object-spread",
                     "optional-catch-binding",
+                    "optional-chaining",
                     "proxy-missing-checks",
                     "regexp-dotall",
                     "regexp-lookbehind",
@@ -207,7 +208,6 @@ public class Test262Runnable extends TestRunnable {
                     "class-methods-private",
                     "class-static-methods-private",
                     "host-gc-required",
-                    "optional-chaining",
                     "regexp-match-indices",
                     "tail-call-optimization",
                     "top-level-await"
@@ -222,6 +222,7 @@ public class Test262Runnable extends TestRunnable {
                     "export-star-as-namespace-from-module",
                     "import.meta",
                     "numeric-separator-literal",
+                    "optional-chaining",
                     "proxy-missing-checks",
     }));
     private static final Set<String> ES2021_FEATURES = new HashSet<>(Arrays.asList(new String[]{

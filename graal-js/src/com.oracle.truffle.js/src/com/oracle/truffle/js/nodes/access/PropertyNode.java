@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -99,29 +99,28 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
                 return this;
             }
             JavaScriptNode clonedTarget = JSTaggedExecutionNode.createForInput(target, this);
-            PropertyNode propertyNode = PropertyNode.createProperty(cache.getContext(), clonedTarget, cache.getKey());
+            PropertyNode propertyNode = PropertyNode.createProperty(cache.getContext(), clonedTarget, cache.getKey(), cache.isMethod());
             transferSourceSectionAndTags(this, propertyNode);
-            if (cache.isMethod()) {
-                propertyNode.cache.setMethod();
-            }
             return propertyNode;
         }
         return this;
     }
 
-    protected PropertyNode(JSContext context, JavaScriptNode target, Object propertyKey) {
+    protected PropertyNode(JSContext context, JavaScriptNode target, Object propertyKey, boolean method) {
         this.target = target;
-        this.cache = PropertyGetNode.create(propertyKey, false, context);
+        this.cache = PropertyGetNode.create(propertyKey, false, context, method);
+    }
+
+    public static PropertyNode createProperty(JSContext ctx, JavaScriptNode target, Object propertyKey, boolean method) {
+        return new PropertyNode(ctx, target, propertyKey, method);
     }
 
     public static PropertyNode createProperty(JSContext ctx, JavaScriptNode target, Object propertyKey) {
-        return new PropertyNode(ctx, target, propertyKey);
+        return createProperty(ctx, target, propertyKey, false);
     }
 
     public static PropertyNode createMethod(JSContext ctx, JavaScriptNode target, Object propertyKey) {
-        PropertyNode propertyNode = new PropertyNode(ctx, target, propertyKey);
-        propertyNode.setMethod();
-        return propertyNode;
+        return createProperty(ctx, target, propertyKey, true);
     }
 
     @Override
@@ -191,17 +190,9 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
         return super.toString() + " property = " + cache.getKey();
     }
 
-    public void setMethod() {
-        cache.setMethod();
-    }
-
     @Override
     protected JavaScriptNode copyUninitialized() {
-        PropertyNode copy = new PropertyNode(cache.getContext(), cloneUninitialized(target), cache.getKey());
-        if (this.cache.isMethod()) {
-            copy.cache.setMethod();
-        }
-        return copy;
+        return new PropertyNode(cache.getContext(), cloneUninitialized(target), cache.getKey(), cache.isMethod());
     }
 
     @Override
@@ -210,6 +201,10 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
             return Objects.toString(target.expressionToString(), INTERMEDIATE_VALUE) + "." + getPropertyKey();
         }
         return null;
+    }
+
+    public final boolean isMethod() {
+        return cache.isMethod();
     }
 
     public JSContext getContext() {

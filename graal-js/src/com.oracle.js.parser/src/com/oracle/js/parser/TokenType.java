@@ -122,6 +122,7 @@ public enum TokenType {
     BIT_NOT        (UNARY,   "~",    15, false),
     ELLIPSIS       (UNARY,   "..."),
     NULLISHCOALESC (BINARY,  "??",    4, true),
+    OPTIONAL_CHAIN (BRACKET, "?.",   18, true),
 
     // ECMA 7.6.1.1 Keywords, 7.6.1.2 Future Reserved Words.
     // All other Java keywords are commented out.

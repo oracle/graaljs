@@ -49,15 +49,21 @@ import com.oracle.js.parser.TokenType;
  * @see AccessNode
  * @see IndexNode
  */
-public abstract class BaseNode extends Expression implements FunctionCall {
+public abstract class BaseNode extends OptionalExpression implements FunctionCall {
 
     /** Base Node. */
     protected final Expression base;
 
-    private final boolean isFunction;
-
     /** Super property access. */
     private final boolean isSuper;
+
+    /** Optional access or call ({@code a?.b}, {@code a?.[b]}, or {@code a?.()}). */
+    private final boolean optional;
+
+    /** Is this access part of an optional chain. */
+    private final boolean optionalChain;
+
+    private boolean isFunction;
 
     /**
      * Constructor
@@ -65,14 +71,15 @@ public abstract class BaseNode extends Expression implements FunctionCall {
      * @param token token
      * @param finish finish
      * @param base base node
-     * @param isFunction is this a function
      * @param isSuper is this a super property access
      */
-    public BaseNode(final long token, final int finish, final Expression base, final boolean isFunction, final boolean isSuper) {
+    public BaseNode(final long token, final int finish, final Expression base, final boolean isSuper, final boolean optional, final boolean optionalChain) {
         super(token, base.getStart(), finish);
         this.base = base;
-        this.isFunction = isFunction;
         this.isSuper = isSuper;
+        this.optional = optional;
+        this.optionalChain = optionalChain;
+        assert !(isSuper && optional) && (!optional || optionalChain);
     }
 
     /**
@@ -80,14 +87,15 @@ public abstract class BaseNode extends Expression implements FunctionCall {
      *
      * @param baseNode node to inherit from
      * @param base base
-     * @param isFunction is this a function
      * @param isSuper is this a super property access
      */
-    protected BaseNode(final BaseNode baseNode, final Expression base, final boolean isFunction, final boolean isSuper) {
+    protected BaseNode(final BaseNode baseNode, final Expression base, final boolean isSuper, final boolean optional, final boolean optionalChain) {
         super(baseNode);
         this.base = base;
-        this.isFunction = isFunction;
         this.isSuper = isSuper;
+        this.optional = optional;
+        this.optionalChain = optionalChain;
+        this.isFunction = baseNode.isFunction;
     }
 
     /**
@@ -105,7 +113,7 @@ public abstract class BaseNode extends Expression implements FunctionCall {
     }
 
     /**
-     * @return {@code true} if a SuperProperty access.
+     * @return {@code true} if this is a {@code super} property access.
      */
     public boolean isSuper() {
         return isSuper;
@@ -126,10 +134,26 @@ public abstract class BaseNode extends Expression implements FunctionCall {
      *
      * @return a base node identical to this one in all aspects except with its function flag set.
      */
-    public abstract BaseNode setIsFunction();
+    final BaseNode setIsFunction() {
+        this.isFunction = true;
+        return this;
+    }
 
     /**
      * Mark this node as being a SuperProperty access.
      */
     public abstract BaseNode setIsSuper();
+
+    /**
+     * Returns {@code true} if this is an optional property access ({@code a?.b} or {@code a?.[b]}).
+     */
+    @Override
+    public final boolean isOptional() {
+        return optional;
+    }
+
+    @Override
+    public final boolean isOptionalChain() {
+        return optionalChain;
+    }
 }

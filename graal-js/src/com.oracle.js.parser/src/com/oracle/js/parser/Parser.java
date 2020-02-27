@@ -881,6 +881,9 @@ public class Parser extends AbstractParser {
                     verifyStrictIdent(ident, ASSIGNMENT_TARGET_CONTEXT);
                     break;
                 } else if (lhs instanceof AccessNode || lhs instanceof IndexNode) {
+                    if (((BaseNode) lhs).isOptional()) {
+                        throw invalidLHSError(lhs);
+                    }
                     break;
                 } else if ((opType == ASSIGN || opType == ASSIGN_INIT) && isDestructuringLhs(lhs) && (inPatternPosition || !lhs.isParenthesized())) {
                     verifyDestructuringAssignmentPattern(lhs, ASSIGNMENT_TARGET_CONTEXT);
@@ -925,11 +928,17 @@ public class Parser extends AbstractParser {
 
             @Override
             public boolean enterAccessNode(AccessNode accessNode) {
+                if (accessNode.isOptional()) {
+                    throw error(AbstractParser.message(MESSAGE_INVALID_LVALUE), accessNode.getToken());
+                }
                 return false;
             }
 
             @Override
             public boolean enterIndexNode(IndexNode indexNode) {
+                if (indexNode.isOptional()) {
+                    throw error(AbstractParser.message(MESSAGE_INVALID_LVALUE), indexNode.getToken());
+                }
                 return false;
             }
 
@@ -1721,7 +1730,7 @@ public class Parser extends AbstractParser {
             IdentNode superIdent = new IdentNode(identToken, ctorFinish, SUPER.getName()).setIsDirectSuper();
             IdentNode argsIdent = new IdentNode(identToken, ctorFinish, "args").setIsRestParameter();
             Expression spreadArgs = new UnaryNode(Token.recast(classToken, TokenType.SPREAD_ARGUMENT), argsIdent);
-            CallNode superCall = new CallNode(classLineNumber, classToken, ctorFinish, superIdent, Collections.singletonList(spreadArgs), false);
+            Expression superCall = CallNode.forCall(classLineNumber, classToken, Token.descPosition(classToken), ctorFinish, superIdent, Collections.singletonList(spreadArgs));
             statements = Collections.singletonList(new ExpressionStatement(classLineNumber, classToken, ctorFinish, superCall));
             parameters = Collections.singletonList(argsIdent);
         } else {
@@ -2727,6 +2736,9 @@ public class Parser extends AbstractParser {
             verifyStrictIdent(ident, contextString);
             return true;
         } else if (init instanceof AccessNode || init instanceof IndexNode) {
+            if (((BaseNode) init).isOptional()) {
+                return false;
+            }
             return true;
         } else if (isDestructuringLhs(init)) {
             verifyDestructuringAssignmentPattern(init, contextString);
@@ -3509,7 +3521,7 @@ public class Parser extends AbstractParser {
                 break;
         }
 
-        return null;
+        throw error(AbstractParser.message(MESSAGE_EXPECTED_OPERAND, type.getNameOrType()));
     }
 
     /**
@@ -3518,7 +3530,7 @@ public class Parser extends AbstractParser {
      * @param primaryToken Original string token.
      * @return callNode to $EXEC.
      */
-    CallNode execString(final int primaryLine, final long primaryToken) {
+    private Expression execString(final int primaryLine, final long primaryToken) {
         // Synthesize an ident to call $EXEC.
         final IdentNode execIdent = new IdentNode(primaryToken, finish, EXEC_NAME);
         // Skip over EXECSTRING.
@@ -3531,7 +3543,8 @@ public class Parser extends AbstractParser {
         // Skip ending of edit string expression.
         expect(RBRACE);
 
-        return new CallNode(primaryLine, primaryToken, finish, execIdent, arguments, false);
+        long tokenWithDelimiter = Token.withDelimiter(primaryToken);
+        return CallNode.forCall(primaryLine, tokenWithDelimiter, Token.descPosition(tokenWithDelimiter), finish, execIdent, arguments);
     }
 
     /**
@@ -4146,9 +4159,10 @@ public class Parser extends AbstractParser {
                 }
             }
 
-            lhs = new CallNode(callLine, callToken, lhs.getStart(), finish, lhs, optimizeList(arguments), false, eval, applyArguments);
+            lhs = CallNode.forCall(callLine, callToken, lhs.getStart(), finish, lhs, optimizeList(arguments), false, false, eval, applyArguments);
         }
 
+        boolean optionalChain = false;
         loop: while (true) {
             // Capture token.
             callLine = line;
@@ -4156,11 +4170,9 @@ public class Parser extends AbstractParser {
 
             switch (type) {
                 case LPAREN: {
-                    // Get NEW or FUNCTION arguments.
                     final List<Expression> arguments = optimizeList(argumentList(yield, await));
 
-                    // Create call node.
-                    lhs = new CallNode(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false);
+                    lhs = CallNode.forCall(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false, optionalChain);
 
                     break;
                 }
@@ -4173,7 +4185,7 @@ public class Parser extends AbstractParser {
                     expect(RBRACKET);
 
                     // Create indexing node.
-                    lhs = new IndexNode(callToken, finish, lhs, rhs);
+                    lhs = new IndexNode(callToken, finish, lhs, rhs, false, false, optionalChain);
 
                     break;
                 }
@@ -4189,18 +4201,56 @@ public class Parser extends AbstractParser {
                     }
 
                     // Create property access node.
-                    lhs = new AccessNode(callToken, finish, lhs, property.getName(), false, isPrivate);
+                    lhs = new AccessNode(callToken, finish, lhs, property.getName(), false, isPrivate, false, optionalChain);
 
                     break;
                 }
                 case TEMPLATE:
                 case TEMPLATE_HEAD: {
                     // tagged template literal
+                    if (optionalChain) {
+                        // TemplateLiteral not allowed in OptionalChain
+                        throw error(AbstractParser.message("optional.chain.template"));
+                    }
+
                     final List<Expression> arguments = templateLiteralArgumentList(yield, await);
 
-                    // Create call node.
-                    lhs = new CallNode(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false);
+                    lhs = CallNode.forCall(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false, optionalChain);
 
+                    break;
+                }
+                case OPTIONAL_CHAIN: {
+                    if (!isES2020()) {
+                        break loop;
+                    }
+
+                    next();
+                    optionalChain = true;
+
+                    switch (type) {
+                        case LPAREN: {
+                            final List<Expression> arguments = optimizeList(argumentList(yield, await));
+
+                            lhs = CallNode.forCall(callLine, callToken, lhs.getStart(), finish, lhs, arguments, true, optionalChain);
+                            break;
+                        }
+                        case LBRACKET: {
+                            next();
+
+                            final Expression rhs = expression(true, yield, await);
+
+                            expect(RBRACKET);
+
+                            lhs = new IndexNode(callToken, finish, lhs, rhs, false, true, optionalChain);
+                            break;
+                        }
+                        default: {
+                            final IdentNode property = getIdentifierName();
+
+                            lhs = new AccessNode(callToken, finish, lhs, property.getName(), false, false, true, optionalChain);
+                            break;
+                        }
+                    }
                     break;
                 }
                 default:
@@ -4245,9 +4295,7 @@ public class Parser extends AbstractParser {
         // Get function base.
         final int callLine = line;
         final Expression constructor = memberExpression(yield, await);
-        if (constructor == null) {
-            return null;
-        }
+
         // Get arguments.
         ArrayList<Expression> arguments;
 
@@ -4256,6 +4304,11 @@ public class Parser extends AbstractParser {
             arguments = argumentList(yield, await);
         } else {
             arguments = new ArrayList<>();
+
+            if (type == TokenType.OPTIONAL_CHAIN) {
+                // OptionalChain is not allowed directly after a NewExpression (without parentheses)
+                throw error(AbstractParser.message("unexpected.token", type.getNameOrType()));
+            }
         }
 
         // Nashorn extension: This is to support the following interface implementation
@@ -4271,7 +4324,7 @@ public class Parser extends AbstractParser {
             arguments.add(objectLiteral(yield, await));
         }
 
-        final CallNode callNode = new CallNode(callLine, constructor.getToken(), finish, constructor, optimizeList(arguments), true);
+        final Expression callNode = CallNode.forNew(callLine, newToken, Token.descPosition(newToken), finish, constructor, optimizeList(arguments));
 
         return new UnaryNode(newToken, callNode);
     }
@@ -4392,7 +4445,7 @@ public class Parser extends AbstractParser {
                     expect(RBRACKET);
 
                     // Create indexing node.
-                    lhs = new IndexNode(callToken, finish, lhs, index, isSuper);
+                    lhs = new IndexNode(callToken, finish, lhs, index, isSuper, false, false);
 
                     if (isSuper) {
                         isSuper = false;
@@ -4401,10 +4454,6 @@ public class Parser extends AbstractParser {
                     break;
                 }
                 case PERIOD: {
-                    if (lhs == null) {
-                        throw error(AbstractParser.message(MESSAGE_EXPECTED_OPERAND, type.getNameOrType()));
-                    }
-
                     next();
 
                     final boolean isPrivate = type == TokenType.PRIVATE_IDENT;
@@ -4416,7 +4465,7 @@ public class Parser extends AbstractParser {
                     }
 
                     // Create property access node.
-                    lhs = new AccessNode(callToken, finish, lhs, property.getName(), isSuper, isPrivate);
+                    lhs = new AccessNode(callToken, finish, lhs, property.getName(), isSuper, isPrivate, false, false);
 
                     if (isSuper) {
                         isSuper = false;
@@ -4427,14 +4476,11 @@ public class Parser extends AbstractParser {
                 case TEMPLATE:
                 case TEMPLATE_HEAD: {
                     // tagged template literal
-                    if (lhs == null) {
-                        throw error(AbstractParser.message(MESSAGE_EXPECTED_OPERAND, type.getNameOrType()));
-                    }
 
                     final int callLine = line;
                     final List<Expression> arguments = templateLiteralArgumentList(yield, await);
 
-                    lhs = new CallNode(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false);
+                    lhs = CallNode.forCall(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false, false);
 
                     break;
                 }
@@ -5210,21 +5256,7 @@ public class Parser extends AbstractParser {
                     throw error(AbstractParser.message("unexpected.token", type.getNameOrType()));
                 }
 
-                if (expr instanceof BaseNode || expr instanceof IdentNode) {
-                    if (isStrictMode) {
-                        if (expr instanceof IdentNode) {
-                            IdentNode ident = (IdentNode) expr;
-                            if (!ident.isThis() && !ident.isMetaProperty()) {
-                                throw error(AbstractParser.message("strict.cant.delete.ident", ident.getName()), unaryToken);
-                            }
-                        } else if (expr instanceof AccessNode && ((AccessNode) expr).isPrivate()) {
-                            throw error(AbstractParser.message("strict.cant.delete.private"), unaryToken);
-                        }
-                    }
-                    return new UnaryNode(unaryToken, expr);
-                }
-                appendStatement(new ExpressionStatement(unaryLine, unaryToken, finish, expr));
-                return LiteralNode.newInstance(unaryToken, finish, true);
+                return verifyDeleteExpression(unaryLine, unaryToken, expr);
             }
             case VOID:
             case TYPEOF:
@@ -5247,10 +5279,6 @@ public class Parser extends AbstractParser {
                 next();
 
                 final Expression lhs = unaryExpression(yield, await);
-                // ++, -- without operand..
-                if (lhs == null) {
-                    throw error(AbstractParser.message("expected.lvalue", type.getNameOrType()));
-                }
 
                 return verifyIncDecExpression(unaryToken, opType, lhs, false);
 
@@ -5270,10 +5298,6 @@ public class Parser extends AbstractParser {
                     final long opToken = token;
                     final TokenType opType = type;
                     final Expression lhs = expression;
-                    // ++, -- without operand..
-                    if (lhs == null) {
-                        throw error(AbstractParser.message("expected.lvalue", type.getNameOrType()));
-                    }
                     next();
 
                     return verifyIncDecExpression(opToken, opType, lhs, true);
@@ -5282,21 +5306,29 @@ public class Parser extends AbstractParser {
             }
         }
 
-        if (expression == null) {
-            throw error(AbstractParser.message(MESSAGE_EXPECTED_OPERAND, type.getNameOrType()));
-        }
-
         return expression;
+    }
+
+    private Expression verifyDeleteExpression(final int unaryLine, final long unaryToken, final Expression expr) {
+        if (expr instanceof BaseNode || expr instanceof IdentNode) {
+            if (isStrictMode) {
+                if (expr instanceof IdentNode) {
+                    IdentNode ident = (IdentNode) expr;
+                    if (!ident.isThis() && !ident.isMetaProperty()) {
+                        throw error(AbstractParser.message("strict.cant.delete.ident", ident.getName()), unaryToken);
+                    }
+                } else if (expr instanceof AccessNode && ((AccessNode) expr).isPrivate()) {
+                    throw error(AbstractParser.message("strict.cant.delete.private"), unaryToken);
+                }
+            }
+            return new UnaryNode(unaryToken, expr);
+        }
+        appendStatement(new ExpressionStatement(unaryLine, unaryToken, finish, expr));
+        return LiteralNode.newInstance(unaryToken, finish, true);
     }
 
     private Expression verifyIncDecExpression(final long unaryToken, final TokenType opType, final Expression lhs, final boolean isPostfix) {
         assert lhs != null;
-
-        if (!(lhs instanceof AccessNode ||
-                        lhs instanceof IndexNode ||
-                        lhs instanceof IdentNode)) {
-            throw invalidLHSError(lhs);
-        }
 
         if (lhs instanceof IdentNode) {
             IdentNode ident = (IdentNode) lhs;
@@ -5306,6 +5338,8 @@ public class Parser extends AbstractParser {
             assert opType == TokenType.INCPREFIX || opType == TokenType.DECPREFIX;
             String contextString = opType == TokenType.INCPREFIX ? "operand for ++ operator" : "operand for -- operator";
             verifyStrictIdent((IdentNode) lhs, contextString);
+        } else if (!(lhs instanceof AccessNode || lhs instanceof IndexNode) || ((BaseNode) lhs).isOptional()) {
+            throw invalidLHSError(lhs);
         }
 
         return incDecExpression(unaryToken, opType, lhs, isPostfix);
