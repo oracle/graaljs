@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -548,9 +548,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                 public void accept(SnippetRun snippetRun) throws PolyglotException {
                     if (snippetRun.getException() != null) {
                         final Value param = snippetRun.getParameters().get(0);
-                        final Value paramMeta = param.getMetaObject();
-                        final String type = (paramMeta != null && paramMeta.hasMember("type")) ? paramMeta.getMember("type").asString() : null;
-                        final boolean jsObject = type != null && ("object".equals(type) || "function".equals(type)) && paramMeta.hasMember("className");
+                        final boolean jsObject = context.eval(ID, "Object").isMetaInstance(param);
                         boolean hasIterator = false;
                         try {
                             hasIterator = !context.eval(ID, "(function(a) {return a[Symbol.iterator];})").execute(param).isNull();
