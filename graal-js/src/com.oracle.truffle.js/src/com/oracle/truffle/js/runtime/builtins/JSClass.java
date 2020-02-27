@@ -699,7 +699,7 @@ public abstract class JSClass extends ObjectType {
     }
 
     @ExportMessage
-    static void removeArrayElement(DynamicObject target, long index) throws UnsupportedMessageException {
+    static void removeArrayElement(DynamicObject target, long index) throws UnsupportedMessageException, InvalidArrayIndexException {
         if (JSArray.isJSArray(target)) {
             ScriptArray arrayType = JSObject.getArray(target);
             if (!arrayType.isSealed() && !arrayType.isLengthNotWritable()) {
@@ -710,6 +710,8 @@ public abstract class JSClass extends ObjectType {
                     arrayType = arrayType.setLength(target, length - 1, true);
                     JSObject.setArray(target, arrayType);
                     return;
+                } else {
+                    throw InvalidArrayIndexException.create(index);
                 }
             }
         }
