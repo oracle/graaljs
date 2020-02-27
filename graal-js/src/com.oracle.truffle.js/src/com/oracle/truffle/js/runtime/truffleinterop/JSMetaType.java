@@ -52,6 +52,9 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Symbol;
 
 /**
  * General meta objects for JS values and foreign objects.
@@ -73,6 +76,12 @@ public final class JSMetaType implements TruffleObject {
     public static final JSMetaType OBJECT = new JSMetaType("object", InteropLibrary::hasMembers);
 
     @CompilationFinal(dimensions = 1) static final JSMetaType[] KNOWN_TYPES = new JSMetaType[]{NULL, BOOLEAN, STRING, NUMBER, FUNCTION, ARRAY, OBJECT};
+
+    public static final JSMetaType JS_NULL = new JSMetaType("null", (l, v) -> JSGuards.isJSNull(v));
+    public static final JSMetaType JS_UNDEFINED = new JSMetaType("undefined", (l, v) -> JSGuards.isUndefined(v));
+    public static final JSMetaType JS_BIGINT = new JSMetaType("bigint", (l, v) -> v instanceof BigInt);
+    public static final JSMetaType JS_SYMBOL = new JSMetaType("symbol", (l, v) -> v instanceof Symbol);
+    public static final JSMetaType JS_PROXY = new JSMetaType("Proxy", (l, v) -> JSGuards.isJSProxy(v));
 
     private final String typeName;
     private final TypeCheck isInstance;

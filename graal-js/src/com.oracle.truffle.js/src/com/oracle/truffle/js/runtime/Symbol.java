@@ -49,6 +49,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.truffleinterop.JSMetaType;
 
 /**
  * @see JSSymbol
@@ -180,5 +181,17 @@ public final class Symbol implements TruffleObject {
     @ExportMessage
     Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return toString();
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasMetaObject() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    Object getMetaObject() {
+        return JSMetaType.JS_SYMBOL;
     }
 }

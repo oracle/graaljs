@@ -95,6 +95,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropArray;
+import com.oracle.truffle.js.runtime.truffleinterop.JSMetaType;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 /**
@@ -1055,7 +1056,14 @@ public abstract class JSClass extends ObjectType {
 
     @TruffleBoundary
     private static Object getMetaObjectImpl(DynamicObject receiver) {
-        if (hasMembers(receiver)) {
+        if (JSGuards.isJSNull(receiver)) {
+            return JSMetaType.JS_NULL;
+        } else if (JSGuards.isUndefined(receiver)) {
+            return JSMetaType.JS_UNDEFINED;
+        } else if (JSGuards.isJSProxy(receiver)) {
+            return JSMetaType.JS_PROXY;
+        } else {
+            assert JSObject.isJSObject(receiver) && !JSGuards.isJSProxy(receiver);
             Object metaObject = JSRuntime.getDataProperty(receiver, JSObject.CONSTRUCTOR);
             if (metaObject != null && metaObject instanceof DynamicObject && isMetaObject((DynamicObject) metaObject)) {
                 return metaObject;
