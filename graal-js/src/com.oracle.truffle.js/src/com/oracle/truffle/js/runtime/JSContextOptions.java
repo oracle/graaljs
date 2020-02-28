@@ -503,7 +503,7 @@ public final class JSContextOptions {
             regexpStaticResultCyclicAssumption.invalidate(msg);
             regexpStaticResultCurrentAssumption = regexpStaticResultCyclicAssumption.getAssumption();
         });
-        this.regexpMatchIndices = readBooleanOption(REGEXP_MATCH_INDICES);
+        this.regexpMatchIndices = REGEXP_MATCH_INDICES.hasBeenSet(optionValues) ? readBooleanOption(REGEXP_MATCH_INDICES) : getEcmaScriptVersion() >= JSConfig.ECMAScript2021;
         this.arraySortInherited = patchBooleanOption(ARRAY_SORT_INHERITED, ARRAY_SORT_INHERITED_NAME, arraySortInherited, msg -> {
             arraySortInheritedCyclicAssumption.invalidate(msg);
             arraySortInheritedCurrentAssumption = arraySortInheritedCyclicAssumption.getAssumption();
@@ -617,7 +617,7 @@ public final class JSContextOptions {
     }
 
     public boolean isRegexpMatchIndices() {
-        return REGEXP_MATCH_INDICES.hasBeenSet(optionValues) ? regexpMatchIndices : getEcmaScriptVersion() >= JSConfig.ECMAScript2021;
+        return regexpMatchIndices;
     }
 
     public boolean isRegexpStaticResult() {
