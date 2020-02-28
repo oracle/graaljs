@@ -56,8 +56,6 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
-import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantDoubleNode;
-import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -103,7 +101,7 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(BinaryOperationTag.class)) {
-            JSConstantNode constantNode = isInt ? JSConstantIntegerNode.create(rightInt) : JSConstantDoubleNode.create(rightDouble);
+            JSConstantNode constantNode = isInt ? JSConstantNode.createInt(rightInt) : JSConstantNode.createDouble(rightDouble);
             JavaScriptNode node = JSAddNode.createUnoptimized(getOperand(), constantNode, truncate);
             transferSourceSectionAddExpressionTag(this, constantNode);
             transferSourceSectionAndTags(this, node);

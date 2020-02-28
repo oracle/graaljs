@@ -55,7 +55,6 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.binary.JSAddNode;
 import com.oracle.truffle.js.nodes.binary.JSSubtractNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
@@ -206,7 +205,7 @@ abstract class LocalVarOpMaterializedNode extends LocalVarIncNode {
         convertOld = JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, convert, hasTemporalDeadZone);
 
         JavaScriptNode readTmp = JSReadFrameSlotNode.create(frameSlot, scopeFrameNode, hasTemporalDeadZone);
-        JavaScriptNode one = JSConstantIntegerNode.create(1);
+        JavaScriptNode one = JSConstantNode.createInt(1);
         JavaScriptNode opNode;
         if (from.op instanceof DecOp) {
             opNode = JSSubtractNode.create(readTmp, one);
