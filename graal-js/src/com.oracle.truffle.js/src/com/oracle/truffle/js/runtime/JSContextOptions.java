@@ -617,10 +617,7 @@ public final class JSContextOptions {
     }
 
     public boolean isRegexpMatchIndices() {
-        if (getEcmaScriptVersion() < JSConfig.ECMAScript2021) {
-            return regexpMatchIndices;
-        }
-        return true;
+        return REGEXP_MATCH_INDICES.hasBeenSet(optionValues) ? regexpMatchIndices : getEcmaScriptVersion() >= JSConfig.ECMAScript2021;
     }
 
     public boolean isRegexpStaticResult() {
