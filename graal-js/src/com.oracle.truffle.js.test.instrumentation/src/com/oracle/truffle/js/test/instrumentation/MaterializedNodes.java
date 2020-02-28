@@ -62,9 +62,6 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GlobalConstantNode;
 import com.oracle.truffle.js.nodes.access.GlobalPropertyNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
-import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantBooleanNode;
-import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantDoubleNode;
-import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
@@ -193,8 +190,8 @@ public class MaterializedNodes {
     }
 
     private static final JSConstantNode dummy = JSConstantNode.createUndefined();
-    private static final JavaScriptNode dummyInt = JSConstantIntegerNode.create(42);
-    private static final JavaScriptNode dummyDouble = JSConstantDoubleNode.create(42.42);
+    private static final JavaScriptNode dummyInt = JSConstantNode.createInt(42);
+    private static final JavaScriptNode dummyDouble = JSConstantNode.createDouble(42.42);
     private static final JavaScriptNode dummyJSNode = new DummyConstantNode(42);
     private static final SourceSection dummySourceSection = Source.newBuilder(JavaScriptLanguage.ID, "", "").build().createUnavailableSection();
 
@@ -291,10 +288,10 @@ public class MaterializedNodes {
 
     @Test
     public void materializeTwiceFor() {
-        JavaScriptNode condition = JSConstantBooleanNode.create(true);
+        JavaScriptNode condition = JSConstantNode.createBoolean(true);
         JavaScriptNode body = VoidNode.create(dummy);
         JavaScriptNode modify = VoidNode.create(dummy);
-        JavaScriptNode first = JSConstantBooleanNode.create(true);
+        JavaScriptNode first = JSConstantNode.createBoolean(true);
         JavaScriptNode setNotFirst = VoidNode.create(dummy);
         JSReadFrameSlotNode[] reads = new JSReadFrameSlotNode[]{};
         JSWriteFrameSlotNode[] writes = new JSWriteFrameSlotNode[]{};

@@ -97,7 +97,7 @@ public abstract class JSLeftShiftConstantNode extends JSUnaryNode {
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(BinaryOperationTag.class)) {
             // need to call the generated factory directly to avoid constant optimizations
-            JSConstantNode constantNode = JSConstantIntegerNode.create(shiftValue);
+            JSConstantNode constantNode = JSConstantNode.createInt(shiftValue);
             JavaScriptNode node = JSLeftShiftNodeGen.create(getOperand(), constantNode);
             transferSourceSectionAddExpressionTag(this, constantNode);
             transferSourceSectionAndTags(this, node);

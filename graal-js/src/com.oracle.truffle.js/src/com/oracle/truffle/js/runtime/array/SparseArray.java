@@ -74,17 +74,8 @@ public final class SparseArray extends DynamicArray {
         return SPARSE_ARRAY;
     }
 
-    public static SparseArray makeSparseArray(DynamicObject object, long length) {
-        TreeMap<Long, Object> arrayMap = createArrayMap();
-        arraySetLength(object, length);
-        arraySetArray(object, arrayMap);
-        return createSparseArray();
-    }
-
     public static SparseArray makeSparseArray(DynamicObject object, ScriptArray fromArray) {
-        if (fromArray instanceof SparseArray) {
-            return (SparseArray) fromArray;
-        }
+        assert !(fromArray instanceof SparseArray);
         TreeMap<Long, Object> arrayMap = createArrayMap();
         copyArrayToMap(object, fromArray, arrayMap);
         arraySetLength(object, fromArray.length(object));
