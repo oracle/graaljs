@@ -45,6 +45,7 @@
 /mx.graal-nodejs/com.oracle.truffle.trufflenode.jdk8/build.xml
 /mx.graal-nodejs/com.oracle.truffle.trufflenode.jdk11/build.xml
 /mx.graal-nodejs/com.oracle.truffle.trufflenode.jniboundaryprofiler/build.xml
+/mx.graal-nodejs/com.oracle.truffle.trufflenode.test/build.xml
 /mx.graal-nodejs/**/nbproject
 /eclipseformat.backup.zip
 

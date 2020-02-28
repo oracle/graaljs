@@ -81,6 +81,10 @@ def _graal_nodejs_post_gate_runner(args, tasks):
             npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
             node(['-profile-native-boundary', 'test.js'] + commonArgs, cwd=unitTestDir)
 
+    with Task('TestNodeInstrument', tasks, tags=[GraalNodeJsTags.allTests]) as t:
+        if t:
+            testnodeInstrument([])
+
 mx_gate.add_gate_runner(_suite, _graal_nodejs_post_gate_runner)
 
 
@@ -361,6 +365,12 @@ def run_nodejs(vmArgs, runArgs, nonZeroIsFatal=True, out=None, err=None, cwd=Non
 def node(args, add_graal_vm_args=True, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     return mx.run(prepareNodeCmdLine(args, add_graal_vm_args), nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
+def testnodeInstrument(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
+    instrument_cp = mx.classpath(['TRUFFLENODE_TEST'])
+    _setEnvVar('NODE_JVM_CLASSPATH', instrument_cp)
+    test = join(_suite.dir, 'test', 'graal', 'instrument', 'async-test.js')
+    node(['--experimental-options', '--testing-agent', '-ea', test], nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
+
 def testnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     mode, vmArgs, progArgs = setupNodeEnvironment(args)
     if mode == 'Debug':
@@ -605,5 +615,6 @@ mx.update_commands(_suite, {
     'npm' : [npm, ''],
     'node-gyp' : [node_gyp, ''],
     'testnode' : [testnode, ''],
+    'testnodeinstrument' : [testnodeInstrument, ''],
     'makeinnodeenv' : [makeInNodeEnvironment, ''],
 })
