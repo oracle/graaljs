@@ -134,7 +134,7 @@ public final class JSContextOptions {
     @CompilationFinal private boolean intl402;
 
     public static final String REGEXP_MATCH_INDICES_NAME = JS_OPTION_PREFIX + "regexp-match-indices";
-    @Option(name = REGEXP_MATCH_INDICES_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Enable RegExp Match Indices property.") //
+    @Option(name = REGEXP_MATCH_INDICES_NAME, category = OptionCategory.USER, help = "Enable RegExp Match Indices property.") //
     public static final OptionKey<Boolean> REGEXP_MATCH_INDICES = new OptionKey<>(false);
     @CompilationFinal private boolean regexpMatchIndices;
 
