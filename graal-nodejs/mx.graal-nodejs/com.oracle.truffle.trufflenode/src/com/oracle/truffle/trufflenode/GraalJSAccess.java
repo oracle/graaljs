@@ -1842,7 +1842,7 @@ public final class GraalJSAccess {
         String parameterList = params.toString();
 
         try {
-            GraalJSParserHelper.checkFunctionSyntax(jsContext, jsContext.getParserOptions(), parameterList, body, false, false);
+            GraalJSParserHelper.checkFunctionSyntax(jsContext, jsContext.getParserOptions(), parameterList, body, false, false, sourceName);
         } catch (com.oracle.js.parser.ParserException ex) {
             // throw the correct JS error
             nodeEvaluator.parseFunction(jsContext, parameterList, body, false, false, sourceName);

@@ -137,7 +137,7 @@ public final class GraalJSEvaluator implements JSParser {
     @Override
     public ScriptNode parseFunction(JSContext context, String parameterList, String body, boolean generatorFunction, boolean asyncFunction, String sourceName) {
         try {
-            GraalJSParserHelper.checkFunctionSyntax(context, context.getParserOptions(), parameterList, body, generatorFunction, asyncFunction);
+            GraalJSParserHelper.checkFunctionSyntax(context, context.getParserOptions(), parameterList, body, generatorFunction, asyncFunction, sourceName);
         } catch (com.oracle.js.parser.ParserException e) {
             throw parserToJSError(null, e);
         }

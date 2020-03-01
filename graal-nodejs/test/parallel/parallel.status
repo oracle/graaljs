@@ -79,9 +79,6 @@ test-util-format: FAIL
 # some differences in handling detach buffers and weak collections
 test-util-inspect: FAIL
 
-# Incorrect name of source in SyntaxError from ScriptCompiler::CompileFunctionInContext()
-test-util-internal: FAIL
-
 # Tests a V8-specific option
 test-v8-untrusted-code-mitigations: FAIL
 
