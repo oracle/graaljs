@@ -141,32 +141,17 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
         }
     }
 
-    @Specialization(guards = "truncate")
-    protected static int doIntSafeIntegerTruncate(int a, SafeInteger b) {
-        return (int) (a + b.longValue());
-    }
-
-    @Specialization(guards = "truncate")
-    protected static int doSafeIntegerIntTruncate(SafeInteger a, int b) {
-        return (int) (a.longValue() + b);
-    }
-
-    @Specialization(guards = "truncate")
-    protected static int doSafeIntegerTruncate(SafeInteger a, SafeInteger b) {
-        return (int) (a.longValue() + b.longValue());
-    }
-
-    @Specialization(guards = "!truncate", rewriteOn = ArithmeticException.class)
+    @Specialization(rewriteOn = ArithmeticException.class)
     protected static SafeInteger doIntSafeInteger(int a, SafeInteger b) {
         return SafeInteger.valueOf(a).addExact(b);
     }
 
-    @Specialization(guards = "!truncate", rewriteOn = ArithmeticException.class)
+    @Specialization(rewriteOn = ArithmeticException.class)
     protected static SafeInteger doSafeIntegerInt(SafeInteger a, int b) {
         return a.addExact(SafeInteger.valueOf(b));
     }
 
-    @Specialization(guards = "!truncate", rewriteOn = ArithmeticException.class)
+    @Specialization(rewriteOn = ArithmeticException.class)
     protected static SafeInteger doSafeInteger(SafeInteger a, SafeInteger b) {
         return a.addExact(b);
     }
@@ -211,8 +196,8 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
         return concatStringsNode.executeCharSequence(doubleToStringNode.executeString(a), b);
     }
 
-    @Specialization(replaces = {"doInt", "doIntOverflow", "doIntTruncate", "doSafeInteger", "doIntSafeInteger", "doSafeIntegerInt", "doSafeIntegerTruncate", "doIntSafeIntegerTruncate",
-                    "doSafeIntegerIntTruncate", "doDouble", "doBigInt", "doString", "doStringInt", "doIntString", "doStringNumber", "doNumberString"})
+    @Specialization(replaces = {"doInt", "doIntOverflow", "doIntTruncate", "doSafeInteger", "doIntSafeInteger", "doSafeIntegerInt",
+                    "doDouble", "doBigInt", "doString", "doStringInt", "doIntString", "doStringNumber", "doNumberString"})
     protected Object doPrimitiveConversion(Object a, Object b,
                     @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveA,
                     @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveB,
