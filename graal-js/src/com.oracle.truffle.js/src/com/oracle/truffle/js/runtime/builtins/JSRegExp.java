@@ -50,10 +50,8 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.builtins.RegExpBuiltins;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.joni.JoniRegexEngine;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -91,6 +89,10 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     private static final Property COMPILED_REGEX_PROPERTY;
     private static final HiddenKey GROUPS_FACTORY_ID = new HiddenKey("groupsFactory");
     private static final Property GROUPS_FACTORY_PROPERTY;
+    private static final HiddenKey REALM_ID = new HiddenKey("realm");
+    private static final Property REALM_PROPERTY;
+    private static final HiddenKey LEGACY_FEATURES_ENABLED_ID = new HiddenKey("legacyFeaturesEnabled");
+    private static final Property LEGACY_FEATURES_ENABLED_PROPERTY;
 
     private static final Property LAZY_INDEX_PROXY = JSObjectUtil.makeProxyProperty(INDEX, new LazyRegexResultIndexProxyProperty(), JSAttributes.getDefault());
 
@@ -156,6 +158,9 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         regExpAllocator.addLocation(JSObject.PROTO_PROPERTY.getLocation());
         COMPILED_REGEX_PROPERTY = JSObjectUtil.makeHiddenProperty(COMPILED_REGEX_ID, regExpAllocator.locationForType(Object.class, EnumSet.of(LocationModifier.NonNull)));
         GROUPS_FACTORY_PROPERTY = JSObjectUtil.makeHiddenProperty(GROUPS_FACTORY_ID, regExpAllocator.locationForType(JSObjectFactory.class));
+        REALM_PROPERTY = JSObjectUtil.makeHiddenProperty(REALM_ID, regExpAllocator.locationForType(JSRealm.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
+        LEGACY_FEATURES_ENABLED_PROPERTY = JSObjectUtil.makeHiddenProperty(LEGACY_FEATURES_ENABLED_ID,
+                        regExpAllocator.locationForType(boolean.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
 
         Shape.Allocator resultAllocator = JSShape.makeAllocator(JSObject.LAYOUT);
         GROUPS_RESULT_PROPERTY = JSObjectUtil.makeHiddenProperty(GROUPS_RESULT_ID, resultAllocator.locationForType(Object.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
@@ -186,6 +191,26 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         return (JSObjectFactory) GROUPS_FACTORY_PROPERTY.get(thisObj, guard);
     }
 
+    public static Object getRealm(DynamicObject thisObj) {
+        assert isJSRegExp(thisObj);
+        return REALM_PROPERTY.get(thisObj, isJSRegExp(thisObj));
+    }
+
+    public static Object getRealmUnchecked(DynamicObject thisObj, boolean guard) {
+        assert isJSRegExp(thisObj);
+        return REALM_PROPERTY.get(thisObj, guard);
+    }
+
+    public static boolean getLegacyFeaturesEnabled(DynamicObject thisObj) {
+        assert isJSRegExp(thisObj);
+        return (boolean) LEGACY_FEATURES_ENABLED_PROPERTY.get(thisObj, isJSRegExp(thisObj));
+    }
+
+    public static boolean getLegacyFeaturesEnabledUnchecked(DynamicObject thisObj, boolean guard) {
+        assert isJSRegExp(thisObj);
+        return (boolean) LEGACY_FEATURES_ENABLED_PROPERTY.get(thisObj, guard);
+    }
+
     /**
      * Creates a new JavaScript RegExp object (with a {@code lastIndex} of 0).
      * <p>
@@ -204,8 +229,15 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
      * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
      */
     public static DynamicObject create(JSContext ctx, Object compiledRegex, JSObjectFactory groupsFactory) {
-        // (compiledRegex, groupsFactory)
-        DynamicObject regExp = JSObject.create(ctx, ctx.getRegExpFactory(), compiledRegex, groupsFactory);
+        return create(ctx, compiledRegex, groupsFactory, true);
+    }
+
+    /**
+     * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
+     */
+    public static DynamicObject create(JSContext ctx, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
+        // (compiledRegex, groupsFactory, realm, legacyFeaturesEnabled)
+        DynamicObject regExp = JSObject.create(ctx, ctx.getRegExpFactory(), compiledRegex, groupsFactory, ctx.getRealm(), legacyFeaturesEnabled);
         assert isJSRegExp(regExp);
         return regExp;
     }
@@ -313,7 +345,9 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         // @formatter:off
         return JSObjectUtil.getProtoChildShape(thisObj, INSTANCE, ctx).
                         addProperty(COMPILED_REGEX_PROPERTY).
-                        addProperty(GROUPS_FACTORY_PROPERTY);
+                        addProperty(GROUPS_FACTORY_PROPERTY).
+                        addProperty(REALM_PROPERTY).
+                        addProperty(LEGACY_FEATURES_ENABLED_PROPERTY);
         // @formatter:on
     }
 
@@ -334,60 +368,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
 
     @Override
     public void fillConstructor(JSRealm realm, DynamicObject constructor) {
-        final JSContext context = realm.getContext();
         putConstructorSpeciesGetter(realm, constructor);
-        if (context.isOptionRegexpStaticResult()) {
-            if (context.isOptionNashornCompatibilityMode()) {
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpInput, "input");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpMultiLine, "multiline");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpLastMatch, "lastMatch");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpLastParen, "lastParen");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpLeftContext, "leftContext");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpRightContext, "rightContext");
-            } else {
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpInput, "input");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpLastMatch, "lastMatch");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpLastParen, "lastParen");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpLeftContext, "leftContext");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpRightContext, "rightContext");
-
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$_, "input", "$_");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$And, "lastMatch", "$&");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$Plus, "lastParen", "$+");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$Apostrophe, "leftContext", "$`");
-                putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$Quote, "rightContext", "$'");
-            }
-            putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$1, "$1");
-            putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$2, "$2");
-            putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$3, "$3");
-            putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$4, "$4");
-            putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$5, "$5");
-            putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$6, "$6");
-            putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$7, "$7");
-            putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$8, "$8");
-            putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExp$9, "$9");
-        }
-    }
-
-    private static void putRegExpStaticPropertyAccessor(JSRealm realm, DynamicObject constructor, BuiltinFunctionKey builtinKey, String getterName) {
-        putRegExpStaticPropertyAccessor(realm, constructor, builtinKey, getterName, getterName);
-    }
-
-    private static void putRegExpStaticPropertyAccessor(JSRealm realm, DynamicObject constructor, BuiltinFunctionKey builtinKey, String getterName, String propertyName) {
-        JSContext ctx = realm.getContext();
-        DynamicObject getter = realm.lookupFunction(RegExpBuiltins.BUILTINS, getterName);
-
-        // set empty setter for V8 compatibility, see testv8/mjsunit/regress/regress-5566.js
-        String setterName = "set " + propertyName;
-        JSFunctionData setterData = ctx.getOrCreateBuiltinFunctionData(builtinKey,
-                        (c) -> JSFunctionData.createCallOnly(c, ctx.getEmptyFunctionCallTarget(), 0, setterName));
-        DynamicObject setter = JSFunction.create(realm, setterData);
-        JSObjectUtil.putConstantAccessorProperty(ctx, constructor, propertyName, getter, setter, getRegExpStaticResultPropertyAccessorJSAttributes(ctx));
-    }
-
-    // https://github.com/tc39/proposal-regexp-legacy-features#additional-properties-of-the-regexp-constructor
-    private static int getRegExpStaticResultPropertyAccessorJSAttributes(JSContext context) {
-        return context.isOptionNashornCompatibilityMode() ? JSAttributes.notConfigurableEnumerableWritable() : JSAttributes.configurableNotEnumerableWritable();
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {

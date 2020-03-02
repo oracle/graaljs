@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,6 +61,7 @@ import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
@@ -268,6 +269,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         private final ConditionProfile stickyProfile = ConditionProfile.createBinaryProfile();
         private final int ecmaScriptVersion;
 
+        @Child protected IsJSClassNode isJSRegExpNode;
         @Child private JSToLengthNode toLengthNode;
         @Child private PropertyGetNode getLastIndexNode;
         @Child private PropertySetNode setLastIndexNode;
@@ -291,17 +293,15 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
 
         public abstract Object execute(DynamicObject regExp, String input);
 
-        @Specialization(guards = "getCompiledRegexUnchecked(regExp, isJSRegExpNode.executeBoolean(regExp)) == cachedCompiledRegex")
+        @Specialization(guards = "getCompiledRegexUnchecked(regExp, isJSRegExp(regExp)) == cachedCompiledRegex")
         Object doCached(DynamicObject regExp, String input,
-                        @Cached("getCompiledRegex(regExp)") Object cachedCompiledRegex,
-                        @Cached("createIsJSRegExpNode()") @SuppressWarnings("unused") IsJSClassNode isJSRegExpNode) {
+                        @Cached("getCompiledRegex(regExp)") Object cachedCompiledRegex) {
             return doExec(regExp, cachedCompiledRegex, input);
         }
 
         @Specialization(replaces = "doCached")
-        Object doDynamic(DynamicObject regExp, String input,
-                        @Cached("createIsJSRegExpNode()") IsJSClassNode isJSRegExpNode) {
-            return doExec(regExp, JSRegExp.getCompiledRegexUnchecked(regExp, isJSRegExpNode.executeBoolean(regExp)), input);
+        Object doDynamic(DynamicObject regExp, String input) {
+            return doExec(regExp, JSRegExp.getCompiledRegexUnchecked(regExp, isJSRegExp(regExp)), input);
         }
 
         // Implements 21.2.5.2.2 Runtime Semantics: RegExpBuiltinExec ( R, S )
@@ -321,7 +321,15 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
 
             Object result = executeCompiledRegex(compiledRegex, input, lastIndex, compiledRegexAccessor);
             if (context.isOptionRegexpStaticResult() && regexResultAccessor.isMatch(result)) {
-                context.getRealm().setStaticRegexResult(context, compiledRegex, input, lastIndex, result);
+                boolean isJSRegExp = isJSRegExp(regExp);
+                JSRealm thisRealm = context.getRealm();
+                if (thisRealm == JSRegExp.getRealmUnchecked(regExp, isJSRegExp)) {
+                    if (JSRegExp.getLegacyFeaturesEnabledUnchecked(regExp, isJSRegExp)) {
+                        thisRealm.setStaticRegexResult(context, compiledRegex, input, lastIndex, result);
+                    } else {
+                        thisRealm.invalidateStaticRegexResult();
+                    }
+                }
             }
             if (match.profile(regexResultAccessor.isMatch(result))) {
                 if (stickyProfile.profile(sticky && regexResultAccessor.captureGroupStart(result, 0) != lastIndex)) {
@@ -383,6 +391,14 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                 setLastIndexNode = insert(PropertySetNode.create(JSRegExp.LAST_INDEX, false, context, true));
             }
             setLastIndexNode.setValueInt(regExp, value);
+        }
+
+        protected boolean isJSRegExp(DynamicObject regExp) {
+            if (isJSRegExpNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                isJSRegExpNode = createIsJSRegExpNode();
+            }
+            return isJSRegExpNode.executeBoolean(regExp);
         }
     }
 

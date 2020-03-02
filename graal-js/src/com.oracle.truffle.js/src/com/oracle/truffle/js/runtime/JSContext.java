@@ -238,13 +238,11 @@ public class JSContext {
         PromiseThrower,
         ImportModuleDynamically,
         JavaPackageToPrimitive,
-        RegExpInput,
         RegExpMultiLine,
         RegExpLastMatch,
         RegExpLastParen,
         RegExpLeftContext,
         RegExpRightContext,
-        RegExp$_,
         RegExp$And,
         RegExp$Plus,
         RegExp$Apostrophe,
@@ -1164,6 +1162,11 @@ public class JSContext {
     }
 
     public boolean isOptionRegexpStaticResult() {
+        assert !(getEnv() != null && getEnv().isPreInitialization()) : "Patchable option static-regex-result accessed during context pre-initialization.";
+        return contextOptions.isRegexpStaticResult();
+    }
+
+    public boolean isOptionRegexpStaticResultInContextInit() {
         return contextOptions.isRegexpStaticResult();
     }
 

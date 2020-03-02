@@ -915,15 +915,15 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         return patternObj;
                     }
                 }
-                return constructRegExpImpl(pattern, flags, hasMatchSymbol);
+                return constructRegExpImpl(pattern, flags, hasMatchSymbol, true);
             } else {
                 // we are in the "construct" case, i.e. NewTarget is NOT undefined
-                return swapPrototype(constructRegExpImpl(pattern, flags, hasMatchSymbol), newTarget);
+                return swapPrototype(constructRegExpImpl(pattern, flags, hasMatchSymbol, newTarget == getContext().getRealm().getRegExpConstructor()), newTarget);
             }
 
         }
 
-        protected DynamicObject constructRegExpImpl(Object patternObj, Object flags, boolean hasMatchSymbol) {
+        protected DynamicObject constructRegExpImpl(Object patternObj, Object flags, boolean hasMatchSymbol, boolean legacyFeaturesEnabled) {
             Object p;
             Object f;
             boolean isJSRegExp = JSRegExp.isJSRegExp(patternObj);
@@ -931,7 +931,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 regexpObject.enter();
                 Object compiledRegex = JSRegExp.getCompiledRegexUnchecked((DynamicObject) patternObj, isJSRegExp);
                 if (flags == Undefined.instance) {
-                    return getCreateRegExpNode().execute(compiledRegex);
+                    return getCreateRegExpNode().createRegExp(compiledRegex);
                 } else {
                     if (getContext().getEcmaScriptVersion() < 6) {
                         throw Errors.createTypeError("Cannot supply flags when constructing one RegExp from another");
@@ -939,7 +939,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     String flagsStr = flagsToString(flags);
                     regexpObjectNewFlagsBranch.enter();
                     Object newCompiledRegex = getCompileRegexNode().compile(getInteropReadPatternNode().execute(compiledRegex, TRegexUtil.Props.CompiledRegex.PATTERN), flagsStr);
-                    return getCreateRegExpNode().execute(newCompiledRegex);
+                    return getCreateRegExpNode().createRegExp(newCompiledRegex);
                 }
             } else if (hasMatchSymbol) {
                 regexpMatcherObject.enter();
@@ -959,7 +959,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             String patternStr = getPatternToStringNode().executeString(p);
             String flagsStr = flagsToString(f);
             Object compiledRegex = getCompileRegexNode().compile(patternStr, flagsStr);
-            return getCreateRegExpNode().execute(compiledRegex);
+            return getCreateRegExpNode().createRegExp(compiledRegex, legacyFeaturesEnabled);
         }
 
         private JSToStringNode getPatternToStringNode() {

@@ -136,6 +136,8 @@ public final class JSContextOptions {
     public static final String REGEXP_STATIC_RESULT_NAME = JS_OPTION_PREFIX + "regexp-static-result";
     @Option(name = REGEXP_STATIC_RESULT_NAME, category = OptionCategory.USER, help = "Provide last RegExp match in RegExp global var, e.g. RegExp.$1.") //
     public static final OptionKey<Boolean> REGEXP_STATIC_RESULT = new OptionKey<>(true);
+    private final CyclicAssumption regexpStaticResultCyclicAssumption = new CyclicAssumption("The " + REGEXP_STATIC_RESULT_NAME + " option is stable.");
+    @CompilationFinal private Assumption regexpStaticResultCurrentAssumption = regexpStaticResultCyclicAssumption.getAssumption();
     @CompilationFinal private boolean regexpStaticResult;
 
     public static final String ARRAY_SORT_INHERITED_NAME = JS_OPTION_PREFIX + "array-sort-inherited";
@@ -492,7 +494,10 @@ public final class JSContextOptions {
         this.ecmascriptVersion = readIntegerOption(ECMASCRIPT_VERSION);
         this.annexB = readBooleanOption(ANNEX_B);
         this.intl402 = readBooleanOption(INTL_402);
-        this.regexpStaticResult = readBooleanOption(REGEXP_STATIC_RESULT);
+        this.regexpStaticResult = patchBooleanOption(REGEXP_STATIC_RESULT, REGEXP_STATIC_RESULT_NAME, regexpStaticResult, msg -> {
+            regexpStaticResultCyclicAssumption.invalidate(msg);
+            regexpStaticResultCurrentAssumption = regexpStaticResultCyclicAssumption.getAssumption();
+        });
         this.arraySortInherited = patchBooleanOption(ARRAY_SORT_INHERITED, ARRAY_SORT_INHERITED_NAME, arraySortInherited, msg -> {
             arraySortInheritedCyclicAssumption.invalidate(msg);
             arraySortInheritedCurrentAssumption = arraySortInheritedCyclicAssumption.getAssumption();
@@ -606,6 +611,10 @@ public final class JSContextOptions {
     }
 
     public boolean isRegexpStaticResult() {
+        try {
+            regexpStaticResultCurrentAssumption.check();
+        } catch (InvalidAssumptionException e) {
+        }
         return regexpStaticResult;
     }
 
