@@ -146,7 +146,7 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
     }
 
     protected static boolean isHandled(Object lval) {
-        return lval instanceof Integer || lval instanceof Double;
+        return lval instanceof Integer || lval instanceof Double || lval instanceof SafeInteger || lval instanceof BigInt;
     }
 
     @Override

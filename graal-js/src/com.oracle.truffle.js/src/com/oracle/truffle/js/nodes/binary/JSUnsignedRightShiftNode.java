@@ -54,6 +54,7 @@ import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.SafeInteger;
 
 /**
  * 11.7.3 The Unsigned Right Shift Operator (>>>).
@@ -166,7 +167,7 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
     }
 
     protected static boolean isHandled(Object lval, Object rval) {
-        return (lval instanceof Integer || lval instanceof Double) && (rval instanceof Integer || rval instanceof Double);
+        return (lval instanceof Integer || lval instanceof Double || lval instanceof SafeInteger) && (rval instanceof Integer || rval instanceof Double || rval instanceof SafeInteger);
     }
 
     @Override
