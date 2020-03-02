@@ -21,7 +21,7 @@ call :dirname "%bin_dir%" parent_bin_dir
 
 set "PATH=%PATH%;%bin_dir%"
 
-set "node_args=--experimental-options "--engine.Mode=latency""
+set "node_args="--engine.Mode=latency""
 set "node_dir="--nodedir=%parent_bin_dir%""
 
 for %%a in (%*) do (
