@@ -2031,6 +2031,9 @@ public final class JSRuntime {
         if (n instanceof Double) {
             return ((Double) n).longValue();
         }
+        if (n instanceof SafeInteger) {
+            return ((SafeInteger) n).longValue();
+        }
         return longValueVirtual(n);
     }
 
