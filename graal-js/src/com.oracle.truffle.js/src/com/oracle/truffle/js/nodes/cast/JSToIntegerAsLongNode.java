@@ -48,6 +48,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 
 /**
@@ -76,6 +77,11 @@ public abstract class JSToIntegerAsLongNode extends JavaScriptBaseNode {
     @Specialization
     protected static long doBoolean(boolean value) {
         return JSRuntime.booleanToNumber(value);
+    }
+
+    @Specialization
+    protected static long doSafeInteger(SafeInteger value) {
+        return value.longValue();
     }
 
     @Specialization(guards = "!isInfinite(value)")
