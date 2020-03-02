@@ -739,13 +739,21 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         }
 
         @Specialization
-        protected SafeInteger createSafeInteger(int a) {
+        protected static SafeInteger createSafeInteger(int a) {
             return SafeInteger.valueOf(a);
         }
 
         @Specialization
-        protected SafeInteger createSafeInteger(Object a) {
-            return SafeInteger.valueOf(JSRuntime.toInt32(a));
+        protected static SafeInteger createSafeInteger(SafeInteger a) {
+            return a;
+        }
+
+        @Specialization
+        protected static SafeInteger createSafeInteger(Object a) {
+            long integer = JSRuntime.toInteger(a);
+            integer = Math.max(integer, JSRuntime.MIN_SAFE_INTEGER_LONG);
+            integer = Math.min(integer, JSRuntime.MAX_SAFE_INTEGER_LONG);
+            return SafeInteger.valueOf(integer);
         }
     }
 
