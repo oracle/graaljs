@@ -82,7 +82,7 @@ import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -890,7 +890,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private PropertyGetNode getGroupsNode;
         @Child private TRegexUtil.TRegexResultAccessor readLazyLengthNode;
         @Child private JSToLengthNode toLengthNode;
-        @Child private JSToIntegerNode toIntegerNode;
+        @Child private JSToIntegerAsIntNode toIntegerNode;
         @Child private JSToStringNode toString2Node;
         @Child private JSToStringNode toString3Node;
         @Child private JSToStringNode toString4Node;
@@ -926,7 +926,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
             this.getGlobalNode = PropertyGetNode.create(JSRegExp.GLOBAL, false, context);
             this.getIndexNode = PropertyGetNode.create(JSRegExp.INDEX, false, context);
-            this.toIntegerNode = JSToIntegerNode.create();
+            this.toIntegerNode = JSToIntegerAsIntNode.create();
             this.isObjectNode = IsJSObjectNode.create();
             this.isCallableNode = IsCallableNode.create();
             this.hasLazyRegexResultNode = HasHiddenKeyCacheNode.create(JSArray.LAZY_REGEX_RESULT_ID);

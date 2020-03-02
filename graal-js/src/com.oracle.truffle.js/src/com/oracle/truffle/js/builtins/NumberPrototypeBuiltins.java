@@ -56,7 +56,7 @@ import com.oracle.truffle.js.builtins.NumberPrototypeBuiltinsFactory.JSNumberToP
 import com.oracle.truffle.js.builtins.NumberPrototypeBuiltinsFactory.JSNumberToStringNodeGen;
 import com.oracle.truffle.js.builtins.NumberPrototypeBuiltinsFactory.JSNumberValueOfNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSDoubleToStringNode;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -178,7 +178,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = {"isJSNumber(thisObj)", "!isUndefined(radix)"})
         protected String toString(DynamicObject thisObj, Object radix,
-                        @Shared("toInt") @Cached("create()") JSToIntegerNode toIntegerNode) {
+                        @Shared("toInt") @Cached("create()") JSToIntegerAsIntNode toIntegerNode) {
             return toStringIntl(getDoubleValue(thisObj), radix, toIntegerNode);
         }
 
@@ -203,7 +203,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = {"!isUndefined(radix)"}, replaces = "toStringPrimitiveRadixInt")
         protected String toStringPrimitive(Number thisObj, Object radix,
-                        @Shared("toInt") @Cached("create()") JSToIntegerNode toIntegerNode) {
+                        @Shared("toInt") @Cached("create()") JSToIntegerAsIntNode toIntegerNode) {
             return toStringIntl(JSRuntime.doubleValue(thisObj), radix, toIntegerNode);
         }
 
@@ -213,7 +213,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             throw Errors.createTypeErrorNotANumber(thisObj);
         }
 
-        private String toStringIntl(double numberVal, Object radix, JSToIntegerNode toIntegerNode) {
+        private String toStringIntl(double numberVal, Object radix, JSToIntegerAsIntNode toIntegerNode) {
             int radixVal = toIntegerNode.executeInt(radix);
             return toStringIntl(numberVal, radixVal);
         }
@@ -337,14 +337,14 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "isJSNumber(thisNumber)")
         protected String toFixed(DynamicObject thisNumber, Object fractionDigits,
-                        @Shared("toInt") @Cached("create()") JSToIntegerNode toIntegerNode) {
+                        @Shared("toInt") @Cached("create()") JSToIntegerAsIntNode toIntegerNode) {
             int digits = toIntegerNode.executeInt(fractionDigits);
             return toFixedIntl(getDoubleValue(thisNumber), digits);
         }
 
         @Specialization(guards = "isJavaNumber(thisNumber)")
         protected String toFixedJava(Object thisNumber, Object fractionDigits,
-                        @Shared("toInt") @Cached("create()") JSToIntegerNode toIntegerNode) {
+                        @Shared("toInt") @Cached("create()") JSToIntegerAsIntNode toIntegerNode) {
             int digits = toIntegerNode.executeInt(fractionDigits);
             return toFixedIntl(JSRuntime.doubleValue((Number) thisNumber), digits);
         }
@@ -396,7 +396,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = {"isJSNumber(thisNumber)", "!isUndefined(fractionDigits)"})
         protected String toExponential(DynamicObject thisNumber, Object fractionDigits,
                         @Cached @Shared("digitsError") BranchProfile digitsErrorBranch,
-                        @Shared("toInt") @Cached("create()") JSToIntegerNode toIntegerNode) {
+                        @Shared("toInt") @Cached("create()") JSToIntegerAsIntNode toIntegerNode) {
             double doubleValue = getDoubleValue(thisNumber);
             int digits = toIntegerNode.executeInt(fractionDigits);
             return toExponential(doubleValue, digits, digitsErrorBranch);
@@ -412,7 +412,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = {"isJavaNumber(thisNumber)", "!isUndefined(fractionDigits)"})
         protected String toExponentialPrimitive(Object thisNumber, Object fractionDigits,
                         @Cached @Shared("digitsError") BranchProfile digitsErrorBranch,
-                        @Shared("toInt") @Cached("create()") JSToIntegerNode toIntegerNode) {
+                        @Shared("toInt") @Cached("create()") JSToIntegerAsIntNode toIntegerNode) {
             double doubleValue = JSRuntime.doubleValue((Number) thisNumber);
             int digits = toIntegerNode.executeInt(fractionDigits);
             return toExponential(doubleValue, digits, digitsErrorBranch);

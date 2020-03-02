@@ -50,7 +50,7 @@ import com.oracle.truffle.js.builtins.BigIntPrototypeBuiltinsFactory.JSBigIntToL
 import com.oracle.truffle.js.builtins.BigIntPrototypeBuiltinsFactory.JSBigIntToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.BigIntPrototypeBuiltinsFactory.JSBigIntToStringNodeGen;
 import com.oracle.truffle.js.builtins.BigIntPrototypeBuiltinsFactory.JSBigIntValueOfNodeGen;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.intl.InitializeNumberFormatNode;
@@ -111,7 +111,7 @@ public final class BigIntPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
     public abstract static class JSBigIntOperation extends JSBuiltinNode {
 
-        @Child private JSToIntegerNode toIntegerNode;
+        @Child private JSToIntegerAsIntNode toIntegerNode;
 
         public JSBigIntOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -126,10 +126,10 @@ public final class BigIntPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return JSBigInt.valueOf(obj);
         }
 
-        protected int toInteger(Object target) {
+        protected int toIntegerAsInt(Object target) {
             if (toIntegerNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                toIntegerNode = insert(JSToIntegerNode.create());
+                toIntegerNode = insert(JSToIntegerAsIntNode.create());
             }
             return toIntegerNode.executeInt(target);
         }
@@ -176,7 +176,7 @@ public final class BigIntPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private String toStringImpl(BigInt numberVal, Object radix) {
-            int radixVal = toInteger(radix);
+            int radixVal = toIntegerAsInt(radix);
             if (radixVal < 2 || radixVal > 36) {
                 radixErrorBranch.enter();
                 throw Errors.createRangeError("toString() expects radix in range 2-36");

@@ -61,7 +61,7 @@ import com.oracle.truffle.js.builtins.helper.SharedMemorySync;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerSpecialNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -303,7 +303,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
     public abstract static class AtomicsCompareExchangeNode extends AtomicsOperationNode {
 
         @Child private JSToBigIntNode toBigIntNode;
-        @Child private JSToIntegerSpecialNode toIntNode;
+        @Child private JSToIntegerAsLongNode toIntNode;
 
         public AtomicsCompareExchangeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -440,7 +440,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         private int toInt(Object v) {
             if (toIntNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                toIntNode = insert(JSToIntegerSpecialNode.create());
+                toIntNode = insert(JSToIntegerAsLongNode.create());
             }
             return (int) toIntNode.executeLong(v);
         }
@@ -548,7 +548,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
     public abstract static class AtomicsStoreNode extends AtomicsOperationNode {
 
         @Child private JSToBigIntNode toBigIntNode;
-        @Child private JSToIntegerSpecialNode toIntNode;
+        @Child private JSToIntegerAsLongNode toIntNode;
 
         public AtomicsStoreNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -648,7 +648,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         private long toInt(Object v) {
             if (toIntNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                toIntNode = insert(JSToIntegerSpecialNode.create());
+                toIntNode = insert(JSToIntegerAsLongNode.create());
             }
             return toIntNode.executeLong(v);
         }
@@ -671,7 +671,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         private final BinaryOperator<BigInt> bigIntOperator;
 
         @Child private JSToBigIntNode toBigIntNode;
-        @Child private JSToIntegerSpecialNode toIntNode;
+        @Child private JSToIntegerAsLongNode toIntNode;
 
         public AtomicsComputeNode(JSContext context, JSBuiltin builtin, IntBinaryOperator intOperator, BinaryOperator<BigInt> bigIntOperator) {
             super(context, builtin);
@@ -773,7 +773,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         private int toInt(Object v) {
             if (toIntNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                toIntNode = insert(JSToIntegerSpecialNode.create());
+                toIntNode = insert(JSToIntegerAsLongNode.create());
             }
             return (int) toIntNode.executeLong(v);
         }

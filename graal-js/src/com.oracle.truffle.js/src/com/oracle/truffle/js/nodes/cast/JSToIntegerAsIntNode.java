@@ -51,15 +51,19 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 
 /**
- * Basically ECMAScript ToInteger, but incorrect for values outside the int32 range. Used by
- * built-in functions that do not care about values outside this range.
+ * Basically ECMAScript ToInteger, but correct only for values in the int32 range. Used by built-in
+ * functions that do not care about values outside this range, such as string index conversion.
+ * Larger and smaller values will be clamped to Integer.MAX_VALUE and Integer.MIN_VALUE,
+ * respectively.
+ *
+ * @see JSToIntegerAsLongNode
  */
-public abstract class JSToIntegerNode extends JavaScriptBaseNode {
+public abstract class JSToIntegerAsIntNode extends JavaScriptBaseNode {
 
     @Child private JSToNumberNode toNumberNode;
 
-    public static JSToIntegerNode create() {
-        return JSToIntegerNodeGen.create();
+    public static JSToIntegerAsIntNode create() {
+        return JSToIntegerAsIntNodeGen.create();
     }
 
     public abstract int executeInt(Object operand);
@@ -116,7 +120,7 @@ public abstract class JSToIntegerNode extends JavaScriptBaseNode {
 
     @Specialization
     protected int doString(String value,
-                    @Cached("create()") JSToIntegerNode nestedToIntegerNode,
+                    @Cached("create()") JSToIntegerAsIntNode nestedToIntegerNode,
                     @Cached("create()") JSStringToNumberNode stringToNumberNode) {
         return nestedToIntegerNode.executeInt(stringToNumberNode.executeString(value));
     }

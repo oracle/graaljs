@@ -131,8 +131,8 @@ import com.oracle.truffle.js.nodes.array.JSSetLengthNode;
 import com.oracle.truffle.js.nodes.array.TestArrayNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerNode;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerSpecialNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectArrayNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -753,14 +753,14 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             this(context, builtin, false);
         }
 
-        @Child private JSToIntegerSpecialNode toIntegerSpecialNode;
+        @Child private JSToIntegerAsLongNode toIntegerAsLongNode;
 
-        protected long toIntegerSpecial(Object target) {
-            if (toIntegerSpecialNode == null) {
+        protected long toIntegerAsLong(Object target) {
+            if (toIntegerAsLongNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                toIntegerSpecialNode = insert(JSToIntegerSpecialNode.create());
+                toIntegerAsLongNode = insert(JSToIntegerAsLongNode.create());
             }
-            return toIntegerSpecialNode.executeLong(target);
+            return toIntegerAsLongNode.executeLong(target);
         }
     }
 
@@ -964,16 +964,16 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected Object slice(Object thisObj, Object[] args,
-                        @Cached("create()") JSToIntegerSpecialNode toIntegerSpecial) {
+                        @Cached("create()") JSToIntegerAsLongNode toIntegerAsLong) {
             Object thisArrayObj = toObject(thisObj);
             long len = getLength(thisArrayObj);
-            long startPos = args.length > 0 ? JSRuntime.getOffset(toIntegerSpecial.executeLong(args[0]), len, offsetProfile1) : 0;
+            long startPos = args.length > 0 ? JSRuntime.getOffset(toIntegerAsLong.executeLong(args[0]), len, offsetProfile1) : 0;
 
             long endPos;
             if (args.length <= 1 || args[1] == Undefined.instance) {
                 endPos = len;
             } else {
-                endPos = JSRuntime.getOffset(toIntegerSpecial.executeLong(args[1]), len, offsetProfile2);
+                endPos = JSRuntime.getOffset(toIntegerAsLong.executeLong(args[1]), len, offsetProfile2);
             }
 
             long size = startPos <= endPos ? endPos - startPos : 0;
@@ -1426,7 +1426,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     public abstract static class JSArrayIndexOfNode extends ArrayForEachIndexCallOperation {
         private final boolean isForward;
 
-        @Child private JSToIntegerSpecialNode toIntegerNode;
+        @Child private JSToIntegerAsLongNode toIntegerNode;
         private final BranchProfile arrayWithContentBranch = BranchProfile.create();
         private final BranchProfile fromConversionBranch = BranchProfile.create();
 
@@ -1489,7 +1489,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private long toInteger(Object operand) {
             if (toIntegerNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                toIntegerNode = insert(JSToIntegerSpecialNode.create());
+                toIntegerNode = insert(JSToIntegerAsLongNode.create());
             }
             return toIntegerNode.executeLong(operand);
         }
@@ -1748,7 +1748,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             Object thisObj = toObject(thisArg);
             long len = getLength(thisObj);
 
-            long actualStart = JSRuntime.getOffset(toIntegerSpecial(JSRuntime.getArgOrUndefined(args, 0)), len, offsetProfile);
+            long actualStart = JSRuntime.getOffset(toIntegerAsLong(JSRuntime.getArgOrUndefined(args, 0)), len, offsetProfile);
             long insertCount;
             long actualDeleteCount;
             if (argsLength0Profile.profile(args.length == 0)) {
@@ -1760,7 +1760,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             } else {
                 assert args.length >= 2;
                 insertCount = args.length - 2;
-                long deleteCount = toIntegerSpecial(JSRuntime.getArgOrUndefined(args, 1));
+                long deleteCount = toIntegerAsLong(JSRuntime.getArgOrUndefined(args, 1));
                 actualDeleteCount = Math.min(Math.max(deleteCount, 0), len - actualStart);
             }
 
@@ -2366,7 +2366,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public abstract static class JSArrayFlatNode extends JSArrayOperation {
-        @Child private JSToIntegerNode toIntegerNode;
+        @Child private JSToIntegerAsIntNode toIntegerNode;
 
         public JSArrayFlatNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, false);
@@ -2377,17 +2377,17 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached("createFlattenIntoArrayNode(getContext())") FlattenIntoArrayNode flattenIntoArrayNode) {
             Object thisJSObj = toObject(thisObj);
             long length = getLength(thisJSObj);
-            long depthNum = (depth == Undefined.instance) ? 1 : toInteger(depth);
+            long depthNum = (depth == Undefined.instance) ? 1 : toIntegerAsInt(depth);
 
             Object resultArray = getArraySpeciesConstructorNode().createEmptyContainer(thisJSObj, 0);
             flattenIntoArrayNode.flatten((DynamicObject) resultArray, thisJSObj, length, 0, depthNum, null, null);
             return resultArray;
         }
 
-        private int toInteger(Object depth) {
+        private int toIntegerAsInt(Object depth) {
             if (toIntegerNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                toIntegerNode = insert(JSToIntegerNode.create());
+                toIntegerNode = insert(JSToIntegerAsIntNode.create());
             }
             return toIntegerNode.executeInt(depth);
         }
@@ -2840,8 +2840,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected Object fill(Object thisObj, Object value, Object start, Object end) {
             Object thisJSObj = toObject(thisObj);
             long len = getLength(thisJSObj);
-            long lStart = JSRuntime.getOffset(toIntegerSpecial(start), len, offsetProfile1);
-            long lEnd = end == Undefined.instance ? len : JSRuntime.getOffset(toIntegerSpecial(end), len, offsetProfile2);
+            long lStart = JSRuntime.getOffset(toIntegerAsLong(start), len, offsetProfile1);
+            long lEnd = end == Undefined.instance ? len : JSRuntime.getOffset(toIntegerAsLong(end), len, offsetProfile2);
 
             for (long idx = lStart; idx < lEnd; idx++) {
                 write(thisJSObj, idx, value);
@@ -2866,14 +2866,14 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected Object copyWithin(Object thisObj, Object target, Object start, Object end) {
             Object obj = toObject(thisObj);
             long len = getLength(obj);
-            long to = JSRuntime.getOffset(toIntegerSpecial(target), len, offsetProfile1);
-            long from = JSRuntime.getOffset(toIntegerSpecial(start), len, offsetProfile2);
+            long to = JSRuntime.getOffset(toIntegerAsLong(target), len, offsetProfile1);
+            long from = JSRuntime.getOffset(toIntegerAsLong(start), len, offsetProfile2);
 
             long finalIdx;
             if (end == Undefined.instance) {
                 finalIdx = len;
             } else {
-                finalIdx = JSRuntime.getOffset(toIntegerSpecial(end), len, offsetProfile3);
+                finalIdx = JSRuntime.getOffset(toIntegerAsLong(end), len, offsetProfile3);
             }
             long count = Math.min(finalIdx - from, len - to);
 
@@ -2917,7 +2917,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return false;
             }
 
-            long n = toIntegerSpecial(fromIndex);
+            long n = toIntegerAsLong(fromIndex);
             long k;
             if (n >= 0) {
                 k = n;

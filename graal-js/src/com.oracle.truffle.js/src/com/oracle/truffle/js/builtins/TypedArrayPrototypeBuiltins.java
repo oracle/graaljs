@@ -627,8 +627,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             DynamicObject thisJSObj = (DynamicObject) thisObj;
             long len = getLength(thisJSObj);
             Object convValue = JSArrayBufferView.isBigIntArrayBufferView(thisJSObj) ? toBigInt(value) : toNumber(value);
-            long lStart = JSRuntime.getOffset(toIntegerSpecial(start), len, offsetProfile1);
-            long lEnd = end == Undefined.instance ? len : JSRuntime.getOffset(toIntegerSpecial(end), len, offsetProfile2);
+            long lStart = JSRuntime.getOffset(toIntegerAsLong(start), len, offsetProfile1);
+            long lEnd = end == Undefined.instance ? len : JSRuntime.getOffset(toIntegerAsLong(end), len, offsetProfile2);
             checkHasDetachedBuffer(thisJSObj);
             for (long idx = lStart; idx < lEnd; idx++) {
                 write(thisJSObj, idx, convValue);
