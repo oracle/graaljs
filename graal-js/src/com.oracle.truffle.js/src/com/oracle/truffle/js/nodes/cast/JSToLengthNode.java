@@ -41,19 +41,19 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.SafeInteger;
 
 /**
  * Implementation of ToLength (ES6 7.1.15).
  *
  */
 public abstract class JSToLengthNode extends JavaScriptBaseNode {
-
-    protected final BranchProfile needNegativeBranch = BranchProfile.create();
 
     public static JSToLengthNode create() {
         return JSToLengthNodeGen.create();
@@ -62,19 +62,32 @@ public abstract class JSToLengthNode extends JavaScriptBaseNode {
     public abstract long executeLong(Object value);
 
     @Specialization
-    protected long doInt(int value) {
+    protected static long doInt(int value,
+                    @Cached @Shared("negativeBranch") BranchProfile negativeBranch) {
         if (value < 0) {
-            needNegativeBranch.enter();
+            negativeBranch.enter();
             return 0;
         }
         return value;
     }
 
     @Specialization
-    protected long doDouble(double value,
-                    @Cached("create()") BranchProfile needPositiveInfinityBranch,
-                    @Cached("create()") BranchProfile needNaNBranch,
-                    @Cached("create()") BranchProfile needSafeBranch) {
+    protected static long doSafeInteger(SafeInteger value,
+                    @Cached @Shared("negativeBranch") BranchProfile negativeBranch) {
+        long longValue = value.longValue();
+        if (longValue < 0) {
+            negativeBranch.enter();
+            return 0;
+        }
+        return longValue;
+    }
+
+    @Specialization
+    protected static long doDouble(double value,
+                    @Cached BranchProfile needNaNBranch,
+                    @Cached BranchProfile needPositiveInfinityBranch,
+                    @Cached @Shared("negativeBranch") BranchProfile negativeBranch,
+                    @Cached @Shared("tooLargeBranch") BranchProfile tooLargeBranch) {
         if (Double.isNaN(value)) {
             needNaNBranch.enter();
             return 0;
@@ -83,29 +96,30 @@ public abstract class JSToLengthNode extends JavaScriptBaseNode {
             needPositiveInfinityBranch.enter();
             return JSRuntime.MAX_SAFE_INTEGER_LONG;
         }
-        return doLong((long) value, needSafeBranch);
+        return doLong((long) value, negativeBranch, tooLargeBranch);
     }
 
     @Specialization(guards = "isUndefined(value)")
-    protected long doUndefined(@SuppressWarnings("unused") DynamicObject value) {
+    protected static long doUndefined(@SuppressWarnings("unused") DynamicObject value) {
         return 0;
     }
 
     @Specialization
-    protected long doObject(Object value,
+    protected static long doObject(Object value,
                     @Cached("create()") JSToNumberNode toNumberNode,
-                    @Cached("create()") BranchProfile needSafeBranch) {
+                    @Cached @Shared("negativeBranch") BranchProfile negativeBranch,
+                    @Cached @Shared("tooLargeBranch") BranchProfile tooLargeBranch) {
         Number result = (Number) toNumberNode.execute(value);
-        return doLong(JSRuntime.toInteger(result), needSafeBranch);
+        return doLong(JSRuntime.toInteger(result), negativeBranch, tooLargeBranch);
     }
 
-    private long doLong(final long value, final BranchProfile needSafeBranch) {
+    private static long doLong(long value, BranchProfile negativeBranch, final BranchProfile tooLargeBranch) {
         if (value < 0) {
-            needNegativeBranch.enter();
+            negativeBranch.enter();
             return 0;
         }
         if (value > JSRuntime.MAX_SAFE_INTEGER_LONG) {
-            needSafeBranch.enter();
+            tooLargeBranch.enter();
             return JSRuntime.MAX_SAFE_INTEGER_LONG;
         }
         return value;
