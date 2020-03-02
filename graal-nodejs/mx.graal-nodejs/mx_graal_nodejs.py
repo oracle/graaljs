@@ -70,6 +70,10 @@ def _graal_nodejs_post_gate_runner(args, tasks):
             finally:
                 mx.rmtree(tmpdir, ignore_errors=True)
 
+    with Task('TestNpx', tasks, tags=[GraalNodeJsTags.allTests]) as t:
+        if t:
+            npx(['cowsay', 'GraalVM rules!'])
+
     with Task('JniProfilerTests', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.jniProfilerTests]) as t:
         if t:
             commonArgs = ['-ea', '-esa']
@@ -359,6 +363,9 @@ def node_gyp(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
 def npm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     return node([join(_suite.dir, 'deps', 'npm', 'bin', 'npm-cli.js')] + args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
+def npx(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
+    return node([join(_suite.dir, 'deps', 'npm', 'bin', 'npx-cli.js')] + args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
+
 def run_nodejs(vmArgs, runArgs, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     return node(vmArgs + runArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
@@ -579,6 +586,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     provided_executables=[
         'bin/<exe:node>',
         'bin/<cmd:npm>',
+        'bin/<cmd:npx>',
     ],
     polyglot_lib_build_args=[
         "-H:+ReportExceptionStackTraces",
@@ -613,6 +621,7 @@ mx_sdk_vm.register_vm_config('n1-ee', ['cmp', 'cmpee', 'js', 'lg', 'libpoly', 'l
 mx.update_commands(_suite, {
     'node' : [node, ''],
     'npm' : [npm, ''],
+    'npx' : [npx, ''],
     'node-gyp' : [node_gyp, ''],
     'testnode' : [testnode, ''],
     'testnodeinstrument' : [testnodeInstrument, ''],
