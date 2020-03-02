@@ -49,7 +49,14 @@ import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.SafeInteger;
 
+/**
+ * Math.floor(x). Returns the greatest (closest to +Infinity) Number value that is not greater than
+ * x and is an integer. If x is already an integer, the result is x.
+ *
+ * The value of {@code Math.floor(x)} is the same as the value of {@code -Math.ceil(-x)}.
+ */
 public abstract class FloorNode extends MathOperation {
 
     public FloorNode(JSContext context, JSBuiltin builtin) {
@@ -58,6 +65,11 @@ public abstract class FloorNode extends MathOperation {
 
     @Specialization
     protected static int floor(int a) {
+        return a;
+    }
+
+    @Specialization
+    protected static SafeInteger floor(SafeInteger a) {
         return a;
     }
 

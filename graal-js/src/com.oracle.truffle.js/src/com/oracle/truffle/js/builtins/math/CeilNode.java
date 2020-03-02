@@ -49,7 +49,14 @@ import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.SafeInteger;
 
+/**
+ * Math.ceil(x). Returns the smallest (closest to -Infinity) Number value that is not less than x
+ * and is an integer. If x is already an integer, the result is x.
+ *
+ * The value of {@code Math.ceil(x)} is the same as the value of {@code -Math.floor(-x)}.
+ */
 public abstract class CeilNode extends MathOperation {
 
     public CeilNode(JSContext context, JSBuiltin builtin) {
@@ -58,6 +65,11 @@ public abstract class CeilNode extends MathOperation {
 
     @Specialization
     protected static int ceil(int a) {
+        return a;
+    }
+
+    @Specialization
+    protected static SafeInteger ceil(SafeInteger a) {
         return a;
     }
 
