@@ -50,7 +50,9 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
 /**
- * This type represents an integer value, useful for all ranges up to JSRuntime.MAX_SAFE_INTEGER.
+ * This type represents an integer value in the range of -(2<sup>53</sup>-1) to -2<sup>53</sup>-1,
+ * i.e. the range of integers that can be safely represented as double values, such that for each n,
+ * {n, n - 1, n + 1} are exactly representable as double values.
  */
 @ExportLibrary(InteropLibrary.class)
 @ValueType
