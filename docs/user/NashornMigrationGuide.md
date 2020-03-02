@@ -1,5 +1,8 @@
 # Migration Guide from Nashorn to GraalVM JavaScript
 
+The the Nashorn engine has been deprecated in JDK 11 as part of [JEP 335](https://openjdk.java.net/jeps/335) and is scheduled to be removed from future JDK releases as part of [JEP 372](https://openjdk.java.net/jeps/372).
+GraalVM JavaScript can step in as a replacement for code previously executed on the Nashorn engine.
+It provides all the features previously provided by Nashorn, with many being available by default, some behind flags, some requiring minor modifications to your source code.
 This document serves as migration guide for code previously targeted to the Nashorn engine.
 See the [JavaInterop.md](JavaInterop.md) for an overview of supported Java interoperability features.
 
