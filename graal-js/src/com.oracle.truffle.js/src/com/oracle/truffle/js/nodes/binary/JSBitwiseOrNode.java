@@ -92,6 +92,11 @@ public abstract class JSBitwiseOrNode extends JSBinaryNode {
     }
 
     @Specialization
+    protected int doSafeInteger(SafeInteger a, SafeInteger b) {
+        return doInteger(a.intValue(), b.intValue());
+    }
+
+    @Specialization
     protected int doDouble(double a, double b,
                     @Cached("create()") JSToInt32Node leftInt32,
                     @Cached("create()") JSToInt32Node rightInt32) {
@@ -103,7 +108,7 @@ public abstract class JSBitwiseOrNode extends JSBinaryNode {
         return a.or(b);
     }
 
-    @Specialization(replaces = {"doInteger", "doIntSafeInteger", "doSafeIntegerInt", "doDouble", "doBigInt"})
+    @Specialization(replaces = {"doInteger", "doIntSafeInteger", "doSafeIntegerInt", "doSafeInteger", "doDouble", "doBigInt"})
     protected Object doGeneric(Object a, Object b,
                     @Cached("create()") JSToNumericNode leftNumeric,
                     @Cached("create()") JSToNumericNode rightNumeric,
