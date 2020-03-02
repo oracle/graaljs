@@ -40,8 +40,19 @@
  */
 package com.oracle.truffle.js.test.instrumentation;
 
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.PropertyNode;
+import com.oracle.truffle.js.nodes.control.IfNode;
+import org.graalvm.polyglot.Source;
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
@@ -54,6 +65,86 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag.Type;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public class PropertyAccessTest extends FineGrainedAccessTest {
+
+    @Test
+    public void testNoDoubleMaterialization() {
+        Source source = evalAllTags("var a = {x:42}; a.x;");
+
+        PropertyNode[] propertyNode = new PropertyNode[1];
+        // var a = {x:42}
+        enter(WritePropertyTag.class, (e, write) -> {
+            assertAttribute(e, KEY, "a");
+            write.input(assertGlobalObjectInput);
+            enter(LiteralTag.class, (e2) -> {
+                assertAttribute(e2, LITERAL_TYPE, Type.ObjectLiteral.name());
+                // num literal
+                enter(LiteralTag.class).exit();
+            }).input(42).exit();
+        }).input((e) -> {
+            assertTrue(JSObject.isJSObject(e.val));
+        }).exit();
+        // a.x;
+        enter(ReadPropertyTag.class, (e) -> {
+            assertAttribute(e, KEY, "x");
+            Assert.assertTrue(e.instrumentedNode instanceof PropertyNode);
+            propertyNode[0] = (PropertyNode) e.instrumentedNode;
+            enter(ReadPropertyTag.class).input(assertGlobalObjectInput).exit();
+        }).input((e) -> {
+            assertTrue(JSObject.isJSObject(e.val));
+        }).exit();
+        assertNotNull(propertyNode[0]);
+
+        PropertyNode[] secondTimeEnteredPropertyNode = new PropertyNode[1];
+        PropertyNode[] secondTimeExitedPropertyNode = new PropertyNode[1];
+        instrumenter.attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+            @Override
+            public void onEnter(EventContext context, VirtualFrame frame) {
+                if (context.getInstrumentedNode() instanceof PropertyNode) {
+                    secondTimeEnteredPropertyNode[0] = (PropertyNode) context.getInstrumentedNode();
+                }
+            }
+
+            @Override
+            public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+                if (context.getInstrumentedNode() instanceof PropertyNode) {
+                    secondTimeExitedPropertyNode[0] = (PropertyNode) context.getInstrumentedNode();
+                }
+            }
+
+            @Override
+            public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+            }
+        });
+
+        evalWithCurrentBinding(source);
+        assertSame(propertyNode[0], secondTimeEnteredPropertyNode[0]);
+        assertSame(propertyNode[0], secondTimeExitedPropertyNode[0]);
+
+        // var a = {x:42}
+        enter(WritePropertyTag.class, (e, write) -> {
+            assertAttribute(e, KEY, "a");
+            write.input(assertGlobalObjectInput);
+            enter(LiteralTag.class, (e2) -> {
+                assertAttribute(e2, LITERAL_TYPE, Type.ObjectLiteral.name());
+                // num literal
+                enter(LiteralTag.class).exit();
+            }).input(42).exit();
+        }).input((e) -> {
+            assertTrue(JSObject.isJSObject(e.val));
+        }).exit();
+        // a.x;
+        enter(ReadPropertyTag.class, (e) -> {
+            assertAttribute(e, KEY, "x");
+            assertTrue(e.instrumentedNode instanceof PropertyNode);
+            assertSame(propertyNode[0], e.instrumentedNode);
+            enter(ReadPropertyTag.class).input(assertGlobalObjectInput).exit();
+        }).input((e) -> {
+            assertTrue(JSObject.isJSObject(e.val));
+        }).exit();
+
+        assertTrue(JavaScriptNode.isTaggedNode(propertyNode[0].getTarget()));
+    }
+
 
     @Test
     public void read() {

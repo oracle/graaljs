@@ -41,19 +41,87 @@
 package com.oracle.truffle.js.test.instrumentation;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import org.graalvm.polyglot.Source;
 import org.junit.Test;
 
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementTag;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.js.nodes.access.ReadElementNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementTag;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class ElementsAccessTest extends FineGrainedAccessTest {
+
+    @Test
+    public void testNoDoubleMaterialization() {
+        Source source = evalAllTags("var a = [1]; a[0];");
+
+        assertGlobalArrayLiteralDeclaration("a");
+
+        ReadElementNode[] readElementNode = new ReadElementNode[1];
+        enter(ReadElementTag.class, (e, elem) -> {
+            assertTrue(e.instrumentedNode instanceof ReadElementNode);
+            readElementNode[0] = (ReadElementNode) e.instrumentedNode;
+            enter(ReadPropertyTag.class).input(assertGlobalObjectInput).exit();
+            elem.input((e1) -> {
+                assertTrue(JSArray.isJSArray(e1.val));
+            });
+            enter(LiteralTag.class).exit();
+            elem.input(0);
+        }).exit();
+        assertNotNull(readElementNode[0]);
+
+        ReadElementNode[] secondTimeEnteredReadElementNode = new ReadElementNode[1];
+        ReadElementNode[] secondTimeExitedReadElementNode = new ReadElementNode[1];
+        instrumenter.attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+            @Override
+            public void onEnter(EventContext context, VirtualFrame frame) {
+                if (context.getInstrumentedNode() instanceof ReadElementNode) {
+                    secondTimeEnteredReadElementNode[0] = (ReadElementNode) context.getInstrumentedNode();
+                }
+            }
+
+            @Override
+            public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+                if (context.getInstrumentedNode() instanceof ReadElementNode) {
+                    secondTimeExitedReadElementNode[0] = (ReadElementNode) context.getInstrumentedNode();
+                }
+            }
+
+            @Override
+            public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+            }
+        });
+
+        evalWithCurrentBinding(source);
+        assertSame(readElementNode[0], secondTimeEnteredReadElementNode[0]);
+        assertSame(readElementNode[0], secondTimeExitedReadElementNode[0]);
+
+        assertGlobalArrayLiteralDeclaration("a");
+
+        enter(ReadElementTag.class, (e, elem) -> {
+            assertTrue(e.instrumentedNode instanceof ReadElementNode);
+            assertSame(readElementNode[0], e.instrumentedNode);
+            enter(ReadPropertyTag.class).input(assertGlobalObjectInput).exit();
+            elem.input((e1) -> {
+                assertTrue(JSArray.isJSArray(e1.val));
+            });
+            enter(LiteralTag.class).exit();
+            elem.input(0);
+        }).exit();
+    }
 
     @Test
     public void read() {
@@ -112,6 +180,49 @@ public class ElementsAccessTest extends FineGrainedAccessTest {
             enter(LiteralTag.class).exit();
             elem.input("foo");
         }).exit();
+    }
+
+    @Test
+    public void testNoDoubleMaterializationNoSourceSectionTargetAndIndex() {
+        Source source = evalWithTag("var u=[2,4,6]; var p = 1; u[p] -= 42", ReadElementTag.class);
+
+        ReadElementNode[] readElementNode = new ReadElementNode[1];
+        enter(ReadElementTag.class, (e, b) -> {
+            assertTrue(e.instrumentedNode instanceof ReadElementNode);
+            readElementNode[0] = (ReadElementNode) e.instrumentedNode;
+        }).input().input().exit();
+        assertNotNull(readElementNode[0]);
+
+        ReadElementNode[] secondTimeEnteredReadElementNode = new ReadElementNode[1];
+        ReadElementNode[] secondTimeExitedReadElementNode = new ReadElementNode[1];
+        instrumenter.attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+            @Override
+            public void onEnter(EventContext context, VirtualFrame frame) {
+                if (context.getInstrumentedNode() instanceof ReadElementNode) {
+                    secondTimeEnteredReadElementNode[0] = (ReadElementNode) context.getInstrumentedNode();
+                }
+            }
+
+            @Override
+            public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+                if (context.getInstrumentedNode() instanceof ReadElementNode) {
+                    secondTimeExitedReadElementNode[0] = (ReadElementNode) context.getInstrumentedNode();
+                }
+            }
+
+            @Override
+            public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+            }
+        });
+
+        evalWithCurrentBinding(source);
+        assertSame(readElementNode[0], secondTimeEnteredReadElementNode[0]);
+        assertSame(readElementNode[0], secondTimeExitedReadElementNode[0]);
+
+        enter(ReadElementTag.class, (e, b) -> {
+            assertTrue(e.instrumentedNode instanceof ReadElementNode);
+            assertSame(readElementNode[0], e.instrumentedNode);
+        }).input().input().exit();
     }
 
     @Test
@@ -193,6 +304,176 @@ public class ElementsAccessTest extends FineGrainedAccessTest {
     }
 
     @Test
+    public void nestedInvokeReadsMultipleInstrumentation() {
+        Source source = evalWithTags("function setKey(obj, keys) {" +
+                        " obj.a;" +
+                        " keys.slice[0][1][2](0, -1).forEach(function(key) {});" +
+                        "};" +
+                        "var callable = {" +
+                        " slice : [['',['','',function fakeslice() { return [1,2]; }]]]" +
+                        "};" +
+                        "setKey({}, callable);" +
+                        "for (var i = 0; i < 2; i++) {" +
+                        " setKey({" +
+                        " a: 1" +
+                        " }, callable);" +
+                        "}", new Class[]{ReadElementTag.class, FunctionCallTag.class});
+
+        for (int i = 0; i < 3; i++) {
+            enter(FunctionCallTag.class, (e, elem) -> {
+                elem.input().input().input().input();
+                enter(FunctionCallTag.class, (e1, elem1) -> {
+                    enter(FunctionCallTag.class, (e2, elem2) -> {
+                        // First two reads are to retrieve the invoke "target"
+                        enter(ReadElementTag.class, (e3, elem3) -> {
+                            enter(ReadElementTag.class, (e4, elem4) -> {
+                            }).input().input().exit();
+                            elem3.input();
+                            elem3.input();
+                        }).exit();
+
+                        elem2.input();
+                        // Third read to retrieve the invoked function
+                        enter(ReadElementTag.class, (e3, elem3) -> {
+                            elem3.input();
+                            elem3.input();
+                        }).exit();
+
+                        elem2.input().input().input();
+                    }).exit();
+                    elem1.input().input().input();
+                }).exit();
+            }).exit();
+        }
+
+        instrumenter.attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+            @Override
+            public void onEnter(EventContext context, VirtualFrame frame) {
+            }
+
+            @Override
+            public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+            }
+
+            @Override
+            public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+            }
+        });
+
+        evalWithCurrentBinding(source);
+
+        for (int i = 0; i < 3; i++) {
+            enter(FunctionCallTag.class, (e, elem) -> {
+                elem.input().input().input().input();
+                enter(FunctionCallTag.class, (e1, elem1) -> {
+                    enter(FunctionCallTag.class, (e2, elem2) -> {
+                        // First two reads are to retrieve the invoke "target"
+                        enter(ReadElementTag.class, (e3, elem3) -> {
+                            enter(ReadElementTag.class, (e4, elem4) -> {
+                            }).input().input().exit();
+                            elem3.input();
+                            elem3.input();
+                        }).exit();
+
+                        elem2.input();
+                        // Third read to retrieve the invoked function
+                        enter(ReadElementTag.class, (e3, elem3) -> {
+                            elem3.input();
+                            elem3.input();
+                        }).exit();
+
+                        elem2.input().input().input();
+                    }).exit();
+                    elem1.input().input().input();
+                }).exit();
+            }).exit();
+        }
+    }
+
+    @Test
+    public void nestedInvokeReadsMultipleDifferentInstrumentation() {
+        Source source = evalWithTags("function setKey(obj, keys) {" +
+                        " obj.a;" +
+                        " keys.slice[0][1][2](0, -1).forEach(function(key) {});" +
+                        "};" +
+                        "var callable = {" +
+                        " slice : [['',['','',function fakeslice() { return [1,2]; }]]]" +
+                        "};" +
+                        "setKey({}, callable);" +
+                        "for (var i = 0; i < 2; i++) {" +
+                        " setKey({" +
+                        " a: 1" +
+                        " }, callable);" +
+                        "}", new Class[]{FunctionCallTag.class}, new Class[]{});
+
+        for (int i = 0; i < 3; i++) {
+            enter(FunctionCallTag.class, (e, elem) -> {
+                enter(FunctionCallTag.class, (e1, elem1) -> {
+                    enter(FunctionCallTag.class, (e2, elem2) -> {
+                    }).exit();
+                }).exit();
+            }).exit();
+        }
+
+        evalWithNewTags(source, new Class[]{FunctionCallTag.class, ReadElementTag.class}, new Class[]{});
+
+        for (int i = 0; i < 3; i++) {
+            enter(FunctionCallTag.class, (e, elem) -> {
+                enter(FunctionCallTag.class, (e1, elem1) -> {
+                    enter(FunctionCallTag.class, (e2, elem2) -> {
+                        // First two reads are to retrieve the invoke "target"
+                        enter(ReadElementTag.class, (e3, elem3) -> {
+                            enter(ReadElementTag.class, (e4, elem4) -> {
+                            }).exit();
+                        }).exit();
+
+                        // Third read to retrieve the invoked function
+                        enter(ReadElementTag.class, (e3, elem3) -> {
+                        }).exit();
+
+                    }).exit();
+                }).exit();
+            }).exit();
+        }
+    }
+
+    @Test
+    public void nestedInvokeReadsNoInputInstrumentation() {
+        evalWithTags("function setKey(obj, keys) {" +
+                        " obj.a;" +
+                        " keys.slice[0][1][2](0, -1).forEach(function(key) {});" +
+                        "};" +
+                        "var callable = {" +
+                        " slice : [['',['','',function fakeslice() { return [1,2]; }]]]" +
+                        "};" +
+                        "setKey({}, callable);" +
+                        "for (var i = 0; i < 2; i++) {" +
+                        " setKey({" +
+                        " a: 1" +
+                        " }, callable);" +
+                        "}", new Class[]{FunctionCallTag.class, ReadElementTag.class}, new Class[]{});
+
+        for (int i = 0; i < 3; i++) {
+            enter(FunctionCallTag.class, (e, elem) -> {
+                enter(FunctionCallTag.class, (e1, elem1) -> {
+                    enter(FunctionCallTag.class, (e2, elem2) -> {
+                        // First two reads are to retrieve the invoke "target"
+                        enter(ReadElementTag.class, (e3, elem3) -> {
+                            enter(ReadElementTag.class, (e4, elem4) -> {
+                            }).exit();
+                        }).exit();
+
+                        // Third read to retrieve the invoked function
+                        enter(ReadElementTag.class, (e3, elem3) -> {
+                        }).exit();
+
+                    }).exit();
+                }).exit();
+            }).exit();
+        }
+    }
+
+    @Test
     public void nestedInvokeReads() {
         evalWithTag("function setKey(obj, keys) {" +
                         " obj.a;" +
@@ -209,7 +490,7 @@ public class ElementsAccessTest extends FineGrainedAccessTest {
                         "}", ReadElementTag.class);
 
         for (int i = 0; i < 3; i++) {
-            // First to reads are to retrieve the invoke "target"
+            // First two reads are to retrieve the invoke "target"
             enter(ReadElementTag.class, (e, elem) -> {
                 enter(ReadElementTag.class, (e1, elem1) -> {
                     elem1.input(assertJSArrayInput);

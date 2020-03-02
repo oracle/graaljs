@@ -113,7 +113,7 @@ public final class IfNode extends StatementNode implements ResumableNode {
 
     private boolean materializationNeeded() {
         // If we are using tagged nodes, this node is already materialized.
-        return !(condition instanceof JSTaggedExecutionNode && (elsePart == null || elsePart instanceof JSTaggedExecutionNode) && (thenPart == null || thenPart instanceof JSTaggedExecutionNode));
+        return !(isTaggedNode(condition) && (elsePart == null || isTaggedNode(elsePart)) && (thenPart == null || isTaggedNode(thenPart)));
     }
 
     private static boolean hasMaterializationTag(Set<Class<? extends Tag>> materializedTags) {

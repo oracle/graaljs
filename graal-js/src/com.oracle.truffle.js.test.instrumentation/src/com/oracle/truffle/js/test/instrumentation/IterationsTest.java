@@ -40,13 +40,97 @@
  */
 package com.oracle.truffle.js.test.instrumentation;
 
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+
+import org.graalvm.polyglot.Source;
 import org.junit.Test;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.control.ForNode;
+import com.oracle.truffle.js.nodes.control.WhileNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 
 public class IterationsTest extends FineGrainedAccessTest {
+
+    @Test
+    public void testNoDoubleMaterializationWhileNode() {
+        String src = "for (var a=0; a<3; a++) { 42;};";
+
+        Source source = evalWithTags(src, new Class[]{
+                        ControlFlowRootTag.class,
+                        ControlFlowBranchTag.class,
+                        ControlFlowBlockTag.class
+        }, new Class[]{/* no input events */});
+
+        WhileNode[] whileNode = new WhileNode[1];
+        enter(ControlFlowRootTag.class, (e) -> {
+            assertTrue(e.instrumentedNode instanceof WhileNode);
+            whileNode[0] = (WhileNode) e.instrumentedNode;
+            assertAttribute(e, TYPE, ControlFlowRootTag.Type.ForIteration.name());
+            for (int a = 0; a < 3; a++) {
+                enter(ControlFlowBranchTag.class).exit(assertReturnValue(true));
+                enter(ControlFlowBlockTag.class).exit();
+            }
+            enter(ControlFlowBranchTag.class).exit(assertReturnValue(false));
+        }).exit();
+        assertNotNull(whileNode[0]);
+
+        WhileNode[] secondTimeEnteredWhileNode = new WhileNode[1];
+        WhileNode[] secondTimeExitedWhileNode = new WhileNode[1];
+        instrumenter.attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+            @Override
+            public void onEnter(EventContext context, VirtualFrame frame) {
+                if (context.getInstrumentedNode() instanceof WhileNode) {
+                    secondTimeEnteredWhileNode[0] = (WhileNode) context.getInstrumentedNode();
+                }
+            }
+
+            @Override
+            public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+                if (context.getInstrumentedNode() instanceof WhileNode) {
+                    secondTimeExitedWhileNode[0] = (WhileNode) context.getInstrumentedNode();
+                }
+            }
+
+            @Override
+            public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+            }
+        });
+
+        evalWithCurrentBinding(source);
+        assertSame(whileNode[0], secondTimeEnteredWhileNode[0]);
+        assertSame(whileNode[0], secondTimeExitedWhileNode[0]);
+
+        enter(ControlFlowRootTag.class, (e) -> {
+            assertTrue(e.instrumentedNode instanceof WhileNode);
+            assertSame(whileNode[0], e.instrumentedNode);
+            assertAttribute(e, TYPE, ControlFlowRootTag.Type.ForIteration.name());
+            for (int a = 0; a < 3; a++) {
+                enter(ControlFlowBranchTag.class).exit(assertReturnValue(true));
+                enter(ControlFlowBlockTag.class).exit();
+            }
+            enter(ControlFlowBranchTag.class).exit(assertReturnValue(false));
+        }).exit();
+
+        // First child of WhileNode is a LoopNode, which has a RepeatingNode on it, and second child
+        // of the RepeatingNode is its bodyNode which should be tagged and the tagged node should be
+        // wrapped.
+        assertTrue(NodeUtil.findNodeChildren(whileNode[0]).get(0) instanceof LoopNode);
+        assertTrue(NodeUtil.findNodeChildren((Node) ((LoopNode) NodeUtil.findNodeChildren(whileNode[0]).get(0)).getRepeatingNode()).get(1) instanceof InstrumentableNode.WrapperNode);
+        assertTrue(JavaScriptNode.isTaggedNode(NodeUtil.findNodeChildren((Node) ((LoopNode) NodeUtil.findNodeChildren(whileNode[0]).get(0)).getRepeatingNode()).get(1)));
+    }
 
     @Test
     public void basicFor() {
@@ -127,6 +211,73 @@ public class IterationsTest extends FineGrainedAccessTest {
             }
             enter(ControlFlowBranchTag.class).exit(assertReturnValue(false));
         }).exit();
+    }
+
+    @Test
+    public void testNoDoubleMaterializationForNode() {
+        String src = "for (let i = 0; i < 3; i++) { function dummy(){return i;} };";
+
+        Source source = evalWithTags(src, new Class[]{
+                        ControlFlowRootTag.class,
+                        ControlFlowBranchTag.class,
+                        ControlFlowBlockTag.class
+        }, new Class[]{/* no input events */});
+
+        ForNode[] forNode = new ForNode[1];
+        enter(ControlFlowRootTag.class, (e) -> {
+            assertTrue(e.instrumentedNode instanceof ForNode);
+            forNode[0] = (ForNode) e.instrumentedNode;
+            assertAttribute(e, TYPE, ControlFlowRootTag.Type.ForIteration.name());
+            for (int a = 0; a < 3; a++) {
+                enter(ControlFlowBranchTag.class).exit(assertReturnValue(true));
+                enter(ControlFlowBlockTag.class).exit();
+            }
+            enter(ControlFlowBranchTag.class).exit(assertReturnValue(false));
+        }).exit();
+        assertNotNull(forNode[0]);
+
+        ForNode[] secondTimeEnteredForNode = new ForNode[1];
+        ForNode[] secondTimeExitedForNode = new ForNode[1];
+        instrumenter.attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+            @Override
+            public void onEnter(EventContext context, VirtualFrame frame) {
+                if (context.getInstrumentedNode() instanceof ForNode) {
+                    secondTimeEnteredForNode[0] = (ForNode) context.getInstrumentedNode();
+                }
+            }
+
+            @Override
+            public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+                if (context.getInstrumentedNode() instanceof ForNode) {
+                    secondTimeExitedForNode[0] = (ForNode) context.getInstrumentedNode();
+                }
+            }
+
+            @Override
+            public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+            }
+        });
+
+        evalWithCurrentBinding(source);
+        assertSame(forNode[0], secondTimeEnteredForNode[0]);
+        assertSame(forNode[0], secondTimeExitedForNode[0]);
+
+        enter(ControlFlowRootTag.class, (e) -> {
+            assertTrue(e.instrumentedNode instanceof ForNode);
+            assertSame(forNode[0], e.instrumentedNode);
+            assertAttribute(e, TYPE, ControlFlowRootTag.Type.ForIteration.name());
+            for (int a = 0; a < 3; a++) {
+                enter(ControlFlowBranchTag.class).exit(assertReturnValue(true));
+                enter(ControlFlowBlockTag.class).exit();
+            }
+            enter(ControlFlowBranchTag.class).exit(assertReturnValue(false));
+        }).exit();
+        // First child of ForNode is a LoopNode, which has a RepeatingNode on it, and second child
+        // of the RepeatingNode is its bodyNode which should be tagged and the tagged node should be
+        // wrapped.
+        assertTrue(NodeUtil.findNodeChildren(forNode[0]).get(0) instanceof LoopNode);
+        assertTrue(NodeUtil.findNodeChildren((Node) ((LoopNode) NodeUtil.findNodeChildren(forNode[0]).get(0)).getRepeatingNode()).get(1) instanceof InstrumentableNode.WrapperNode);
+        assertTrue(JavaScriptNode.isTaggedNode((JavaScriptNode) NodeUtil.findNodeChildren((Node) ((LoopNode) NodeUtil.findNodeChildren(forNode[0]).get(0)).getRepeatingNode()).get(1)));
     }
 
     @Test

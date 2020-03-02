@@ -96,7 +96,7 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(ReadPropertyTag.class) && !isScopeAccess()) {
-            if (target instanceof JSTaggedExecutionNode) {
+            if (isTaggedNode(target)) {
                 // this node is already materialized
                 return this;
             }

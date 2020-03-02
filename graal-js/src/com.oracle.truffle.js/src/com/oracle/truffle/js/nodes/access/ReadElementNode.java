@@ -144,6 +144,9 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         if (materializedTags.contains(ReadElementTag.class) && !alreadyMaterialized()) {
             JavaScriptNode clonedTarget = targetNode == null || targetNode.hasSourceSection() ? targetNode : JSTaggedExecutionNode.createForInput(targetNode, this);
             JavaScriptNode clonedIndex = indexNode == null || indexNode.hasSourceSection() ? indexNode : JSTaggedExecutionNode.createForInput(indexNode, this);
+            if (clonedTarget == targetNode && clonedIndex == indexNode) {
+                return this;
+            }
             JavaScriptNode cloned = ReadElementNode.create(clonedTarget, clonedIndex, getContext());
             transferSourceSectionAndTags(this, cloned);
             return cloned;
@@ -152,7 +155,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     private boolean alreadyMaterialized() {
-        return targetNode instanceof JSTaggedExecutionNode || indexNode instanceof JSTaggedExecutionNode;
+        return JavaScriptNode.isTaggedNode(targetNode) || JavaScriptNode.isTaggedNode(indexNode);
     }
 
     @Override

@@ -54,6 +54,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.SafeInteger;
 
@@ -388,5 +389,9 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
 
     public String expressionToString() {
         return null;
+    }
+
+    public static boolean isTaggedNode(Node node) {
+        return node instanceof JSTaggedExecutionNode || (node instanceof WrapperNode && ((WrapperNode) node).getDelegateNode() instanceof JSTaggedExecutionNode);
     }
 }

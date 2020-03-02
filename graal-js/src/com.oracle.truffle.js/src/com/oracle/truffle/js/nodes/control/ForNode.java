@@ -184,7 +184,7 @@ public final class ForNode extends StatementNode implements ResumableNode {
 
         private boolean materializationNeeded() {
             // if body is tagged, no materialization is needed.
-            return !(bodyNode instanceof JSTaggedExecutionNode);
+            return !isTaggedNode(bodyNode);
         }
 
         @Override

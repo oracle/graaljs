@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.control;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.profiles.LoopConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -95,7 +96,8 @@ abstract class AbstractRepeatingNode extends JavaScriptNode implements Repeating
         }
         assert repeatingNode instanceof AbstractRepeatingNode;
         // If we are using tagged nodes, this node is already materialized.
-        return !(((AbstractRepeatingNode) repeatingNode).bodyNode instanceof JSTaggedExecutionNode);
+        JavaScriptNode rnBodyNode = ((AbstractRepeatingNode) repeatingNode).bodyNode;
+        return !isTaggedNode(rnBodyNode);
     }
 
 }

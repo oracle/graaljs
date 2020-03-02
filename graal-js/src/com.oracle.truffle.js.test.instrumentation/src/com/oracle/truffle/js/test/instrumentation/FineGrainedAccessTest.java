@@ -55,6 +55,7 @@ import java.util.function.Function;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.Source;
 import org.junit.After;
 import org.junit.Before;
 
@@ -368,21 +369,39 @@ public abstract class FineGrainedAccessTest {
         }
     }
 
-    protected void evalWithTag(String src, Class<? extends Tag> tag) {
-        evalWithTags(src, new Class[]{tag});
+    protected Source evalWithTag(String src, Class<? extends Tag> tag) {
+        return evalWithTags(src, new Class[]{tag});
     }
 
-    protected void evalAllTags(String src) {
-        evalWithTags(src, JSTags.ALL);
+    protected Source evalAllTags(String src) {
+        return evalWithTags(src, JSTags.ALL);
     }
 
-    protected void evalWithTags(String src, Class<?>[] filterTags) {
-        evalWithTags(src, filterTags, new Class[]{StandardTags.ExpressionTag.class, JSTags.InputNodeTag.class});
+    protected Source evalWithTags(String src, Class<?>[] filterTags) {
+        return evalWithTags(src, filterTags, new Class[]{StandardTags.ExpressionTag.class, JSTags.InputNodeTag.class});
     }
 
-    protected void evalWithTags(String src, Class<?>[] sourceSectionTags, Class<?>[] inputGeneratingTags) {
+    protected Source evalWithTags(String src, Class<?>[] sourceSectionTags, Class<?>[] inputGeneratingTags) {
         binding = initAgent(sourceSectionTags, inputGeneratingTags);
-        context.eval("js", src);
+        Source source = Source.create("js", src);
+        evalWithCurrentBinding(source);
+        return source;
+    }
+
+    protected Source evalWithCurrentBinding(Source source) {
+        context.eval(source);
+        return source;
+    }
+
+    protected Source evalWithNewTags(Source source, Class<?>[] sourceSectionTags) {
+        return evalWithNewTags(source, sourceSectionTags, new Class[]{StandardTags.ExpressionTag.class, JSTags.InputNodeTag.class});
+    }
+
+    protected Source evalWithNewTags(Source source, Class<?>[] sourceSectionTags, Class<?>[] inputGeneratingTags) {
+        binding.dispose();
+        binding = initAgent(sourceSectionTags, inputGeneratingTags);
+        context.eval(source);
+        return source;
     }
 
     protected void declareInteropSymbol(String name, ForeignTestObject foreignObject) {

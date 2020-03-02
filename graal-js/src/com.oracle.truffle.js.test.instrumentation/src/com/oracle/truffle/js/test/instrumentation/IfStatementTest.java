@@ -40,6 +40,14 @@
  */
 package com.oracle.truffle.js.test.instrumentation;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.control.IfNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
+import org.graalvm.polyglot.Source;
 import org.junit.Test;
 
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
@@ -48,7 +56,81 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+
 public class IfStatementTest extends FineGrainedAccessTest {
+
+    @Test
+    public void testNoDoubleMaterialization() {
+        Source source = evalAllTags("if (!true) {};");
+        IfNode[] ifNode = new IfNode[1];
+        JSTaggedExecutionNode[] thenNode = new JSTaggedExecutionNode[1];
+        enter(ControlFlowRootTag.class, (e1, ifbody) -> {
+            assertAttribute(e1, TYPE, ControlFlowRootTag.Type.Conditional.name());
+            assertTrue(e1.instrumentedNode instanceof IfNode);
+            ifNode[0] = (IfNode) e1.instrumentedNode;
+            // condition
+            enter(ControlFlowBranchTag.class, (e2, ifstatement) -> {
+                assertAttribute(e2, TYPE, ControlFlowBranchTag.Type.Condition.name());
+                assertTrue(e2.instrumentedNode instanceof JSTaggedExecutionNode);
+                thenNode[0] = (JSTaggedExecutionNode) e2.instrumentedNode;
+
+                enter(LiteralTag.class).exit();
+                ifstatement.input(false);
+            }).exit(assertReturnValue(false));
+            ifbody.input(false);
+            // no branch is executed; body returns
+        }).exit();
+        assertNotNull(ifNode[0]);
+
+        IfNode[] secondTimeEnteredIfNode = new IfNode[1];
+        IfNode[] secondTimeExitedIfNode = new IfNode[1];
+        instrumenter.attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+            @Override
+            public void onEnter(EventContext context, VirtualFrame frame) {
+                if (context.getInstrumentedNode() instanceof IfNode) {
+                    secondTimeEnteredIfNode[0] = (IfNode) context.getInstrumentedNode();
+                }
+            }
+
+            @Override
+            public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+                if (context.getInstrumentedNode() instanceof IfNode) {
+                    secondTimeExitedIfNode[0] = (IfNode) context.getInstrumentedNode();
+                }
+            }
+
+            @Override
+            public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+            }
+        });
+        evalWithCurrentBinding(source);
+        assertSame(ifNode[0], secondTimeEnteredIfNode[0]);
+        assertSame(ifNode[0], secondTimeExitedIfNode[0]);
+
+        enter(ControlFlowRootTag.class, (e1, ifbody) -> {
+            assertAttribute(e1, TYPE, ControlFlowRootTag.Type.Conditional.name());
+            assertTrue(e1.instrumentedNode instanceof IfNode);
+            assertSame(ifNode[0], e1.instrumentedNode);
+            // condition
+            enter(ControlFlowBranchTag.class, (e2, ifstatement) -> {
+                assertAttribute(e2, TYPE, ControlFlowBranchTag.Type.Condition.name());
+                assertTrue(e2.instrumentedNode instanceof JSTaggedExecutionNode);
+                assertSame(thenNode[0], e2.instrumentedNode);
+
+                enter(LiteralTag.class).exit();
+                ifstatement.input(false);
+            }).exit(assertReturnValue(false));
+            ifbody.input(false);
+            // no branch is executed; body returns
+        }).exit();
+
+        assertTrue(JavaScriptNode.isTaggedNode(ifNode[0].getCondition()));
+        assertTrue(JavaScriptNode.isTaggedNode(ifNode[0].getThenPart()));
+    }
+
 
     @Test
     public void basicNoBranch() {

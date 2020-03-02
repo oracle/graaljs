@@ -127,6 +127,7 @@ public final class WhileNode extends StatementNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (hasMaterializationTag(materializedTags) && AbstractRepeatingNode.materializationNeeded(loop.getRepeatingNode())) {
+            // The repeating node should not have a wrapper, because it has no source section
             if (loop.getRepeatingNode() instanceof AbstractRepeatingNode) {
                 AbstractRepeatingNode repeatingNode = (AbstractRepeatingNode) loop.getRepeatingNode();
                 JavaScriptNode bodyNode = JSTaggedExecutionNode.createFor(repeatingNode.bodyNode, ControlFlowBlockTag.class);
