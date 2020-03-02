@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,7 @@ import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSLazyStringFlattened;
 import com.oracle.truffle.js.runtime.objects.JSLazyStringRaw;
@@ -57,7 +57,7 @@ import com.oracle.truffle.js.runtime.objects.PropertyReference;
 /**
  * @see JavaScriptNode
  */
-@TypeSystem({boolean.class, int.class, double.class, long.class, LargeInteger.class, BigInt.class, String.class, DynamicObject.class, Object[].class})
+@TypeSystem({boolean.class, int.class, double.class, long.class, SafeInteger.class, BigInt.class, String.class, DynamicObject.class, Object[].class})
 public class JSTypes {
 
     protected JSTypes() {
@@ -70,7 +70,7 @@ public class JSTypes {
     }
 
     @ImplicitCast
-    public static double largeIntegerToDouble(LargeInteger value) {
+    public static double safeIntegerToDouble(SafeInteger value) {
         return value.doubleValue();
     }
 

@@ -65,7 +65,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 
 @NodeInfo(shortName = "+")
@@ -135,39 +135,39 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
         if (JSRuntime.longIsRepresentableAsInt(result)) {
             return (int) result;
         } else if (JSRuntime.isSafeInteger(result)) {
-            return LargeInteger.valueOf(result);
+            return SafeInteger.valueOf(result);
         } else {
             throw new ArithmeticException();
         }
     }
 
     @Specialization(guards = "truncate")
-    protected static int doIntLargeIntegerTruncate(int a, LargeInteger b) {
+    protected static int doIntSafeIntegerTruncate(int a, SafeInteger b) {
         return (int) (a + b.longValue());
     }
 
     @Specialization(guards = "truncate")
-    protected static int doLargeIntegerIntTruncate(LargeInteger a, int b) {
+    protected static int doSafeIntegerIntTruncate(SafeInteger a, int b) {
         return (int) (a.longValue() + b);
     }
 
     @Specialization(guards = "truncate")
-    protected static int doLargeIntegerTruncate(LargeInteger a, LargeInteger b) {
+    protected static int doSafeIntegerTruncate(SafeInteger a, SafeInteger b) {
         return (int) (a.longValue() + b.longValue());
     }
 
     @Specialization(guards = "!truncate", rewriteOn = ArithmeticException.class)
-    protected static LargeInteger doIntLargeInteger(int a, LargeInteger b) {
-        return LargeInteger.valueOf(a).addExact(b);
+    protected static SafeInteger doIntSafeInteger(int a, SafeInteger b) {
+        return SafeInteger.valueOf(a).addExact(b);
     }
 
     @Specialization(guards = "!truncate", rewriteOn = ArithmeticException.class)
-    protected static LargeInteger doLargeIntegerInt(LargeInteger a, int b) {
-        return a.addExact(LargeInteger.valueOf(b));
+    protected static SafeInteger doSafeIntegerInt(SafeInteger a, int b) {
+        return a.addExact(SafeInteger.valueOf(b));
     }
 
     @Specialization(guards = "!truncate", rewriteOn = ArithmeticException.class)
-    protected static LargeInteger doLargeInteger(LargeInteger a, LargeInteger b) {
+    protected static SafeInteger doSafeInteger(SafeInteger a, SafeInteger b) {
         return a.addExact(b);
     }
 
@@ -211,8 +211,8 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
         return concatStringsNode.executeCharSequence(doubleToStringNode.executeString(a), b);
     }
 
-    @Specialization(replaces = {"doInt", "doIntOverflow", "doIntTruncate", "doLargeInteger", "doIntLargeInteger", "doLargeIntegerInt", "doLargeIntegerTruncate", "doIntLargeIntegerTruncate",
-                    "doLargeIntegerIntTruncate", "doDouble", "doBigInt", "doString", "doStringInt", "doIntString", "doStringNumber", "doNumberString"})
+    @Specialization(replaces = {"doInt", "doIntOverflow", "doIntTruncate", "doSafeInteger", "doIntSafeInteger", "doSafeIntegerInt", "doSafeIntegerTruncate", "doIntSafeIntegerTruncate",
+                    "doSafeIntegerIntTruncate", "doDouble", "doBigInt", "doString", "doStringInt", "doIntString", "doStringNumber", "doNumberString"})
     protected Object doPrimitiveConversion(Object a, Object b,
                     @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveA,
                     @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveB,

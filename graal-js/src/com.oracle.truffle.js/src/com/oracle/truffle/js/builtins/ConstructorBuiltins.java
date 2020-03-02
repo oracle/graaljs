@@ -162,7 +162,7 @@ import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.PromiseHook;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
@@ -1869,7 +1869,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected DynamicObject constructJSProxy(DynamicObject newTarget, Object target, Object handler) {
             if (targetNonObject.profile(!JSGuards.isTruffleObject(target) || target instanceof Symbol || target == Undefined.instance || target == Null.instance || target instanceof JSLazyString ||
-                            target instanceof LargeInteger || target instanceof BigInt)) {
+                            target instanceof SafeInteger || target instanceof BigInt)) {
                 throw Errors.createTypeError("target expected to be an object");
             }
             if (handlerNonObject.profile(!JSGuards.isJSObject(handler))) {

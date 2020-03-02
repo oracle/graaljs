@@ -66,8 +66,8 @@ import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNameNodeGen
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugCompileFunctionNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugContinueInInterpreterNodeGen;
-import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugCreateLargeIntegerNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugCreateLazyStringNodeGen;
+import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugCreateSafeIntegerNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugDumpCountersNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugDumpFunctionTreeNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugHeapDumpNodeGen;
@@ -99,7 +99,7 @@ import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractBuffer;
@@ -149,7 +149,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         isHolesArray(1),
         jsStack(0),
         loadModule(2),
-        createLargeInteger(1),
+        createSafeInteger(1),
         createLazyString(2),
         typedArrayDetachBuffer(1),
         systemGC(0),
@@ -221,8 +221,8 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
             case typedArrayDetachBuffer:
                 return DebugTypedArrayDetachBufferNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
 
-            case createLargeInteger:
-                return DebugCreateLargeIntegerNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case createSafeInteger:
+                return DebugCreateSafeIntegerNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case createLazyString:
                 return DebugCreateLazyStringNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
 
@@ -732,20 +732,20 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         }
     }
 
-    public abstract static class DebugCreateLargeInteger extends JSBuiltinNode {
+    public abstract static class DebugCreateSafeInteger extends JSBuiltinNode {
 
-        public DebugCreateLargeInteger(JSContext context, JSBuiltin builtin) {
+        public DebugCreateSafeInteger(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected LargeInteger createLargeInteger(int a) {
-            return LargeInteger.valueOf(a);
+        protected SafeInteger createSafeInteger(int a) {
+            return SafeInteger.valueOf(a);
         }
 
         @Specialization
-        protected LargeInteger createLargeInteger(Object a) {
-            return LargeInteger.valueOf(JSRuntime.toInt32(a));
+        protected SafeInteger createSafeInteger(Object a) {
+            return SafeInteger.valueOf(JSRuntime.toInt32(a));
         }
     }
 

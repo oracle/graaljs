@@ -72,7 +72,7 @@ public class DebugBuiltinsTest {
         ctx.eval("js", "Debug.isHolesArray([]); Debug.isHolesArray({})");
         ctx.eval("js", "Debug.jsStack();");
         // ctx.eval("js", "Debug.loadModule('test',{});"); //called from another test
-        ctx.eval("js", "Debug.createLargeInteger(123);");
+        ctx.eval("js", "Debug.createSafeInteger(123);");
         ctx.eval("js", "Debug.createLazyString('testcode123','codetest321');");
         ctx.eval("js", "Debug.typedArrayDetachBuffer(new ArrayBuffer(100));");
         ctx.eval("js", "Debug.systemGC();");

@@ -67,7 +67,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
@@ -120,8 +120,8 @@ public class JSRuntimeTest extends JSTest {
     }
 
     @Test
-    public void testNumberToStringWorksForLargeInteger() {
-        assertEquals("42", JSRuntime.numberToString(LargeInteger.valueOf(42)));
+    public void testNumberToStringWorksForSafeInteger() {
+        assertEquals("42", JSRuntime.numberToString(SafeInteger.valueOf(42)));
     }
 
     @Test

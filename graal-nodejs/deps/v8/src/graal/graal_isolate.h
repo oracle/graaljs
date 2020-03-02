@@ -193,7 +193,7 @@ enum GraalAccessMethod {
     isolate_terminate_execution,
     isolate_cancel_terminate_execution,
     isolate_get_int_placeholder,
-    isolate_get_large_int_placeholder,
+    isolate_get_safe_int_placeholder,
     isolate_get_double_placeholder,
     isolate_dispose,
     isolate_enter_polyglot_engine,

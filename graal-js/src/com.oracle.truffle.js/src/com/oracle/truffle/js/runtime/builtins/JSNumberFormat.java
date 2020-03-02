@@ -82,7 +82,7 @@ import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -625,8 +625,8 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     }
 
     private static Number toInternalNumberRepresentation(Object o) {
-        if (o instanceof LargeInteger) {
-            return ((LargeInteger) o).doubleValue();
+        if (o instanceof SafeInteger) {
+            return ((SafeInteger) o).doubleValue();
         } else if (o instanceof Number) {
             return (Number) o;
         } else if (o instanceof BigInt) {

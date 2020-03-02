@@ -74,7 +74,7 @@ public class DeleteTest extends JSTest {
     }
 
     @Test
-    public void testDeleteLargeInteger() {
+    public void testDeleteSafeInteger() {
         assertEquals(true, testHelper.run("var li = 2147483647; li+=li; delete li.nonExistentProperty;"));
         assertEquals(true, testHelper.run("var li = 2147483647; li+=li; li.bar='yes'; delete li.bar;"));
     }

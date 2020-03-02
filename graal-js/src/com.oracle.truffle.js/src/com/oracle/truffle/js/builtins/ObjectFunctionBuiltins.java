@@ -110,7 +110,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -778,7 +778,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected DynamicObject keys(LargeInteger largeInteger) {
+        protected DynamicObject keys(SafeInteger largeInteger) {
             return keysDynamicObject(toOrAsJSObject(largeInteger));
         }
 
@@ -1210,7 +1210,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = "isJSObject(target)")
-        protected DynamicObject bindProperties(DynamicObject target, LargeInteger source) {
+        protected DynamicObject bindProperties(DynamicObject target, SafeInteger source) {
             return bindPropertiesDynamicObject(target, toJSObject(source));
         }
 

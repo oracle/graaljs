@@ -58,7 +58,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 
 /**
  * The Left Shift Operator ( << ), special-cased for the step to be a constant integer value.
@@ -115,7 +115,7 @@ public abstract class JSLeftShiftConstantNode extends JSUnaryNode {
     }
 
     @Specialization
-    protected int doLargeInteger(LargeInteger a) {
+    protected int doSafeInteger(SafeInteger a) {
         return a.intValue() << shiftValue;
     }
 
@@ -130,7 +130,7 @@ public abstract class JSLeftShiftConstantNode extends JSUnaryNode {
         throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
     }
 
-    @Specialization(replaces = {"doInteger", "doLargeInteger", "doDouble", "doBigInt"})
+    @Specialization(replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigInt"})
     protected Object doGeneric(Object a,
                     @Cached("create()") JSToNumericNode leftToNumericNode,
                     @Cached("makeCopy()") JSLeftShiftConstantNode innerShiftNode) {

@@ -50,7 +50,7 @@ import com.oracle.truffle.js.nodes.access.JSProxyHasPropertyNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 
 public abstract class InNode extends JSBinaryNode {
@@ -104,7 +104,7 @@ public abstract class InNode extends JSBinaryNode {
     }
 
     @Specialization
-    protected static Object doLargeInteger(@SuppressWarnings("unused") Object needle, LargeInteger haystack) {
+    protected static Object doSafeInteger(@SuppressWarnings("unused") Object needle, SafeInteger haystack) {
         throw Errors.createTypeErrorNotAnObject(haystack);
     }
 

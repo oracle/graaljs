@@ -47,7 +47,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 
 /**
@@ -67,7 +67,7 @@ public abstract class JSToStringOrNumberNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected LargeInteger doLargeInteger(LargeInteger value) {
+    protected SafeInteger doSafeInteger(SafeInteger value) {
         return value;
     }
 

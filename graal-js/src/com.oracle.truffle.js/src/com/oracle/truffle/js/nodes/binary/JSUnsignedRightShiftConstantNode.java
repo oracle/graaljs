@@ -58,7 +58,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 
 /**
  * 11.7.3 The Unsigned Right Shift Operator (>>>).
@@ -121,7 +121,7 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
     }
 
     @Specialization
-    protected int doLargeInteger(LargeInteger a) {
+    protected int doSafeInteger(SafeInteger a) {
         return a.intValue() >>> shiftValue;
     }
 

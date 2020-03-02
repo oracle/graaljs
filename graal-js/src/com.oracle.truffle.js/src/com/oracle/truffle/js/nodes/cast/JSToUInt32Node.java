@@ -58,7 +58,7 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 
 public abstract class JSToUInt32Node extends JavaScriptBaseNode {
@@ -79,15 +79,15 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "value < 0")
-    protected LargeInteger doIntegerNegative(int value) {
-        return LargeInteger.valueOf(value & 0x0000_0000_FFFF_FFFFL);
+    protected SafeInteger doIntegerNegative(int value) {
+        return SafeInteger.valueOf(value & 0x0000_0000_FFFF_FFFFL);
     }
 
     @Specialization
-    protected Object doLargeInteger(LargeInteger value) {
+    protected Object doSafeInteger(SafeInteger value) {
         long lValue = value.longValue() & 0x0000_0000_FFFF_FFFFL;
         if (lValue > Integer.MAX_VALUE) {
-            return LargeInteger.valueOf(lValue);
+            return SafeInteger.valueOf(lValue);
         }
         return (int) lValue;
     }
