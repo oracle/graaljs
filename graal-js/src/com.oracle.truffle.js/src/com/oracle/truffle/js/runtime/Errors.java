@@ -540,6 +540,16 @@ public final class Errors {
         return Errors.createRangeError("Invalid array length");
     }
 
+    @TruffleBoundary
+    public static JSException createRangeErrorIndexNegative(Node originatingNode) {
+        return Errors.createRangeError("index is negative", originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorIndexTooLarge(Node originatingNode) {
+        return Errors.createRangeError("index is too large", originatingNode);
+    }
+
     public static RuntimeException unsupported(String message) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new UnsupportedOperationException(message);

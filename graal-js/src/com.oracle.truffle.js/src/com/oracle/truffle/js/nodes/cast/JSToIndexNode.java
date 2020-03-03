@@ -65,7 +65,7 @@ public abstract class JSToIndexNode extends JavaScriptBaseNode {
                     @Cached @Shared("negativeIndexBranch") BranchProfile negativeIndexBranch) {
         if (value < 0) {
             negativeIndexBranch.enter();
-            throw Errors.createRangeError("index is negative", this);
+            throw Errors.createRangeErrorIndexNegative(this);
         }
         return value;
     }
@@ -76,7 +76,7 @@ public abstract class JSToIndexNode extends JavaScriptBaseNode {
         long longValue = value.longValue();
         if (longValue < 0) {
             negativeIndexBranch.enter();
-            throw Errors.createRangeError("index is negative", this);
+            throw Errors.createRangeErrorIndexNegative(this);
         }
         return longValue;
     }
@@ -88,10 +88,10 @@ public abstract class JSToIndexNode extends JavaScriptBaseNode {
         long integerIndex = (long) value;
         if (integerIndex < 0) {
             negativeIndexBranch.enter();
-            throw Errors.createRangeError("index is negative", this);
+            throw Errors.createRangeErrorIndexNegative(this);
         } else if (integerIndex > JSRuntime.MAX_SAFE_INTEGER_LONG) {
             tooLargeIndexBranch.enter();
-            throw Errors.createRangeError("index is too large", this);
+            throw Errors.createRangeErrorIndexTooLarge(this);
         } else {
             return integerIndex;
         }
