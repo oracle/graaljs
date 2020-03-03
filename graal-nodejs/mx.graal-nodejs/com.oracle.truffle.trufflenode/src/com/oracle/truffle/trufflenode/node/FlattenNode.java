@@ -50,7 +50,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -90,7 +90,7 @@ abstract class FlattenNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected static LargeInteger doLargeInteger(LargeInteger value) {
+    protected static SafeInteger doSafeInteger(SafeInteger value) {
         return value;
     }
 

@@ -56,6 +56,7 @@ import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -83,6 +84,8 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
             return createUndefined();
         } else if (value instanceof BigInt) {
             return createBigInt((BigInt) value);
+        } else if (value instanceof SafeInteger) {
+            return createSafeInteger((SafeInteger) value);
         } else if (JSObject.isDynamicObject(value)) {
             return new JSConstantJSObjectNode((DynamicObject) value);
         } else {
@@ -126,6 +129,10 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
 
     public static JSConstantNode createInt(int value) {
         return new JSConstantIntegerNode(value);
+    }
+
+    public static JSConstantNode createSafeInteger(SafeInteger value) {
+        return new JSConstantSafeIntegerNode(value);
     }
 
     public static JSConstantNode createBigInt(BigInt value) {
@@ -259,6 +266,34 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
         @Override
         public Object getValue() {
             return bigIntValue;
+        }
+    }
+
+    public static final class JSConstantSafeIntegerNode extends JSConstantNode {
+        private final SafeInteger safeIntValue;
+
+        private JSConstantSafeIntegerNode(SafeInteger value) {
+            this.safeIntValue = value;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return safeIntValue;
+        }
+
+        @Override
+        public double executeDouble(VirtualFrame frame) {
+            return safeIntValue.doubleValue();
+        }
+
+        @Override
+        public boolean isResultAlwaysOfType(Class<?> clazz) {
+            return clazz == Number.class || clazz == double.class;
+        }
+
+        @Override
+        public Object getValue() {
+            return safeIntValue;
         }
     }
 

@@ -50,30 +50,32 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
 /**
- * This type represents an integer value, useful for all ranges up to JSRuntime.MAX_SAFE_INTEGER.
+ * This type represents an integer value in the range of -(2<sup>53</sup>-1) to -2<sup>53</sup>-1,
+ * i.e. the range of integers that can be safely represented as double values, such that for each n,
+ * {n, n - 1, n + 1} are exactly representable as double values.
  */
 @ExportLibrary(InteropLibrary.class)
 @ValueType
-public final class LargeInteger extends Number implements Comparable<LargeInteger>, TruffleObject {
+public final class SafeInteger extends Number implements Comparable<SafeInteger>, TruffleObject {
     final long value;
 
-    private LargeInteger(long value) {
+    private SafeInteger(long value) {
         this.value = value;
     }
 
-    public static LargeInteger valueOf(int value) {
-        return new LargeInteger(value);
+    public static SafeInteger valueOf(int value) {
+        return new SafeInteger(value);
     }
 
-    public static LargeInteger valueOf(long value) {
+    public static SafeInteger valueOf(long value) {
         if (!JSRuntime.isSafeInteger(value)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalArgumentException("not in safe integer range");
         }
-        return new LargeInteger(value);
+        return new SafeInteger(value);
     }
 
-    public static LargeInteger parseUnsignedInt(String value) {
+    public static SafeInteger parseUnsignedInt(String value) {
         return valueOf(Integer.parseUnsignedInt(value));
     }
 
@@ -99,8 +101,8 @@ public final class LargeInteger extends Number implements Comparable<LargeIntege
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof LargeInteger) {
-            return value == ((LargeInteger) obj).value;
+        if (obj instanceof SafeInteger) {
+            return value == ((SafeInteger) obj).value;
         }
         return false;
     }
@@ -111,7 +113,7 @@ public final class LargeInteger extends Number implements Comparable<LargeIntege
     }
 
     @Override
-    public int compareTo(LargeInteger other) {
+    public int compareTo(SafeInteger other) {
         return Long.compareUnsigned(value, other.value);
     }
 
@@ -121,26 +123,26 @@ public final class LargeInteger extends Number implements Comparable<LargeIntege
         return value < 0;
     }
 
-    public LargeInteger incrementExact() {
+    public SafeInteger incrementExact() {
         if (value == JSRuntime.MAX_SAFE_INTEGER_LONG) {
             throw new ArithmeticException();
         }
-        return LargeInteger.valueOf(value + 1);
+        return SafeInteger.valueOf(value + 1);
     }
 
-    public LargeInteger decrementExact() {
+    public SafeInteger decrementExact() {
         if (value == JSRuntime.MIN_SAFE_INTEGER_LONG) {
             throw new ArithmeticException();
         }
-        return LargeInteger.valueOf(value - 1);
+        return SafeInteger.valueOf(value - 1);
     }
 
-    public LargeInteger addExact(LargeInteger other) {
+    public SafeInteger addExact(SafeInteger other) {
         long result = this.value + other.value;
         if (result < JSRuntime.MIN_SAFE_INTEGER_LONG || result > JSRuntime.MAX_SAFE_INTEGER_LONG) {
             throw new ArithmeticException();
         }
-        return LargeInteger.valueOf(result);
+        return SafeInteger.valueOf(result);
     }
 
     @SuppressWarnings("static-method")

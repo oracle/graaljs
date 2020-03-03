@@ -46,7 +46,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 
 public abstract class IsPrimitiveNode extends JavaScriptBaseNode {
@@ -79,7 +79,7 @@ public abstract class IsPrimitiveNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected static boolean doLargeInt(@SuppressWarnings("unused") LargeInteger operand) {
+    protected static boolean doLargeInt(@SuppressWarnings("unused") SafeInteger operand) {
         return true;
     }
 

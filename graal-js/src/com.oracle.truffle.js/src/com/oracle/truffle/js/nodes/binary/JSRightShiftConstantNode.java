@@ -58,7 +58,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 
 /**
  * 11.7.2 The Signed Right Shift Operator ( >> ), special-cased for the step to be a constant
@@ -116,7 +116,7 @@ public abstract class JSRightShiftConstantNode extends JSUnaryNode {
     }
 
     @Specialization
-    protected int doLargeInteger(LargeInteger a) {
+    protected int doSafeInteger(SafeInteger a) {
         return a.intValue() >> shiftValue;
     }
 
@@ -131,7 +131,7 @@ public abstract class JSRightShiftConstantNode extends JSUnaryNode {
         throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
     }
 
-    @Specialization(replaces = {"doInteger", "doLargeInteger", "doDouble", "doBigInt"})
+    @Specialization(replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigInt"})
     protected int doGeneric(Object a,
                     @Cached("create()") JSToNumericNode leftToNumeric,
                     @Cached("makeCopy()") JSRightShiftConstantNode innerShiftNode) {

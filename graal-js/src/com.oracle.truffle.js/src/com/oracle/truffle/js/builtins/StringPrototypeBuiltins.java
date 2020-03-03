@@ -104,7 +104,7 @@ import com.oracle.truffle.js.nodes.access.IsRegExpNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNode;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToRegExpNode;
@@ -401,7 +401,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Child private RequireObjectCoercibleNode requireObjectCoercibleNode;
         @Child private JSToStringNode toStringNode;
-        @Child private JSToIntegerNode toIntegerNode;
+        @Child private JSToIntegerAsIntNode toIntegerNode;
 
         protected static int within(int value, int min, int max) {
             assert min <= max;
@@ -444,10 +444,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return toStringNode.executeString(target);
         }
 
-        protected int toInteger(Object target) {
+        protected int toIntegerAsInt(Object target) {
             if (toIntegerNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                toIntegerNode = insert(JSToIntegerNode.create());
+                toIntegerNode = insert(JSToIntegerAsIntNode.create());
             }
             return toIntegerNode.executeInt(target);
         }
@@ -545,7 +545,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization
         protected String charAt(Object thisObj, Object index) {
             requireObjectCoercible(thisObj);
-            return stringCharAt(toString(thisObj), toInteger(index));
+            return stringCharAt(toString(thisObj), toIntegerAsInt(index));
         }
 
         @Override
@@ -779,7 +779,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private int indexOfIntl(Object[] args, String thisStr, String searchStr) {
             int startPos;
             if (hasPos.profile(args.length >= 2)) {
-                startPos = Math.min(toInteger(args[1]), thisStr.length());
+                startPos = Math.min(toIntegerAsInt(args[1]), thisStr.length());
             } else {
                 startPos = 0;
             }
@@ -1998,8 +1998,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected String substr(Object thisObj, Object start, Object length) {
             requireObjectCoercible(thisObj);
             String thisStr = toString(thisObj);
-            int startInt = toInteger(start);
-            int len = (length == Undefined.instance) ? thisStr.length() : toInteger(length);
+            int startInt = toIntegerAsInt(start);
+            int len = (length == Undefined.instance) ? thisStr.length() : toIntegerAsInt(length);
             return substrIntl(thisStr, startInt, len);
         }
 
@@ -2343,8 +2343,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             String s = toString(thisObj);
 
             long len = s.length();
-            long istart = JSRuntime.getOffset(toInteger(start), len, offsetProfile1);
-            long iend = isUndefined.profile(end == Undefined.instance) ? len : JSRuntime.getOffset(toInteger(end), len, offsetProfile2);
+            long istart = JSRuntime.getOffset(toIntegerAsInt(start), len, offsetProfile1);
+            long iend = isUndefined.profile(end == Undefined.instance) ? len : JSRuntime.getOffset(toIntegerAsInt(end), len, offsetProfile2);
             if (canReturnEmpty.profile(iend > istart)) {
                 return Boundaries.substring(s, (int) istart, (int) iend);
             } else {
@@ -2392,7 +2392,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 throw Errors.createTypeErrorStringExpected();
             }
             String searchStr = toString2Node.executeString(searchString);
-            int fromIndex = toInteger(position);
+            int fromIndex = toIntegerAsInt(position);
             if (fromIndex < 0) {
                 fromIndex = 0;
             }
@@ -2425,7 +2425,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 throw Errors.createTypeErrorStringExpected();
             }
             String searchStr = toString2Node.executeString(searchString);
-            int fromIndex = toInteger(position);
+            int fromIndex = toIntegerAsInt(position);
             if (searchStr.length() <= 0) {
                 return true;
             }
@@ -2462,7 +2462,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 throw Errors.createTypeErrorStringExpected();
             }
             String searchStr = toString2Node.executeString(searchString);
-            int fromIndex = toInteger(position);
+            int fromIndex = toIntegerAsInt(position);
             return thisStr.indexOf(searchStr, fromIndex) != -1;
         }
     }
@@ -2530,7 +2530,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected Object codePointAt(Object thisObj, Object position) {
             requireObjectCoercible(thisObj);
             String thisStr = toString(thisObj);
-            int pos = toInteger(position);
+            int pos = toIntegerAsInt(position);
             if (pos < 0 || thisStr.length() <= pos) {
                 undefinedBranch.enter();
                 return Undefined.instance;
@@ -2605,7 +2605,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (args.length == 0) {
                 return thisStr;
             }
-            int len = toInteger(args[0]);
+            int len = toIntegerAsInt(args[0]);
             if (len <= thisStr.length()) {
                 return thisStr;
             } else if (len > getContext().getStringLengthLimit()) {

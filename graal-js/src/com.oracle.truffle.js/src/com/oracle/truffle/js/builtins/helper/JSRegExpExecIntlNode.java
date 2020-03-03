@@ -375,7 +375,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             }
             Object lastIndex = getLastIndexNode.getValue(regExp);
             if (ecmaScriptVersion < 6) {
-                return JSRuntime.intValueVirtual(JSRuntime.toNumber(lastIndex));
+                return JSRuntime.toInteger(lastIndex);
             } else {
                 if (toLengthNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();

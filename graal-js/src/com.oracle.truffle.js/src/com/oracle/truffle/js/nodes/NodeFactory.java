@@ -215,6 +215,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -411,6 +412,10 @@ public class NodeFactory {
 
     public JavaScriptNode createConstantInteger(int value) {
         return JSConstantNode.createInt(value);
+    }
+
+    public JavaScriptNode createConstantSafeInteger(long value) {
+        return JSConstantNode.createSafeInteger(SafeInteger.valueOf(value));
     }
 
     public JavaScriptNode createConstantNumericUnit() {

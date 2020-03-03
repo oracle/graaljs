@@ -53,8 +53,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerNode;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerNodeGen;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -64,14 +63,14 @@ import com.oracle.truffle.trufflenode.GraalJSAccess;
 
 public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
 
-    @Child protected JSToIntegerNode toInt;
+    @Child protected JSToIntegerAsIntNode toInt;
 
     protected final BranchProfile nativePath = BranchProfile.create();
     protected final BranchProfile errorBranch = BranchProfile.create();
 
     public NIOBufferUTF8WriteNode(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
-        this.toInt = JSToIntegerNodeGen.create();
+        this.toInt = JSToIntegerAsIntNode.create();
     }
 
     private DynamicObject getNativeUtf8Write() {

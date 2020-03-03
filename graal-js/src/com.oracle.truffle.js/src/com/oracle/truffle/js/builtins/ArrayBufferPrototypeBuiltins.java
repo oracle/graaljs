@@ -51,7 +51,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltinsFactory.JSArrayBufferSliceNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstructorNode;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerSpecialNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -77,12 +77,12 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Lamb
             super(context, builtin);
         }
 
-        @Child private JSToIntegerSpecialNode toIntegerNode;
+        @Child private JSToIntegerAsLongNode toIntegerNode;
 
         protected long toInteger(Object thisObject) {
             if (toIntegerNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                toIntegerNode = insert(JSToIntegerSpecialNode.create());
+                toIntegerNode = insert(JSToIntegerAsLongNode.create());
             }
             return toIntegerNode.executeLong(thisObject);
         }

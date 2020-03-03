@@ -46,7 +46,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.PropertyReference;
 
@@ -71,7 +71,7 @@ public abstract class FlattenNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected static double doLargeInteger(LargeInteger value) {
+    protected static double doSafeInteger(SafeInteger value) {
         return value.doubleValue();
     }
 

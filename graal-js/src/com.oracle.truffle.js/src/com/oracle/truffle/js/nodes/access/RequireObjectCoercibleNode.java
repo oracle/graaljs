@@ -50,7 +50,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNodeGen.RequireObjectCoercibleWrapperNodeGen;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 
 /**
@@ -77,7 +77,7 @@ public abstract class RequireObjectCoercibleNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected static void doLargeInteger(@SuppressWarnings("unused") LargeInteger value) {
+    protected static void doSafeInteger(@SuppressWarnings("unused") SafeInteger value) {
     }
 
     @Specialization

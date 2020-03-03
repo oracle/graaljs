@@ -58,7 +58,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 
 @ImportStatic(FrameSlotKind.class)
 public abstract class JSReadFrameSlotNode extends FrameSlotNode implements RepeatableNode, ReadNode {
@@ -148,8 +148,8 @@ abstract class JSReadScopeFrameSlotNode extends JSReadFrameSlotNode {
     }
 
     @Specialization(guards = "levelFrame.isLong(frameSlot)")
-    protected final LargeInteger doLargeInteger(Frame levelFrame) {
-        return LargeInteger.valueOf(super.getLong(levelFrame));
+    protected final SafeInteger doSafeInteger(Frame levelFrame) {
+        return SafeInteger.valueOf(super.getLong(levelFrame));
     }
 
     @Override
@@ -211,8 +211,8 @@ abstract class JSReadCurrentFrameSlotNode extends JSReadFrameSlotNode {
     }
 
     @Specialization(guards = "frame.isLong(frameSlot)")
-    protected final LargeInteger doLargeInteger(VirtualFrame frame) {
-        return LargeInteger.valueOf(super.getLong(frame));
+    protected final SafeInteger doSafeInteger(VirtualFrame frame) {
+        return SafeInteger.valueOf(super.getLong(frame));
     }
 
     @Override

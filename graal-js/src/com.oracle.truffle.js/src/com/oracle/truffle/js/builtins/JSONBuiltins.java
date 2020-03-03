@@ -58,7 +58,7 @@ import com.oracle.truffle.js.builtins.helper.JSONData;
 import com.oracle.truffle.js.builtins.helper.JSONStringifyStringNode;
 import com.oracle.truffle.js.builtins.helper.TruffleJSONParser;
 import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -205,7 +205,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
 
         @Child private JSONStringifyStringNode jsonStringifyStringNode;
         @Child private CreateDataPropertyNode createWrapperPropertyNode;
-        @Child private JSToIntegerNode toIntegerNode;
+        @Child private JSToIntegerAsIntNode toIntegerNode;
         @Child private JSToNumberNode toNumberNode;
         @Child private JSIsArrayNode isArrayNode;
         @Child private IsCallableNode isCallableNode;
@@ -300,7 +300,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
             if (JSRuntime.isNumber(space)) {
                 if (toIntegerNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    toIntegerNode = insert(JSToIntegerNode.create());
+                    toIntegerNode = insert(JSToIntegerAsIntNode.create());
                 }
                 int newSpace = Math.max(0, Math.min(10, toIntegerNode.executeInt(space)));
                 return makeGap(newSpace);

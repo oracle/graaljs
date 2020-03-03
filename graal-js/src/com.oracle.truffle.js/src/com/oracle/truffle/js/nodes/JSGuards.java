@@ -49,7 +49,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
@@ -141,7 +141,7 @@ public final class JSGuards {
     }
 
     public static boolean isForeignObject(TruffleObject value) {
-        return !JSObject.isJSObject(value) && !(value instanceof Symbol) && !(value instanceof JSLazyString) && !(value instanceof LargeInteger) && !(value instanceof BigInt);
+        return !JSObject.isJSObject(value) && !(value instanceof Symbol) && !(value instanceof JSLazyString) && !(value instanceof SafeInteger) && !(value instanceof BigInt);
     }
 
     public static boolean isUndefined(Object value) {

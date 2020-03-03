@@ -51,7 +51,7 @@ import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 
 @NodeInfo(shortName = "&")
 public abstract class JSBitwiseAndNode extends JSBinaryNode {
@@ -78,13 +78,18 @@ public abstract class JSBitwiseAndNode extends JSBinaryNode {
     }
 
     @Specialization
-    protected int doLargeIntegerInt(LargeInteger a, int b) {
+    protected int doSafeIntegerInt(SafeInteger a, int b) {
         return doInteger(a.intValue(), b);
     }
 
     @Specialization
-    protected int doIntLargeInteger(int a, LargeInteger b) {
+    protected int doIntSafeInteger(int a, SafeInteger b) {
         return doInteger(a, b.intValue());
+    }
+
+    @Specialization
+    protected int doSafeInteger(SafeInteger a, SafeInteger b) {
+        return doInteger(a.intValue(), b.intValue());
     }
 
     @Specialization
@@ -99,7 +104,7 @@ public abstract class JSBitwiseAndNode extends JSBinaryNode {
         return a.and(b);
     }
 
-    @Specialization(replaces = {"doInteger", "doIntLargeInteger", "doLargeIntegerInt", "doDouble", "doBigInt"})
+    @Specialization(replaces = {"doInteger", "doIntSafeInteger", "doSafeIntegerInt", "doSafeInteger", "doDouble", "doBigInt"})
     protected Object doGeneric(Object a, Object b,
                     @Cached("create()") JSToNumericNode leftNumeric,
                     @Cached("create()") JSToNumericNode rightNumeric,

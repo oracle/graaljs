@@ -105,7 +105,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
@@ -2020,7 +2020,7 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         private static Object doUIntExtract(DynamicObject a, int lane) {
-            return LargeInteger.valueOf(JSRuntime.toUInt32((int) getLane(a, lane)));
+            return SafeInteger.valueOf(JSRuntime.toUInt32((int) getLane(a, lane)));
         }
 
         private static Object doUShortExtract(DynamicObject a, int lane) {

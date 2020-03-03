@@ -690,7 +690,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::isolate_terminate_execution, "isolateTerminateExecution", "()V")
     ACCESS_METHOD(GraalAccessMethod::isolate_cancel_terminate_execution, "isolateCancelTerminateExecution", "()V")
     ACCESS_METHOD(GraalAccessMethod::isolate_get_int_placeholder, "isolateGetIntPlaceholder", "()Ljava/lang/Object;")
-    ACCESS_METHOD(GraalAccessMethod::isolate_get_large_int_placeholder, "isolateGetLargeIntPlaceholder", "()Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::isolate_get_safe_int_placeholder, "isolateGetSafeIntPlaceholder", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::isolate_get_double_placeholder, "isolateGetDoublePlaceholder", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::isolate_dispose, "isolateDispose", "(ZI)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_enter_polyglot_engine, "isolateEnterPolyglotEngine", "(JJJJJJ)V")
@@ -888,7 +888,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     slot[root_offset + v8::internal::Internals::kInt32ReturnValuePlaceholderIndex] = int32_placeholder_global;
 
     // uint32 placeholder
-    JNI_CALL(jobject, java_uint32_placeholder, this, GraalAccessMethod::isolate_get_large_int_placeholder, Object);
+    JNI_CALL(jobject, java_uint32_placeholder, this, GraalAccessMethod::isolate_get_safe_int_placeholder, Object);
     GraalNumber* uint32_placeholder_local = new GraalNumber(this, 0, java_uint32_placeholder);
     GraalNumber* uint32_placeholder_global = reinterpret_cast<GraalNumber*> (uint32_placeholder_local->Copy(true));
     uint32_placeholder_ = uint32_placeholder_global->GetJavaObject();

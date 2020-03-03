@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,6 +58,7 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.SafeInteger;
 
 @NodeInfo(shortName = "&")
 public abstract class JSBitwiseAndConstantNode extends JSUnaryNode {
@@ -114,6 +115,11 @@ public abstract class JSBitwiseAndConstantNode extends JSUnaryNode {
     }
 
     @Specialization(guards = "isInt")
+    protected int doSafeInteger(SafeInteger a) {
+        return doInteger(a.intValue());
+    }
+
+    @Specialization(guards = "isInt")
     protected int doDouble(double a, @Cached("create()") JSToInt32Node leftInt32) {
         return doInteger(leftInt32.executeInt(a));
     }
@@ -138,7 +144,7 @@ public abstract class JSBitwiseAndConstantNode extends JSUnaryNode {
         return a.and(rightBigIntValue);
     }
 
-    @Specialization(replaces = {"doInteger", "doDouble", "doBigIntThrows"}, guards = "isInt")
+    @Specialization(replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigIntThrows"}, guards = "isInt")
     protected Object doGeneric(Object a,
                     @Cached("create()") JSToNumericNode toNumeric,
                     @Cached("createBinaryProfile()") ConditionProfile profileIsBigInt,

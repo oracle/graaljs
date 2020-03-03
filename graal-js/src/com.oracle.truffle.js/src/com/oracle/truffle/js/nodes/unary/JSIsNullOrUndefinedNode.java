@@ -61,7 +61,7 @@ import com.oracle.truffle.js.nodes.binary.JSEqualNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 
@@ -131,7 +131,7 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
     }
 
     @Specialization
-    protected static boolean doLargeInteger(@SuppressWarnings("unused") LargeInteger operand) {
+    protected static boolean doSafeInteger(@SuppressWarnings("unused") SafeInteger operand) {
         return false;
     }
 

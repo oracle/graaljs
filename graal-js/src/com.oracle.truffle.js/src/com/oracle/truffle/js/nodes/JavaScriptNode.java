@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,7 +55,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 
 @GenerateWrapper
 public abstract class JavaScriptNode extends JavaScriptBaseNode implements InstrumentableNode {
@@ -181,8 +181,8 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
         return JSTypesGen.expectLong(execute(frame));
     }
 
-    public LargeInteger executeLargeInteger(VirtualFrame frame) throws UnexpectedResultException {
-        return JSTypesGen.expectLargeInteger(execute(frame));
+    public SafeInteger executeSafeInteger(VirtualFrame frame) throws UnexpectedResultException {
+        return JSTypesGen.expectSafeInteger(execute(frame));
     }
 
     /**

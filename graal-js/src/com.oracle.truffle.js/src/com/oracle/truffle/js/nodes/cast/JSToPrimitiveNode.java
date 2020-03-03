@@ -65,7 +65,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -113,7 +113,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected LargeInteger doLargeInteger(LargeInteger value) {
+    protected SafeInteger doSafeInteger(SafeInteger value) {
         return value;
     }
 

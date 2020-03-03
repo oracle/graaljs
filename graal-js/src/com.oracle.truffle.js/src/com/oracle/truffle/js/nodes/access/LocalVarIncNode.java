@@ -62,7 +62,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 
 public abstract class LocalVarIncNode extends FrameSlotNode {
     public enum Op {
@@ -85,7 +85,7 @@ public abstract class LocalVarIncNode extends FrameSlotNode {
 
         public abstract BigInt doBigInt(BigInt value);
 
-        public abstract LargeInteger doLargeInteger(LargeInteger value);
+        public abstract SafeInteger doSafeInteger(SafeInteger value);
     }
 
     protected static class IncOp extends LocalVarOp {
@@ -120,7 +120,7 @@ public abstract class LocalVarIncNode extends FrameSlotNode {
         }
 
         @Override
-        public LargeInteger doLargeInteger(LargeInteger value) {
+        public SafeInteger doSafeInteger(SafeInteger value) {
             return value.incrementExact();
         }
     }
@@ -157,7 +157,7 @@ public abstract class LocalVarIncNode extends FrameSlotNode {
         }
 
         @Override
-        public LargeInteger doLargeInteger(LargeInteger value) {
+        public SafeInteger doSafeInteger(SafeInteger value) {
             return value.decrementExact();
         }
     }
@@ -374,23 +374,23 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
     }
 
     @Specialization(guards = {"isLong(frame)", "isLongKind(frame)"}, rewriteOn = ArithmeticException.class)
-    public LargeInteger doLargeInteger(Frame frame) {
-        LargeInteger oldValue = LargeInteger.valueOf(getLong(frame));
-        LargeInteger newValue = op.doLargeInteger(oldValue);
+    public SafeInteger doSafeInteger(Frame frame) {
+        SafeInteger oldValue = SafeInteger.valueOf(getLong(frame));
+        SafeInteger newValue = op.doSafeInteger(oldValue);
         frame.setLong(frameSlot, newValue.longValue());
         return oldValue;
     }
 
-    @Specialization(guards = {"isLong(frame)", "isDoubleKind(frame)"}, replaces = "doLargeInteger")
-    public double doLargeIntegerToDouble(Frame frame) {
+    @Specialization(guards = {"isLong(frame)", "isDoubleKind(frame)"}, replaces = "doSafeInteger")
+    public double doSafeIntegerToDouble(Frame frame) {
         double oldValue = getLong(frame);
         double newValue = op.doDouble(oldValue);
         frame.setDouble(frameSlot, newValue);
         return oldValue;
     }
 
-    @Specialization(guards = {"isLong(frame)", "ensureObjectKind(frame)"}, replaces = "doLargeIntegerToDouble")
-    public double doLargeIntegerObject(Frame frame) {
+    @Specialization(guards = {"isLong(frame)", "ensureObjectKind(frame)"}, replaces = "doSafeIntegerToDouble")
+    public double doSafeIntegerObject(Frame frame) {
         double oldValue = getLong(frame);
         double newValue = op.doDouble(oldValue);
         frame.setObject(frameSlot, newValue);
@@ -508,23 +508,23 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
     }
 
     @Specialization(guards = {"isLong(frame)", "isLongKind(frame)"}, rewriteOn = ArithmeticException.class)
-    public LargeInteger doLargeInteger(Frame frame) {
-        LargeInteger oldValue = LargeInteger.valueOf(getLong(frame));
-        LargeInteger newValue = op.doLargeInteger(oldValue);
+    public SafeInteger doSafeInteger(Frame frame) {
+        SafeInteger oldValue = SafeInteger.valueOf(getLong(frame));
+        SafeInteger newValue = op.doSafeInteger(oldValue);
         frame.setLong(frameSlot, newValue.longValue());
         return newValue;
     }
 
-    @Specialization(guards = {"isLong(frame)", "isDoubleKind(frame)"}, replaces = "doLargeInteger")
-    public double doLargeIntegerToDouble(Frame frame) {
+    @Specialization(guards = {"isLong(frame)", "isDoubleKind(frame)"}, replaces = "doSafeInteger")
+    public double doSafeIntegerToDouble(Frame frame) {
         double oldValue = getLong(frame);
         double newValue = op.doDouble(oldValue);
         frame.setDouble(frameSlot, newValue);
         return newValue;
     }
 
-    @Specialization(guards = {"isLong(frame)", "ensureObjectKind(frame)"}, replaces = "doLargeIntegerToDouble")
-    public double doLargeIntegerToObject(Frame frame) {
+    @Specialization(guards = {"isLong(frame)", "ensureObjectKind(frame)"}, replaces = "doSafeIntegerToDouble")
+    public double doSafeIntegerToObject(Frame frame) {
         double oldValue = getLong(frame);
         double newValue = op.doDouble(oldValue);
         frame.setObject(frameSlot, newValue);

@@ -61,6 +61,7 @@ import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.SafeInteger;
 
 @NodeInfo(shortName = "+")
 public abstract class JSAddConstantLeftNumberNode extends JSUnaryNode implements Truncatable {
@@ -122,6 +123,11 @@ public abstract class JSAddConstantLeftNumberNode extends JSUnaryNode implements
     protected Object doIntOverflow(int right) {
         long result = (long) leftDouble + right;
         return JSAddNode.doIntOverflowStaticLong(result);
+    }
+
+    @Specialization(guards = {"isInt"}, rewriteOn = ArithmeticException.class)
+    protected SafeInteger doSafeInteger(SafeInteger right) {
+        return SafeInteger.valueOf(leftInt).addExact(right);
     }
 
     @Specialization

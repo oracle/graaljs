@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -84,7 +84,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropList;
@@ -510,8 +510,8 @@ public abstract class JSScope {
     static Object getInteropValue(Object value) {
         if (JSRuntime.isLazyString(value)) {
             return value.toString();
-        } else if (value instanceof LargeInteger) {
-            return ((LargeInteger) value).doubleValue();
+        } else if (value instanceof SafeInteger) {
+            return ((SafeInteger) value).doubleValue();
         } else if (value instanceof TruffleObject) {
             return value;
         } else if (JSRuntime.isJSPrimitive(value)) {

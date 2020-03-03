@@ -114,7 +114,7 @@ import com.oracle.truffle.js.runtime.JSEngine;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
@@ -197,7 +197,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     public boolean isObjectOfLanguage(Object o) {
-        return JSObject.isJSObject(o) || o instanceof Symbol || o instanceof BigInt || o instanceof JSLazyString || o instanceof LargeInteger || o instanceof InteropFunction ||
+        return JSObject.isJSObject(o) || o instanceof Symbol || o instanceof BigInt || o instanceof JSLazyString || o instanceof SafeInteger || o instanceof InteropFunction ||
                         o instanceof JSMetaObject;
     }
 

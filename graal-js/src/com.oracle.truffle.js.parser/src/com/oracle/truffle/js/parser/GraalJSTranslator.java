@@ -175,6 +175,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -1428,7 +1429,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (value == null) {
             return factory.createConstantNull();
         } else if (value instanceof Long) { // we don't support long type
-            return factory.createConstantDouble(((Long) value).doubleValue());
+            long longValue = (long) value;
+            if (JSRuntime.isSafeInteger(longValue)) {
+                return factory.createConstantSafeInteger(longValue);
+            }
+            return factory.createConstantDouble(longValue);
         } else if (value instanceof Lexer.RegexToken) {
             return factory.createRegExpLiteral(context, ((Lexer.RegexToken) value).getExpression(), ((Lexer.RegexToken) value).getOptions());
         } else if (value instanceof BigInteger) {

@@ -96,7 +96,7 @@
       { "name": "isolateGetDoublePlaceholder" },
       { "name": "isolateGetHeapStatistics" },
       { "name": "isolateGetIntPlaceholder" },
-      { "name": "isolateGetLargeIntPlaceholder" },
+      { "name": "isolateGetSafeIntPlaceholder" },
       { "name": "isolateInternalErrorCheck" },
       { "name": "isolatePerformGC" },
       { "name": "isolateRunMicrotasks" },

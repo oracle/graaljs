@@ -161,7 +161,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.PrepareStackTraceCallback;
 import com.oracle.truffle.js.runtime.PromiseHook;
 import com.oracle.truffle.js.runtime.PromiseRejectionTracker;
@@ -253,7 +253,7 @@ public final class GraalJSAccess {
     // Placeholders returned by a native function when a primitive value
     // written into a shared buffer should be returned instead
     private static final Object INT_PLACEHOLDER = new Object();
-    private static final Object LARGE_INT_PLACEHOLDER = new Object();
+    private static final Object SAFE_INT_PLACEHOLDER = new Object();
     private static final Object DOUBLE_PLACEHOLDER = new Object();
 
     private final Context evaluator;
@@ -2745,8 +2745,8 @@ public final class GraalJSAccess {
         return INT_PLACEHOLDER;
     }
 
-    public Object isolateGetLargeIntPlaceholder() {
-        return LARGE_INT_PLACEHOLDER;
+    public Object isolateGetSafeIntPlaceholder() {
+        return SAFE_INT_PLACEHOLDER;
     }
 
     public Object isolateGetDoublePlaceholder() {
@@ -2894,9 +2894,9 @@ public final class GraalJSAccess {
         if (value == INT_PLACEHOLDER) {
             resetSharedBuffer();
             return getSharedBuffer().getInt();
-        } else if (value == LARGE_INT_PLACEHOLDER) {
+        } else if (value == SAFE_INT_PLACEHOLDER) {
             resetSharedBuffer();
-            return LargeInteger.valueOf(getSharedBuffer().getLong());
+            return SafeInteger.valueOf(getSharedBuffer().getLong());
         } else if (value == DOUBLE_PLACEHOLDER) {
             resetSharedBuffer();
             return getSharedBuffer().getDouble();

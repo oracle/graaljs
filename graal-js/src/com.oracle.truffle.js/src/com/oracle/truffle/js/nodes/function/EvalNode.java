@@ -63,7 +63,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -176,7 +176,7 @@ public abstract class EvalNode extends JavaScriptNode {
         }
 
         @Specialization
-        protected LargeInteger directEvalLargeInteger(LargeInteger source) {
+        protected SafeInteger directEvalSafeInteger(SafeInteger source) {
             return source;
         }
 

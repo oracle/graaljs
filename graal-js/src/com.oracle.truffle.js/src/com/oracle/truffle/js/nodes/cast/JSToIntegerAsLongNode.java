@@ -48,17 +48,23 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 
 /**
- * Basically ECMAScript ToInteger, but incorrect for very large values, which we don't care about in
- * array length or index conversion. Returns long.
+ * Basically ECMAScript ToInteger, but correct only for values in the safe integer range. Used by
+ * built-in functions that do not care about values outside this range, such as array length or
+ * array index conversion. Returns long; values that do not fit into long will be clamped to
+ * Long.MAX_VALUE or Long.MIN_VALUE.
+ *
+ * @see JSToIndexNode
+ * @see JSToIntegerAsIntNode
  */
 @ImportStatic(Double.class)
-public abstract class JSToIntegerSpecialNode extends JavaScriptBaseNode {
+public abstract class JSToIntegerAsLongNode extends JavaScriptBaseNode {
 
-    public static JSToIntegerSpecialNode create() {
-        return JSToIntegerSpecialNodeGen.create();
+    public static JSToIntegerAsLongNode create() {
+        return JSToIntegerAsLongNodeGen.create();
     }
 
     public abstract long executeLong(Object operand);
@@ -71,6 +77,11 @@ public abstract class JSToIntegerSpecialNode extends JavaScriptBaseNode {
     @Specialization
     protected static long doBoolean(boolean value) {
         return JSRuntime.booleanToNumber(value);
+    }
+
+    @Specialization
+    protected static long doSafeInteger(SafeInteger value) {
+        return value.longValue();
     }
 
     @Specialization(guards = "!isInfinite(value)")
@@ -105,7 +116,7 @@ public abstract class JSToIntegerSpecialNode extends JavaScriptBaseNode {
 
     @Specialization
     protected long doString(String value,
-                    @Cached("create()") JSToIntegerSpecialNode nestedToIntegerNode,
+                    @Cached("create()") JSToIntegerAsLongNode nestedToIntegerNode,
                     @Cached("create()") JSStringToNumberNode stringToNumberNode) {
         return nestedToIntegerNode.executeLong(stringToNumberNode.executeString(value));
     }

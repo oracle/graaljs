@@ -48,18 +48,23 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 
 /**
- * Basically ECMAScript ToInteger, but incorrect for values outside the int32 range. Used by
- * built-in functions that do not care about values outside this range.
+ * Basically ECMAScript ToInteger, but correct only for values in the int32 range. Used by built-in
+ * functions that do not care about values outside this range, such as string index conversion.
+ * Larger and smaller values will be clamped to Integer.MAX_VALUE and Integer.MIN_VALUE,
+ * respectively.
+ *
+ * @see JSToIntegerAsLongNode
  */
-public abstract class JSToIntegerNode extends JavaScriptBaseNode {
+public abstract class JSToIntegerAsIntNode extends JavaScriptBaseNode {
 
     @Child private JSToNumberNode toNumberNode;
 
-    public static JSToIntegerNode create() {
-        return JSToIntegerNodeGen.create();
+    public static JSToIntegerAsIntNode create() {
+        return JSToIntegerAsIntNodeGen.create();
     }
 
     public abstract int executeInt(Object operand);
@@ -74,6 +79,20 @@ public abstract class JSToIntegerNode extends JavaScriptBaseNode {
         return JSRuntime.booleanToNumber(value);
     }
 
+    @Specialization(guards = "isLongRepresentableAsInt32(value.longValue())")
+    protected static int doSafeIntegerInt32Range(SafeInteger value) {
+        return value.intValue();
+    }
+
+    @Specialization(guards = "!isLongRepresentableAsInt32(value.longValue())")
+    protected static int doSafeIntegerOther(SafeInteger value) {
+        if (value.isNegative()) {
+            return Integer.MIN_VALUE;
+        } else {
+            return Integer.MAX_VALUE;
+        }
+    }
+
     protected static boolean inInt32Range(double value) {
         return value <= Integer.MAX_VALUE && value >= Integer.MIN_VALUE;
     }
@@ -84,7 +103,7 @@ public abstract class JSToIntegerNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "!inInt32Range(value)")
-    protected static int doDouble(double value) {
+    protected static int doDoubleOther(double value) {
         if (Double.isNaN(value)) {
             return 0;
         } else if (value > 0) {
@@ -116,7 +135,7 @@ public abstract class JSToIntegerNode extends JavaScriptBaseNode {
 
     @Specialization
     protected int doString(String value,
-                    @Cached("create()") JSToIntegerNode nestedToIntegerNode,
+                    @Cached("create()") JSToIntegerAsIntNode nestedToIntegerNode,
                     @Cached("create()") JSStringToNumberNode stringToNumberNode) {
         return nestedToIntegerNode.executeInt(stringToNumberNode.executeString(value));
     }

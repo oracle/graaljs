@@ -447,7 +447,7 @@ public final class JSRuntime {
     }
 
     public static boolean isNumber(Object value) {
-        return value instanceof Integer || value instanceof Double || value instanceof Long || value instanceof LargeInteger;
+        return value instanceof Integer || value instanceof Double || value instanceof Long || value instanceof SafeInteger;
     }
 
     @TruffleBoundary
@@ -591,9 +591,7 @@ public final class JSRuntime {
     }
 
     public static long toInteger(Number number) {
-        if (isNaN(number)) {
-            return 0;
-        }
+        // NaN is converted to 0L by longValue().
         return longValue(number);
     }
 
@@ -1249,8 +1247,8 @@ public final class JSRuntime {
     public static String numberToString(Number number) {
         if (number instanceof Integer) {
             return Boundaries.stringValueOf(((Integer) number).intValue());
-        } else if (number instanceof LargeInteger) {
-            return doubleToString(((LargeInteger) number).doubleValue());
+        } else if (number instanceof SafeInteger) {
+            return doubleToString(((SafeInteger) number).doubleValue());
         } else if (number instanceof Double) {
             return doubleToString((Double) number);
         } else if (number instanceof Long) {
@@ -1516,7 +1514,7 @@ public final class JSRuntime {
     }
 
     public static boolean isForeignObject(TruffleObject value) {
-        return !JSObject.isJSObject(value) && !(value instanceof Symbol) && !(value instanceof JSLazyString) && !(value instanceof LargeInteger) &&
+        return !JSObject.isJSObject(value) && !(value instanceof Symbol) && !(value instanceof JSLazyString) && !(value instanceof SafeInteger) &&
                         !(value instanceof BigInt);
     }
 
@@ -2030,6 +2028,9 @@ public final class JSRuntime {
         }
         if (n instanceof Double) {
             return ((Double) n).longValue();
+        }
+        if (n instanceof SafeInteger) {
+            return ((SafeInteger) n).longValue();
         }
         return longValueVirtual(n);
     }
@@ -2773,8 +2774,8 @@ public final class JSRuntime {
     public static Object exportValue(Object value) {
         if (JSRuntime.isLazyString(value)) {
             return value.toString();
-        } else if (value instanceof LargeInteger) {
-            return ((LargeInteger) value).doubleValue();
+        } else if (value instanceof SafeInteger) {
+            return ((SafeInteger) value).doubleValue();
         } else if (value instanceof TruffleObject) {
             return value;
         } else if (JSRuntime.isJSPrimitive(value)) {

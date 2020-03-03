@@ -49,7 +49,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringOrNumberNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 
 @NodeInfo(shortName = "<=")
 public abstract class JSLessOrEqualNode extends JSCompareNode {
@@ -74,17 +74,17 @@ public abstract class JSLessOrEqualNode extends JSCompareNode {
     }
 
     @Specialization
-    protected boolean doLargeInteger(int a, LargeInteger b) {
+    protected boolean doSafeInteger(int a, SafeInteger b) {
         return a <= b.longValue();
     }
 
     @Specialization
-    protected boolean doLargeInteger(LargeInteger a, int b) {
+    protected boolean doSafeInteger(SafeInteger a, int b) {
         return a.longValue() <= b;
     }
 
     @Specialization
-    protected boolean doLargeInteger(LargeInteger a, LargeInteger b) {
+    protected boolean doSafeInteger(SafeInteger a, SafeInteger b) {
         return a.longValue() <= b.longValue();
     }
 

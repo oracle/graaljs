@@ -78,7 +78,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
@@ -243,7 +243,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected DynamicObject valueOf(LargeInteger thisObj) {
+        protected DynamicObject valueOf(SafeInteger thisObj) {
             return toJSObject(thisObj);
         }
 
@@ -347,7 +347,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected String doLargeInteger(LargeInteger thisObj) {
+        protected String doSafeInteger(SafeInteger thisObj) {
             return JSObject.defaultToString(toJSObject(thisObj));
         }
 
@@ -505,7 +505,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected boolean hasOwnPropertyLargeInteger(LargeInteger thisObj, Object propName) {
+        protected boolean hasOwnPropertySafeInteger(SafeInteger thisObj, Object propName) {
             return hasOwnPropertyPrimitive(thisObj, propName);
         }
 
