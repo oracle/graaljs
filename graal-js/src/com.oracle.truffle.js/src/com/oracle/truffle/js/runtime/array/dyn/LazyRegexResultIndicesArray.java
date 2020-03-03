@@ -48,6 +48,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetReg
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -71,28 +72,29 @@ public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
         return (Object[]) arrayGetArray(object, condition);
     }
 
-    public static Object materializeGroup(TRegexUtil.TRegexResultAccessor resultAccessor, DynamicObject object, int index, boolean condition) {
+    public static Object materializeGroup(JSContext context, TRegexUtil.TRegexResultAccessor resultAccessor, DynamicObject object, int index, boolean condition) {
         Object[] internalArray = getArray(object, condition);
         if (internalArray[index] == null) {
-            internalArray[index] = getIntIndicesArray(resultAccessor, arrayGetRegexResult(object, condition), index);
+            internalArray[index] = getIntIndicesArray(context, resultAccessor, arrayGetRegexResult(object, condition), index);
         }
         return internalArray[index];
     }
 
-    public static Object getIntIndicesArray(TRegexUtil.TRegexResultAccessor resultAccessor, Object regexResult, int index) {
+    public static Object getIntIndicesArray(JSContext context, TRegexUtil.TRegexResultAccessor resultAccessor, Object regexResult, int index) {
         final int beginIndex = resultAccessor.captureGroupStart(regexResult, index);
         if (beginIndex == Constants.CAPTURE_GROUP_NO_MATCH) {
             assert index > 0;
             return Undefined.instance;
         }
         int[] intArray = new int[]{beginIndex, resultAccessor.captureGroupEnd(regexResult, index)};
-        return JSArray.createConstantIntArray(JavaScriptLanguage.getCurrentJSRealm().getContext(), intArray);
+        return JSArray.createConstantIntArray(context, intArray);
     }
+    // JavaScriptLanguage.getCurrentJSRealm().getContext()
 
-    public ScriptArray createWritable(TRegexUtil.TRegexResultAccessor resultAccessor, DynamicObject object, long index, Object value, boolean condition) {
+    public ScriptArray createWritable(JSContext context, TRegexUtil.TRegexResultAccessor resultAccessor, DynamicObject object, long index, Object value, boolean condition) {
         boolean arrayTypeCondition = condition && arrayGetArrayType(object, condition) instanceof LazyRegexResultIndicesArray;
         for (int i = 0; i < lengthInt(object); i++) {
-            materializeGroup(resultAccessor, object, i, arrayTypeCondition);
+            materializeGroup(context, resultAccessor, object, i, arrayTypeCondition);
         }
         final Object[] internalArray = getArray(object, condition);
         AbstractObjectArray newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, internalArray.length, internalArray.length, internalArray, integrityLevel);
@@ -105,7 +107,7 @@ public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
     @Override
     public Object getElementInBounds(DynamicObject object, int index, boolean condition) {
         boolean arrayTypeCondition = condition && arrayGetArrayType(object, condition) instanceof LazyRegexResultIndicesArray;
-        return materializeGroup(TRegexUtil.TRegexResultAccessor.getUncached(), object, index, arrayTypeCondition);
+        return materializeGroup(JavaScriptLanguage.getCurrentJSRealm().getContext(), TRegexUtil.TRegexResultAccessor.getUncached(), object, index, arrayTypeCondition);
     }
 
     @Override
@@ -178,7 +180,7 @@ public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
         Object[] result = new Object[groupCount];
         boolean condition = arrayGetArrayType(object) instanceof LazyRegexResultIndicesArray;
         for (int i = 0; i < groupCount; ++i) {
-            result[i] = materializeGroup(resultAccessor, object, i, condition);
+            result[i] = materializeGroup(JavaScriptLanguage.getCurrentJSRealm().getContext(), resultAccessor, object, i, condition);
         }
         return result;
     }

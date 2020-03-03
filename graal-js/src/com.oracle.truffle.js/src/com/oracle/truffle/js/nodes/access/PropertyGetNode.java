@@ -1462,7 +1462,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             DynamicObject store = receiverCheck.getStore(thisObj);
             Object regexResult = getResultNode.getValue(store);
             if (isIndicesObject.profile((boolean) getIsIndicesNode.getValue(store))) {
-                return LazyRegexResultIndicesArray.getIntIndicesArray(resultAccessor, regexResult, groupIndex);
+                return LazyRegexResultIndicesArray.getIntIndicesArray(root.getContext(), resultAccessor, regexResult, groupIndex);
             } else {
                 String input = (String) getOriginalInputNode.getValue(store);
                 return materializeNode.materializeGroup(regexResult, groupIndex, input);

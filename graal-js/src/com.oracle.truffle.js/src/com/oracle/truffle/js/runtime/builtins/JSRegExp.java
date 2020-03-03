@@ -52,6 +52,7 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultIndicesArray;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -150,7 +151,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         public Object get(DynamicObject object) {
             Object regexResult = GROUPS_RESULT_PROPERTY.get(object, false);
             if (isIndicesObject.profile((boolean) GROUPS_IS_INDICES_PROPERTY.get(object, false))) {
-                return LazyRegexResultIndicesArray.getIntIndicesArray(TRegexResultAccessor.getUncached(), regexResult, groupIndex);
+                return LazyRegexResultIndicesArray.getIntIndicesArray(JavaScriptLanguage.getCurrentJSRealm().getContext(), TRegexResultAccessor.getUncached(), regexResult, groupIndex);
             } else {
                 String input = (String) GROUPS_ORIGINAL_INPUT_PROPERTY.get(object, false);
                 return materializeNode.materializeGroup(regexResult, groupIndex, input);
