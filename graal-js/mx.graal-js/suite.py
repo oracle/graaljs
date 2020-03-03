@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.227.2",
+  "mxversion" : "5.254.0",
 
   "name" : "graal-js",
 
@@ -486,6 +486,11 @@ suite = {
     "GRAALJS" : {
       "moduleInfo" : {
         "name" : "org.graalvm.js",
+        "requiresConcealed" : {
+          "org.graalvm.truffle" : [
+            "com.oracle.truffle.api"
+          ],
+        },
         "exports" : [
           "com.oracle.truffle.js.lang to org.graalvm.truffle",
           "com.oracle.truffle.js.runtime.java.adapter",
@@ -539,6 +544,7 @@ suite = {
     "GRAALJS_SCRIPTENGINE" : {
       "moduleInfo" : {
         "name" : "org.graalvm.js.scriptengine",
+        "requires" : ["java.scripting"],
         "exports" : [
           "com.oracle.truffle.js.scriptengine",
         ],
