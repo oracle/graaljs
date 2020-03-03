@@ -33,7 +33,6 @@ for opt in "${@:1}"; do
     esac
 done
 
-NODE_ARGS+=("--experimental-options")
 NODE_ARGS+=("--engine.Mode=latency")
 
 PATH="${bin_dir}:$PATH"
