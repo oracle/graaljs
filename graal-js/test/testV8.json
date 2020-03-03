@@ -813,8 +813,11 @@
     "comment" : "top-level await"
   }, {
     "filePath" : "mjsunit/harmony/private-accessors.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
+    "status" : "PASS",
+    "comment" : "--harmony-private-methods"
   }, {
     "filePath" : "mjsunit/harmony/private-fields-ic.js",
     "ecmaVersion" : {
@@ -840,8 +843,11 @@
     "comment" : "--harmony-private-fields"
   }, {
     "filePath" : "mjsunit/harmony/private-methods.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
+    "status" : "PASS",
+    "comment" : "--harmony-private-methods"
   }, {
     "filePath" : "mjsunit/harmony/private-name-scopes.js",
     "status" : "FAIL",
@@ -905,8 +911,11 @@
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
     "filePath" : "mjsunit/harmony/static-private-methods.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
+    "status" : "PASS",
+    "comment" : "--harmony-private-methods"
   }, {
     "filePath" : "mjsunit/harmony/string-matchAll.js",
     "status" : "FAIL",
