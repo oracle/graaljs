@@ -591,9 +591,7 @@ public final class JSRuntime {
     }
 
     public static long toInteger(Number number) {
-        if (isNaN(number)) {
-            return 0;
-        }
+        // NaN is converted to 0L by longValue().
         return longValue(number);
     }
 
