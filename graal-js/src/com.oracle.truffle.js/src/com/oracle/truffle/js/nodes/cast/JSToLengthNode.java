@@ -84,18 +84,9 @@ public abstract class JSToLengthNode extends JavaScriptBaseNode {
 
     @Specialization
     protected static long doDouble(double value,
-                    @Cached BranchProfile needNaNBranch,
-                    @Cached BranchProfile needPositiveInfinityBranch,
                     @Cached @Shared("negativeBranch") BranchProfile negativeBranch,
                     @Cached @Shared("tooLargeBranch") BranchProfile tooLargeBranch) {
-        if (Double.isNaN(value)) {
-            needNaNBranch.enter();
-            return 0;
-        }
-        if (JSRuntime.isPositiveInfinity(value)) {
-            needPositiveInfinityBranch.enter();
-            return JSRuntime.MAX_SAFE_INTEGER_LONG;
-        }
+        // NaN and Infinity are converted to 0L and Long.MAX_VALUE by the long cast, respectively.
         return doLong((long) value, negativeBranch, tooLargeBranch);
     }
 
