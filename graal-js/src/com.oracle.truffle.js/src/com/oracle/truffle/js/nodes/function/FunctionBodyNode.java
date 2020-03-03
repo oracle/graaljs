@@ -81,8 +81,8 @@ public class FunctionBodyNode extends AbstractBodyNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(DeclareTag.class) && !DeclareTagProvider.isMaterializedFrameProvider(this)) {
-            assert getParent() instanceof FunctionRootNode : "Malformed AST";
-            FrameDescriptor frameDescriptor = ((FunctionRootNode) getParent()).getFrameDescriptor();
+            assert getRootNode() instanceof FunctionRootNode : "Malformed AST";
+            FrameDescriptor frameDescriptor = getRootNode().getFrameDescriptor();
             JavaScriptNode materialized = DeclareTagProvider.createMaterializedFunctionBodyNode(body, getSourceSection(), frameDescriptor);
             materialized.setSourceSection(getSourceSection());
             return materialized;
