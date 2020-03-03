@@ -89,7 +89,6 @@ public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
         int[] intArray = new int[]{beginIndex, resultAccessor.captureGroupEnd(regexResult, index)};
         return JSArray.createConstantIntArray(context, intArray);
     }
-    // JavaScriptLanguage.getCurrentJSRealm().getContext()
 
     public ScriptArray createWritable(JSContext context, TRegexUtil.TRegexResultAccessor resultAccessor, DynamicObject object, long index, Object value, boolean condition) {
         boolean arrayTypeCondition = condition && arrayGetArrayType(object, condition) instanceof LazyRegexResultIndicesArray;
