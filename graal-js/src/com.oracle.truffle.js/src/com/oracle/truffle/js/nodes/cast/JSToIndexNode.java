@@ -45,9 +45,9 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.SafeInteger;
 
 /**
  * Implementation of the abstract operation ToIndex(value) (ES7 7.1.17).
@@ -60,11 +60,6 @@ public abstract class JSToIndexNode extends JavaScriptBaseNode {
 
     public abstract long executeLong(Object value);
 
-    @Specialization(guards = "isUndefined(value)")
-    protected long doUndefined(@SuppressWarnings("unused") Object value) {
-        return 0;
-    }
-
     @Specialization
     protected long doInt(int value,
                     @Cached @Shared("negativeIndexBranch") BranchProfile negativeIndexBranch) {
@@ -73,6 +68,17 @@ public abstract class JSToIndexNode extends JavaScriptBaseNode {
             throw Errors.createRangeError("index is negative", this);
         }
         return value;
+    }
+
+    @Specialization
+    protected long doSafeInteger(SafeInteger value,
+                    @Cached @Shared("negativeIndexBranch") BranchProfile negativeIndexBranch) {
+        long longValue = value.longValue();
+        if (longValue < 0) {
+            negativeIndexBranch.enter();
+            throw Errors.createRangeError("index is negative", this);
+        }
+        return longValue;
     }
 
     @Specialization
@@ -91,9 +97,9 @@ public abstract class JSToIndexNode extends JavaScriptBaseNode {
         }
     }
 
-    @Specialization
-    protected long doBigInt(@SuppressWarnings("unused") BigInt value) {
-        throw Errors.createTypeErrorCannotConvertToNumber("a BigInt value", this);
+    @Specialization(guards = "isUndefined(value)")
+    protected static long doUndefined(@SuppressWarnings("unused") Object value) {
+        return 0;
     }
 
     @Specialization
