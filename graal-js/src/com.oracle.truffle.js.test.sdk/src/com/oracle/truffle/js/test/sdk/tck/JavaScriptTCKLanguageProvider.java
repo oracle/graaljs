@@ -204,13 +204,10 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         // ||
         ops.add(createBinaryOperator(context, "||", ANY, ANY, ANY));
         // in
-        // final Snippet in =
-        createBinaryOperator(context, "in", TypeDescriptor.BOOLEAN,
+        ops.add(createBinaryOperator(context, "in", TypeDescriptor.BOOLEAN,
                         ANY,
-                        TypeDescriptor.union(TypeDescriptor.OBJECT, TypeDescriptor.ARRAY),
-                        JavaScriptVerifier.nonEmptyArrayVerifier(null));
-        // issue: GR-7222
-        // ops.add(in);
+                        TypeDescriptor.union(TypeDescriptor.OBJECT, TypeDescriptor.ARRAY)));
+
         // +
         ops.add(createPrefixOperator(context, "+", TypeDescriptor.NUMBER, ANY));
         // -
@@ -225,6 +222,8 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         ops.add(createPostfixOperator(context, "++", TypeDescriptor.NUMBER, ANY));
         // --
         ops.add(createPostfixOperator(context, "--", TypeDescriptor.NUMBER, ANY));
+        // typeof
+        ops.add(createPrefixOperator(context, "typeof", TypeDescriptor.STRING, ANY));
         return Collections.unmodifiableList(ops);
     }
 
@@ -510,28 +509,6 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         @Override
         public void accept(SnippetRun snippetRun) throws PolyglotException {
             next.accept(snippetRun);
-        }
-
-        /**
-         * Creates a {@link ResultVerifier} ignoring errors caused by empty arrays. Use this
-         * verifier in case the operator accepts arrays but not an empty array.
-         *
-         * @param next the next {@link ResultVerifier} to be called, null for last one
-         * @return the {@link ResultVerifier}
-         */
-        static ResultVerifier nonEmptyArrayVerifier(ResultVerifier next) {
-            return new JavaScriptVerifier(next) {
-                @Override
-                public void accept(SnippetRun snippetRun) throws PolyglotException {
-                    if (snippetRun.getException() != null) {
-                        final Value objArg = snippetRun.getParameters().get(1);
-                        if (objArg.hasArrayElements() && objArg.getArraySize() == 0) {
-                            return;
-                        }
-                    }
-                    super.accept(snippetRun);
-                }
-            };
         }
 
         /**
