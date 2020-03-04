@@ -81,14 +81,11 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
 
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right, boolean truncate) {
         if (JSConfig.UseSuperOperations) {
-            if (left instanceof JSConstantIntegerNode) {
-                if (right instanceof JSConstantIntegerNode) {
-                    int leftValue = ((JSConstantIntegerNode) left).executeInt(null);
-                    int rightValue = ((JSConstantIntegerNode) right).executeInt(null);
-                    long value = (long) leftValue + (long) rightValue;
-                    return JSRuntime.longIsRepresentableAsInt(value) ? JSConstantNode.createInt((int) value) : JSConstantNode.createDouble(value);
-                }
-                // can't swap operands here, could be string concat
+            if (left instanceof JSConstantIntegerNode && right instanceof JSConstantIntegerNode) {
+                int leftValue = ((JSConstantIntegerNode) left).executeInt(null);
+                int rightValue = ((JSConstantIntegerNode) right).executeInt(null);
+                long value = (long) leftValue + (long) rightValue;
+                return JSRuntime.longIsRepresentableAsInt(value) ? JSConstantNode.createInt((int) value) : JSConstantNode.createDouble(value);
             } else if (right instanceof JSConstantIntegerNode || right instanceof JSConstantDoubleNode) {
                 Object rightValue = ((JSConstantNode) right).execute(null);
                 return JSAddConstantRightNumberNodeGen.create(left, (Number) rightValue, truncate);
