@@ -627,21 +627,9 @@
     },
     "status" : "PASS"
   }, {
-    "filePath" : "mjsunit/es6/typedarray-construct-by-array-like-prototype-element-added.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/es6/typedarray-construct-by-array-like.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
     "filePath" : "mjsunit/es6/typedarray-construct-offset-not-smi.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/es6/typedarray-detached.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
   }, {
     "filePath" : "mjsunit/es6/typedarray-every.js",
     "status" : "FAIL"
