@@ -57,7 +57,8 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Symbol;
 
 /**
- * General meta objects for JS values and foreign objects.
+ * General meta objects for JS values and foreign objects through {@link JavaScriptLanguageView}.
+ * Note that JS objects usually return their constructor function object as the meta object.
  */
 @ExportLibrary(InteropLibrary.class)
 public final class JSMetaType implements TruffleObject {
@@ -72,10 +73,15 @@ public final class JSMetaType implements TruffleObject {
     public static final JSMetaType STRING = new JSMetaType("string", InteropLibrary::isString);
     public static final JSMetaType NUMBER = new JSMetaType("number", InteropLibrary::isNumber);
     public static final JSMetaType FUNCTION = new JSMetaType("function", InteropLibrary::isExecutable);
+    public static final JSMetaType DATE = new JSMetaType("date", InteropLibrary::isInstant);
     public static final JSMetaType ARRAY = new JSMetaType("array", InteropLibrary::hasArrayElements);
     public static final JSMetaType OBJECT = new JSMetaType("object", InteropLibrary::hasMembers);
 
-    @CompilationFinal(dimensions = 1) static final JSMetaType[] KNOWN_TYPES = new JSMetaType[]{NULL, BOOLEAN, STRING, NUMBER, FUNCTION, ARRAY, OBJECT};
+    /**
+     * Array of known types in order of precedence to be tested for and returned by
+     * {@link JavaScriptLanguageView}.
+     */
+    @CompilationFinal(dimensions = 1) static final JSMetaType[] KNOWN_TYPES = new JSMetaType[]{NULL, BOOLEAN, STRING, NUMBER, FUNCTION, DATE, ARRAY, OBJECT};
 
     public static final JSMetaType JS_NULL = new JSMetaType("null", (l, v) -> JSGuards.isJSNull(v));
     public static final JSMetaType JS_UNDEFINED = new JSMetaType("undefined", (l, v) -> JSGuards.isUndefined(v));
