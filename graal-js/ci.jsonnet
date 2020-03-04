@@ -11,7 +11,7 @@ local common = import '../common.jsonnet';
 
   local gateGraalImport = {
     downloads+: {
-      ECLIPSE: {name: 'eclipse', version: '4.5.2.1', platformspecific: true},
+      ECLIPSE: {name: 'eclipse', version: '4.14.0', platformspecific: true},
     },
     environment+: {
       ECLIPSE_EXE: '$ECLIPSE/eclipse',
@@ -27,7 +27,7 @@ local common = import '../common.jsonnet';
 
   local gateCoverage = {
     downloads+: {
-      ECLIPSE: {name: 'eclipse', version: '4.5.2.1', platformspecific: true},
+      ECLIPSE: {name: 'eclipse', version: '4.14.0', platformspecific: true},
     },
     environment+: {
       ECLIPSE_EXE: '$ECLIPSE/eclipse',

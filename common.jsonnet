@@ -6,7 +6,7 @@
   jdk8: {
     downloads+: {
       JAVA_HOME: labsjdk8,
-      JDT: {name: 'ecj', version: '4.5.1', platformspecific: false},
+      JDT: {name: 'ecj', version: '4.14.0', platformspecific: false},
     },
   },
 
