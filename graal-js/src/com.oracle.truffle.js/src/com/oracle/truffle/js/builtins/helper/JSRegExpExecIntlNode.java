@@ -228,7 +228,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             return BuildGroupsObjectNodeGen.create();
         }
 
-        public abstract DynamicObject execute(JSContext context, DynamicObject regExp, Object regexResult, String input);
+        public abstract DynamicObject execute(JSContext context, DynamicObject regExp, Object regexResult, String input, boolean isIndices);
 
         // We can reuse the cachedGroupsFactory even if the new groups factory is different, as long
         // as the compiledRegex is the same. This can happen if a new RegExp instance is repeatedly
@@ -238,23 +238,24 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                         @SuppressWarnings("unused") DynamicObject regExp,
                         Object regexResult,
                         String input,
+                        boolean isIndices,
                         @Cached("getCompiledRegex(regExp)") @SuppressWarnings("unused") Object cachedCompiledRegex,
                         @Cached("getGroupsFactory(regExp)") JSObjectFactory cachedGroupsFactory,
                         @Cached("createIsJSRegExpNode()") @SuppressWarnings("unused") IsJSClassNode isJSRegExpNode) {
-            return doIt(context, cachedGroupsFactory, regexResult, input);
+            return doIt(context, cachedGroupsFactory, regexResult, input, isIndices);
         }
 
         @Specialization
         @TruffleBoundary
-        static DynamicObject doVaryingGroupsFactory(JSContext context, DynamicObject regExp, Object regexResult, String input) {
-            return doIt(context, JSRegExp.getGroupsFactory(regExp), regexResult, input);
+        static DynamicObject doVaryingGroupsFactory(JSContext context, DynamicObject regExp, Object regexResult, String input, boolean isIndices) {
+            return doIt(context, JSRegExp.getGroupsFactory(regExp), regexResult, input, isIndices);
         }
 
-        private static DynamicObject doIt(JSContext context, JSObjectFactory groupsFactory, Object regexResult, String input) {
+        private static DynamicObject doIt(JSContext context, JSObjectFactory groupsFactory, Object regexResult, String input, boolean isIndices) {
             if (groupsFactory == null) {
                 return Undefined.instance;
             } else {
-                return JSObject.create(context, groupsFactory, regexResult, input);
+                return JSObject.create(context, groupsFactory, regexResult, input, isIndices);
             }
         }
     }
@@ -344,8 +345,9 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                     return result;
                 }
                 int groupCount = compiledRegexAccessor.groupCount(compiledRegex);
-                DynamicObject groups = getGroupsObject(regExp, result, input);
-                return getMatchResult(result, groupCount, input, groups);
+                DynamicObject groups = getGroupsObject(regExp, result, input, false);
+                DynamicObject indicesGroups = getGroupsObject(regExp, result, input, true);
+                return getMatchResult(result, groupCount, input, groups, indicesGroups);
             } else {
                 if (ecmaScriptVersion < 8 || global || sticky) {
                     setLastIndex(regExp, 0);
@@ -355,17 +357,17 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         }
 
         // converts RegexResult into DynamicObject
-        private DynamicObject getMatchResult(Object result, int groupCount, String inputStr, DynamicObject groups) {
-            return JSArray.createLazyRegexArray(context, groupCount, result, inputStr, groups);
+        private DynamicObject getMatchResult(Object result, int groupCount, String inputStr, DynamicObject groups, DynamicObject indicesGroups) {
+            return JSArray.createLazyRegexArray(context, groupCount, result, inputStr, groups, indicesGroups);
         }
 
         // builds the object containing the matches of the named capture groups
-        private DynamicObject getGroupsObject(DynamicObject regExp, Object result, String input) {
+        private DynamicObject getGroupsObject(DynamicObject regExp, Object result, String input, boolean isIndices) {
             if (groupsBuilder == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 groupsBuilder = insert(BuildGroupsObjectNode.create());
             }
-            return groupsBuilder.execute(context, regExp, result, input);
+            return groupsBuilder.execute(context, regExp, result, input, isIndices);
         }
 
         private long getLastIndex(DynamicObject regExp) {

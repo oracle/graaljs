@@ -50,8 +50,11 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultIndicesArray;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.joni.JoniRegexEngine;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -65,6 +68,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropReadStringMemberNode;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResultNode;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexResultAccessor;
 
 public final class JSRegExp extends JSBuiltinObject implements JSConstructorFactory.Default, PrototypeSupplier {
 
@@ -84,6 +88,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     public static final String INPUT = "input";
     public static final String GROUPS = "groups";
     public static final String INDEX = "index";
+    public static final String INDICES = "indices";
 
     private static final HiddenKey COMPILED_REGEX_ID = new HiddenKey("compiledRegex");
     private static final Property COMPILED_REGEX_PROPERTY;
@@ -100,8 +105,10 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     // Needed to calculate the contents of the `groups` object lazily.
     public static final HiddenKey GROUPS_RESULT_ID = new HiddenKey("regexResult");
     public static final HiddenKey GROUPS_ORIGINAL_INPUT_ID = new HiddenKey("regexResultOriginalIndex");
+    public static final HiddenKey GROUPS_IS_INDICES_ID = new HiddenKey("isIndices");
     private static final Property GROUPS_RESULT_PROPERTY;
     private static final Property GROUPS_ORIGINAL_INPUT_PROPERTY;
+    private static final Property GROUPS_IS_INDICES_PROPERTY;
 
     /**
      * Since we cannot use nodes here, access to this property is special-cased in
@@ -127,6 +134,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
 
         private final String groupName;
         private final int groupIndex;
+        private final ConditionProfile isIndicesObject = ConditionProfile.createBinaryProfile();
 
         public LazyNamedCaptureGroupProperty(String groupName, int groupIndex) {
             this.groupName = groupName;
@@ -142,8 +150,12 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         @Override
         public Object get(DynamicObject object) {
             Object regexResult = GROUPS_RESULT_PROPERTY.get(object, false);
-            String input = (String) GROUPS_ORIGINAL_INPUT_PROPERTY.get(object, false);
-            return materializeNode.materializeGroup(regexResult, groupIndex, input);
+            if (isIndicesObject.profile((boolean) GROUPS_IS_INDICES_PROPERTY.get(object, false))) {
+                return LazyRegexResultIndicesArray.getIntIndicesArray(JavaScriptLanguage.getCurrentJSRealm().getContext(), TRegexResultAccessor.getUncached(), regexResult, groupIndex);
+            } else {
+                String input = (String) GROUPS_ORIGINAL_INPUT_PROPERTY.get(object, false);
+                return materializeNode.materializeGroup(regexResult, groupIndex, input);
+            }
         }
 
         @Override
@@ -166,6 +178,8 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         GROUPS_RESULT_PROPERTY = JSObjectUtil.makeHiddenProperty(GROUPS_RESULT_ID, resultAllocator.locationForType(Object.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
         GROUPS_ORIGINAL_INPUT_PROPERTY = JSObjectUtil.makeHiddenProperty(GROUPS_ORIGINAL_INPUT_ID,
                         resultAllocator.locationForType(String.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
+        GROUPS_IS_INDICES_PROPERTY = JSObjectUtil.makeHiddenProperty(GROUPS_IS_INDICES_ID,
+                        resultAllocator.locationForType(Boolean.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
     }
 
     private JSRegExp() {
@@ -267,6 +281,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         Shape groupsShape = ctx.getEmptyShapeNullPrototype();
         groupsShape = groupsShape.addProperty(GROUPS_RESULT_PROPERTY);
         groupsShape = groupsShape.addProperty(GROUPS_ORIGINAL_INPUT_PROPERTY);
+        groupsShape = groupsShape.addProperty(GROUPS_IS_INDICES_PROPERTY);
         for (Object key : JSInteropUtil.keys(namedCaptureGroups)) {
             String groupName = (String) key;
             int groupIndex = TRegexUtil.InteropReadIntMemberNode.getUncached().execute(namedCaptureGroups, groupName);
@@ -352,15 +367,25 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     }
 
     public static Shape makeLazyRegexArrayShape(JSContext ctx, DynamicObject prototype) {
-        Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSArray.INSTANCE, ctx);
-        initialShape = JSArray.addArrayProperties(initialShape);
+        Shape initialShape = JSArray.INSTANCE.makeInitialShape(ctx, prototype);
         initialShape = initialShape.addProperty(JSAbstractArray.LAZY_REGEX_RESULT_PROPERTY);
         initialShape = initialShape.addProperty(JSAbstractArray.LAZY_REGEX_ORIGINAL_INPUT_PROPERTY);
         final Property inputProperty = JSObjectUtil.makeDataProperty(JSRegExp.INPUT, initialShape.allocator().locationForType(String.class, EnumSet.of(LocationModifier.NonNull)),
                         JSAttributes.getDefault());
         initialShape = initialShape.addProperty(inputProperty);
-        initialShape = initialShape.addProperty(JSArray.ARRAY_LENGTH_PROXY_PROPERTY);
         initialShape = initialShape.addProperty(LAZY_INDEX_PROXY);
+        initialShape = initialShape.addProperty(JSObjectUtil.makeDataProperty(GROUPS, initialShape.allocator().locationForType(DynamicObject.class,
+                        EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)), JSAttributes.getDefault()));
+        if (ctx.isOptionRegexpMatchIndices()) {
+            initialShape = initialShape.addProperty(JSObjectUtil.makeDataProperty(INDICES, initialShape.allocator().locationForType(DynamicObject.class,
+                            EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)), JSAttributes.getDefault()));
+        }
+        return initialShape;
+    }
+
+    public static Shape makeLazyRegexIndicesArrayShape(JSContext ctx, DynamicObject prototype) {
+        Shape initialShape = JSArray.INSTANCE.makeInitialShape(ctx, prototype);
+        initialShape = initialShape.addProperty(JSAbstractArray.LAZY_REGEX_RESULT_PROPERTY);
         initialShape = initialShape.addProperty(JSObjectUtil.makeDataProperty(GROUPS, initialShape.allocator().locationForType(DynamicObject.class,
                         EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)), JSAttributes.getDefault()));
         return initialShape;

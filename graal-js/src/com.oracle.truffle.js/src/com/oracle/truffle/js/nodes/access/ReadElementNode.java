@@ -97,6 +97,7 @@ import com.oracle.truffle.js.runtime.array.dyn.HolesIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesJSObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultArray;
+import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultIndicesArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
@@ -823,6 +824,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             return new ConstantObjectArrayReadElementCacheNode(array, next);
         } else if (array instanceof LazyRegexResultArray) {
             return new LazyRegexResultArrayReadElementCacheNode(array, next);
+        } else if (array instanceof LazyRegexResultIndicesArray) {
+            return new LazyRegexResultIndicesArrayReadElementCacheNode(array, next);
         } else if (array instanceof AbstractConstantArray) {
             return new ConstantArrayReadElementCacheNode(array, next);
         } else if (array instanceof HolesIntArray) {
@@ -1001,6 +1004,32 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             LazyRegexResultArray lazyRegexResultArray = (LazyRegexResultArray) array;
             if (inBounds.profile(lazyRegexResultArray.hasElement(target, (int) index))) {
                 return LazyRegexResultArray.materializeGroup(getMaterializeResultNode(), target, (int) index, arrayCondition && array instanceof LazyRegexResultArray);
+            } else {
+                return readOutOfBounds(target, index, receiver, defaultValue, context);
+            }
+        }
+    }
+
+    private static class LazyRegexResultIndicesArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
+        @Child TRegexUtil.TRegexResultAccessor resultAccessor;
+
+        LazyRegexResultIndicesArrayReadElementCacheNode(ScriptArray arrayType, ArrayReadElementCacheNode next) {
+            super(arrayType, next);
+        }
+
+        private TRegexUtil.TRegexResultAccessor getResultAccessor() {
+            if (resultAccessor == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                resultAccessor = insert(TRegexUtil.TRegexResultAccessor.create());
+            }
+            return resultAccessor;
+        }
+
+        @Override
+        protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition, JSContext context) {
+            LazyRegexResultIndicesArray lazyRegexResultIndicesArray = (LazyRegexResultIndicesArray) array;
+            if (inBounds.profile(lazyRegexResultIndicesArray.hasElement(target, (int) index))) {
+                return LazyRegexResultIndicesArray.materializeGroup(context, getResultAccessor(), target, (int) index, arrayCondition && array instanceof LazyRegexResultIndicesArray);
             } else {
                 return readOutOfBounds(target, index, receiver, defaultValue, context);
             }

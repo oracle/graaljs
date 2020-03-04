@@ -196,7 +196,8 @@ public class Test262Runnable extends TestRunnable {
                     "template",
                     "u180e",
                     "well-formed-json-stringify",
-                    "WeakRef"
+                    "WeakRef",
+                    "regexp-match-indices"
     }));
     private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "FinalizationGroup",
@@ -208,7 +209,6 @@ public class Test262Runnable extends TestRunnable {
                     "class-methods-private",
                     "class-static-methods-private",
                     "host-gc-required",
-                    "regexp-match-indices",
                     "tail-call-optimization",
                     "top-level-await"
     }));
@@ -231,6 +231,7 @@ public class Test262Runnable extends TestRunnable {
                     "class-fields-public",
                     "class-static-fields-private",
                     "class-static-fields-public",
+                    "regexp-match-indices"
     }));
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {

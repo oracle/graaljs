@@ -91,6 +91,7 @@ import com.oracle.truffle.js.runtime.JSNoSuchMethodAdapter;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultIndicesArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -113,6 +114,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResultNode;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexResultAccessor;
 
 /**
  * ES6 9.1.8 [[Get]] (P, Receiver).
@@ -1441,7 +1443,10 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         private final int groupIndex;
         @Child private PropertyGetNode getResultNode;
         @Child private PropertyGetNode getOriginalInputNode;
+        @Child private PropertyGetNode getIsIndicesNode;
         @Child private TRegexMaterializeResultNode materializeNode = TRegexMaterializeResultNode.create();
+        @Child private TRegexResultAccessor resultAccessor = TRegexResultAccessor.create();
+        private final ConditionProfile isIndicesObject = ConditionProfile.createBinaryProfile();
 
         public LazyNamedCaptureGroupPropertyGetNode(Property property, ReceiverCheckNode receiverCheck, JSContext context, int groupIndex) {
             super(receiverCheck);
@@ -1449,14 +1454,19 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             this.groupIndex = groupIndex;
             this.getResultNode = PropertyGetNode.create(JSRegExp.GROUPS_RESULT_ID, false, context);
             this.getOriginalInputNode = PropertyGetNode.create(JSRegExp.GROUPS_ORIGINAL_INPUT_ID, false, context);
+            this.getIsIndicesNode = PropertyGetNode.create(JSRegExp.GROUPS_IS_INDICES_ID, false, context);
         }
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             DynamicObject store = receiverCheck.getStore(thisObj);
             Object regexResult = getResultNode.getValue(store);
-            String input = (String) getOriginalInputNode.getValue(store);
-            return materializeNode.materializeGroup(regexResult, groupIndex, input);
+            if (isIndicesObject.profile((boolean) getIsIndicesNode.getValue(store))) {
+                return LazyRegexResultIndicesArray.getIntIndicesArray(root.getContext(), resultAccessor, regexResult, groupIndex);
+            } else {
+                String input = (String) getOriginalInputNode.getValue(store);
+                return materializeNode.materializeGroup(regexResult, groupIndex, input);
+            }
         }
     }
 

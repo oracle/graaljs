@@ -73,6 +73,7 @@ import com.oracle.truffle.js.runtime.array.dyn.ConstantObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.LazyArray;
 import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultArray;
+import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultIndicesArray;
 import com.oracle.truffle.js.runtime.array.dyn.ZeroBasedDoubleArray;
 import com.oracle.truffle.js.runtime.array.dyn.ZeroBasedIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.ZeroBasedJSObjectArray;
@@ -351,7 +352,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         return create(context, SparseArray.createSparseArray(), SparseArray.createArrayMap(), length);
     }
 
-    public static DynamicObject createLazyRegexArray(JSContext context, int length, Object regexResult, String input, DynamicObject groups) {
+    public static DynamicObject createLazyRegexArray(JSContext context, int length, Object regexResult, String input, DynamicObject groups, DynamicObject indicesGroups) {
         assert JSRuntime.isRepresentableAsUnsignedInt(length);
         ScriptArray arrayType = LazyRegexResultArray.createLazyRegexResultArray();
         Object array = new Object[length];
@@ -361,9 +362,29 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         int arrayOffset = 0;
         int holeCount = 0;
         JSObjectFactory factory = context.getLazyRegexArrayFactory();
-        DynamicObject obj = JSObject.create(context, factory, array, arrayType, site, length, usedLength, indexOffset, arrayOffset, holeCount, regexResult, input, input, groups);
+        DynamicObject obj = null;
+        if (context.isOptionRegexpMatchIndices()) {
+            DynamicObject indices = createLazyRegexIndicesArray(context, length, regexResult, indicesGroups);
+            obj = JSObject.create(context, factory, array, arrayType, site, length, usedLength, indexOffset, arrayOffset, holeCount, regexResult, input, input, groups, indices);
+        } else {
+            obj = JSObject.create(context, factory, array, arrayType, site, length, usedLength, indexOffset, arrayOffset, holeCount, regexResult, input, input, groups);
+        }
         assert isJSArray(obj);
         return obj;
+    }
+
+    private static DynamicObject createLazyRegexIndicesArray(JSContext context, int length, Object regexResult, DynamicObject indicesGroups) {
+        assert JSRuntime.isRepresentableAsUnsignedInt(length);
+        ScriptArray arrayType = LazyRegexResultIndicesArray.createLazyRegexResultIndicesArray();
+        Object array = new Object[length];
+        ArrayAllocationSite site = null;
+        int usedLength = 0;
+        int indexOffset = 0;
+        int arrayOffset = 0;
+        int holeCount = 0;
+        JSObjectFactory factory = context.getLazyRegexIndicesArrayFactory();
+        DynamicObject arrayObject = JSObject.create(context, factory, array, arrayType, site, length, usedLength, indexOffset, arrayOffset, holeCount, regexResult, indicesGroups);
+        return arrayObject;
     }
 
     public static DynamicObject createLazyArray(JSContext context, List<?> list) {

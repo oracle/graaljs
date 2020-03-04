@@ -133,6 +133,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> INTL_402 = new OptionKey<>(false);
     @CompilationFinal private boolean intl402;
 
+    public static final String REGEXP_MATCH_INDICES_NAME = JS_OPTION_PREFIX + "regexp-match-indices";
+    @Option(name = REGEXP_MATCH_INDICES_NAME, category = OptionCategory.USER, help = "Enable RegExp Match Indices property.") //
+    public static final OptionKey<Boolean> REGEXP_MATCH_INDICES = new OptionKey<>(false);
+    @CompilationFinal private boolean regexpMatchIndices;
+
     public static final String REGEXP_STATIC_RESULT_NAME = JS_OPTION_PREFIX + "regexp-static-result";
     @Option(name = REGEXP_STATIC_RESULT_NAME, category = OptionCategory.USER, help = "Provide last RegExp match in RegExp global var, e.g. RegExp.$1.") //
     public static final OptionKey<Boolean> REGEXP_STATIC_RESULT = new OptionKey<>(true);
@@ -498,6 +503,7 @@ public final class JSContextOptions {
             regexpStaticResultCyclicAssumption.invalidate(msg);
             regexpStaticResultCurrentAssumption = regexpStaticResultCyclicAssumption.getAssumption();
         });
+        this.regexpMatchIndices = REGEXP_MATCH_INDICES.hasBeenSet(optionValues) ? readBooleanOption(REGEXP_MATCH_INDICES) : getEcmaScriptVersion() >= JSConfig.ECMAScript2021;
         this.arraySortInherited = patchBooleanOption(ARRAY_SORT_INHERITED, ARRAY_SORT_INHERITED_NAME, arraySortInherited, msg -> {
             arraySortInheritedCyclicAssumption.invalidate(msg);
             arraySortInheritedCurrentAssumption = arraySortInheritedCyclicAssumption.getAssumption();
@@ -608,6 +614,10 @@ public final class JSContextOptions {
     public boolean isIntl402() {
         CompilerAsserts.neverPartOfCompilation("Patchable option intl-402 should never be accessed in compiled code.");
         return intl402;
+    }
+
+    public boolean isRegexpMatchIndices() {
+        return regexpMatchIndices;
     }
 
     public boolean isRegexpStaticResult() {
@@ -903,6 +913,7 @@ public final class JSContextOptions {
         hash = 53 * hash + this.ecmascriptVersion;
         hash = 53 * hash + (this.annexB ? 1 : 0);
         hash = 53 * hash + (this.intl402 ? 1 : 0);
+        hash = 53 * hash + (this.regexpMatchIndices ? 1 : 0);
         hash = 53 * hash + (this.regexpStaticResult ? 1 : 0);
         hash = 53 * hash + (this.arraySortInherited ? 1 : 0);
         hash = 53 * hash + (this.sharedArrayBuffer ? 1 : 0);
@@ -964,6 +975,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.intl402 != other.intl402) {
+            return false;
+        }
+        if (this.regexpMatchIndices != other.regexpMatchIndices) {
             return false;
         }
         if (this.regexpStaticResult != other.regexpStaticResult) {
