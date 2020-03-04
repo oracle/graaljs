@@ -40,13 +40,14 @@
  */
 package com.oracle.truffle.js.builtins.helper;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 import javax.management.MBeanServer;
+
+import org.graalvm.nativeimage.VMRuntime;
 
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.sun.management.HotSpotDiagnosticMXBean;
@@ -61,7 +62,7 @@ public final class HeapDump {
     // https://blogs.oracle.com/sundararajan/entry/programmatically_dumping_heap_from_java
     public static void dump(String fileName, boolean live) throws IOException {
         if (JSConfig.SubstrateVM) {
-            dumpSVM(fileName, live);
+            VMRuntime.dumpHeap(fileName, live);
         } else {
             dumpHotSpot(fileName, live);
         }
@@ -71,12 +72,6 @@ public final class HeapDump {
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
         HotSpotDiagnosticMXBean hotspotMBean = ManagementFactory.newPlatformMXBeanProxy(server, "com.sun.management:type=HotSpotDiagnostic", HotSpotDiagnosticMXBean.class);
         hotspotMBean.dumpHeap(fileName, live);
-    }
-
-    private static void dumpSVM(String fileName, boolean live) throws IOException {
-        try (FileOutputStream fileOutputStream = new FileOutputStream(fileName)) {
-            Compiler.command(new Object[]{"HeapDump.dumpHeap(FileOutputStream, Boolean)Boolean", fileOutputStream, live});
-        }
     }
 
     public static String defaultDumpName() {
