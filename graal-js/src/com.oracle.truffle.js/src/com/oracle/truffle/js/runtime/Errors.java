@@ -249,7 +249,9 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createTypeErrorInvalidInstanceofTarget(Object target, Node originatingNode) {
-        if (!JSRuntime.isObject(target)) {
+        if (JSRuntime.isForeignObject(target)) {
+            return Errors.createTypeError("Right-hand-side of instanceof is not a meta object", originatingNode);
+        } else if (!JSRuntime.isObject(target)) {
             return Errors.createTypeError("Right-hand-side of instanceof is not an object", originatingNode);
         } else {
             assert !JSRuntime.isCallable(target);

@@ -44,9 +44,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
@@ -106,19 +109,15 @@ public abstract class InstanceofNode extends JSBinaryNode {
         return GetMethodNode.create(context, null, Symbol.SYMBOL_HAS_INSTANCE);
     }
 
-    @Specialization
-    protected boolean doGeneric(Object obj, DynamicObject target,
-                    @Cached("create()") IsJSObjectNode isObjectNode,
+    @Specialization(guards = {"isObjectNode.executeBoolean(target)"}, limit = "1")
+    protected boolean doJSObject(Object obj, DynamicObject target,
+                    @Cached("create()") @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
                     @Cached("createGetMethodHasInstance()") GetMethodNode getMethodHasInstanceNode,
                     @Cached("create()") JSToBooleanNode toBooleanNode,
                     @Cached("createCall()") JSFunctionCallNode callHasInstanceNode,
                     @Cached("createBinaryProfile()") ConditionProfile hasInstanceProfile,
                     @Cached("create()") BranchProfile errorBranch,
                     @Cached("create()") BranchProfile proxyBranch) {
-        if (!isObjectNode.executeBoolean(target)) {
-            errorBranch.enter();
-            throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
-        }
         Object hasInstance = getMethodHasInstanceNode.executeWithTarget(target);
         if (hasInstanceProfile.profile(hasInstance != Undefined.instance)) {
             Object res = callHasInstanceNode.executeCall(JSArguments.createOneArg(target, hasInstance, obj));
@@ -135,7 +134,6 @@ public abstract class InstanceofNode extends JSBinaryNode {
             }
             return ordinaryHasInstanceNode.executeBoolean(obj, target);
         }
-
     }
 
     private static boolean isCallable(DynamicObject target, BranchProfile proxyBranch) {
@@ -149,31 +147,19 @@ public abstract class InstanceofNode extends JSBinaryNode {
         }
     }
 
-    @Specialization(guards = {"!isJavaObject(obj)", "isJavaInteropClass(clazz)"})
-    protected boolean instanceofJavaClass(Object obj, Object clazz) {
-        TruffleLanguage.Env env = context.getRealm().getEnv();
-        return ((Class<?>) env.asHostObject(clazz)).isInstance(obj);
-    }
-
-    @Specialization(guards = {"isJavaObject(obj)", "isJavaInteropClass(clazz)"})
-    protected boolean instanceofJavaClassUnwrap(Object obj, Object clazz) {
-        TruffleLanguage.Env env = context.getRealm().getEnv();
-        return ((Class<?>) env.asHostObject(clazz)).isInstance(env.asHostObject(obj));
-    }
-
-    protected final boolean isJavaObject(Object obj) {
-        TruffleLanguage.Env env = context.getRealm().getEnv();
-        return env.isHostObject(obj);
-    }
-
-    protected final boolean isJavaInteropClass(Object obj) {
-        TruffleLanguage.Env env = context.getRealm().getEnv();
-        return env.isHostObject(obj) && env.asHostObject(obj) instanceof Class;
-    }
-
-    @Specialization(guards = {"!isDynamicObject(target)"})
-    protected boolean doRHSNotAnObject(@SuppressWarnings("unused") Object obj, Object target) {
+    @Specialization(guards = {"isNullOrUndefined(target)"})
+    protected boolean doInvalidTarget(@SuppressWarnings("unused") Object obj, Object target) {
         throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
+    }
+
+    @Specialization(guards = {"!isJSType(target)"}, limit = "3")
+    protected boolean doForeignTarget(@SuppressWarnings("unused") Object instance, Object target,
+                    @CachedLibrary("target") InteropLibrary interop) {
+        try {
+            return interop.isMetaInstance(target, instance);
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
+        }
     }
 
     @TruffleBoundary
@@ -197,7 +183,6 @@ public abstract class InstanceofNode extends JSBinaryNode {
         @CompilationFinal private boolean lessThan4 = true;
         @Child private PropertyGetNode getPrototypeNode;
         @Child private IsBoundFunctionCacheNode boundFuncCacheNode;
-        @Child private IsJSObjectNode isObjectNode;
 
         public abstract boolean executeBoolean(Object left, Object right);
 
@@ -208,15 +193,6 @@ public abstract class InstanceofNode extends JSBinaryNode {
 
         public static OrdinaryHasInstanceNode create(JSContext context) {
             return OrdinaryHasInstanceNodeGen.create(context);
-        }
-
-        // longer name to avoid name-clash
-        boolean isObjectLocal(DynamicObject lhs) {
-            if (isObjectNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                isObjectNode = insert(IsJSObjectNode.create());
-            }
-            return isObjectNode.executeBoolean(lhs);
         }
 
         private DynamicObject getConstructorPrototype(DynamicObject rhs, BranchProfile invalidPrototypeBranch) {
@@ -255,17 +231,18 @@ public abstract class InstanceofNode extends JSBinaryNode {
             return false;
         }
 
-        @Specialization(guards = {"isObjectLocal(left)", "isJSFunction(right)", "!isBoundFunction(right)"})
+        @Specialization(guards = {"isObjectNode.executeBoolean(left)", "isJSFunction(right)", "!isBoundFunction(right)"}, limit = "1")
         protected boolean doJSObject(DynamicObject left, DynamicObject right,
-                        @Cached("create()") GetPrototypeNode getPrototype1Node,
-                        @Cached("create()") GetPrototypeNode getPrototype2Node,
-                        @Cached("create()") GetPrototypeNode getPrototype3Node,
-                        @Cached("create()") BranchProfile firstTrue,
-                        @Cached("create()") BranchProfile firstFalse,
-                        @Cached("create()") BranchProfile need2Hops,
-                        @Cached("create()") BranchProfile need3Hops,
-                        @Cached("create()") BranchProfile errorBranch,
-                        @Cached("create()") BranchProfile invalidPrototypeBranch) {
+                        @Cached @Shared("isObjectNode") @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
+                        @Cached @Shared("getPrototype1Node") GetPrototypeNode getPrototype1Node,
+                        @Cached @Shared("getPrototype2Node") GetPrototypeNode getPrototype2Node,
+                        @Cached @Shared("getPrototype3Node") GetPrototypeNode getPrototype3Node,
+                        @Cached @Shared("firstTrue") BranchProfile firstTrue,
+                        @Cached @Shared("firstFalse") BranchProfile firstFalse,
+                        @Cached @Shared("need2Hops") BranchProfile need2Hops,
+                        @Cached @Shared("need3Hops") BranchProfile need3Hops,
+                        @Cached @Shared("errorBranch") BranchProfile errorBranch,
+                        @Cached @Shared("invalidPrototypeBranch") BranchProfile invalidPrototypeBranch) {
             DynamicObject ctorPrototype = getConstructorPrototype(right, invalidPrototypeBranch);
             if (lessThan4) {
                 DynamicObject proto = getPrototype1Node.executeJSObject(left);
@@ -294,18 +271,19 @@ public abstract class InstanceofNode extends JSBinaryNode {
             return doJSObject4(left, ctorPrototype, getPrototype3Node, errorBranch);
         }
 
-        @Specialization(guards = {"isObjectLocal(left)", "isJSProxy(right)", "isCallableProxy(right)"})
+        @Specialization(guards = {"isObjectNode.executeBoolean(left)", "isJSProxy(right)", "isCallableProxy(right)"}, limit = "1")
         protected boolean doJSObjectProxy(DynamicObject left, DynamicObject right,
-                        @Cached("create()") GetPrototypeNode getPrototype1Node,
-                        @Cached("create()") GetPrototypeNode getPrototype2Node,
-                        @Cached("create()") GetPrototypeNode getPrototype3Node,
-                        @Cached("create()") BranchProfile firstTrue,
-                        @Cached("create()") BranchProfile firstFalse,
-                        @Cached("create()") BranchProfile need2Hops,
-                        @Cached("create()") BranchProfile need3Hops,
-                        @Cached("create()") BranchProfile errorBranch,
-                        @Cached("create()") BranchProfile invalidPrototypeBranch) {
-            return doJSObject(left, right, getPrototype1Node, getPrototype2Node, getPrototype3Node, firstTrue, firstFalse, need2Hops, need3Hops, errorBranch, invalidPrototypeBranch);
+                        @Cached @Shared("isObjectNode") IsJSObjectNode isObjectNode,
+                        @Cached @Shared("getPrototype1Node") GetPrototypeNode getPrototype1Node,
+                        @Cached @Shared("getPrototype2Node") GetPrototypeNode getPrototype2Node,
+                        @Cached @Shared("getPrototype3Node") GetPrototypeNode getPrototype3Node,
+                        @Cached @Shared("firstTrue") BranchProfile firstTrue,
+                        @Cached @Shared("firstFalse") BranchProfile firstFalse,
+                        @Cached @Shared("need2Hops") BranchProfile need2Hops,
+                        @Cached @Shared("need3Hops") BranchProfile need3Hops,
+                        @Cached @Shared("errorBranch") BranchProfile errorBranch,
+                        @Cached @Shared("invalidPrototypeBranch") BranchProfile invalidPrototypeBranch) {
+            return doJSObject(left, right, isObjectNode, getPrototype1Node, getPrototype2Node, getPrototype3Node, firstTrue, firstFalse, need2Hops, need3Hops, errorBranch, invalidPrototypeBranch);
         }
 
         private boolean doJSObject4(DynamicObject obj, DynamicObject check, GetPrototypeNode getLoopedPrototypeNode, BranchProfile errorBranch) {
