@@ -78,7 +78,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
-import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
@@ -294,27 +293,6 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     }
 
     /**
-     * %TypedArray%(object).
-     */
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"isJSFunction(newTarget)", "isJSArray(array)"})
-    protected DynamicObject doArray(DynamicObject newTarget, DynamicObject array, Object byteOffset0, Object length0,
-                    @Cached("createReadNode()") ReadElementNode readElementNode) {
-        long length = JSAbstractArray.arrayGetArrayType(array).length(array);
-        DynamicObject result = createTypedArrayWithLength(length, newTarget);
-        assert length <= Integer.MAX_VALUE;
-
-        TypedArray typedArray = factory.createArrayType(getContext().isOptionDirectByteBuffer(), false);
-        assert typedArray == JSArrayBufferView.typedArrayGetArrayType(result);
-        for (int i = 0; i < length; i++) {
-            Object element = readElementNode.executeWithTargetAndIndex(array, i);
-            typedArray.setElement(result, i, element, false);
-        }
-
-        return result;
-    }
-
-    /**
      * %TypedArray%().
      *
      * This description applies only if the %TypedArray% function is called with no arguments.
@@ -352,7 +330,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      * [[TypedArrayName]] or an [[ArrayBufferData]] internal slot.
      */
     @SuppressWarnings("unused")
-    @Specialization(guards = {"isJSFunction(newTarget)", "isJSObject(object)", "!isJSAbstractBuffer(object)", "!isJSArrayBufferView(object)", "!isJSArray(object)"})
+    @Specialization(guards = {"isJSFunction(newTarget)", "isJSObject(object)", "!isJSAbstractBuffer(object)", "!isJSArrayBufferView(object)"})
     protected DynamicObject doObject(DynamicObject newTarget, DynamicObject object, Object byteOffset0, Object length0,
                     @Cached("createGetIteratorMethod()") GetMethodNode getIteratorMethodNode,
                     @Cached("createBinaryProfile()") ConditionProfile isIterableProfile,
