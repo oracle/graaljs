@@ -223,6 +223,7 @@ public final class JSFinalizationGroup extends JSBuiltinObject implements JSCons
     }
 
     public static void cleanupFinalizationGroup(JSContext context, DynamicObject finalizationGroup, Object callbackArg) {
+        assert callbackArg != null;
         if (!checkForEmptyCells(finalizationGroup)) {
             return;
         }
@@ -297,7 +298,7 @@ public final class JSFinalizationGroup extends JSBuiltinObject implements JSCons
         ReferenceQueue<Object> queue = getReferenceQueue(finalizationGroup);
         while (queue.poll() != null) {
             // if something can be polled, clean up the finalizationGroup
-            cleanupFinalizationGroup(JSFinalizationGroup.getRealm(finalizationGroup).getContext(), finalizationGroup, null);
+            cleanupFinalizationGroup(JSFinalizationGroup.getRealm(finalizationGroup).getContext(), finalizationGroup, Undefined.instance);
         }
     }
 
