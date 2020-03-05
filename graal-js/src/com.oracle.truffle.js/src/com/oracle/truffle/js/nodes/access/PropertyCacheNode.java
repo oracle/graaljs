@@ -1276,9 +1276,8 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             }
             /*
              * Do not invalidate code here, since we might just re-shape the object (which does not
-             * need a modification of the AST).
+             * need a modification of the AST). The assumption will be used to invalidate the code.
              */
-            CompilerDirectives.transferToInterpreter();
         }
     }
 
