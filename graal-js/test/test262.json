@@ -1,5 +1,29 @@
 {
   "testFiles" : [ {
+    "filePath" : "built-ins/Date/parse/without-utc-offset.js",
+    "status" : "FAIL",
+    "comment" : "new failures after 2020-03 update"
+  }, {
+    "filePath" : "built-ins/JSON/parse/reviver-array-non-configurable-prop-create.js",
+    "status" : "FAIL",
+    "comment" : "new failures after 2020-03 update"
+  }, {
+    "filePath" : "built-ins/Object/freeze/throws-when-false.js",
+    "status" : "FAIL",
+    "comment" : "new failures after 2020-03 update"
+  }, {
+    "filePath" : "built-ins/Object/preventExtensions/throws-when-false.js",
+    "status" : "FAIL",
+    "comment" : "new failures after 2020-03 update"
+  }, {
+    "filePath" : "built-ins/Object/seal/throws-when-false.js",
+    "status" : "FAIL",
+    "comment" : "new failures after 2020-03 update"
+  }, {
+    "filePath" : "built-ins/Proxy/set/call-parameters-prototype-index.js",
+    "status" : "FAIL",
+    "comment" : "new failures after 2020-03 update"
+  }, {
     "filePath" : "built-ins/RegExp/lookBehind/alternations.js",
     "status" : "FAIL",
     "comment" : "GR-10079: Alternations in lookbehind assertion, not supported by either TRegex or Joni. However, support for these could be added to TRegex."
@@ -1663,13 +1687,29 @@
     },
     "comment" : "Fails on big endian and works on little endian"
   }, {
+    "filePath" : "intl402/DateTimeFormat/invalid-numbering-system-calendar-options.js",
+    "status" : "FAIL",
+    "comment" : "new failures after 2020-03 update"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/format/related-year-zh.js",
+    "status" : "FAIL",
+    "comment" : "new failures after 2020-03 update"
+  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/pattern-on-calendar.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/related-year-zh.js",
+    "status" : "FAIL",
+    "comment" : "new failures after 2020-03 update"
+  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/related-year.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/hourCycle-default.js",
+    "status" : "FAIL",
+    "comment" : "new failures after 2020-03 update"
   }, {
     "filePath" : "intl402/Intl/getCanonicalLocales/canonicalized-tags.js",
     "status" : "FAIL",
@@ -1723,6 +1763,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
+    "filePath" : "intl402/NumberFormat/constructor-order.js",
+    "status" : "FAIL",
+    "comment" : "new failures after 2020-03 update"
+  }, {
     "filePath" : "intl402/NumberFormat/constructor-signDisplay.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
@@ -1738,6 +1782,10 @@
     "filePath" : "intl402/NumberFormat/currencyDisplay-unit.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/invalid-numbering-system-options.js",
+    "status" : "FAIL",
+    "comment" : "new failures after 2020-03 update"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/engineering-scientific-de-DE.js",
     "status" : "FAIL",
@@ -1823,6 +1871,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/signDisplay-rounding.js",
+    "status" : "FAIL",
+    "comment" : "new failures after 2020-03 update"
+  }, {
     "filePath" : "intl402/NumberFormat/prototype/format/signDisplay-zh-TW.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
@@ -1891,6 +1943,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/percent-en-US.js",
+    "status" : "FAIL",
+    "comment" : "new failures after 2020-03 update"
+  }, {
     "filePath" : "intl402/NumberFormat/prototype/formatToParts/signDisplay-currency-de-DE.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
@@ -1955,6 +2011,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
+    "filePath" : "intl402/NumberFormat/prototype/resolvedOptions/compactDisplay.js",
+    "status" : "FAIL",
+    "comment" : "new failures after 2020-03 update"
+  }, {
     "filePath" : "intl402/NumberFormat/prototype/resolvedOptions/order.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
@@ -2012,12 +2072,6 @@
       "minVersion" : 11
     },
     "status" : "PASS"
-  }, {
-    "filePath" : "language/expressions/arrow-function/scope-param-elem-var-close.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/arrow-function/scope-param-elem-var-open.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/arrow-function/scope-param-rest-elem-var-close.js",
     "status" : "FAIL"
@@ -2195,53 +2249,13 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
-    "filePath" : "language/expressions/function/scope-param-elem-var-close.js",
-    "status" : "FAIL"
+    "filePath" : "language/expressions/object/literal-property-name-bigint.js",
+    "status" : "FAIL",
+    "comment" : "new failures after 2020-03 update"
   }, {
-    "filePath" : "language/expressions/function/scope-param-elem-var-open.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/function/scope-param-rest-elem-var-close.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/function/scope-param-rest-elem-var-open.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/generators/scope-param-elem-var-close.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/generators/scope-param-elem-var-open.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/generators/scope-param-rest-elem-var-close.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/generators/scope-param-rest-elem-var-open.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/object/scope-gen-meth-param-elem-var-close.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/object/scope-gen-meth-param-elem-var-open.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/object/scope-gen-meth-param-rest-elem-var-close.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/object/scope-gen-meth-param-rest-elem-var-open.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/object/scope-meth-param-elem-var-close.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/object/scope-meth-param-elem-var-open.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/object/scope-meth-param-rest-elem-var-close.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/object/scope-meth-param-rest-elem-var-open.js",
-    "status" : "FAIL"
+    "filePath" : "language/expressions/optional-chaining/optional-call-preserves-this.js",
+    "status" : "FAIL",
+    "comment" : "new failures after 2020-03 update"
   }, {
     "filePath" : "language/expressions/postfix-decrement/target-cover-newtarget.js",
     "ecmaVersion" : {
@@ -2315,25 +2329,19 @@
     },
     "status" : "PASS"
   }, {
+    "filePath" : "language/expressions/super/call-proto-not-ctor.js",
+    "status" : "FAIL",
+    "comment" : "new failures after 2020-03 update"
+  }, {
     "filePath" : "language/expressions/this/S11.1.1_A1.js",
     "ecmaVersion" : {
       "minVersion" : 11
     },
     "status" : "PASS"
   }, {
-    "filePath" : "language/function-code/each-param-has-own-non-shared-eval-scope.js",
+    "filePath" : "language/expressions/typeof/proxy.js",
     "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/function-code/each-param-has-own-scope.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/function-code/eval-param-env-with-computed-key.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/function-code/eval-param-env-with-prop-initializer.js",
-    "status" : "FAIL"
+    "comment" : "new failures after 2020-03 update"
   }, {
     "filePath" : "language/literals/regexp/u-surrogate-pairs-atom-escape-decimal.js",
     "status" : "FAIL",
@@ -2406,30 +2414,6 @@
     "status" : "FAIL"
   }, {
     "filePath" : "language/statements/for-of/scope-head-lex-open.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/function/scope-param-elem-var-close.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/function/scope-param-elem-var-open.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/function/scope-param-rest-elem-var-close.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/function/scope-param-rest-elem-var-open.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/generators/scope-param-elem-var-close.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/generators/scope-param-elem-var-open.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/generators/scope-param-rest-elem-var-close.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/generators/scope-param-rest-elem-var-open.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/types/boolean/S8.3_A2.1.js",
