@@ -75,7 +75,6 @@ import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.GeneratorPrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
@@ -1147,13 +1146,12 @@ public final class JSFunction extends JSBuiltinObject {
                             if (ss.getSource().isInternal() && !JSFunction.isBuiltinSourceSection(ss)) {
                                 return null;
                             }
-                            String sourceName = ss.getSource().getName();
-                            if (Evaluator.EVAL_SOURCE_NAME.equals(sourceName) || sourceName.startsWith(Evaluator.EVAL_AT_SOURCE_NAME_PREFIX)) {
-                                return null; // skip eval()
-                            }
                             JSFunctionData functionData = JSFunction.getFunctionData(function);
                             if (JSFunction.isBuiltinSourceSection(ss)) {
                                 JSRealm realm = functionData.getContext().getRealm();
+                                if (function == realm.getEvalFunctionObject()) {
+                                    return null; // skip eval()
+                                }
                                 if (isBuiltinThatShouldNotAppearInStackTrace(realm, function)) {
                                     return null;
                                 }

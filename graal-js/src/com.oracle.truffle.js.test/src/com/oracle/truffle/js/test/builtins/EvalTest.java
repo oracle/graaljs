@@ -43,6 +43,7 @@ package com.oracle.truffle.js.test.builtins;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
@@ -86,4 +87,33 @@ public class EvalTest {
             }
         }
     }
+
+    private static void assertTrueResult(String source) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.V8_COMPATIBILITY_MODE_NAME, "true").build()) {
+            Value result = context.eval(JavaScriptLanguage.ID, source);
+            assertTrue(result.isBoolean());
+            assertTrue(result.asBoolean());
+        }
+    }
+
+    @Test
+    public void testCallerInEval() {
+        assertTrueResult("eval('var a = function() { return a.caller; }; var b = function() { return a(); }; b() == b;')");
+    }
+
+    @Test
+    public void testCallerInIndirectEval() {
+        assertTrueResult("(0, eval)('var a = function() { return a.caller; }; var b = function() { return a(); }; b() == b;')");
+    }
+
+    @Test
+    public void testCallerAcrossEval() {
+        assertTrueResult("var a = function() { return a.caller; }; var b = function() { return eval('a()'); }; b() == b;");
+    }
+
+    @Test
+    public void testCallerAcrossIndirectEval() {
+        assertTrueResult("var a = function() { return a.caller; }; var b = function() { return (0, eval)('a()'); }; b() == b;");
+    }
+
 }
