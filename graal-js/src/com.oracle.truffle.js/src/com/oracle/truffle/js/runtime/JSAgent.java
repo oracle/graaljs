@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime;
 import java.lang.ref.WeakReference;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.collections.EconomicSet;
@@ -53,7 +54,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.JSAgentWaiterListEntry;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
-import com.oracle.truffle.js.runtime.builtins.JSFinalizationGroup;
+import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -92,13 +93,13 @@ public abstract class JSAgent implements EcmaAgent {
      */
     private EconomicSet<Object> weakRefTargets;
 
-    private final Deque<WeakReference<DynamicObject>> finalizationGroupQueue;
+    private final Deque<WeakReference<DynamicObject>> finalizationRegistryQueue;
 
     public JSAgent(boolean canBlock) {
         this.signifier = signifierGenerator.incrementAndGet();
         this.canBlock = canBlock;
         this.promiseJobsQueue = new ArrayDeque<>(4);
-        this.finalizationGroupQueue = new ArrayDeque<>(4);
+        this.finalizationRegistryQueue = new ArrayDeque<>(4);
     }
 
     public abstract void wakeAgent(int w);
@@ -177,16 +178,17 @@ public abstract class JSAgent implements EcmaAgent {
     }
 
     /**
-     * Cleanup the finalizationGroups that are unreferenced; cleanup referenced ones according to
-     * 4.1.3 Execution and 4.1.4.1 HostCleanupFinalizationGroup.
+     * Cleanup the finalizationRegistries that are unreferenced; cleanup referenced ones according
+     * to 4.1.3 Execution and 4.1.4.1 HostCleanupFinalizatioRegistry.
      */
     private void cleanupFinalizers() {
-        for (WeakReference<DynamicObject> ref : finalizationGroupQueue) {
+        for (Iterator<WeakReference<DynamicObject>> iter = finalizationRegistryQueue.iterator(); iter.hasNext();) {
+            WeakReference<DynamicObject> ref = iter.next();
             DynamicObject fg = ref.get();
             if (fg == null) {
-                finalizationGroupQueue.remove(ref);
+                iter.remove();
             } else {
-                JSFinalizationGroup.hostCleanupFinalizationGroup(fg);
+                JSFinalizationRegistry.hostCleanupFinalizationRegistry(fg);
             }
         }
     }
@@ -207,7 +209,7 @@ public abstract class JSAgent implements EcmaAgent {
         return weakRefTargets.add(target);
     }
 
-    public void registerFinalizationGroup(DynamicObject finalizationGroup) {
-        finalizationGroupQueue.add(new WeakReference<>(finalizationGroup));
+    public void registerFinalizationRegistry(DynamicObject finalizationRegistry) {
+        finalizationRegistryQueue.add(new WeakReference<>(finalizationRegistry));
     }
 }

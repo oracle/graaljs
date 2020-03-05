@@ -90,7 +90,7 @@ import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSDictionaryObject;
 import com.oracle.truffle.js.runtime.builtins.JSError;
-import com.oracle.truffle.js.runtime.builtins.JSFinalizationGroup;
+import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionFactory;
@@ -354,7 +354,7 @@ public class JSContext {
     private final JSObjectFactory arrayBufferFactory;
     private final JSObjectFactory directArrayBufferFactory;
     private final JSObjectFactory sharedArrayBufferFactory;
-    private final JSObjectFactory finalizationGroupFactory;
+    private final JSObjectFactory finalizationRegistryFactory;
     @CompilationFinal(dimensions = 1) private final JSObjectFactory[] typedArrayFactories;
     @CompilationFinal(dimensions = 1) private final JSObjectFactory[] directTypedArrayFactories;
 
@@ -363,7 +363,7 @@ public class JSContext {
     private final JSObjectFactory generatorObjectFactory;
     private final JSObjectFactory asyncGeneratorObjectFactory;
     private final JSObjectFactory asyncFromSyncIteratorFactory;
-    private final JSObjectFactory finalizationGroupCleanupIteratorFactory;
+    private final JSObjectFactory finalizationRegistryCleanupIteratorFactory;
 
     private final JSObjectFactory collatorFactory;
     private final JSObjectFactory numberFormatFactory;
@@ -477,7 +477,7 @@ public class JSContext {
         this.arrayBufferFactory = builder.create(JSArrayBuffer.HEAP_INSTANCE);
         this.directArrayBufferFactory = builder.create(JSArrayBuffer.DIRECT_INSTANCE);
         this.sharedArrayBufferFactory = isOptionSharedArrayBuffer() ? builder.create(JSSharedArrayBuffer.INSTANCE) : null;
-        this.finalizationGroupFactory = builder.create(JSFinalizationGroup.INSTANCE);
+        this.finalizationRegistryFactory = builder.create(JSFinalizationRegistry.INSTANCE);
         this.typedArrayFactories = new JSObjectFactory[TypedArray.factories(this).length];
         this.directTypedArrayFactories = new JSObjectFactory[TypedArray.factories(this).length];
         for (TypedArrayFactory factory : TypedArray.factories(this)) {
@@ -496,7 +496,7 @@ public class JSContext {
         this.strictArgumentsFactory = builder.create(objectPrototypeSupplier, JSArgumentsObject::makeInitialStrictArgumentsShape);
         this.enumerateIteratorFactory = builder.create(JSRealm::getEnumerateIteratorPrototype, JSFunction::makeInitialEnumerateIteratorShape);
         this.forInIteratorFactory = builder.create(JSRealm::getForInIteratorPrototype, JSFunction::makeInitialForInIteratorShape);
-        this.finalizationGroupCleanupIteratorFactory = builder.create(JSRealm::getFinalizationGroupCleanupIteratorPrototype, JSFinalizationGroup::makeInitialCleanupIteratorShape);
+        this.finalizationRegistryCleanupIteratorFactory = builder.create(JSRealm::getFinalizationRegistryCleanupIteratorPrototype, JSFinalizationRegistry::makeInitialCleanupIteratorShape);
 
         this.generatorObjectFactory = builder.create(JSRealm::getGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
         this.asyncGeneratorObjectFactory = builder.create(JSRealm::getAsyncGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
@@ -778,16 +778,16 @@ public class JSContext {
         return forInIteratorFactory;
     }
 
-    public final JSObjectFactory getFinalizationGroupCleanupIteratorFactory() {
-        return finalizationGroupCleanupIteratorFactory;
+    public final JSObjectFactory getFinalizationRegistryCleanupIteratorFactory() {
+        return finalizationRegistryCleanupIteratorFactory;
     }
 
     public final JSObjectFactory getMapFactory() {
         return mapFactory;
     }
 
-    public final JSObjectFactory getFinalizationGroupFactory() {
-        return finalizationGroupFactory;
+    public final JSObjectFactory getFinalizationRegistryFactory() {
+        return finalizationRegistryFactory;
     }
 
     public final JSObjectFactory getWeakRefFactory() {

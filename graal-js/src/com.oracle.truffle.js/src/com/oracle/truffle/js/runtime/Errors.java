@@ -498,8 +498,8 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorFinalizationGroupExpected() {
-        return Errors.createTypeError("FinalizationGroup expected");
+    public static JSException createTypeErrorFinalizationRegistryExpected() {
+        return Errors.createTypeError("FinalizationRegistry expected");
     }
 
     @TruffleBoundary

@@ -43,7 +43,7 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.lang.ref.WeakReference;
 
 /**
- * A record specified for FinalizationGroup entries.
+ * A record specified for FinalizationRegistry entries.
  *
  */
 public class FinalizationRecord {
@@ -52,6 +52,7 @@ public class FinalizationRecord {
     private WeakReference<Object> unregisterToken;
 
     public FinalizationRecord(WeakReference<Object> weakRefTarget, Object heldValue, Object unregisterToken) {
+        assert weakRefTarget != null && weakRefTarget.get() != null;
         this.weakRefTarget = weakRefTarget;
         this.heldValue = heldValue;
         this.unregisterToken = new WeakReference<>(unregisterToken);

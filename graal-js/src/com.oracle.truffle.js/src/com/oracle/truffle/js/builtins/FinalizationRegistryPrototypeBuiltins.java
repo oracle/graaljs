@@ -43,9 +43,9 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.js.builtins.FinalizationGroupPrototypeBuiltinsFactory.JSFinalizationGroupCleanupSomeNodeGen;
-import com.oracle.truffle.js.builtins.FinalizationGroupPrototypeBuiltinsFactory.JSFinalizationGroupRegisterNodeGen;
-import com.oracle.truffle.js.builtins.FinalizationGroupPrototypeBuiltinsFactory.JSFinalizationGroupUnregisterNodeGen;
+import com.oracle.truffle.js.builtins.FinalizationRegistryPrototypeBuiltinsFactory.JSFinalizationRegistryCleanupSomeNodeGen;
+import com.oracle.truffle.js.builtins.FinalizationRegistryPrototypeBuiltinsFactory.JSFinalizationRegistryRegisterNodeGen;
+import com.oracle.truffle.js.builtins.FinalizationRegistryPrototypeBuiltinsFactory.JSFinalizationRegistryUnregisterNodeGen;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -54,29 +54,29 @@ import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSFinalizationGroup;
+import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
- * Contains builtins for {@linkplain JSFinalizationGroup}.prototype.
+ * Contains builtins for {@linkplain JSFinalizationRegistry}.prototype.
  */
-public final class FinalizationGroupPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<FinalizationGroupPrototypeBuiltins.FinalizationGroupPrototype> {
+public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<FinalizationRegistryPrototypeBuiltins.FinalizationRegistryPrototype> {
 
-    public static final JSBuiltinsContainer BUILTINS = new FinalizationGroupPrototypeBuiltins();
+    public static final JSBuiltinsContainer BUILTINS = new FinalizationRegistryPrototypeBuiltins();
 
-    protected FinalizationGroupPrototypeBuiltins() {
-        super(JSFinalizationGroup.PROTOTYPE_NAME, FinalizationGroupPrototype.class);
+    protected FinalizationRegistryPrototypeBuiltins() {
+        super(JSFinalizationRegistry.PROTOTYPE_NAME, FinalizationRegistryPrototype.class);
     }
 
-    public enum FinalizationGroupPrototype implements BuiltinEnum<FinalizationGroupPrototype> {
+    public enum FinalizationRegistryPrototype implements BuiltinEnum<FinalizationRegistryPrototype> {
         register(2),
         unregister(1),
         cleanupSome(0);
 
         private final int length;
 
-        FinalizationGroupPrototype(int length) {
+        FinalizationRegistryPrototype(int length) {
             this.length = length;
         }
 
@@ -87,39 +87,39 @@ public final class FinalizationGroupPrototypeBuiltins extends JSBuiltinsContaine
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, FinalizationGroupPrototype builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, FinalizationRegistryPrototype builtinEnum) {
         switch (builtinEnum) {
             case register:
-                return JSFinalizationGroupRegisterNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context));
+                return JSFinalizationRegistryRegisterNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context));
             case unregister:
-                return JSFinalizationGroupUnregisterNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                return JSFinalizationRegistryUnregisterNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case cleanupSome:
-                return JSFinalizationGroupCleanupSomeNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                return JSFinalizationRegistryCleanupSomeNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
 
-    public abstract static class FinalizationGroupOperation extends JSBuiltinNode {
+    public abstract static class FinalizationRegistryOperation extends JSBuiltinNode {
         protected final BranchProfile errorBranch = BranchProfile.create();
 
-        public FinalizationGroupOperation(JSContext context, JSBuiltin builtin) {
+        public FinalizationRegistryOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
     }
 
     /**
-     * Implementation of the FinalizationGroup.prototype.register().
+     * Implementation of the FinalizationRegistry.prototype.register().
      */
-    public abstract static class JSFinalizationGroupRegisterNode extends FinalizationGroupOperation {
+    public abstract static class JSFinalizationRegistryRegisterNode extends FinalizationRegistryOperation {
 
         @Child protected JSIdenticalNode sameValueNode = JSIdenticalNode.createSameValue();
         @Child protected IsObjectNode isObjectNode = IsObjectNode.create();
 
-        public JSFinalizationGroupRegisterNode(JSContext context, JSBuiltin builtin) {
+        public JSFinalizationRegistryRegisterNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSFinalizationGroup(thisObj)")
+        @Specialization(guards = "isJSFinalizationRegistry(thisObj)")
         protected DynamicObject register(DynamicObject thisObj, Object target, Object holdings, Object unregisterTokenArg) {
             if (!isObjectNode.executeBoolean(target)) {
                 errorBranch.enter();
@@ -137,58 +137,58 @@ public final class FinalizationGroupPrototypeBuiltins extends JSBuiltinsContaine
                 }
                 unregisterToken = Undefined.instance;
             }
-            JSFinalizationGroup.appendToCells(thisObj, target, holdings, unregisterToken);
+            JSFinalizationRegistry.appendToCells(thisObj, target, holdings, unregisterToken);
             return Undefined.instance;
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "!isJSFinalizationGroup(thisObj)")
-        protected static DynamicObject notFinalizationGroup(@SuppressWarnings("unused") Object thisObj, Object target, Object holdings, Object unregisterToken) {
-            throw Errors.createTypeErrorFinalizationGroupExpected();
+        @Specialization(guards = "!isJSFinalizationRegistry(thisObj)")
+        protected static DynamicObject notFinalizationRegistry(@SuppressWarnings("unused") Object thisObj, Object target, Object holdings, Object unregisterToken) {
+            throw Errors.createTypeErrorFinalizationRegistryExpected();
         }
     }
 
     /**
-     * Implementation of the FinalizationGroup.prototype.unregister().
+     * Implementation of the FinalizationRegistry.prototype.unregister().
      */
-    public abstract static class JSFinalizationGroupUnregisterNode extends FinalizationGroupOperation {
+    public abstract static class JSFinalizationRegistryUnregisterNode extends FinalizationRegistryOperation {
 
         @Child protected IsObjectNode isObjectNode = IsObjectNode.create();
 
-        public JSFinalizationGroupUnregisterNode(JSContext context, JSBuiltin builtin) {
+        public JSFinalizationRegistryUnregisterNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSFinalizationGroup(thisObj)")
+        @Specialization(guards = "isJSFinalizationRegistry(thisObj)")
         protected boolean unregister(DynamicObject thisObj, Object unregisterToken) {
             if (unregisterToken == Undefined.instance || unregisterToken == Null.instance || !isObjectNode.executeBoolean(unregisterToken)) {
                 errorBranch.enter();
                 throw Errors.createTypeError("unregister expects unregisterToken argument to be an object");
             }
-            return JSFinalizationGroup.removeFromCells(thisObj, unregisterToken);
+            return JSFinalizationRegistry.removeFromCells(thisObj, unregisterToken);
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "!isJSFinalizationGroup(thisObj)")
-        protected static boolean notFinalizationGroup(@SuppressWarnings("unused") Object thisObj, Object unregisterToken) {
-            throw Errors.createTypeErrorFinalizationGroupExpected();
+        @Specialization(guards = "!isJSFinalizationRegistry(thisObj)")
+        protected static boolean notFinalizationRegistry(@SuppressWarnings("unused") Object thisObj, Object unregisterToken) {
+            throw Errors.createTypeErrorFinalizationRegistryExpected();
         }
     }
 
     /**
-     * Implementation of the FinalizationGroup.prototype.cleanupSome().
+     * Implementation of the FinalizationRegistry.prototype.cleanupSome().
      */
-    public abstract static class JSFinalizationGroupCleanupSomeNode extends FinalizationGroupOperation {
+    public abstract static class JSFinalizationRegistryCleanupSomeNode extends FinalizationRegistryOperation {
 
         @Child protected IsCallableNode isCallableNode = IsCallableNode.create();
 
-        public JSFinalizationGroupCleanupSomeNode(JSContext context, JSBuiltin builtin) {
+        public JSFinalizationRegistryCleanupSomeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSFinalizationGroup(thisObj)")
+        @Specialization(guards = "isJSFinalizationRegistry(thisObj)")
         protected DynamicObject cleanupSome(DynamicObject thisObj, Object callback) {
-            if (JSFinalizationGroup.isCleanupJobActive(thisObj)) {
+            if (JSFinalizationRegistry.isCleanupJobActive(thisObj)) {
                 errorBranch.enter();
                 throw Errors.createTypeError("finalization job aleady active");
             }
@@ -196,14 +196,14 @@ public final class FinalizationGroupPrototypeBuiltins extends JSBuiltinsContaine
                 errorBranch.enter();
                 throw Errors.createTypeError("cleanupSome expects callback to be callable");
             }
-            JSFinalizationGroup.cleanupFinalizationGroup(getContext(), thisObj, callback);
+            JSFinalizationRegistry.cleanupFinalizationRegistry(getContext(), thisObj, callback);
             return Undefined.instance;
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "!isJSFinalizationGroup(thisObj)")
-        protected static DynamicObject notFinalizationGroup(@SuppressWarnings("unused") Object thisObj, Object callback) {
-            throw Errors.createTypeErrorFinalizationGroupExpected();
+        @Specialization(guards = "!isJSFinalizationRegistry(thisObj)")
+        protected static DynamicObject notFinalizationRegistry(@SuppressWarnings("unused") Object thisObj, Object callback) {
+            throw Errors.createTypeErrorFinalizationRegistryExpected();
         }
     }
 

@@ -86,7 +86,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDataVi
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDateNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDateTimeFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructErrorNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructFinalizationGroupNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructFinalizationRegistryNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructFunctionNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJSAdapterNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJSProxyNodeGen;
@@ -165,8 +165,8 @@ import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.PromiseHook;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -181,7 +181,7 @@ import com.oracle.truffle.js.runtime.builtins.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
-import com.oracle.truffle.js.runtime.builtins.JSFinalizationGroup;
+import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSListFormat;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
@@ -262,7 +262,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         Map(0),
         Set(0),
         WeakRef(1),
-        FinalizationGroup(1),
+        FinalizationRegistry(1),
         WeakMap(0),
         WeakSet(0),
         GeneratorFunction(1),
@@ -351,10 +351,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
-            case FinalizationGroup:
+            case FinalizationRegistry:
                 if (construct) {
-                    return newTarget ? ConstructFinalizationGroupNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
-                                    : ConstructFinalizationGroupNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context));
+                    return newTarget ? ConstructFinalizationRegistryNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
+                                    : ConstructFinalizationRegistryNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
@@ -1106,24 +1106,24 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
     }
 
-    public abstract static class ConstructFinalizationGroupNode extends ConstructWithNewTargetNode {
-        public ConstructFinalizationGroupNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
+    public abstract static class ConstructFinalizationRegistryNode extends ConstructWithNewTargetNode {
+        public ConstructFinalizationRegistryNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
             super(context, builtin, newTargetCase);
         }
 
         @Specialization(guards = {"isCallable(cleanupCallback)"})
-        protected DynamicObject constructFinalizationGroup(DynamicObject newTarget, TruffleObject cleanupCallback) {
-            return swapPrototype(JSFinalizationGroup.create(getContext(), cleanupCallback), newTarget);
+        protected DynamicObject constructFinalizationRegistry(DynamicObject newTarget, TruffleObject cleanupCallback) {
+            return swapPrototype(JSFinalizationRegistry.create(getContext(), cleanupCallback), newTarget);
         }
 
         @Specialization(guards = {"!isCallable(cleanupCallback)"})
-        protected DynamicObject constructFinalizationGroupNonObject(@SuppressWarnings("unused") DynamicObject newTarget, @SuppressWarnings("unused") Object cleanupCallback) {
-            throw Errors.createTypeError("Cannot create FinalizationGroup on non callable");
+        protected DynamicObject constructFinalizationRegistryNonObject(@SuppressWarnings("unused") DynamicObject newTarget, @SuppressWarnings("unused") Object cleanupCallback) {
+            throw Errors.createTypeError("Cannot create FinalizationRegistry on non callable");
         }
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getFinalizationGroupPrototype();
+            return realm.getFinalizationRegistryPrototype();
         }
     }
 

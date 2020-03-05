@@ -14,6 +14,7 @@ The main focus is on user-observable behavior of the engine.
 * Added `npx` (an `npm` package runner) into GraalVM.
 * Implemented the [RegExp Match Indices](https://github.com/tc39/proposal-regexp-match-indices) proposal. It is available behind the `--js.regexp-match-indices` flag.
 * Removed the JOni RegExp-engine and the "use-tregex" option.
+* Implemented the [FinalizationRegistry](https://github.com/tc39/proposal-weakrefs) proposal. It is available behind the `--js.ecmascript-version=2021` flag.
 
 ## Version 20.0.0
 * Implemented support for public and private class fields, both instance and static (based on the [class fields](https://github.com/tc39/proposal-class-fields) and [static class features](https://github.com/tc39/proposal-static-class-features) proposals). This feature is available by default in Node.js and can be enabled using the experimental option `js.class-fields`.

@@ -43,7 +43,7 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.js.builtins.FinalizationGroupCleanupIteratorPrototypeBuiltinsFactory.CleanupNextNodeGen;
+import com.oracle.truffle.js.builtins.FinalizationRegistryCleanupIteratorPrototypeBuiltinsFactory.CleanupNextNodeGen;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -53,27 +53,27 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.FinalizationRecord;
-import com.oracle.truffle.js.runtime.builtins.JSFinalizationGroup;
+import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
- * The %FinalizationGroupCleanupIteratorPrototype% Object.
+ * The %FinalizationRegistryCleanupIteratorPrototype% Object.
  */
-public final class FinalizationGroupCleanupIteratorPrototypeBuiltins
-                extends JSBuiltinsContainer.SwitchEnum<FinalizationGroupCleanupIteratorPrototypeBuiltins.FinalizationGroupCleanupIteratorPrototype> {
-    public static final JSBuiltinsContainer BUILTINS = new FinalizationGroupCleanupIteratorPrototypeBuiltins();
+public final class FinalizationRegistryCleanupIteratorPrototypeBuiltins
+                extends JSBuiltinsContainer.SwitchEnum<FinalizationRegistryCleanupIteratorPrototypeBuiltins.FinalizationRegistryCleanupIteratorPrototype> {
+    public static final JSBuiltinsContainer BUILTINS = new FinalizationRegistryCleanupIteratorPrototypeBuiltins();
 
-    protected FinalizationGroupCleanupIteratorPrototypeBuiltins() {
-        super(JSFinalizationGroup.CLEANUP_ITERATOR_PROTOTYPE_NAME, FinalizationGroupCleanupIteratorPrototype.class);
+    protected FinalizationRegistryCleanupIteratorPrototypeBuiltins() {
+        super(JSFinalizationRegistry.CLEANUP_ITERATOR_PROTOTYPE_NAME, FinalizationRegistryCleanupIteratorPrototype.class);
     }
 
-    public enum FinalizationGroupCleanupIteratorPrototype implements BuiltinEnum<FinalizationGroupCleanupIteratorPrototype> {
+    public enum FinalizationRegistryCleanupIteratorPrototype implements BuiltinEnum<FinalizationRegistryCleanupIteratorPrototype> {
         next(0);
 
         private final int length;
 
-        FinalizationGroupCleanupIteratorPrototype(int length) {
+        FinalizationRegistryCleanupIteratorPrototype(int length) {
             this.length = length;
         }
 
@@ -84,7 +84,7 @@ public final class FinalizationGroupCleanupIteratorPrototypeBuiltins
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, FinalizationGroupCleanupIteratorPrototype builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, FinalizationRegistryCleanupIteratorPrototype builtinEnum) {
         switch (builtinEnum) {
             case next:
                 return CleanupNextNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
@@ -95,25 +95,25 @@ public final class FinalizationGroupCleanupIteratorPrototypeBuiltins
     public abstract static class CleanupNextNode extends JSBuiltinNode {
         @Child private PropertySetNode setValueNode;
         @Child private PropertySetNode setDoneNode;
-        @Child private PropertyGetNode getFinalizationGroupNode;
+        @Child private PropertyGetNode getFinalizationRegistryNode;
         private final BranchProfile errorBranch;
 
         public CleanupNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.setValueNode = PropertySetNode.create(JSRuntime.VALUE, false, context, false);
             this.setDoneNode = PropertySetNode.create(JSRuntime.DONE, false, context, false);
-            this.getFinalizationGroupNode = PropertyGetNode.createGetHidden(JSRuntime.FINALIZATION_GROUP_CLEANUP_ITERATOR_ID, context);
+            this.getFinalizationRegistryNode = PropertyGetNode.createGetHidden(JSRuntime.FINALIZATION_GROUP_CLEANUP_ITERATOR_ID, context);
             this.errorBranch = BranchProfile.create();
         }
 
         @Specialization
         public DynamicObject execute(Object target) {
-            Object finalizationGroup = getFinalizationGroupNode.getValue(target);
-            if (finalizationGroup == Undefined.instance || !JSFinalizationGroup.isJSFinalizationGroup(finalizationGroup)) {
+            Object finalizationRegistry = getFinalizationRegistryNode.getValue(target);
+            if (finalizationRegistry == Undefined.instance || !JSFinalizationRegistry.isJSFinalizationRegistry(finalizationRegistry)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("FinalizationGroup Cleanup iterator required");
+                throw Errors.createTypeError("FinalizationRegistry Cleanup iterator required");
             }
-            FinalizationRecord record = JSFinalizationGroup.removeCellEmptyTarget((DynamicObject) finalizationGroup);
+            FinalizationRecord record = JSFinalizationRegistry.removeCellEmptyTarget((DynamicObject) finalizationRegistry);
             if (record != null) {
                 return createIterResultObject(record.getHeldValue(), false);
             }

@@ -110,7 +110,7 @@ import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSError;
-import com.oracle.truffle.js.runtime.builtins.JSFinalizationGroup;
+import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
@@ -263,8 +263,8 @@ public class JSRealm {
     private final DynamicObject javaImporterPrototype;
     private final DynamicObject proxyConstructor;
     private final DynamicObject proxyPrototype;
-    private final DynamicObject finalizationGroupConstructor;
-    private final DynamicObject finalizationGroupPrototype;
+    private final DynamicObject finalizationRegistryConstructor;
+    private final DynamicObject finalizationRegistryPrototype;
 
     private final DynamicObject iteratorPrototype;
     private final DynamicObject arrayIteratorPrototype;
@@ -275,7 +275,7 @@ public class JSRealm {
     private final DynamicObject regExpStringIteratorPrototype;
     private final DynamicObject enumerateIteratorPrototype;
     private final DynamicObject forInIteratorPrototype;
-    private final DynamicObject finalizationGroupCleanupIteratorPrototype;
+    private final DynamicObject finalizationRegistryCleanupIteratorPrototype;
 
     @CompilationFinal(dimensions = 1) private final JSConstructor[] simdTypeConstructors;
 
@@ -600,18 +600,18 @@ public class JSRealm {
             this.weakRefConstructor = ctor.getFunctionObject();
             this.weakRefPrototype = ctor.getPrototype();
 
-            ctor = JSFinalizationGroup.createConstructor(this);
-            this.finalizationGroupConstructor = ctor.getFunctionObject();
-            this.finalizationGroupPrototype = ctor.getPrototype();
+            ctor = JSFinalizationRegistry.createConstructor(this);
+            this.finalizationRegistryConstructor = ctor.getFunctionObject();
+            this.finalizationRegistryPrototype = ctor.getPrototype();
 
-            this.finalizationGroupCleanupIteratorPrototype = JSFinalizationGroup.createCleanupIteratorPrototype(this);
+            this.finalizationRegistryCleanupIteratorPrototype = JSFinalizationRegistry.createCleanupIteratorPrototype(this);
 
         } else {
             this.weakRefConstructor = null;
             this.weakRefPrototype = null;
-            this.finalizationGroupConstructor = null;
-            this.finalizationGroupPrototype = null;
-            this.finalizationGroupCleanupIteratorPrototype = null;
+            this.finalizationRegistryConstructor = null;
+            this.finalizationRegistryPrototype = null;
+            this.finalizationRegistryCleanupIteratorPrototype = null;
         }
 
         boolean nashornCompat = context.isOptionNashornCompatibilityMode();
@@ -871,12 +871,12 @@ public class JSRealm {
         return weakRefPrototype;
     }
 
-    public final DynamicObject getFinalizationGroupConstructor() {
-        return finalizationGroupConstructor;
+    public final DynamicObject getFinalizationRegistryConstructor() {
+        return finalizationRegistryConstructor;
     }
 
-    public final DynamicObject getFinalizationGroupPrototype() {
-        return finalizationGroupPrototype;
+    public final DynamicObject getFinalizationRegistryPrototype() {
+        return finalizationRegistryPrototype;
     }
 
     public final DynamicObject getWeakMapConstructor() {
@@ -985,8 +985,8 @@ public class JSRealm {
         return forInIteratorPrototype;
     }
 
-    public final DynamicObject getFinalizationGroupCleanupIteratorPrototype() {
-        return finalizationGroupCleanupIteratorPrototype;
+    public final DynamicObject getFinalizationRegistryCleanupIteratorPrototype() {
+        return finalizationRegistryCleanupIteratorPrototype;
     }
 
     public final DynamicObject getGeneratorObjectPrototype() {
@@ -1241,7 +1241,7 @@ public class JSRealm {
         }
         if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2021) {
             putGlobalProperty(JSWeakRef.CLASS_NAME, getWeakRefConstructor());
-            putGlobalProperty(JSFinalizationGroup.CLASS_NAME, getFinalizationGroupConstructor());
+            putGlobalProperty(JSFinalizationRegistry.CLASS_NAME, getFinalizationRegistryConstructor());
         }
         if (context.getContextOptions().isGraalBuiltin()) {
             putGraalObject();
