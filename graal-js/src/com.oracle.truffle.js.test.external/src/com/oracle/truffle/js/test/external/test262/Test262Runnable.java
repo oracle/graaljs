@@ -197,20 +197,23 @@ public class Test262Runnable extends TestRunnable {
                     "u180e",
                     "well-formed-json-stringify",
                     "WeakRef",
-                    "regexp-match-indices"
+                    "regexp-match-indices",
+                    "for-in-order",
     }));
     private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
-                    "FinalizationGroup",
+                    "FinalizationRegistry",
                     "Intl.DateTimeFormat-dayPeriod",
                     "Intl.DateTimeFormat-formatRange",
                     "Intl.DateTimeFormat-fractionalSecondDigits",
                     "Intl.Locale",
+                    "Intl.DisplayNames",
                     "IsHTMLDDA",
                     "class-methods-private",
                     "class-static-methods-private",
                     "host-gc-required",
                     "tail-call-optimization",
-                    "top-level-await"
+                    "top-level-await",
+                    "AggregateError",
     }));
     private static final Set<String> ES2020_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "Promise.allSettled",
@@ -224,6 +227,7 @@ public class Test262Runnable extends TestRunnable {
                     "numeric-separator-literal",
                     "optional-chaining",
                     "proxy-missing-checks",
+                    "for-in-order",
     }));
     private static final Set<String> ES2021_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "WeakRef",
@@ -231,7 +235,7 @@ public class Test262Runnable extends TestRunnable {
                     "class-fields-public",
                     "class-static-fields-private",
                     "class-static-fields-public",
-                    "regexp-match-indices"
+                    "regexp-match-indices",
     }));
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {
