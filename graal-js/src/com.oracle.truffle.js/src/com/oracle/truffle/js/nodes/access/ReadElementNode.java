@@ -59,7 +59,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
@@ -313,7 +312,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         return executeTypeDispatch(target, index, target, defaultValue);
     }
 
-    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop
     protected final Object executeTypeDispatch(Object target, Object index, Object receiver, Object defaultValue) {
         for (ReadElementTypeCacheNode c = typeCacheNode; c != null; c = c.typeCacheNext) {
             boolean guard = c.guard(target);
@@ -326,7 +325,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         return specialization.executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue, this);
     }
 
-    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop
     protected final Object executeTypeDispatch(Object target, int index, Object receiver, Object defaultValue) {
         for (ReadElementTypeCacheNode c = typeCacheNode; c != null; c = c.typeCacheNext) {
             boolean guard = c.guard(target);
@@ -339,7 +338,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         return specialization.executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue, this);
     }
 
-    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop
     protected final int executeTypeDispatchInt(Object target, Object index, Object receiver, Object defaultValue) throws UnexpectedResultException {
         for (ReadElementTypeCacheNode c = typeCacheNode; c != null; c = c.typeCacheNext) {
             boolean guard = c.guard(target);
@@ -352,7 +351,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         return specialization.executeWithTargetAndIndexUncheckedInt(target, index, receiver, defaultValue, this);
     }
 
-    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop
     protected final int executeTypeDispatchInt(Object target, int index, Object receiver, Object defaultValue) throws UnexpectedResultException {
         for (ReadElementTypeCacheNode c = typeCacheNode; c != null; c = c.typeCacheNext) {
             boolean guard = c.guard(target);
@@ -365,7 +364,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         return specialization.executeWithTargetAndIndexUncheckedInt(target, index, receiver, defaultValue, this);
     }
 
-    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop
     protected final double executeTypeDispatchDouble(Object target, Object index, Object receiver, Object defaultValue) throws UnexpectedResultException {
         for (ReadElementTypeCacheNode c = typeCacheNode; c != null; c = c.typeCacheNext) {
             boolean guard = c.guard(target);
@@ -378,7 +377,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         return specialization.executeWithTargetAndIndexUncheckedDouble(target, index, receiver, defaultValue, this);
     }
 
-    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop
     protected final double executeTypeDispatchDouble(Object target, int index, Object receiver, Object defaultValue) throws UnexpectedResultException {
         for (ReadElementTypeCacheNode c = typeCacheNode; c != null; c = c.typeCacheNext) {
             boolean guard = c.guard(target);
@@ -480,7 +479,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             super(next);
         }
 
-        @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+        @ExplodeLoop
         protected final Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition, JSContext root) {
             for (ArrayReadElementCacheNode c = arrayReadElementNode; c != null; c = c.arrayCacheNext) {
                 boolean guard = c.guard(target, array);
@@ -493,7 +492,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             return specialization.executeArrayGet(target, array, index, receiver, defaultValue, arrayCondition, root);
         }
 
-        @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+        @ExplodeLoop
         protected final int executeArrayGetInt(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition, JSContext root)
                         throws UnexpectedResultException {
             for (ArrayReadElementCacheNode c = arrayReadElementNode; c != null; c = c.arrayCacheNext) {
@@ -507,7 +506,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             return specialization.executeArrayGetInt(target, array, index, receiver, defaultValue, arrayCondition, root);
         }
 
-        @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+        @ExplodeLoop
         protected final double executeArrayGetDouble(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition, JSContext root)
                         throws UnexpectedResultException {
             for (ArrayReadElementCacheNode c = arrayReadElementNode; c != null; c = c.arrayCacheNext) {

@@ -54,7 +54,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.BooleanLocation;
@@ -158,7 +157,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         setValueBoolean(obj, value, obj);
     }
 
-    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop
     protected void setValue(Object thisObj, Object value, Object receiver) {
         for (SetCacheNode c = cacheNode; c != null; c = c.next) {
             if (c.isGeneric()) {
@@ -180,7 +179,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         specialize(thisObj, value).setValue(thisObj, value, receiver, this, false);
     }
 
-    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop
     protected void setValueInt(Object thisObj, int value, Object receiver) {
         for (SetCacheNode c = cacheNode; c != null; c = c.next) {
             if (c.isGeneric()) {
@@ -202,7 +201,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         specialize(thisObj, value).setValueInt(thisObj, value, receiver, this, false);
     }
 
-    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop
     protected void setValueDouble(Object thisObj, double value, Object receiver) {
         for (SetCacheNode c = cacheNode; c != null; c = c.next) {
             if (c.isGeneric()) {
@@ -224,7 +223,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         specialize(thisObj, value).setValueDouble(thisObj, value, receiver, this, false);
     }
 
-    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop
     protected void setValueBoolean(Object thisObj, boolean value, Object receiver) {
         for (SetCacheNode c = cacheNode; c != null; c = c.next) {
             if (c.isGeneric()) {
@@ -625,7 +624,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             return JSObject.castJSObject(thisObj);
         }
 
-        @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+        @ExplodeLoop
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
             DynamicObject store = getStore(thisObj);
@@ -644,7 +643,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             return setValueAndSpecialize(store, value, root);
         }
 
-        @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+        @ExplodeLoop
         @Override
         protected boolean setValueInt(Object thisObj, int value, Object receiver, PropertySetNode root, boolean guard) {
             DynamicObject store = getStore(thisObj);
@@ -667,7 +666,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             return setValueAndSpecialize(store, value, root);
         }
 
-        @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+        @ExplodeLoop
         @Override
         protected boolean setValueDouble(Object thisObj, double value, Object receiver, PropertySetNode root, boolean guard) {
             DynamicObject store = getStore(thisObj);
@@ -688,7 +687,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             return setValueAndSpecialize(store, value, root);
         }
 
-        @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+        @ExplodeLoop
         @Override
         protected boolean setValueBoolean(Object thisObj, boolean value, Object receiver, PropertySetNode root, boolean guard) {
             DynamicObject store = getStore(thisObj);

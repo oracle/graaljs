@@ -56,7 +56,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -189,7 +188,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         return getValueOrDefault(obj, obj, defaultValue);
     }
 
-    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop
     protected Object getValue(Object thisObj, Object receiver) {
         for (GetCacheNode c = cacheNode; c != null; c = c.next) {
             if (c.isGeneric()) {
@@ -208,7 +207,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         return specialize(thisObj).getValue(thisObj, receiver, this, false);
     }
 
-    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop
     protected int getValueInt(Object thisObj, Object receiver) throws UnexpectedResultException {
         for (GetCacheNode c = cacheNode; c != null; c = c.next) {
             if (c.isGeneric()) {
@@ -227,7 +226,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         return specialize(thisObj).getValueInt(thisObj, receiver, this, false);
     }
 
-    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop
     protected double getValueDouble(Object thisObj, Object receiver) throws UnexpectedResultException {
         for (GetCacheNode c = cacheNode; c != null; c = c.next) {
             if (c.isGeneric()) {
@@ -246,7 +245,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         return specialize(thisObj).getValueDouble(thisObj, receiver, this, false);
     }
 
-    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop
     protected boolean getValueBoolean(Object thisObj, Object receiver) throws UnexpectedResultException {
         for (GetCacheNode c = cacheNode; c != null; c = c.next) {
             if (c.isGeneric()) {
@@ -265,7 +264,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         return specialize(thisObj).getValueBoolean(thisObj, receiver, this, false);
     }
 
-    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop
     protected long getValueLong(Object thisObj, Object receiver) throws UnexpectedResultException {
         for (GetCacheNode c = cacheNode; c != null; c = c.next) {
             if (c.isGeneric()) {
@@ -284,7 +283,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         return specialize(thisObj).getValueLong(thisObj, receiver, this, false);
     }
 
-    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop
     protected Object getValueOrDefault(Object thisObj, Object receiver, Object defaultValue) {
         for (GetCacheNode c = cacheNode; c != null; c = c.next) {
             if (c.isGeneric()) {

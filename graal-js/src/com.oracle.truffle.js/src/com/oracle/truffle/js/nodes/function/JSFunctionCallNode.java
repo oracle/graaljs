@@ -65,7 +65,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -228,7 +227,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         return createCall(arguments[0], arguments[1], Arrays.copyOfRange(arguments, 2, arguments.length), false, false);
     }
 
-    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop
     public final Object executeCall(Object[] arguments) {
         Object function = JSArguments.getFunctionObject(arguments);
         for (AbstractCacheNode c = cacheNode; c != null; c = c.nextNode) {

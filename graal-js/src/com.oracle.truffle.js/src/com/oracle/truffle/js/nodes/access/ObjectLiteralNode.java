@@ -51,7 +51,6 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -326,7 +325,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             return executeWithHomeObject(valueNode, frame, homeObject);
         }
 
-        @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+        @ExplodeLoop
         private void execute(DynamicObject obj, Object value, JSContext context) {
             for (CacheEntry resolved = cache; resolved != null; resolved = resolved.next) {
                 if (resolved == GENERIC) {
@@ -408,7 +407,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             execute(receiver, getterV, setterV, context);
         }
 
-        @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+        @ExplodeLoop
         private void execute(DynamicObject obj, Object getterV, Object setterV, JSContext context) {
             for (CacheEntry resolved = cache; resolved != null; resolved = resolved.next) {
                 if (resolved == GENERIC) {
