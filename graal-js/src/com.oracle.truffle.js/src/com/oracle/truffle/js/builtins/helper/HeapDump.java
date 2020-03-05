@@ -62,10 +62,15 @@ public final class HeapDump {
     // https://blogs.oracle.com/sundararajan/entry/programmatically_dumping_heap_from_java
     public static void dump(String fileName, boolean live) throws IOException {
         if (JSConfig.SubstrateVM) {
-            VMRuntime.dumpHeap(fileName, live);
+            dumpSVM(fileName, live);
         } else {
             dumpHotSpot(fileName, live);
         }
+    }
+
+    // Substituted by MLE (do not remove)
+    private static void dumpSVM(String fileName, boolean live) throws IOException {
+        VMRuntime.dumpHeap(fileName, live);
     }
 
     private static void dumpHotSpot(String fileName, boolean live) throws IOException {
