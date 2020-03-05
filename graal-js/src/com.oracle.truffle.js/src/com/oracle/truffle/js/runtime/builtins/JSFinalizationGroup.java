@@ -232,7 +232,7 @@ public final class JSFinalizationGroup extends JSBuiltinObject implements JSCons
         setCleanupJobActive(finalizationGroup, true);
         JSRuntime.call(callback, Undefined.instance, new Object[]{iterator}); // could throw
         setCleanupJobActive(finalizationGroup, false);
-        JSObject.set(iterator, JSRuntime.FINALIZATION_GROUP_CLEANUP_ITERATOR_ID, false);
+        iterator.define(JSRuntime.FINALIZATION_GROUP_CLEANUP_ITERATOR_ID, Undefined.instance);
     }
 
     private static DynamicObject createFinalizationGroupCleanupIterator(JSContext context, DynamicObject finalizationGroup) {
