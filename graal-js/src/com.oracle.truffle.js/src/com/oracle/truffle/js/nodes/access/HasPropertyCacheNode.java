@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -96,6 +97,11 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
             }
         }
         deoptimize();
+        return hasPropertyAndSpecialize(thisObj);
+    }
+
+    @TruffleBoundary
+    private boolean hasPropertyAndSpecialize(Object thisObj) {
         return specialize(thisObj).hasProperty(thisObj, this);
     }
 

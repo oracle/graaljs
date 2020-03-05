@@ -176,7 +176,12 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             }
         }
         deoptimize();
-        specialize(thisObj, value).setValue(thisObj, value, receiver, this, false);
+        setValueAndSpecialize(thisObj, value, receiver);
+    }
+
+    @TruffleBoundary
+    private boolean setValueAndSpecialize(Object thisObj, Object value, Object receiver) {
+        return specialize(thisObj, value).setValue(thisObj, value, receiver, this, false);
     }
 
     @ExplodeLoop
@@ -198,6 +203,11 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             }
         }
         deoptimize();
+        setValueIntAndSpecialize(thisObj, value, receiver);
+    }
+
+    @TruffleBoundary
+    private void setValueIntAndSpecialize(Object thisObj, int value, Object receiver) {
         specialize(thisObj, value).setValueInt(thisObj, value, receiver, this, false);
     }
 
@@ -220,6 +230,11 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             }
         }
         deoptimize();
+        setValueDoubleAndSpecialize(thisObj, value, receiver);
+    }
+
+    @TruffleBoundary
+    private void setValueDoubleAndSpecialize(Object thisObj, double value, Object receiver) {
         specialize(thisObj, value).setValueDouble(thisObj, value, receiver, this, false);
     }
 
@@ -242,6 +257,11 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             }
         }
         deoptimize();
+        setValueBooleanAndSpecialize(thisObj, value, receiver);
+    }
+
+    @TruffleBoundary
+    private void setValueBooleanAndSpecialize(Object thisObj, boolean value, Object receiver) {
         specialize(thisObj, value).setValueBoolean(thisObj, value, receiver, this, false);
     }
 
