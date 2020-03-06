@@ -798,7 +798,7 @@ public class WriteElementNode extends JSTargetableNode {
         protected final boolean nonHolesArrayNeedsSlowSet(DynamicObject target, AbstractWritableArray arrayType, long index, boolean arrayCondition, WriteElementNode root) {
             assert !arrayType.isHolesType();
             if (!root.context.getArrayPrototypeNoElementsAssumption().isValid() && !root.writeOwn) {
-                if (!arrayType.hasElement(target, index, arrayCondition) && JSObject.hasProperty(target, index)) {
+                if (!arrayType.hasElement(target, index, arrayCondition)) {
                     needPrototypeBranch.enter();
                     return true;
                 }
@@ -811,7 +811,7 @@ public class WriteElementNode extends JSTargetableNode {
             if ((!root.context.getArrayPrototypeNoElementsAssumption().isValid() && !root.writeOwn) ||
                             (!root.context.getFastArrayAssumption().isValid() && JSSlowArray.isJSSlowArray(target)) ||
                             (!root.context.getFastArgumentsObjectAssumption().isValid() && JSSlowArgumentsObject.isJSSlowArgumentsObject(target))) {
-                if (!arrayType.hasElement(target, index, arrayCondition) && JSObject.hasProperty(target, index)) {
+                if (!arrayType.hasElement(target, index, arrayCondition)) {
                     needPrototypeBranch.enter();
                     return true;
                 }

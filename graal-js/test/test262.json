@@ -20,10 +20,6 @@
     "status" : "FAIL",
     "comment" : "new failures after 2020-03 update"
   }, {
-    "filePath" : "built-ins/Proxy/set/call-parameters-prototype-index.js",
-    "status" : "FAIL",
-    "comment" : "new failures after 2020-03 update"
-  }, {
     "filePath" : "built-ins/RegExp/lookBehind/alternations.js",
     "status" : "FAIL",
     "comment" : "GR-10079: Alternations in lookbehind assertion, not supported by either TRegex or Joni. However, support for these could be added to TRegex."
