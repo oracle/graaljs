@@ -4,10 +4,6 @@
     "status" : "FAIL",
     "comment" : "new failures after 2020-03 update"
   }, {
-    "filePath" : "built-ins/JSON/parse/reviver-array-non-configurable-prop-create.js",
-    "status" : "FAIL",
-    "comment" : "new failures after 2020-03 update"
-  }, {
     "filePath" : "built-ins/Object/freeze/throws-when-false.js",
     "status" : "FAIL",
     "comment" : "new failures after 2020-03 update"
