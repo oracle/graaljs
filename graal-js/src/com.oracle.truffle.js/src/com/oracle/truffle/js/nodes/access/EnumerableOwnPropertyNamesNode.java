@@ -43,20 +43,22 @@ package com.oracle.truffle.js.nodes.access;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.builtins.helper.ListGetNode;
+import com.oracle.truffle.js.builtins.helper.ListSizeNode;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
+import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
 
@@ -93,17 +95,20 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
     public abstract UnmodifiableArrayList<? extends Object> execute(DynamicObject obj);
 
     @Specialization
-    protected UnmodifiableArrayList<? extends Object> enumerableOwnPropertyNames(DynamicObject thisObj) {
-        JSClass jsclass = JSObject.getJSClass(thisObj);
+    protected UnmodifiableArrayList<? extends Object> enumerableOwnPropertyNames(DynamicObject thisObj,
+                    @Cached JSClassProfile jsclassProfile,
+                    @Cached ListSizeNode listSize,
+                    @Cached ListGetNode listGet) {
+        JSClass jsclass = jsclassProfile.getJSClass(thisObj);
         if (hasFastShapesProfile.profile(keys && !values && JSConfig.FastOwnKeys && jsclass.hasOnlyShapeProperties(thisObj))) {
             return JSShape.getEnumerablePropertyNames(thisObj.getShape());
         } else {
             boolean isProxy = JSProxy.isProxy(thisObj);
             List<Object> ownKeys = jsclass.ownPropertyKeys(thisObj);
-            int ownKeysSize = Boundaries.listSize(ownKeys);
+            int ownKeysSize = listSize.execute(ownKeys);
             SimpleArrayList<Object> properties = new SimpleArrayList<>();
             for (int i = 0; i < ownKeysSize; i++) {
-                Object key = Boundaries.listGet(ownKeys, i);
+                Object key = listGet.execute(ownKeys, i);
                 if (key instanceof String) {
                     PropertyDescriptor desc = getOwnProperty(thisObj, key);
                     if (desc != null && desc.getEnumerable()) {
