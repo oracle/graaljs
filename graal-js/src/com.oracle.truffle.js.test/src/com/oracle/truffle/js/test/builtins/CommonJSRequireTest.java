@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.test.builtins;
 
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
@@ -88,6 +89,7 @@ public class CommonJSRequireTest {
 
     private static Context testContext(Path tempFolder, OutputStream out, OutputStream err) {
         Map<String, String> options = new HashMap<>();
+        options.put(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2020");
         options.put(COMMONJS_REQUIRE_NAME, "true");
         options.put(COMMONJS_REQUIRE_CWD_NAME, tempFolder.toAbsolutePath().toString());
         return testContext(out, err, options);
@@ -419,4 +421,22 @@ public class CommonJSRequireTest {
         }
     }
 
+    @Test
+    public void testDynamicImport() throws IOException {
+        Path root = getTestRootFolder();
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        final ByteArrayOutputStream err = new ByteArrayOutputStream();
+        try (Context cx = testContext(root, out, err)) {
+
+            cx.eval(ID, "import('./a.mjs').then(x => console.log(x.hello)).catch(console.log);");
+
+            out.flush();
+            err.flush();
+            String outPrint = new String(out.toByteArray());
+            String errPrint = new String(err.toByteArray());
+
+            Assert.assertEquals("hello module!\n", outPrint);
+            Assert.assertEquals("", errPrint);
+        }
+    }
 }

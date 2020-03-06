@@ -56,6 +56,8 @@ import java.util.SplittableRandom;
 import java.util.TimeZone;
 import java.util.WeakHashMap;
 
+import com.oracle.truffle.js.builtins.commonjs.NpmCompatibleEsModuleLoader;
+import com.oracle.truffle.js.runtime.objects.DefaultEsModuleLoader;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
 
@@ -2062,70 +2064,11 @@ public class JSRealm {
     @TruffleBoundary
     private synchronized void createModuleLoader() {
         if (moduleLoader == null) {
-            moduleLoader = new JSModuleLoader() {
-                private final Map<String, JSModuleRecord> moduleMap = new HashMap<>();
-
-                private URI asURI(String specifier) {
-                    if (!specifier.contains(":")) {
-                        return null;
-                    }
-                    try {
-                        URI uri = new URI(specifier);
-                        return uri.getScheme() != null ? uri : null;
-                    } catch (URISyntaxException e) {
-                        return null;
-                    }
-                }
-
-                @Override
-                public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, String specifier) {
-                    String refPath = referrer == null ? null : referrer.getSource().getPath();
-                    try {
-                        TruffleFile moduleFile;
-                        if (refPath == null) {
-                            // Importing module source does not originate from a file.
-                            URI maybeUri = asURI(specifier);
-                            if (maybeUri != null) {
-                                moduleFile = getEnv().getPublicTruffleFile(maybeUri).getCanonicalFile();
-                            } else {
-                                moduleFile = getEnv().getPublicTruffleFile(specifier).getCanonicalFile();
-                            }
-                        } else {
-                            TruffleFile refFile = getEnv().getPublicTruffleFile(refPath);
-                            moduleFile = refFile.resolveSibling(specifier).getCanonicalFile();
-                        }
-                        String canonicalPath = moduleFile.getPath();
-                        JSModuleRecord existingModule = moduleMap.get(canonicalPath);
-                        if (existingModule != null) {
-                            return existingModule;
-                        }
-                        Source source = Source.newBuilder(JavaScriptLanguage.ID, moduleFile).name(specifier).build();
-                        JSModuleRecord newModule = getContext().getEvaluator().parseModule(getContext(), source, this);
-                        moduleMap.put(canonicalPath, newModule);
-                        return newModule;
-                    } catch (IOException | SecurityException e) {
-                        throw Errors.createErrorFromException(e);
-                    }
-                }
-
-                @Override
-                public JSModuleRecord loadModule(Source source) {
-                    String path = source.getPath();
-                    String canonicalPath;
-                    if (path == null) {
-                        // Source does not originate from a file.
-                        canonicalPath = source.getName();
-                    } else {
-                        try {
-                            TruffleFile moduleFile = getEnv().getPublicTruffleFile(path);
-                            canonicalPath = moduleFile.getCanonicalFile().getPath();
-                        } catch (IOException | SecurityException e) {
-                            throw Errors.createErrorFromException(e);
-                        }
-                    }
-                    return moduleMap.computeIfAbsent(canonicalPath, (key) -> getContext().getEvaluator().parseModule(getContext(), source, this));
-                }
-            };
+            if (context.getContextOptions().isCommonJSRequire()) {
+                moduleLoader = NpmCompatibleEsModuleLoader.create(this);
+            } else {
+                moduleLoader = DefaultEsModuleLoader.create(this);
+            }
         }
     }
 
