@@ -65,7 +65,6 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.nodes.unary.JSIsArrayNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -175,11 +174,12 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
                 if (isArray(object)) {
                     int len = (int) JSRuntime.toLength(JSObject.get(object, JSArray.LENGTH));
                     for (int i = 0; i < len; i++) {
-                        Object newElement = walk(reviverFn, object, Boundaries.stringValueOf(i));
+                        String stringIndex = String.valueOf(i);
+                        Object newElement = walk(reviverFn, object, stringIndex);
                         if (newElement == Undefined.instance) {
                             JSObject.delete(object, i);
                         } else {
-                            JSObject.set(object, i, newElement);
+                            JSRuntime.createDataProperty(object, stringIndex, newElement);
                         }
                     }
                 } else {
