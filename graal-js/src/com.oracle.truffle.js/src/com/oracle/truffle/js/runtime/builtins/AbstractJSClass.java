@@ -137,7 +137,7 @@ public abstract class AbstractJSClass extends JSClass {
     }
 
     @Override
-    public boolean preventExtensions(DynamicObject thisObj) {
+    public boolean preventExtensions(DynamicObject thisObj, boolean doThrow) {
         throw Errors.createTypeErrorNotAnObject(thisObj);
     }
 

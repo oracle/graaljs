@@ -471,7 +471,7 @@ public abstract class JSBuiltinObject extends JSClass {
 
     @Override
     @TruffleBoundary
-    public boolean setIntegrityLevel(DynamicObject thisObj, boolean freeze) {
+    public boolean setIntegrityLevel(DynamicObject thisObj, boolean freeze, boolean doThrow) {
         Shape shape = thisObj.getShape();
         if (thisObj.updateShape()) {
             shape = thisObj.getShape();
@@ -481,12 +481,12 @@ public abstract class JSBuiltinObject extends JSClass {
             thisObj.setShapeAndGrow(shape, newShape);
             thisObj.updateShape();
         }
-        return JSObject.preventExtensions(thisObj);
+        return JSObject.preventExtensions(thisObj, doThrow);
     }
 
     @TruffleBoundary
     @Override
-    public boolean preventExtensions(DynamicObject thisObj) {
+    public boolean preventExtensions(DynamicObject thisObj, boolean doThrow) {
         Shape shape = thisObj.getShape();
         if (thisObj.updateShape()) {
             shape = thisObj.getShape();

@@ -682,7 +682,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = "isJSObject(thisObj)")
         protected DynamicObject preventExtensions(DynamicObject thisObj) {
-            JSObject.preventExtensions(thisObj);
+            JSObject.preventExtensions(thisObj, true);
             return thisObj;
         }
 
@@ -737,7 +737,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected Object setIntegrityLevel(Object thisObj) {
             if (isObject.profile(JSRuntime.isObject(thisObj))) {
-                JSObject.setIntegrityLevel((DynamicObject) thisObj, freeze);
+                JSObject.setIntegrityLevel((DynamicObject) thisObj, freeze, true);
             } else {
                 if (getContext().getEcmaScriptVersion() < 6) {
                     throw createTypeErrorCalledOnNonObject(thisObj);

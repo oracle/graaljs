@@ -580,7 +580,12 @@ public final class JSObject {
 
     @TruffleBoundary
     public static boolean preventExtensions(DynamicObject obj) {
-        return JSObject.getJSClass(obj).preventExtensions(obj);
+        return preventExtensions(obj, false);
+    }
+
+    @TruffleBoundary
+    public static boolean preventExtensions(DynamicObject obj, boolean doThrow) {
+        return JSObject.getJSClass(obj).preventExtensions(obj, doThrow);
     }
 
     @TruffleBoundary
@@ -642,7 +647,12 @@ public final class JSObject {
 
     @TruffleBoundary
     public static boolean setIntegrityLevel(DynamicObject obj, boolean freeze) {
-        return JSObject.getJSClass(obj).setIntegrityLevel(obj, freeze);
+        return setIntegrityLevel(obj, freeze, false);
+    }
+
+    @TruffleBoundary
+    public static boolean setIntegrityLevel(DynamicObject obj, boolean freeze, boolean doThrow) {
+        return JSObject.getJSClass(obj).setIntegrityLevel(obj, freeze, doThrow);
     }
 
 }

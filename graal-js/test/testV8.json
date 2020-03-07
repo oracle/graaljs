@@ -578,10 +578,6 @@
     "filePath" : "mjsunit/es6/proxies-function.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/proxies-prevent-extensions.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
     "filePath" : "mjsunit/es6/proxies-prototype-handler-stackoverflow.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
