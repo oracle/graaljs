@@ -648,8 +648,8 @@ public final class JSArrayBufferView extends JSBuiltinObject {
     }
 
     @Override
-    public boolean setIntegrityLevel(DynamicObject thisObj, boolean freeze) {
-        preventExtensions(thisObj, true);
+    public boolean setIntegrityLevel(DynamicObject thisObj, boolean freeze, boolean doThrow) {
+        preventExtensions(thisObj, doThrow);
         if (freeze && typedArrayGetLength(thisObj) > 0) {
             throwCannotRedefine();
         }

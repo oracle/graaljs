@@ -392,9 +392,11 @@ public abstract class JSClass extends ObjectType {
      * ES2015 7.3.14 SetIntegrityLevel(O, level).
      */
     @TruffleBoundary
-    public boolean setIntegrityLevel(DynamicObject obj, boolean freeze) {
+    public boolean setIntegrityLevel(DynamicObject obj, boolean freeze, boolean doThrow) {
         assert JSRuntime.isObject(obj);
-        preventExtensions(obj, true);
+        if (!preventExtensions(obj, doThrow)) {
+            return false;
+        }
         Iterable<Object> keys = ownPropertyKeys(obj);
         if (freeze) {
             // FREEZE

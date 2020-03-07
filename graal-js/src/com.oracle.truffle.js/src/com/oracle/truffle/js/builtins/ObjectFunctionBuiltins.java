@@ -737,7 +737,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected Object setIntegrityLevel(Object thisObj) {
             if (isObject.profile(JSRuntime.isObject(thisObj))) {
-                JSObject.setIntegrityLevel((DynamicObject) thisObj, freeze);
+                JSObject.setIntegrityLevel((DynamicObject) thisObj, freeze, true);
             } else {
                 if (getContext().getEcmaScriptVersion() < 6) {
                     throw createTypeErrorCalledOnNonObject(thisObj);

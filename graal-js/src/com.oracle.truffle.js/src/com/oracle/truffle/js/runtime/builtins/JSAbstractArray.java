@@ -789,8 +789,8 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     }
 
     @Override
-    public boolean setIntegrityLevel(DynamicObject thisObj, boolean freeze) {
-        boolean result = super.setIntegrityLevel(thisObj, freeze);
+    public boolean setIntegrityLevel(DynamicObject thisObj, boolean freeze, boolean doThrow) {
+        boolean result = super.setIntegrityLevel(thisObj, freeze, doThrow);
         ScriptArray arr = arrayGetArrayType(thisObj);
         arraySetArrayType(thisObj, freeze ? arr.freeze() : arr.seal());
         assert testIntegrityLevel(thisObj, freeze);

@@ -299,7 +299,7 @@ public final class JSModuleNamespace extends JSBuiltinObject {
 
     @Override
     @TruffleBoundary
-    public boolean setIntegrityLevel(DynamicObject obj, boolean freeze) {
+    public boolean setIntegrityLevel(DynamicObject obj, boolean freeze, boolean doThrow) {
         if (freeze) {
             Map<String, ExportResolution> exports = getExports(obj);
             if (!exports.isEmpty()) {
