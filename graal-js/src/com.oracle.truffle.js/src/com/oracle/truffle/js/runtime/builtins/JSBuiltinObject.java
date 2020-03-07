@@ -486,7 +486,7 @@ public abstract class JSBuiltinObject extends JSClass {
 
     @TruffleBoundary
     @Override
-    public boolean preventExtensions(DynamicObject thisObj) {
+    public boolean preventExtensions(DynamicObject thisObj, boolean doThrow) {
         Shape shape = thisObj.getShape();
         if (thisObj.updateShape()) {
             shape = thisObj.getShape();

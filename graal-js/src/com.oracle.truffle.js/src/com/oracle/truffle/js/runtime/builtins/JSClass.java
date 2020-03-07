@@ -135,7 +135,7 @@ public abstract class JSClass extends ObjectType {
      * 9.1.4 [[PreventExtensions]] ().
      */
     @TruffleBoundary
-    public abstract boolean preventExtensions(DynamicObject thisObj);
+    public abstract boolean preventExtensions(DynamicObject thisObj, boolean doThrow);
 
     /**
      * 9.1.5 [[GetOwnProperty]] (P).
@@ -394,9 +394,7 @@ public abstract class JSClass extends ObjectType {
     @TruffleBoundary
     public boolean setIntegrityLevel(DynamicObject obj, boolean freeze) {
         assert JSRuntime.isObject(obj);
-        if (!preventExtensions(obj)) {
-            return false;
-        }
+        preventExtensions(obj, true);
         Iterable<Object> keys = ownPropertyKeys(obj);
         if (freeze) {
             // FREEZE

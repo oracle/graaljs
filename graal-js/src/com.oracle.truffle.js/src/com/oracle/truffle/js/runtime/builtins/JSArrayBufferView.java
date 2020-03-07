@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -649,7 +649,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
 
     @Override
     public boolean setIntegrityLevel(DynamicObject thisObj, boolean freeze) {
-        preventExtensions(thisObj);
+        preventExtensions(thisObj, true);
         if (freeze && typedArrayGetLength(thisObj) > 0) {
             throwCannotRedefine();
         }

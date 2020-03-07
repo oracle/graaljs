@@ -580,7 +580,12 @@ public final class JSObject {
 
     @TruffleBoundary
     public static boolean preventExtensions(DynamicObject obj) {
-        return JSObject.getJSClass(obj).preventExtensions(obj);
+        return preventExtensions(obj, false);
+    }
+
+    @TruffleBoundary
+    public static boolean preventExtensions(DynamicObject obj, boolean doThrow) {
+        return JSObject.getJSClass(obj).preventExtensions(obj, doThrow);
     }
 
     @TruffleBoundary

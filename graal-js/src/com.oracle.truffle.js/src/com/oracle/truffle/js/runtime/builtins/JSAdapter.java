@@ -275,7 +275,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     }
 
     @Override
-    public boolean preventExtensions(DynamicObject thisObj) {
+    public boolean preventExtensions(DynamicObject thisObj, boolean doThrow) {
         throw typeError();
     }
 

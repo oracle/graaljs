@@ -682,7 +682,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = "isJSObject(thisObj)")
         protected DynamicObject preventExtensions(DynamicObject thisObj) {
-            JSObject.preventExtensions(thisObj);
+            JSObject.preventExtensions(thisObj, true);
             return thisObj;
         }
 

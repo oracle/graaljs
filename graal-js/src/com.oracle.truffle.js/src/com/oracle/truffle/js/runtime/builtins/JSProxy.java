@@ -503,13 +503,13 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
 
     @TruffleBoundary
     @Override
-    public boolean preventExtensions(DynamicObject thisObj) {
+    public boolean preventExtensions(DynamicObject thisObj, boolean doThrow) {
         DynamicObject handler = getHandlerChecked(thisObj);
         Object target = getTarget(thisObj);
         Object preventExtensionsFn = getTrapFromObject(handler, PREVENT_EXTENSIONS);
         if (preventExtensionsFn == Undefined.instance) {
             if (JSObject.isJSObject(target)) {
-                return JSObject.preventExtensions((DynamicObject) target);
+                return JSObject.preventExtensions((DynamicObject) target, doThrow);
             } else {
                 return true; // unsupported foreign object
             }
@@ -521,6 +521,9 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             if (targetIsExtensible) {
                 throw Errors.createTypeError("target is extensible");
             }
+        }
+        if (doThrow && !booleanTrapResult) {
+            throw Errors.createTypeError("'preventExtensions' on proxy: trap returned falsish");
         }
         return booleanTrapResult;
     }
