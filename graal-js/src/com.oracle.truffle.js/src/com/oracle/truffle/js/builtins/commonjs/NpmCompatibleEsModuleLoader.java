@@ -42,18 +42,24 @@ package com.oracle.truffle.js.builtins.commonjs;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.DefaultEsModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.List;
+
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.*;
 
 public final class NpmCompatibleEsModuleLoader extends DefaultEsModuleLoader {
 
@@ -78,10 +84,9 @@ public final class NpmCompatibleEsModuleLoader extends DefaultEsModuleLoader {
     @TruffleBoundary
     @Override
     public JSModuleRecord resolveImportedModule(ScriptOrModule referencingModule, String specifier) {
-        String resolvedUrl = resolveURL(referencingModule, specifier);
         try {
-            TruffleFile file = getTruffleFile(resolvedUrl);
-            return loadModuleFromUrl(specifier, file, resolvedUrl);
+            TruffleFile file = resolveURL(referencingModule, specifier);
+            return loadModuleFromUrl(specifier, file, file.getPath());
         } catch (IOException e) {
             throw Errors.createErrorFromException(e);
         }
@@ -92,9 +97,9 @@ public final class NpmCompatibleEsModuleLoader extends DefaultEsModuleLoader {
         return realm.getEnv().getPublicTruffleFile(resolvedUrl).getCanonicalFile();
     }
 
-    private String resolveURL(ScriptOrModule referencingModule, String specifier) {
+    private TruffleFile resolveURL(ScriptOrModule referencingModule, String specifier) {
         // 1. Let resolvedURL be undefined.
-        String resolvedUrl = null;
+        TruffleFile resolvedUrl = null;
 
         // 2. If specifier is a valid URL, then
         try {
@@ -112,39 +117,99 @@ public final class NpmCompatibleEsModuleLoader extends DefaultEsModuleLoader {
         // 4. Otherwise, if specifier starts with "./" or "../", then
         } else if (isPathFileName(specifier)) {
             // 4.1 Set resolvedURL to the URL resolution of specifier relative to parentURL.
-            String refPath = referencingModule == null ? null : referencingModule.getSource().getPath();
-            if (refPath == null) {
-                refPath = realm.getContext().getContextOptions().getRequireCwd();
-            }
-            resolvedUrl = refPath + "/" + specifier;
+            resolvedUrl = joinPaths(realm.getEnv(), getFullPath(referencingModule), specifier);
 
         // 5. Otherwise
         } else {
             // 5.1 Note: specifier is now a bare specifier.
             // 5.2 Set resolvedURL the result of PACKAGE_RESOLVE(specifier, parentURL).
-            throw new UnsupportedOperationException("TODO");
+            resolvedUrl = packageResolve(specifier, referencingModule);
         }
 
         assert resolvedUrl != null;
         // 6. If resolvedURL contains any percent encodings of "/" or "\" ("%2f" and "%5C" respectively), then
-        if (resolvedUrl.contains("%2f") || resolvedUrl.contains("%5C")) {
+        // TODO use URL
+        if (resolvedUrl.toString().contains("%2f") || resolvedUrl.toString().contains("%5C")) {
             // 6.1 Throw an Invalid Module Specifier error.
-            fail(specifier);
+            throw fail(specifier);
         }
 
         // 7. If resolvedURL does not end with a trailing "/" and the file at resolvedURL does not exist, then
-        if (!resolvedUrl.endsWith("/") && !realm.getEnv().getPublicTruffleFile(resolvedUrl).exists()) {
+        if (!resolvedUrl.endsWith("/") && !resolvedUrl.exists()) {
             // 7.1 Throw an Invalid Module Specifier error.
-            fail(specifier);
+            throw fail(specifier);
         }
 
         return resolvedUrl;
     }
 
+    private TruffleFile getFullPath(ScriptOrModule referencingModule) {
+        String refPath = referencingModule == null ? null : referencingModule.getSource().getPath();
+        if (refPath == null) {
+            refPath = realm.getContext().getContextOptions().getRequireCwd();
+        }
+        return realm.getEnv().getPublicTruffleFile(refPath);
+    }
 
-    @Override
-    public JSModuleRecord loadModule(Source moduleSource) {
-        return null;
+    /**
+     * PACKAGE_RESOLVE(packageSpecifier, parentURL)
+     *
+     * @link https://nodejs.org/api/esm.html#esm_resolver_algorithm
+     *
+     * @param packageSpecifier
+     * @param referencingModule
+     * @return
+     */
+    private TruffleFile packageResolve(String packageSpecifier, ScriptOrModule referencingModule) {
+        // 1. Let packageName be undefined.
+        // 2. Let packageSubPath be undefined.
+        TruffleLanguage.Env env = realm.getEnv();
+        String packageName = null;
+        String packageSubPath = null;
+
+        // 3. If packageSpecifier is an empty string, then
+        if (packageSpecifier.isEmpty()) {
+            // 3,1 Throw an Invalid Module Specifier error.
+            throw fail(packageSpecifier);
+        }
+        // 4. Otherwise,
+        // 4.1 If packageSpecifier does not contain a "/" separator, then
+        // 4.1.1 Throw an Invalid Module Specifier error.
+        // 4.2 Set packageName to the substring of packageSpecifier until the second "/" separator or the end of the string.
+        // XXX(db) spec not clear here
+        if (!packageSpecifier.contains("/")) {
+            packageName = packageSpecifier;
+        }
+        // 5. If packageName starts with "." or contains "\" or "%", then
+        if (packageName.charAt(0) == '.') {
+            // 5,1 Throw an Invalid Module Specifier error.
+            throw fail(packageSpecifier);
+        }
+        // 6-12. Let's skip subpackages for now
+        TruffleFile mainPackageFolder = getFullPath(referencingModule);
+        List<TruffleFile> nodeModulesPaths = getNodeModulesPaths(env, mainPackageFolder);
+
+        for (TruffleFile modulePath : nodeModulesPaths) {
+            TruffleFile moduleFolder = joinPaths(env, modulePath, packageSpecifier);
+            TruffleFile packageJson = joinPaths(env, moduleFolder,  "package.json");
+            if (CommonJSResolution.fileExists(packageJson)) {
+                DynamicObject jsonObj = loadJsonObject(packageJson, realm.getContext());
+                if (JSObject.isJSObject(jsonObj)) {
+                    Object main = JSObject.get(jsonObj, "main");
+                    if (!JSRuntime.isString(main)) {
+                        return loadIndex(env, moduleFolder);
+                    }
+                    TruffleFile mainPackageFile = joinPaths(env, moduleFolder, JSRuntime.safeToString(main));
+                    TruffleFile asFile = loadAsFile(env, mainPackageFile);
+                    if (asFile != null) {
+                        return asFile;
+                    } else {
+                        return loadIndex(env, mainPackageFile);
+                    }
+                }
+            }
+        }
+        throw fail(packageSpecifier);
     }
 
     @TruffleBoundary
@@ -153,6 +218,6 @@ public final class NpmCompatibleEsModuleLoader extends DefaultEsModuleLoader {
     }
 
     private static boolean isPathFileName(String moduleIdentifier) {
-        return moduleIdentifier.startsWith("/") || moduleIdentifier.startsWith("./") || moduleIdentifier.startsWith("../");
+        return moduleIdentifier.startsWith("./") || moduleIdentifier.startsWith("../");
     }
 }

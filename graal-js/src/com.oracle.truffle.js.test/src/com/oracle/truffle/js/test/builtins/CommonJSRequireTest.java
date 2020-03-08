@@ -140,6 +140,26 @@ public class CommonJSRequireTest {
         }
     }
 
+    private void runAndExpectOutput(String src, String expectedOutput) throws IOException {
+        Path root = getTestRootFolder();
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        final ByteArrayOutputStream err = new ByteArrayOutputStream();
+        try (Context cx = testContext(root, out, err)) {
+
+            cx.eval(ID, src);
+
+            out.flush();
+            err.flush();
+            String outPrint = new String(out.toByteArray());
+            String errPrint = new String(err.toByteArray());
+
+            Assert.assertEquals(expectedOutput, outPrint);
+            Assert.assertEquals("", errPrint);
+        }
+    }
+
+    // ##### CommonJs Modules
+
     @Test
     public void absoluteFilename() {
         Path f = getTestRootFolder();
@@ -421,22 +441,27 @@ public class CommonJSRequireTest {
         }
     }
 
+    // ##### ES Modules
+
     @Test
-    public void testDynamicImport() throws IOException {
-        Path root = getTestRootFolder();
-        final ByteArrayOutputStream out = new ByteArrayOutputStream();
-        final ByteArrayOutputStream err = new ByteArrayOutputStream();
-        try (Context cx = testContext(root, out, err)) {
-
-            cx.eval(ID, "import('./a.mjs').then(x => console.log(x.hello)).catch(console.log);");
-
-            out.flush();
-            err.flush();
-            String outPrint = new String(out.toByteArray());
-            String errPrint = new String(err.toByteArray());
-
-            Assert.assertEquals("hello module!\n", outPrint);
-            Assert.assertEquals("", errPrint);
-        }
+    public void testDynamicImportFile() throws IOException {
+        final String src = "import('./a.mjs').then(x => console.log(x.hello)).catch(console.log);";
+        final String out = "hello module!\n";
+        runAndExpectOutput(src, out);
     }
+
+    @Test
+    public void testDynamicImportModule() throws IOException {
+        final String src = "import('esm-basic').then(x => console.log(x.hello)).catch(console.log);";
+        final String out = "hello esm-module!\n";
+        runAndExpectOutput(src, out);
+    }
+
+    @Test
+    public void testDynamicImportModuleNested() throws IOException {
+        final String src = "import('esm-nested').then(x => console.log(x.hi)).catch(console.log);";
+        final String out = "hello esm-nested-module! hello esm-module!\n";
+        runAndExpectOutput(src, out);
+    }
+
 }

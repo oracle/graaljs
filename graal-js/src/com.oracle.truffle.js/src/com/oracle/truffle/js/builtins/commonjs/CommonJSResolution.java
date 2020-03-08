@@ -182,7 +182,7 @@ final class CommonJSResolution {
         return null;
     }
 
-    private static TruffleFile loadIndex(TruffleLanguage.Env env, TruffleFile modulePath) {
+    public static TruffleFile loadIndex(TruffleLanguage.Env env, TruffleFile modulePath) {
         /* @formatter:off
          *
          * LOAD_INDEX(X)
@@ -206,7 +206,7 @@ final class CommonJSResolution {
         return null;
     }
 
-    private static TruffleFile loadAsFile(TruffleLanguage.Env env, TruffleFile modulePath) {
+    static TruffleFile loadAsFile(TruffleLanguage.Env env, TruffleFile modulePath) {
         /* @formatter:off
          *
          * LOAD_AS_FILE(X)
@@ -235,7 +235,7 @@ final class CommonJSResolution {
         return null;
     }
 
-    private static List<TruffleFile> getNodeModulesPaths(TruffleLanguage.Env env, TruffleFile path) {
+    public static List<TruffleFile> getNodeModulesPaths(TruffleLanguage.Env env, TruffleFile path) {
         List<TruffleFile> list = new ArrayList<>();
         List<TruffleFile> paths = getAllParentPaths(path);
         for (TruffleFile p : paths) {
@@ -292,7 +292,7 @@ final class CommonJSResolution {
         return null;
     }
 
-    private static DynamicObject loadJsonObject(TruffleFile jsonFile, JSContext context) {
+    public static DynamicObject loadJsonObject(TruffleFile jsonFile, JSContext context) {
         try {
             if (fileExists(jsonFile)) {
                 Source source = null;
@@ -325,7 +325,7 @@ final class CommonJSResolution {
         }
     }
 
-    private static boolean fileExists(TruffleFile modulePath) {
+    public static boolean fileExists(TruffleFile modulePath) {
         return modulePath.exists() && modulePath.isRegularFile();
     }
 
@@ -333,7 +333,7 @@ final class CommonJSResolution {
         return moduleIdentifier.startsWith("/") || moduleIdentifier.startsWith("./") || moduleIdentifier.startsWith("../");
     }
 
-    private static TruffleFile joinPaths(TruffleLanguage.Env env, TruffleFile p1, String p2) {
+    public static TruffleFile joinPaths(TruffleLanguage.Env env, TruffleFile p1, String p2) {
         Objects.requireNonNull(p1);
         String pathSeparator = env.getFileNameSeparator();
         String pathName = p1.normalize().toString();
