@@ -348,7 +348,7 @@ public final class JSRuntime {
         } else if (interop.isBoolean(tObj) || interop.isString(tObj) || interop.isNumber(tObj)) {
             return JSInteropUtil.toPrimitiveOrDefault(tObj, Null.instance, interop, null);
         } else {
-            return JSRuntime.foreignToString(tObj, depth, false);
+            return JSRuntime.foreignToString(tObj, depth, true);
         }
     }
 
@@ -933,7 +933,7 @@ public final class JSRuntime {
             return safeToStringImpl(((InteropFunction) value).getFunction(), depth, parent, quoteString);
         } else if (value instanceof TruffleObject) {
             assert !isJSNative(value) : value;
-            return foreignToString(value, depth, true);
+            return foreignToString(value, depth, false);
         } else {
             return String.valueOf(value);
         }
@@ -1066,10 +1066,10 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static String foreignToString(Object value) {
-        return foreignToString(value, TO_STRING_MAX_DEPTH, false);
+        return foreignToString(value, TO_STRING_MAX_DEPTH, true);
     }
 
-    private static String foreignToString(Object value, int depth, boolean avoidSideeffects) {
+    private static String foreignToString(Object value, int depth, boolean allowSideEffects) {
         CompilerAsserts.neverPartOfCompilation();
         TruffleLanguage.Env env;
         try {
@@ -1101,15 +1101,12 @@ public final class JSRuntime {
                 } else {
                     return "JavaObject[" + clazz.getTypeName() + "]";
                 }
-            } else if (interop.isExecutable(value)) {
-                return "Executable";
-            } else if (interop.hasMembers(value)) {
-                return foreignObjectToString(value, depth, avoidSideeffects);
-            } else if (interop.isPointer(value)) {
-                long pointer = interop.asPointer(value);
-                return "Pointer[0x" + Long.toHexString(pointer) + "]";
+            } else if (interop.isMetaObject(value)) {
+                return InteropLibrary.getFactory().getUncached().asString(interop.getMetaQualifiedName(value));
+            } else if (interop.hasMembers(value) && !interop.isExecutable(value)) {
+                return foreignObjectToString(value, depth, allowSideEffects);
             } else {
-                return "{}";
+                return InteropLibrary.getFactory().getUncached().asString(interop.toDisplayString(value, allowSideEffects));
             }
         } catch (InteropException e) {
             return "Object";
@@ -1147,11 +1144,11 @@ public final class JSRuntime {
         return sb.toString();
     }
 
-    private static String foreignObjectToString(Object truffleObject, int depth, boolean avoidSideeffects) throws InteropException {
+    private static String foreignObjectToString(Object truffleObject, int depth, boolean allowSideEffects) throws InteropException {
         CompilerAsserts.neverPartOfCompilation();
         InteropLibrary objInterop = InteropLibrary.getFactory().getUncached(truffleObject);
         assert objInterop.hasMembers(truffleObject);
-        if (!avoidSideeffects && objInterop.isMemberInvocable(truffleObject, TO_STRING)) {
+        if (allowSideEffects && objInterop.isMemberInvocable(truffleObject, TO_STRING)) {
             return objInterop.invokeMember(truffleObject, TO_STRING).toString();
         }
         Object keys = objInterop.getMembers(truffleObject);

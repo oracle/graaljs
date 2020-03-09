@@ -656,8 +656,9 @@ public final class Errors {
 
     private static String toDisplayStringSafe(Object receiver) {
         CompilerAsserts.neverPartOfCompilation();
+        InteropLibrary interop = InteropLibrary.getFactory().getUncached();
         try {
-            return InteropLibrary.getFactory().getUncached().asString(InteropLibrary.getFactory().getUncached().toDisplayString(receiver, false));
+            return interop.asString(interop.toDisplayString(receiver, false));
         } catch (Exception e) {
             // ignore
             return "foreign object";
