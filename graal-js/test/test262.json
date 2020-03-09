@@ -2233,10 +2233,6 @@
     "status" : "FAIL",
     "comment" : "new failures after 2020-03 update"
   }, {
-    "filePath" : "language/expressions/optional-chaining/optional-call-preserves-this.js",
-    "status" : "FAIL",
-    "comment" : "new failures after 2020-03 update"
-  }, {
     "filePath" : "language/expressions/postfix-decrement/target-cover-newtarget.js",
     "ecmaVersion" : {
       "minVersion" : 11
