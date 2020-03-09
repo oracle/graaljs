@@ -41,6 +41,8 @@
 package com.oracle.truffle.js.test.builtins;
 
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
@@ -140,7 +142,7 @@ public class CommonJSRequireTest {
         }
     }
 
-    private void runAndExpectOutput(String src, String expectedOutput) throws IOException {
+    private void runAndExpectOutput(String src, String expectedOutput, String expectedErr) throws IOException {
         Path root = getTestRootFolder();
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
         final ByteArrayOutputStream err = new ByteArrayOutputStream();
@@ -154,8 +156,12 @@ public class CommonJSRequireTest {
             String errPrint = new String(err.toByteArray());
 
             Assert.assertEquals(expectedOutput, outPrint);
-            Assert.assertEquals("", errPrint);
+            Assert.assertEquals(expectedErr, errPrint);
         }
+    }
+
+    private void runAndExpectOutput(String src, String expectedOutput) throws IOException {
+        runAndExpectOutput(src, expectedOutput, "");
     }
 
     // ##### CommonJs Modules
@@ -276,6 +282,7 @@ public class CommonJSRequireTest {
                             "a done\n" +
                             "in main, a.done = true, b.done = true\n", outPrint);
             Assert.assertEquals("", errPrint);
+
             Assert.assertEquals(42, js.asInt());
         }
     }
@@ -444,6 +451,14 @@ public class CommonJSRequireTest {
     // ##### ES Modules
 
     @Test
+    public void testDynamicImportAbsoluteURL() throws IOException {
+        String absolutePath = getTestRootFolder().toAbsolutePath().toString();
+        final String src = "import('file://" + absolutePath + "/a.mjs').then(x => console.log(x.hello)).catch(console.log);";
+        final String out = "hello module!\n";
+        runAndExpectOutput(src, out);
+    }
+
+    @Test
     public void testDynamicImportFile() throws IOException {
         final String src = "import('./a.mjs').then(x => console.log(x.hello)).catch(console.log);";
         final String out = "hello module!\n";
@@ -464,4 +479,31 @@ public class CommonJSRequireTest {
         runAndExpectOutput(src, out);
     }
 
+    @Test
+    public void unknownEsModule() throws IOException {
+        final String src = "import('unknown').then(x => {throw 'unexpected'}).catch(console.log);";
+        final String out = "TypeError: Cannot load module: 'unknown'\n";
+        runAndExpectOutput(src, out);
+    }
+
+    @Test
+    public void unknownEsFile() throws IOException {
+        final String src = "import('./unknown.mjs').then(x => {throw 'unexpected'}).catch(console.log);";
+        final String out = "TypeError: Cannot load module: './unknown.mjs'\n";
+        runAndExpectOutput(src, out);
+    }
+
+    @Test
+    public void unsupportedUrl() throws IOException {
+        final String src = "import('https://unpkg.com/@esm/ms').then(x => {throw 'unexpected'}).catch(console.log);";
+        final String out = "TypeError: HTTP URLs are not supported. Only file:// urls are supported.\n";
+        runAndExpectOutput(src, out);
+    }
+
+    @Test
+    public void dontImportCommonJs() throws IOException {
+        final String src = "import('with-package').then(x => {throw 'unexpected'}).catch(console.log);";
+        final String out = "TypeError: do not use import() to load non-ES modules.\n";
+        runAndExpectOutput(src, out);
+    }
 }

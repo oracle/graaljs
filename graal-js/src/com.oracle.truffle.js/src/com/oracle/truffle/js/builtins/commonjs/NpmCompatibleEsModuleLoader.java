@@ -53,6 +53,8 @@ import com.oracle.truffle.js.runtime.objects.DefaultEsModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
+import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.sun.org.apache.bcel.internal.generic.JSR;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -103,11 +105,16 @@ public final class NpmCompatibleEsModuleLoader extends DefaultEsModuleLoader {
 
         // 2. If specifier is a valid URL, then
         try {
-            new URL(specifier);
-            // currently we don't support URLs
-            throw new UnsupportedOperationException("TODO");
+            URL urlSpecifier = new URL(specifier);
+
+            if (!"file".equals(urlSpecifier.getProtocol())) {
+                // we don't support URLs
+                throw failMessage("HTTP URLs are not supported. Only file:// urls are supported.");
+            } else {
+                return realm.getEnv().getPublicTruffleFile(urlSpecifier.getPath());
+            }
         } catch (MalformedURLException e) {
-            // not an URL. Keep parsing.
+            // not a valid URL. Try parsing as path or module name.
         }
         // 3. Otherwise, if specifier starts with "/", then
         if (specifier.charAt(0) == '/') {
@@ -128,7 +135,6 @@ public final class NpmCompatibleEsModuleLoader extends DefaultEsModuleLoader {
 
         assert resolvedUrl != null;
         // 6. If resolvedURL contains any percent encodings of "/" or "\" ("%2f" and "%5C" respectively), then
-        // TODO use URL
         if (resolvedUrl.toString().contains("%2f") || resolvedUrl.toString().contains("%5C")) {
             // 6.1 Throw an Invalid Module Specifier error.
             throw fail(specifier);
@@ -196,6 +202,12 @@ public final class NpmCompatibleEsModuleLoader extends DefaultEsModuleLoader {
                 DynamicObject jsonObj = loadJsonObject(packageJson, realm.getContext());
                 if (JSObject.isJSObject(jsonObj)) {
                     Object main = JSObject.get(jsonObj, "main");
+                    Object type = JSObject.get(jsonObj, "type");
+                    if (type == Undefined.instance || !JSRuntime.isString(type)) {
+                        throw failMessage("do not use import() to load non-ES modules.");
+                    } else if (!"module".equals(JSRuntime.safeToString(type))) {
+                        throw failMessage("do not use import() to load non-ES modules.");
+                    }
                     if (!JSRuntime.isString(main)) {
                         return loadIndex(env, moduleFolder);
                     }
@@ -213,8 +225,13 @@ public final class NpmCompatibleEsModuleLoader extends DefaultEsModuleLoader {
     }
 
     @TruffleBoundary
+    private static JSException failMessage(String message) {
+        return JSException.create(JSErrorType.TypeError, message);
+    }
+
+    @TruffleBoundary
     private static JSException fail(String moduleIdentifier) {
-        return JSException.create(JSErrorType.TypeError, "Cannot find module: '" + moduleIdentifier + "'");
+        return failMessage("Cannot load module: '" + moduleIdentifier + "'");
     }
 
     private static boolean isPathFileName(String moduleIdentifier) {
