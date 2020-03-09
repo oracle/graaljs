@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,9 +41,9 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -81,7 +81,7 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
         this.hasOwnProperty = hasOwnProperty;
     }
 
-    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop
     public boolean hasProperty(Object thisObj) {
         for (HasCacheNode c = cacheNode; c != null; c = c.next) {
             if (c.isGeneric()) {
@@ -97,6 +97,11 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
             }
         }
         deoptimize();
+        return hasPropertyAndSpecialize(thisObj);
+    }
+
+    @TruffleBoundary
+    private boolean hasPropertyAndSpecialize(Object thisObj) {
         return specialize(thisObj).hasProperty(thisObj, this);
     }
 

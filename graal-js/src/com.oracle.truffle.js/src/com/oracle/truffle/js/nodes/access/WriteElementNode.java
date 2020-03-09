@@ -61,7 +61,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -416,7 +415,7 @@ public class WriteElementNode extends JSTargetableNode {
         executeWithTargetAndIndexAndValue(target, index, value, target);
     }
 
-    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop
     public final void executeWithTargetAndIndexAndValue(Object target, Object index, Object value, Object receiver) {
         for (WriteElementTypeCacheNode c = typeCacheNode; c != null; c = c.typeCacheNext) {
             boolean guard = c.guard(target);
@@ -430,7 +429,7 @@ public class WriteElementNode extends JSTargetableNode {
         specialization.executeWithTargetAndIndexUnguarded(target, index, value, receiver, this);
     }
 
-    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop
     public final void executeWithTargetAndIndexAndValue(Object target, int index, Object value, Object receiver) {
         for (WriteElementTypeCacheNode c = typeCacheNode; c != null; c = c.typeCacheNext) {
             boolean guard = c.guard(target);
@@ -597,7 +596,7 @@ public class WriteElementNode extends JSTargetableNode {
             return isObjectNode.executeBoolean(target);
         }
 
-        @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+        @ExplodeLoop
         private boolean executeSetArray(DynamicObject targetObject, ScriptArray array, long index, Object value, boolean arrayCondition, WriteElementNode root) {
             for (ArrayWriteElementCacheNode c = arrayWriteElementNode; c != null; c = c.arrayCacheNext) {
                 boolean guard = c.guard(targetObject, array);
@@ -819,7 +818,7 @@ public class WriteElementNode extends JSTargetableNode {
             return false;
         }
 
-        @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+        @ExplodeLoop
         private boolean executeRecursive(DynamicObject targetObject, ScriptArray array, long index, Object value, boolean arrayCondition, WriteElementNode root) {
             for (ArrayWriteElementCacheNode c = recursiveWrite; c != null; c = c.arrayCacheNext) {
                 boolean guard = c.guard(targetObject, array);

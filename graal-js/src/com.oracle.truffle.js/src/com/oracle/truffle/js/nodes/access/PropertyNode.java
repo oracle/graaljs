@@ -139,7 +139,7 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
     }
 
     public Object executeWithTarget(Object targetValue, Object receiverValue) {
-        return cache.getValue(targetValue, receiverValue);
+        return cache.getValueOrUndefined(targetValue, receiverValue);
     }
 
     @Override
