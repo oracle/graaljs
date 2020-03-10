@@ -2229,10 +2229,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
-    "filePath" : "language/expressions/object/literal-property-name-bigint.js",
-    "status" : "FAIL",
-    "comment" : "new failures after 2020-03 update"
-  }, {
     "filePath" : "language/expressions/postfix-decrement/target-cover-newtarget.js",
     "ecmaVersion" : {
       "minVersion" : 11
