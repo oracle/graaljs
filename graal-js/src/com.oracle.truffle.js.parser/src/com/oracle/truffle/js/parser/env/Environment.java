@@ -139,11 +139,11 @@ public abstract class Environment {
         return findInternalSlot(FunctionEnvironment.DYNAMIC_SCOPE_IDENTIFIER);
     }
 
-    protected final JavaScriptNode createLocal(FrameSlot frameSlot, int level, int scopeLevel) {
+    public final JavaScriptNode createLocal(FrameSlot frameSlot, int level, int scopeLevel) {
         return factory.createLocal(frameSlot, level, scopeLevel, getParentSlots(level, scopeLevel), false);
     }
 
-    protected final JavaScriptNode createLocal(FrameSlot frameSlot, int level, int scopeLevel, boolean checkTDZ) {
+    public final JavaScriptNode createLocal(FrameSlot frameSlot, int level, int scopeLevel, boolean checkTDZ) {
         return factory.createLocal(frameSlot, level, scopeLevel, getParentSlots(level, scopeLevel), checkTDZ);
     }
 
@@ -462,11 +462,31 @@ public abstract class Environment {
         return createLocal(current.function().getArgumentsSlot(), frameLevel, scopeLevel);
     }
 
-    public Environment getParent() {
+    public final Environment getParent() {
         return parent;
     }
 
     public abstract FunctionEnvironment function();
+
+    public final Environment getParentAt(int frameLevel, int scopeLevel) {
+        Environment current = this;
+        int currentFrameLevel = 0;
+        int currentScopeLevel = 0;
+        do {
+            if (currentFrameLevel == frameLevel && currentScopeLevel == scopeLevel) {
+                return current;
+            }
+            if (current instanceof FunctionEnvironment) {
+                currentFrameLevel++;
+                currentScopeLevel = 0;
+            } else if (current instanceof BlockEnvironment) {
+                currentScopeLevel++;
+            }
+            current = current.getParent();
+        } while (current != null);
+
+        return null;
+    }
 
     public VarRef createTempVar() {
         FrameSlot var = declareTempVar("tmp");

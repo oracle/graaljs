@@ -162,6 +162,7 @@ import com.oracle.truffle.js.nodes.unary.VoidNode;
 import com.oracle.truffle.js.parser.env.BlockEnvironment;
 import com.oracle.truffle.js.parser.env.DebugEnvironment;
 import com.oracle.truffle.js.parser.env.Environment;
+import com.oracle.truffle.js.parser.env.Environment.AbstractFrameVarRef;
 import com.oracle.truffle.js.parser.env.Environment.VarRef;
 import com.oracle.truffle.js.parser.env.EvalEnvironment;
 import com.oracle.truffle.js.parser.env.FunctionEnvironment;
@@ -2780,7 +2781,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode insertPrivateBrandCheck(JavaScriptNode base, VarRef privateNameVar) {
         FrameSlot frameSlot = privateNameVar.getFrameSlot();
         if (JSFrameUtil.needsPrivateBrandCheck(frameSlot)) {
-            JavaScriptNode constructor = environment.findLocalVar(ClassNode.PRIVATE_CONSTRUCTOR_BINDING_NAME).createReadNode();
+            int frameLevel = ((AbstractFrameVarRef) privateNameVar).getFrameLevel();
+            int scopeLevel = ((AbstractFrameVarRef) privateNameVar).getScopeLevel();
+            Environment memberEnv = environment.getParentAt(frameLevel, scopeLevel);
+            FrameSlot constructorSlot = memberEnv.getBlockFrameDescriptor().findFrameSlot(ClassNode.PRIVATE_CONSTRUCTOR_BINDING_NAME);
+            JavaScriptNode constructor = environment.createLocal(constructorSlot, frameLevel, scopeLevel);
             JavaScriptNode brand;
             if (JSFrameUtil.isPrivateNameStatic(frameSlot)) {
                 brand = constructor;
