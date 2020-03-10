@@ -407,11 +407,6 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> BIND_MEMBER_FUNCTIONS = new OptionKey<>(true);
     @CompilationFinal private boolean bindMemberFunctions;
 
-    public static final String USE_TREGEX_NAME = JS_OPTION_PREFIX + "use-tregex";
-    @Option(name = USE_TREGEX_NAME, category = OptionCategory.EXPERT, help = "Use TRegex as default RegEx engine.") //
-    public static final OptionKey<Boolean> USE_TREGEX = new OptionKey<>(true);
-    @CompilationFinal private boolean useTRegex;
-
     public static final String REGEX_REGRESSION_TEST_MODE_NAME = JS_OPTION_PREFIX + "regex-regression-test-mode";
     @Option(name = REGEX_REGRESSION_TEST_MODE_NAME, category = OptionCategory.INTERNAL, help = "Test mode for TRegex.") //
     public static final OptionKey<Boolean> REGEX_REGRESSION_TEST_MODE = new OptionKey<>(false);
@@ -543,7 +538,6 @@ public final class JSContextOptions {
         this.stringLengthLimit = readIntegerOption(STRING_LENGTH_LIMIT);
         this.bindMemberFunctions = readBooleanOption(BIND_MEMBER_FUNCTIONS);
         this.commonJSRequire = readBooleanOption(COMMONJS_REQUIRE);
-        this.useTRegex = readBooleanOption(USE_TREGEX);
         this.regexRegressionTestMode = readBooleanOption(REGEX_REGRESSION_TEST_MODE);
         this.interopCompletePromises = readBooleanOption(INTEROP_COMPLETE_PROMISES);
         this.testCloneUninitialized = readBooleanOption(TEST_CLONE_UNINITIALIZED);
@@ -847,10 +841,6 @@ public final class JSContextOptions {
         return bindMemberFunctions;
     }
 
-    public boolean useTRegex() {
-        return useTRegex;
-    }
-
     public boolean isRegexRegressionTestMode() {
         return regexRegressionTestMode;
     }
@@ -942,7 +932,6 @@ public final class JSContextOptions {
         hash = 53 * hash + this.stringLengthLimit;
         hash = 53 * hash + (this.bindMemberFunctions ? 1 : 0);
         hash = 53 * hash + (this.commonJSRequire ? 1 : 0);
-        hash = 53 * hash + (this.useTRegex ? 1 : 0);
         hash = 53 * hash + (this.regexRegressionTestMode ? 1 : 0);
         hash = 53 * hash + (this.interopCompletePromises ? 1 : 0);
         hash = 53 * hash + (this.testCloneUninitialized ? 1 : 0);
@@ -1062,9 +1051,6 @@ public final class JSContextOptions {
             return false;
         }
         if (this.commonJSRequire != other.commonJSRequire) {
-            return false;
-        }
-        if (this.useTRegex != other.useTRegex) {
             return false;
         }
         if (this.regexRegressionTestMode != other.regexRegressionTestMode) {

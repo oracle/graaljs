@@ -1864,7 +1864,7 @@ public class JSRealm {
             staticRegexResult = compiledRegexAccessor.exec(staticRegexResultCompiledRegex, staticRegexResultOriginalInputString, staticRegexResultFromIndex);
         }
         if (staticRegexResult == null) {
-            staticRegexResult = TRegexUtil.getTRegexEmptyResult();
+            staticRegexResult = ctx.getTRegexEmptyResult();
         }
         return staticRegexResult;
     }

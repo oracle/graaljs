@@ -4,75 +4,6 @@
     "status" : "FAIL",
     "comment" : "new failures after 2020-03 update"
   }, {
-    "filePath" : "built-ins/RegExp/lookBehind/alternations.js",
-    "status" : "FAIL",
-    "comment" : "GR-10079: Alternations in lookbehind assertion, not supported by either TRegex or Joni. However, support for these could be added to TRegex."
-  }, {
-    "filePath" : "built-ins/RegExp/lookBehind/back-references-to-captures.js",
-    "status" : "FAIL",
-    "comment" : "GR-10079: Capture groups and backreferences in lookbehind assertions. Out of scope of TRegex due to backreferences. Not supported in Joni due to limited lookbehind support (the regular expressions use unbounded quantifiers in the lookbehind assertions)."
-  }, {
-    "filePath" : "built-ins/RegExp/lookBehind/back-references.js",
-    "status" : "FAIL",
-    "comment" : "GR-10079: Backreferences in lookbehind assertions. Similar to back-references-to-captures. However, these tests could be handled in Joni as the backreferences point outside of the lookbehind assertion."
-  }, {
-    "filePath" : "built-ins/RegExp/lookBehind/captures-negative.js",
-    "status" : "FAIL",
-    "comment" : "GR-10079: Alternation in negative lookbehind assertion. Negative lookaround is not supported by TRegex and alternations are not supported in Joni. Negative lookaround might be complex to handle in TRegex but alternations in lookbehind could be handled duplicating the assertion in Joni."
-  }, {
-    "filePath" : "built-ins/RegExp/lookBehind/captures.js",
-    "status" : "FAIL",
-    "comment" : "GR-10079: Fails because Joni runs lookbehind assertions left-to-right instead of right-to-left."
-  }, {
-    "filePath" : "built-ins/RegExp/lookBehind/do-not-backtrack.js",
-    "status" : "FAIL",
-    "comment" : "GR-10079: Neither TRegex nor Joni support unbounded quantifiers in lookbehind assertions."
-  }, {
-    "filePath" : "built-ins/RegExp/lookBehind/greedy-loop.js",
-    "status" : "FAIL",
-    "comment" : "GR-10079: Neither TRegex nor Joni support unbounded quantifiers in lookbehind assertions."
-  }, {
-    "filePath" : "built-ins/RegExp/lookBehind/misc.js",
-    "status" : "FAIL",
-    "comment" : "GR-10079: Assertions and quantifiers in lookbehind assertions."
-  }, {
-    "filePath" : "built-ins/RegExp/lookBehind/mutual-recursive.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "built-ins/RegExp/lookBehind/nested-lookaround.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "built-ins/RegExp/lookBehind/sliced-strings.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "built-ins/RegExp/lookBehind/start-of-line.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "built-ins/RegExp/lookBehind/sticky.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "built-ins/RegExp/lookBehind/variable-length.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "built-ins/RegExp/lookBehind/word-boundary.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "built-ins/RegExp/match-indices/indices-array-unicode-match.js",
-    "status" : "FAIL",
-    "comment" : "The regular expressions use both backreferences (TRegex bails out) and the Unicode flag (Joni bails out)."
-  }, {
-    "filePath" : "built-ins/RegExp/named-groups/lookbehind.js",
-    "status" : "FAIL",
-    "comment" : "Fails because Joni matches lookbehind left-to-right and so the rightmost match of a capture group in a lookbehind wins. In ECMAScript, lookbehind is to be matched right-to-left and the leftmost match of a capture group in a lookbehind should be kept."
-  }, {
-    "filePath" : "built-ins/RegExp/named-groups/unicode-match.js",
-    "status" : "FAIL",
-    "comment" : "Some regular expressions (lines 22-25 and 38-41) use both backreferences (TRegex bails out) and the Unicode flag (Joni bails out)."
-  }, {
-    "filePath" : "built-ins/RegExp/named-groups/unicode-references.js",
-    "status" : "FAIL",
-    "comment" : "The regular expressions use both backreferences (TRegex bails out) and the Unicode flag (Joni bails out)."
-  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Alphabetic.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -2322,10 +2253,6 @@
     "filePath" : "language/expressions/typeof/proxy.js",
     "status" : "FAIL",
     "comment" : "new failures after 2020-03 update"
-  }, {
-    "filePath" : "language/literals/regexp/u-surrogate-pairs-atom-escape-decimal.js",
-    "status" : "FAIL",
-    "comment" : "Back-references cause TRegex to bail out and then JONI is unable to cope with Unicode."
   }, {
     "filePath" : "language/module-code/instn-resolve-empty-export.js",
     "ecmaVersion" : {

@@ -40,14 +40,10 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
-import com.oracle.truffle.regex.nashorn.regexp.RegExpScanner;
 
 public final class RegexCompilerInterface {
     private static final String REPEATED_REG_EXP_FLAG_MSG = "Repeated RegExp flag: %c";
@@ -74,33 +70,16 @@ public final class RegexCompilerInterface {
 
     @TruffleBoundary
     public static void validate(JSContext context, String pattern, String flags, int ecmaScriptVersion) {
-        // We cannot use the TRegex parser in Nashorn compatibility mode, since the Nashorn
-        // parser produces different error messages.
-        if (context.isOptionNashornCompatibilityMode()) {
-            try {
-                try {
-                    RegExpScanner.scan(pattern);
-                } catch (final PatternSyntaxException e) {
-                    // refine the exception with a better syntax error, if this
-                    // passes, just rethrow what we have
-                    Pattern.compile(pattern, 0);
-                    throw e;
-                }
-            } catch (final PatternSyntaxException e) {
+        if (context.isOptionNashornCompatibilityMode() && !flags.isEmpty()) {
+            validateFlags(flags, ecmaScriptVersion, true);
+        }
+        try {
+            TRegexUtil.ValidateRegexNode.getUncached().execute(context.getRegexEngine(), pattern, flags);
+        } catch (RuntimeException e) {
+            if (e instanceof TruffleException && ((TruffleException) e).isSyntaxError()) {
                 throw Errors.createSyntaxError(e.getMessage());
             }
-            if (!flags.isEmpty()) {
-                validateFlags(flags, ecmaScriptVersion, true);
-            }
-        } else {
-            try {
-                TRegexUtil.ValidateRegexNode.getUncached().execute(context.getTRegexEngine(), pattern, flags);
-            } catch (RuntimeException e) {
-                if (e instanceof TruffleException && ((TruffleException) e).isSyntaxError()) {
-                    throw Errors.createSyntaxError(e.getMessage());
-                }
-                throw e;
-            }
+            throw e;
         }
     }
 

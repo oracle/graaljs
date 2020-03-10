@@ -24,7 +24,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "f8869dd815f4df8d27d9e2d783c4acdb180409d7",
+           "version" : "492d008a8bdf4458543bbc80104891bd5fda68a3",
            "urls" : [
                 {"url" : "https://github.com/oracle/graal.git", "kind" : "git"},
                 {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -202,8 +202,7 @@ suite = {
         "com.oracle.truffle.js.annotations",
         "com.oracle.truffle.js.codec",
         "com.oracle.truffle.js.runtime.doubleconv",
-        "regex:TREGEX",
-        "com.oracle.truffle.regex.nashorn",
+        "truffle:TRUFFLE_API",
         "ASM-7.1",
         "ASM_COMMONS-7.1",
         "ASM_UTIL-7.1",
@@ -334,20 +333,6 @@ suite = {
 #     with the original nashorn version as much as possible
       "javaCompliance" : "8+",
       "workingSets" : "Truffle,JavaScript",
-    },
-
-    "com.oracle.truffle.regex.nashorn" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "regex:TREGEX",
-      ],
-      "jacoco" : "include",
-      "findbugs" : "false",
-#     checkstyle and findbugs turned off to keep the source aligned
-#     with the original nashorn version as much as possible
-      "javaCompliance" : "8+",
-      "workingSets" : "Truffle,Regex",
     },
 
     "com.oracle.truffle.js.stats" : {
