@@ -66,14 +66,12 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
         assert scopeLevel == parentSlots.length;
         if (frameLevel == 0) {
             if (scopeLevel == 0) {
-                return new CurrentFrameNode();
+                return CurrentFrameNode.instance();
             }
             return new EnclosingScopeFrameNode(scopeLevel, parentSlots);
         } else if (scopeLevel == 0) {
-            if (frameLevel == 1) {
-                return new EnclosingFunctionFrameNodeLevel1();
-            }
-            return new EnclosingFunctionFrameNode(frameLevel);
+            assert frameLevel > 0;
+            return EnclosingFunctionFrameNode.instance(frameLevel);
         }
         return new EnclosingFunctionScopeFrameNode(frameLevel, scopeLevel, parentSlots);
     }
@@ -86,12 +84,22 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
     public abstract Frame executeFrame(Frame frame);
 
     @Override
-    public boolean isAdoptable() {
+    public final boolean isAdoptable() {
         return false;
     }
 
     @NodeInfo(cost = NodeCost.NONE)
     private static final class CurrentFrameNode extends ScopeFrameNode {
+
+        private static final ScopeFrameNode INSTANCE = new CurrentFrameNode();
+
+        private CurrentFrameNode() {
+        }
+
+        static ScopeFrameNode instance() {
+            return INSTANCE;
+        }
+
         @Override
         public Frame executeFrame(Frame frame) {
             return frame;
@@ -144,27 +152,34 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
         }
     }
 
-    private static final class EnclosingFunctionFrameNodeLevel1 extends ScopeFrameNode {
-        @Override
-        public Frame executeFrame(Frame frame) {
-            return JSFrameUtil.castMaterializedFrame(JSArguments.getEnclosingFrame(frame.getArguments()));
-        }
-    }
-
     private static final class EnclosingFunctionFrameNode extends ScopeFrameNode {
+
         private final int frameLevel;
 
-        EnclosingFunctionFrameNode(int frameLevel) {
+        private static final ScopeFrameNode[] STATIC_INSTANCES = {CurrentFrameNode.instance(),
+                        new EnclosingFunctionFrameNode(1), new EnclosingFunctionFrameNode(2), new EnclosingFunctionFrameNode(3)};
+
+        private EnclosingFunctionFrameNode(int frameLevel) {
             assert frameLevel >= 1;
             this.frameLevel = frameLevel;
+        }
+
+        static ScopeFrameNode instance(int frameLevel) {
+            if (frameLevel < EnclosingFunctionFrameNode.STATIC_INSTANCES.length) {
+                return EnclosingFunctionFrameNode.STATIC_INSTANCES[frameLevel];
+            }
+            return new EnclosingFunctionFrameNode(frameLevel);
         }
 
         @Override
         @ExplodeLoop
         public Frame executeFrame(Frame frame) {
-            MaterializedFrame retFrame = JSArguments.getEnclosingFrame(frame.getArguments());
-            for (int i = 1; i < frameLevel; i++) {
-                retFrame = JSArguments.getEnclosingFrame(retFrame.getArguments());
+            MaterializedFrame retFrame = JSFrameUtil.castMaterializedFrame(JSArguments.getEnclosingFrame(frame.getArguments()));
+            int level = frameLevel;
+            if (level > 1) {
+                for (int i = 1; i < level; i++) {
+                    retFrame = JSFrameUtil.castMaterializedFrame(JSArguments.getEnclosingFrame(retFrame.getArguments()));
+                }
             }
             return retFrame;
         }
