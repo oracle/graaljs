@@ -2305,10 +2305,6 @@
     },
     "status" : "PASS"
   }, {
-    "filePath" : "language/expressions/super/call-proto-not-ctor.js",
-    "status" : "FAIL",
-    "comment" : "new failures after 2020-03 update"
-  }, {
     "filePath" : "language/expressions/this/S11.1.1_A1.js",
     "ecmaVersion" : {
       "minVersion" : 11
