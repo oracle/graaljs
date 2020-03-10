@@ -1556,7 +1556,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
                 // variable reference is unconditionally in the temporal dead zone, i.e.,
                 // var ref is in declaring function and in scope but before the actual declaration
-                return environment.new VarRef(name) {
+                return new VarRef(name) {
                     @Override
                     public boolean isGlobal() {
                         return varRef.isGlobal();
@@ -1581,6 +1581,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
                         JavaScriptNode throwErrorNode = createReadNode();
                         return isPotentiallySideEffecting(rhs) ? DualNode.create(rhs, throwErrorNode) : throwErrorNode;
+                    }
+
+                    @Override
+                    public JavaScriptNode createDeleteNode() {
+                        return createReadNode();
                     }
                 };
             }
@@ -3099,7 +3104,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return curNode == null ? factory.createEmpty() : curNode;
     }
 
-    private static boolean isPotentiallySideEffecting(JavaScriptNode test) {
+    static boolean isPotentiallySideEffecting(JavaScriptNode test) {
         if (test instanceof JSReadFrameSlotNode) {
             return ((JSReadFrameSlotNode) test).hasTemporalDeadZone();
         }

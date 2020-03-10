@@ -61,6 +61,7 @@ import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -498,6 +499,11 @@ public abstract class Environment {
             public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
                 return factory.createWriteFrameSlot(var, 0, getScopeLevel(), getParentSlots(), rhs);
             }
+
+            @Override
+            public JavaScriptNode createDeleteNode() {
+                throw Errors.shouldNotReachHere();
+            }
         };
     }
 
@@ -572,7 +578,7 @@ public abstract class Environment {
         return function().getVariableEnvironment();
     }
 
-    public abstract class VarRef {
+    public abstract static class VarRef {
         protected final String name;
 
         protected VarRef(String name) {
@@ -603,9 +609,7 @@ public abstract class Environment {
             return name;
         }
 
-        public JavaScriptNode createDeleteNode() {
-            return factory.createConstantBoolean(false);
-        }
+        public abstract JavaScriptNode createDeleteNode();
 
         public Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> createCompoundAssignNode() {
             return new Pair<>(this::createReadNode, rhs -> withRequired(false).createWriteNode(rhs));
@@ -649,6 +653,11 @@ public abstract class Environment {
         @Override
         public boolean isGlobal() {
             return false;
+        }
+
+        @Override
+        public JavaScriptNode createDeleteNode() {
+            return factory.createConstantBoolean(false);
         }
     }
 
