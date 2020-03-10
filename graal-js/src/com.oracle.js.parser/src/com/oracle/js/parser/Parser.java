@@ -1886,6 +1886,7 @@ public class Parser extends AbstractParser {
             case HEXADECIMAL:
             case OCTAL:
             case BINARY_NUMBER:
+            case BIGINT:
             case FLOATING:
                 return true;
             default:
@@ -3795,6 +3796,7 @@ public class Parser extends AbstractParser {
             case HEXADECIMAL:
             case OCTAL:
             case BINARY_NUMBER:
+            case BIGINT:
             case FLOATING:
                 return (PropertyKey) getLiteral();
             default:
