@@ -278,6 +278,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,
     name='Graal.js',
     short_name='js',
+    standalone_dir_name='graaljs-<version>-<os>-<arch>',
     license_files=[],
     third_party_license_files=[],
     dependencies=['Truffle', 'TRegex'],
@@ -303,7 +304,6 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
         )
     ],
     boot_jars=['graal-js:GRAALJS_SCRIPTENGINE'],
-    installable=False,
 ))
 
 mx.update_commands(_suite, {

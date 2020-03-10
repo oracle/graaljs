@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.254.0",
+  "mxversion" : "5.254.9",
 
   "name" : "graal-js",
 
@@ -646,7 +646,11 @@ suite = {
       "description" : "Graal.js support distribution for the GraalVM",
       "layout" : {
         "native-image.properties": "file:mx.graal-js/native-image.properties",
-        "./": "file:README.md",
+        "./": [
+          "file:README.md",
+          "file:../LICENSE",
+          "file:../3rd_party_licenses.txt",
+        ],
       },
     },
 
