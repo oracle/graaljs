@@ -44,6 +44,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.Writer;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -2017,6 +2019,18 @@ public class JSRealm {
             moduleLoader = new JSModuleLoader() {
                 private final Map<String, JSModuleRecord> moduleMap = new HashMap<>();
 
+                private URI asURI(String specifier) {
+                    if (!specifier.contains(":")) {
+                        return null;
+                    }
+                    try {
+                        URI uri = new URI(specifier);
+                        return uri.getScheme() != null ? uri : null;
+                    } catch (URISyntaxException e) {
+                        return null;
+                    }
+                }
+
                 @Override
                 public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, String specifier) {
                     String refPath = referrer == null ? null : referrer.getSource().getPath();
@@ -2024,7 +2038,12 @@ public class JSRealm {
                         TruffleFile moduleFile;
                         if (refPath == null) {
                             // Importing module source does not originate from a file.
-                            moduleFile = getEnv().getPublicTruffleFile(specifier).getCanonicalFile();
+                            URI maybeUri = asURI(specifier);
+                            if (maybeUri != null) {
+                                moduleFile = getEnv().getPublicTruffleFile(maybeUri).getCanonicalFile();
+                            } else {
+                                moduleFile = getEnv().getPublicTruffleFile(specifier).getCanonicalFile();
+                            }
                         } else {
                             TruffleFile refFile = getEnv().getPublicTruffleFile(refPath);
                             moduleFile = refFile.resolveSibling(specifier).getCanonicalFile();
