@@ -1491,7 +1491,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             JavaScriptNode activeFunction = factory.createAccessCallee(currentFunction().getThisFunctionLevel());
             JavaScriptNode superConstructor = factory.createGetPrototype(activeFunction);
             JavaScriptNode receiver = environment.findThisVar().createReadNode();
-            return factory.createTargetableWrapper(factory.createRequireConstructor(superConstructor), receiver);
+            return factory.createTargetableWrapper(superConstructor, receiver);
         }
     }
 

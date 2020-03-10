@@ -1439,6 +1439,10 @@
     "status" : "SKIP",
     "comment" : "Explicitly calls v8AllocateHeapNumber."
   }, {
+    "filePath" : "mjsunit/regress/regress-6248.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test - IsConstructor check moved from GetSuperConstructor to SuperCall evaluation (after the arg evaluation)"
+  }, {
     "filePath" : "mjsunit/regress/regress-6288.js",
     "status" : "FAIL"
   }, {
@@ -1771,6 +1775,10 @@
     "filePath" : "mjsunit/regress/regress-crbug-691323.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-696622.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test - IsConstructor check moved from GetSuperConstructor to SuperCall evaluation (after the arg evaluation)"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-714696.js",
     "status" : "FAIL"
