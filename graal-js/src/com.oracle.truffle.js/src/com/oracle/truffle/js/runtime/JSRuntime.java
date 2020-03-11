@@ -222,9 +222,15 @@ public final class JSRuntime {
         } else if (value instanceof Symbol) {
             return JSSymbol.TYPE_NAME;
         } else if (JSObject.isDynamicObject(value)) {
-            if (JSProxy.isProxy((DynamicObject) value)) {
-                return typeof(JSProxy.getTarget((DynamicObject) value));
-            } else if (JSFunction.isJSFunction((DynamicObject) value)) {
+            DynamicObject object = (DynamicObject) value;
+            if (JSProxy.isProxy(object)) {
+                Object target = JSProxy.getTarget(object);
+                if (target == Null.instance) {
+                    return JSRuntime.isRevokedCallableProxy(object) ? JSFunction.TYPE_NAME : JSUserObject.TYPE_NAME;
+                } else {
+                    return typeof(target);
+                }
+            } else if (JSFunction.isJSFunction(object)) {
                 return JSFunction.TYPE_NAME;
             }
             return JSUserObject.TYPE_NAME;
@@ -2373,7 +2379,13 @@ public final class JSRuntime {
     @TruffleBoundary
     public static boolean isCallableProxy(DynamicObject proxy) {
         assert JSProxy.isProxy(proxy);
-        return isCallable(JSProxy.getTarget(proxy));
+        Object target = JSProxy.getTarget(proxy);
+        return (target == Null.instance) ? isRevokedCallableProxy(proxy) : isCallable(target);
+    }
+
+    public static boolean isRevokedCallableProxy(DynamicObject revokedProxy) {
+        assert JSProxy.isProxy(revokedProxy) && JSProxy.isRevoked(revokedProxy);
+        return Boolean.TRUE == revokedProxy.get(JSProxy.REVOKED_CALLABLE);
     }
 
     /**

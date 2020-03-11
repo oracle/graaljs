@@ -82,6 +82,7 @@ import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -328,11 +329,23 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
     }
 
     private static boolean checkProxy(DynamicObject value, boolean isFunction) {
-        Object obj = JSProxy.getTargetNonProxy(value);
-        if (isFunction) {
-            return JSFunction.isJSFunction(obj) || JSRuntime.isCallableForeign(obj) || JSRuntime.isConstructorForeign(obj);
+        // Find a non-proxy target (and the associated proxy)
+        DynamicObject proxy;
+        Object target = value;
+        do {
+            proxy = (DynamicObject) target;
+            target = JSProxy.getTarget(proxy);
+        } while (JSProxy.isProxy(target));
+
+        if (target == Null.instance) { // revoked proxy
+            return isFunction == JSRuntime.isRevokedCallableProxy(proxy);
         } else {
-            return (JSObject.isJSObject(obj) && !JSFunction.isJSFunction(obj)) || (JSRuntime.isForeignObject(obj) && !JSRuntime.isCallableForeign(obj) && !JSRuntime.isConstructorForeign(obj));
+            if (isFunction) {
+                return JSFunction.isJSFunction(target) || JSRuntime.isCallableForeign(target) || JSRuntime.isConstructorForeign(target);
+            } else {
+                return (JSObject.isJSObject(target) && !JSFunction.isJSFunction(target)) ||
+                                (JSRuntime.isForeignObject(target) && !JSRuntime.isCallableForeign(target) && !JSRuntime.isConstructorForeign(target));
+            }
         }
     }
 

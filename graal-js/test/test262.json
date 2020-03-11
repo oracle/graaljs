@@ -2022,10 +2022,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
-    "filePath" : "language/expressions/typeof/proxy.js",
-    "status" : "FAIL",
-    "comment" : "new failures after 2020-03 update"
-  }, {
     "filePath" : "language/statements/class/accessor-name-inst-computed-yield-expr.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"

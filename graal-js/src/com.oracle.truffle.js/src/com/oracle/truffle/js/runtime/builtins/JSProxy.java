@@ -96,6 +96,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     private static final HiddenKey PROXY_HANDLER = new HiddenKey("ProxyHandler");
 
     public static final HiddenKey REVOCABLE_PROXY = new HiddenKey("RevocableProxy");
+    public static final HiddenKey REVOKED_CALLABLE = new HiddenKey("RevokedCallable");
 
     static {
         Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
