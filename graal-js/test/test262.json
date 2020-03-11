@@ -2,7 +2,7 @@
   "testFiles" : [ {
     "filePath" : "built-ins/Date/parse/without-utc-offset.js",
     "status" : "FAIL",
-    "comment" : "new failures after 2020-03 update"
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/pull/2523"
   }, {
     "filePath" : "built-ins/RegExp/lookBehind/alternations.js",
     "status" : "FAIL",
