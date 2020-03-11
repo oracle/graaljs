@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -684,13 +684,14 @@ public class DateParser {
                 return false;
             }
         }
+        boolean dateOnly = !isSet(HOUR);
         // fill in default values for unset fields except timezone
         for (int field = YEAR; field <= TIMEZONE; field++) {
             if (get(field) == null) {
-                if (field == TIMEZONE && !strict) {
-                    // We only use UTC as default timezone for dates parsed complying with
-                    // the format specified in ES5 15.9.1.15. Otherwise the slot is left empty
-                    // and local timezone is used.
+                if (field == TIMEZONE && !dateOnly) {
+                    // When the UTC offset representation is absent,
+                    // date-only forms are interpreted as a UTC time and
+                    // date-time forms are interpreted as a local time (= empty TIMEZONE).
                     continue;
                 }
                 final int value = getDefaultValue(field);
