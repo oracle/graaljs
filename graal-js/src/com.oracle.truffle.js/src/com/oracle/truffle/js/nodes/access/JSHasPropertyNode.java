@@ -174,7 +174,8 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
                     @Cached("create()") ForeignObjectPrototypeNode foreignObjectPrototypeNode,
                     @Cached("create()") JSHasPropertyNode hasInPrototype,
                     @CachedLanguage LanguageReference<JavaScriptLanguage> languageRef) {
-        if (interop.hasMembers(object) || interop.hasArrayElements(object) || (interop.isExecutable(object) && languageRef.get().getJSContext().getContextOptions().hasForeignObjectPrototype())) {
+        if (!interop.isNull(object) && ((interop.hasMembers(object) && !interop.isBoolean(object) && !interop.isString(object) && !interop.isNumber(object)) || interop.hasArrayElements(object) ||
+                        (interop.isExecutable(object) && languageRef.get().getJSContext().getContextOptions().hasForeignObjectPrototype()))) {
             if (propertyName instanceof Number && interop.hasArrayElements(object)) {
                 long index = JSRuntime.longValue((Number) propertyName);
                 return index >= 0 && index < JSInteropUtil.getArraySize(object, interop, this);
