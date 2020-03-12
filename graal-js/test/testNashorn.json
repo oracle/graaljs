@@ -686,5 +686,9 @@
   }, {
     "filePath" : "error/NASHORN-57.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "error/NASHORN-668.js",
+    "status" : "FAIL",
+    "comment" : "passes, but expects different error messages"
   } ]
 }

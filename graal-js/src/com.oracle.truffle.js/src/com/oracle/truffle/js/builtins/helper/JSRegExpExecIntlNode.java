@@ -289,7 +289,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         }
 
         private Object getEmptyResult() {
-            return ecmaScriptVersion >= 6 ? Null.instance : TRegexUtil.getTRegexEmptyResult();
+            return ecmaScriptVersion >= 6 ? Null.instance : context.getTRegexEmptyResult();
         }
 
         public abstract Object execute(DynamicObject regExp, String input);

@@ -43,6 +43,8 @@ package com.oracle.truffle.js.test;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -68,6 +70,7 @@ import com.oracle.truffle.js.nodes.function.JSFunctionExpressionNode;
 import com.oracle.truffle.js.parser.JSParser;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -152,6 +155,18 @@ public class TestHelper implements AutoCloseable {
         Source checkUndefined = Source.create(JavaScriptLanguage.ID, "(function(arg) { return arg === undefined; });");
         Value fnCheckUndefined = getPolyglotContext().eval(checkUndefined);
         return fnCheckUndefined.execute(result).asBoolean();
+    }
+
+    public void runExpectSyntaxError(String sourceCode) {
+        enterContext();
+        try {
+            getParser().parseScript(getJSContext(), sourceCode);
+            fail("expected syntax error to be thrown");
+        } catch (JSException e) {
+            assertTrue(e.isSyntaxError());
+        } finally {
+            leaveContext();
+        }
     }
 
     public Object runNoPolyglot(String source) {

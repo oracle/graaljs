@@ -56,7 +56,6 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultIndicesArray;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.joni.JoniRegexEngine;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -323,7 +322,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         JSContext ctx = realm.getContext();
         DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), ctx.getEcmaScriptVersion() < 6 ? JSRegExp.INSTANCE : JSUserObject.INSTANCE);
         if (ctx.getEcmaScriptVersion() < 6) {
-            JSObjectUtil.putHiddenProperty(prototype, COMPILED_REGEX_PROPERTY, compileEarly("", ""));
+            JSObjectUtil.putHiddenProperty(prototype, COMPILED_REGEX_PROPERTY, compileEarly(realm, "", ""));
             JSObjectUtil.putDataProperty(ctx, prototype, LAST_INDEX, 0, JSAttributes.notConfigurableNotEnumerableWritable());
         }
         putRegExpPropertyAccessor(realm, prototype, SOURCE);
@@ -349,10 +348,8 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         JSObjectUtil.putConstantAccessorProperty(realm.getContext(), prototype, name, getter, Undefined.instance);
     }
 
-    private static Object compileEarly(String pattern, String flags) {
-        // avoid getRealm() in context.getRegexEngine()
-        Object tempEngine = new JoniRegexEngine(null);
-        return TRegexUtil.CompileRegexNode.getUncached().execute(tempEngine, pattern, flags);
+    private static Object compileEarly(JSRealm realm, String pattern, String flags) {
+        return TRegexUtil.CompileRegexNode.getUncached().execute(JSContext.createTRegexEngine(realm.getEnv(), realm.getContext().getContextOptions()), pattern, flags);
     }
 
     @Override

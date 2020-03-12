@@ -287,6 +287,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
+    "filePath" : "mjsunit/asm/asm-heap.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) high memory usage that might influence other tests"
+  }, {
     "filePath" : "mjsunit/asm/asm-validation.js",
     "status" : "FAIL"
   }, {
@@ -399,6 +403,10 @@
     "filePath" : "mjsunit/compiler/regress-801097.js",
     "status" : "FAIL",
     "comment" : "needs larger stack, at least 21m is needed"
+  }, {
+    "filePath" : "mjsunit/compiler/regress-815392.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) high memory usage that might influence other tests"
   }, {
     "filePath" : "mjsunit/compiler/string-add-try-catch.js",
     "runInIsolation" : true,
@@ -644,24 +652,9 @@
     "filePath" : "mjsunit/es6/typedarray.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/unicode-character-ranges.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/es6/unicode-escapes-in-regexps.js",
-    "status" : "FAIL",
-    "comment" : "JONI fails the test on line 244, which uses an astral Unicode escape (TRegex bails out because of back-references)."
-  }, {
-    "filePath" : "mjsunit/es6/unicode-regexp-backrefs.js",
-    "status" : "FAIL",
-    "comment" : "Back-references cause TRegex to bail out and then JONI is unable to cope with Unicode."
-  }, {
     "filePath" : "mjsunit/es6/unicode-regexp-ignore-case-noi18n.js",
     "status" : "FAIL",
     "comment" : "This test is set to fail in v8 as well, unless v8_enable_i18n_support is set to false."
-  }, {
-    "filePath" : "mjsunit/es6/unicode-regexp-ignore-case.js",
-    "status" : "FAIL",
-    "comment" : "Back-references cause TRegex to bail out and then JONI is unable to cope with Unicode (lines 51-52)."
   }, {
     "filePath" : "mjsunit/es7/exponentiation-operator.js",
     "status" : "SKIP",
@@ -678,10 +671,6 @@
   }, {
     "filePath" : "mjsunit/es8/object-get-own-property-descriptors.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/es9/regexp-lookbehind.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
     "filePath" : "mjsunit/eval-enclosing-function-name.js",
     "status" : "FAIL"
@@ -910,10 +899,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
-    "filePath" : "mjsunit/harmony/regexp-named-captures.js",
-    "status" : "FAIL",
-    "comment" : "Fails because Joni matches lookbehind left-to-right and so the rightmost match of a capture group in a lookbehind wins. In ECMAScript, lookbehind is to be matched right-to-left and the leftmost match of a capture group in a lookbehind should be kept. Furthermore, this test file contains some tests which are outdated w.r.t. the spec (starting with line 374)."
-  }, {
     "filePath" : "mjsunit/harmony/regexp-property-emoji-flag-sequence-generated.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
@@ -937,6 +922,10 @@
     "filePath" : "mjsunit/harmony/regexp-property-sequence.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+  }, {
+    "filePath" : "mjsunit/harmony/regexp-property-special.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) high memory usage that might influence other tests"
   }, {
     "filePath" : "mjsunit/harmony/regress/regress-952722.js",
     "status" : "FAIL",
@@ -1091,6 +1080,10 @@
     "filePath" : "mjsunit/ignition/ignition-statistics-extension.js",
     "status" : "SKIP",
     "comment" : "Ignition statistics - https://codereview.chromium.org/1899133004"
+  }, {
+    "filePath" : "mjsunit/ignition/regress-599001-verifyheap.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) high memory usage that might influence other tests"
   }, {
     "filePath" : "mjsunit/intl-numberformat-formattoparts.js",
     "status" : "FAIL",
@@ -1367,6 +1360,10 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
+    "filePath" : "mjsunit/regress/regress-490.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) high memory usage that might influence other tests"
+  }, {
     "filePath" : "mjsunit/regress/regress-4970.js",
     "status" : "FAIL"
   }, {
@@ -1489,6 +1486,10 @@
     "filePath" : "mjsunit/regress/regress-740694.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-748069.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) high memory usage that might influence other tests"
   }, {
     "filePath" : "mjsunit/regress/regress-752764.js",
     "status" : "SKIP",
@@ -1621,6 +1622,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
   }, {
+    "filePath" : "mjsunit/regress/regress-948307.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) high memory usage that might influence other tests"
+  }, {
     "filePath" : "mjsunit/regress/regress-950328.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
@@ -1641,10 +1646,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
-    "filePath" : "mjsunit/regress/regress-996391.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
     "filePath" : "mjsunit/regress/regress-crbug-100859.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
@@ -1655,6 +1656,10 @@
     "filePath" : "mjsunit/regress/regress-crbug-150545.js",
     "status" : "SKIP",
     "comment" : "infinite loops caused by not compiling V8 style"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-160010.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) high memory usage that might influence other tests"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-351658.js",
     "ecmaVersion" : {
@@ -1922,6 +1927,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
   }, {
+    "filePath" : "mjsunit/regress/regress-crbug-941743.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) high memory usage that might influence other tests"
+  }, {
     "filePath" : "mjsunit/regress/regress-crbug-959727.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
@@ -2030,6 +2039,10 @@
     "filePath" : "mjsunit/regress/wasm/regress-6164.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-647649.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) high memory usage that might influence other tests"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-651961.js",
     "status" : "SKIP",
