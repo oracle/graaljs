@@ -119,29 +119,25 @@ public final class Options {
         private static final Set<String> IGNORED_OPTIONS = new HashSet<>(Arrays.asList(new String[]{
                         "debug-code",
                         "es-staging",
+                        "experimental-modules",
                         "expose-debug-as",
+                        "expose-internals",
                         "expose-natives-as",
                         "gc-global",
                         "gc-interval",
+                        "harmony",
                         "harmony-bigint",
                         "harmony-default-parameters",
+                        "harmony-dynamic-import",
+                        "harmony-import-meta",
                         "harmony-proxies",
+                        "harmony-shipping",
                         "lazy",
                         "log-timer-events",
                         "nolazy",
                         "nouse-idle-notification",
                         "stack-size",
                         "use_idle_notification"
-        }));
-
-        // Options that enforce ECMAScript version 2020.
-        private static final Set<String> ES2020_OPTIONS = new HashSet<>(Arrays.asList(new String[]{
-                        "experimental-modules",
-                        "expose-internals",
-                        "harmony",
-                        "harmony-dynamic-import",
-                        "harmony-import-meta",
-                        "harmony-shipping",
         }));
 
         @Override
@@ -243,10 +239,6 @@ public final class Options {
                 }
                 if ("stack-trace-limit".equals(key)) {
                     polyglotOptions.put("js.stack-trace-limit", value);
-                    continue;
-                }
-                if (ES2020_OPTIONS.contains(normalizedKey)) {
-                    polyglotOptions.put("js.ecmascript-version", "2020");
                     continue;
                 }
                 unprocessedArguments.add(arg);

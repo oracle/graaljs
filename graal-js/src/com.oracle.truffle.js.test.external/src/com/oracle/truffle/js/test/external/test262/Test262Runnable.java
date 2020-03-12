@@ -215,20 +215,6 @@ public class Test262Runnable extends TestRunnable {
                     "top-level-await",
                     "AggregateError",
     }));
-    private static final Set<String> ES2020_FEATURES = new HashSet<>(Arrays.asList(new String[]{
-                    "Promise.allSettled",
-                    "String.prototype.matchAll",
-                    "String.prototype.replaceAll",
-                    "Symbol.matchAll",
-                    "coalesce-expression",
-                    "dynamic-import",
-                    "export-star-as-namespace-from-module",
-                    "import.meta",
-                    "numeric-separator-literal",
-                    "optional-chaining",
-                    "proxy-missing-checks",
-                    "for-in-order",
-    }));
     private static final Set<String> ES2021_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "WeakRef",
                     "class-fields-private",
@@ -281,9 +267,7 @@ public class Test262Runnable extends TestRunnable {
         int featureVersion = JSConfig.LatestECMAScriptVersion;
         for (String feature : features) {
             if (SUPPORTED_FEATURES.contains(feature)) {
-                if (ES2020_FEATURES.contains(feature)) {
-                    featureVersion = JSConfig.ECMAScript2020;
-                } else if (ES2021_FEATURES.contains(feature)) {
+                if (ES2021_FEATURES.contains(feature)) {
                     featureVersion = JSConfig.ECMAScript2021;
                 }
             } else {

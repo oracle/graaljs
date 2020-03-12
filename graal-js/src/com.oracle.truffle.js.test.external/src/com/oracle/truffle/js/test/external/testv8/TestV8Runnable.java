@@ -72,15 +72,9 @@ public class TestV8Runnable extends TestRunnable {
     private static final int LONG_RUNNING_TEST_SECONDS = 55;
 
     private static final String HARMONY_HASHBANG_FLAG = "--harmony-hashbang";
-    private static final String HARMONY_IMPORT_META = "--harmony-import-meta";
-    private static final String HARMONY_DYNAMIC_IMPORT = "--harmony-dynamic-import";
-    private static final String HARMONY_NUMERIC_SEPARATOR = "--harmony-numeric-separator";
-    private static final String HARMONY_PROMISE_ALL_SETTLED = "--harmony-promise-all-settled";
     private static final String HARMONY_SHAREDARRAYBUFFER = "--harmony-sharedarraybuffer";
     private static final String HARMONY_PUBLIC_FIELDS = "--harmony-public-fields";
     private static final String HARMONY_PRIVATE_FIELDS = "--harmony-private-fields";
-    private static final String HARMONY_NAMESPACE_EXPORTS = "--harmony-namespace-exports";
-    private static final String HARMONY_OPTIONAL_CHAINING = "--harmony-optional-chaining";
 
     private static final String FLAGS_PREFIX = "// Flags: ";
     private static final String FILES_PREFIX = "// Files: ";
@@ -120,13 +114,10 @@ public class TestV8Runnable extends TestRunnable {
         // ecma versions
         TestFile.EcmaVersion ecmaVersion = testFile.getEcmaVersion();
         if (ecmaVersion == null) {
-            boolean requiresES2020 = flags.contains(HARMONY_IMPORT_META) || flags.contains(HARMONY_DYNAMIC_IMPORT) || flags.contains(HARMONY_NUMERIC_SEPARATOR) ||
-                            flags.contains(HARMONY_PROMISE_ALL_SETTLED) || flags.contains(HARMONY_NAMESPACE_EXPORTS) || flags.contains(HARMONY_OPTIONAL_CHAINING);
-            ecmaVersion = TestFile.EcmaVersion.forVersions(requiresES2020 ? JSConfig.ECMAScript2020 : JSConfig.LatestECMAScriptVersion);
+            ecmaVersion = TestFile.EcmaVersion.forVersions(JSConfig.LatestECMAScriptVersion);
         }
 
-        if (flags.contains(HARMONY_PUBLIC_FIELDS) || flags.contains(HARMONY_PRIVATE_FIELDS) ||
-                        (ecmaVersion.getMinVersion() != null && ecmaVersion.getMinVersion() >= JSConfig.ECMAScript2020)) {
+        if (flags.contains(HARMONY_PUBLIC_FIELDS) || flags.contains(HARMONY_PRIVATE_FIELDS)) {
             extraOptions.put(JSContextOptions.CLASS_FIELDS_NAME, "true");
         }
 
