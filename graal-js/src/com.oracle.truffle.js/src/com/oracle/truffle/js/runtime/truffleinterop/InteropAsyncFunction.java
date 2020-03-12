@@ -58,11 +58,14 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 /**
  * Interop wrapper for async functions that unwraps the returned promise.
  */
-@ExportLibrary(InteropLibrary.class)
+@ExportLibrary(value = InteropLibrary.class, delegateTo = "function")
 public final class InteropAsyncFunction extends InteropFunction {
+
+    final DynamicObject function;
 
     public InteropAsyncFunction(DynamicObject function) {
         super(function);
+        this.function = function;
     }
 
     @Override

@@ -58,7 +58,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -70,14 +69,11 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.InitErrorObjectNodeFactory;
@@ -103,7 +99,6 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
-import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -114,20 +109,10 @@ import com.oracle.truffle.js.runtime.JSEngine;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.SafeInteger;
-import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
-import com.oracle.truffle.js.runtime.objects.JSMetaObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSScope;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.InteropFunction;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.truffleinterop.JavaScriptLanguageView;
 
 @ProvidedTags({
                 StandardTags.StatementTag.class,
@@ -193,12 +178,6 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     public JavaScriptLanguage() {
         this.promiseJobsQueueEmptyAssumption = Truffle.getRuntime().createAssumption("PromiseJobsQueueEmpty");
-    }
-
-    @Override
-    public boolean isObjectOfLanguage(Object o) {
-        return JSObject.isJSObject(o) || o instanceof Symbol || o instanceof BigInt || o instanceof JSLazyString || o instanceof SafeInteger || o instanceof InteropFunction ||
-                        o instanceof JSMetaObject;
     }
 
     @TruffleBoundary
@@ -317,27 +296,6 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 return JSRuntime.jsObjectToJavaObject(JSFunction.call(JSArguments.create(Undefined.instance, function, arguments)));
             }
         };
-    }
-
-    @TruffleBoundary
-    @Override
-    protected String toString(JSRealm realm, Object value) {
-        if (value == null) {
-            return "null";
-        } else if (value instanceof JSMetaObject) {
-            JSMetaObject metaObject = (JSMetaObject) value;
-            String type = metaObject.getClassName();
-            if (type == null) {
-                String subType = metaObject.getSubtype();
-                if ("null".equals(subType)) {
-                    type = "null";
-                } else {
-                    type = metaObject.getType();
-                }
-            }
-            return type;
-        }
-        return JSRuntime.safeToString(value);
     }
 
     @TruffleBoundary
@@ -497,76 +455,14 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         return OPTION_DESCRIPTORS;
     }
 
-    @TruffleBoundary
-    @Override
-    protected Object findMetaObject(JSRealm realm, Object value) {
-        String type;
-        String subtype = null;
-        String className = null;
-
-        if (value instanceof JSMetaObject) {
-            return "metaobject";
-        } else if (value == Undefined.instance) {
-            type = "undefined";
-        } else if (value == Null.instance) {
-            type = "object";
-            subtype = "null";
-        } else if (JSRuntime.isObject(value)) {
-            DynamicObject obj = (DynamicObject) value;
-            type = "object";
-            className = JSRuntime.getConstructorName(obj);
-
-            if (JSRuntime.isCallable(obj)) {
-                type = "function";
-            } else if (JSArray.isJSArray(obj)) {
-                subtype = "array";
-            } else if (JSDate.isJSDate(obj)) {
-                subtype = "date";
-            } else if (JSSymbol.isJSSymbol(obj)) {
-                type = "symbol";
-            }
-        } else if (value instanceof InteropFunction) {
-            return findMetaObject(realm, ((InteropFunction) value).getFunction());
-        } else if (JSRuntime.isForeignObject(value)) {
-            assert !JSObject.isJSObject(value);
-            InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
-            if (interop.isNull(value) || interop.isBoolean(value) || interop.isString(value) || interop.isNumber(value)) {
-                Object unboxed = JSInteropUtil.toPrimitiveOrDefault(value, Null.instance, interop, null);
-                assert !JSRuntime.isForeignObject(unboxed);
-                return findMetaObject(realm, unboxed);
-            }
-            type = "object";
-            className = "Foreign";
-        } else if (value == null) {
-            type = "null";
-        } else {
-            // primitive
-            type = JSRuntime.typeof(value);
-        }
-
-        return new JSMetaObject(type, subtype, className, realm.getEnv());
-    }
-
-    @Override
-    protected SourceSection findSourceLocation(JSRealm realm, Object value) {
-        if (JSFunction.isJSFunction(value)) {
-            DynamicObject func = (DynamicObject) value;
-            CallTarget ct = JSFunction.getCallTarget(func);
-            if (JSFunction.isBoundFunction(func)) {
-                func = JSFunction.getBoundTargetFunction(func);
-                ct = JSFunction.getCallTarget(func);
-            }
-
-            if (ct instanceof RootCallTarget) {
-                return ((RootCallTarget) ct).getRootNode().getSourceSection();
-            }
-        }
-        return null;
-    }
-
     @Override
     protected boolean isVisible(JSRealm realm, Object value) {
         return (value != Undefined.instance);
+    }
+
+    @Override
+    protected Object getLanguageView(JSRealm context, Object value) {
+        return JavaScriptLanguageView.create(value);
     }
 
     @Override

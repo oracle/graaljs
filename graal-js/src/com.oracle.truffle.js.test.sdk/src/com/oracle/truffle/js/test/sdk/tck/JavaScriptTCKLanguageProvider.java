@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -204,13 +204,10 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         // ||
         ops.add(createBinaryOperator(context, "||", ANY, ANY, ANY));
         // in
-        // final Snippet in =
-        createBinaryOperator(context, "in", TypeDescriptor.BOOLEAN,
+        ops.add(createBinaryOperator(context, "in", TypeDescriptor.BOOLEAN,
                         ANY,
-                        TypeDescriptor.union(TypeDescriptor.OBJECT, TypeDescriptor.ARRAY),
-                        JavaScriptVerifier.nonEmptyArrayVerifier(null));
-        // issue: GR-7222
-        // ops.add(in);
+                        TypeDescriptor.union(TypeDescriptor.OBJECT, TypeDescriptor.ARRAY)));
+
         // +
         ops.add(createPrefixOperator(context, "+", TypeDescriptor.NUMBER, ANY));
         // -
@@ -225,6 +222,8 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         ops.add(createPostfixOperator(context, "++", TypeDescriptor.NUMBER, ANY));
         // --
         ops.add(createPostfixOperator(context, "--", TypeDescriptor.NUMBER, ANY));
+        // typeof
+        ops.add(createPrefixOperator(context, "typeof", TypeDescriptor.STRING, ANY));
         return Collections.unmodifiableList(ops);
     }
 
@@ -513,28 +512,6 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         }
 
         /**
-         * Creates a {@link ResultVerifier} ignoring errors caused by empty arrays. Use this
-         * verifier in case the operator accepts arrays but not an empty array.
-         *
-         * @param next the next {@link ResultVerifier} to be called, null for last one
-         * @return the {@link ResultVerifier}
-         */
-        static ResultVerifier nonEmptyArrayVerifier(ResultVerifier next) {
-            return new JavaScriptVerifier(next) {
-                @Override
-                public void accept(SnippetRun snippetRun) throws PolyglotException {
-                    if (snippetRun.getException() != null) {
-                        final Value objArg = snippetRun.getParameters().get(1);
-                        if (objArg.hasArrayElements() && objArg.getArraySize() == 0) {
-                            return;
-                        }
-                    }
-                    super.accept(snippetRun);
-                }
-            };
-        }
-
-        /**
          * Creates a {@link ResultVerifier} ignoring errors caused by missing iterator method. Use
          * this verifier in case the operator accepts arbitrary foreign Objects for iteration but
          * requires iterator for JSObject.
@@ -548,9 +525,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                 public void accept(SnippetRun snippetRun) throws PolyglotException {
                     if (snippetRun.getException() != null) {
                         final Value param = snippetRun.getParameters().get(0);
-                        final Value paramMeta = param.getMetaObject();
-                        final String type = (paramMeta != null && paramMeta.hasMember("type")) ? paramMeta.getMember("type").asString() : null;
-                        final boolean jsObject = type != null && ("object".equals(type) || "function".equals(type)) && paramMeta.hasMember("className");
+                        final boolean jsObject = context.eval(ID, "Object").isMetaInstance(param);
                         boolean hasIterator = false;
                         try {
                             hasIterator = !context.eval(ID, "(function(a) {return a[Symbol.iterator];})").execute(param).isNull();

@@ -914,7 +914,7 @@ public final class JSRuntime {
         } else if (value instanceof Symbol) {
             return value.toString();
         } else if (value instanceof BigInt) {
-            return value.toString() + "n";
+            return value.toString() + 'n';
         } else if (isNumber(value)) {
             Number number = (Number) value;
             if (JSRuntime.isNegativeZero(number.doubleValue())) {

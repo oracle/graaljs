@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,6 +57,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -166,28 +167,31 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
         }
     }
 
-    @Specialization(guards = "isForeignObject(object)")
+    @Specialization(guards = "isForeignObject(object)", limit = "3")
     public boolean foreignObject(Object object, Object propertyName,
-                    @CachedLibrary(limit = "3") InteropLibrary interop,
+                    @CachedLibrary("object") InteropLibrary interop,
                     @Cached("create()") JSToStringNode toStringNode,
                     @Cached("create()") ForeignObjectPrototypeNode foreignObjectPrototypeNode,
                     @Cached("create()") JSHasPropertyNode hasInPrototype,
                     @CachedLanguage LanguageReference<JavaScriptLanguage> languageRef) {
-        if (propertyName instanceof Symbol) {
-            return false;
-        } else if (propertyName instanceof Number) {
-            long index = JSRuntime.longValue((Number) propertyName);
-            return index >= 0 && index < JSInteropUtil.getArraySize(object, interop, this);
-        } else {
-            if (interop.isMemberExisting(object, toStringNode.executeString(propertyName))) {
-                return true;
-            }
-            if (languageRef.get().getJSContext().getContextOptions().hasForeignObjectPrototype()) {
-                DynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(object);
-                return hasInPrototype.executeBoolean(prototype, propertyName);
+        if (!interop.isNull(object) && ((interop.hasMembers(object) && !interop.isBoolean(object) && !interop.isString(object) && !interop.isNumber(object)) || interop.hasArrayElements(object) ||
+                        (interop.isExecutable(object) && languageRef.get().getJSContext().getContextOptions().hasForeignObjectPrototype()))) {
+            if (propertyName instanceof Number && interop.hasArrayElements(object)) {
+                long index = JSRuntime.longValue((Number) propertyName);
+                return index >= 0 && index < JSInteropUtil.getArraySize(object, interop, this);
             } else {
-                return false;
+                if (!(propertyName instanceof Symbol) && interop.isMemberExisting(object, toStringNode.executeString(propertyName))) {
+                    return true;
+                }
+                if (languageRef.get().getJSContext().getContextOptions().hasForeignObjectPrototype()) {
+                    DynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(object);
+                    return hasInPrototype.executeBoolean(prototype, propertyName);
+                } else {
+                    return false;
+                }
             }
+        } else {
+            throw Errors.createTypeErrorNotAnObject(object, this);
         }
     }
 

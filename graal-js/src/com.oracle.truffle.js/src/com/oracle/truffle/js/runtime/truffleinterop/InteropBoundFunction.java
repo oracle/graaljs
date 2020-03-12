@@ -55,13 +55,15 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
 import com.oracle.truffle.js.runtime.JSRealm;
 
-@ExportLibrary(InteropLibrary.class)
+@ExportLibrary(value = InteropLibrary.class, delegateTo = "function")
 public final class InteropBoundFunction extends InteropFunction {
 
+    final DynamicObject function;
     final Object receiver;
 
     public InteropBoundFunction(DynamicObject function, Object receiver) {
         super(function);
+        this.function = function;
         this.receiver = receiver;
     }
 

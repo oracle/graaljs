@@ -41,22 +41,25 @@
 package com.oracle.truffle.js.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 
 /**
  * This type represents an integer value in the range of -(2<sup>53</sup>-1) to -2<sup>53</sup>-1,
  * i.e. the range of integers that can be safely represented as double values, such that for each n,
  * {n, n - 1, n + 1} are exactly representable as double values.
  */
-@ExportLibrary(InteropLibrary.class)
+@ExportLibrary(value = InteropLibrary.class, delegateTo = "value")
 @ValueType
 public final class SafeInteger extends Number implements Comparable<SafeInteger>, TruffleObject {
+    private static final long serialVersionUID = 2017825230215806491L;
+
     final long value;
 
     private SafeInteger(long value) {
@@ -117,7 +120,11 @@ public final class SafeInteger extends Number implements Comparable<SafeInteger>
         return Long.compareUnsigned(value, other.value);
     }
 
-    private static final long serialVersionUID = 2017825230215806491L;
+    @TruffleBoundary
+    @Override
+    public String toString() {
+        return String.valueOf(value);
+    }
 
     public boolean isNegative() {
         return value < 0;
@@ -147,68 +154,18 @@ public final class SafeInteger extends Number implements Comparable<SafeInteger>
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    boolean isNumber() {
+    boolean hasLanguage() {
         return true;
     }
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    boolean fitsInLong() {
-        return true;
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return JavaScriptLanguage.class;
     }
 
     @ExportMessage
-    long asLong() {
-        return longValue();
-    }
-
-    @ExportMessage
-    boolean fitsInInt(@CachedLibrary("this.value") InteropLibrary numbers) {
-        return numbers.fitsInInt(value);
-    }
-
-    @ExportMessage
-    int asInt(@CachedLibrary("this.value") InteropLibrary numbers) throws UnsupportedMessageException {
-        return numbers.asInt(value);
-    }
-
-    @ExportMessage
-    boolean fitsInDouble(@CachedLibrary("this.value") InteropLibrary numbers) {
-        return numbers.fitsInDouble(value);
-    }
-
-    @ExportMessage
-    double asDouble(@CachedLibrary("this.value") InteropLibrary numbers) throws UnsupportedMessageException {
-        return numbers.asDouble(value);
-    }
-
-    @ExportMessage
-    boolean fitsInByte(@CachedLibrary("this.value") InteropLibrary numbers) {
-        return numbers.fitsInByte(value);
-    }
-
-    @ExportMessage
-    byte asByte(@CachedLibrary("this.value") InteropLibrary numbers) throws UnsupportedMessageException {
-        return numbers.asByte(value);
-    }
-
-    @ExportMessage
-    boolean fitsInShort(@CachedLibrary("this.value") InteropLibrary numbers) {
-        return numbers.fitsInShort(value);
-    }
-
-    @ExportMessage
-    short asShort(@CachedLibrary("this.value") InteropLibrary numbers) throws UnsupportedMessageException {
-        return numbers.asShort(value);
-    }
-
-    @ExportMessage
-    boolean fitsInFloat(@CachedLibrary("this.value") InteropLibrary numbers) {
-        return numbers.fitsInFloat(value);
-    }
-
-    @ExportMessage
-    float asFloat(@CachedLibrary("this.value") InteropLibrary numbers) throws UnsupportedMessageException {
-        return numbers.asFloat(value);
+    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return toString();
     }
 }
