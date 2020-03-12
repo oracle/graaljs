@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.binary.JSTypeofIdenticalNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -154,8 +155,15 @@ public abstract class TypeOfNode extends JSUnaryNode {
 
     @Specialization(guards = {"isJSProxy(operand)"})
     protected String doJSProxy(DynamicObject operand,
-                    @Cached("create()") TypeOfNode typeofNode) {
-        return typeofNode.executeString(JSProxy.getTarget(operand));
+                    @Cached("create()") TypeOfNode typeofNode,
+                    @Cached("create()") BranchProfile revokedProxyBranch) {
+        Object target = JSProxy.getTarget(operand);
+        if (target == Null.instance) {
+            revokedProxyBranch.enter();
+            return JSRuntime.isRevokedCallableProxy(operand) ? JSFunction.TYPE_NAME : JSUserObject.TYPE_NAME;
+        } else {
+            return typeofNode.executeString(target);
+        }
     }
 
     @Specialization
