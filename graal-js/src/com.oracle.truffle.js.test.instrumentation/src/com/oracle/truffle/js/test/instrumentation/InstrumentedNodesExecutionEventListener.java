@@ -53,14 +53,14 @@ import java.util.Set;
 
 import static org.junit.Assert.*;
 
-public class InstrumentedNodesExecutionEvenListener implements ExecutionEventListener {
+public class InstrumentedNodesExecutionEventListener implements ExecutionEventListener {
     List<Node> enteredNodes = new ArrayList<>();
     List<Node> exitedNodes = new ArrayList<>();
     List<Node> exceptionNodes = new ArrayList<>();
 
     private final Set<Class<?>> classFilter;
 
-    public InstrumentedNodesExecutionEvenListener(Class<?>... classFilter) {
+    public InstrumentedNodesExecutionEventListener(Class<?>... classFilter) {
         this.classFilter = new HashSet<>(Arrays.asList(classFilter));
     }
 

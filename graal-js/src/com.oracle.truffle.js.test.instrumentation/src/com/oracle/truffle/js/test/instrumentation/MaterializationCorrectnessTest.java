@@ -78,7 +78,7 @@ public class MaterializationCorrectnessTest extends FineGrainedAccessTest {
         testNoDoubleMaterializationReadElementNodeCheck(readElementNodeList);
         assertFalse(readElementNodeList.isEmpty());
 
-        InstrumentedNodesExecutionEvenListener listener = new InstrumentedNodesExecutionEvenListener(ReadElementNode.class);
+        InstrumentedNodesExecutionEventListener listener = new InstrumentedNodesExecutionEventListener(ReadElementNode.class);
         instrumenter.attachExecutionEventListener(SourceSectionFilter.ANY, listener);
 
         evalWithCurrentBinding(source);
@@ -117,7 +117,7 @@ public class MaterializationCorrectnessTest extends FineGrainedAccessTest {
         testNoDoubleMaterializationReadElementNodeNoSourceSectionTargetAndIndexCheck(readElementNodeList);
         assertFalse(readElementNodeList.isEmpty());
 
-        InstrumentedNodesExecutionEvenListener listener = new InstrumentedNodesExecutionEvenListener(ReadElementNode.class);
+        InstrumentedNodesExecutionEventListener listener = new InstrumentedNodesExecutionEventListener(ReadElementNode.class);
         instrumenter.attachExecutionEventListener(SourceSectionFilter.ANY, listener);
 
         evalWithCurrentBinding(source);
@@ -153,7 +153,7 @@ public class MaterializationCorrectnessTest extends FineGrainedAccessTest {
         assertFalse(ifNodeList.isEmpty());
         assertFalse(thenNodeList.isEmpty());
 
-        InstrumentedNodesExecutionEvenListener listener = new InstrumentedNodesExecutionEvenListener(IfNode.class);
+        InstrumentedNodesExecutionEventListener listener = new InstrumentedNodesExecutionEventListener(IfNode.class);
         instrumenter.attachExecutionEventListener(SourceSectionFilter.ANY, listener);
 
         evalWithCurrentBinding(source);
@@ -211,7 +211,7 @@ public class MaterializationCorrectnessTest extends FineGrainedAccessTest {
         testNoDoubleMaterializationWhileOrForNodeCheck(whileOrForNodeList, whileOrForNodeClass);
         assertFalse(whileOrForNodeList.isEmpty());
 
-        InstrumentedNodesExecutionEvenListener listener = new InstrumentedNodesExecutionEvenListener(whileOrForNodeClass);
+        InstrumentedNodesExecutionEventListener listener = new InstrumentedNodesExecutionEventListener(whileOrForNodeClass);
         instrumenter.attachExecutionEventListener(SourceSectionFilter.ANY, listener);
 
         evalWithCurrentBinding(source);
@@ -254,7 +254,7 @@ public class MaterializationCorrectnessTest extends FineGrainedAccessTest {
         testNoDoubleMaterializationPropertyNodeCheck(propertyNodeList);
         assertFalse(propertyNodeList.isEmpty());
 
-        InstrumentedNodesExecutionEvenListener listener = new InstrumentedNodesExecutionEvenListener(PropertyNode.class);
+        InstrumentedNodesExecutionEventListener listener = new InstrumentedNodesExecutionEventListener(PropertyNode.class);
         instrumenter.attachExecutionEventListener(SourceSectionFilter.ANY, listener);
 
         evalWithCurrentBinding(source);
