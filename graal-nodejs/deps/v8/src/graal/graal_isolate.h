@@ -121,6 +121,7 @@ enum GraalAccessMethod {
     value_equals,
     value_strict_equals,
     value_instance_of,
+    value_type_of,
     object_new,
     object_set,
     object_set_index,

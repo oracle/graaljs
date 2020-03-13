@@ -721,3 +721,11 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
 
     return result;
 }
+
+v8::Local<v8::String> GraalValue::TypeOf(v8::Isolate* isolate) {
+    GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+    jobject java_value = GetJavaObject();
+    JNI_CALL(jobject, java_type, graal_isolate, GraalAccessMethod::value_type_of, Object, java_value);
+    GraalString* graal_type = new GraalString(graal_isolate, (jstring) java_type);
+    return reinterpret_cast<v8::String*> (graal_type);
+}

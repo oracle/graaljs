@@ -265,6 +265,7 @@
       { "name": "valueToString" },
       { "name": "valueToUint32" },
       { "name": "valueType" },
+      { "name": "valueTypeOf" },
       { "name": "valueUint32Value" },
       { "name": "valueUnknown" }
     ]
