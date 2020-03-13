@@ -63,6 +63,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JSTypesGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -155,7 +156,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     private boolean alreadyMaterialized() {
-        return JavaScriptNode.isTaggedNode(targetNode) || JavaScriptNode.isTaggedNode(indexNode);
+        return JSNodeUtil.isTaggedNode(targetNode) || JSNodeUtil.isTaggedNode(indexNode);
     }
 
     @Override

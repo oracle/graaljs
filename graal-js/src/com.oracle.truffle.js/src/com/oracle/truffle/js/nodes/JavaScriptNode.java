@@ -54,7 +54,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.SafeInteger;
 
@@ -352,6 +351,8 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
     protected JavaScriptNode copyUninitialized() {
         if (this instanceof WrapperNode) {
             WrapperNode wrapperNode = (WrapperNode) this;
+            // TODO introduce a withWrappers parameter and clone or remove the wrapper based on the
+            // value of the parameter, needs truffle update to be able to clone a ProbeNode.
             return cloneUninitialized((JavaScriptNode) wrapperNode.getDelegateNode());
         }
 
@@ -391,7 +392,4 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
         return null;
     }
 
-    public static boolean isTaggedNode(Node node) {
-        return node instanceof JSTaggedExecutionNode || (node instanceof WrapperNode && ((WrapperNode) node).getDelegateNode() instanceof JSTaggedExecutionNode);
-    }
 }

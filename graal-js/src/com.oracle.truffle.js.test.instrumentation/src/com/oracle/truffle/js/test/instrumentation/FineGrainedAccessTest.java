@@ -381,6 +381,12 @@ public abstract class FineGrainedAccessTest {
         return evalWithTags(src, filterTags, new Class[]{StandardTags.ExpressionTag.class, JSTags.InputNodeTag.class});
     }
 
+    protected Source eval(String src) {
+        Source source = Source.create("js", src);
+        context.eval(source);
+        return source;
+    }
+
     protected Source evalWithTags(String src, Class<?>[] sourceSectionTags, Class<?>[] inputGeneratingTags) {
         binding = initAgent(sourceSectionTags, inputGeneratingTags);
         Source source = Source.create("js", src);
@@ -393,15 +399,15 @@ public abstract class FineGrainedAccessTest {
         return source;
     }
 
-    protected Source evalWithNewTags(Source source, Class<?>[] sourceSectionTags) {
-        return evalWithNewTags(source, sourceSectionTags, new Class[]{StandardTags.ExpressionTag.class, JSTags.InputNodeTag.class});
+    protected Source evalWithTags(Source source, Class<?>[] sourceSectionTags, Class<?>[] inputGeneratingTags) {
+        binding = initAgent(sourceSectionTags, inputGeneratingTags);
+        context.eval(source);
+        return source;
     }
 
     protected Source evalWithNewTags(Source source, Class<?>[] sourceSectionTags, Class<?>[] inputGeneratingTags) {
         binding.dispose();
-        binding = initAgent(sourceSectionTags, inputGeneratingTags);
-        context.eval(source);
-        return source;
+        return evalWithTags(source, sourceSectionTags, inputGeneratingTags);
     }
 
     protected void declareInteropSymbol(String name, ForeignTestObject foreignObject) {

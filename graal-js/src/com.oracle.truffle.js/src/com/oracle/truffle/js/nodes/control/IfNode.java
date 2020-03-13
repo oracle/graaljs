@@ -51,6 +51,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
@@ -113,7 +114,7 @@ public final class IfNode extends StatementNode implements ResumableNode {
 
     private boolean materializationNeeded() {
         // If we are using tagged nodes, this node is already materialized.
-        return !(isTaggedNode(condition) && (elsePart == null || isTaggedNode(elsePart)) && (thenPart == null || isTaggedNode(thenPart)));
+        return !(JSNodeUtil.isTaggedNode(condition) && (elsePart == null || JSNodeUtil.isTaggedNode(elsePart)) && (thenPart == null || JSNodeUtil.isTaggedNode(thenPart)));
     }
 
     private static boolean hasMaterializationTag(Set<Class<? extends Tag>> materializedTags) {

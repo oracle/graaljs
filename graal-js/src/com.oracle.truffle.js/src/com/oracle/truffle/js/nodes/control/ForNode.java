@@ -51,6 +51,7 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RepeatingNode;
+import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.IterationScopeNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
@@ -184,7 +185,7 @@ public final class ForNode extends StatementNode implements ResumableNode {
 
         private boolean materializationNeeded() {
             // if body is tagged, no materialization is needed.
-            return !isTaggedNode(bodyNode);
+            return !JSNodeUtil.isTaggedNode(bodyNode);
         }
 
         @Override

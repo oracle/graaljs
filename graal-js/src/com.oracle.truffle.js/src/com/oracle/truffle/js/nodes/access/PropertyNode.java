@@ -49,6 +49,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
@@ -96,7 +97,7 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(ReadPropertyTag.class) && !isScopeAccess()) {
-            if (isTaggedNode(target)) {
+            if (JSNodeUtil.isTaggedNode(target)) {
                 // this node is already materialized
                 return this;
             }
