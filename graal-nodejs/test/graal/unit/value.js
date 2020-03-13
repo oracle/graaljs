@@ -1007,4 +1007,44 @@ describe('Value - other methods', function () {
             assert.strictEqual(module.Value_StrictEquals(o, o), true);
         });
     });
+    describe('TypeOf', function () {
+        it('should return "undefined" for undefined', function () {
+            assert.strictEqual(module.Value_TypeOf(undefined), "undefined");
+        });
+        it('should return "object" for null', function () {
+            assert.strictEqual(module.Value_TypeOf(null), "object");
+        });
+        it('should return "boolean" for true and false', function () {
+            assert.strictEqual(module.Value_TypeOf(true), "boolean");
+            assert.strictEqual(module.Value_TypeOf(false), "boolean");
+        });
+        it('should return "number" for 42, NaN and Infinity', function () {
+            assert.strictEqual(module.Value_TypeOf(42), "number");
+            assert.strictEqual(module.Value_TypeOf(NaN), "number");
+            assert.strictEqual(module.Value_TypeOf(Infinity), "number");
+        });
+        it('should return "bigint" for 42n', function () {
+            assert.strictEqual(module.Value_TypeOf(42n), "bigint");
+        });
+        it('should return "symbol" for Symbol()', function () {
+            assert.strictEqual(module.Value_TypeOf(Symbol()), "symbol");
+        });
+        it('should return "string" for "foo"', function () {
+            assert.strictEqual(module.Value_TypeOf("foo"), "string");
+        });
+        it('should return "object" for "JSON"', function () {
+            assert.strictEqual(module.Value_TypeOf(JSON), "object");
+        });
+        it('should return "function" for an arrow function', function () {
+            assert.strictEqual(module.Value_TypeOf(() => 42), "function");
+        });
+        it('should return "function" for a callable proxy', function () {
+            assert.strictEqual(module.Value_TypeOf(new Proxy(function() {}, {})), "function");
+        });
+        it('should return "function" for a revoked callable proxy', function () {
+            var r = Proxy.revocable(function() {}, {});
+            r.revoke();
+            assert.strictEqual(module.Value_TypeOf(r.proxy), "function");
+        });
+    });
 });

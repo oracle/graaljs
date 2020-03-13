@@ -321,6 +321,13 @@ EXPORT_TO_JS(StrictEquals) {
     args.GetReturnValue().Set(args[0]->StrictEquals(args[1]));
 }
 
+// Value::TypeOf
+
+EXPORT_TO_JS(TypeOf) {
+    Isolate* isolate = args.GetIsolate();
+    args.GetReturnValue().Set(args[0]->TypeOf(isolate));
+}
+
 // Value::*Value
 
 EXPORT_TO_JS(IntegerValue) {

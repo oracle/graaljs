@@ -618,6 +618,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::value_equals, "valueEquals", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_strict_equals, "valueStrictEquals", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_instance_of, "valueInstanceOf", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::value_type_of, "valueTypeOf", "(Ljava/lang/Object;)Ljava/lang/String;")
     ACCESS_METHOD(GraalAccessMethod::object_new, "objectNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_set, "objectSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::object_set_index, "objectSetIndex", "(Ljava/lang/Object;ILjava/lang/Object;)Z")

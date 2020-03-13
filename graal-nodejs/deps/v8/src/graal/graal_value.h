@@ -120,6 +120,7 @@ public:
     v8::Maybe<bool> Equals(v8::Local<v8::Value> that) const;
     bool StrictEquals(v8::Local<v8::Value> that) const;
     bool InstanceOf(v8::Local<v8::Object> object);
+    v8::Local<v8::String> TypeOf(v8::Isolate* isolate);
 };
 
 #endif /* GRAAL_VALUE_H_ */

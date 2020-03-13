@@ -706,6 +706,10 @@ public final class GraalJSAccess {
         }
     }
 
+    public String valueTypeOf(Object value) {
+        return JSRuntime.typeof(value);
+    }
+
     public Object objectNew(Object context) {
         JSRealm jsRealm = (JSRealm) context;
         return JSUserObject.create(jsRealm.getContext(), jsRealm);

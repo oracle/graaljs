@@ -1372,6 +1372,10 @@ namespace v8 {
         }
     }
 
+    Local<String> Value::TypeOf(Isolate* isolate) {
+        return reinterpret_cast<GraalValue*> (this)->TypeOf(isolate);
+    }
+
     void* External::Value() const {
         const GraalExternal* external = reinterpret_cast<const GraalExternal*> (this);
         return external->Value();
