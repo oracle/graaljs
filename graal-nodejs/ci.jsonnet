@@ -48,7 +48,7 @@ local common = import '../common.jsonnet';
     run+: [
       ['mx', '--dynamicimports', '/compiler', 'node', '-e', 'console.log(\'Hello, World!\')'],
       ['mx', '--dynamicimports', '/compiler', 'npm', '--version'],
-      ['set-export', 'GRAALVM_HOME', ['mx', '--dynamicimports', '/compiler', 'graalvm-home']],
+      ['set-export', 'GRAALVM_HOME', ['mx', '--no-warning', '--dynamicimports', '/compiler', 'graalvm-home']],
       ['${GRAALVM_HOME}/bin/node', '-e', 'console.log(\'Hello, World!\')'],
       ['${GRAALVM_HOME}/bin/npm', '--version'],
     ],
@@ -65,7 +65,7 @@ local common = import '../common.jsonnet';
     run+: [
       ['mx', '-p', '../../graal/substratevm', 'build', '--force-javac'],
       ['mx', '--env', 'svm', 'build'],
-      ['set-export', 'GRAALVM_HOME', ['mx', '--env', 'svm', 'graalvm-home']],
+      ['set-export', 'GRAALVM_HOME', ['mx', '--no-warning', '--env', 'svm', 'graalvm-home']],
       ['${GRAALVM_HOME}/bin/node', '-e', 'console.log(\'Hello, World!\')'],
       ['${GRAALVM_HOME}/bin/npm', '--version'],
     ],
