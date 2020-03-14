@@ -581,8 +581,12 @@
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/proxies-prototype-handler-stackoverflow.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
     "runInIsolation" : true,
-    "comment" : "test with (expected) stack overflows that might influence other tests"
+    "comment" : "test with (expected) stack overflows that might influence other tests, disabled on SVM (GR-21828)"
   }, {
     "filePath" : "mjsunit/es6/regress/regress-2322.js",
     "status" : "FAIL"
@@ -1437,8 +1441,12 @@
     "comment" : "REGEX language cannot be initialized after StackOverflow"
   }, {
     "filePath" : "mjsunit/regress/regress-707066.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
     "runInIsolation" : true,
-    "comment" : "test with (expected) stack overflows that might influence other tests"
+    "comment" : "test with (expected) stack overflows that might influence other tests, disabled on SVM (GR-21828)"
   }, {
     "filePath" : "mjsunit/regress/regress-740694.js",
     "status" : "FAIL",
@@ -1451,6 +1459,13 @@
     "filePath" : "mjsunit/regress/regress-752764.js",
     "status" : "SKIP",
     "comment" : "Calls v8StringMaxLength. Checks that longer strings cannot be parsed as RegExps by V8."
+  }, {
+    "filePath" : "mjsunit/regress/regress-7716.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "comment" : "test with (expected) stack overflows that may influence other tests, disabled on SVM (GR-21828)"
   }, {
     "filePath" : "mjsunit/regress/regress-779407.js",
     "runInIsolation" : true,
@@ -1495,6 +1510,13 @@
     "filePath" : "mjsunit/regress/regress-842078.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-8510.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "comment" : "test with (expected) stack overflows that may influence other tests, disabled on SVM (GR-21828)"
   }, {
     "filePath" : "mjsunit/regress/regress-852765.js",
     "status" : "FAIL",
@@ -1548,6 +1570,13 @@
     "filePath" : "mjsunit/regress/regress-9165.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-923723.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "comment" : "test with (expected) stack overflows that may influence other tests, disabled on SVM (GR-21828)"
   }, {
     "filePath" : "mjsunit/regress/regress-926036.js",
     "status" : "FAIL",
@@ -1604,12 +1633,20 @@
     "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-357137.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
     "runInIsolation" : true,
-    "comment" : "test with (expected) stack overflows that might influence other tests"
+    "comment" : "test with (expected) stack overflows that might influence other tests, disabled on SVM (GR-21828)"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-385002.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
     "runInIsolation" : true,
-    "comment" : "test with (expected) stack overflows that might influence other tests"
+    "comment" : "test with (expected) stack overflows that might influence other tests, disabled on SVM (GR-21828)"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-387031.js",
     "status" : "FAIL"
@@ -1676,6 +1713,13 @@
     "status" : "SKIP",
     "runInIsolation" : true,
     "comment" : "NOW: Timeout on infinite recursion where v8 expects the stack limit to be hit. After hitting stack limit, tries to compile a simple regexp. BEFORE: test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-620253.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "comment" : "test with (expected) stack overflows that may influence other tests, disabled on SVM (GR-21828)"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-621611.js",
     "status" : "PASS",
