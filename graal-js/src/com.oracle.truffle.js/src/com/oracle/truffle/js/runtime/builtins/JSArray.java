@@ -89,6 +89,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
     public static final String PROTOTYPE_NAME = "Array.prototype";
     public static final String ITERATOR_CLASS_NAME = "Array Iterator";
     public static final String ITERATOR_PROTOTYPE_NAME = "Array Iterator.prototype";
+    public static final String ENTRIES = "entries";
 
     public static final JSArray INSTANCE = new JSArray();
     static final Property ARRAY_LENGTH_PROXY_PROPERTY = makeArrayLengthProxyProperty();
@@ -217,7 +218,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
     private static List<String> unscopableNameList(JSContext context) {
         List<String> names = new ArrayList<>();
         names.add("copyWithin");
-        names.add("entries");
+        names.add(JSArray.ENTRIES);
         names.add("fill");
         names.add("find");
         names.add("findIndex");

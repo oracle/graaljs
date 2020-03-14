@@ -498,6 +498,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorFinalizationRegistryExpected() {
+        return Errors.createTypeError("FinalizationRegistry expected");
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorNotANumber(Object value) {
         return Errors.createTypeError(JSRuntime.safeToString(value) + " is not a Number");
     }

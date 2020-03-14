@@ -129,6 +129,7 @@ public final class JSRuntime {
     public static final HiddenKey ITERATOR_NEXT_INDEX = new HiddenKey("IteratorNextIndex");
     public static final HiddenKey ENUMERATE_ITERATOR_ID = new HiddenKey("EnumerateIterator");
     public static final HiddenKey FOR_IN_ITERATOR_ID = new HiddenKey("ForInIterator");
+    public static final HiddenKey FINALIZATION_GROUP_CLEANUP_ITERATOR_ID = new HiddenKey("CleanupIterator");
 
     public static final int ITERATION_KIND_KEY = 1 << 0;
     public static final int ITERATION_KIND_VALUE = 1 << 1;

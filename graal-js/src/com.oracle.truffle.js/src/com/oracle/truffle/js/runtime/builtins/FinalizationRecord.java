@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,56 +38,35 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.truffleinterop;
+package com.oracle.truffle.js.runtime.builtins;
 
-import java.util.List;
+import java.lang.ref.WeakReference;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.js.runtime.array.ScriptArray;
+/**
+ * A record specified for FinalizationRegistry entries.
+ *
+ */
+public class FinalizationRecord {
+    private WeakReference<Object> weakRefTarget;
+    private Object heldValue;
+    private WeakReference<Object> unregisterToken;
 
-@ExportLibrary(InteropLibrary.class)
-public final class InteropArray implements TruffleObject {
-    final Object[] array;
-
-    private InteropArray(Object[] array) {
-        this.array = array;
+    public FinalizationRecord(WeakReference<Object> weakRefTarget, Object heldValue, Object unregisterToken) {
+        assert weakRefTarget != null && weakRefTarget.get() != null;
+        this.weakRefTarget = weakRefTarget;
+        this.heldValue = heldValue;
+        this.unregisterToken = new WeakReference<>(unregisterToken);
     }
 
-    public static InteropArray create(Object[] array) {
-        return new InteropArray(array);
+    public WeakReference<Object> getWeakRefTarget() {
+        return weakRefTarget;
     }
 
-    @TruffleBoundary
-    public static InteropArray create(List<? extends Object> list) {
-        return new InteropArray(list.toArray(ScriptArray.EMPTY_OBJECT_ARRAY));
+    public Object getHeldValue() {
+        return heldValue;
     }
 
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    boolean hasArrayElements() {
-        return true;
-    }
-
-    @ExportMessage
-    Object readArrayElement(long index) throws InvalidArrayIndexException {
-        if (!isArrayElementReadable(index)) {
-            throw InvalidArrayIndexException.create(index);
-        }
-        return array[(int) index];
-    }
-
-    @ExportMessage
-    long getArraySize() {
-        return array.length;
-    }
-
-    @ExportMessage
-    boolean isArrayElementReadable(long index) {
-        return index >= 0L && index < array.length;
+    public WeakReference<Object> getUnregisterToken() {
+        return unregisterToken;
     }
 }

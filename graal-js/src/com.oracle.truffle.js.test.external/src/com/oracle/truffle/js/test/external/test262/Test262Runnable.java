@@ -199,9 +199,10 @@ public class Test262Runnable extends TestRunnable {
                     "WeakRef",
                     "regexp-match-indices",
                     "for-in-order",
+                    "FinalizationRegistry",
+                    "host-gc-required",
     }));
     private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
-                    "FinalizationRegistry",
                     "Intl.DateTimeFormat-dayPeriod",
                     "Intl.DateTimeFormat-formatRange",
                     "Intl.DateTimeFormat-fractionalSecondDigits",
@@ -216,7 +217,9 @@ public class Test262Runnable extends TestRunnable {
                     "AggregateError",
     }));
     private static final Set<String> ES2021_FEATURES = new HashSet<>(Arrays.asList(new String[]{
+                    "FinalizationRegistry",
                     "WeakRef",
+                    "host-gc-required",
                     "class-fields-private",
                     "class-fields-public",
                     "class-static-fields-private",

@@ -80,11 +80,11 @@ import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugPrintObjectNodeG
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugPrintSourceAttributionNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugShapeNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugStringCompareNodeGen;
-import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugSystemGCNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugSystemPropertiesNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugSystemPropertyNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugToJavaStringNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugTypedArrayDetachBufferNodeGen;
+import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262GcNodeGen;
 import com.oracle.truffle.js.builtins.helper.HeapDump;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -211,7 +211,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 return DebugLoadModuleNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
 
             case systemGC:
-                return DebugSystemGCNodeGen.create(context, builtin, args().createArgumentNodes(context));
+                return Test262GcNodeGen.create(context, builtin, args().createArgumentNodes(context));
             case systemProperty:
                 return DebugSystemPropertyNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case systemProperties:
@@ -664,19 +664,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
             evaluator.moduleInstantiation(realm, module);
             evaluator.moduleEvaluation(realm, module);
             return String.valueOf(module);
-        }
-    }
-
-    public abstract static class DebugSystemGCNode extends JSBuiltinNode {
-        public DebugSystemGCNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @TruffleBoundary
-        @Specialization
-        protected static Object systemGC() {
-            System.gc();
-            return Undefined.instance;
         }
     }
 
