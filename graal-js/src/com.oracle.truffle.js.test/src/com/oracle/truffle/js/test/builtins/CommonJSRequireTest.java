@@ -41,8 +41,6 @@
 package com.oracle.truffle.js.test.builtins;
 
 import com.oracle.truffle.js.runtime.JSContextOptions;
-import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
@@ -504,6 +502,20 @@ public class CommonJSRequireTest {
     public void dontImportCommonJs() throws IOException {
         final String src = "import('with-package').then(x => {throw 'unexpected'}).catch(console.log);";
         final String out = "TypeError: do not use import() to load non-ES modules.\n";
+        runAndExpectOutput(src, out);
+    }
+
+    @Test
+    public void badModuleName() throws IOException {
+        final String src = "import('__foo__ + /some/garbage.js').then(x => {throw 'unexpected'}).catch(console.log);";
+        final String out = "TypeError: Cannot load module: '__foo__ + /some/garbage.js'\n";
+        runAndExpectOutput(src, out);
+    }
+
+    @Test
+    public void importBuiltinlModule() throws IOException {
+        final String src = "import('assert').then(x => {throw 'unexpected'}).catch(console.log);";
+        final String out = "TypeError: Cannot load module: '__foo__ + /some/garbage.js'\n";
         runAndExpectOutput(src, out);
     }
 }

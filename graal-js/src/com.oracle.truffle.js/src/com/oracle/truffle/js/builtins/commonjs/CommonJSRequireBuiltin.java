@@ -71,14 +71,14 @@ import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.isCoreM
 
 public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
 
-    private static final boolean LOG_REQUIRE_PATH_RESOLUTION = false;
+    private static final boolean LOG_REQUIRE_PATH_RESOLUTION = true;
     private static final Stack<String> requireDebugStack;
 
     static {
         requireDebugStack = LOG_REQUIRE_PATH_RESOLUTION ? new Stack<>() : null;
     }
 
-    private static void log(Object... message) {
+    public static void log(Object... message) {
         if (LOG_REQUIRE_PATH_RESOLUTION) {
             StringBuilder s = new StringBuilder("['.'");
             for (String module : requireDebugStack) {
