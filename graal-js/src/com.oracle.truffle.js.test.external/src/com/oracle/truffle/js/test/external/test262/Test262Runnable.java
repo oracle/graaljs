@@ -211,7 +211,6 @@ public class Test262Runnable extends TestRunnable {
                     "IsHTMLDDA",
                     "class-methods-private",
                     "class-static-methods-private",
-                    "host-gc-required",
                     "tail-call-optimization",
                     "top-level-await",
                     "AggregateError",
@@ -270,6 +269,7 @@ public class Test262Runnable extends TestRunnable {
         int featureVersion = JSConfig.LatestECMAScriptVersion;
         for (String feature : features) {
             if (SUPPORTED_FEATURES.contains(feature)) {
+                assert !UNSUPPORTED_FEATURES.contains(feature) : feature;
                 if (ES2021_FEATURES.contains(feature)) {
                     featureVersion = JSConfig.ECMAScript2021;
                 }
