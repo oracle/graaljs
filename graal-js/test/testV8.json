@@ -832,7 +832,10 @@
     "status" : "PASS"
   }, {
     "filePath" : "mjsunit/harmony/private-fields-static.js",
-    "status" : "FAIL",
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
+    "status" : "PASS",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
     "filePath" : "mjsunit/harmony/private-fields.js",
@@ -850,14 +853,19 @@
     "comment" : "--harmony-private-methods"
   }, {
     "filePath" : "mjsunit/harmony/private-name-scopes.js",
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
     "filePath" : "mjsunit/harmony/private-symbols.js",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "comment" : "Uses unsupported %CreatePrivateSymbol."
   }, {
     "filePath" : "mjsunit/harmony/private.js",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "comment" : "Uses unsupported %CreatePrivateSymbol."
   }, {
     "filePath" : "mjsunit/harmony/public-instance-class-fields.js",
     "ecmaVersion" : {
@@ -867,8 +875,10 @@
     "comment" : "--harmony-public-fields"
   }, {
     "filePath" : "mjsunit/harmony/public-static-class-fields.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "mjsunit/harmony/regexp-match-indices.js",
     "status" : "FAIL",
