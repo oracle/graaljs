@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,62 +47,50 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSListFormat;
+import com.oracle.truffle.js.runtime.builtins.JSDisplayNames;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
-public abstract class InitializeListFormatNode extends JavaScriptBaseNode {
-
+public abstract class InitializeDisplayNamesNode extends JavaScriptBaseNode {
     private final JSContext context;
-
     @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
     @Child CreateOptionsObjectNode createOptionsNode;
-
     @Child GetStringOptionNode getLocaleMatcherOption;
-
-    @Child GetStringOptionNode getTypeOption;
     @Child GetStringOptionNode getStyleOption;
+    @Child GetStringOptionNode getTypeOption;
+    @Child GetStringOptionNode getFallbackOption;
 
-    protected InitializeListFormatNode(JSContext context) {
+    protected InitializeDisplayNamesNode(JSContext context) {
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
-        this.getTypeOption = GetStringOptionNode.create(context, IntlUtil.TYPE, new String[]{IntlUtil.CONJUNCTION, IntlUtil.DISJUNCTION, IntlUtil.UNIT}, IntlUtil.CONJUNCTION);
-        this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.STYLE, new String[]{IntlUtil.LONG, IntlUtil.SHORT, IntlUtil.NARROW}, IntlUtil.LONG);
-        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER,
-                        new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
+        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
+        this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.STYLE, new String[]{IntlUtil.NARROW, IntlUtil.SHORT, IntlUtil.LONG}, IntlUtil.LONG);
+        this.getTypeOption = GetStringOptionNode.create(context, IntlUtil.TYPE, new String[]{IntlUtil.LANGUAGE, IntlUtil.REGION, IntlUtil.SCRIPT, IntlUtil.CURRENCY}, IntlUtil.LANGUAGE);
+        this.getFallbackOption = GetStringOptionNode.create(context, IntlUtil.FALLBACK, new String[]{IntlUtil.CODE, IntlUtil.NONE}, IntlUtil.CODE);
     }
 
-    public abstract DynamicObject executeInit(DynamicObject collator, Object locales, Object options);
+    public abstract DynamicObject executeInit(DynamicObject displayNames, Object locales, Object options);
 
-    public static InitializeListFormatNode createInitalizeListFormatNode(JSContext context) {
-        return InitializeListFormatNodeGen.create(context);
+    public static InitializeDisplayNamesNode createInitalizeDisplayNamesNode(JSContext context) {
+        return InitializeDisplayNamesNodeGen.create(context);
     }
 
     @Specialization
-    public DynamicObject initializeListFormat(DynamicObject listFormatObj, Object localesArg, Object optionsArg) {
-
-        // must be invoked before any code that tries to access ICU library data
+    public DynamicObject initializeDisplayNames(DynamicObject displayNamesObject, Object localesArg, Object optionsArg) {
         try {
-
-            JSListFormat.InternalState state = JSListFormat.getInternalState(listFormatObj);
-
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
             DynamicObject options = createOptionsNode.execute(optionsArg);
 
             getLocaleMatcherOption.executeValue(options);
-            String optType = getTypeOption.executeValue(options);
             String optStyle = getStyleOption.executeValue(options);
-
-            state.setType(optType);
-            state.setStyle(optStyle);
-
-            JSListFormat.setLocale(context, state, locales);
-            JSListFormat.setupInternalListFormatter(state);
-
+            String optType = getTypeOption.executeValue(options);
+            String optFallback = getFallbackOption.executeValue(options);
+            JSDisplayNames.InternalState state = JSDisplayNames.getInternalState(displayNamesObject);
+            JSDisplayNames.setupInternalState(context, state, locales, optStyle, optType, optFallback);
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError(e);
         }
 
-        return listFormatObj;
+        return displayNamesObject;
     }
 }

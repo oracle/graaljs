@@ -85,6 +85,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructCollat
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDataViewNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDateNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDateTimeFormatNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDisplayNamesNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructErrorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructFinalizationRegistryNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructFunctionNodeGen;
@@ -147,6 +148,7 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.intl.CreateRegExpNode;
 import com.oracle.truffle.js.nodes.intl.InitializeCollatorNode;
 import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNode;
+import com.oracle.truffle.js.nodes.intl.InitializeDisplayNamesNode;
 import com.oracle.truffle.js.nodes.intl.InitializeListFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializeNumberFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializePluralRulesNode;
@@ -181,6 +183,7 @@ import com.oracle.truffle.js.runtime.builtins.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
+import com.oracle.truffle.js.runtime.builtins.JSDisplayNames;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSListFormat;
@@ -237,6 +240,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         DateTimeFormat(0),
         RelativeTimeFormat(0),
         Segmenter(0),
+        DisplayNames(0),
 
         Error(1),
         RangeError(1),
@@ -393,6 +397,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 return construct ? (newTarget
                                 ? ConstructSegmenterNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
                                 : ConstructSegmenterNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
+                                : createCallRequiresNew(context, builtin);
+            case DisplayNames:
+                return construct ? (newTarget
+                                ? ConstructDisplayNamesNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
+                                : ConstructDisplayNamesNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
                                 : createCallRequiresNew(context, builtin);
             case Object:
                 if (newTarget) {
@@ -1225,6 +1234,27 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
             return realm.getSegmenterPrototype();
+        }
+    }
+
+    public abstract static class ConstructDisplayNamesNode extends ConstructWithNewTargetNode {
+
+        @Child InitializeDisplayNamesNode initializeDisplayNamesNode;
+
+        public ConstructDisplayNamesNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
+            super(context, builtin, newTargetCase);
+            initializeDisplayNamesNode = InitializeDisplayNamesNode.createInitalizeDisplayNamesNode(context);
+        }
+
+        @Specialization
+        protected DynamicObject constructDisplayNames(DynamicObject newTarget, Object locales, Object options) {
+            DynamicObject displayNames = swapPrototype(JSDisplayNames.create(getContext()), newTarget);
+            return initializeDisplayNamesNode.executeInit(displayNames, locales, options);
+        }
+
+        @Override
+        protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getDisplayNamesPrototype();
         }
     }
 

@@ -165,6 +165,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorDisplayNamesExpected() {
+        return createTypeError("DisplayNames object expected.");
+    }
+
+    @TruffleBoundary
     public static JSException createSyntaxError(String message, Throwable cause, Node originatingNode) {
         return JSException.create(JSErrorType.SyntaxError, message, cause, originatingNode);
     }
@@ -441,6 +446,14 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createRangeErrorInvalidUnitArgument(String functionName, String unit) {
         return createRangeError(String.format("Invalid unit argument for %s() '%s'", functionName, unit));
+    }
+
+    public static JSException createRangeErrorInvalidRegion(String region) {
+        return createRangeErrorFormat("Invalid region subtag: %s", null, region);
+    }
+
+    public static JSException createRangeErrorInvalidScript(String script) {
+        return createRangeErrorFormat("Invalid script subtag: %s", null, script);
     }
 
     @TruffleBoundary

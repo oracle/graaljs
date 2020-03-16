@@ -462,19 +462,6 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         }
     }
 
-    // https://tc39.github.io/ecma402/#sec-iswellformedcurrencycode
-    @TruffleBoundary
-    public static boolean isWellFormedCurrencyCode(String currency) {
-        if (currency == null || currency.length() != 3) {
-            return false;
-        }
-        String normalized = IntlUtil.toUpperCase(currency);
-        char a = normalized.charAt(0);
-        char b = normalized.charAt(1);
-        char c = normalized.charAt(2);
-        return a >= 'A' && a <= 'Z' && b >= 'A' && b <= 'Z' && c >= 'A' && c <= 'Z';
-    }
-
     @Override
     public Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);

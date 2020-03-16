@@ -62,6 +62,7 @@ import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
+import com.oracle.truffle.js.runtime.builtins.JSDisplayNames;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSListFormat;
@@ -311,6 +312,14 @@ public final class JSGuards {
 
     public static boolean isJSSegmenter(Object value) {
         return JSSegmenter.isJSSegmenter(value);
+    }
+
+    public static boolean isJSDisplayNames(DynamicObject value) {
+        return JSDisplayNames.isJSDisplayNames(value);
+    }
+
+    public static boolean isJSDisplayNames(Object value) {
+        return JSDisplayNames.isJSDisplayNames(value);
     }
 
     public static boolean isNumber(Object operand) {

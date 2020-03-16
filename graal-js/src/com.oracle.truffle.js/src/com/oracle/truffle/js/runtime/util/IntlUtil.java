@@ -96,6 +96,7 @@ public final class IntlUtil {
     public static final String DISJUNCTION = "disjunction";
     public static final String ELEMENT = "element";
     public static final String ERA = "era";
+    public static final String FALLBACK = "fallback";
     public static final String FALSE = "false";
     public static final String FORMAT_MATCHER = "formatMatcher";
     public static final String FULL = "full";
@@ -110,6 +111,7 @@ public final class IntlUtil {
     public static final String HOUR12 = "hour12";
     public static final String INDEX = "index";
     public static final String IGNORE_PUNCTUATION = "ignorePunctuation";
+    public static final String LANGUAGE = "language";
     public static final String LITERAL = "literal";
     public static final String LOCALE = "locale";
     public static final String LOCALE_MATCHER = "localeMatcher";
@@ -136,6 +138,8 @@ public final class IntlUtil {
     public static final String OR_SHORT = "or-short";
     public static final String ORDINAL = "ordinal";
     public static final String PERCENT = "percent";
+    public static final String REGION = "region";
+    public static final String SCRIPT = "script";
     public static final String SEARCH = "search";
     public static final String SEP = "sep";
     public static final String SECOND = "second";
@@ -315,6 +319,51 @@ public final class IntlUtil {
             String toRemove = "-u-" + key + "-" + value;
             String strippedTag = originalTag.replace(toRemove, "");
             return new Locale(strippedTag);
+        }
+    }
+
+    private static boolean isBasicAlpha(char c) {
+        return ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z');
+    }
+
+    private static boolean isBasicDigit(char c) {
+        return '0' <= c && c <= '9';
+    }
+
+    public static boolean isWellFormedCurrencyCode(String currency) {
+        return currency.length() == 3 && isBasicAlpha(currency.charAt(0)) && isBasicAlpha(currency.charAt(1)) && isBasicAlpha(currency.charAt(2));
+    }
+
+    public static void ensureIsWellFormedCurrencyCode(String currency) {
+        if (!isWellFormedCurrencyCode(currency)) {
+            throw Errors.createRangeErrorCurrencyNotWellFormed(currency);
+        }
+    }
+
+    private static boolean isStructurallyValidRegionSubtag(String region) {
+        // unicode_region_subtag = (alpha{2} | digit{3}) ;
+        // digit = [0-9] ;
+        // alpha = [A-Z a-z] ;
+        int length = region.length();
+        return ((length == 2) && isBasicAlpha(region.charAt(0)) && isBasicAlpha(region.charAt(1))) ||
+                        ((length == 3) && isBasicDigit(region.charAt(0)) && isBasicDigit(region.charAt(1)) && isBasicDigit(region.charAt(2)));
+    }
+
+    public static void ensureIsStructurallyValidRegionSubtag(String region) {
+        if (!isStructurallyValidRegionSubtag(region)) {
+            throw Errors.createRangeErrorInvalidRegion(region);
+        }
+    }
+
+    private static boolean isStructurallyValidScriptSubtag(String script) {
+        // unicode_script_subtag = alpha{4} ;
+        // alpha = [A-Z a-z] ;
+        return (script.length() == 4) && isBasicAlpha(script.charAt(0)) && isBasicAlpha(script.charAt(1)) && isBasicAlpha(script.charAt(2)) && isBasicAlpha(script.charAt(3));
+    }
+
+    public static void ensureIsStructurallyValidScriptSubtag(String script) {
+        if (!isStructurallyValidScriptSubtag(script)) {
+            throw Errors.createRangeErrorInvalidScript(script);
         }
     }
 

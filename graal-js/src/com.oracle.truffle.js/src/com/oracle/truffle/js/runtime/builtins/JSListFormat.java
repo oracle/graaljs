@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -234,8 +234,6 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
     }
 
     public static class InternalState {
-
-        private boolean initialized = false;
         private ListFormatter listFormatter;
 
         private String locale;
@@ -250,14 +248,6 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
             JSObjectUtil.defineDataProperty(result, IntlUtil.TYPE, type, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, IntlUtil.STYLE, style, JSAttributes.getDefault());
             return result;
-        }
-
-        public boolean isInitialized() {
-            return initialized;
-        }
-
-        public void setInitialized(boolean initialized) {
-            this.initialized = initialized;
         }
 
         public void setType(String type) {

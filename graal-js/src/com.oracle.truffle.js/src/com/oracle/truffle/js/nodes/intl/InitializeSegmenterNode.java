@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,8 +88,6 @@ public abstract class InitializeSegmenterNode extends JavaScriptBaseNode {
 
             getLocaleMatcherOption.executeValue(options);
             String optGranularity = getGranularityOption.executeValue(options);
-
-            state.setInitialized(true);
 
             JSSegmenter.setLocale(context, state, locales);
             JSSegmenter.setupInternalBreakIterator(state, optGranularity);

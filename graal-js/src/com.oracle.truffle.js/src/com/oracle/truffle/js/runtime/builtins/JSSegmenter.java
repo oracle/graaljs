@@ -249,9 +249,6 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
     }
 
     public static class InternalState {
-
-        private boolean initialized = false;
-
         private String locale;
         private Locale javaLocale;
 
@@ -262,14 +259,6 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
             JSObjectUtil.defineDataProperty(result, IntlUtil.LOCALE, locale, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, IntlUtil.GRANULARITY, granularity.getName(), JSAttributes.getDefault());
             return result;
-        }
-
-        public boolean isInitialized() {
-            return initialized;
-        }
-
-        public void setInitialized(boolean initialized) {
-            this.initialized = initialized;
         }
     }
 
