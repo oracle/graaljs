@@ -36,6 +36,9 @@ For contributors, a guide how to build GraalVM JavaScript from source code can b
 
 GraalVM JavaScript is compatible with the [ECMAScript 2019 specification](http://www.ecma-international.org/ecma-262/10.0/index.html).
 New features, e.g. for the upcoming 2020 edition, are added frequently.
+GraalVM JavaScript already supports most of the features expected to be part of the ECMAScript 2020 specification.
+Starting with GraalVM 20.1.0, ECMAScript 2020 will be the default compatibility level.
+
 In addition, some popular extensions of other engines are supported, see [`JavaScriptCompatibility.md`](docs/user/JavaScriptCompatibility.md).
 
 GraalVM JavaScript can execute Node.js applications.
