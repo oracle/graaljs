@@ -42,6 +42,7 @@ package com.oracle.truffle.js.test.interop;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -53,6 +54,7 @@ import java.util.function.Consumer;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 import com.oracle.truffle.js.test.JSTest;
@@ -173,6 +175,46 @@ public class JavaScriptHostInteropTest {
 
                 context.eval(ID, "hostobj.write(JSON.stringify(6), 'eight', null)");
                 context.eval(ID, "hostobj['write'](JSON.stringify(6), 'eight', null)");
+            }
+        }
+    }
+
+    static final String EXPECTED_EXCEPTION_MESSAGE = "This will be swallowed :(";
+
+    public static class Hello {
+        public void thisIsFine(Value human) {
+            assertEquals("timmy", human.invokeMember("hello").asString());
+        }
+
+        public void thisWillBreak(@SuppressWarnings("unused") Object human) {
+            throw new ClassCastException(EXPECTED_EXCEPTION_MESSAGE);
+        }
+    }
+
+    @Test
+    public void testHostClassCastException() {
+        try (Context context = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+            context.getBindings(ID).putMember("hello", new Hello());
+            try {
+                context.eval(ID, "class Human {\n" +
+                                "  constructor(name) {\n" +
+                                "    this.name = name;\n" +
+                                "  }\n" +
+                                "\n" +
+                                "  hello() {\n" +
+                                "    return this.name;\n" +
+                                "  }\n" +
+                                "}\n" +
+                                "\n" +
+                                "const human = new Human(\"timmy\");\n" +
+                                "\n" +
+                                "hello.thisIsFine(human);\n" +
+                                "hello.thisWillBreak(human);");
+                fail("should have thrown");
+            } catch (PolyglotException e) {
+                assertTrue(e.isHostException());
+                assertEquals(ClassCastException.class, e.asHostException().getClass());
+                assertEquals(EXPECTED_EXCEPTION_MESSAGE, e.asHostException().getMessage());
             }
         }
     }
