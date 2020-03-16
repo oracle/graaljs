@@ -8,6 +8,26 @@
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },
 {
+  "name":"com.ibm.icu.impl.ICULangDataTables",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"com.ibm.icu.impl.ICURegionDataTables",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"com.ibm.icu.impl.LocaleDisplayNamesImpl",
+  "methods":[
+    {
+      "name":"getInstance",
+      "parameterTypes":[
+        "com.ibm.icu.util.ULocale",
+        "com.ibm.icu.text.DisplayContext[]"
+      ]
+    }
+  ]
+},
+{
   "name":"com.ibm.icu.impl.TimeZoneNamesFactoryImpl",
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },

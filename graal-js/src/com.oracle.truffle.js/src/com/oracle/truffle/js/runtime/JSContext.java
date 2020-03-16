@@ -89,6 +89,7 @@ import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSDictionaryObject;
+import com.oracle.truffle.js.runtime.builtins.JSDisplayNames;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -373,6 +374,7 @@ public class JSContext {
     private final JSObjectFactory relativeTimeFormatFactory;
     private final JSObjectFactory segmenterFactory;
     private final JSObjectFactory segmentIteratorFactory;
+    private final JSObjectFactory displayNamesFactory;
 
     private final JSObjectFactory javaImporterFactory;
     private final JSObjectFactory javaPackageFactory;
@@ -510,6 +512,7 @@ public class JSContext {
         this.relativeTimeFormatFactory = builder.create(JSRelativeTimeFormat.INSTANCE);
         this.segmenterFactory = builder.create(JSSegmenter.INSTANCE);
         this.segmentIteratorFactory = builder.create(JSRealm::getSegmentIteratorPrototype, JSSegmenter::makeInitialSegmentIteratorShape);
+        this.displayNamesFactory = builder.create(JSDisplayNames.INSTANCE);
 
         this.javaPackageFactory = builder.create(objectPrototypeSupplier, JavaPackage.INSTANCE::makeInitialShape);
         boolean nashornCompat = isOptionNashornCompatibilityMode();
@@ -881,6 +884,10 @@ public class JSContext {
 
     public final JSObjectFactory getSegmentIteratorFactory() {
         return segmentIteratorFactory;
+    }
+
+    public final JSObjectFactory getDisplayNamesFactory() {
+        return displayNamesFactory;
     }
 
     public final JSObjectFactory getDateTimeFormatFactory() {

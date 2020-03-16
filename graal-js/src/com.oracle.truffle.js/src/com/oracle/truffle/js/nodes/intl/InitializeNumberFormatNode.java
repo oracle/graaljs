@@ -134,8 +134,8 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
 
             state.setStyle(optStyle);
             String currencyCode = optCurrency;
-            if (currencyCode != null && !JSNumberFormat.isWellFormedCurrencyCode(currencyCode)) {
-                throw Errors.createRangeErrorCurrencyNotWellFormed(currencyCode);
+            if (currencyCode != null) {
+                IntlUtil.ensureIsWellFormedCurrencyCode(currencyCode);
             }
             if (optStyle.equals(IntlUtil.CURRENCY)) {
                 if (currencyCode == null) {
