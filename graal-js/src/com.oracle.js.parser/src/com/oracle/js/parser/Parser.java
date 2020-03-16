@@ -1874,7 +1874,7 @@ public class Parser extends AbstractParser {
             next();
 
             // Parse AssignmentExpression[In] in a function.
-            Pair<FunctionNode, Boolean> pair = fieldInitializer(line, startToken, propertyName);
+            Pair<FunctionNode, Boolean> pair = fieldInitializer(line, startToken, propertyName, computed);
             initializer = pair.getLeft();
             isAnonymousFunctionDefinition = pair.getRight();
 
@@ -1883,12 +1883,10 @@ public class Parser extends AbstractParser {
         return new PropertyNode(startToken, finish, propertyName, initializer, null, null, isStatic, computed, false, false, true, isAnonymousFunctionDefinition);
     }
 
-    private Pair<FunctionNode, Boolean> fieldInitializer(int lineNumber, long fieldToken, Expression propertyName) {
-        final IdentNode initName = propertyName instanceof IdentNode
-                        ? (IdentNode) propertyName
-                        : new IdentNode(Token.recast(fieldToken, TokenType.IDENT), propertyName.getFinish(), INITIALIZER_FUNCTION_NAME);
-        int functionFlags = FunctionNode.IS_METHOD | FunctionNode.IS_CLASS_FIELD_INITIALIZER;
-        ParserContextFunctionNode function = createParserContextFunctionNode(initName, fieldToken, functionFlags, lineNumber, Collections.emptyList(), 0);
+    private Pair<FunctionNode, Boolean> fieldInitializer(int lineNumber, long fieldToken, Expression propertyName, boolean computed) {
+        int functionFlags = FunctionNode.IS_METHOD | FunctionNode.IS_CLASS_FIELD_INITIALIZER | FunctionNode.IS_ANONYMOUS;
+        ParserContextFunctionNode function = createParserContextFunctionNode(null, fieldToken, functionFlags, lineNumber, Collections.emptyList(), 0);
+        function.setInternalName(INITIALIZER_FUNCTION_NAME);
         lc.push(function);
         ParserContextBlockNode body = newBlock(function.createBodyScope());
         Expression initializer;
@@ -1904,9 +1902,9 @@ public class Parser extends AbstractParser {
         function.setLastToken(token);
 
         boolean isAnonymousFunctionDefinition = false;
-        if (initializer instanceof FunctionNode && ((FunctionNode) initializer).isAnonymous()) {
-            if (propertyName instanceof IdentNode) {
-                initializer = ((FunctionNode) initializer).setName(null, ((IdentNode) propertyName).getName());
+        if (isAnonymousFunctionDefinition(initializer)) {
+            if (!computed && propertyName instanceof IdentNode) {
+                initializer = setFunctionName(initializer, (IdentNode) propertyName);
             } else {
                 isAnonymousFunctionDefinition = true;
             }
@@ -1914,7 +1912,7 @@ public class Parser extends AbstractParser {
 
         final List<Statement> statements = Collections.singletonList(new ReturnNode(lineNumber, fieldToken, finish, initializer));
         Block bodyBlock = new Block(fieldToken, finish, Block.IS_BODY | Block.IS_SYNTHETIC, body.getScope(), statements);
-        return Pair.create(createFunctionNode(function, fieldToken, initName, lineNumber, bodyBlock), isAnonymousFunctionDefinition);
+        return Pair.create(createFunctionNode(function, fieldToken, null, lineNumber, bodyBlock), isAnonymousFunctionDefinition);
     }
 
     private boolean isPropertyName(long currentToken) {
@@ -3963,6 +3961,7 @@ public class Parser extends AbstractParser {
 
         boolean coverInitializedName = false;
         boolean proto = false;
+        boolean isAnonymousFunctionDefinition = false;
         if (type == LPAREN && isES6()) {
             propertyValue = propertyMethodFunction(propertyName, propertyToken, functionLine, generator, FunctionNode.IS_METHOD, computed, async).functionNode;
         } else if (isIdentifier && (type == COMMARIGHT || type == RBRACE || type == ASSIGN) && isES6()) {
@@ -3990,9 +3989,19 @@ public class Parser extends AbstractParser {
             } finally {
                 popDefaultName();
             }
+
+            if (!proto) {
+                if (isAnonymousFunctionDefinition(propertyValue)) {
+                    if (!computed && propertyName instanceof IdentNode) {
+                        propertyValue = setFunctionName(propertyValue, (IdentNode) propertyName);
+                    } else {
+                        isAnonymousFunctionDefinition = true;
+                    }
+                }
+            }
         }
 
-        return new PropertyNode(propertyToken, finish, propertyName, propertyValue, null, null, false, computed, coverInitializedName, proto);
+        return new PropertyNode(propertyToken, finish, propertyName, propertyValue, null, null, false, computed, coverInitializedName, proto, false, isAnonymousFunctionDefinition);
     }
 
     private PropertyFunction propertyGetterFunction(long getSetToken, int functionLine, boolean yield, boolean await, boolean allowPrivate) {
@@ -4129,6 +4138,26 @@ public class Parser extends AbstractParser {
             methodName = lexer.stringIntern(methodName);
         }
         return createIdentNode(propertyKey.getToken(), propertyKey.getFinish(), methodName);
+    }
+
+    private static boolean isAnonymousFunctionDefinition(Expression propertyValue) {
+        if (propertyValue instanceof FunctionNode && ((FunctionNode) propertyValue).isAnonymous()) {
+            return true;
+        } else if (propertyValue instanceof ClassNode && ((FunctionNode) ((ClassNode) propertyValue).getConstructor().getValue()).isAnonymous()) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private static Expression setFunctionName(Expression propertyValue, IdentNode propertyName) {
+        if (propertyValue instanceof FunctionNode && ((FunctionNode) propertyValue).isAnonymous()) {
+            return ((FunctionNode) propertyValue).setName(null, propertyName.getName());
+        } else if (propertyValue instanceof ClassNode && ((FunctionNode) ((ClassNode) propertyValue).getConstructor().getValue()).isAnonymous()) {
+            ClassNode classNode = (ClassNode) propertyValue;
+            return classNode.setConstructor(classNode.getConstructor().setValue(((FunctionNode) classNode.getConstructor().getValue()).setName(null, propertyName.getName())));
+        }
+        return propertyValue;
     }
 
     private static final class PropertyFunction {

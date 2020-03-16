@@ -143,7 +143,7 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         return constructor;
     }
 
-    private ClassNode setConstructor(final PropertyNode constructor) {
+    public ClassNode setConstructor(final PropertyNode constructor) {
         if (this.constructor == constructor) {
             return this;
         }

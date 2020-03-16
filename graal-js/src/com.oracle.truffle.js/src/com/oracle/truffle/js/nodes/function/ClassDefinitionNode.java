@@ -63,7 +63,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 /**
  * ES6 14.5.14 Runtime Semantics: ClassDefinitionEvaluation.
  */
-public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameHolder {
+public final class ClassDefinitionNode extends JavaScriptNode implements FunctionNameHolder {
 
     private final JSContext context;
     @Child private JavaScriptNode constructorFunctionNode;
@@ -78,6 +78,7 @@ public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameH
     @Child private PropertySetNode setFieldsNode;
     @Child private InitializeInstanceElementsNode staticFieldsNode;
     @Child private PropertySetNode setPrivateBrandNode;
+    @Child private SetFunctionNameNode setFunctionName;
 
     private final boolean hasName;
     private final int instanceFieldCount;
@@ -100,6 +101,7 @@ public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameH
         this.defineConstructorMethodNode = DefineMethodNode.create(context, constructorFunctionNode);
         this.setFieldsNode = instanceFieldCount != 0 ? PropertySetNode.createSetHidden(JSFunction.CLASS_FIELDS_ID, context) : null;
         this.setPrivateBrandNode = hasPrivateInstanceMethods ? PropertySetNode.createSetHidden(JSFunction.PRIVATE_BRAND_ID, context) : null;
+        this.setFunctionName = hasName ? null : SetFunctionNameNode.create();
     }
 
     public static ClassDefinitionNode create(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members,
@@ -109,6 +111,10 @@ public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameH
 
     @Override
     public DynamicObject execute(VirtualFrame frame) {
+        return executeWithClassName(frame, null);
+    }
+
+    public DynamicObject executeWithClassName(VirtualFrame frame, Object className) {
         JSRealm realm = context.getRealm();
         Object protoParent = realm.getObjectPrototype();
         Object constructorParent = realm.getFunctionPrototype();
@@ -142,6 +148,11 @@ public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameH
 
         // Perform MakeConstructor(F, writablePrototype=false, proto).
         JSFunction.setClassPrototype(constructor, proto);
+
+        // If className is not undefined, perform SetFunctionName(F, className).
+        if (setFunctionName != null && className != null) {
+            setFunctionName.execute(constructor, className);
+        }
 
         // Perform CreateMethodProperty(proto, "constructor", F).
         setConstructorNode.executeVoid(proto, constructor);

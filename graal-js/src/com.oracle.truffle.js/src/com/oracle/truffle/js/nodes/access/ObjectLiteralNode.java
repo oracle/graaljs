@@ -62,6 +62,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapperNode;
+import com.oracle.truffle.js.nodes.function.ClassDefinitionNode;
 import com.oracle.truffle.js.nodes.function.FunctionNameHolder;
 import com.oracle.truffle.js.nodes.function.SetFunctionNameNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -503,9 +504,14 @@ public class ObjectLiteralNode extends JavaScriptNode {
                 return;
             }
             Object key = executeKey(frame);
-            Object value = executeWithHomeObject(valueNode, frame, homeObject);
-            if (setFunctionName != null) {
-                setFunctionName.execute(value, key);
+            Object value;
+            if (isAnonymousFunctionDefinition && valueNode instanceof ClassDefinitionNode) {
+                value = ((ClassDefinitionNode) valueNode).executeWithClassName(frame, key);
+            } else {
+                value = executeWithHomeObject(valueNode, frame, homeObject);
+                if (setFunctionName != null) {
+                    setFunctionName.execute(value, key);
+                }
             }
 
             PropertyDescriptor propDesc = PropertyDescriptor.createData(value, attributes);
