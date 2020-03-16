@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.test.polyglot;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.ObjectType;
@@ -68,5 +69,11 @@ public final class ForeignDynamicObject extends ObjectType {
     @Override
     public Class<?> dispatch() {
         return ForeignDynamicObject.class;
+    }
+
+    @SuppressWarnings({"static-method", "unused"})
+    @ExportMessage
+    static Object toDisplayString(DynamicObject receiver, boolean allowSideEffects) {
+        return "{}";
     }
 }

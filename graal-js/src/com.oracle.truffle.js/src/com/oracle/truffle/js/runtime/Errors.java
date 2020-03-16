@@ -40,10 +40,11 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.SourceSection;
@@ -648,17 +649,20 @@ public final class Errors {
         if (reason == null) {
             reason = cause.getClass().getSimpleName();
         }
-        String receiverStr = "foreign object";
-        TruffleLanguage.Env env = JavaScriptLanguage.getCurrentEnv();
-        if (env.isHostObject(receiver)) {
-            try {
-                receiverStr = receiver.toString();
-            } catch (Exception e) {
-                // ignore
-            }
-        }
+        String receiverStr = toDisplayStringSafe(receiver);
         String messageTxt = (messageDetails == null) ? message : String.format("%s (%s)", message, messageDetails);
         return JSException.create(JSErrorType.TypeError, messageTxt + " on " + receiverStr + " failed due to: " + reason, cause, originatingNode);
+    }
+
+    private static String toDisplayStringSafe(Object receiver) {
+        CompilerAsserts.neverPartOfCompilation();
+        InteropLibrary interop = InteropLibrary.getFactory().getUncached();
+        try {
+            return interop.asString(interop.toDisplayString(receiver, false));
+        } catch (Exception e) {
+            // ignore
+            return "foreign object";
+        }
     }
 
     @TruffleBoundary
