@@ -3263,12 +3263,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
             ArrayList<ObjectLiteralMemberNode> members = transformPropertyDefinitionList(classNode.getClassElements(), true, classNameSymbol);
 
+            JSWriteFrameSlotNode writeClassBinding = className == null ? null : (JSWriteFrameSlotNode) findScopeVar(className, true).createWriteNode(null);
+
             JavaScriptNode classDefinition = factory.createClassDefinition(context, (JSFunctionExpressionNode) classFunction, classHeritage,
-                            members.toArray(ObjectLiteralMemberNode.EMPTY), className,
+                            members.toArray(ObjectLiteralMemberNode.EMPTY), writeClassBinding, className,
                             classNode.getInstanceFieldCount(), classNode.getStaticFieldCount(), classNode.hasPrivateInstanceMethods());
-            if (className != null) {
-                classDefinition = ensureHasSourceSection(findScopeVar(className, true).createWriteNode(classDefinition), classNode);
-            }
+
             if (classNode.hasPrivateMethods()) {
                 // internal constructor binding used for private brand checks.
                 classDefinition = environment.findLocalVar(ClassNode.PRIVATE_CONSTRUCTOR_BINDING_NAME).createWriteNode(classDefinition);

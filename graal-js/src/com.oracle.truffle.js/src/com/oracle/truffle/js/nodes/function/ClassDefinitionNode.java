@@ -48,6 +48,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.InitializeInstanceElementsNode;
+import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
@@ -69,6 +70,7 @@ public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameH
     @Child private JavaScriptNode classHeritageNode;
     @Children private final ObjectLiteralMemberNode[] memberNodes;
 
+    @Child private JSWriteFrameSlotNode writeClassBindingNode;
     @Child private PropertyGetNode getPrototypeNode;
     @Child private CreateMethodPropertyNode setConstructorNode;
     @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
@@ -81,8 +83,8 @@ public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameH
     private final int instanceFieldCount;
     private final int staticFieldCount;
 
-    protected ClassDefinitionNode(JSContext context, JSFunctionExpressionNode constructorFunctionNode, JavaScriptNode classHeritageNode, ObjectLiteralMemberNode[] memberNodes, boolean hasName,
-                    int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods) {
+    protected ClassDefinitionNode(JSContext context, JSFunctionExpressionNode constructorFunctionNode, JavaScriptNode classHeritageNode, ObjectLiteralMemberNode[] memberNodes,
+                    JSWriteFrameSlotNode writeClassBindingNode, boolean hasName, int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods) {
         this.context = context;
         this.constructorFunctionNode = constructorFunctionNode;
         this.classHeritageNode = classHeritageNode;
@@ -91,6 +93,7 @@ public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameH
         this.instanceFieldCount = instanceFieldCount;
         this.staticFieldCount = staticFieldCount;
 
+        this.writeClassBindingNode = writeClassBindingNode;
         this.getPrototypeNode = PropertyGetNode.create(JSObject.PROTOTYPE, false, context);
         this.setConstructorNode = CreateMethodPropertyNode.create(context, JSObject.CONSTRUCTOR);
         this.createObjectNode = CreateObjectNode.createWithPrototype(context, null);
@@ -99,9 +102,9 @@ public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameH
         this.setPrivateBrandNode = hasPrivateInstanceMethods ? PropertySetNode.createSetHidden(JSFunction.PRIVATE_BRAND_ID, context) : null;
     }
 
-    public static ClassDefinitionNode create(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members, boolean hasName,
-                    int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods) {
-        return new ClassDefinitionNode(context, constructorFunction, classHeritage, members, hasName, instanceFieldCount, staticFieldCount, hasPrivateInstanceMethods);
+    public static ClassDefinitionNode create(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members,
+                    JSWriteFrameSlotNode writeClassBinding, boolean hasName, int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods) {
+        return new ClassDefinitionNode(context, constructorFunction, classHeritage, members, writeClassBinding, hasName, instanceFieldCount, staticFieldCount, hasPrivateInstanceMethods);
     }
 
     @Override
@@ -147,6 +150,10 @@ public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameH
         Object[][] staticFields = staticFieldCount == 0 ? null : new Object[staticFieldCount][];
 
         initializeMembers(frame, proto, constructor, instanceFields, staticFields);
+
+        if (writeClassBindingNode != null) {
+            writeClassBindingNode.executeWrite(frame, constructor);
+        }
 
         if (setFieldsNode != null) {
             setFieldsNode.setValue(constructor, instanceFields);
@@ -212,6 +219,6 @@ public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameH
     @Override
     protected JavaScriptNode copyUninitialized() {
         return create(context, (JSFunctionExpressionNode) cloneUninitialized(constructorFunctionNode), cloneUninitialized(classHeritageNode), ObjectLiteralMemberNode.cloneUninitialized(memberNodes),
-                        hasName, instanceFieldCount, staticFieldCount, setPrivateBrandNode != null);
+                        cloneUninitialized(writeClassBindingNode), hasName, instanceFieldCount, staticFieldCount, setPrivateBrandNode != null);
     }
 }
