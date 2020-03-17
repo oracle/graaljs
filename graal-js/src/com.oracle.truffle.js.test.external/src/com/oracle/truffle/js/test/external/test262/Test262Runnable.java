@@ -82,7 +82,6 @@ public class Test262Runnable extends TestRunnable {
     private static final String ONLY_STRICT_FLAG = "onlyStrict";
     private static final String MODULE_FLAG = "module";
     private static final String CAN_BLOCK_IS_FALSE_FLAG = "CanBlockIsFalse";
-    private static final String HASHBANG_FEATURE = "hashbang";
     private static final Pattern FLAGS_PATTERN = Pattern.compile("flags: \\[((?:(?:, )?(?:\\w+))*)\\]");
     private static final Pattern INCLUDES_PATTERN = Pattern.compile("includes: \\[(.*)\\]");
     private static final Pattern FEATURES_PATTERN = Pattern.compile("features: \\[(.*)\\]");
@@ -246,9 +245,6 @@ public class Test262Runnable extends TestRunnable {
         Map<String, String> extraOptions = new HashMap<>(4);
         if (flags.contains(CAN_BLOCK_IS_FALSE_FLAG)) {
             extraOptions.put(JSContextOptions.AGENT_CAN_BLOCK_NAME, "false");
-        }
-        if (features.contains(HASHBANG_FEATURE)) {
-            extraOptions.put(JSContextOptions.SHEBANG_NAME, "true");
         }
 
         assert !asyncTest || !negative || negativeExpectedMessage.equals("SyntaxError") : "unsupported async negative test (does not expect an early SyntaxError): " + testFile.getFilePath();

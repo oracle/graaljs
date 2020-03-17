@@ -71,7 +71,6 @@ public class TestV8Runnable extends TestRunnable {
 
     private static final int LONG_RUNNING_TEST_SECONDS = 55;
 
-    private static final String HARMONY_HASHBANG_FLAG = "--harmony-hashbang";
     private static final String HARMONY_SHAREDARRAYBUFFER = "--harmony-sharedarraybuffer";
     private static final String HARMONY_PUBLIC_FIELDS = "--harmony-public-fields";
     private static final String HARMONY_PRIVATE_FIELDS = "--harmony-private-fields";
@@ -99,9 +98,7 @@ public class TestV8Runnable extends TestRunnable {
         List<String> setupFiles = getFiles(code, getConfig().getSuiteLoc());
 
         Map<String, String> extraOptions = new HashMap<>(2);
-        if (flags.contains(HARMONY_HASHBANG_FLAG)) {
-            extraOptions.put(JSContextOptions.SHEBANG_NAME, "true");
-        } else if (flags.contains(HARMONY_SHAREDARRAYBUFFER)) {
+        if (flags.contains(HARMONY_SHAREDARRAYBUFFER)) {
             extraOptions.put(JSContextOptions.SHARED_ARRAY_BUFFER_NAME, "true");
         }
 
