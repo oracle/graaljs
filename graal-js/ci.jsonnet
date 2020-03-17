@@ -45,7 +45,7 @@ local common = import '../common.jsonnet';
 
   local gateGraalTip = {
     setup+: [
-      ['git', 'clone', '--branch', 'release/graal-vm/19.3', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/graalvm/graal.git'], '../../graal'],
+      ['git', 'clone', '--branch', 'cpu/graal-vm/19.3.2', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/graalvm/graal.git'], '../../graal'],
       ['mx', 'sversions'],
     ],
     run+: [
