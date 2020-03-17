@@ -720,10 +720,6 @@
     "status" : "SKIP",
     "comment" : "non-standard do-expressions"
   }, {
-    "filePath" : "mjsunit/harmony/hashbang-eval.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
     "filePath" : "mjsunit/harmony/import-from-fetch-errored.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
