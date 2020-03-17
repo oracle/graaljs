@@ -246,7 +246,7 @@ class LocalVarPostfixIncMaterializedNode extends LocalVarOpMaterializedNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new LocalVarPostfixIncMaterializedNode(op, frameSlot, hasTemporalDeadZone(), (ScopeFrameNode) scopeFrameNode.copy(), cloneUninitialized(convertOld), cloneUninitialized(writeNew));
+        return new LocalVarPostfixIncMaterializedNode(op, frameSlot, hasTemporalDeadZone(), scopeFrameNode, cloneUninitialized(convertOld), cloneUninitialized(writeNew));
     }
 }
 
@@ -268,7 +268,7 @@ class LocalVarPrefixIncMaterializedNode extends LocalVarOpMaterializedNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new LocalVarPrefixIncMaterializedNode(op, frameSlot, hasTemporalDeadZone(), (ScopeFrameNode) scopeFrameNode.copy(), cloneUninitialized(convertOld), cloneUninitialized(writeNew));
+        return new LocalVarPrefixIncMaterializedNode(op, frameSlot, hasTemporalDeadZone(), scopeFrameNode, cloneUninitialized(convertOld), cloneUninitialized(writeNew));
     }
 
 }

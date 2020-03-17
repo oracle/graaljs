@@ -531,11 +531,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         @Override
         protected ObjectLiteralMemberNode copyUninitialized() {
-            ComputedObjectLiteralDataMemberNode copy = (ComputedObjectLiteralDataMemberNode) copy();
-            copy.propertyKey = JavaScriptNode.cloneUninitialized(propertyKey);
-            copy.valueNode = JavaScriptNode.cloneUninitialized(valueNode);
-            copy.setFunctionName = setFunctionName == null ? null : SetFunctionNameNode.create();
-            return copy;
+            return new ComputedObjectLiteralDataMemberNode(JavaScriptNode.cloneUninitialized(propertyKey), isStatic, attributes,
+                            JavaScriptNode.cloneUninitialized(valueNode), isField, isAnonymousFunctionDefinition);
         }
     }
 
@@ -590,12 +587,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         @Override
         protected ObjectLiteralMemberNode copyUninitialized() {
-            ComputedObjectLiteralAccessorMemberNode copy = (ComputedObjectLiteralAccessorMemberNode) copy();
-            copy.propertyKey = JavaScriptNode.cloneUninitialized(propertyKey);
-            copy.getterNode = JavaScriptNode.cloneUninitialized(getterNode);
-            copy.setterNode = JavaScriptNode.cloneUninitialized(setterNode);
-            copy.setFunctionName = setFunctionName == null ? null : SetFunctionNameNode.create();
-            return copy;
+            return new ComputedObjectLiteralAccessorMemberNode(JavaScriptNode.cloneUninitialized(propertyKey), isStatic, attributes,
+                            JavaScriptNode.cloneUninitialized(getterNode), JavaScriptNode.cloneUninitialized(setterNode));
         }
     }
 
