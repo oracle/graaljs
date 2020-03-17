@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.test.instrumentation;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.DeclareTag;
@@ -116,6 +117,7 @@ public class VarDeclarationsTest extends FineGrainedAccessTest {
         }).exit();
     }
 
+    @Ignore("GR-21919")
     @Test
     public void classDeclareVar() {
         evalWithTags("class Foo{}", new Class<?>[]{DeclareTag.class, WriteVariableTag.class});
