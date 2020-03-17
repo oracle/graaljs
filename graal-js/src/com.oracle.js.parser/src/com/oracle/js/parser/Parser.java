@@ -864,6 +864,7 @@ public class Parser extends AbstractParser {
      */
     private Expression verifyAssignment(final long op, final Expression lhs, final Expression rhs, boolean inPatternPosition) {
         final TokenType opType = Token.descType(op);
+        Expression rhsExpr = rhs;
 
         switch (opType) {
             case ASSIGN:
@@ -886,6 +887,12 @@ public class Parser extends AbstractParser {
                         throw invalidLHSError(lhs);
                     }
                     verifyStrictIdent(ident, ASSIGNMENT_TARGET_CONTEXT);
+
+                    // IsIdentifierRef must be true, so lhs must not be parenthesized.
+                    if (!lhs.isParenthesized() && isAnonymousFunctionDefinition(rhsExpr)) {
+                        rhsExpr = setAnonymousFunctionName(rhsExpr, ident.getName());
+                    }
+
                     break;
                 } else if (lhs instanceof AccessNode || lhs instanceof IndexNode) {
                     if (((BaseNode) lhs).isOptional()) {
@@ -903,7 +910,7 @@ public class Parser extends AbstractParser {
         }
 
         assert !BinaryNode.isLogical(opType);
-        return new BinaryNode(op, lhs, rhs);
+        return new BinaryNode(op, lhs, rhsExpr);
     }
 
     private boolean isDestructuringLhs(Expression lhs) {
@@ -1655,7 +1662,7 @@ public class Parser extends AbstractParser {
                 if (className == null) {
                     flags |= FunctionNode.IS_ANONYMOUS;
                 }
-                constructor = constructor.setValue(new FunctionNode(ctor.getSource(), ctor.getLineNumber(), ctor.getToken(), classFinish, classToken, lastToken, ctor.getIdent(),
+                constructor = constructor.setValue(new FunctionNode(ctor.getSource(), ctor.getLineNumber(), ctor.getToken(), classFinish, classToken, lastToken, className,
                                 className == null ? "" : className.getName(),
                                 ctor.getLength(), ctor.getNumOfParams(), ctor.getParameters(), flags, ctor.getBody(), ctor.getEndParserState(), ctor.getModule(), ctor.getInternalName()));
             }
@@ -1904,7 +1911,7 @@ public class Parser extends AbstractParser {
         boolean isAnonymousFunctionDefinition = false;
         if (isAnonymousFunctionDefinition(initializer)) {
             if (!computed && propertyName instanceof IdentNode) {
-                initializer = setFunctionName(initializer, (IdentNode) propertyName);
+                initializer = setAnonymousFunctionName(initializer, ((IdentNode) propertyName).getName());
             } else {
                 isAnonymousFunctionDefinition = true;
             }
@@ -2228,6 +2235,9 @@ public class Parser extends AbstractParser {
                         forResult.recordMissingAssignment(binding);
                     }
                     forResult.addBinding(binding);
+                }
+                if (isAnonymousFunctionDefinition(init)) {
+                    init = setAnonymousFunctionName(init, ident.getName());
                 }
                 final VarNode var = new VarNode(varLine, varToken, sourceOrder, varStart, finish, ident.setIsDeclaredHere(), init, varFlags);
                 appendStatement(var);
@@ -3993,7 +4003,7 @@ public class Parser extends AbstractParser {
             if (!proto) {
                 if (isAnonymousFunctionDefinition(propertyValue)) {
                     if (!computed && propertyName instanceof IdentNode) {
-                        propertyValue = setFunctionName(propertyValue, (IdentNode) propertyName);
+                        propertyValue = setAnonymousFunctionName(propertyValue, ((IdentNode) propertyName).getName());
                     } else {
                         isAnonymousFunctionDefinition = true;
                     }
@@ -4140,24 +4150,28 @@ public class Parser extends AbstractParser {
         return createIdentNode(propertyKey.getToken(), propertyKey.getFinish(), methodName);
     }
 
-    private static boolean isAnonymousFunctionDefinition(Expression propertyValue) {
-        if (propertyValue instanceof FunctionNode && ((FunctionNode) propertyValue).isAnonymous()) {
+    private static boolean isAnonymousFunctionDefinition(Expression expression) {
+        if (expression instanceof FunctionNode && ((FunctionNode) expression).isAnonymous()) {
             return true;
-        } else if (propertyValue instanceof ClassNode && ((FunctionNode) ((ClassNode) propertyValue).getConstructor().getValue()).isAnonymous()) {
+        } else if (expression instanceof ClassNode && ((ClassNode) expression).isAnonymous()) {
             return true;
         } else {
             return false;
         }
     }
 
-    private static Expression setFunctionName(Expression propertyValue, IdentNode propertyName) {
-        if (propertyValue instanceof FunctionNode && ((FunctionNode) propertyValue).isAnonymous()) {
-            return ((FunctionNode) propertyValue).setName(null, propertyName.getName());
-        } else if (propertyValue instanceof ClassNode && ((FunctionNode) ((ClassNode) propertyValue).getConstructor().getValue()).isAnonymous()) {
-            ClassNode classNode = (ClassNode) propertyValue;
-            return classNode.setConstructor(classNode.getConstructor().setValue(((FunctionNode) classNode.getConstructor().getValue()).setName(null, propertyName.getName())));
+    private Expression setAnonymousFunctionName(Expression expression, String functionName) {
+        if (!isES6()) {
+            return expression;
         }
-        return propertyValue;
+        if (expression instanceof FunctionNode && ((FunctionNode) expression).isAnonymous()) {
+            return ((FunctionNode) expression).setName(null, functionName);
+        } else if (expression instanceof ClassNode && ((ClassNode) expression).isAnonymous()) {
+            ClassNode classNode = (ClassNode) expression;
+            FunctionNode constructorFunction = (FunctionNode) classNode.getConstructor().getValue();
+            return classNode.setConstructor(classNode.getConstructor().setValue(constructorFunction.setName(null, functionName)));
+        }
+        return expression;
     }
 
     private static final class PropertyFunction {
@@ -4955,6 +4969,10 @@ public class Parser extends AbstractParser {
 
                 // default parameter
                 Expression initializer = assignmentExpression(true, yield, await);
+
+                if (isAnonymousFunctionDefinition(initializer)) {
+                    initializer = setAnonymousFunctionName(initializer, ident.getName());
+                }
 
                 if (currentFunction != null) {
                     addDefaultParameter(paramToken, finish, paramLine, ident, initializer, currentFunction);
@@ -5942,6 +5960,10 @@ public class Parser extends AbstractParser {
                 // default parameter
                 IdentNode ident = (IdentNode) lhs;
 
+                if (isAnonymousFunctionDefinition(initializer)) {
+                    initializer = setAnonymousFunctionName(initializer, ident.getName());
+                }
+
                 addDefaultParameter(paramToken, param.getFinish(), paramLine, ident, initializer, currentFunction);
                 return;
             } else if (isDestructuringLhs(lhs)) {
@@ -6592,6 +6614,10 @@ public class Parser extends AbstractParser {
                 }
                 if (ident == null) {
                     ident = new IdentNode(Token.recast(rhsToken, IDENT), finish, Module.DEFAULT_EXPORT_BINDING_NAME);
+
+                    if (isAnonymousFunctionDefinition(assignmentExpression)) {
+                        assignmentExpression = setAnonymousFunctionName(assignmentExpression, Module.DEFAULT_NAME);
+                    }
                 }
                 VarNode varNode = new VarNode(lineNumber, Token.recast(rhsToken, hoistableDeclaration ? VAR : LET), finish, ident, assignmentExpression,
                                 (hoistableDeclaration ? 0 : VarNode.IS_LET) | VarNode.IS_EXPORT);

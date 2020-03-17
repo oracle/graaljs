@@ -791,9 +791,6 @@ public class NodeFactory {
 
     public JavaScriptNode createClassDefinition(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members,
                     JSWriteFrameSlotNode writeClassBinding, String className, int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods) {
-        if (className != null) {
-            constructorFunction.setFunctionName(className);
-        }
         return ClassDefinitionNode.create(context, constructorFunction, classHeritage, members, writeClassBinding, className != null, instanceFieldCount, staticFieldCount, hasPrivateInstanceMethods);
     }
 

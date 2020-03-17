@@ -211,6 +211,10 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         return hasPrivateInstanceMethods;
     }
 
+    public boolean isAnonymous() {
+        return getIdent() == null;
+    }
+
     @Override
     public void toString(StringBuilder sb, boolean printType) {
         sb.append("class");

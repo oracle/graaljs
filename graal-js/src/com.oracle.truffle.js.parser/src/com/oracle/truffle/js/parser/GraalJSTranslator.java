@@ -128,10 +128,8 @@ import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
-import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.binary.DualNode;
 import com.oracle.truffle.js.nodes.binary.JSBinaryNode;
-import com.oracle.truffle.js.nodes.binary.JSOrNode;
 import com.oracle.truffle.js.nodes.binary.JSTypeofIdenticalNode;
 import com.oracle.truffle.js.nodes.control.AbstractBlockNode;
 import com.oracle.truffle.js.nodes.control.BreakNode;
@@ -150,7 +148,6 @@ import com.oracle.truffle.js.nodes.function.AbstractFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.EvalNode;
 import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
-import com.oracle.truffle.js.nodes.function.FunctionNameHolder;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionExpressionNode;
@@ -1628,8 +1625,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode createVarAssignNode(VarNode varNode, String varName) {
         JavaScriptNode rhs = transform(varNode.getAssignmentSource());
-        String functionName = (varNode.isExport() && Module.DEFAULT_EXPORT_BINDING_NAME.equals(varName)) ? Module.DEFAULT_NAME : varName;
-        setAnonymousFunctionName(rhs, functionName);
         JavaScriptNode assignment = findScopeVar(varName, false).createWriteNode(rhs);
         if (varNode.isBlockScoped() && varNode.isFunctionDeclaration() && context.isOptionAnnexB()) {
             // B.3.3 Block-Level Function Declarations Web Legacy Compatibility Semantics
@@ -1659,31 +1654,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private static boolean hasVarSymbol(Scope scope, String varName) {
         Symbol varSymbol = scope.getExistingSymbol(varName);
         return varSymbol != null && (varSymbol.isVar() && !varSymbol.isParam());
-    }
-
-    /**
-     * Set the name of anonymous functions to the supplied name.
-     */
-    private void setAnonymousFunctionName(JavaScriptNode rhs, String name) {
-        if (context.getEcmaScriptVersion() < 6) {
-            return;
-        }
-        if (rhs instanceof FunctionNameHolder) {
-            FunctionNameHolder functionNameHolder = (FunctionNameHolder) rhs;
-            if (functionNameHolder.isAnonymous()) {
-                functionNameHolder.setFunctionName(name);
-            }
-        } else if (rhs instanceof JSOrNode.NotUndefinedOrNode && ((JSOrNode.NotUndefinedOrNode) rhs).getRight() instanceof FunctionNameHolder) {
-            // used in destructuring assignment
-            setAnonymousFunctionName(((JSOrNode.NotUndefinedOrNode) rhs).getRight(), name);
-        } else if (rhs instanceof com.oracle.truffle.js.nodes.control.IfNode) {
-            // used in default parameter
-            com.oracle.truffle.js.nodes.control.IfNode ifNode = (com.oracle.truffle.js.nodes.control.IfNode) rhs;
-            JavaScriptNode thenPart = ifNode.getThenPart();
-            if (thenPart instanceof FunctionNameHolder && ifNode.getElsePart() instanceof AccessIndexedArgumentNode) {
-                setAnonymousFunctionName(thenPart, name);
-            }
-        }
     }
 
     @Override
@@ -2482,10 +2452,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode transformAssignmentIdent(IdentNode identNode, JavaScriptNode assignedValue, BinaryOperation binaryOp, boolean returnOldValue, boolean convertLHSToNumeric,
                     boolean initializationAssignment) {
-        // no CoverParenthesizedExpressionAndArrowParameterList (IsIdentifierRef must be true)
-        if (!identNode.isParenthesized()) {
-            setAnonymousFunctionName(assignedValue, identNode.getName());
-        }
         JavaScriptNode rhs = assignedValue;
         String ident = identNode.getName();
         VarRef scopeVar = findScopeVarCheckTDZ(ident, initializationAssignment);
@@ -2909,9 +2875,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 return factory.createPrivateMethodMember(property.isStatic(), value, writePrivateNode);
             }
         } else {
-            String keyName = property.getKeyName();
-            setAnonymousFunctionName(value, keyName);
-            return factory.createDataMember(keyName, property.isStatic(), enumerable, value, property.isClassField());
+            return factory.createDataMember(property.getKeyName(), property.isStatic(), enumerable, value, property.isClassField());
         }
     }
 
