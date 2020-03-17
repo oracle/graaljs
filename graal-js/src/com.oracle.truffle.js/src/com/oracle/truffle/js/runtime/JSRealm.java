@@ -161,6 +161,8 @@ import com.oracle.truffle.js.runtime.util.LocalTimeZoneHolder;
 import com.oracle.truffle.js.runtime.util.PrintWriterWrapper;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
+
 /**
  * Container for JavaScript globals (i.e. an ECMAScript 6 Realm object).
  */
@@ -1330,6 +1332,10 @@ public class JSRealm {
             this.commonJSPreLoadedBuiltins = new HashMap<>();
             for (Map.Entry<String, String> entry : commonJSRequireBuiltins.entrySet()) {
                 String builtinModule = entry.getValue();
+                // ES Modules are handled by the default module loader if used.
+                if (builtinModule.endsWith(MODULE_SOURCE_NAME_SUFFIX)) {
+                    continue;
+                }
                 DynamicObject obj = (DynamicObject) JSFunction.call(JSArguments.create(commonJSRequireFunctionObject, commonJSRequireFunctionObject, builtinModule));
                 this.commonJSPreLoadedBuiltins.put(entry.getKey(), obj);
             }

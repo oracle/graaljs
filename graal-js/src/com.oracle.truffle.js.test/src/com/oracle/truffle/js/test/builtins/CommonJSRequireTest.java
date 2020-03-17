@@ -68,6 +68,7 @@ import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_CW
 import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_CORE_MODULES_REPLACEMENTS_NAME;
 import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_GLOBAL_PROPERTIES_NAME;
 import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_NAME;
+import static com.oracle.truffle.js.runtime.JSContextOptions.ECMASCRIPT_VERSION_NAME;
 import static com.oracle.truffle.js.runtime.JSContextOptions.GLOBAL_PROPERTY_NAME;
 import static org.junit.Assert.assertEquals;
 
@@ -89,9 +90,13 @@ public class CommonJSRequireTest {
 
     private static Context testContext(Path tempFolder, OutputStream out, OutputStream err) {
         Map<String, String> options = new HashMap<>();
-        options.put(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2020");
+        options.put(ECMASCRIPT_VERSION_NAME, "2020");
         options.put(COMMONJS_REQUIRE_NAME, "true");
         options.put(COMMONJS_REQUIRE_CWD_NAME, tempFolder.toAbsolutePath().toString());
+        return testContext(out, err, options);
+    }
+
+    private static Context testContext(Path tempFolder, OutputStream out, OutputStream err, Map<String, String> options) {
         return testContext(out, err, options);
     }
 
@@ -140,26 +145,40 @@ public class CommonJSRequireTest {
         }
     }
 
-    private void runAndExpectOutput(String src, String expectedOutput, String expectedErr) throws IOException {
+    private void runAndExpectOutput(Source src, String expectedOutput, Map<String, String> options) throws IOException {
+        runAndExpectOutput(src, expectedOutput, "", options);
+    }
+
+    private void runAndExpectOutput(String src, String expectedOutput, Map<String, String> options) throws IOException {
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.js").build(), expectedOutput, "", options);
+    }
+
+    private void runAndExpectOutput(Source src, String expectedOutput, String expectedErr, Map<String, String> options) throws IOException {
         Path root = getTestRootFolder();
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
         final ByteArrayOutputStream err = new ByteArrayOutputStream();
-        try (Context cx = testContext(root, out, err)) {
-
-            cx.eval(ID, src);
-
+        try (Context cx = testContext(root, out, err, options)) {
+            cx.eval(src);
             out.flush();
             err.flush();
             String outPrint = new String(out.toByteArray());
             String errPrint = new String(err.toByteArray());
-
             Assert.assertEquals(expectedOutput, outPrint);
             Assert.assertEquals(expectedErr, errPrint);
         }
     }
 
     private void runAndExpectOutput(String src, String expectedOutput) throws IOException {
-        runAndExpectOutput(src, expectedOutput, "");
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.js").build(), expectedOutput, "", getDefaultOptions());
+    }
+
+    private static Map<String, String> getDefaultOptions() {
+        Path root = getTestRootFolder();
+        Map<String, String> options = new HashMap<>();
+        options.put(COMMONJS_REQUIRE_NAME, "true");
+        options.put(COMMONJS_REQUIRE_CWD_NAME, root.toAbsolutePath().toString());
+        options.put(ECMASCRIPT_VERSION_NAME, "2020");
+        return options;
     }
 
     // ##### CommonJs Modules
@@ -513,9 +532,49 @@ public class CommonJSRequireTest {
     }
 
     @Test
-    public void importBuiltinlModule() throws IOException {
-        final String src = "import('assert').then(x => {throw 'unexpected'}).catch(console.log);";
-        final String out = "TypeError: Cannot load module: '__foo__ + /some/garbage.js'\n";
-        runAndExpectOutput(src, out);
+    public void importModuleCwd() throws IOException {
+        final String src = "import equal from './equal.mjs'; equal(42, 42); console.log('OK!');";
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "OK!\n", getDefaultOptions());
+    }
+
+    @Test
+    public void dynamicImportBuiltinModule2() throws IOException {
+        final String src = "import('assert').then(a => {a.equal(42, 42); console.log('OK!');}).catch(console.log);";
+        Map<String, String> options = getDefaultOptions();
+        // requiring the 'assert' module will resolve `module.js`
+        options.put(COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, "assert:./builtin-assert-mockup.js");
+        runAndExpectOutput(src, "OK!\n", options);
+    }
+
+    @Test
+    public void importBuiltinModule() throws IOException {
+        final String src = "import assert from 'assert'; assert.equal(42, 42); console.log('OK!');";
+        Map<String, String> options = getDefaultOptions();
+        options.put(COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, "assert:./builtin-assert-mockup.js");
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "OK!\n", options);
+    }
+
+    @Test
+    public void importNamedBuiltinModule() throws IOException {
+        final String src = "import {equal} from 'assert'; equal(42, 42); console.log('OK!');";
+        Map<String, String> options = getDefaultOptions();
+        options.put(COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, "assert:./builtin-assert-mockup.js");
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "OK!\n", options);
+    }
+
+    @Test
+    public void importNamedBuiltinModuleEs() throws IOException {
+        final String src = "import {equal} from 'assert'; equal(42, 42); console.log('OK!');";
+        Map<String, String> options = getDefaultOptions();
+        options.put(COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, "assert:./builtin-assert-mockup.mjs");
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "OK!\n", options);
+    }
+
+    @Test
+    public void importBuiltinModuleEs() throws IOException {
+        final String src = "import assert from 'assert'; assert.equal(42, 42); console.log('OK!');";
+        Map<String, String> options = getDefaultOptions();
+        options.put(COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, "assert:./builtin-assert-mockup.mjs");
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "OK!\n", options);
     }
 }

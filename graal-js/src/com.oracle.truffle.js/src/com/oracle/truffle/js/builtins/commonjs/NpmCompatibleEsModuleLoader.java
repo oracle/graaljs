@@ -45,7 +45,6 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSErrorType;
@@ -58,17 +57,16 @@ import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.sun.org.apache.bcel.internal.generic.JSR;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URL;
 import java.nio.file.FileSystemNotFoundException;
 import java.util.List;
 
 import static com.oracle.truffle.js.builtins.commonjs.CommonJSRequireBuiltin.log;
 import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.*;
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
 
 public final class NpmCompatibleEsModuleLoader extends DefaultEsModuleLoader {
 
@@ -93,20 +91,16 @@ public final class NpmCompatibleEsModuleLoader extends DefaultEsModuleLoader {
     @TruffleBoundary
     @Override
     public JSModuleRecord resolveImportedModule(ScriptOrModule referencingModule, String specifier) {
+        log("IMPORT resolve ", specifier);
+        if (isCoreModule(specifier)) {
+            return loadCoreModule(specifier);
+        }
         try {
-            log("IMPORT resolve ", specifier);
-            if (isCoreModule(specifier)) {
-                return loadCoreModule(specifier);
-            }
-            try {
-                TruffleFile file = resolveURL(referencingModule, specifier);
-                return loadModuleFromUrl(specifier, file, file.getPath());
-            } catch (IOException e) {
-                log("IMPORT resolve ", specifier, " FAILED ", e.getMessage());
-                throw Errors.createErrorFromException(e);
-            }
-        } finally {
-            log("IMPORT returning... ");
+            TruffleFile file = resolveURL(referencingModule, specifier);
+            return loadModuleFromUrl(specifier, file, file.getPath());
+        } catch (IOException e) {
+            log("IMPORT resolve ", specifier, " FAILED ", e.getMessage());
+            throw Errors.createErrorFromException(e);
         }
     }
 
@@ -114,40 +108,47 @@ public final class NpmCompatibleEsModuleLoader extends DefaultEsModuleLoader {
         log("IMPORT resolve built-in ", specifier);
         JSModuleRecord existingModule = moduleMap.get(specifier);
         if (existingModule != null) {
-            log("IMPORT resolve built-in ", specifier, " from CACHE");
+            log("IMPORT resolve built-in from cache ", specifier);
             return existingModule;
         }
-        DynamicObject require = (DynamicObject) realm.getCommonJSRequireFunctionObject();
-
-        // Any exception thrown during module loading will be propagated
-        Object maybeModule = JSFunction.call(JSArguments.create(require, require, specifier));
-        if (maybeModule == Undefined.instance || !JSObject.isJSObject(maybeModule)) {
-            throw Errors.createError("Failed to load built-in ES module: " + specifier);
+        String moduleReplacementName = realm.getContext().getContextOptions().getCommonJSRequireBuiltins().get(specifier);
+        Source src;
+        if (moduleReplacementName.endsWith(MODULE_SOURCE_NAME_SUFFIX)) {
+            // Just load the module
+            try {
+                String cwdOption = realm.getContext().getContextOptions().getRequireCwd();
+                TruffleFile cwd = cwdOption == null ? realm.getEnv().getCurrentWorkingDirectory() : realm.getEnv().getPublicTruffleFile(cwdOption);
+                TruffleFile modulePath = CommonJSResolution.joinPaths(realm.getEnv(), cwd, moduleReplacementName);
+                src = Source.newBuilder(ID, modulePath).build();
+            } catch (IOException e) {
+                throw fail(specifier);
+            }
+        } else {
+            // Else, try loading as commonjs built-in module replacement
+            DynamicObject require = (DynamicObject) realm.getCommonJSRequireFunctionObject();
+            // Any exception thrown during module loading will be propagated
+            Object maybeModule = JSFunction.call(JSArguments.create(require, require, specifier));
+            if (maybeModule == Undefined.instance || !JSObject.isJSObject(maybeModule)) {
+                throw Errors.createError("Failed to load built-in ES module: " + specifier);
+            }
+            DynamicObject module = (DynamicObject) maybeModule;
+            // Wrap any exported symbol in an ES module.
+            List<String> exportedValues = JSObject.enumerableOwnNames(module);
+            StringBuilder moduleBody = new StringBuilder();
+            moduleBody.append("const builtinModule = require('" + specifier + "');\n");
+            for (String s : exportedValues) {
+                moduleBody.append("export const " + s + " = builtinModule." + s + ";\n");
+            }
+            moduleBody.append("export default builtinModule;");
+            src = Source.newBuilder("js", moduleBody.toString(), specifier + "-internal.mjs").build();
         }
-        DynamicObject module = (DynamicObject) maybeModule;
-
-        List<String> exportedValues = JSObject.enumerableOwnNames(module);
-
-        StringBuilder moduleBody = new StringBuilder();
-        moduleBody.append("const builtinModule = require('" + specifier +  "');\n");
-        for (String s : exportedValues) {
-            moduleBody.append("export const " + s + " = builtinModule." + s + ";\n");
-        }
-
-        Source src = Source.newBuilder("js", moduleBody.toString(), specifier + "-internal.mjs").build();
         JSModuleRecord record = realm.getContext().getEvaluator().parseModule(realm.getContext(), src, this);
         moduleMap.put(specifier, record);
         return record;
     }
 
-    private TruffleFile getTruffleFile(String resolvedUrl) throws IOException {
-        assert resolvedUrl != null;
-        return realm.getEnv().getPublicTruffleFile(resolvedUrl).getCanonicalFile();
-    }
-
     private TruffleFile resolveURL(ScriptOrModule referencingModule, String specifier) {
         TruffleLanguage.Env env = realm.getEnv();
-
         // 1. Let resolvedURL be undefined.
         TruffleFile resolvedUrl = null;
         // 2. If specifier is a valid URL, then
@@ -158,13 +159,11 @@ public final class NpmCompatibleEsModuleLoader extends DefaultEsModuleLoader {
             } catch (FileSystemNotFoundException e) {
                 throw failMessage("HTTP URLs are not supported. Only file:// urls are supported.");
             }
-
-        // 3. Otherwise, if specifier starts with "/", then
+            // 3. Otherwise, if specifier starts with "/", then
         } else if (specifier.charAt(0) == '/') {
             // 3.1 Throw an Invalid Module Specifier error.
             resolvedUrl = env.getPublicTruffleFile(specifier);
-
-        // 4. Otherwise, if specifier starts with "./" or "../", then
+            // 4. Otherwise, if specifier starts with "./" or "../", then
         } else if (isPathFileName(specifier)) {
             // 4.1 Set resolvedURL to the URL resolution of specifier relative to parentURL.
             TruffleFile fullPath = getParentPath(referencingModule);
@@ -172,27 +171,25 @@ public final class NpmCompatibleEsModuleLoader extends DefaultEsModuleLoader {
                 throw fail(specifier);
             }
             resolvedUrl = joinPaths(env, fullPath, specifier);
-
-        // 5. Otherwise
+            // 5. Otherwise
         } else {
             // 5.1 Note: specifier is now a bare specifier.
             // 5.2 Set resolvedURL the result of PACKAGE_RESOLVE(specifier, parentURL).
             resolvedUrl = packageResolve(specifier, referencingModule);
         }
-
         assert resolvedUrl != null;
-        // 6. If resolvedURL contains any percent encodings of "/" or "\" ("%2f" and "%5C" respectively), then
+        // 6. If resolvedURL contains any percent encodings of "/" or "\" ("%2f" and "%5C"
+        // respectively), then
         if (resolvedUrl.toString().contains("%2f") || resolvedUrl.toString().contains("%5C")) {
             // 6.1 Throw an Invalid Module Specifier error.
             throw fail(specifier);
         }
-
-        // 7. If resolvedURL does not end with a trailing "/" and the file at resolvedURL does not exist, then
+        // 7. If resolvedURL does not end with a trailing "/" and the file at resolvedURL does not
+        // exist, then
         if (!resolvedUrl.endsWith("/") && !resolvedUrl.exists()) {
             // 7.1 Throw an Invalid Module Specifier error.
             throw fail(specifier);
         }
-
         return resolvedUrl;
     }
 
@@ -227,7 +224,6 @@ public final class NpmCompatibleEsModuleLoader extends DefaultEsModuleLoader {
         TruffleLanguage.Env env = realm.getEnv();
         String packageName = null;
         String packageSubPath = null;
-
         // 3. If packageSpecifier is an empty string, then
         if (packageSpecifier.isEmpty()) {
             // 3,1 Throw an Invalid Module Specifier error.
@@ -236,7 +232,8 @@ public final class NpmCompatibleEsModuleLoader extends DefaultEsModuleLoader {
         // 4. Otherwise,
         // 4.1 If packageSpecifier does not contain a "/" separator, then
         // 4.1.1 Throw an Invalid Module Specifier error.
-        // 4.2 Set packageName to the substring of packageSpecifier until the second "/" separator or the end of the string.
+        // 4.2 Set packageName to the substring of packageSpecifier until the second "/" separator
+        // or the end of the string.
         // XXX(db) spec not clear here
         if (!packageSpecifier.contains("/")) {
             packageName = packageSpecifier;
@@ -257,12 +254,12 @@ public final class NpmCompatibleEsModuleLoader extends DefaultEsModuleLoader {
 
         for (TruffleFile modulePath : nodeModulesPaths) {
             TruffleFile moduleFolder = joinPaths(env, modulePath, packageSpecifier);
-            TruffleFile packageJson = joinPaths(env, moduleFolder,  "package.json");
+            TruffleFile packageJson = joinPaths(env, moduleFolder, PACKAGE_JSON);
             if (CommonJSResolution.fileExists(packageJson)) {
                 DynamicObject jsonObj = loadJsonObject(packageJson, realm.getContext());
                 if (JSObject.isJSObject(jsonObj)) {
-                    Object main = JSObject.get(jsonObj, "main");
-                    Object type = JSObject.get(jsonObj, "type");
+                    Object main = JSObject.get(jsonObj, PACKAGE_JSON_MAIN_PROPERTY_NAME);
+                    Object type = JSObject.get(jsonObj, PACKAGE_JSON_TYPE_PROPERTY_NAME);
                     if (type == Undefined.instance || !JSRuntime.isString(type)) {
                         throw failMessage("do not use import() to load non-ES modules.");
                     } else if (!"module".equals(JSRuntime.safeToString(type))) {

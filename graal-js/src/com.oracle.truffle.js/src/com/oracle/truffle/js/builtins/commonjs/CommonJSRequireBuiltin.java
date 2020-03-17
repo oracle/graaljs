@@ -71,7 +71,7 @@ import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.isCoreM
 
 public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
 
-    private static final boolean LOG_REQUIRE_PATH_RESOLUTION = true;
+    private static final boolean LOG_REQUIRE_PATH_RESOLUTION = false;
     private static final Stack<String> requireDebugStack;
 
     static {

@@ -70,12 +70,13 @@ final class CommonJSResolution {
     private static final String JS_EXT = ".js";
     private static final String JSON_EXT = ".json";
     private static final String NODE_EXT = ".node";
-    private static final String INDEX_JS = "index.js";
+    public static final String INDEX_JS = "index.js";
     private static final String INDEX_JSON = "index.json";
     private static final String INDEX_NODE = "index.node";
-    private static final String PACKAGE_JSON = "package.json";
+    public static final String PACKAGE_JSON = "package.json";
     private static final String NODE_MODULES = "node_modules";
-    private static final String PACKAGE_JSON_MAIN_PROPERTY_NAME = "main";
+    public static final String PACKAGE_JSON_MAIN_PROPERTY_NAME = "main";
+    public static final String PACKAGE_JSON_TYPE_PROPERTY_NAME = "type";
 
     private static final String[] CORE_MODULES = new String[]{"assert", "async_hooks", "buffer", "child_process", "cluster", "crypto",
                     "dgram", "dns", "domain", "events", "fs", "http", "http2", "https", "module", "net",
