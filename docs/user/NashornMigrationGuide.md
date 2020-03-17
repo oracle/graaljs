@@ -19,7 +19,7 @@ Nashorn features available by default:
 GraalVM JavaScript provides a Nashorn compatibility mode.
 Some of the functionality necessary for Nashorn compatibility is only available when the `js.nashorn-compat` option is enabled.
 This is the case for Nashorn-specific extensions that GraalVM JavaScript does not want to expose by default.
-Note that you have to enable [experimental options](Options.md#Stable and Experimental options) to use this flag.
+Note that you have to enable [experimental options](Options.md#stable-and-experimental-options) to use this flag.
 
 The `js.nashorn-compat` option can be set using a command line option:
 ```
