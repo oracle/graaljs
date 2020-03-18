@@ -40,14 +40,15 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import org.graalvm.polyglot.Value;
+
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -609,17 +610,19 @@ public final class Errors {
         if (reason == null) {
             reason = cause.getClass().getSimpleName();
         }
-        String receiverStr = "foreign object";
-        TruffleLanguage.Env env = JavaScriptLanguage.getCurrentEnv();
-        if (env.isHostObject(receiver)) {
-            try {
-                receiverStr = receiver.toString();
-            } catch (Exception e) {
-                // ignore
-            }
-        }
+        String receiverStr = toDisplayStringSafe(receiver);
         String messageTxt = (messageDetails == null) ? message : String.format("%s (%s)", message, messageDetails);
         return JSException.create(JSErrorType.TypeError, messageTxt + " on " + receiverStr + " failed due to: " + reason, cause, originatingNode);
+    }
+
+    private static String toDisplayStringSafe(Object receiver) {
+        CompilerAsserts.neverPartOfCompilation();
+        try {
+            return Value.asValue(receiver).toString();
+        } catch (Exception e) {
+            // ignore
+            return "foreign object";
+        }
     }
 
     @TruffleBoundary
