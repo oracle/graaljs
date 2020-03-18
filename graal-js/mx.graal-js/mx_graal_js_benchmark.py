@@ -31,6 +31,8 @@ from mx_benchmark import GuestVm
 from mx_benchmark import JMHDistBenchmarkSuite
 from mx_benchmark import add_bm_suite
 
+_suite = mx.suite('graal-js')
+
 class GraalJsVm(GuestVm):
     def __init__(self, config_name, options, host_vm=None):
         super(GraalJsVm, self).__init__(host_vm=host_vm)
@@ -60,8 +62,9 @@ class GraalJsVm(GuestVm):
 def register_js_vms():
     if mx.suite('js-benchmarks', fatalIfMissing=False):
         import mx_js_benchmarks
-        _suite = mx.suite('graal-js')
         mx_js_benchmarks.add_vm(GraalJsVm('default', []), _suite, 10)
+    mx_benchmark.js_vm_registry.add_vm(GraalJsVm('default', []), _suite, 10)
+
 
 class JMHDistGraalJsBenchmarkSuite(JMHDistBenchmarkSuite):
     def name(self):
