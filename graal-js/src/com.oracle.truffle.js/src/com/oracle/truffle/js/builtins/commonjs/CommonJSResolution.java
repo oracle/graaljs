@@ -77,6 +77,7 @@ final class CommonJSResolution {
     private static final String NODE_MODULES = "node_modules";
     public static final String PACKAGE_JSON_MAIN_PROPERTY_NAME = "main";
     public static final String PACKAGE_JSON_TYPE_PROPERTY_NAME = "type";
+    public static final String PACKAGE_JSON_MODULE_VALUE = "module";
 
     private static final String[] CORE_MODULES = new String[]{"assert", "async_hooks", "buffer", "child_process", "cluster", "crypto",
                     "dgram", "dns", "domain", "events", "fs", "http", "http2", "https", "module", "net",

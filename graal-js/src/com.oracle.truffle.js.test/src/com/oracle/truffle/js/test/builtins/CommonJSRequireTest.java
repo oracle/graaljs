@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.test.builtins;
 
-import com.oracle.truffle.js.runtime.JSContextOptions;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
@@ -96,10 +95,6 @@ public class CommonJSRequireTest {
         return testContext(out, err, options);
     }
 
-    private static Context testContext(Path tempFolder, OutputStream out, OutputStream err, Map<String, String> options) {
-        return testContext(out, err, options);
-    }
-
     private static Path getTestRootFolder() {
         String testPath = System.getProperty("commonjs.test.path", PATH_OF_TESTS);
         Path root = FileSystems.getDefault().getPath(testPath);
@@ -145,19 +140,18 @@ public class CommonJSRequireTest {
         }
     }
 
-    private void runAndExpectOutput(Source src, String expectedOutput, Map<String, String> options) throws IOException {
+    private static void runAndExpectOutput(Source src, String expectedOutput, Map<String, String> options) throws IOException {
         runAndExpectOutput(src, expectedOutput, "", options);
     }
 
-    private void runAndExpectOutput(String src, String expectedOutput, Map<String, String> options) throws IOException {
+    private static void runAndExpectOutput(String src, String expectedOutput, Map<String, String> options) throws IOException {
         runAndExpectOutput(Source.newBuilder(ID, src, "test.js").build(), expectedOutput, "", options);
     }
 
-    private void runAndExpectOutput(Source src, String expectedOutput, String expectedErr, Map<String, String> options) throws IOException {
-        Path root = getTestRootFolder();
+    private static void runAndExpectOutput(Source src, String expectedOutput, String expectedErr, Map<String, String> options) throws IOException {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
         final ByteArrayOutputStream err = new ByteArrayOutputStream();
-        try (Context cx = testContext(root, out, err, options)) {
+        try (Context cx = testContext(out, err, options)) {
             cx.eval(src);
             out.flush();
             err.flush();
@@ -168,7 +162,7 @@ public class CommonJSRequireTest {
         }
     }
 
-    private void runAndExpectOutput(String src, String expectedOutput) throws IOException {
+    private static void runAndExpectOutput(String src, String expectedOutput) throws IOException {
         runAndExpectOutput(Source.newBuilder(ID, src, "test.js").build(), expectedOutput, "", getDefaultOptions());
     }
 
@@ -299,7 +293,6 @@ public class CommonJSRequireTest {
                             "a done\n" +
                             "in main, a.done = true, b.done = true\n", outPrint);
             Assert.assertEquals("", errPrint);
-
             Assert.assertEquals(42, js.asInt());
         }
     }
@@ -513,7 +506,7 @@ public class CommonJSRequireTest {
     @Test
     public void unsupportedUrl() throws IOException {
         final String src = "import('https://unpkg.com/@esm/ms').then(x => {throw 'unexpected'}).catch(console.log);";
-        final String out = "TypeError: HTTP URLs are not supported. Only file:// urls are supported.\n";
+        final String out = "TypeError: Only file:// urls are supported: FileSystem for: https scheme is not supported.\n";
         runAndExpectOutput(src, out);
     }
 
@@ -532,6 +525,13 @@ public class CommonJSRequireTest {
     }
 
     @Test
+    public void emptyModuleName() throws IOException {
+        final String src = "import('').then(x => {throw 'unexpected'}).catch(console.log);";
+        final String out = "TypeError: Cannot load module: ''\n";
+        runAndExpectOutput(src, out);
+    }
+
+    @Test
     public void importModuleCwd() throws IOException {
         final String src = "import equal from './equal.mjs'; equal(42, 42); console.log('OK!');";
         runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "OK!\n", getDefaultOptions());
@@ -541,7 +541,7 @@ public class CommonJSRequireTest {
     public void dynamicImportBuiltinModule2() throws IOException {
         final String src = "import('assert').then(a => {a.equal(42, 42); console.log('OK!');}).catch(console.log);";
         Map<String, String> options = getDefaultOptions();
-        // requiring the 'assert' module will resolve `module.js`
+        // requiring the 'assert' module will resolve `builtin-assert-mockup.js`
         options.put(COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, "assert:./builtin-assert-mockup.js");
         runAndExpectOutput(src, "OK!\n", options);
     }
@@ -576,5 +576,14 @@ public class CommonJSRequireTest {
         Map<String, String> options = getDefaultOptions();
         options.put(COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, "assert:./builtin-assert-mockup.mjs");
         runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "OK!\n", options);
+    }
+
+    @Test
+    public void importNestedBuiltinModuleEs() throws IOException {
+        Path root = getTestRootFolder();
+        Path dirFile = Paths.get(root.toAbsolutePath().toString(), "nested_imports.js");
+        Map<String, String> options = getDefaultOptions();
+        options.put(COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, "assert:./builtin-assert-mockup.mjs");
+        runAndExpectOutput(Source.newBuilder(ID, dirFile.toFile()).build(), "all OK!\n", options);
     }
 }

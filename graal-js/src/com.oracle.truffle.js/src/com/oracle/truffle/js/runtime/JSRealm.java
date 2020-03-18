@@ -40,12 +40,9 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.Writer;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -56,8 +53,8 @@ import java.util.SplittableRandom;
 import java.util.TimeZone;
 import java.util.WeakHashMap;
 
-import com.oracle.truffle.js.builtins.commonjs.NpmCompatibleEsModuleLoader;
-import com.oracle.truffle.js.runtime.objects.DefaultEsModuleLoader;
+import com.oracle.truffle.js.builtins.commonjs.NpmCompatibleESModuleLoader;
+import com.oracle.truffle.js.runtime.objects.DefaultESModuleLoader;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
 
@@ -73,7 +70,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.builtins.ArrayIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.AtomicsBuiltins;
 import com.oracle.truffle.js.builtins.ConsoleBuiltins;
@@ -150,12 +146,10 @@ import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
-import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
-import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.LocalTimeZoneHolder;
 import com.oracle.truffle.js.runtime.util.PrintWriterWrapper;
@@ -2071,9 +2065,9 @@ public class JSRealm {
     private synchronized void createModuleLoader() {
         if (moduleLoader == null) {
             if (context.getContextOptions().isCommonJSRequire()) {
-                moduleLoader = NpmCompatibleEsModuleLoader.create(this);
+                moduleLoader = NpmCompatibleESModuleLoader.create(this);
             } else {
-                moduleLoader = DefaultEsModuleLoader.create(this);
+                moduleLoader = DefaultESModuleLoader.create(this);
             }
         }
     }

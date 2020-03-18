@@ -4,4 +4,9 @@
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
  */
-export const hello = 'hello esm-nested-module!';
+import assert from 'assert';
+
+export default function undef(n) {
+    assert.equal(n, undefined);
+    return true;
+}

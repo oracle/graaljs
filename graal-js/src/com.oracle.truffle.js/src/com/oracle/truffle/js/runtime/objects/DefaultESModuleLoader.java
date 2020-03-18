@@ -52,21 +52,21 @@ import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
 
-public class DefaultEsModuleLoader implements JSModuleLoader {
+public class DefaultESModuleLoader implements JSModuleLoader {
 
     protected final JSRealm realm;
     protected final Map<String, JSModuleRecord> moduleMap = new HashMap<>();
 
-    public static DefaultEsModuleLoader create(JSRealm realm) {
-        return new DefaultEsModuleLoader(realm);
+    public static DefaultESModuleLoader create(JSRealm realm) {
+        return new DefaultESModuleLoader(realm);
     }
 
-    protected DefaultEsModuleLoader(JSRealm realm) {
+    protected DefaultESModuleLoader(JSRealm realm) {
         this.realm = realm;
     }
 
     protected URI asURI(String specifier) {
-        if (!specifier.contains(":")) {
+        if (specifier.indexOf(':') == -1) {
             return null;
         }
         try {
