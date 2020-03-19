@@ -69,6 +69,8 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction.GeneratorState;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
+import java.util.Objects;
+
 public final class GeneratorBodyNode extends JavaScriptNode {
     @NodeInfo(cost = NodeCost.NONE, language = "JavaScript", description = "The root node of generator functions in JavaScript.")
     private static class GeneratorRootNode extends JavaScriptRootNode {
@@ -87,6 +89,8 @@ public final class GeneratorBodyNode extends JavaScriptNode {
             this.getGeneratorState = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_STATE_ID, context);
             this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
             this.functionBody = functionBody;
+            Objects.requireNonNull(writeYieldValueNode);
+            Objects.requireNonNull(readYieldResultNode);
             this.writeYieldValue = writeYieldValueNode;
             this.readYieldResult = readYieldResultNode;
         }
@@ -165,7 +169,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
     @Child private PropertySetNode setGeneratorState;
     @Child private PropertySetNode setGeneratorContext;
     @Child private PropertySetNode setGeneratorTarget;
-    @CompilationFinal private RootCallTarget generatorCallTarget;
+    @CompilationFinal private volatile RootCallTarget generatorCallTarget;
     private final JSContext context;
 
     @Child private JavaScriptNode functionBody;
@@ -192,12 +196,15 @@ public final class GeneratorBodyNode extends JavaScriptNode {
     private void initializeGeneratorCallTarget() {
         CompilerAsserts.neverPartOfCompilation();
         atomic(() -> {
-            GeneratorRootNode generatorRootNode = new GeneratorRootNode(context, functionBody, writeYieldValueNode, readYieldResultNode, getRootNode().getSourceSection());
-            this.generatorCallTarget = Truffle.getRuntime().createCallTarget(generatorRootNode);
-            // these children have been transferred to the generator root node and are now disowned
-            this.functionBody = null;
-            this.writeYieldValueNode = null;
-            this.readYieldResultNode = null;
+            if (generatorCallTarget == null) {
+                GeneratorRootNode generatorRootNode = new GeneratorRootNode(context, functionBody, writeYieldValueNode, readYieldResultNode, getRootNode().getSourceSection());
+                this.generatorCallTarget = Truffle.getRuntime().createCallTarget(generatorRootNode);
+                // these children have been transferred to the generator root node and are now
+                // disowned
+                this.functionBody = null;
+                this.writeYieldValueNode = null;
+                this.readYieldResultNode = null;
+            }
         });
     }
 
@@ -230,11 +237,13 @@ public final class GeneratorBodyNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        if (generatorCallTarget == null) {
-            return create(context, cloneUninitialized(functionBody), cloneUninitialized(writeYieldValueNode), cloneUninitialized(readYieldResultNode));
-        } else {
-            GeneratorRootNode generatorRoot = (GeneratorRootNode) generatorCallTarget.getRootNode();
-            return create(context, cloneUninitialized(generatorRoot.functionBody), cloneUninitialized(generatorRoot.writeYieldValue), cloneUninitialized(generatorRoot.readYieldResult));
-        }
+        return atomic(() -> {
+            if (generatorCallTarget == null) {
+                return create(context, cloneUninitialized(functionBody), cloneUninitialized(writeYieldValueNode), cloneUninitialized(readYieldResultNode));
+            } else {
+                GeneratorRootNode generatorRoot = (GeneratorRootNode) generatorCallTarget.getRootNode();
+                return create(context, cloneUninitialized(generatorRoot.functionBody), cloneUninitialized(generatorRoot.writeYieldValue), cloneUninitialized(generatorRoot.readYieldResult));
+            }
+        });
     }
 }
