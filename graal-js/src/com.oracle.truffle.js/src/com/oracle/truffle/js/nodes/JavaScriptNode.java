@@ -351,8 +351,6 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
     protected JavaScriptNode copyUninitialized() {
         if (this instanceof WrapperNode) {
             WrapperNode wrapperNode = (WrapperNode) this;
-            // TODO introduce a withWrappers parameter and clone or remove the wrapper based on the
-            // value of the parameter, needs truffle update to be able to clone a ProbeNode.
             return cloneUninitialized((JavaScriptNode) wrapperNode.getDelegateNode());
         }
 
