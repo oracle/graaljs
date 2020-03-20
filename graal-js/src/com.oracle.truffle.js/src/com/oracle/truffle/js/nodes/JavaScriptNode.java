@@ -389,5 +389,4 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
     public String expressionToString() {
         return null;
     }
-
 }
