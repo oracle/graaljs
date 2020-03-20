@@ -62,6 +62,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapperNode;
+import com.oracle.truffle.js.nodes.function.ClassDefinitionNode;
 import com.oracle.truffle.js.nodes.function.FunctionNameHolder;
 import com.oracle.truffle.js.nodes.function.SetFunctionNameNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -327,6 +328,9 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         @ExplodeLoop
         private void execute(DynamicObject obj, Object value, JSContext context) {
+            if (isField) {
+                return;
+            }
             for (CacheEntry resolved = cache; resolved != null; resolved = resolved.next) {
                 if (resolved == GENERIC) {
                     executeGeneric(obj, value);
@@ -496,10 +500,18 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         @Override
         public final void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSContext context) {
+            if (isField) {
+                return;
+            }
             Object key = executeKey(frame);
-            Object value = executeWithHomeObject(valueNode, frame, homeObject);
-            if (setFunctionName != null) {
-                setFunctionName.execute(value, key);
+            Object value;
+            if (isAnonymousFunctionDefinition && valueNode instanceof ClassDefinitionNode) {
+                value = ((ClassDefinitionNode) valueNode).executeWithClassName(frame, key);
+            } else {
+                value = executeWithHomeObject(valueNode, frame, homeObject);
+                if (setFunctionName != null) {
+                    setFunctionName.execute(value, key);
+                }
             }
 
             PropertyDescriptor propDesc = PropertyDescriptor.createData(value, attributes);
@@ -519,11 +531,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         @Override
         protected ObjectLiteralMemberNode copyUninitialized() {
-            ComputedObjectLiteralDataMemberNode copy = (ComputedObjectLiteralDataMemberNode) copy();
-            copy.propertyKey = JavaScriptNode.cloneUninitialized(propertyKey);
-            copy.valueNode = JavaScriptNode.cloneUninitialized(valueNode);
-            copy.setFunctionName = setFunctionName == null ? null : SetFunctionNameNode.create();
-            return copy;
+            return new ComputedObjectLiteralDataMemberNode(JavaScriptNode.cloneUninitialized(propertyKey), isStatic, attributes,
+                            JavaScriptNode.cloneUninitialized(valueNode), isField, isAnonymousFunctionDefinition);
         }
     }
 
@@ -578,12 +587,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         @Override
         protected ObjectLiteralMemberNode copyUninitialized() {
-            ComputedObjectLiteralAccessorMemberNode copy = (ComputedObjectLiteralAccessorMemberNode) copy();
-            copy.propertyKey = JavaScriptNode.cloneUninitialized(propertyKey);
-            copy.getterNode = JavaScriptNode.cloneUninitialized(getterNode);
-            copy.setterNode = JavaScriptNode.cloneUninitialized(setterNode);
-            copy.setFunctionName = setFunctionName == null ? null : SetFunctionNameNode.create();
-            return copy;
+            return new ComputedObjectLiteralAccessorMemberNode(JavaScriptNode.cloneUninitialized(propertyKey), isStatic, attributes,
+                            JavaScriptNode.cloneUninitialized(getterNode), JavaScriptNode.cloneUninitialized(setterNode));
         }
     }
 
@@ -670,16 +675,18 @@ public class ObjectLiteralNode extends JavaScriptNode {
     private static class PrivateFieldMemberNode extends ObjectLiteralMemberNode {
         @Child private JavaScriptNode keyNode;
         @Child private JavaScriptNode valueNode;
+        @Child private JSWriteFrameSlotNode writePrivateNode;
 
-        PrivateFieldMemberNode(JavaScriptNode key, boolean isStatic, JavaScriptNode valueNode) {
+        PrivateFieldMemberNode(JavaScriptNode key, boolean isStatic, JavaScriptNode valueNode, JSWriteFrameSlotNode writePrivateNode) {
             super(isStatic, JSAttributes.getDefaultNotEnumerable(), true, false);
             this.keyNode = key;
             this.valueNode = valueNode;
+            this.writePrivateNode = writePrivateNode;
         }
 
         @Override
         public final void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSContext context) {
-            throw Errors.shouldNotReachHere();
+            writePrivateNode.execute(frame);
         }
 
         @Override
@@ -694,7 +701,64 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         @Override
         protected ObjectLiteralMemberNode copyUninitialized() {
-            return new PrivateFieldMemberNode(JavaScriptNode.cloneUninitialized(keyNode), isStatic, JavaScriptNode.cloneUninitialized(valueNode));
+            return new PrivateFieldMemberNode(JavaScriptNode.cloneUninitialized(keyNode), isStatic, JavaScriptNode.cloneUninitialized(valueNode), JavaScriptNode.cloneUninitialized(writePrivateNode));
+        }
+    }
+
+    private static class PrivateMethodMemberNode extends ObjectLiteralMemberNode {
+        @Child private JavaScriptNode valueNode;
+        @Child private JSWriteFrameSlotNode writePrivateNode;
+
+        PrivateMethodMemberNode(boolean isStatic, JavaScriptNode valueNode, JSWriteFrameSlotNode writePrivateNode) {
+            super(isStatic, JSAttributes.getDefaultNotEnumerable(), false, false);
+            this.valueNode = valueNode;
+            this.writePrivateNode = writePrivateNode;
+        }
+
+        @Override
+        public final void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSContext context) {
+            Object value = executeWithHomeObject(valueNode, frame, homeObject);
+            writePrivateNode.executeWrite(frame, value);
+        }
+
+        @Override
+        protected ObjectLiteralMemberNode copyUninitialized() {
+            return new PrivateMethodMemberNode(isStatic, JavaScriptNode.cloneUninitialized(valueNode), JavaScriptNode.cloneUninitialized(writePrivateNode));
+        }
+    }
+
+    private static class PrivateAccessorMemberNode extends ObjectLiteralMemberNode {
+        @Child private JavaScriptNode getterNode;
+        @Child private JavaScriptNode setterNode;
+        @Child private JSWriteFrameSlotNode writePrivateNode;
+
+        PrivateAccessorMemberNode(boolean isStatic, JavaScriptNode getterNode, JavaScriptNode setterNode, JSWriteFrameSlotNode writePrivateNode) {
+            super(isStatic, JSAttributes.getDefaultNotEnumerable(), false, false);
+            this.getterNode = getterNode;
+            this.setterNode = setterNode;
+            this.writePrivateNode = writePrivateNode;
+        }
+
+        @Override
+        public final void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSContext context) {
+            Object getter = null;
+            Object setter = null;
+            if (getterNode != null) {
+                getter = executeWithHomeObject(getterNode, frame, homeObject);
+            }
+            if (setterNode != null) {
+                setter = executeWithHomeObject(setterNode, frame, homeObject);
+            }
+
+            assert getter != null || setter != null;
+            Accessor accessor = new Accessor((DynamicObject) getter, (DynamicObject) setter);
+            writePrivateNode.executeWrite(frame, accessor);
+        }
+
+        @Override
+        protected ObjectLiteralMemberNode copyUninitialized() {
+            return new PrivateAccessorMemberNode(isStatic, JavaScriptNode.cloneUninitialized(getterNode), JavaScriptNode.cloneUninitialized(setterNode),
+                            JavaScriptNode.cloneUninitialized(writePrivateNode));
         }
     }
 
@@ -728,8 +792,16 @@ public class ObjectLiteralNode extends JavaScriptNode {
         return new ComputedObjectLiteralDataMemberNode(name, isStatic, attributes, valueNode, false, false);
     }
 
-    public static ObjectLiteralMemberNode newPrivateFieldMember(JavaScriptNode name, boolean isStatic, JavaScriptNode valueNode) {
-        return new PrivateFieldMemberNode(name, isStatic, valueNode);
+    public static ObjectLiteralMemberNode newPrivateFieldMember(JavaScriptNode name, boolean isStatic, JavaScriptNode valueNode, JSWriteFrameSlotNode writePrivateNode) {
+        return new PrivateFieldMemberNode(name, isStatic, valueNode, writePrivateNode);
+    }
+
+    public static ObjectLiteralMemberNode newPrivateMethodMember(boolean isStatic, JavaScriptNode valueNode, JSWriteFrameSlotNode writePrivateNode) {
+        return new PrivateMethodMemberNode(isStatic, valueNode, writePrivateNode);
+    }
+
+    public static ObjectLiteralMemberNode newPrivateAccessorMember(boolean isStatic, JavaScriptNode getterNode, JavaScriptNode setterNode, JSWriteFrameSlotNode writePrivateNode) {
+        return new PrivateAccessorMemberNode(isStatic, getterNode, setterNode, writePrivateNode);
     }
 
     public static ObjectLiteralMemberNode newProtoMember(String name, boolean isStatic, JavaScriptNode valueNode) {

@@ -144,12 +144,12 @@ public abstract class JSMaterializedInvokeTargetableNode extends JSTargetableNod
      *
      */
     private static class MaterializedTargetablePropertyNode extends PropertyNode {
-        protected MaterializedTargetablePropertyNode(JSContext context, JavaScriptNode target, Object propertyKey, boolean method) {
-            super(context, target, propertyKey, method);
+        protected MaterializedTargetablePropertyNode(JSContext context, JavaScriptNode target, Object propertyKey, boolean getOwnProperty, boolean method) {
+            super(context, target, propertyKey, getOwnProperty, method);
         }
 
         MaterializedTargetablePropertyNode(PropertyNode target) {
-            this(target.getContext(), new EchoTargetValueNode(), target.getPropertyKey(), target.isMethod());
+            this(target.getContext(), new EchoTargetValueNode(), target.getPropertyKey(), target.isOwnProperty(), target.isMethod());
         }
 
         @Override
@@ -183,7 +183,7 @@ public abstract class JSMaterializedInvokeTargetableNode extends JSTargetableNod
 
         @Override
         protected JavaScriptNode copyUninitialized() {
-            return new MaterializedTargetablePropertyNode(getContext(), cloneUninitialized(getTarget()), getPropertyKey(), isMethod());
+            return new MaterializedTargetablePropertyNode(getContext(), cloneUninitialized(getTarget()), getPropertyKey(), isOwnProperty(), isMethod());
         }
     }
 

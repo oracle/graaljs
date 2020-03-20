@@ -414,6 +414,12 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorCannotGetAccessorProperty(Object key, DynamicObject store, Node originatingNode) {
+        assert JSRuntime.isPropertyKey(key);
+        return createTypeError(String.format("Cannot get property %s of %s which has only a setter", key, JSObject.defaultToString(store)), originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorCannotGetProperty(JSContext context, Object key, Object object, boolean isGetMethod, Node originatingNode) {
         assert JSRuntime.isPropertyKey(key);
         String errorMessage;

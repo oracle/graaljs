@@ -99,6 +99,12 @@ public final class Symbol implements Comparable<Symbol> {
     public static final int IS_BLOCK_FUNCTION_DECLARATION = 1 << 16;
     /** Is this symbol a private name? */
     public static final int IS_PRIVATE_NAME = 1 << 17;
+    /** Is this symbol a private name associated with a static member? */
+    public static final int IS_PRIVATE_NAME_STATIC = 1 << 18;
+    /** Is this symbol a private name associated with a method? */
+    public static final int IS_PRIVATE_NAME_METHOD = 1 << 19;
+    /** Is this symbol a private name associated with an accessor? */
+    public static final int IS_PRIVATE_NAME_ACCESSOR = 1 << 20;
 
     /** Null or name identifying symbol. */
     private final String name;
@@ -363,5 +369,33 @@ public final class Symbol implements Comparable<Symbol> {
      */
     public boolean isPrivateName() {
         return (flags & IS_PRIVATE_NAME) != 0;
+    }
+
+    /**
+     * Is this symbol a private name associated with a static member.
+     */
+    public boolean isPrivateNameStatic() {
+        return (flags & IS_PRIVATE_NAME_STATIC) != 0;
+    }
+
+    /**
+     * Is this symbol a private name associated with a field.
+     */
+    public boolean isPrivateField() {
+        return isPrivateName() && !isPrivateMethod() && !isPrivateAccessor();
+    }
+
+    /**
+     * Is this symbol a private name associated with a method.
+     */
+    public boolean isPrivateMethod() {
+        return (flags & IS_PRIVATE_NAME_METHOD) != 0;
+    }
+
+    /**
+     * Is this symbol a private name associated with an accessor.
+     */
+    public boolean isPrivateAccessor() {
+        return (flags & IS_PRIVATE_NAME_ACCESSOR) != 0;
     }
 }

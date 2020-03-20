@@ -311,4 +311,8 @@ public final class PropertyNode extends Node {
         assert isPrivate();
         return ((IdentNode) key).getName();
     }
+
+    public boolean isAccessor() {
+        return getter != null || setter != null;
+    }
 }

@@ -69,7 +69,7 @@ import com.oracle.truffle.js.nodes.access.GlobalObjectNode;
 import com.oracle.truffle.js.nodes.access.GlobalPropertyNode;
 import com.oracle.truffle.js.nodes.access.GlobalScopeNode;
 import com.oracle.truffle.js.nodes.access.GlobalScopeVarWrapperNode;
-import com.oracle.truffle.js.nodes.access.InitializeInstanceFieldsNode;
+import com.oracle.truffle.js.nodes.access.InitializeInstanceElementsNode;
 import com.oracle.truffle.js.nodes.access.IteratorCompleteUnaryNode;
 import com.oracle.truffle.js.nodes.access.IteratorGetNextValueNode;
 import com.oracle.truffle.js.nodes.access.IteratorNextUnaryNode;
@@ -92,6 +92,7 @@ import com.oracle.truffle.js.nodes.access.ObjectLiteralNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.MakeMethodNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
 import com.oracle.truffle.js.nodes.access.OptionalChainNode;
+import com.oracle.truffle.js.nodes.access.PrivateBrandCheckNode;
 import com.oracle.truffle.js.nodes.access.PrivateFieldGetNode;
 import com.oracle.truffle.js.nodes.access.PrivateFieldSetNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
@@ -654,7 +655,7 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createAccessHomeObject(JSContext context) {
-        return PropertyNode.createProperty(context, createAccessCallee(0), JSFunction.HOME_OBJECT_ID);
+        return PropertyNode.createGetHidden(context, createAccessCallee(0), JSFunction.HOME_OBJECT_ID);
     }
 
     // ##### Element nodes
@@ -788,12 +789,9 @@ public class NodeFactory {
         return ObjectLiteralNode.newSpreadObjectMember(isStatic, value);
     }
 
-    public JavaScriptNode createClassDefinition(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members, String className,
-                    int instanceFieldCount, int staticFieldCount) {
-        if (className != null) {
-            constructorFunction.setFunctionName(className);
-        }
-        return ClassDefinitionNode.create(context, constructorFunction, classHeritage, members, className != null, instanceFieldCount, staticFieldCount);
+    public JavaScriptNode createClassDefinition(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members,
+                    JSWriteFrameSlotNode writeClassBinding, String className, int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods) {
+        return ClassDefinitionNode.create(context, constructorFunction, classHeritage, members, writeClassBinding, className != null, instanceFieldCount, staticFieldCount, hasPrivateInstanceMethods);
     }
 
     public JavaScriptNode createMakeMethod(JSContext context, JavaScriptNode function) {
@@ -1097,12 +1095,8 @@ public class NodeFactory {
         return RestObjectNode.create(context, restObj, source, excludedNames);
     }
 
-    public JavaScriptNode createAccessClassFields(JSContext context, JavaScriptNode functionObject) {
-        return PropertyNode.createProperty(context, functionObject, JSFunction.CLASS_FIELDS_ID);
-    }
-
-    public JavaScriptNode createInitializeInstanceFields(JSContext context, JavaScriptNode target, JavaScriptNode source) {
-        return InitializeInstanceFieldsNode.create(context, target, source);
+    public JavaScriptNode createInitializeInstanceElements(JSContext context, JavaScriptNode target, JavaScriptNode constructor) {
+        return InitializeInstanceElementsNode.create(context, target, constructor);
     }
 
     public JavaScriptNode createNewPrivateName(String description) {
@@ -1117,8 +1111,24 @@ public class NodeFactory {
         return PrivateFieldSetNode.create(targetNode, indexNode, valueNode, context);
     }
 
-    public ObjectLiteralMemberNode createPrivateFieldMember(JavaScriptNode keyNode, boolean isStatic, JavaScriptNode valueNode) {
-        return ObjectLiteralNode.newPrivateFieldMember(keyNode, isStatic, valueNode);
+    public ObjectLiteralMemberNode createPrivateFieldMember(JavaScriptNode keyNode, boolean isStatic, JavaScriptNode valueNode, JSWriteFrameSlotNode writePrivateNode) {
+        return ObjectLiteralNode.newPrivateFieldMember(keyNode, isStatic, valueNode, writePrivateNode);
+    }
+
+    public ObjectLiteralMemberNode createPrivateMethodMember(boolean isStatic, JavaScriptNode valueNode, JSWriteFrameSlotNode writePrivateNode) {
+        return ObjectLiteralNode.newPrivateMethodMember(isStatic, valueNode, writePrivateNode);
+    }
+
+    public ObjectLiteralMemberNode createPrivateAccessorMember(boolean isStatic, JavaScriptNode getterNode, JavaScriptNode setterNode, JSWriteFrameSlotNode writePrivateNode) {
+        return ObjectLiteralNode.newPrivateAccessorMember(isStatic, getterNode, setterNode, writePrivateNode);
+    }
+
+    public JavaScriptNode createPrivateBrandCheck(JavaScriptNode targetNode, JavaScriptNode brandNode) {
+        return PrivateBrandCheckNode.create(targetNode, brandNode);
+    }
+
+    public JavaScriptNode createGetPrivateBrand(JSContext context, JavaScriptNode constructorNode) {
+        return JSAndNode.create(constructorNode, PropertyNode.createGetHidden(context, constructorNode, JSFunction.PRIVATE_BRAND_ID));
     }
 
     public JavaScriptNode createToPropertyKey(JavaScriptNode key) {

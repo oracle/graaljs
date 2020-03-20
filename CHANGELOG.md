@@ -7,14 +7,15 @@ The main focus is on user-observable behavior of the engine.
 * ECMAScript 2020 mode/features enabled by default.
 * Implemented the [Intl.DateTimeFormat dateStyle & timeStyle](https://github.com/tc39/proposal-intl-datetime-style) proposal.
 * Implemented the [Intl.DisplayNames](https://github.com/tc39/proposal-intl-displaynames) proposal.
-* Implemented support for `export * as ns from "mod"`. It is available in ECMAScript 2020 mode (`--js.ecmascript-version=2020`).
-* Implemented support for optional chaining (`a?.b`, `a?.[b]`, `a?.()`). It is available in ECMAScript 2020 mode (`--js.ecmascript-version=2020`).
+* Implemented support for `export * as ns from "mod"`. It is available in ECMAScript 2020 or later.
+* Implemented support for optional chaining (`a?.b`, `a?.[b]`, `a?.()`). It is available in ECMAScript 2020 or later.
 * Implemented Nashorn extension `Object.bindProperties()`. It is available in Nashorn compatibility mode (`--js.nashorn-compat`).
 * Changed `Polyglot.eval[File]` to propagate syntax errors from the source language.
 * Changed `Polyglot.import` to return `undefined` for missing polyglot bindings.
 * Added `npx` (an `npm` package runner) into GraalVM.
 * Implemented the [RegExp Match Indices](https://github.com/tc39/proposal-regexp-match-indices) proposal. It is available behind the `--js.regexp-match-indices` flag.
 * Removed the JOni RegExp-engine and the "use-tregex" option.
+* Implemented support for [private class methods](https://github.com/tc39/ecma262/pull/1668/); available behind the `--js.ecmascript-version=2021` flag.
 * Implemented the [FinalizationRegistry](https://github.com/tc39/proposal-weakrefs) proposal. It is available behind the `--js.ecmascript-version=2021` flag.
 * Enabled the [Hashbang Grammar](https://github.com/tc39/proposal-hashbang) proposal, by enabling the `--js.shebang` option by default in ECMAScript 2020 or later.
 

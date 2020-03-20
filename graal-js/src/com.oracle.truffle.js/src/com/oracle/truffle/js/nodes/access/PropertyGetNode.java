@@ -137,8 +137,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         return createImpl(key, isGlobal, context, getOwnProperty, isMethod);
     }
 
-    public static PropertyGetNode create(Object key, boolean isGlobal, JSContext context, boolean isMethod) {
-        final boolean getOwnProperty = false;
+    public static PropertyGetNode create(Object key, boolean isGlobal, JSContext context, boolean getOwnProperty, boolean isMethod) {
         return createImpl(key, isGlobal, context, getOwnProperty, isMethod);
     }
 

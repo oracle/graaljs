@@ -62,7 +62,9 @@ public final class JSFrameUtil {
     private static final int HAS_TDZ = IS_LET | IS_CONST;
     private static final int IS_HOISTABLE_DECLARATION = Symbol.IS_HOISTABLE_DECLARATION;
     private static final int IS_IMPORT_BINDING = Symbol.IS_IMPORT_BINDING;
-    public static final int SYMBOL_FLAG_MASK = HAS_TDZ | IS_HOISTABLE_DECLARATION | IS_IMPORT_BINDING;
+    private static final int IS_PRIVATE_NAME_STATIC = Symbol.IS_PRIVATE_NAME_STATIC;
+    private static final int IS_PRIVATE_METHOD_OR_ACCESSOR = Symbol.IS_PRIVATE_NAME_METHOD | Symbol.IS_PRIVATE_NAME_ACCESSOR;
+    public static final int SYMBOL_FLAG_MASK = HAS_TDZ | IS_HOISTABLE_DECLARATION | IS_IMPORT_BINDING | IS_PRIVATE_NAME_STATIC | IS_PRIVATE_METHOD_OR_ACCESSOR;
 
     private JSFrameUtil() {
         // this utility class should not be instantiated
@@ -106,6 +108,14 @@ public final class JSFrameUtil {
 
     public static boolean isImportBinding(FrameSlot frameSlot) {
         return (getFlags(frameSlot) & IS_IMPORT_BINDING) != 0;
+    }
+
+    public static boolean needsPrivateBrandCheck(FrameSlot frameSlot) {
+        return (getFlags(frameSlot) & IS_PRIVATE_METHOD_OR_ACCESSOR) != 0;
+    }
+
+    public static boolean isPrivateNameStatic(FrameSlot frameSlot) {
+        return (getFlags(frameSlot) & IS_PRIVATE_NAME_STATIC) != 0;
     }
 
     public static MaterializedFrame getParentFrame(Frame frame) {

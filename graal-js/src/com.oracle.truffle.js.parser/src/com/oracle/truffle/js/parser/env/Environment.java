@@ -61,6 +61,7 @@ import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -138,11 +139,11 @@ public abstract class Environment {
         return findInternalSlot(FunctionEnvironment.DYNAMIC_SCOPE_IDENTIFIER);
     }
 
-    protected final JavaScriptNode createLocal(FrameSlot frameSlot, int level, int scopeLevel) {
+    public final JavaScriptNode createLocal(FrameSlot frameSlot, int level, int scopeLevel) {
         return factory.createLocal(frameSlot, level, scopeLevel, getParentSlots(level, scopeLevel), false);
     }
 
-    protected final JavaScriptNode createLocal(FrameSlot frameSlot, int level, int scopeLevel, boolean checkTDZ) {
+    public final JavaScriptNode createLocal(FrameSlot frameSlot, int level, int scopeLevel, boolean checkTDZ) {
         return factory.createLocal(frameSlot, level, scopeLevel, getParentSlots(level, scopeLevel), checkTDZ);
     }
 
@@ -461,11 +462,31 @@ public abstract class Environment {
         return createLocal(current.function().getArgumentsSlot(), frameLevel, scopeLevel);
     }
 
-    public Environment getParent() {
+    public final Environment getParent() {
         return parent;
     }
 
     public abstract FunctionEnvironment function();
+
+    public final Environment getParentAt(int frameLevel, int scopeLevel) {
+        Environment current = this;
+        int currentFrameLevel = 0;
+        int currentScopeLevel = 0;
+        do {
+            if (currentFrameLevel == frameLevel && currentScopeLevel == scopeLevel) {
+                return current;
+            }
+            if (current instanceof FunctionEnvironment) {
+                currentFrameLevel++;
+                currentScopeLevel = 0;
+            } else if (current instanceof BlockEnvironment) {
+                currentScopeLevel++;
+            }
+            current = current.getParent();
+        } while (current != null);
+
+        return null;
+    }
 
     public VarRef createTempVar() {
         FrameSlot var = declareTempVar("tmp");
@@ -497,6 +518,11 @@ public abstract class Environment {
             @Override
             public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
                 return factory.createWriteFrameSlot(var, 0, getScopeLevel(), getParentSlots(), rhs);
+            }
+
+            @Override
+            public JavaScriptNode createDeleteNode() {
+                throw Errors.shouldNotReachHere();
             }
         };
     }
@@ -572,7 +598,7 @@ public abstract class Environment {
         return function().getVariableEnvironment();
     }
 
-    public abstract class VarRef {
+    public abstract static class VarRef {
         protected final String name;
 
         protected VarRef(String name) {
@@ -603,9 +629,7 @@ public abstract class Environment {
             return name;
         }
 
-        public JavaScriptNode createDeleteNode() {
-            return factory.createConstantBoolean(false);
-        }
+        public abstract JavaScriptNode createDeleteNode();
 
         public Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> createCompoundAssignNode() {
             return new Pair<>(this::createReadNode, rhs -> withRequired(false).createWriteNode(rhs));
@@ -649,6 +673,11 @@ public abstract class Environment {
         @Override
         public boolean isGlobal() {
             return false;
+        }
+
+        @Override
+        public JavaScriptNode createDeleteNode() {
+            return factory.createConstantBoolean(false);
         }
     }
 

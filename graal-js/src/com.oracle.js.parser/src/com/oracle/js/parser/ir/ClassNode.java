@@ -58,6 +58,10 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
     private final Scope scope;
     private final int instanceFieldCount;
     private final int staticFieldCount;
+    private final boolean hasPrivateMethods;
+    private final boolean hasPrivateInstanceMethods;
+
+    public static final String PRIVATE_CONSTRUCTOR_BINDING_NAME = "#constructor";
 
     /**
      * Constructor.
@@ -66,7 +70,7 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
      * @param finish finish
      */
     public ClassNode(final long token, final int finish, final IdentNode ident, final Expression classHeritage, final PropertyNode constructor, final List<PropertyNode> classElements,
-                    final Scope scope, final int instanceFieldCount, final int staticFieldCount) {
+                    final Scope scope, final int instanceFieldCount, final int staticFieldCount, final boolean hasPrivateMethods, final boolean hasPrivateInstanceMethods) {
         super(token, finish);
         this.ident = ident;
         this.classHeritage = classHeritage;
@@ -75,6 +79,8 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         this.scope = scope;
         this.instanceFieldCount = instanceFieldCount;
         this.staticFieldCount = staticFieldCount;
+        this.hasPrivateMethods = hasPrivateMethods;
+        this.hasPrivateInstanceMethods = hasPrivateInstanceMethods;
         assert instanceFieldCount == fieldCount(classElements, false);
         assert staticFieldCount == fieldCount(classElements, true);
     }
@@ -88,6 +94,8 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         this.scope = classNode.scope;
         this.instanceFieldCount = fieldCount(classElements, false);
         this.staticFieldCount = fieldCount(classElements, true);
+        this.hasPrivateMethods = classNode.hasPrivateMethods;
+        this.hasPrivateInstanceMethods = classNode.hasPrivateInstanceMethods;
     }
 
     private static int fieldCount(List<PropertyNode> classElements, boolean isStatic) {
@@ -135,7 +143,7 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         return constructor;
     }
 
-    private ClassNode setConstructor(final PropertyNode constructor) {
+    public ClassNode setConstructor(final PropertyNode constructor) {
         if (this.constructor == constructor) {
             return this;
         }
@@ -193,6 +201,18 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
 
     public int getStaticFieldCount() {
         return staticFieldCount;
+    }
+
+    public boolean hasPrivateMethods() {
+        return hasPrivateMethods;
+    }
+
+    public boolean hasPrivateInstanceMethods() {
+        return hasPrivateInstanceMethods;
+    }
+
+    public boolean isAnonymous() {
+        return getIdent() == null;
     }
 
     @Override
