@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,7 +60,7 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.builtins.JSLocale;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
@@ -82,28 +82,21 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
     public abstract String[] executeLanguageTags(Object value);
 
     @Specialization()
-    protected String[] doRawString(String s) {
+    protected String[] doString(String s) {
         return new String[]{IntlUtil.validateAndCanonicalizeLanguageTag(s)};
     }
 
-    @Specialization(guards = {"isJSString(object)"})
-    protected String[] doString(DynamicObject object) {
-        String s = JSString.getString(object);
-        return doRawString(s);
-    }
-
-    @Specialization(guards = {"isJSNull(object)"})
-    protected String[] doNull(DynamicObject object) {
-        throw Errors.createTypeErrorNotObjectCoercible(object, this, context);
-    }
-
-    @SuppressWarnings("unused")
     @Specialization(guards = {"isUndefined(object)"})
-    protected String[] doUndefined(DynamicObject object) {
-        return new String[]{};
+    protected String[] doUndefined(@SuppressWarnings("unused") DynamicObject object) {
+        return new String[0];
     }
 
-    @Specialization(guards = {"!isForeignObject(object)", "!isString(object)", "!isJSString(object)", "!isUndefined(object)", "!isJSNull(object)"})
+    @Specialization(guards = {"isJSLocale(object)"})
+    protected String[] doLocale(DynamicObject object) {
+        return doString(JSLocale.getInternalState(object).getLocale());
+    }
+
+    @Specialization(guards = {"!isForeignObject(object)", "!isString(object)", "!isUndefined(object)", "!isJSLocale(object)"})
     protected String[] doOtherType(Object object,
                     @Cached("createToObject(context)") JSToObjectNode toObjectNode,
                     @Cached("create(context)") JSGetLengthNode getLengthNode,
@@ -120,7 +113,12 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
                 if (JSRuntime.isNullOrUndefined(kValue) || ((!typeOfKValue.equals("string") && !typeOfKValue.equals("object")))) {
                     throw Errors.createTypeError(Boundaries.stringFormat("String or Object expected in locales list, got %s", typeOfKValue));
                 }
-                String lt = toStringNode.executeString(kValue);
+                String lt;
+                if (JSLocale.isJSLocale(kValue)) {
+                    lt = JSLocale.getInternalState((DynamicObject) kValue).getLocale();
+                } else {
+                    lt = toStringNode.executeString(kValue);
+                }
                 String canonicalizedLt = IntlUtil.validateAndCanonicalizeLanguageTag(lt);
                 if (!Boundaries.listContains(result, canonicalizedLt)) {
                     Boundaries.listAdd(result, canonicalizedLt);

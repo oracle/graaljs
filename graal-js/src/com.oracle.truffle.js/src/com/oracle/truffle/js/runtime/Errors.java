@@ -170,6 +170,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorLocaleExpected() {
+        return createTypeError("Locale object expected.");
+    }
+
+    @TruffleBoundary
     public static JSException createSyntaxError(String message, Throwable cause, Node originatingNode) {
         return JSException.create(JSErrorType.SyntaxError, message, cause, originatingNode);
     }
@@ -452,6 +457,10 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createRangeErrorInvalidUnitArgument(String functionName, String unit) {
         return createRangeError(String.format("Invalid unit argument for %s() '%s'", functionName, unit));
+    }
+
+    public static JSException createRangeErrorInvalidLanguage(String language) {
+        return createRangeErrorFormat("Invalid language subtag: %s", null, language);
     }
 
     public static JSException createRangeErrorInvalidRegion(String region) {

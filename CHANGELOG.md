@@ -7,6 +7,7 @@ The main focus is on user-observable behavior of the engine.
 * ECMAScript 2020 mode/features enabled by default.
 * Implemented the [Intl.DateTimeFormat dateStyle & timeStyle](https://github.com/tc39/proposal-intl-datetime-style) proposal.
 * Implemented the [Intl.DisplayNames](https://github.com/tc39/proposal-intl-displaynames) proposal.
+* Implemented the [Intl.Locale](https://github.com/tc39/proposal-intl-locale) proposal.
 * Implemented support for `export * as ns from "mod"`. It is available in ECMAScript 2020 or later.
 * Implemented support for optional chaining (`a?.b`, `a?.[b]`, `a?.()`). It is available in ECMAScript 2020 or later.
 * Implemented Nashorn extension `Object.bindProperties()`. It is available in Nashorn compatibility mode (`--js.nashorn-compat`).

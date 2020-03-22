@@ -93,6 +93,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJSAdap
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJSProxyNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJavaImporterNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructListFormatNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructLocaleNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructMapNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructNumberFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructNumberNodeGen;
@@ -150,6 +151,7 @@ import com.oracle.truffle.js.nodes.intl.InitializeCollatorNode;
 import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializeDisplayNamesNode;
 import com.oracle.truffle.js.nodes.intl.InitializeListFormatNode;
+import com.oracle.truffle.js.nodes.intl.InitializeLocaleNode;
 import com.oracle.truffle.js.nodes.intl.InitializeNumberFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializePluralRulesNode;
 import com.oracle.truffle.js.nodes.intl.InitializeRelativeTimeFormatNode;
@@ -187,6 +189,7 @@ import com.oracle.truffle.js.runtime.builtins.JSDisplayNames;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSListFormat;
+import com.oracle.truffle.js.runtime.builtins.JSLocale;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
@@ -241,6 +244,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         RelativeTimeFormat(0),
         Segmenter(0),
         DisplayNames(0),
+        Locale(1),
 
         Error(1),
         RangeError(1),
@@ -402,6 +406,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 return construct ? (newTarget
                                 ? ConstructDisplayNamesNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
                                 : ConstructDisplayNamesNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
+                                : createCallRequiresNew(context, builtin);
+            case Locale:
+                return construct ? (newTarget
+                                ? ConstructLocaleNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
+                                : ConstructLocaleNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
                                 : createCallRequiresNew(context, builtin);
             case Object:
                 if (newTarget) {
@@ -1255,6 +1264,26 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
             return realm.getDisplayNamesPrototype();
+        }
+    }
+
+    public abstract static class ConstructLocaleNode extends ConstructWithNewTargetNode {
+        @Child InitializeLocaleNode initializeLocaleNode;
+
+        public ConstructLocaleNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
+            super(context, builtin, newTargetCase);
+            initializeLocaleNode = InitializeLocaleNode.createInitalizeLocaleNode(context);
+        }
+
+        @Specialization
+        protected DynamicObject constructLocale(DynamicObject newTarget, Object tag, Object options) {
+            DynamicObject locale = swapPrototype(JSLocale.create(getContext()), newTarget);
+            return initializeLocaleNode.executeInit(locale, tag, options);
+        }
+
+        @Override
+        protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getLocalePrototype();
         }
     }
 
