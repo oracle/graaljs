@@ -97,6 +97,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionFactory;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.builtins.JSListFormat;
+import com.oracle.truffle.js.runtime.builtins.JSLocale;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
@@ -274,6 +275,16 @@ public class JSContext {
         DateTimeFormatGetFormat,
         SegmeterBreakType,
         SegmeterPosition,
+        LocaleBaseName,
+        LocaleCalendar,
+        LocaleCaseFirst,
+        LocaleCollation,
+        LocaleHourCycle,
+        LocaleNumeric,
+        LocaleNumberingSystem,
+        LocaleLanguage,
+        LocaleScript,
+        LocaleRegion,
         SharedArrayBufferGetByteLength,
         FunctionAsyncIterator,
         IsGraalRuntime,
@@ -375,6 +386,7 @@ public class JSContext {
     private final JSObjectFactory segmenterFactory;
     private final JSObjectFactory segmentIteratorFactory;
     private final JSObjectFactory displayNamesFactory;
+    private final JSObjectFactory localeFactory;
 
     private final JSObjectFactory javaImporterFactory;
     private final JSObjectFactory javaPackageFactory;
@@ -513,6 +525,7 @@ public class JSContext {
         this.segmenterFactory = builder.create(JSSegmenter.INSTANCE);
         this.segmentIteratorFactory = builder.create(JSRealm::getSegmentIteratorPrototype, JSSegmenter::makeInitialSegmentIteratorShape);
         this.displayNamesFactory = builder.create(JSDisplayNames.INSTANCE);
+        this.localeFactory = builder.create(JSLocale.INSTANCE);
 
         this.javaPackageFactory = builder.create(objectPrototypeSupplier, JavaPackage.INSTANCE::makeInitialShape);
         boolean nashornCompat = isOptionNashornCompatibilityMode();
@@ -888,6 +901,10 @@ public class JSContext {
 
     public final JSObjectFactory getDisplayNamesFactory() {
         return displayNamesFactory;
+    }
+
+    public final JSObjectFactory getLocaleFactory() {
+        return localeFactory;
     }
 
     public final JSObjectFactory getDateTimeFormatFactory() {

@@ -1600,7 +1600,7 @@
   }, {
     "filePath" : "intl402/DateTimeFormat/invalid-numbering-system-calendar-options.js",
     "status" : "FAIL",
-    "comment" : "new failures after 2020-03 update"
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2540"
   }, {
     "filePath" : "intl402/DateTimeFormat/prototype/format/related-year-zh.js",
     "status" : "FAIL",
@@ -1622,45 +1622,9 @@
     "status" : "FAIL",
     "comment" : "new failures after 2020-03 update"
   }, {
-    "filePath" : "intl402/Intl/getCanonicalLocales/canonicalized-tags.js",
+    "filePath" : "intl402/Locale/constructor-tag.js",
     "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "intl402/Intl/getCanonicalLocales/grandfathered.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "intl402/Intl/getCanonicalLocales/invalid-tags.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "intl402/Intl/getCanonicalLocales/non-iana-canon.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl402/Intl/getCanonicalLocales/preferred-grandfathered.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "intl402/language-tags-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "intl402/language-tags-with-underscore.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "intl402/ListFormat/constructor/constructor/locales-invalid.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/ListFormat/constructor/constructor/locales-valid.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "intl402/ListFormat/constructor/supportedLocalesOf/locales-invalid.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2541"
   }, {
     "filePath" : "intl402/NumberFormat/constructor-compactDisplay-compact.js",
     "status" : "FAIL",
@@ -1696,7 +1660,7 @@
   }, {
     "filePath" : "intl402/NumberFormat/invalid-numbering-system-options.js",
     "status" : "FAIL",
-    "comment" : "new failures after 2020-03 update"
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2540"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/engineering-scientific-de-DE.js",
     "status" : "FAIL",
@@ -1938,18 +1902,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
-    "filePath" : "intl402/RelativeTimeFormat/constructor/constructor/locales-invalid.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "intl402/RelativeTimeFormat/constructor/constructor/locales-valid.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "intl402/RelativeTimeFormat/constructor/supportedLocalesOf/locales-invalid.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
     "filePath" : "intl402/RelativeTimeFormat/prototype/format/en-us-numeric-auto.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
@@ -1957,18 +1909,6 @@
     "filePath" : "intl402/RelativeTimeFormat/prototype/formatToParts/en-us-numeric-auto.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/constructor/locales-invalid.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/constructor/locales-valid.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/supportedLocalesOf/locales-invalid.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
     "filePath" : "intl402/Segmenter/constructor/supportedLocalesOf/locales-specific.js",
     "status" : "FAIL",

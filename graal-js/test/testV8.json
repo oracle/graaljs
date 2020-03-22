@@ -61,10 +61,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
-    "filePath" : "intl/general/CanonicalizeLocaleListTakeLocale.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
-  }, {
     "filePath" : "intl/general/case-mapping.js",
     "status" : "FAIL"
   }, {
@@ -74,10 +70,6 @@
     "filePath" : "intl/general/empty-handle.js",
     "status" : "SKIP",
     "comment" : "Triggers stack-overflow, test fails randomly based on where the overflow occurs."
-  }, {
-    "filePath" : "intl/general/getCanonicalLocales.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
     "filePath" : "intl/general/grandfathered_tags_without_preferred_value.js",
     "status" : "FAIL",
@@ -94,29 +86,9 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "intl/locale/locale-canonicalization.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "intl/locale/locale-constructor.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/locale/locale-properties.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/locale/maximize_minimize.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/locale/property.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
-  }, {
-    "filePath" : "intl/locale/regress-8032.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "comment" : "Contains a test for a bug in ICU4C (that is not in ICU4J)"
   }, {
     "filePath" : "intl/number-format/check-minimum-fraction-digits.js",
     "status" : "FAIL"
@@ -188,21 +160,9 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
   }, {
-    "filePath" : "intl/regress-7982.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/regress-8657.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
-  }, {
     "filePath" : "intl/regress-8866.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "intl/regress-917151.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
     "filePath" : "intl/regress-9312.js",
     "status" : "FAIL",

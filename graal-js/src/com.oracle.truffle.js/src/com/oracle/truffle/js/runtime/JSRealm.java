@@ -117,6 +117,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.builtins.JSIntl;
 import com.oracle.truffle.js.runtime.builtins.JSListFormat;
+import com.oracle.truffle.js.runtime.builtins.JSLocale;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSMath;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
@@ -216,6 +217,8 @@ public class JSRealm {
     private final DynamicObject segmenterPrototype;
     private final DynamicObject displayNamesConstructor;
     private final DynamicObject displayNamesPrototype;
+    private final DynamicObject localeConstructor;
+    private final DynamicObject localePrototype;
     private final DynamicObject dateConstructor;
     private final DynamicObject datePrototype;
     @CompilationFinal(dimensions = 1) private final DynamicObject[] errorConstructors;
@@ -548,6 +551,9 @@ public class JSRealm {
         ctor = JSDisplayNames.createConstructor(this);
         this.displayNamesConstructor = ctor.getFunctionObject();
         this.displayNamesPrototype = ctor.getPrototype();
+        ctor = JSLocale.createConstructor(this);
+        this.localeConstructor = ctor.getFunctionObject();
+        this.localePrototype = ctor.getPrototype();
 
         if (es6) {
             ctor = JSFunction.createGeneratorFunctionConstructor(this);
@@ -851,6 +857,14 @@ public class JSRealm {
 
     public final DynamicObject getDisplayNamesPrototype() {
         return displayNamesPrototype;
+    }
+
+    public final DynamicObject getLocaleConstructor() {
+        return localeConstructor;
+    }
+
+    public final DynamicObject getLocalePrototype() {
+        return localePrototype;
     }
 
     public final DynamicObject getSymbolConstructor() {
@@ -1399,6 +1413,7 @@ public class JSRealm {
         DynamicObject relativeTimeFormatFn = getRelativeTimeFormatConstructor();
         DynamicObject segmenterFn = getSegmenterConstructor();
         DynamicObject displayNamesFn = getDisplayNamesConstructor();
+        DynamicObject localeFn = getLocaleConstructor();
         JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(collatorFn), collatorFn, JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(numberFormatFn), numberFormatFn, JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(dateTimeFormatFn), dateTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
@@ -1407,6 +1422,7 @@ public class JSRealm {
         JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(relativeTimeFormatFn), relativeTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(segmenterFn), segmenterFn, JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(displayNamesFn), displayNamesFn, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(localeFn), localeFn, JSAttributes.getDefaultNotEnumerable());
         return intlObject;
     }
 

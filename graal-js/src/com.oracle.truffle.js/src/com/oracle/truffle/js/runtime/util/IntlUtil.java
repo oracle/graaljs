@@ -53,6 +53,7 @@ import com.ibm.icu.text.CaseMap;
 import com.ibm.icu.text.CaseMap.Lower;
 import com.ibm.icu.text.CaseMap.Upper;
 import com.ibm.icu.text.NumberingSystem;
+import com.ibm.icu.util.Region;
 import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -78,6 +79,7 @@ public final class IntlUtil {
     public static final String AUTO = "auto";
     public static final String BEST_FIT = "best fit";
     public static final String BASE = "base";
+    public static final String BASE_NAME = "baseName";
     public static final String BASIC = "basic";
     public static final String BREAK_TYPE = "breakType";
     public static final String CALENDAR = "calendar";
@@ -266,42 +268,9 @@ public final class IntlUtil {
     }
 
     public static void validateUnicodeLocaleIdentifierType(String type) {
-        // type = alphanum{3,8} (sep alphanum{3,8})*
-        // sep = [-_]
-        // alphanum = [0-9 A-Z a-z]
-        int alphanumStart = 0;
-        boolean invalid = false;
-        for (int i = 0; i < type.length(); i++) {
-            char c = type.charAt(i);
-            if (!isUnicodeLocaleIdentifierAlphanum(c)) {
-                if (c == '-' || c == '_') { // c is sep
-                    int alphanumLength = i - alphanumStart;
-                    if (3 <= alphanumLength && alphanumLength <= 8) {
-                        alphanumStart = i + 1;
-                    } else {
-                        // not alphanum{3,8}
-                        invalid = true;
-                        break;
-                    }
-                } else {
-                    // unexpected character
-                    invalid = true;
-                    break;
-                }
-            }
-        }
-        int alphanumLength = type.length() - alphanumStart;
-        if (alphanumLength < 3 || 8 < alphanumLength) {
-            // not alphanum{3,8}
-            invalid = true;
-        }
-        if (invalid) {
+        if (!UTS35Validator.isStructurallyValidType(type)) {
             throw Errors.createRangeErrorFormat("Invalid option: %s", null, type);
         }
-    }
-
-    private static boolean isUnicodeLocaleIdentifierAlphanum(char c) {
-        return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9');
     }
 
     @TruffleBoundary
@@ -322,16 +291,8 @@ public final class IntlUtil {
         }
     }
 
-    private static boolean isBasicAlpha(char c) {
-        return ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z');
-    }
-
-    private static boolean isBasicDigit(char c) {
-        return '0' <= c && c <= '9';
-    }
-
     public static boolean isWellFormedCurrencyCode(String currency) {
-        return currency.length() == 3 && isBasicAlpha(currency.charAt(0)) && isBasicAlpha(currency.charAt(1)) && isBasicAlpha(currency.charAt(2));
+        return currency.length() == 3 && UTS35Validator.isAlpha(currency.charAt(0)) && UTS35Validator.isAlpha(currency.charAt(1)) && UTS35Validator.isAlpha(currency.charAt(2));
     }
 
     public static void ensureIsWellFormedCurrencyCode(String currency) {
@@ -340,29 +301,20 @@ public final class IntlUtil {
         }
     }
 
-    private static boolean isStructurallyValidRegionSubtag(String region) {
-        // unicode_region_subtag = (alpha{2} | digit{3}) ;
-        // digit = [0-9] ;
-        // alpha = [A-Z a-z] ;
-        int length = region.length();
-        return ((length == 2) && isBasicAlpha(region.charAt(0)) && isBasicAlpha(region.charAt(1))) ||
-                        ((length == 3) && isBasicDigit(region.charAt(0)) && isBasicDigit(region.charAt(1)) && isBasicDigit(region.charAt(2)));
+    public static void ensureIsStructurallyValidLanguageSubtag(String region) {
+        if (!UTS35Validator.isStructurallyValidLanguageSubtag(region)) {
+            throw Errors.createRangeErrorInvalidLanguage(region);
+        }
     }
 
     public static void ensureIsStructurallyValidRegionSubtag(String region) {
-        if (!isStructurallyValidRegionSubtag(region)) {
+        if (!UTS35Validator.isStructurallyValidRegionSubtag(region)) {
             throw Errors.createRangeErrorInvalidRegion(region);
         }
     }
 
-    private static boolean isStructurallyValidScriptSubtag(String script) {
-        // unicode_script_subtag = alpha{4} ;
-        // alpha = [A-Z a-z] ;
-        return (script.length() == 4) && isBasicAlpha(script.charAt(0)) && isBasicAlpha(script.charAt(1)) && isBasicAlpha(script.charAt(2)) && isBasicAlpha(script.charAt(3));
-    }
-
     public static void ensureIsStructurallyValidScriptSubtag(String script) {
-        if (!isStructurallyValidScriptSubtag(script)) {
+        if (!UTS35Validator.isStructurallyValidScriptSubtag(script)) {
             throw Errors.createRangeErrorInvalidScript(script);
         }
     }
@@ -383,7 +335,97 @@ public final class IntlUtil {
     @TruffleBoundary
     // https://tc39.github.io/ecma402/#sec-canonicalizelanguagetag
     public static String validateAndCanonicalizeLanguageTag(String languageTag) {
-        return createValidatedLocale(languageTag).toLanguageTag();
+        try {
+            // We cannot use (U)Locale class to check whether the tag is well-formed.
+            // Locale class allows wider range of tags (irregular grandfathered tags,
+            // extlang subtags, private use only tags etc.)
+            if (!UTS35Validator.isWellFormedLocaleID(languageTag)) {
+                throw Errors.createRangeErrorFormat("Language tag is not well-formed: %s", null, languageTag);
+            }
+
+            Locale.Builder builder = new Locale.Builder().setLanguageTag(languageTag);
+            Locale locale = builder.build();
+
+            // Canonicalization is supposed to replace language aliases
+            // but (U)Locale fails to do so.
+            String language = locale.getLanguage();
+            if (!language.isEmpty()) {
+                String canonicalLanguage;
+                // ICU fails to handle mo->ro, cmn->zh replacements from
+                // https://github.com/unicode-org/cldr/blob/master/common/supplemental/supplementalMetadata.xml
+                if ("mo".equals(language)) {
+                    canonicalLanguage = "ro";
+                } else if ("cmn".equals(language)) {
+                    canonicalLanguage = "zh";
+                } else {
+                    // ULocale.createCanonical() fails to canonicalize other parts
+                    // of language tag (like region) and even modifies extensions in an undesirable
+                    // way => we use it for the canonicalization of the language only
+                    canonicalLanguage = ULocale.createCanonical(language).getLanguage();
+                }
+                builder.setLanguage(canonicalLanguage);
+            }
+
+            // Canonicalization is supposed to replace region aliases but (U)Locale fails to do so.
+            String region = locale.getCountry();
+            if (!region.isEmpty()) {
+                try {
+                    String canonicalRegion = Region.getInstance(region).toString();
+                    builder.setRegion(canonicalRegion);
+                } catch (IllegalArgumentException iaex) {
+                    // ICU is not aware of this region => let's assume that it is canonicalized.
+                }
+            }
+
+            String variant = locale.getVariant();
+            if (!variant.isEmpty()) {
+                String[] variants = variant.toLowerCase().split("[_-]");
+                if (new HashSet<>(Arrays.asList(variants)).size() != variants.length) {
+                    throw Errors.createRangeErrorFormat("Language tag with duplicate variants: %s", null, languageTag);
+                }
+                // Canonicalization is supposed to sort variants but (U)Locale fails to do so.
+                Arrays.sort(variants);
+                StringBuilder sb = new StringBuilder(variants[0]);
+                for (int i = 1; i < variants.length; i++) {
+                    sb.append('-').append(variants[i]);
+                }
+                builder.setVariant(sb.toString());
+            }
+
+            Set<Character> extensions = locale.getExtensionKeys();
+            if (!extensions.isEmpty()) {
+                // A separator can be an underscore. Singletons are case-insensitive.
+                String tag = languageTag.replace('_', '-').toLowerCase();
+                int privateExtIdx = extensions.contains('x') ? tag.indexOf("-x-") : tag.length();
+                for (Character ext : extensions) {
+                    if (ext != 'x') {
+                        String extDelimiter = "-" + ext + "-";
+                        int idx = tag.indexOf(extDelimiter);
+                        int idx2 = tag.indexOf(extDelimiter, idx + 1);
+                        if (idx2 != -1 && idx2 < privateExtIdx) {
+                            throw Errors.createRangeErrorFormat("Language tag with duplicate singletons: %s", null, languageTag);
+                        }
+                    }
+                }
+
+                // Canonicalization is supposed to remove "true" types but (U)Locale fails to do so.
+                for (String key : locale.getUnicodeLocaleKeys()) {
+                    String type = locale.getUnicodeLocaleType(key);
+                    if ("true".equals(type)) {
+                        builder.setUnicodeLocaleKeyword(key, "");
+                    }
+                }
+            }
+            return maybeAppendMissingLanguageSubTag(builder.build().toLanguageTag());
+        } catch (IllformedLocaleException e) {
+            throw Errors.createRangeError(e.getMessage());
+        }
+    }
+
+    public static String maybeAppendMissingLanguageSubTag(String tag) {
+        // (U)Locale.Builder.build() tends to strip und- prefix even
+        // in cases where it results in an invalid (private use only) language tag.
+        return tag.startsWith("x-") ? ("und-" + tag) : tag;
     }
 
     @TruffleBoundary

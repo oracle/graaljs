@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.builtins.JSDisplayNames;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSListFormat;
+import com.oracle.truffle.js.runtime.builtins.JSLocale;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
@@ -320,6 +321,14 @@ public final class JSGuards {
 
     public static boolean isJSDisplayNames(Object value) {
         return JSDisplayNames.isJSDisplayNames(value);
+    }
+
+    public static boolean isJSLocale(DynamicObject value) {
+        return JSLocale.isJSLocale(value);
+    }
+
+    public static boolean isJSLocale(Object value) {
+        return JSLocale.isJSLocale(value);
     }
 
     public static boolean isNumber(Object operand) {
