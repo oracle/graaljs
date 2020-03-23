@@ -339,7 +339,7 @@ public final class IntlUtil {
             // We cannot use (U)Locale class to check whether the tag is well-formed.
             // Locale class allows wider range of tags (irregular grandfathered tags,
             // extlang subtags, private use only tags etc.)
-            if (!UTS35Validator.isWellFormedLocaleID(languageTag)) {
+            if (!UTS35Validator.isWellFormedUnicodeBCP47LocaleIdentifier(languageTag)) {
                 throw Errors.createRangeErrorFormat("Language tag is not well-formed: %s", null, languageTag);
             }
 
@@ -394,8 +394,8 @@ public final class IntlUtil {
 
             Set<Character> extensions = locale.getExtensionKeys();
             if (!extensions.isEmpty()) {
-                // A separator can be an underscore. Singletons are case-insensitive.
-                String tag = languageTag.replace('_', '-').toLowerCase();
+                // Singletons are case-insensitive.
+                String tag = languageTag.toLowerCase();
                 int privateExtIdx = extensions.contains('x') ? tag.indexOf("-x-") : tag.length();
                 for (Character ext : extensions) {
                     if (ext != 'x') {
