@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.control;
 
 import java.util.ArrayDeque;
+import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -161,7 +162,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
     @Child private PropertySetNode setGeneratorTarget;
     @Child private PropertySetNode setGeneratorQueue;
 
-    @CompilationFinal RootCallTarget resumeTarget;
+    @CompilationFinal volatile RootCallTarget resumeTarget;
     private final JSContext context;
 
     @Child private JavaScriptNode functionBody;
@@ -181,6 +182,9 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
         this.context = context;
 
         // these children are adopted here only temporarily; they will be transferred later
+        Objects.requireNonNull(body);
+        Objects.requireNonNull(writeYieldValueNode);
+        Objects.requireNonNull(readYieldResultNode);
         this.functionBody = body;
         this.writeYieldValueNode = writeYieldValueNode;
         this.readYieldResultNode = readYieldResultNode;
@@ -194,12 +198,15 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
     private void initializeCallTarget() {
         CompilerAsserts.neverPartOfCompilation();
         atomic(() -> {
-            AsyncGeneratorRootNode asyncGeneratorRootNode = new AsyncGeneratorRootNode(context, functionBody, writeYieldValueNode, readYieldResultNode, getRootNode().getSourceSection());
-            this.resumeTarget = Truffle.getRuntime().createCallTarget(asyncGeneratorRootNode);
-            // these children have been transferred to the generator root node and are now disowned
-            this.functionBody = null;
-            this.writeYieldValueNode = null;
-            this.readYieldResultNode = null;
+            if (resumeTarget == null) {
+                AsyncGeneratorRootNode asyncGeneratorRootNode = new AsyncGeneratorRootNode(context, functionBody, writeYieldValueNode, readYieldResultNode, getRootNode().getSourceSection());
+                this.resumeTarget = Truffle.getRuntime().createCallTarget(asyncGeneratorRootNode);
+                // these children have been transferred to the generator root node and are now
+                // disowned
+                this.functionBody = null;
+                this.writeYieldValueNode = null;
+                this.readYieldResultNode = null;
+            }
         });
     }
 
@@ -232,12 +239,14 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        if (resumeTarget == null) {
-            return create(context, cloneUninitialized(functionBody), cloneUninitialized(writeYieldValueNode), cloneUninitialized(readYieldResultNode), cloneUninitialized(writeAsyncContext));
-        } else {
-            AsyncGeneratorRootNode generatorRoot = (AsyncGeneratorRootNode) resumeTarget.getRootNode();
-            return create(context, cloneUninitialized(generatorRoot.functionBody), cloneUninitialized(generatorRoot.writeYieldValue), cloneUninitialized(generatorRoot.readYieldResult),
-                            cloneUninitialized(writeAsyncContext));
-        }
+        return atomic(() -> {
+            if (resumeTarget == null) {
+                return create(context, cloneUninitialized(functionBody), cloneUninitialized(writeYieldValueNode), cloneUninitialized(readYieldResultNode), cloneUninitialized(writeAsyncContext));
+            } else {
+                AsyncGeneratorRootNode generatorRoot = (AsyncGeneratorRootNode) resumeTarget.getRootNode();
+                return create(context, cloneUninitialized(generatorRoot.functionBody), cloneUninitialized(generatorRoot.writeYieldValue), cloneUninitialized(generatorRoot.readYieldResult),
+                                cloneUninitialized(writeAsyncContext));
+            }
+        });
     }
 }
