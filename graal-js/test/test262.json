@@ -1622,10 +1622,6 @@
     "status" : "FAIL",
     "comment" : "new failures after 2020-03 update"
   }, {
-    "filePath" : "intl402/Locale/constructor-tag.js",
-    "status" : "FAIL",
-    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2541"
-  }, {
     "filePath" : "intl402/NumberFormat/invalid-numbering-system-options.js",
     "status" : "FAIL",
     "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2540"

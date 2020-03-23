@@ -49,7 +49,7 @@ import java.util.regex.Pattern;
 public class UTS35Validator {
     private static final Pattern LOCALE_ID_PATTERN = Pattern.compile(unicodeLocaleID());
 
-    public static boolean isWellFormedLocaleID(String languageTag) {
+    public static boolean isWellFormedUnicodeBCP47LocaleIdentifier(String languageTag) {
         return LOCALE_ID_PATTERN.matcher(languageTag).matches();
     }
 
@@ -121,8 +121,10 @@ public class UTS35Validator {
     private static String unicodeLanguageID() {
         // unicode_language_id = "root" | (unicode_language_subtag (sep unicode_script_subtag)? |
         // unicode_script_subtag) (sep unicode_region_subtag)? (sep unicode_variant_subtag)*
-        return group("root|" + group(unicodeLanguageSubtag() + group(sep() + unicodeScriptSubtag()) + "?|" + unicodeScriptSubtag()) + group(sep() + unicodeRegionSubtag()) + "?" +
-                        group(sep() + unicodeVariantSubtag()) + "*");
+
+        // "root" and tags starting with a script subtag are backwards compatibility syntax
+        // (not allowed in Unicode BCP 47 locale identifier)
+        return group(unicodeLanguageSubtag() + group(sep() + unicodeScriptSubtag()) + "?" + group(sep() + unicodeRegionSubtag()) + "?" + group(sep() + unicodeVariantSubtag()) + "*");
     }
 
     private static String unicodeLanguageSubtag() {
@@ -147,7 +149,10 @@ public class UTS35Validator {
 
     private static String sep() {
         // sep = [-_]
-        return "[-_]";
+
+        // _ is backwards compatibility syntax
+        // (not allowed in Unicode BCP 47 locale identifier)
+        return "-";
     }
 
     private static String digit() {
