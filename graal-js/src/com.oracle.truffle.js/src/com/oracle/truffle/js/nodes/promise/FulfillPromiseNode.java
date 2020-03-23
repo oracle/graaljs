@@ -53,7 +53,6 @@ public class FulfillPromiseNode extends JavaScriptBaseNode {
     @Child private PropertySetNode setPromiseResult;
     @Child private PropertySetNode setPromiseFulfillReactions;
     @Child private PropertySetNode setPromiseRejectReactions;
-    @Child private PropertySetNode setPromiseState;
     @Child private TriggerPromiseReactionsNode triggerPromiseReactions;
 
     protected FulfillPromiseNode(JSContext context) {
@@ -61,7 +60,6 @@ public class FulfillPromiseNode extends JavaScriptBaseNode {
         this.setPromiseResult = PropertySetNode.createSetHidden(JSPromise.PROMISE_RESULT, context);
         this.setPromiseFulfillReactions = PropertySetNode.createSetHidden(JSPromise.PROMISE_FULFILL_REACTIONS, context);
         this.setPromiseRejectReactions = PropertySetNode.createSetHidden(JSPromise.PROMISE_REJECT_REACTIONS, context);
-        this.setPromiseState = PropertySetNode.createSetHidden(JSPromise.PROMISE_STATE, context);
         this.triggerPromiseReactions = TriggerPromiseReactionsNode.create(context);
     }
 
@@ -75,7 +73,7 @@ public class FulfillPromiseNode extends JavaScriptBaseNode {
         setPromiseResult.setValue(promise, value);
         setPromiseFulfillReactions.setValue(promise, Undefined.instance);
         setPromiseRejectReactions.setValue(promise, Undefined.instance);
-        setPromiseState.setValueInt(promise, JSPromise.FULFILLED);
+        JSPromise.setPromiseState(promise, JSPromise.FULFILLED);
         return triggerPromiseReactions.execute(reactions, value);
     }
 }

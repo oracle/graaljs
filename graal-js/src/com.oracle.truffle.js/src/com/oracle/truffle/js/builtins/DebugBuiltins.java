@@ -103,7 +103,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSAbstractBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -114,6 +113,7 @@ import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
@@ -282,12 +282,12 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 return Null.instance;
             } else if (JSObject.isJSObject(obj)) {
                 DynamicObject jsObj = (DynamicObject) obj;
-                if (jsObj.containsKey(JSRuntime.ITERATED_OBJECT_ID)) {
-                    DynamicObject iteratedObj = (DynamicObject) jsObj.get(JSRuntime.ITERATED_OBJECT_ID);
+                if (JSObjectUtil.hasHiddenProperty(jsObj, JSRuntime.ITERATED_OBJECT_ID)) {
+                    DynamicObject iteratedObj = (DynamicObject) JSObjectUtil.getHiddenProperty(jsObj, JSRuntime.ITERATED_OBJECT_ID);
                     return JSObject.getClassName(iteratedObj) + " Iterator";
-                } else if (jsObj.containsKey(JSFunction.GENERATOR_STATE_ID)) {
+                } else if (JSObjectUtil.hasHiddenProperty(jsObj, JSFunction.GENERATOR_STATE_ID)) {
                     return "Generator";
-                } else if (jsObj.containsKey(JSFunction.ASYNC_GENERATOR_STATE_ID)) {
+                } else if (JSObjectUtil.hasHiddenProperty(jsObj, JSFunction.ASYNC_GENERATOR_STATE_ID)) {
                     return "Async Generator";
                 } else if (JSProxy.isProxy(jsObj)) {
                     return clazz(JSProxy.getTarget(jsObj));
@@ -307,7 +307,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @TruffleBoundary
         @Specialization
         protected static Object shape(Object obj) {
-            if (JSObject.isDynamicObject(obj)) {
+            if (obj instanceof DynamicObject) {
                 return ((DynamicObject) obj).getShape().toString();
             }
             return Undefined.instance;
@@ -712,8 +712,8 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @TruffleBoundary
         @Specialization
         protected static Object detachBuffer(Object obj) {
-            if (!(JSAbstractBuffer.isJSAbstractBuffer(obj))) {
-                throw Errors.createTypeError("Buffer expected");
+            if (!(JSArrayBuffer.isJSHeapArrayBuffer(obj) || JSArrayBuffer.isJSDirectArrayBuffer(obj))) {
+                throw Errors.createTypeError("ArrayBuffer expected");
             }
             JSArrayBuffer.detachArrayBuffer((DynamicObject) obj);
             return Undefined.instance;

@@ -40,16 +40,12 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.util.EnumSet;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltins;
@@ -60,11 +56,12 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.builtins.JSMap.MapImpl;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
@@ -80,23 +77,15 @@ public final class JSSet extends JSBuiltinObject implements JSConstructorFactory
 
     private static final String SIZE = "size";
 
-    private static final HiddenKey SET_ID = new HiddenKey("set");
-    private static final Property SET_PROPERTY;
-
     public static final HiddenKey SET_ITERATION_KIND_ID = new HiddenKey("SetIterationKind");
-
-    static {
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        SET_PROPERTY = JSObjectUtil.makeHiddenProperty(SET_ID, allocator.locationForType(JSHashMap.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
-    }
 
     private JSSet() {
     }
 
     public static DynamicObject create(JSContext context) {
-        DynamicObject obj = JSObject.create(context, context.getSetFactory(), new JSHashMap());
+        DynamicObject obj = MapImpl.create(context.getRealm(), context.getSetFactory(), new JSHashMap());
         assert isJSSet(obj);
-        return obj;
+        return context.trackAllocation(obj);
     }
 
     public static Object normalize(Object value) {
@@ -119,7 +108,7 @@ public final class JSSet extends JSBuiltinObject implements JSConstructorFactory
 
     public static JSHashMap getInternalSet(DynamicObject obj) {
         assert isJSSet(obj);
-        return (JSHashMap) SET_PROPERTY.get(obj, isJSSet(obj));
+        return ((MapImpl) obj).getMap();
     }
 
     public static int getSetSize(DynamicObject obj) {
@@ -152,13 +141,13 @@ public final class JSSet extends JSBuiltinObject implements JSConstructorFactory
     @Override
     public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         // sets the size just for the prototype
-        JSObjectUtil.putConstantAccessorProperty(ctx, prototype, SIZE, createSizeGetterFunction(realm), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, SIZE, createSizeGetterFunction(realm), Undefined.instance);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, SetPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
-        Object values = prototype.get("values");
+        Object values = JSDynamicObject.getOrNull(prototype, "values");
         // The initial value of the keys and @@iterator properties is the same function object as
         // the initial value of the values property.
         JSObjectUtil.putDataProperty(ctx, prototype, "keys", values, JSAttributes.getDefaultNotEnumerable());
@@ -169,7 +158,6 @@ public final class JSSet extends JSBuiltinObject implements JSConstructorFactory
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSSet.INSTANCE, context);
-        initialShape = initialShape.addProperty(SET_PROPERTY);
         return initialShape;
     }
 
@@ -199,7 +187,7 @@ public final class JSSet extends JSBuiltinObject implements JSConstructorFactory
     }
 
     public static boolean isJSSet(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSSet((DynamicObject) obj);
+        return JSObject.isJSObject(obj) && isJSSet((DynamicObject) obj);
     }
 
     public static boolean isJSSet(DynamicObject obj) {

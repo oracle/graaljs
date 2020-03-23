@@ -40,18 +40,14 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.ibm.icu.util.ULocale;
-import com.oracle.truffle.api.CallTarget;
-import java.util.EnumSet;
 import java.util.Locale;
 
+import com.ibm.icu.util.ULocale;
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
@@ -64,7 +60,6 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
@@ -72,15 +67,6 @@ public final class JSLocale extends JSBuiltinObject implements JSConstructorFact
 
     public static final String CLASS_NAME = "Locale";
     public static final String PROTOTYPE_NAME = "Locale.prototype";
-
-    private static final HiddenKey INTERNAL_STATE_ID = new HiddenKey("_internalState");
-    private static final Property INTERNAL_STATE_PROPERTY;
-
-    static {
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        INTERNAL_STATE_PROPERTY = JSObjectUtil.makeHiddenProperty(INTERNAL_STATE_ID,
-                        allocator.locationForType(InternalState.class, EnumSet.of(LocationModifier.NonNull, LocationModifier.Final)));
-    }
 
     public static final JSLocale INSTANCE = new JSLocale();
 
@@ -108,28 +94,26 @@ public final class JSLocale extends JSBuiltinObject implements JSConstructorFact
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject localePrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject localePrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, localePrototype, ctor);
         JSObjectUtil.putDataProperty(ctx, localePrototype, Symbol.SYMBOL_TO_STRING_TAG, "Intl.Locale", JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(realm, localePrototype, LocalePrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putConstantAccessorProperty(ctx, localePrototype, IntlUtil.BASE_NAME, createBaseNameGetterFunction(realm), Undefined.instance);
-        JSObjectUtil.putConstantAccessorProperty(ctx, localePrototype, IntlUtil.CALENDAR, createCalendarGetterFunction(realm), Undefined.instance);
-        JSObjectUtil.putConstantAccessorProperty(ctx, localePrototype, IntlUtil.CASE_FIRST, createCaseFirstGetterFunction(realm), Undefined.instance);
-        JSObjectUtil.putConstantAccessorProperty(ctx, localePrototype, IntlUtil.COLLATION, createCollationGetterFunction(realm), Undefined.instance);
-        JSObjectUtil.putConstantAccessorProperty(ctx, localePrototype, IntlUtil.HOUR_CYCLE, createHourCycleGetterFunction(realm), Undefined.instance);
-        JSObjectUtil.putConstantAccessorProperty(ctx, localePrototype, IntlUtil.NUMERIC, createNumericGetterFunction(realm), Undefined.instance);
-        JSObjectUtil.putConstantAccessorProperty(ctx, localePrototype, IntlUtil.NUMBERING_SYSTEM, createNumberingSystemGetterFunction(realm), Undefined.instance);
-        JSObjectUtil.putConstantAccessorProperty(ctx, localePrototype, IntlUtil.LANGUAGE, createLanguageGetterFunction(realm), Undefined.instance);
-        JSObjectUtil.putConstantAccessorProperty(ctx, localePrototype, IntlUtil.SCRIPT, createScriptGetterFunction(realm), Undefined.instance);
-        JSObjectUtil.putConstantAccessorProperty(ctx, localePrototype, IntlUtil.REGION, createRegionGetterFunction(realm), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(localePrototype, IntlUtil.BASE_NAME, createBaseNameGetterFunction(realm), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(localePrototype, IntlUtil.CALENDAR, createCalendarGetterFunction(realm), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(localePrototype, IntlUtil.CASE_FIRST, createCaseFirstGetterFunction(realm), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(localePrototype, IntlUtil.COLLATION, createCollationGetterFunction(realm), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(localePrototype, IntlUtil.HOUR_CYCLE, createHourCycleGetterFunction(realm), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(localePrototype, IntlUtil.NUMERIC, createNumericGetterFunction(realm), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(localePrototype, IntlUtil.NUMBERING_SYSTEM, createNumberingSystemGetterFunction(realm), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(localePrototype, IntlUtil.LANGUAGE, createLanguageGetterFunction(realm), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(localePrototype, IntlUtil.SCRIPT, createScriptGetterFunction(realm), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(localePrototype, IntlUtil.REGION, createRegionGetterFunction(realm), Undefined.instance);
         return localePrototype;
     }
 
     @Override
     public Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
-        Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
-        initialShape = initialShape.addProperty(INTERNAL_STATE_PROPERTY);
-        return initialShape;
+        return JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
@@ -138,7 +122,7 @@ public final class JSLocale extends JSBuiltinObject implements JSConstructorFact
 
     public static DynamicObject create(JSContext context) {
         InternalState state = new InternalState();
-        DynamicObject result = JSObject.create(context, context.getLocaleFactory(), state);
+        DynamicObject result = IntlObject.create(context, context.getLocaleFactory(), state);
         assert isJSLocale(result);
         return result;
     }
@@ -399,7 +383,8 @@ public final class JSLocale extends JSBuiltinObject implements JSConstructorFact
     }
 
     public static InternalState getInternalState(DynamicObject localeObject) {
-        return (InternalState) INTERNAL_STATE_PROPERTY.get(localeObject, isJSLocale(localeObject));
+        assert isJSLocale(localeObject);
+        return ((IntlObject) localeObject).getInternalState();
     }
 
     @Override

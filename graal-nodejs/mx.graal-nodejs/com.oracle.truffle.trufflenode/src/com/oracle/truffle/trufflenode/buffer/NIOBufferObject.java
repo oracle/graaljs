@@ -51,6 +51,7 @@ import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.RealmData;
@@ -67,7 +68,7 @@ public final class NIOBufferObject extends JSBuiltinObject {
 
     @TruffleBoundary
     private static DynamicObject create(JSContext context) {
-        DynamicObject obj = context.getEmptyShapeNullPrototype().newInstance();
+        DynamicObject obj = JSUserObject.createWithNullPrototype(context);
         JSObjectUtil.putFunctionsFromContainer(context.getRealm(), obj, NIO_BUFFER_BUILTINS);
         return obj;
     }

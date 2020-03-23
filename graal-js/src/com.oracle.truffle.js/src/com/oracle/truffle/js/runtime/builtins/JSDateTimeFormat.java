@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.text.AttributedCharacterIterator;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -70,8 +69,6 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.intl.DateTimeFormatFunctionBuiltins;
@@ -91,7 +88,6 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.LazyValue;
@@ -100,9 +96,6 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
     public static final String CLASS_NAME = "DateTimeFormat";
     public static final String PROTOTYPE_NAME = "DateTimeFormat.prototype";
-
-    private static final HiddenKey INTERNAL_STATE_ID = new HiddenKey("_internalState");
-    private static final Property INTERNAL_STATE_PROPERTY;
 
     static final HiddenKey BOUND_OBJECT_KEY = new HiddenKey(CLASS_NAME);
 
@@ -114,16 +107,11 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
      */
     private static final LazyValue<UnmodifiableEconomicMap<String, String>> canonicalTimeZoneIDMap = new LazyValue<>(JSDateTimeFormat::initCanonicalTimeZoneIDMap);
 
-    static {
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        INTERNAL_STATE_PROPERTY = JSObjectUtil.makeHiddenProperty(INTERNAL_STATE_ID, allocator.locationForType(InternalState.class, EnumSet.of(LocationModifier.NonNull, LocationModifier.Final)));
-    }
-
     private JSDateTimeFormat() {
     }
 
     public static boolean isJSDateTimeFormat(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSDateTimeFormat((DynamicObject) obj);
+        return JSObject.isJSObject(obj) && isJSDateTimeFormat((DynamicObject) obj);
     }
 
     public static boolean isJSDateTimeFormat(DynamicObject obj) {
@@ -143,10 +131,10 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject numberFormatPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject numberFormatPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, numberFormatPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, numberFormatPrototype, DateTimeFormatPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putConstantAccessorProperty(ctx, numberFormatPrototype, "format", createFormatFunctionGetter(realm, ctx), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(numberFormatPrototype, "format", createFormatFunctionGetter(realm, ctx), Undefined.instance);
         JSObjectUtil.putDataProperty(ctx, numberFormatPrototype, Symbol.SYMBOL_TO_STRING_TAG, "Intl.DateTimeFormat", JSAttributes.configurableNotEnumerableNotWritable());
         return numberFormatPrototype;
     }
@@ -154,7 +142,6 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
     @Override
     public Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
-        initialShape = initialShape.addProperty(INTERNAL_STATE_PROPERTY);
         return initialShape;
     }
 
@@ -164,9 +151,9 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
     public static DynamicObject create(JSContext context) {
         InternalState state = new InternalState();
-        DynamicObject result = JSObject.create(context, context.getDateTimeFormatFactory(), state);
-        assert isJSDateTimeFormat(result);
-        return result;
+        DynamicObject obj = IntlObject.create(context.getRealm(), context.getDateTimeFormatFactory(), state);
+        assert isJSDateTimeFormat(obj);
+        return context.trackAllocation(obj);
     }
 
     @TruffleBoundary
@@ -861,8 +848,9 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         return state.toResolvedOptionsObject(context);
     }
 
-    public static InternalState getInternalState(DynamicObject numberFormatObj) {
-        return (InternalState) INTERNAL_STATE_PROPERTY.get(numberFormatObj, isJSDateTimeFormat(numberFormatObj));
+    public static InternalState getInternalState(DynamicObject obj) {
+        assert isJSDateTimeFormat(obj);
+        return ((IntlObject) obj).getInternalState();
     }
 
     private static CallTarget createGetFormatCallTarget(JSContext context) {

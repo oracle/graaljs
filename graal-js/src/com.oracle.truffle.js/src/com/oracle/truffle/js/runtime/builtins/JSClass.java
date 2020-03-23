@@ -346,7 +346,7 @@ public abstract class JSClass extends ObjectType {
     }
 
     public static boolean isInstance(Object object, JSClass jsclass) {
-        return JSObject.isDynamicObject(object) && isInstance((DynamicObject) object, jsclass);
+        return JSObject.isJSObject(object) && isInstance((DynamicObject) object, jsclass);
     }
 
     public static boolean isInstance(DynamicObject object, JSClass jsclass) {
@@ -358,13 +358,18 @@ public abstract class JSClass extends ObjectType {
      */
     @TruffleBoundary
     public boolean testIntegrityLevel(DynamicObject obj, boolean frozen) {
+        return testIntegrityLevelDefault(obj, frozen);
+    }
+
+    @TruffleBoundary
+    protected final boolean testIntegrityLevelDefault(DynamicObject obj, boolean frozen) {
         assert JSRuntime.isObject(obj);
         boolean status = isExtensible(obj);
         if (status) {
             return false;
         }
-        for (Object key : ownPropertyKeys(obj)) {
-            PropertyDescriptor desc = getOwnProperty(obj, key);
+        for (Object key : JSObject.ownPropertyKeys(obj)) {
+            PropertyDescriptor desc = JSObject.getOwnProperty(obj, key);
             if (desc != null) {
                 if (desc.getConfigurable()) {
                     return false;
@@ -400,15 +405,20 @@ public abstract class JSClass extends ObjectType {
      */
     @TruffleBoundary
     public boolean setIntegrityLevel(DynamicObject obj, boolean freeze, boolean doThrow) {
+        return setIntegrityLevelDefault(obj, freeze, doThrow);
+    }
+
+    @TruffleBoundary
+    private boolean setIntegrityLevelDefault(DynamicObject obj, boolean freeze, boolean doThrow) {
         assert JSRuntime.isObject(obj);
         if (!preventExtensions(obj, doThrow)) {
             return false;
         }
-        Iterable<Object> keys = ownPropertyKeys(obj);
+        Iterable<Object> keys = JSObject.ownPropertyKeys(obj);
         if (freeze) {
             // FREEZE
             for (Object key : keys) {
-                PropertyDescriptor currentDesc = getOwnProperty(obj, key);
+                PropertyDescriptor currentDesc = JSObject.getOwnProperty(obj, key);
                 if (currentDesc != null) {
                     PropertyDescriptor newDesc = null;
                     if (currentDesc.isAccessorDescriptor()) {

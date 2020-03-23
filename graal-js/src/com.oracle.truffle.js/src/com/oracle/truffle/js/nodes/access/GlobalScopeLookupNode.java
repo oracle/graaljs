@@ -52,6 +52,7 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.objects.Dead;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
@@ -88,7 +89,7 @@ public abstract class GlobalScopeLookupNode extends JavaScriptBaseNode {
                     @Cached("isDead(cachedShape)") boolean dead,
                     @Cached("isConstAssignment(cachedShape)") boolean constAssignment,
                     @Cached("getPropertyCacheLimit()") int cacheLimit) {
-        assert !exists || dead == (scope.get(varName) == Dead.instance());
+        assert !exists || dead == (JSDynamicObject.getOrNull(scope, varName) == Dead.instance());
         if (dead) {
             throw Errors.createReferenceErrorNotDefined(JavaScriptLanguage.getCurrentJSRealm().getContext(), varName, this);
         }
@@ -107,7 +108,7 @@ public abstract class GlobalScopeLookupNode extends JavaScriptBaseNode {
                     @Cached("create()") BranchProfile errorBranch) {
         Property property = scope.getShape().getProperty(varName);
         if (property != null) {
-            if (scope.get(varName) == Dead.instance()) {
+            if (JSDynamicObject.getOrNull(scope, varName) == Dead.instance()) {
                 errorBranch.enter();
                 throw Errors.createReferenceErrorNotDefined(JavaScriptLanguage.getCurrentJSRealm().getContext(), varName, this);
             } else if (write && JSProperty.isConst(property)) {

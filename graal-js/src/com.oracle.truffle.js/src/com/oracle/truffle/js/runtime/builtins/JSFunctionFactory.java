@@ -40,49 +40,41 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectFactory;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.nodes.function.InitFunctionNode;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.util.CompilableFunction;
+import com.oracle.truffle.js.runtime.objects.Accessor;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSProperty;
 
 public abstract class JSFunctionFactory {
     protected final JSContext context;
+    protected final JSObjectFactory objectFactory;
 
-    public static JSFunctionFactory create(JSContext context, DynamicObjectFactory factory) {
+    public static JSFunctionFactory create(JSContext context, DynamicObject prototype) {
+        Shape initialShape = JSFunction.makeFunctionShape(context, prototype, false, false);
+        JSObjectFactory factory = prototype == null ? JSObjectFactory.createUnbound(context, initialShape) : JSObjectFactory.createBound(context, prototype, initialShape);
         return new JSFunctionFactory.Default(context, factory);
     }
 
-    static JSFunctionFactory createIntrinsic(JSContext context, CompilableFunction<JSRealm, DynamicObject> intrinsicDefaultProto,
-                    boolean isStrict, boolean isConstructor, boolean isGenerator, boolean isBound, boolean isAsync, int slot) {
-        if (context.isMultiContext()) {
-            return new JSFunctionFactory.IntrinsicMulti(context, intrinsicDefaultProto, isStrict, isConstructor, isGenerator, isBound, isAsync);
-        } else {
-            return new JSFunctionFactory.IntrinsicRealm(context, intrinsicDefaultProto, isStrict, isConstructor, isGenerator, isBound, isAsync, slot);
-        }
-    }
-
-    static DynamicObjectFactory makeFactory(JSContext context, DynamicObject prototype,
+    static JSFunctionFactory createIntrinsic(JSContext context, JSObjectFactory objectFactory,
                     boolean isStrict, boolean isConstructor, boolean isGenerator, boolean isBound, boolean isAsync) {
-        Shape initialShape;
-        if (isBound) {
-            initialShape = JSFunction.makeInitialBoundFunctionShape(context, prototype);
-        } else if (isGenerator) {
-            initialShape = JSFunction.makeInitialGeneratorFunctionShape(context, prototype, isAsync);
-        } else if (isConstructor) {
-            initialShape = JSFunction.makeInitialFunctionShape(context, prototype, isStrict, true, false);
-        } else {
-            initialShape = JSFunction.makeInitialFunctionShape(context, prototype, isStrict);
-        }
-        return initialShape.createFactory();
+        return new JSFunctionFactory.Intrinsic(context, objectFactory, isStrict, isConstructor, isGenerator, isBound, isAsync);
     }
 
-    protected JSFunctionFactory(JSContext context) {
+    @SuppressWarnings("unused")
+    static Shape makeShape(JSContext context, DynamicObject prototype,
+                    boolean isStrict, boolean isAnonymous, boolean isConstructor, boolean isGenerator, boolean isBound, boolean isAsync) {
+        return JSFunction.makeFunctionShape(context, prototype, isGenerator, isAsync);
+    }
+
+    protected JSFunctionFactory(JSContext context, JSObjectFactory objectFactory) {
         this.context = context;
+        this.objectFactory = objectFactory;
     }
 
     public final DynamicObject create(JSFunctionData functionData, MaterializedFrame enclosingFrame, Object classPrototype, JSRealm realm) {
@@ -90,73 +82,62 @@ public abstract class JSFunctionFactory {
     }
 
     public final DynamicObject createWithPrototype(JSFunctionData functionData, MaterializedFrame enclosingFrame, Object classPrototype, JSRealm realm, DynamicObject prototype) {
-        DynamicObjectFactory factory = getFactory(realm, prototype);
+        Shape shape = getShape(realm, prototype);
         assert functionData != null;
         assert enclosingFrame != null; // use JSFrameUtil.NULL_MATERIALIZED_FRAME instead
-        assert factory.getShape().getObjectType() == JSFunction.INSTANCE;
+        assert shape.getObjectType() == JSFunction.INSTANCE;
+        DynamicObject obj = JSFunctionImpl.create(shape, functionData, enclosingFrame, realm, classPrototype);
+        objectFactory.initProto(obj, prototype);
+        initProperties(obj, functionData);
         if (context.getEcmaScriptVersion() < 6 && functionData.hasStrictFunctionProperties()) {
-            return createES5Strict(factory, functionData, enclosingFrame, classPrototype, realm, prototype);
+            initES5StrictProperties(obj, realm);
         }
-        if (isInObjectProto()) {
-            return JSObjectFactory.newInstance(factory, prototype, functionData, enclosingFrame, classPrototype, realm);
-        }
-        assert JSObjectFactory.verifyPrototype(factory, prototype);
-        return JSObjectFactory.newInstance(factory, functionData, enclosingFrame, classPrototype, realm);
+        return obj;
     }
 
-    private DynamicObject createES5Strict(DynamicObjectFactory factory, JSFunctionData functionData, MaterializedFrame enclosingFrame, Object classPrototype, JSRealm realm, DynamicObject prototype) {
-        if (isInObjectProto()) {
-            return JSObjectFactory.newInstance(factory, prototype, functionData, enclosingFrame, classPrototype, realm, realm.getThrowerAccessor(), realm.getThrowerAccessor());
-        } else {
-            assert JSObjectFactory.verifyPrototype(factory, prototype);
-            return JSObjectFactory.newInstance(factory, functionData, enclosingFrame, classPrototype, realm, realm.getThrowerAccessor(), realm.getThrowerAccessor());
-        }
-    }
+    protected abstract void initProperties(DynamicObject obj, JSFunctionData functionData);
 
     public final DynamicObject createBound(JSFunctionData functionData, Object classPrototype, JSRealm realm, DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
-        DynamicObject prototype = getPrototype(realm);
-        DynamicObjectFactory factory = getFactory(realm, prototype);
+        Shape shape = objectFactory.getShape(realm);
         assert functionData != null;
-        assert factory.getShape().getObjectType() == JSFunction.INSTANCE;
+        assert shape.getObjectType() == JSFunction.INSTANCE;
         assert functionData.hasStrictFunctionProperties();
         if (context.getEcmaScriptVersion() < 6) {
-            return createBoundES5(factory, functionData, classPrototype, realm, prototype, boundTargetFunction, boundThis, boundArguments);
+            return createBoundES5(shape, functionData, classPrototype, realm, boundTargetFunction, boundThis, boundArguments);
         }
-        if (isInObjectProto()) {
-            return JSObjectFactory.newInstance(factory, prototype, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, classPrototype, realm, boundTargetFunction, boundThis, boundArguments);
-        }
-        assert JSObjectFactory.verifyPrototype(factory, prototype);
-        return JSObjectFactory.newInstance(factory, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, classPrototype, realm, boundTargetFunction, boundThis, boundArguments);
+        DynamicObject obj = JSBoundFunctionImpl.createBound(shape, functionData, realm, classPrototype, boundTargetFunction, boundThis, boundArguments);
+        objectFactory.initProto(obj, realm);
+        initProperties(obj, functionData);
+        return obj;
     }
 
-    private DynamicObject createBoundES5(DynamicObjectFactory factory, JSFunctionData functionData, Object classPrototype, JSRealm realm, DynamicObject prototype,
+    private DynamicObject createBoundES5(Shape shape, JSFunctionData functionData, Object classPrototype, JSRealm realm,
                     DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
-        if (isInObjectProto()) {
-            return JSObjectFactory.newInstance(factory, prototype, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, classPrototype, realm,
-                            boundTargetFunction, boundThis, boundArguments,
-                            realm.getThrowerAccessor(), realm.getThrowerAccessor());
-        } else {
-            assert JSObjectFactory.verifyPrototype(factory, prototype);
-            return JSObjectFactory.newInstance(factory, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, classPrototype, realm,
-                            boundTargetFunction, boundThis, boundArguments,
-                            realm.getThrowerAccessor(), realm.getThrowerAccessor());
-        }
+        DynamicObject obj = JSBoundFunctionImpl.createBound(shape, functionData, realm, classPrototype, boundTargetFunction, boundThis, boundArguments);
+        objectFactory.initProto(obj, realm);
+        initProperties(obj, functionData);
+        initES5StrictProperties(obj, realm);
+        return obj;
+    }
+
+    private static void initES5StrictProperties(DynamicObject obj, JSRealm realm) {
+        int propertyFlags = JSAttributes.notConfigurableNotEnumerable() | JSProperty.ACCESSOR;
+        Accessor throwerAccessor = realm.getThrowerAccessor();
+        DynamicObjectLibrary lib = DynamicObjectLibrary.getUncached();
+        lib.putWithFlags(obj, JSFunction.ARGUMENTS, throwerAccessor, propertyFlags);
+        lib.putWithFlags(obj, JSFunction.CALLER, throwerAccessor, propertyFlags);
     }
 
     protected abstract DynamicObject getPrototype(JSRealm realm);
 
-    protected abstract DynamicObjectFactory getFactory(JSRealm realm, DynamicObject prototype);
+    protected abstract Shape getShape(JSRealm realm, DynamicObject prototype);
 
     protected abstract boolean isInObjectProto();
 
     private static final class Default extends JSFunctionFactory {
-        private final DynamicObjectFactory factory;
-        private final boolean inObjectProto;
 
-        protected Default(JSContext context, DynamicObjectFactory factory) {
-            super(context);
-            this.factory = factory;
-            this.inObjectProto = JSObjectFactory.hasInObjectProto(factory);
+        protected Default(JSContext context, JSObjectFactory objectFactory) {
+            super(context, objectFactory);
         }
 
         @Override
@@ -165,83 +146,57 @@ public abstract class JSFunctionFactory {
         }
 
         @Override
-        protected DynamicObjectFactory getFactory(JSRealm realm, DynamicObject prototype) {
-            return factory;
+        protected Shape getShape(JSRealm realm, DynamicObject prototype) {
+            return objectFactory.getShape(realm, prototype);
         }
 
         @Override
         protected boolean isInObjectProto() {
-            return inObjectProto;
+            return objectFactory.isInObjectProto();
+        }
+
+        @Override
+        protected void initProperties(DynamicObject obj, JSFunctionData functionData) {
         }
     }
 
-    private static final class IntrinsicMulti extends JSFunctionFactory {
-        private final CompilableFunction<JSRealm, DynamicObject> getProto;
-        private final DynamicObjectFactory factory;
-
-        protected IntrinsicMulti(JSContext context, CompilableFunction<JSRealm, DynamicObject> getProto, boolean isStrict, boolean isConstructor, boolean isGenerator,
-                        boolean isBound, boolean isAsync) {
-            super(context);
-            this.factory = makeFactory(context, null, isStrict, isConstructor, isGenerator, isBound, isAsync);
-            this.getProto = getProto;
-        }
-
-        @Override
-        protected DynamicObject getPrototype(JSRealm realm) {
-            return getProto.apply(realm);
-        }
-
-        @Override
-        protected DynamicObjectFactory getFactory(JSRealm realm, DynamicObject prototype) {
-            return factory;
-        }
-
-        @Override
-        protected boolean isInObjectProto() {
-            return true;
-        }
-    }
-
-    private static final class IntrinsicRealm extends JSFunctionFactory {
-        private final CompilableFunction<JSRealm, DynamicObject> getProto;
+    private static final class Intrinsic extends JSFunctionFactory {
         private final boolean isStrict;
         private final boolean isConstructor;
         private final boolean isGenerator;
         private final boolean isBound;
         private final boolean isAsync;
-        private final int slot;
+        private final InitFunctionNode initFunctionNode;
 
-        protected IntrinsicRealm(JSContext context, CompilableFunction<JSRealm, DynamicObject> getProto, boolean isStrict, boolean isConstructor, boolean isGenerator,
-                        boolean isBound, boolean isAsync, int slot) {
-            super(context);
-            this.getProto = getProto;
+        protected Intrinsic(JSContext context, JSObjectFactory objectFactory, boolean isStrict, boolean isConstructor, boolean isGenerator,
+                        boolean isBound, boolean isAsync) {
+            super(context, objectFactory);
             this.isStrict = isStrict;
             this.isConstructor = isConstructor;
             this.isGenerator = isGenerator;
             this.isBound = isBound;
             this.isAsync = isAsync;
-            this.slot = slot;
+            this.initFunctionNode = context.adoptNode(InitFunctionNode.create(context, isStrict, isConstructor, isBound, isGenerator, false));
         }
 
         @Override
         protected DynamicObject getPrototype(JSRealm realm) {
-            return getProto.apply(realm);
+            return objectFactory.getPrototype(realm);
         }
 
         @Override
-        protected DynamicObjectFactory getFactory(JSRealm realm, DynamicObject prototype) {
-            DynamicObjectFactory realmFactory = realm.getObjectFactories().factories[slot];
-            if (realmFactory == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                DynamicObjectFactory newFactory = makeFactory(context, prototype, isStrict, isConstructor, isGenerator, isBound, isAsync);
-                realmFactory = realm.getObjectFactories().factories[slot] = newFactory;
-            }
-            return realmFactory;
+        protected Shape getShape(JSRealm realm, DynamicObject prototype) {
+            return objectFactory.getShape(realm, prototype);
         }
 
         @Override
         protected boolean isInObjectProto() {
-            return false;
+            return objectFactory.isInObjectProto();
+        }
+
+        @Override
+        protected void initProperties(DynamicObject obj, JSFunctionData functionData) {
+            initFunctionNode.execute(obj, functionData);
         }
     }
 }

@@ -1436,7 +1436,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @TruffleBoundary(transferToInterpreterOnException = false)
         protected Object evalImpl(JSRealm realm, String fileName, String source, Object[] args) {
             JSRealm childRealm = realm.createChildRealm();
-            DynamicObject argObj = JSArgumentsObject.createStrict(getContext(), childRealm, args);
+            DynamicObject argObj = JSArgumentsObject.createStrictSlow(childRealm, args);
+            // TODO: should be a child realm array
             JSRuntime.createDataProperty(childRealm.getGlobalObject(), JSFunction.ARGUMENTS, argObj);
             return loadStringImpl(getContext(), fileName, source).run(childRealm);
         }
@@ -1448,7 +1449,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             TruffleContext childContext = childRealm.getTruffleContext();
             Object prev = childContext.enter();
             try {
-                DynamicObject argObj = JSArgumentsObject.createStrict(getContext(), childRealm, args);
+                DynamicObject argObj = JSArgumentsObject.createStrictSlow(childRealm, args);
+                // TODO: should be a child realm array
                 JSRuntime.createDataProperty(childRealm.getGlobalObject(), JSFunction.ARGUMENTS, argObj);
                 Source source = sourceFromPath(path, childRealm);
                 return runImpl(childRealm, source);

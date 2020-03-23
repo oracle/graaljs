@@ -77,6 +77,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunction.AsyncGeneratorState;
 import com.oracle.truffle.js.runtime.objects.AsyncGeneratorRequest;
 import com.oracle.truffle.js.runtime.objects.Completion;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class AsyncGeneratorBodyNode extends JavaScriptNode {
@@ -145,8 +146,8 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
                 for (;;) {
                     // State must be Executing when called from AsyncGeneratorResumeNext.
                     // State can be Executing or SuspendedYield when resuming from Await.
-                    assert generatorObject.get(JSFunction.ASYNC_GENERATOR_STATE_ID) == AsyncGeneratorState.Executing ||
-                                    generatorObject.get(JSFunction.ASYNC_GENERATOR_STATE_ID) == AsyncGeneratorState.SuspendedYield;
+                    assert JSObjectUtil.getHiddenProperty(generatorObject, JSFunction.ASYNC_GENERATOR_STATE_ID) == AsyncGeneratorState.Executing ||
+                                    JSObjectUtil.getHiddenProperty(generatorObject, JSFunction.ASYNC_GENERATOR_STATE_ID) == AsyncGeneratorState.SuspendedYield;
                     writeYieldValue.executeWrite(generatorFrame, completion);
 
                     try {
@@ -219,7 +220,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
             RootCallTarget resumeTarget = (RootCallTarget) initialState[AsyncRootNode.CALL_TARGET_INDEX];
             assert resumeTarget.getRootNode() == this;
             DynamicObject generatorObject = (DynamicObject) initialState[AsyncRootNode.GENERATOR_OBJECT_OR_PROMISE_CAPABILITY_INDEX];
-            Object queue = generatorObject.get(JSFunction.ASYNC_GENERATOR_QUEUE_ID);
+            Object queue = JSObjectUtil.getHiddenProperty(generatorObject, JSFunction.ASYNC_GENERATOR_QUEUE_ID);
             if (queue instanceof ArrayDeque<?> && ((ArrayDeque<?>) queue).size() == 1) {
                 AsyncGeneratorRequest request = (AsyncGeneratorRequest) ((ArrayDeque<?>) queue).peekFirst();
                 return request.getPromiseCapability().getPromise();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,7 +58,8 @@ public final class JSSlowArgumentsObject extends JSAbstractArgumentsObject {
             return true;
         }
 
-        boolean indexDisconnected = wasIndexDisconnected(thisObj, index);
+        boolean isMappedArguments = isMappedArguments(thisObj);
+        boolean indexDisconnected = isMappedArguments && wasIndexDisconnected(thisObj, index);
         Object oldValue = indexDisconnected ? null : get(thisObj, index);
 
         boolean wasDeleted;
@@ -70,7 +71,7 @@ public final class JSSlowArgumentsObject extends JSAbstractArgumentsObject {
             wasDeleted = JSUserObject.INSTANCE.delete(thisObj, index, isStrict);
         }
 
-        if (wasDeleted && !indexDisconnected) {
+        if (wasDeleted && isMappedArguments && !indexDisconnected) {
             disconnectIndex(thisObj, index, oldValue);
         }
         return wasDeleted;

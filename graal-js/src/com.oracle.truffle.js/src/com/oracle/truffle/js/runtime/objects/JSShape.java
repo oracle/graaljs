@@ -40,21 +40,19 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
-import java.util.function.Function;
-import java.util.function.Predicate;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.object.Shape.Allocator;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.builtins.JSDictionaryObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinaryObjectImpl;
+import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
 
 /**
@@ -64,9 +62,30 @@ import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
  */
 public final class JSShape {
     public static final HiddenKey NOT_EXTENSIBLE_KEY = new HiddenKey("\uf001!extensible");
-    private static final Property NOT_EXTENSIBLE_PROPERTY = JSObjectUtil.makeHiddenProperty(NOT_EXTENSIBLE_KEY, JSObjectUtil.createConstantLocation(null));
+
+    public static final int NOT_EXTENSIBLE_FLAG = 1 << 0;
+    public static final int SEALED_FLAG = 1 << 1;
+    public static final int FROZEN_FLAG = 1 << 2;
+    public static final int SEALED_FLAGS = NOT_EXTENSIBLE_FLAG | SEALED_FLAG;
+    public static final int FROZEN_FLAGS = NOT_EXTENSIBLE_FLAG | SEALED_FLAG | FROZEN_FLAG;
+
+    public static final int EXTERNAL_PROPERTIES_FLAG = 1 << 3;
 
     private JSShape() {
+    }
+
+    public static Shape createPrototypeShape(JSContext context, JSClass jsclass, DynamicObject prototype) {
+        assert prototype == Null.instance || JSRuntime.isObject(prototype);
+        if (context.isMultiContext()) {
+            return JSObjectUtil.getProtoChildShape(null, jsclass, context);
+        } else {
+            return prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, jsclass, context);
+        }
+    }
+
+    static Shape createObjectShape(JSContext context, JSClass jsclass, DynamicObject prototype) {
+        Shape rootShape = newBuilder(context, jsclass).build();
+        return Shape.newBuilder(rootShape).addConstantProperty(JSObject.HIDDEN_PROTO, prototype, 0).build();
     }
 
     public static JSClass getJSClass(Shape shape) {
@@ -92,18 +111,9 @@ public final class JSShape {
         return null;
     }
 
-    /**
-     * Put a fake "not extensible" property at the end. Will always be the last property.
-     */
-    public static Shape makeNotExtensible(Shape shape) {
-        if (isExtensible(shape)) {
-            return shape.addProperty(NOT_EXTENSIBLE_PROPERTY);
-        }
-        return shape;
-    }
-
     public static boolean isExtensible(Shape shape) {
-        return shape.getLastProperty() != NOT_EXTENSIBLE_PROPERTY;
+        // return shape.getLastProperty() != NOT_EXTENSIBLE_PROPERTY;
+        return (shape.getFlags() & NOT_EXTENSIBLE_FLAG) == 0;
     }
 
     public static boolean isPrototypeInShape(Shape shape) {
@@ -111,16 +121,12 @@ public final class JSShape {
     }
 
     public static Property getPrototypeProperty(Shape shape) {
-        return getSharedData(shape).getPrototypeProperty();
-    }
-
-    static Property makePrototypeProperty(DynamicObject prototype) {
-        return JSObjectUtil.makeHiddenProperty(JSObject.HIDDEN_PROTO, JSObjectUtil.createConstantLocation(prototype));
+        // return getSharedData(shape).getPrototypeProperty();
+        return shape.getProperty(JSObject.HIDDEN_PROTO);
     }
 
     public static Assumption getPropertyAssumption(Shape shape, Object key) {
-        assert JSRuntime.isPropertyKey(key) || key instanceof HiddenKey;
-        return shape.getPropertyAssumption(key);
+        return getPropertyAssumption(shape, key, false);
     }
 
     public static Assumption getPropertyAssumption(Shape shape, Object key, boolean prototype) {
@@ -143,45 +149,6 @@ public final class JSShape {
         getSharedData(shape).invalidatePrototypeAssumption();
     }
 
-    private static Shape freezeHelper(Shape shape, Predicate<Shape> pred, Function<Property, Property> propertyConverter) {
-        if (!pred.test(shape)) {
-            Shape newShape = shape;
-            for (Property property : shape.getProperties()) {
-                assert property.equals(newShape.getProperty(property.getKey()));
-                newShape = newShape.replaceProperty(property, propertyConverter.apply(property));
-            }
-            assert pred.test(newShape);
-            return newShape;
-        }
-        return shape;
-    }
-
-    public static Shape freeze(Shape shape) {
-        return freezeHelper(shape, JSShape::isFrozen, JSProperty::freeze);
-    }
-
-    public static Shape seal(Shape shape) {
-        return freezeHelper(shape, JSShape::isSealed, JSProperty::seal);
-    }
-
-    private static boolean isFrozenHelper(Shape shape, Predicate<Property> pred) {
-        for (Property property : shape.getProperties()) {
-            if (pred.test(property)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static boolean isFrozen(Shape shape) {
-        return isFrozenHelper(shape, currentProperty -> (JSProperty.isConfigurable(currentProperty) || (JSProperty.isData(currentProperty) && JSProperty.isWritable(currentProperty))) &&
-                        !currentProperty.isHidden());
-    }
-
-    private static boolean isSealed(Shape shape) {
-        return isFrozenHelper(shape, currentProperty -> JSProperty.isConfigurable(currentProperty) && !currentProperty.isHidden());
-    }
-
     public static UnmodifiableArrayList<Property> getProperties(Shape shape) {
         assert JSConfig.FastOwnKeys;
         return JSShapeData.getProperties(shape);
@@ -198,51 +165,67 @@ public final class JSShape {
     }
 
     /**
-     * Internal constructor for null shape et al.
+     * Internal constructor for null and undefined shapes.
      */
-    public static Shape makeStaticRoot(Layout layout, ObjectType jsclass, int id) {
-        return makeRootShape(layout, jsclass, new JSSharedData(null, makePrototypeProperty(Null.instance)), id);
+    public static Shape makeStaticRoot(JSClass jsclass) {
+        return Shape.newBuilder().layout(getLayout(jsclass)).dynamicType(jsclass).build();
     }
 
-    /**
-     * Empty shape constructor.
-     */
-    public static Shape makeEmptyRoot(Layout layout, ObjectType jsclass, JSContext context) {
-        return makeRootShape(layout, new JSSharedData(context, makePrototypeProperty(Null.instance)), jsclass);
+    public static Shape makeEmptyRoot(JSClass jsclass, JSContext context) {
+        return createObjectShape(context, jsclass, Null.instance);
+    }
+
+    public static Shape createRootWithNullProto(JSContext context, JSClass jsclass) {
+        return createObjectShape(context, jsclass, Null.instance);
+    }
+
+    public static Shape createRootWithProto(JSContext context, JSClass jsclass, DynamicObject prototype) {
+        return createObjectShape(context, jsclass, prototype);
     }
 
     /**
      * Empty shape constructor with prototype in field.
      */
-    public static Shape makeEmptyRoot(Layout layout, ObjectType jsclass, JSContext context, Property prototypeProperty) {
-        return makeRootShape(layout, new JSSharedData(context, prototypeProperty), jsclass);
+    public static Shape makeEmptyRootWithInstanceProto(JSContext context, JSClass jsclass) {
+        return newBuilder(context, jsclass).build();
     }
 
-    /**
-     * Constructor for makePrototypeShape.
-     */
-    public static Shape makeUniqueRoot(Layout layout, ObjectType jsclass, JSContext context, Property prototypeProperty) {
-        return makeRootShape(layout, new JSSharedData(context, prototypeProperty), jsclass);
+    public static JSSharedData makeJSSharedData(JSContext context) {
+        return new JSSharedData(context, null);
     }
 
-    public static Shape makeUniqueRootWithPrototype(Layout layout, ObjectType jsclass, JSContext context, DynamicObject prototype) {
-        return makeRootShape(layout, new JSSharedData(context, makePrototypeProperty(prototype)), jsclass);
+    public static Class<? extends DynamicObject> getLayout(JSClass jsclass) {
+        if (jsclass == JSUserObject.INSTANCE || jsclass == JSDictionaryObject.INSTANCE) {
+            return JSOrdinaryObjectImpl.class;
+        }
+        return JSDynamicObject.class;
     }
 
-    /**
-     * A RootShape starts a new shape tree and contains shared common data.
-     */
-    static Shape makeRootShape(Layout layout, JSSharedData sharedData, ObjectType builtinClass) {
-        return makeRootShape(layout, builtinClass, sharedData, 1);
+    public static Shape.Builder newBuilder(JSContext context, JSClass jsclass) {
+        return Shape.newBuilder()//
+                        .layout(getLayout(jsclass))//
+                        .dynamicType(jsclass)//
+                        .sharedData(JSShape.makeJSSharedData(context))//
+                        .shapeFlags(getDefaultShapeFlags(jsclass))//
+                        .allowImplicitCastIntToDouble(true);
     }
 
-    public static Allocator makeAllocator(Layout layout) {
-        Allocator allocator = layout.createAllocator();
-        allocator.addLocation(JSObject.PROTO_PROPERTY.getLocation());
-        return allocator;
+    public static int getDefaultShapeFlags(JSClass jsclass) {
+        if (jsclass == JSDictionaryObject.INSTANCE) {
+            return EXTERNAL_PROPERTIES_FLAG;
+        }
+        return 0;
     }
 
-    private static Shape makeRootShape(Layout layout, ObjectType jsclass, JSSharedData sharedData, int id) {
-        return layout.createShape(jsclass, sharedData, id).addProperty(sharedData.getPrototypeProperty());
+    public static boolean hasExternalProperties(Shape shape) {
+        assert (shape.getDynamicType() == JSDictionaryObject.INSTANCE) == ((shape.getFlags() & EXTERNAL_PROPERTIES_FLAG) != 0);
+        if (false) {
+            return shape.getDynamicType() == JSDictionaryObject.INSTANCE;
+        }
+        return (shape.getFlags() & EXTERNAL_PROPERTIES_FLAG) != 0;
+    }
+
+    public static boolean hasExternalProperties(int shapeFlags) {
+        return (shapeFlags & EXTERNAL_PROPERTIES_FLAG) != 0;
     }
 }

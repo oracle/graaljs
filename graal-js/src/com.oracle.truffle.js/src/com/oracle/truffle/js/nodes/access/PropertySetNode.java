@@ -59,6 +59,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.BooleanLocation;
 import com.oracle.truffle.api.object.DoubleLocation;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
@@ -572,7 +573,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         @TruffleBoundary
         private static void updateShape(DynamicObject store) {
-            store.updateShape();
+            DynamicObjectLibrary.getUncached().updateShape(store);
         }
 
         protected boolean acceptsValue(Object value) {
@@ -1020,7 +1021,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             DynamicObject thisJSObj = JSObject.castJSObject(thisObj);
             Object key = root.getKey();
             if (key instanceof HiddenKey) {
-                thisJSObj.define(key, value);
+                JSObjectUtil.putHiddenProperty(thisJSObj, key, value);
             } else if (root.isGlobal() && root.isStrict() && !JSObject.hasProperty(thisJSObj, key, jsclassProfile)) {
                 root.globalPropertySetInStrictMode(thisObj);
             } else if (root.isOwnProperty()) {

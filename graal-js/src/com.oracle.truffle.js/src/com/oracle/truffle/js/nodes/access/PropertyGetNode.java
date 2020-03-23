@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetRegexResult;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -62,6 +60,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.BooleanLocation;
 import com.oracle.truffle.api.object.DoubleLocation;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.IntLocation;
 import com.oracle.truffle.api.object.LongLocation;
@@ -105,7 +104,9 @@ import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.Accessor;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -122,9 +123,9 @@ import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexResultAccessor;
  * @see GlobalPropertyNode
  */
 public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheNode> {
-    private final boolean isGlobal;
-    private final boolean getOwnProperty;
-    @CompilationFinal private boolean isMethod;
+    protected final boolean isGlobal;
+    protected final boolean getOwnProperty;
+    @CompilationFinal protected boolean isMethod;
     private boolean propertyAssumptionCheckEnabled = true;
 
     public static PropertyGetNode create(Object key, JSContext context) {
@@ -316,6 +317,10 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             super(receiverCheck);
         }
 
+        protected GetCacheNode(GetCacheNode next, ReceiverCheckNode receiverCheck) {
+            super(next, receiverCheck);
+        }
+
         protected abstract Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard);
 
         protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) throws UnexpectedResultException {
@@ -379,7 +384,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             for (int i = 0; i < depth; i++) {
                 store = JSObject.getPrototype(store);
             }
-            return finalValue.equals(store.get(root.getKey()));
+            return finalValue.equals(JSDynamicObject.getOrNull(store, root.getKey()));
         }
     }
 
@@ -1078,7 +1083,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         private Object getPropertyFromJSObject(DynamicObject thisObj, Object receiver, Object defaultValue, PropertyGetNode root) {
             if (root.getKey() instanceof HiddenKey) {
-                Object result = thisObj.get(root.getKey());
+                Object result = JSDynamicObject.getOrNull(thisObj, root.getKey());
                 if (result != null) {
                     return result;
                 } else {
@@ -1382,11 +1387,11 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 setConstructor.executeVoid(prototype, functionObj);
             } else if (kind == GENERATOR) {
                 assert JSFunction.getFunctionData(functionObj).isGenerator();
-                prototype = JSObject.createWithRealm(context, context.getGeneratorObjectFactory(), realm);
+                prototype = JSUserObject.createWithRealm(context, context.getGeneratorObjectFactory(), realm);
             } else {
                 assert kind == ASYNC_GENERATOR;
                 assert JSFunction.getFunctionData(functionObj).isAsyncGenerator();
-                prototype = JSObject.createWithRealm(context, context.getAsyncGeneratorObjectFactory(), realm);
+                prototype = JSUserObject.createWithRealm(context, context.getAsyncGeneratorObjectFactory(), realm);
             }
             JSFunction.setClassPrototype(functionObj, prototype);
             return prototype;
@@ -1446,6 +1451,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     public static final class LazyRegexResultIndexPropertyGetNode extends LinkedPropertyGetNode {
 
         @Child private TRegexUtil.InvokeGetGroupBoundariesMethodNode readStartNode = TRegexUtil.InvokeGetGroupBoundariesMethodNode.create();
+        @Child private DynamicObjectLibrary readLazyRegexResult = JSObjectUtil.createDispatched(JSAbstractArray.LAZY_REGEX_RESULT_ID, JSConfig.PropertyCacheLimit);
 
         public LazyRegexResultIndexPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
@@ -1460,7 +1466,10 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
-            return readStartNode.execute(arrayGetRegexResult(receiverCheck.getStore(thisObj), guard), TRegexUtil.Props.RegexResult.GET_START, 0);
+            DynamicObject store = receiverCheck.getStore(thisObj);
+            Object lazyRegexResult = readLazyRegexResult.getOrDefault(store, JSAbstractArray.LAZY_REGEX_RESULT_ID, null);
+            assert lazyRegexResult != null;
+            return readStartNode.execute(lazyRegexResult, TRegexUtil.Props.RegexResult.GET_START, 0);
         }
 
         @Override
@@ -1472,30 +1481,25 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     public static final class LazyNamedCaptureGroupPropertyGetNode extends LinkedPropertyGetNode {
 
         private final int groupIndex;
-        @Child private PropertyGetNode getResultNode;
-        @Child private PropertyGetNode getOriginalInputNode;
-        @Child private PropertyGetNode getIsIndicesNode;
         @Child private TRegexMaterializeResultNode materializeNode = TRegexMaterializeResultNode.create();
         @Child private TRegexResultAccessor resultAccessor = TRegexResultAccessor.create();
         private final ConditionProfile isIndicesObject = ConditionProfile.createBinaryProfile();
 
-        public LazyNamedCaptureGroupPropertyGetNode(Property property, ReceiverCheckNode receiverCheck, JSContext context, int groupIndex) {
+        public LazyNamedCaptureGroupPropertyGetNode(Property property, ReceiverCheckNode receiverCheck, int groupIndex) {
             super(receiverCheck);
             assert isLazyNamedCaptureGroupProperty(property);
             this.groupIndex = groupIndex;
-            this.getResultNode = PropertyGetNode.create(JSRegExp.GROUPS_RESULT_ID, false, context);
-            this.getOriginalInputNode = PropertyGetNode.create(JSRegExp.GROUPS_ORIGINAL_INPUT_ID, false, context);
-            this.getIsIndicesNode = PropertyGetNode.create(JSRegExp.GROUPS_IS_INDICES_ID, false, context);
         }
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
             DynamicObject store = receiverCheck.getStore(thisObj);
-            Object regexResult = getResultNode.getValue(store);
-            if (isIndicesObject.profile((boolean) getIsIndicesNode.getValue(store))) {
+            JSRegExp.RegExpGroupsObjectImpl groups = (JSRegExp.RegExpGroupsObjectImpl) store;
+            Object regexResult = groups.getRegexResult();
+            if (isIndicesObject.profile(groups.isIndices())) {
                 return LazyRegexResultIndicesArray.getIntIndicesArray(root.getContext(), resultAccessor, regexResult, groupIndex);
             } else {
-                String input = (String) getOriginalInputNode.getValue(store);
+                String input = groups.getInputString();
                 return materializeNode.materializeGroup(regexResult, groupIndex, input);
             }
         }
@@ -1636,7 +1640,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 return new LazyRegexResultIndexPropertyGetNode(dataProperty, receiverCheck);
             } else if (isLazyNamedCaptureGroupProperty(property)) {
                 int groupIndex = ((JSRegExp.LazyNamedCaptureGroupProperty) JSProperty.getConstantProxy(property)).getGroupIndex();
-                return new LazyNamedCaptureGroupPropertyGetNode(dataProperty, receiverCheck, context, groupIndex);
+                return new LazyNamedCaptureGroupPropertyGetNode(dataProperty, receiverCheck, groupIndex);
             } else {
                 return new ObjectPropertyGetNode(dataProperty, receiverCheck);
             }
@@ -1706,11 +1710,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             if (JSAdapter.isJSAdapter(store)) {
                 return new JSAdapterPropertyGetNode(receiverCheck);
             } else if (JSProxy.isProxy(store) && JSRuntime.isPropertyKey(key)) {
-                if (isRequired()) {
-                    return new JSProxyDispatcherRequiredPropertyGetNode(context, key, receiverCheck, isMethod());
-                } else {
-                    return new JSProxyDispatcherPropertyGetNode(context, key, receiverCheck, isMethod());
-                }
+                return createJSProxyCache(receiverCheck);
             } else if (JSModuleNamespace.isJSModuleNamespace(store)) {
                 return new UnspecializedPropertyGetNode(receiverCheck);
             } else if (JSArrayBufferView.isJSArrayBufferView(store) && isNonIntegerIndex(key)) {
@@ -1731,6 +1731,14 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
     }
 
+    protected GetCacheNode createJSProxyCache(ReceiverCheckNode receiverCheck) {
+        if (isRequired()) {
+            return new JSProxyDispatcherRequiredPropertyGetNode(context, key, receiverCheck, isMethod());
+        } else {
+            return new JSProxyDispatcherPropertyGetNode(context, key, receiverCheck, isMethod());
+        }
+    }
+
     private GetCacheNode createUndefinedJSObjectPropertyNode(DynamicObject jsobject, int depth) {
         AbstractShapeCheckNode shapeCheck = createShapeCheckNode(jsobject.getShape(), jsobject, depth, false, false);
         if (JSRuntime.isObject(jsobject)) {
@@ -1746,7 +1754,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
     }
 
-    private GetCacheNode createUndefinedOrErrorPropertyNode(ReceiverCheckNode receiverCheck) {
+    protected GetCacheNode createUndefinedOrErrorPropertyNode(ReceiverCheckNode receiverCheck) {
         if (isRequired()) {
             return new UndefinedPropertyErrorNode(receiverCheck);
         } else {

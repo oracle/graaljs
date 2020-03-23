@@ -68,7 +68,7 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.ArrayIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.AtomicsBuiltins;
@@ -145,6 +145,7 @@ import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.DefaultESModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -405,9 +406,9 @@ public class JSRealm {
         }
 
         this.globalObject = JSGlobalObject.create(this, objectPrototype);
-        this.globalScope = JSObject.createInit(context.getGlobalScopeShape());
+        this.globalScope = JSGlobalObject.createGlobalScope(context);
         if (context.getContextOptions().isScriptEngineGlobalScopeImport()) {
-            this.scriptEngineImportScope = JSObject.createInit(context.createEmptyShape());
+            this.scriptEngineImportScope = JSUserObject.createWithNullPrototypeInit(context);
         }
 
         this.objectConstructor = createObjectConstructor(this, objectPrototype);
@@ -542,7 +543,7 @@ public class JSRealm {
             ctor = JSFunction.createGeneratorFunctionConstructor(this);
             this.generatorFunctionConstructor = ctor.getFunctionObject();
             this.generatorFunctionPrototype = ctor.getPrototype();
-            this.generatorObjectPrototype = (DynamicObject) generatorFunctionPrototype.get(JSObject.PROTOTYPE, null);
+            this.generatorObjectPrototype = (DynamicObject) JSDynamicObject.getOrNull(generatorFunctionPrototype, JSObject.PROTOTYPE);
         } else {
             this.generatorFunctionConstructor = null;
             this.generatorFunctionPrototype = null;
@@ -550,7 +551,7 @@ public class JSRealm {
         }
         this.enumerateIteratorPrototype = JSFunction.createEnumerateIteratorPrototype(this);
         this.forInIteratorPrototype = JSFunction.createForInIteratorPrototype(this);
-        this.arrayProtoValuesIterator = (DynamicObject) getArrayPrototype().get(Symbol.SYMBOL_ITERATOR, Undefined.instance);
+        this.arrayProtoValuesIterator = (DynamicObject) JSDynamicObject.getOrDefault(getArrayPrototype(), Symbol.SYMBOL_ITERATOR, Undefined.instance);
 
         if (context.isOptionSharedArrayBuffer()) {
             ctor = JSSharedArrayBuffer.createConstructor(this);
@@ -580,7 +581,7 @@ public class JSRealm {
             ctor = JSFunction.createAsyncGeneratorFunctionConstructor(this);
             this.asyncGeneratorFunctionConstructor = ctor.getFunctionObject();
             this.asyncGeneratorFunctionPrototype = ctor.getPrototype();
-            this.asyncGeneratorObjectPrototype = (DynamicObject) asyncGeneratorFunctionPrototype.get(JSObject.PROTOTYPE, null);
+            this.asyncGeneratorObjectPrototype = (DynamicObject) JSDynamicObject.getOrNull(asyncGeneratorFunctionPrototype, JSObject.PROTOTYPE);
         } else {
             this.asyncIteratorPrototype = null;
             this.asyncFromSyncIteratorPrototype = null;
@@ -1053,7 +1054,7 @@ public class JSRealm {
         DynamicObject setProto = JSFunction.create(realm, context.protoSetterFunctionData);
 
         // ES6 draft annex, B.2.2 Additional Properties of the Object.prototype Object
-        JSObjectUtil.putConstantAccessorProperty(context, realm.getObjectPrototype(), JSObject.PROTO, getProto, setProto);
+        JSObjectUtil.putBuiltinAccessorProperty(realm.getObjectPrototype(), JSObject.PROTO, getProto, setProto);
     }
 
     public final DynamicObject getThrowerFunction() {
@@ -1451,7 +1452,7 @@ public class JSRealm {
     }
 
     private static void putSymbolProperty(DynamicObject symbolFunction, String name, Symbol symbol) {
-        symbolFunction.define(name, symbol, JSAttributes.notConfigurableNotEnumerableNotWritable(), (s, v) -> s.allocator().constantLocation(v));
+        DynamicObjectLibrary.getUncached().putConstant(symbolFunction, name, symbol, JSAttributes.notConfigurableNotEnumerableNotWritable());
     }
 
     /**
@@ -1463,7 +1464,7 @@ public class JSRealm {
 
     private void setupJavaInterop() {
         assert isJavaInteropEnabled();
-        DynamicObject java = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject java = JSObjectUtil.createOrdinaryPrototypeObject(this);
         JSObjectUtil.putDataProperty(context, java, Symbol.SYMBOL_TO_STRING_TAG, JAVA_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(this, java, JavaBuiltins.BUILTINS);
         if (context.isOptionNashornCompatibilityMode()) {
@@ -1491,7 +1492,7 @@ public class JSRealm {
     }
 
     private void setupPolyglot() {
-        DynamicObject polyglotObject = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject polyglotObject = JSObjectUtil.createOrdinaryPrototypeObject(this);
         JSObjectUtil.putFunctionsFromContainer(this, polyglotObject, PolyglotBuiltins.BUILTINS);
 
         if (getContext().isOptionDebugBuiltin()) {
@@ -1525,7 +1526,7 @@ public class JSRealm {
      * Creates the %IteratorPrototype% object as specified in ES6 25.1.2.
      */
     private DynamicObject createIteratorPrototype() {
-        DynamicObject prototype = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.getObjectPrototype());
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_ITERATOR, createIteratorPrototypeSymbolIteratorFunction(this), JSAttributes.getDefaultNotEnumerable());
         return prototype;
     }
@@ -1538,7 +1539,7 @@ public class JSRealm {
      * Creates the %ArrayIteratorPrototype% object as specified in ES6 22.1.5.2.
      */
     private DynamicObject createArrayIteratorPrototype() {
-        DynamicObject prototype = JSObject.createInit(this, this.iteratorPrototype, JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, ArrayIteratorPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, JSArray.ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
@@ -1548,7 +1549,7 @@ public class JSRealm {
      * Creates the %SetIteratorPrototype% object.
      */
     private DynamicObject createSetIteratorPrototype() {
-        DynamicObject prototype = JSObject.createInit(this, this.iteratorPrototype, JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, SetIteratorPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, JSSet.ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
@@ -1558,7 +1559,7 @@ public class JSRealm {
      * Creates the %MapIteratorPrototype% object.
      */
     private DynamicObject createMapIteratorPrototype() {
-        DynamicObject prototype = JSObject.createInit(this, this.iteratorPrototype, JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, MapIteratorPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, JSMap.ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
@@ -1568,7 +1569,7 @@ public class JSRealm {
      * Creates the %StringIteratorPrototype% object.
      */
     private DynamicObject createStringIteratorPrototype() {
-        DynamicObject prototype = JSObject.createInit(this, this.iteratorPrototype, JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, StringIteratorPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, JSString.ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
@@ -1578,7 +1579,7 @@ public class JSRealm {
      * Creates the %RegExpStringIteratorPrototype% object.
      */
     private DynamicObject createRegExpStringIteratorPrototype() {
-        DynamicObject prototype = JSObject.createInit(this, this.iteratorPrototype, JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, RegExpStringIteratorPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, JSString.REGEXP_ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
@@ -1589,14 +1590,14 @@ public class JSRealm {
     }
 
     private DynamicObject createReflect() {
-        DynamicObject obj = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject obj = JSObjectUtil.createOrdinaryPrototypeObject(this, this.getObjectPrototype());
         JSObjectUtil.putDataProperty(context, obj, Symbol.SYMBOL_TO_STRING_TAG, REFLECT_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(this, obj, ReflectBuiltins.BUILTINS);
         return obj;
     }
 
     private DynamicObject createAtomics() {
-        DynamicObject obj = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject obj = JSObjectUtil.createOrdinaryPrototypeObject(this, this.getObjectPrototype());
         JSObjectUtil.putDataProperty(context, obj, Symbol.SYMBOL_TO_STRING_TAG, ATOMICS_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(this, obj, AtomicsBuiltins.BUILTINS);
         return obj;
@@ -1681,7 +1682,7 @@ public class JSRealm {
     private DynamicObject createRealmBuiltinObject() {
         DynamicObject obj = JSUserObject.createInit(this);
         JSObjectUtil.putDataProperty(getContext(), obj, Symbol.SYMBOL_TO_STRING_TAG, REALM_BUILTIN_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
-        JSObjectUtil.putProxyProperty(obj, REALM_SHARED_PROPERTY);
+        JSObjectUtil.putProxyProperty(obj, REALM_SHARED_NAME, REALM_SHARED_PROXY, JSAttributes.getDefault());
         JSObjectUtil.putFunctionsFromContainer(this, obj, RealmFunctionBuiltins.BUILTINS);
         return obj;
     }
@@ -1749,7 +1750,7 @@ public class JSRealm {
 
         // https://github.com/tc39/proposal-regexp-legacy-features#additional-properties-of-the-regexp-constructor
         int propertyAttributes = context.isOptionNashornCompatibilityMode() ? JSAttributes.notConfigurableEnumerableWritable() : JSAttributes.configurableNotEnumerableWritable();
-        JSObjectUtil.putConstantAccessorProperty(context, regExpConstructor, propertyName, getter, setter, propertyAttributes);
+        JSObjectUtil.putBuiltinAccessorProperty(regExpConstructor, propertyName, getter, setter, propertyAttributes);
     }
 
     public void setArguments(Object[] arguments) {
@@ -2144,8 +2145,8 @@ public class JSRealm {
         v8RealmCurrent = realm;
     }
 
+    private static final String REALM_SHARED_NAME = "shared";
     private static final PropertyProxy REALM_SHARED_PROXY = new RealmSharedPropertyProxy();
-    private static final Property REALM_SHARED_PROPERTY = JSObjectUtil.makeProxyProperty("shared", REALM_SHARED_PROXY, JSAttributes.getDefault());
 
     private static class RealmSharedPropertyProxy implements PropertyProxy {
         @Override

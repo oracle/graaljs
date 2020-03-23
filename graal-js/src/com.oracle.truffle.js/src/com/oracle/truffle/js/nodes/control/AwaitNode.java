@@ -88,6 +88,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.Completion;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseReactionRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -345,10 +346,10 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
         @Override
         public AsyncStackTraceInfo getAsyncStackTraceInfo(DynamicObject handlerFunction) {
             assert JSFunction.isJSFunction(handlerFunction) && ((RootCallTarget) JSFunction.getFunctionData(handlerFunction).getCallTarget()).getRootNode() == this;
-            RootCallTarget asyncTarget = (RootCallTarget) handlerFunction.get(ASYNC_TARGET);
+            RootCallTarget asyncTarget = (RootCallTarget) JSObjectUtil.getHiddenProperty(handlerFunction, ASYNC_TARGET);
             if (asyncTarget.getRootNode() instanceof AsyncRootNode) {
-                MaterializedFrame asyncContextFrame = (MaterializedFrame) handlerFunction.get(ASYNC_CONTEXT);
-                Node callNode = (Node) handlerFunction.get(AwaitNode.ASYNC_CALL_NODE);
+                MaterializedFrame asyncContextFrame = (MaterializedFrame) JSObjectUtil.getHiddenProperty(handlerFunction, ASYNC_CONTEXT);
+                Node callNode = (Node) JSObjectUtil.getHiddenProperty(handlerFunction, AwaitNode.ASYNC_CALL_NODE);
                 TruffleStackTraceElement asyncStackTraceElement = TruffleStackTraceElement.create(callNode, asyncTarget, asyncContextFrame);
                 DynamicObject asyncPromise = ((AsyncRootNode) asyncTarget.getRootNode()).getAsyncFunctionPromise(asyncContextFrame);
                 return new AsyncStackTraceInfo(asyncPromise, asyncStackTraceElement);
@@ -409,7 +410,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
             Object fulfillReactions = null;
             if (JSPromise.isPending(currPromise)) {
                 // only pending promises have reactions
-                fulfillReactions = currPromise.get(JSPromise.PROMISE_FULFILL_REACTIONS, null);
+                fulfillReactions = JSObjectUtil.getHiddenProperty(currPromise, JSPromise.PROMISE_FULFILL_REACTIONS);
             }
             if (fulfillReactions instanceof SimpleArrayList<?> && ((SimpleArrayList<?>) fulfillReactions).size() == 1) {
                 SimpleArrayList<?> fulfillList = (SimpleArrayList<?>) fulfillReactions;

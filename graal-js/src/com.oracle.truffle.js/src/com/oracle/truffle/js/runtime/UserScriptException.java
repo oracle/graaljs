@@ -46,6 +46,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -98,13 +99,14 @@ public final class UserScriptException extends GraalJSException {
     private static String getMessage(Object exc) {
         if (JSRuntime.isObject(exc)) {
             // try to get the constructor name, and then the message
-            DynamicObject prototype = JSObject.getPrototype((DynamicObject) exc);
+            DynamicObject errorObj = (DynamicObject) exc;
+            DynamicObject prototype = JSObject.getPrototype(errorObj);
             if (prototype != Null.instance) {
-                Object constructor = prototype.get(JSObject.CONSTRUCTOR, null);
+                Object constructor = JSDynamicObject.getOrDefault(prototype, JSObject.CONSTRUCTOR, null);
                 if (JSFunction.isJSFunction(constructor)) {
                     String name = JSFunction.getName((DynamicObject) constructor);
                     if (!name.isEmpty()) {
-                        Object message = ((DynamicObject) exc).get(JSError.MESSAGE, null);
+                        Object message = JSDynamicObject.getOrDefault(errorObj, JSError.MESSAGE, null);
                         if (JSRuntime.isString(message)) {
                             return name + ": " + message;
                         }

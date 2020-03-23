@@ -55,8 +55,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.DateFunctionBuiltins;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltins;
@@ -65,6 +63,8 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSBasicObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -84,9 +84,6 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     private static DateTimeFormatter jsShortTimeLocalFormat;
     private static DateTimeFormatter jsDateToStringFormat;
     public static final JSDate INSTANCE = new JSDate();
-
-    private static final HiddenKey TIME_MILLIS_ID = new HiddenKey("timeMillis");
-    private static final Property TIME_MILLIS_PROPERTY;
 
     private static final int HOURS_PER_DAY = 24;
     private static final int MINUTES_PER_HOUR = 60;
@@ -109,9 +106,35 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
 
     public static final String INVALID_DATE_STRING = "Invalid Date";
 
-    static {
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        TIME_MILLIS_PROPERTY = JSObjectUtil.makeHiddenProperty(TIME_MILLIS_ID, allocator.locationForType(double.class));
+    public static class JSDateObject extends JSBasicObject {
+        private double value;
+
+        protected JSDateObject(Shape shape, double value) {
+            super(shape);
+            this.value = value;
+        }
+
+        public double getTimeMillis() {
+            return value;
+        }
+
+        public void setTimeMillis(double value) {
+            this.value = value;
+        }
+
+        public static DynamicObject create(Shape shape, double value) {
+            return new JSDateObject(shape, value);
+        }
+
+        @Override
+        public String getClassName() {
+            return CLASS_NAME;
+        }
+
+        @Override
+        public String getBuiltinToStringTag() {
+            return getClassName();
+        }
     }
 
     private JSDate() {
@@ -119,16 +142,16 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
 
     public static void setTimeMillisField(DynamicObject obj, double timeMillis) {
         assert isJSDate(obj);
-        TIME_MILLIS_PROPERTY.setSafe(obj, timeMillis, null);
+        ((JSDateObject) obj).setTimeMillis(timeMillis);
     }
 
     public static double getTimeMillisField(DynamicObject obj) {
         assert isJSDate(obj);
-        return (double) TIME_MILLIS_PROPERTY.get(obj, isJSDate(obj));
+        return ((JSDateObject) obj).getTimeMillis();
     }
 
     public static boolean isJSDate(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSDate((DynamicObject) obj);
+        return JSObject.isJSObject(obj) && isJSDate((DynamicObject) obj);
     }
 
     public static boolean isJSDate(DynamicObject obj) {
@@ -153,15 +176,22 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject datePrototype = JSObject.createInit(realm, realm.getObjectPrototype(), ctx.getEcmaScriptVersion() < 6 ? INSTANCE : JSUserObject.INSTANCE);
+
+        DynamicObject datePrototype;
         if (ctx.getEcmaScriptVersion() < 6) {
-            JSObjectUtil.putHiddenProperty(datePrototype, TIME_MILLIS_PROPERTY, Double.NaN);
+            Shape protoShape = JSShape.createPrototypeShape(realm.getContext(), INSTANCE, realm.getObjectPrototype());
+            datePrototype = JSDateObject.create(protoShape, Double.NaN);
+            JSObjectUtil.setOrVerifyPrototype(ctx, datePrototype, realm.getObjectPrototype());
+        } else {
+            datePrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         }
+
         JSObjectUtil.putConstructorProperty(ctx, datePrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, datePrototype, DatePrototypeBuiltins.BUILTINS);
 
         if (ctx.isOptionAnnexB()) {
-            JSObjectUtil.putDataProperty(ctx, datePrototype, "toGMTString", datePrototype.get("toUTCString"), JSAttributes.getDefaultNotEnumerable());
+            Object utcStringFunction = JSDynamicObject.getOrNull(datePrototype, "toUTCString");
+            JSObjectUtil.putDataProperty(ctx, datePrototype, "toGMTString", utcStringFunction, JSAttributes.getDefaultNotEnumerable());
         }
         return datePrototype;
     }
@@ -169,7 +199,6 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     @Override
     public Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
-        initialShape = initialShape.addProperty(TIME_MILLIS_PROPERTY);
         return initialShape;
     }
 
@@ -543,9 +572,12 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     }
 
     public static DynamicObject create(JSContext context, double timeMillis) {
-        DynamicObject obj = JSObject.create(context, context.getDateFactory(), timeMillis);
+        JSRealm realm = context.getRealm();
+        JSObjectFactory factory = context.getDateFactory();
+        DynamicObject obj = JSDateObject.create(factory.getShape(realm), timeMillis);
+        factory.initProto(obj, realm);
         assert isJSDate(obj);
-        return obj;
+        return context.trackAllocation(obj);
     }
 
     public static double setTime(DynamicObject thisDate, double time) {

@@ -43,10 +43,8 @@ package com.oracle.truffle.js.builtins;
 import java.nio.ByteBuffer;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
-import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -134,7 +132,6 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.array.ArrayCreateNode;
-import com.oracle.truffle.js.nodes.cast.ToArrayLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSNumberToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSNumericToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
@@ -146,6 +143,7 @@ import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode.Hint;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.nodes.cast.ToArrayLengthNode;
 import com.oracle.truffle.js.nodes.function.EvalNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -190,6 +188,7 @@ import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSDisplayNames;
+import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSListFormat;
@@ -207,7 +206,9 @@ import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
+import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
@@ -217,7 +218,6 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
-import com.oracle.truffle.js.runtime.util.WeakMap;
 
 /**
  * Contains built-in constructor functions.
@@ -963,7 +963,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             boolean isJSRegExp = JSRegExp.isJSRegExp(patternObj);
             if (isJSRegExp) {
                 regexpObject.enter();
-                Object compiledRegex = JSRegExp.getCompiledRegexUnchecked((DynamicObject) patternObj, isJSRegExp);
+                Object compiledRegex = JSRegExp.getCompiledRegex((DynamicObject) patternObj);
                 if (flags == Undefined.instance) {
                     return getCreateRegExpNode().createRegExp(compiledRegex);
                 } else {
@@ -1808,6 +1808,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             this.errorType = JSErrorType.valueOf(getBuiltin().getName());
             this.stackTraceLimitNode = ErrorStackTraceLimitNode.create(context);
             this.initErrorObjectNode = InitErrorObjectNode.create(context);
+            assert errorType != JSErrorType.AggregateError;
         }
 
         @Specialization
@@ -1821,21 +1822,16 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return constructErrorImpl(newTarget, message == Undefined.instance ? null : toStringNode.executeString(message));
         }
 
-        private DynamicObject constructErrorImpl(DynamicObject newTarget, String message) {
-            DynamicObject errorObj;
+        private DynamicObject constructErrorImpl(DynamicObject newTarget, String messageOpt) {
             JSContext context = getContext();
             JSRealm realm = context.getRealm();
-            if (message == null) {
-                errorObj = JSObject.create(context, context.getErrorFactory(errorType, false));
-            } else {
-                errorObj = JSObject.create(context, context.getErrorFactory(errorType, true), message);
-            }
+            DynamicObject errorObj = JSError.createErrorObject(getContext(), realm, errorType);
             swapPrototype(errorObj, newTarget);
 
             int stackTraceLimit = stackTraceLimitNode.executeInt();
             DynamicObject errorFunction = realm.getErrorConstructor(errorType);
-            GraalJSException exception = JSException.createCapture(errorType, message, errorObj, realm, stackTraceLimit, errorFunction);
-            return initErrorObjectNode.execute(errorObj, exception);
+            GraalJSException exception = JSException.createCapture(errorType, messageOpt, errorObj, realm, stackTraceLimit, errorFunction);
+            return initErrorObjectNode.execute(errorObj, exception, messageOpt);
         }
 
         @Override
@@ -1874,21 +1870,17 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             Object usingIterator = getIteratorMethodNode.executeWithTarget(errorsObj);
             SimpleArrayList<Object> errors = GetIteratorNode.iterableToList(errorsObj, usingIterator, iteratorCallNode, isObjectNode, iteratorStepNode, getIteratorValueNode, getNextMethodNode, this,
                             growProfile);
-            DynamicObject errorObj;
             JSContext context = getContext();
             JSRealm realm = context.getRealm();
-            Object errorsArray = JSArray.createConstantObjectArray(context, errors.toArray());
-            if (message == null) {
-                errorObj = JSObject.create(context, context.getErrorFactory(JSErrorType.AggregateError, false), errorsArray);
-            } else {
-                errorObj = JSObject.create(context, context.getErrorFactory(JSErrorType.AggregateError, true), message, errorsArray);
-            }
+            DynamicObject errorsArray = JSArray.createConstantObjectArray(context, errors.toArray());
+            DynamicObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
             swapPrototype(errorObj, newTarget);
 
             int stackTraceLimit = stackTraceLimitNode.executeInt();
             DynamicObject errorFunction = realm.getErrorConstructor(JSErrorType.AggregateError);
             GraalJSException exception = JSException.createCapture(JSErrorType.AggregateError, message, errorObj, realm, stackTraceLimit, errorFunction);
-            return initErrorObjectNode.execute(errorObj, exception);
+            initErrorObjectNode.execute(errorObj, exception, message, errorsArray);
+            return errorObj;
         }
 
         @Override
@@ -2137,7 +2129,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             JSContext context = getContext();
             DynamicObject mapObj = JSMap.create(context);
             fillWithIterable(mapObj, iterable);
-            return swapPrototype(mapObj, newTarget);
+            swapPrototype(mapObj, newTarget);
+            return mapObj;
         }
 
         protected void fillWithIterable(DynamicObject mapObj, Object iterable) {
@@ -2199,7 +2192,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             JSContext context = getContext();
             DynamicObject setObj = JSSet.create(context);
             fillWithIterable(setObj, iterable);
-            return swapPrototype(setObj, newTarget);
+            swapPrototype(setObj, newTarget);
+            return setObj;
         }
 
         protected void fillWithIterable(DynamicObject setObj, Object iterable) {
@@ -2242,18 +2236,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             super(context, builtin, isNewTargetCase);
         }
 
-        @TruffleBoundary
-        protected static Map<DynamicObject, Object> constructWeakHashMap() {
-            return new WeakHashMap<>();
-        }
-
         @Override
         @Specialization
         protected DynamicObject constructSet(DynamicObject newTarget, Object iterable) {
             JSContext context = getContext();
-            DynamicObject setObj = JSObject.create(context, context.getWeakSetFactory(), constructWeakHashMap());
+            DynamicObject setObj = JSWeakSet.create(context);
             fillWithIterable(setObj, iterable);
-            return swapPrototype(setObj, newTarget);
+            swapPrototype(setObj, newTarget);
+            return setObj;
         }
 
         @Override
@@ -2268,18 +2258,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             super(context, builtin, isNewTargetCase);
         }
 
-        @TruffleBoundary
-        protected static Map<DynamicObject, Object> constructWeakMap() {
-            return new WeakMap();
-        }
-
         @Override
         @Specialization
         protected DynamicObject constructMap(DynamicObject newTarget, Object iterable) {
             JSContext context = getContext();
-            DynamicObject mapObj = JSObject.create(context, context.getWeakMapFactory(), constructWeakMap());
+            DynamicObject mapObj = JSWeakMap.create(context);
             fillWithIterable(mapObj, iterable);
-            return swapPrototype(mapObj, newTarget);
+            swapPrototype(mapObj, newTarget);
+            return mapObj;
         }
 
         @Override
@@ -2322,7 +2308,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Child protected IsCallableNode isCallable;
         @Child private PromiseResolveThenableNode promiseResolveThenable;
         @Child private OrdinaryCreateFromConstructorNode createPromiseFromConstructor;
-        @Child private PropertySetNode setPromiseState;
         @Child private PropertySetNode setPromiseFulfillReactions;
         @Child private PropertySetNode setPromiseRejectReactions;
         @Child private PropertySetNode setPromiseIsHandled;
@@ -2332,7 +2317,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             this.isCallable = IsCallableNode.create();
             this.promiseResolveThenable = PromiseResolveThenableNode.create(context);
             this.createPromiseFromConstructor = OrdinaryCreateFromConstructorNode.create(context, null, JSRealm::getPromisePrototype, JSPromise.INSTANCE);
-            this.setPromiseState = PropertySetNode.createSetHidden(JSPromise.PROMISE_STATE, context);
             this.setPromiseFulfillReactions = PropertySetNode.createSetHidden(JSPromise.PROMISE_FULFILL_REACTIONS, context);
             this.setPromiseRejectReactions = PropertySetNode.createSetHidden(JSPromise.PROMISE_REJECT_REACTIONS, context);
             this.setPromiseIsHandled = PropertySetNode.createSetHidden(JSPromise.PROMISE_IS_HANDLED, context);
@@ -2341,7 +2325,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization(guards = "isCallable.executeBoolean(executor)")
         protected DynamicObject construct(VirtualFrame frame, DynamicObject newTarget, Object executor) {
             DynamicObject promise = createPromiseFromConstructor.executeWithConstructor(frame, newTarget);
-            setPromiseState.setValueInt(promise, JSPromise.PENDING);
+            JSPromise.setPromiseState(promise, JSPromise.PENDING);
             setPromiseFulfillReactions.setValue(promise, new SimpleArrayList<>());
             setPromiseRejectReactions.setValue(promise, new SimpleArrayList<>());
             setPromiseIsHandled.setValueBoolean(promise, false);

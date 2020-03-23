@@ -131,6 +131,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -614,7 +615,7 @@ public final class GraalJSAccess {
     public boolean valueIsSetIterator(Object object) {
         if (JSRuntime.isObject(object)) {
             DynamicObject dynamicObject = (DynamicObject) object;
-            Object iteratedObj = dynamicObject.get(JSRuntime.ITERATED_OBJECT_ID);
+            Object iteratedObj = JSObjectUtil.getHiddenProperty(dynamicObject, JSRuntime.ITERATED_OBJECT_ID);
             return JSSet.isJSSet(iteratedObj);
         }
         return false;
@@ -623,7 +624,7 @@ public final class GraalJSAccess {
     public boolean valueIsMapIterator(Object object) {
         if (JSRuntime.isObject(object)) {
             DynamicObject dynamicObject = (DynamicObject) object;
-            Object iteratedObj = dynamicObject.get(JSRuntime.ITERATED_OBJECT_ID);
+            Object iteratedObj = JSObjectUtil.getHiddenProperty(dynamicObject, JSRuntime.ITERATED_OBJECT_ID);
             return JSMap.isJSMap(iteratedObj);
         }
         return false;
@@ -674,7 +675,7 @@ public final class GraalJSAccess {
     }
 
     public boolean valueIsGeneratorObject(Object object) {
-        return (object instanceof DynamicObject) && ((DynamicObject) object).containsKey(JSFunction.GENERATOR_STATE_ID);
+        return (object instanceof DynamicObject) && DynamicObjectLibrary.getUncached().containsKey((DynamicObject) object, JSFunction.GENERATOR_STATE_ID);
     }
 
     public boolean valueIsModuleNamespaceObject(Object object) {
@@ -720,9 +721,9 @@ public final class GraalJSAccess {
     public boolean objectSet(Object object, Object key, Object value) {
         DynamicObject dynamicObject = (DynamicObject) object;
         if (key instanceof HiddenKey) {
-            dynamicObject.define(key, value);
+            JSObjectUtil.putHiddenProperty(dynamicObject, key, value);
         } else {
-            JSObject.set((DynamicObject) object, JSRuntime.toPropertyKey(key), value);
+            JSObject.set(dynamicObject, JSRuntime.toPropertyKey(key), value);
         }
         return true;
     }
@@ -742,10 +743,10 @@ public final class GraalJSAccess {
     public boolean objectSetPrivate(Object context, Object object, Object key, Object value) {
         if (JSRuntime.isObject(object)) {
             DynamicObject dynamicObject = (DynamicObject) object;
-            Object privateValues = dynamicObject.get(PRIVATE_VALUES_KEY);
+            Object privateValues = JSObjectUtil.getHiddenProperty(dynamicObject, PRIVATE_VALUES_KEY);
             if (privateValues == null) {
                 privateValues = objectNew(context);
-                dynamicObject.define(PRIVATE_VALUES_KEY, privateValues);
+                JSObjectUtil.putHiddenProperty(dynamicObject, PRIVATE_VALUES_KEY, privateValues);
             }
             JSObject.set((DynamicObject) privateValues, key, value);
         }
@@ -757,7 +758,7 @@ public final class GraalJSAccess {
             return null;
         }
         DynamicObject dynamicObject = (DynamicObject) object;
-        DynamicObject privateValues = (DynamicObject) dynamicObject.get(PRIVATE_VALUES_KEY);
+        DynamicObject privateValues = (DynamicObject) JSObjectUtil.getHiddenProperty(dynamicObject, PRIVATE_VALUES_KEY);
         if (privateValues == null) {
             return null;
         } else if (JSObject.hasOwnProperty(privateValues, key)) {
@@ -772,7 +773,7 @@ public final class GraalJSAccess {
             return true;
         }
         DynamicObject dynamicObject = (DynamicObject) object;
-        Object privateValues = dynamicObject.get(PRIVATE_VALUES_KEY);
+        Object privateValues = JSObjectUtil.getHiddenProperty(dynamicObject, PRIVATE_VALUES_KEY);
         if (privateValues == null) {
             return true;
         } else {
@@ -789,7 +790,7 @@ public final class GraalJSAccess {
         }
         Object value;
         if (key instanceof HiddenKey) {
-            Object hiddenValue = ((DynamicObject) truffleObject).get(key);
+            Object hiddenValue = JSObjectUtil.getHiddenProperty((DynamicObject) truffleObject, key);
             if (hiddenValue == null) {
                 if (JSPromise.isJSPromise(object)) {
                     value = 0;
@@ -1165,7 +1166,7 @@ public final class GraalJSAccess {
             deallocator.register(byteBuffer, pointer);
         }
         DynamicObject arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(((JSRealm) context).getContext(), byteBuffer);
-        arrayBuffer.define(EXTERNALIZED_KEY, pointer == 0);
+        JSObjectUtil.putHiddenProperty(arrayBuffer, EXTERNALIZED_KEY, pointer == 0);
         return arrayBuffer;
     }
 
@@ -1192,12 +1193,12 @@ public final class GraalJSAccess {
     }
 
     public boolean arrayBufferIsExternal(Object arrayBuffer) {
-        return ((DynamicObject) arrayBuffer).get(EXTERNALIZED_KEY) == Boolean.TRUE;
+        return JSObjectUtil.getHiddenProperty((DynamicObject) arrayBuffer, EXTERNALIZED_KEY) == Boolean.TRUE;
     }
 
     public void arrayBufferExternalize(Object arrayBuffer) {
         DynamicObject dynamicObject = (DynamicObject) arrayBuffer;
-        dynamicObject.define(EXTERNALIZED_KEY, true);
+        JSObjectUtil.putHiddenProperty(dynamicObject, EXTERNALIZED_KEY, true);
     }
 
     public void arrayBufferDetach(Object arrayBuffer) {
@@ -1268,7 +1269,7 @@ public final class GraalJSAccess {
     public Object sharedArrayBufferNew(Object context, Object buffer, long pointer, boolean externalized) {
         ByteBuffer byteBuffer = (ByteBuffer) buffer;
         DynamicObject sharedArrayBuffer = JSSharedArrayBuffer.createSharedArrayBuffer(((JSRealm) context).getContext(), byteBuffer);
-        sharedArrayBuffer.define(EXTERNALIZED_KEY, externalized);
+        JSObjectUtil.putHiddenProperty(sharedArrayBuffer, EXTERNALIZED_KEY, externalized);
         if (externalized) {
             updateWaiterList(sharedArrayBuffer, pointer);
         } else {
@@ -1278,7 +1279,7 @@ public final class GraalJSAccess {
     }
 
     public boolean sharedArrayBufferIsExternal(Object sharedArrayBuffer) {
-        return ((DynamicObject) sharedArrayBuffer).get(EXTERNALIZED_KEY) == Boolean.TRUE;
+        return JSObjectUtil.getHiddenProperty((DynamicObject) sharedArrayBuffer, EXTERNALIZED_KEY) == Boolean.TRUE;
     }
 
     public Object sharedArrayBufferGetContents(Object sharedArrayBuffer) {
@@ -1287,7 +1288,7 @@ public final class GraalJSAccess {
 
     public void sharedArrayBufferExternalize(Object sharedArrayBuffer, long pointer) {
         DynamicObject dynamicObject = (DynamicObject) sharedArrayBuffer;
-        dynamicObject.define(EXTERNALIZED_KEY, true);
+        JSObjectUtil.putHiddenProperty(dynamicObject, EXTERNALIZED_KEY, true);
         updateWaiterList(dynamicObject, pointer);
     }
 
@@ -1631,7 +1632,7 @@ public final class GraalJSAccess {
 
         // Additional data are held weakly from C => we have to ensure that
         // they are not GCed before the corresponding function is GCed
-        functionObject.set(FUNCTION_TEMPLATE_DATA_KEY, template.getAdditionalData());
+        JSObjectUtil.putHiddenProperty(functionObject, FUNCTION_TEMPLATE_DATA_KEY, template.getAdditionalData());
 
         return functionObject;
     }
@@ -1643,7 +1644,7 @@ public final class GraalJSAccess {
             return false;
         }
         if (instance instanceof DynamicObject) {
-            Object constructor = ((DynamicObject) instance).get(FunctionTemplate.CONSTRUCTOR);
+            Object constructor = JSObjectUtil.getHiddenProperty((DynamicObject) instance, FunctionTemplate.CONSTRUCTOR);
             if (constructor == null) {
                 return false; // not created from FunctionTemplate
             }
@@ -1672,7 +1673,7 @@ public final class GraalJSAccess {
                 DynamicObject function = (DynamicObject) functionTemplateGetFunction(realm, parentFunctionTemplate);
                 DynamicObject prototype = (DynamicObject) JSObject.get(function, JSObject.PROTOTYPE);
                 instance = JSUserObject.createWithPrototype(prototype, jsContext);
-                instance.define(FunctionTemplate.CONSTRUCTOR, parentFunctionTemplate);
+                JSObjectUtil.putHiddenProperty(instance, FunctionTemplate.CONSTRUCTOR, parentFunctionTemplate);
             }
         } else {
             instance = functionTemplateCreateCallback(jsContext, jsRealm, functionHandler);
@@ -1751,7 +1752,7 @@ public final class GraalJSAccess {
         for (Value value : template.getValues()) {
             Object name = value.getName();
             if (name instanceof HiddenKey) {
-                proxy.define(name, value.getValue());
+                JSObjectUtil.putHiddenProperty(proxy, name, value.getValue());
             } // else set on target (in objectTemplateInstantiate) already
         }
 
@@ -1790,12 +1791,12 @@ public final class GraalJSAccess {
             } else {
                 if (name instanceof HiddenKey) {
                     if (!template.hasPropertyHandler()) {
-                        obj.define(name, processedValue);
+                        JSObjectUtil.putHiddenProperty(obj, name, processedValue);
                     } // else set on the proxy/handler
                 } else if (JSObject.hasOwnProperty(obj, name)) {
                     JSObject.set(obj, name, processedValue);
                 } else {
-                    JSObjectUtil.putDataProperty(obj, name, processedValue, attributes);
+                    JSObjectUtil.putDataProperty(context, obj, name, processedValue, attributes);
                 }
             }
         }
@@ -1933,7 +1934,7 @@ public final class GraalJSAccess {
 
         NodeScriptOrModule scriptOrModule = new NodeScriptOrModule(jsContext, source);
         // function should keep scriptOrModule alive
-        ((DynamicObject) function).define(NodeScriptOrModule.SCRIPT_OR_MODULE, scriptOrModule);
+        JSObjectUtil.putHiddenProperty((DynamicObject) function, NodeScriptOrModule.SCRIPT_OR_MODULE, scriptOrModule);
 
         return new Object[]{function, scriptOrModule};
     }
@@ -2173,7 +2174,7 @@ public final class GraalJSAccess {
         }
         DynamicObject function = JSFunction.create(realm, functionData);
         if (holder != null) {
-            function.define(HOLDER_KEY, holder);
+            JSObjectUtil.putHiddenProperty(function, HOLDER_KEY, holder);
         }
         JSObject.preventExtensions(function);
         return function;
@@ -2198,7 +2199,7 @@ public final class GraalJSAccess {
         GraalJSException truffleException = (GraalJSException) throwable;
         Object exceptionObject = truffleException.getErrorObjectEager(jsContext);
         if (JSRuntime.isObject(exceptionObject) && JSError.getException((DynamicObject) exceptionObject) == null) {
-            ((DynamicObject) exceptionObject).define(JSError.EXCEPTION_PROPERTY_NAME, truffleException);
+            JSObjectUtil.putHiddenProperty((DynamicObject) exceptionObject, JSError.EXCEPTION_PROPERTY_NAME, truffleException);
         }
         // Patch stack property of SyntaxErrors so that it looks like the one from V8
         Matcher matcher = messageSyntaxErrorMatcher(exception);
@@ -2416,10 +2417,10 @@ public final class GraalJSAccess {
                 System.err.println("Weak references not supported for " + object);
                 return null;
             }
-            map = (Map<Long, WeakCallback>) target.get(key);
+            map = (Map<Long, WeakCallback>) JSObjectUtil.getHiddenProperty(target, key);
             if (map == null) {
                 map = new HashMap<>();
-                target.define(key, map);
+                JSObjectUtil.putHiddenProperty(target, key, map);
             }
         }
 
@@ -2513,7 +2514,7 @@ public final class GraalJSAccess {
         realm.setEmbedderData(new RealmData());
         DynamicObject global = realm.getGlobalObject();
         // Node.js does not have global arguments property
-        global.delete(JSRealm.ARGUMENTS_NAME);
+        JSObject.delete(global, JSRealm.ARGUMENTS_NAME);
         if (exposeGC) {
             contextExposeGC(realm);
         }
@@ -2655,7 +2656,7 @@ public final class GraalJSAccess {
     }
 
     public static int internalFieldCount(DynamicObject target) {
-        Object ret = target.get(INTERNAL_FIELD_COUNT_KEY);
+        Object ret = JSObjectUtil.getHiddenProperty(target, INTERNAL_FIELD_COUNT_KEY);
         if (ret instanceof Integer) {
             return (int) ret;
         } else if (ret instanceof Double) {
@@ -2666,23 +2667,23 @@ public final class GraalJSAccess {
     }
 
     public long objectSlowGetAlignedPointerFromInternalField(Object target) {
-        Object pointer = ((DynamicObject) target).get(INTERNAL_FIELD_ZERO_KEY);
+        Object pointer = JSObjectUtil.getHiddenProperty((DynamicObject) target, INTERNAL_FIELD_ZERO_KEY);
         return (pointer == null) ? 0 : ((Number) pointer).longValue();
     }
 
     public void objectSetAlignedPointerInInternalField(Object target, long value) {
-        ((DynamicObject) target).define(INTERNAL_FIELD_ZERO_KEY, value);
+        JSObjectUtil.putHiddenProperty((DynamicObject) target, INTERNAL_FIELD_ZERO_KEY, value);
     }
 
     public Object objectPreviewEntries(Object object) {
         DynamicObject dynamicObject = (DynamicObject) object;
         JSContext context = JSObject.getJSContext(dynamicObject);
-        JSHashMap.Cursor cursor = (JSHashMap.Cursor) dynamicObject.get(JSRuntime.ITERATOR_NEXT_INDEX);
+        JSHashMap.Cursor cursor = (JSHashMap.Cursor) JSObjectUtil.getHiddenProperty(dynamicObject, JSRuntime.ITERATOR_NEXT_INDEX);
         if (cursor != null) {
-            Object kindObject = dynamicObject.get(JSMap.MAP_ITERATION_KIND_ID);
+            Object kindObject = JSObjectUtil.getHiddenProperty(dynamicObject, JSMap.MAP_ITERATION_KIND_ID);
             boolean isSet = (kindObject == null);
             if (isSet) {
-                kindObject = dynamicObject.get(JSSet.SET_ITERATION_KIND_ID);
+                kindObject = JSObjectUtil.getHiddenProperty(dynamicObject, JSSet.SET_ITERATION_KIND_ID);
             }
             int kind = ((Number) kindObject).intValue();
             cursor = cursor.copy();
@@ -3095,12 +3096,11 @@ public final class GraalJSAccess {
     }
 
     public Object promiseResult(Object promise) {
-        return ((DynamicObject) promise).get(JSPromise.PROMISE_RESULT);
+        return JSObjectUtil.getHiddenProperty((DynamicObject) promise, JSPromise.PROMISE_RESULT);
     }
 
     public int promiseState(Object promise) {
-        Object state = ((DynamicObject) promise).get(JSPromise.PROMISE_STATE);
-        return ((Number) state).intValue();
+        return JSPromise.getPromiseState((DynamicObject) promise);
     }
 
     public Object promiseResolverNew(Object context) {

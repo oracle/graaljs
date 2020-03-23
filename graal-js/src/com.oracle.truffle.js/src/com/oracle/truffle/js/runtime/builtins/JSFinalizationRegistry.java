@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
 
@@ -51,8 +50,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.FinalizationRegistryPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -60,9 +57,9 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JSFinalizationRegistry extends JSBuiltinObject implements JSConstructorFactory.Default, PrototypeSupplier {
@@ -72,53 +69,58 @@ public final class JSFinalizationRegistry extends JSBuiltinObject implements JSC
     public static final String CLASS_NAME = "FinalizationRegistry";
     public static final String PROTOTYPE_NAME = "FinalizationRegistry.prototype";
 
-    private static final HiddenKey CLEANUP_CALLBACK_ID = new HiddenKey("cleanup_callback");
-    private static final Property CLEANUP_CALLBACK_PROPERTY;
-    private static final HiddenKey CELLS_ID = new HiddenKey("cells");
-    private static final Property CELLS_PROPERTY;
-    private static final HiddenKey REFERENCE_QUEUE_ID = new HiddenKey("reference_queue");
-    private static final Property REFERENCE_QUEUE_PROPERTY;
-
     public static final HiddenKey FINALIZATION_REGISTRY_ID = new HiddenKey("FinalizationRegistry");
 
-    static {
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        CLEANUP_CALLBACK_PROPERTY = JSObjectUtil.makeHiddenProperty(CLEANUP_CALLBACK_ID, allocator.locationForType(DynamicObject.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
-        CELLS_PROPERTY = JSObjectUtil.makeHiddenProperty(CELLS_ID, allocator.locationForType(List.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
-        REFERENCE_QUEUE_PROPERTY = JSObjectUtil.makeHiddenProperty(REFERENCE_QUEUE_ID, allocator.locationForType(ReferenceQueue.class, EnumSet.of(LocationModifier.NonNull)));
+    public static class FinalizationRegistryImpl extends JSBasicObject {
+        TruffleObject cleanupCallback;
+        List<FinalizationRecord> cells;
+        ReferenceQueue<Object> referenceQueue;
+
+        protected FinalizationRegistryImpl(JSRealm realm, JSObjectFactory factory, TruffleObject cleanupCallback, List<FinalizationRecord> cells, ReferenceQueue<Object> referenceQueue) {
+            super(realm, factory);
+            this.cleanupCallback = cleanupCallback;
+            this.cells = cells;
+            this.referenceQueue = referenceQueue;
+        }
+
+        public static FinalizationRegistryImpl create(JSRealm realm, JSObjectFactory factory, TruffleObject cleanupCallback, List<FinalizationRecord> cells, ReferenceQueue<Object> referenceQueue) {
+            return new FinalizationRegistryImpl(realm, factory, cleanupCallback, cells, referenceQueue);
+        }
     }
 
     private JSFinalizationRegistry() {
     }
 
     public static DynamicObject create(JSContext context, TruffleObject cleanupCallback) {
-        DynamicObject obj = JSObject.create(context, context.getFinalizationRegistryFactory(), cleanupCallback, new ArrayList<>(), new ReferenceQueue<>());
+        JSRealm realm = context.getRealm();
+        DynamicObject obj = FinalizationRegistryImpl.create(realm, context.getFinalizationRegistryFactory(), cleanupCallback, new ArrayList<>(), new ReferenceQueue<>());
         assert isJSFinalizationRegistry(obj);
         context.registerFinalizationRegistry(obj);
+        context.trackAllocation(obj);
         return obj;
     }
 
     @SuppressWarnings("unchecked")
     private static List<FinalizationRecord> getCells(DynamicObject obj) {
         assert isJSFinalizationRegistry(obj);
-        return (List<FinalizationRecord>) CELLS_PROPERTY.get(obj, isJSFinalizationRegistry(obj));
+        return ((FinalizationRegistryImpl) obj).cells;
     }
 
-    public static DynamicObject getCleanupCallback(DynamicObject obj) {
+    public static TruffleObject getCleanupCallback(DynamicObject obj) {
         assert isJSFinalizationRegistry(obj);
-        return (DynamicObject) CLEANUP_CALLBACK_PROPERTY.get(obj, isJSFinalizationRegistry(obj));
+        return ((FinalizationRegistryImpl) obj).cleanupCallback;
     }
 
     @SuppressWarnings("unchecked")
     public static ReferenceQueue<Object> getReferenceQueue(DynamicObject obj) {
         assert isJSFinalizationRegistry(obj);
-        return (ReferenceQueue<Object>) REFERENCE_QUEUE_PROPERTY.get(obj, isJSFinalizationRegistry(obj));
+        return ((FinalizationRegistryImpl) obj).referenceQueue;
     }
 
     @Override
     public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, FinalizationRegistryPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
@@ -127,11 +129,7 @@ public final class JSFinalizationRegistry extends JSBuiltinObject implements JSC
 
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
-        Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSFinalizationRegistry.INSTANCE, context);
-        initialShape = initialShape.addProperty(CLEANUP_CALLBACK_PROPERTY);
-        initialShape = initialShape.addProperty(CELLS_PROPERTY);
-        initialShape = initialShape.addProperty(REFERENCE_QUEUE_PROPERTY);
-        return initialShape;
+        return JSObjectUtil.getProtoChildShape(prototype, JSFinalizationRegistry.INSTANCE, context);
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {

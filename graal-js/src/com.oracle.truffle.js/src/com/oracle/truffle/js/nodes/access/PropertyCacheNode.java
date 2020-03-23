@@ -56,6 +56,7 @@ import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
@@ -308,7 +309,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean accept(Object thisObj) {
-            assert thisObj == null || !(JSObject.isDynamicObject(thisObj)) || ((DynamicObject) thisObj).getShape().isRelated(getShape()) : "shapes are not related";
             return true;
         }
 
@@ -861,7 +861,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             return 1;
         }
 
-        @ExplodeLoop
         @Override
         public boolean isValid() {
             if (!shapeValidAssumption.isValid()) {
@@ -1046,6 +1045,11 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             this.receiverCheck = receiverCheck;
         }
 
+        protected CacheNode(T next, ReceiverCheckNode receiverCheck) {
+            this.next = next;
+            this.receiverCheck = receiverCheck;
+        }
+
         protected final T getNext() {
             return next;
         }
@@ -1190,7 +1194,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         return res;
     }
 
-    private T createSpecialization(Object thisObj, T currentHead, int cachedCount, Object value) {
+    protected T createSpecialization(Object thisObj, T currentHead, int cachedCount, Object value) {
         int depth = 0;
         T specialized = null;
 
@@ -1208,7 +1212,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         while (store != null) {
             // check for obsolete shape
-            if (store.updateShape()) {
+            if (DynamicObjectLibrary.getUncached().updateShape(store)) {
                 return retryCache();
             }
 
@@ -1223,7 +1227,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                 // check if we're creating unnecessary polymorphism due to compatible types
                 synchronized (store.getShape().getMutex()) {
                     if (tryMergeShapes(cacheShape, currentHead)) {
-                        store.updateShape();
+                        DynamicObjectLibrary.getUncached().updateShape(store);
                         return retryCache();
                     }
                 }
@@ -1260,7 +1264,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         return insertCached(specialized, currentHead, cachedCount);
     }
 
-    private static boolean alwaysUseStore(DynamicObject store, Object key) {
+    protected static boolean alwaysUseStore(DynamicObject store, Object key) {
         return JSProxy.isProxy(store) || (JSArrayBufferView.isJSArrayBufferView(store) && isNonIntegerIndex(key)) || key instanceof HiddenKey;
     }
 
@@ -1299,7 +1303,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         }
     }
 
-    private T insertCached(T specialized, T currentHead, int cachedCount) {
+    protected T insertCached(T specialized, T currentHead, int cachedCount) {
         assert currentHead == this.cacheNode;
         // insert specialization at the front
         invalidateCache();
@@ -1614,6 +1618,17 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             return getset + origKey.substring(0, 1).toUpperCase() + origKey.substring(1);
         }
         return null;
+    }
+
+    protected static DynamicObjectLibrary createCachedAccess(Object key, ReceiverCheckNode receiverCheck, DynamicObject store) {
+        assert key != null;
+        if (receiverCheck instanceof AbstractAssumptionShapeCheckNode) {
+            return DynamicObjectLibrary.getFactory().create(store);
+        } else if (receiverCheck instanceof AbstractShapeCheckNode && !(receiverCheck instanceof AbstractAssumptionShapeCheckNode)) {
+            return DynamicObjectLibrary.getFactory().create(store);
+        } else {
+            return DynamicObjectLibrary.getFactory().createDispatched(JSConfig.PropertyCacheLimit);
+        }
     }
 
     private static final DebugCounter polymorphicCount = DebugCounter.create("Polymorphic property cache count");

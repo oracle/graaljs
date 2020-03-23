@@ -66,7 +66,7 @@ public final class JSSlowArray extends JSAbstractArray {
     }
 
     public static boolean isJSSlowArray(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSSlowArray((DynamicObject) obj);
+        return JSObject.isJSObject(obj) && isJSSlowArray((DynamicObject) obj);
     }
 
     public static boolean isJSSlowArray(DynamicObject obj) {
@@ -101,7 +101,7 @@ public final class JSSlowArray extends JSAbstractArray {
     @TruffleBoundary
     @Override
     public boolean delete(DynamicObject thisObj, long index, boolean isStrict) {
-        ScriptArray array = arrayGetArrayType(thisObj);
+        ScriptArray array = arrayAccess().getArrayType(thisObj);
         if (array.hasElement(thisObj, index)) {
             ScriptArray arrayType = arrayGetArrayType(thisObj);
             if (arrayType.canDeleteElement(thisObj, index, isStrict)) {
@@ -130,7 +130,7 @@ public final class JSSlowArray extends JSAbstractArray {
     @Override
     protected boolean defineOwnPropertyIndex(DynamicObject thisObj, String name, PropertyDescriptor descriptor, boolean doThrow) {
         long index = JSRuntime.toUInt32(name);
-        if (index >= this.getLength(thisObj)) {
+        if (index >= getLength(thisObj)) {
             PropertyDescriptor desc = getOwnProperty(thisObj, LENGTH);
             if (!desc.getWritable()) {
                 return DefinePropertyUtil.reject(doThrow, ARRAY_LENGTH_NOT_WRITABLE);
@@ -168,8 +168,8 @@ public final class JSSlowArray extends JSAbstractArray {
         return true;
     }
 
-    protected static boolean jsDefineProperty(DynamicObject thisObj, long index, PropertyDescriptor descriptor, boolean doThrow) {
-        ScriptArray internalArray = arrayGetArrayType(thisObj);
+    private boolean jsDefineProperty(DynamicObject thisObj, long index, PropertyDescriptor descriptor, boolean doThrow) {
+        ScriptArray internalArray = arrayAccess().getArrayType(thisObj);
         boolean copyValue = (internalArray.hasElement(thisObj, index) && (!descriptor.hasValue() && !descriptor.hasGet()));
         boolean succeed = DefinePropertyUtil.ordinaryDefineOwnProperty(thisObj, Boundaries.stringValueOf(index), descriptor, doThrow);
         if (copyValue) {

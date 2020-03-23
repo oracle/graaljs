@@ -67,12 +67,11 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -282,18 +281,19 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
                 if (realm == null) {
                     realm = context.getRealm();
                 }
-                errorObj = createErrorFromJSException(exception, realm);
-                initErrorObjectNode.execute(errorObj, exception);
+                String message = exception.getRawMessage();
+                assert message != null;
+                errorObj = JSError.createErrorObject(context, realm, exception.getErrorType());
+                initErrorObjectNode.execute(errorObj, exception, message);
                 exception.setErrorObject(errorObj);
             }
             return errorObj;
         }
 
         @TruffleBoundary
-        private DynamicObject createErrorFromJSException(JSException exception, JSRealm realm) {
-            JSErrorType errorType = exception.getErrorType();
+        private static DynamicObject createErrorFromJSException(JSException exception, JSRealm realm) {
             String message = Objects.requireNonNull(exception.getRawMessage());
-            return JSObject.createWithPrototype(context, context.getErrorFactory(errorType, true), realm, realm.getErrorPrototype(errorType), message);
+            return JSError.createFromJSException(exception, realm, message);
         }
     }
 }

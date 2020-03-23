@@ -47,6 +47,7 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Boundaries;
@@ -58,12 +59,14 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
+import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 import com.oracle.truffle.js.runtime.util.IteratorUtil;
@@ -200,7 +203,7 @@ public abstract class JSBuiltinObject extends JSClass {
                 }
                 return false;
             }
-            return object.delete(key);
+            return DynamicObjectLibrary.getUncached().removeKey(object, key);
         } else {
             /* the prototype might have a property with that name, but we don't care */
             return true;
@@ -456,10 +459,14 @@ public abstract class JSBuiltinObject extends JSClass {
     public static PropertyDescriptor ordinaryGetOwnPropertyIntl(DynamicObject thisObj, Object key, Property prop) {
         PropertyDescriptor desc;
         if (JSProperty.isData(prop)) {
-            desc = PropertyDescriptor.createData(JSObject.get(thisObj, key));
+            Object value = JSDynamicObject.getOrNull(thisObj, key);
+            if (JSProperty.isProxy(prop)) {
+                value = ((PropertyProxy) value).get(thisObj);
+            }
+            desc = PropertyDescriptor.createData(value);
             desc.setWritable(JSProperty.isWritable(prop));
         } else if (JSProperty.isAccessor(prop)) {
-            Accessor acc = (Accessor) prop.get(thisObj, false);
+            Accessor acc = (Accessor) JSDynamicObject.getOrNull(thisObj, key);
             desc = PropertyDescriptor.createAccessor(acc.getGetter(), acc.getSetter());
         } else {
             desc = PropertyDescriptor.createEmpty();
@@ -470,33 +477,93 @@ public abstract class JSBuiltinObject extends JSClass {
     }
 
     @Override
-    @TruffleBoundary
     public boolean setIntegrityLevel(DynamicObject thisObj, boolean freeze, boolean doThrow) {
-        Shape shape = thisObj.getShape();
-        if (thisObj.updateShape()) {
-            shape = thisObj.getShape();
+        if (usesOrdinaryGetOwnProperty()) {
+            return setIntegrityLevelFast(thisObj, freeze);
         }
-        Shape newShape = freeze ? JSShape.freeze(shape) : JSShape.seal(shape);
-        if (shape != newShape) {
-            thisObj.setShapeAndGrow(shape, newShape);
-            thisObj.updateShape();
+        return super.setIntegrityLevel(thisObj, freeze, doThrow);
+    }
+
+    @TruffleBoundary
+    protected final boolean setIntegrityLevelFast(DynamicObject thisObj, boolean freeze) {
+        if (testIntegrityLevelFast(thisObj, freeze)) {
+            return true;
         }
-        return JSObject.preventExtensions(thisObj, doThrow);
+
+        for (Property property : JSDynamicObject.getPropertyArray(thisObj)) {
+            if (!property.isHidden()) {
+                int oldFlags = property.getFlags();
+                int newFlags = oldFlags | JSAttributes.NOT_CONFIGURABLE;
+                if (freeze && ((oldFlags & JSProperty.ACCESSOR) == 0)) {
+                    newFlags |= JSAttributes.NOT_WRITABLE;
+                }
+                if (newFlags != oldFlags) {
+                    Object key = property.getKey();
+                    JSDynamicObject.setPropertyFlags(thisObj, key, newFlags);
+                    assert JSDynamicObject.getPropertyFlags(thisObj, key) == newFlags;
+                }
+            }
+        }
+        assert testSealedProperties(thisObj) && (!freeze || testFrozenProperties(thisObj));
+        boolean result = preventExtensionsImpl(thisObj, JSShape.SEALED_FLAG | (freeze ? JSShape.FROZEN_FLAG : 0));
+        assert result && testIntegrityLevel(thisObj, freeze);
+        return true;
+    }
+
+    /**
+     * ES2015 7.3.15 TestIntegrityLevel(O, level).
+     */
+    @Override
+    public boolean testIntegrityLevel(DynamicObject obj, boolean frozen) {
+        if (usesOrdinaryGetOwnProperty()) {
+            return testIntegrityLevelFast(obj, frozen);
+        }
+        return super.testIntegrityLevel(obj, frozen);
+    }
+
+    @TruffleBoundary
+    protected static boolean testIntegrityLevelFast(DynamicObject obj, boolean frozen) {
+        int objectFlags = JSDynamicObject.getObjectFlags(obj);
+        if (frozen) {
+            return (objectFlags & JSShape.FROZEN_FLAG) != 0;
+        } else {
+            return (objectFlags & JSShape.SEALED_FLAG) != 0;
+        }
     }
 
     @TruffleBoundary
     @Override
     public boolean preventExtensions(DynamicObject thisObj, boolean doThrow) {
-        Shape shape = thisObj.getShape();
-        if (thisObj.updateShape()) {
-            shape = thisObj.getShape();
+        return preventExtensionsImpl(thisObj, 0);
+    }
+
+    protected final boolean preventExtensionsImpl(DynamicObject thisObj, int extraFlags) {
+        int objectFlags = JSDynamicObject.getObjectFlags(thisObj);
+        if ((objectFlags & JSShape.NOT_EXTENSIBLE_FLAG) != 0 && ((objectFlags & extraFlags) == extraFlags)) {
+            return true;
         }
-        Shape newShape = JSShape.makeNotExtensible(shape);
-        if (shape != newShape) {
-            thisObj.setShapeAndGrow(shape, newShape);
-            thisObj.updateShape();
+
+        int newFlags = objectFlags | JSShape.NOT_EXTENSIBLE_FLAG | extraFlags;
+        // add sealed/frozen flags if properties already have appropriate attributes.
+        if ((newFlags & JSShape.SEALED_FLAG) == 0 && testSealedProperties(thisObj)) {
+            newFlags |= JSShape.SEALED_FLAG;
         }
+        if ((newFlags & JSShape.SEALED_FLAG) != 0 && (newFlags & JSShape.FROZEN_FLAG) == 0 && testFrozenProperties(thisObj)) {
+            newFlags |= JSShape.FROZEN_FLAG;
+        }
+        if (newFlags != objectFlags) {
+            JSDynamicObject.setObjectFlags(thisObj, newFlags);
+        }
+        assert !isExtensible(thisObj);
         return true;
+    }
+
+    private static boolean testSealedProperties(DynamicObject thisObj) {
+        return JSDynamicObject.testProperties(thisObj, p -> p.isHidden() || (p.getFlags() & JSAttributes.NOT_CONFIGURABLE) != 0);
+    }
+
+    private static boolean testFrozenProperties(DynamicObject thisObj) {
+        return JSDynamicObject.testProperties(thisObj, p -> p.isHidden() || (p.getFlags() & JSProperty.ACCESSOR) != 0 || (p.getFlags() & JSAttributes.NOT_WRITABLE) != 0);
     }
 
     @Override
@@ -531,42 +598,47 @@ public abstract class JSBuiltinObject extends JSClass {
 
     @TruffleBoundary
     static boolean setPrototypeStatic(DynamicObject thisObj, DynamicObject newPrototype) {
-        if (!checkProtoCycle(thisObj, newPrototype)) {
-            return false;
-        }
-        Shape shape = thisObj.getShape();
         Object oldPrototype = JSObject.getPrototype(thisObj);
         if (oldPrototype == newPrototype) {
             return true;
         }
+        if (!checkProtoCycle(thisObj, newPrototype)) {
+            return false;
+        }
+        Shape shape = thisObj.getShape();
         if (!JSShape.isExtensible(shape)) {
             return false;
         }
         if (JSShape.isPrototypeInShape(shape)) {
-            JSObjectUtil.setPrototype(thisObj, newPrototype);
+            if (true) {
+                JSObjectUtil.setPrototypeImpl(thisObj, newPrototype);
+            } else {
+                DynamicObjectLibrary.getUncached().putConstant(thisObj, JSObject.HIDDEN_PROTO, newPrototype, 0);
+            }
         } else {
-            JSShape.getPrototypeProperty(shape).setSafe(thisObj, newPrototype, null);
+            boolean success = DynamicObjectLibrary.getUncached().putIfPresent(thisObj, JSObject.HIDDEN_PROTO, newPrototype);
+            assert success;
         }
         return true;
     }
 
     public static boolean checkProtoCycle(DynamicObject thisObj, DynamicObject newPrototype) {
-        DynamicObject check = newPrototype;
-        while (check != Null.instance) {
-            if (check == thisObj) {
+        DynamicObject proto = newPrototype;
+        while (proto != Null.instance) {
+            if (proto == thisObj) {
                 return false;
             }
             // 9.1.2.1 If p.[[GetPrototypeOf]] is not the ordinary object internal method
-            if (JSProxy.isProxy(check)) {
+            if (JSProxy.isProxy(proto)) {
                 return true;
             }
-            check = JSObject.getPrototype(check);
+            proto = JSObject.getPrototype(proto);
         }
         return true;
     }
 
     protected static void putConstructorSpeciesGetter(JSRealm realm, DynamicObject constructor) {
-        JSObjectUtil.putConstantAccessorProperty(realm.getContext(), constructor, Symbol.SYMBOL_SPECIES, createSymbolSpeciesGetterFunction(realm), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(constructor, Symbol.SYMBOL_SPECIES, createSymbolSpeciesGetterFunction(realm), Undefined.instance);
     }
 
     protected static DynamicObject createSymbolSpeciesGetterFunction(JSRealm realm) {

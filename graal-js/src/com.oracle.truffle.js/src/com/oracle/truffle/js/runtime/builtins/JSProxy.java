@@ -48,7 +48,6 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
@@ -59,9 +58,9 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.objects.JSClassObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -73,10 +72,6 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     public static final String CLASS_NAME = "Proxy";
 
     public static final JSProxy INSTANCE = new JSProxy();
-
-    /* 9.5.15: Internal slots */
-    private static final Property PROXY_TARGET_PROPERTY;
-    private static final Property PROXY_HANDLER_PROPERTY;
 
     /* 9.5: Internal methods */
     public static final String GET_PROTOTYPE_OF = "getPrototypeOf";
@@ -93,16 +88,41 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     public static final String APPLY = "apply";
     public static final String CONSTRUCT = "construct";
 
-    private static final HiddenKey PROXY_TARGET = new HiddenKey("ProxyTarget");
-    private static final HiddenKey PROXY_HANDLER = new HiddenKey("ProxyHandler");
-
     public static final HiddenKey REVOCABLE_PROXY = new HiddenKey("RevocableProxy");
     public static final HiddenKey REVOKED_CALLABLE = new HiddenKey("RevokedCallable");
 
-    static {
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        PROXY_TARGET_PROPERTY = JSObjectUtil.makeHiddenProperty(PROXY_TARGET, allocator.locationForType(Object.class));
-        PROXY_HANDLER_PROPERTY = JSObjectUtil.makeHiddenProperty(PROXY_HANDLER, allocator.locationForType(DynamicObject.class));
+    public static class ProxyObjectImpl extends JSClassObject {
+        private Object proxyTarget;
+        private DynamicObject proxyHandler;
+
+        protected ProxyObjectImpl(JSRealm realm, JSObjectFactory factory, Object proxyTarget, DynamicObject proxyHandler) {
+            super(realm, factory);
+            this.proxyTarget = proxyTarget;
+            this.proxyHandler = proxyHandler;
+        }
+
+        protected ProxyObjectImpl(Shape shape, Object proxyTarget, DynamicObject proxyHandler) {
+            super(shape);
+            this.proxyTarget = proxyTarget;
+            this.proxyHandler = proxyHandler;
+        }
+
+        public DynamicObject getProxyHandler() {
+            return proxyHandler;
+        }
+
+        public Object getProxyTarget() {
+            return proxyTarget;
+        }
+
+        public void revoke() {
+            this.proxyHandler = Null.instance;
+            this.proxyTarget = Null.instance;
+        }
+
+        public static DynamicObject create(JSRealm realm, JSObjectFactory factory, Object target, DynamicObject handler) {
+            return new ProxyObjectImpl(realm, factory, target, handler);
+        }
     }
 
     public static boolean checkPropertyIsSettable(Object truffleTarget, Object key) {
@@ -137,16 +157,12 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     public static DynamicObject create(JSContext context, Object target, DynamicObject handler) {
-        return JSObject.create(context, context.getProxyFactory(), target, handler);
+        return ProxyObjectImpl.create(context.getRealm(), context.getProxyFactory(), target, handler);
     }
 
     public static Object getTarget(DynamicObject obj) {
-        return getTarget(obj, isProxy(obj));
-    }
-
-    public static Object getTarget(DynamicObject obj, boolean floatingCondition) {
         assert isProxy(obj);
-        return PROXY_TARGET_PROPERTY.get(obj, floatingCondition);
+        return ((ProxyObjectImpl) obj).getProxyTarget();
     }
 
     /**
@@ -162,7 +178,8 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     public static DynamicObject getHandler(DynamicObject obj) {
-        return getHandler(obj, isProxy(obj));
+        assert isProxy(obj);
+        return ((ProxyObjectImpl) obj).getProxyHandler();
     }
 
     public static DynamicObject getHandlerChecked(DynamicObject obj) {
@@ -182,28 +199,22 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         return handler;
     }
 
-    public static DynamicObject getHandler(DynamicObject obj, boolean floatingCondition) {
-        assert isProxy(obj);
-        return (DynamicObject) PROXY_HANDLER_PROPERTY.get(obj, floatingCondition);
-    }
-
     // ES2015, 26.2.2.1.1
     public static void revoke(DynamicObject obj) {
         assert JSProxy.isProxy(obj);
         try {
-            PROXY_TARGET_PROPERTY.set(obj, Null.instance, null);
-            PROXY_HANDLER_PROPERTY.set(obj, Null.instance, null);
+            ((ProxyObjectImpl) obj).revoke();
         } catch (Exception ex) {
             throw Errors.createTypeError("cannot revoke proxy");
         }
     }
 
     public static boolean isProxy(Object obj) {
-        return JSObject.isDynamicObject(obj) && isProxy((DynamicObject) obj);
+        return obj instanceof ProxyObjectImpl;
     }
 
     public static boolean isProxy(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof ProxyObjectImpl;
     }
 
     @TruffleBoundary
@@ -583,8 +594,6 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
-        initialShape = initialShape.addProperty(PROXY_TARGET_PROPERTY);
-        initialShape = initialShape.addProperty(PROXY_HANDLER_PROPERTY);
         return initialShape;
     }
 
@@ -593,7 +602,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         JSObjectUtil.putFunctionsFromContainer(realm, proxyConstructor, ProxyFunctionBuiltins.BUILTINS);
         // Proxy constructor does not have a prototype property (ES6 26.2.2)
         // Still, makeInitialShape currently needs a dummy prototype
-        DynamicObject dummyPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject dummyPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         return new JSConstructor(proxyConstructor, dummyPrototype);
     }
 
@@ -644,7 +653,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     @TruffleBoundary
     @Override
     public boolean setPrototypeOf(DynamicObject thisObj, DynamicObject newPrototype) {
-        assert JSObject.isDynamicObject(newPrototype) || newPrototype == Null.instance;
+        assert JSObjectUtil.isValidPrototype(newPrototype);
         DynamicObject handler = getHandlerChecked(thisObj);
         Object target = getTarget(thisObj);
         Object setPrototypeOfFn = getTrapFromObject(handler, SET_PROTOTYPE_OF);
@@ -818,7 +827,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     public static Object checkTrapReturnValue(Object trapResult) {
-        if (JSObject.isDynamicObject(trapResult) || trapResult == Undefined.instance) {
+        if (JSObject.isJSObject(trapResult) || trapResult == Undefined.instance) {
             return trapResult;
         } else {
             throw Errors.createTypeError("proxy must return an object");

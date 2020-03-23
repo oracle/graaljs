@@ -68,6 +68,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -176,7 +177,7 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
             @Override
             public AsyncStackTraceInfo getAsyncStackTraceInfo(DynamicObject handlerFunction) {
                 assert JSFunction.isJSFunction(handlerFunction) && ((RootCallTarget) JSFunction.getFunctionData(handlerFunction).getCallTarget()).getRootNode() == this;
-                ResolveElementArgs resolveArgs = (ResolveElementArgs) handlerFunction.get(PerformPromiseAllNode.RESOLVE_ELEMENT_ARGS_KEY, null);
+                ResolveElementArgs resolveArgs = (ResolveElementArgs) JSObjectUtil.getHiddenProperty(handlerFunction, PerformPromiseAllNode.RESOLVE_ELEMENT_ARGS_KEY);
                 int promiseIndex = resolveArgs.index;
                 JSRealm realm = JSFunction.getRealm(handlerFunction);
                 TruffleStackTraceElement asyncStackTraceElement = createPromiseAllStackTraceElement(promiseIndex, realm);

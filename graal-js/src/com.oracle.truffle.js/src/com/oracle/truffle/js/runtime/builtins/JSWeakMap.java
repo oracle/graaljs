@@ -40,24 +40,20 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.util.EnumSet;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.WeakMapPrototypeBuiltins;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSShape;
+import com.oracle.truffle.js.runtime.util.WeakMap;
 
 public final class JSWeakMap extends JSBuiltinObject implements JSConstructorFactory.Default, PrototypeSupplier {
 
@@ -66,31 +62,50 @@ public final class JSWeakMap extends JSBuiltinObject implements JSConstructorFac
     public static final String CLASS_NAME = "WeakMap";
     public static final String PROTOTYPE_NAME = CLASS_NAME + ".prototype";
 
-    private static final HiddenKey WEAKMAP_ID = new HiddenKey("weakmap");
-    private static final Property WEAKMAP_PROPERTY;
+    public static class WeakMapImpl extends JSBasicObject {
+        private final Map<DynamicObject, Object> weakHashMap;
 
-    static {
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        WEAKMAP_PROPERTY = JSObjectUtil.makeHiddenProperty(WEAKMAP_ID, allocator.locationForType(Map.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
+        protected WeakMapImpl(JSRealm realm, JSObjectFactory factory, Map<DynamicObject, Object> weakHashMap) {
+            super(realm, factory);
+            this.weakHashMap = weakHashMap;
+        }
+
+        protected WeakMapImpl(Shape shape, Map<DynamicObject, Object> weakHashMap) {
+            super(shape);
+            this.weakHashMap = weakHashMap;
+        }
+
+        public Map<DynamicObject, Object> getWeakHashMap() {
+            return weakHashMap;
+        }
+
+        public static WeakMapImpl create(JSRealm realm, JSObjectFactory factory, Map<DynamicObject, Object> weakHashMap) {
+            return new WeakMapImpl(realm, factory, weakHashMap);
+        }
     }
 
     private JSWeakMap() {
     }
 
+    public static DynamicObject create(JSContext context) {
+        WeakMap weakMap = new WeakMap();
+        JSRealm realm = context.getRealm();
+        DynamicObject obj = WeakMapImpl.create(realm, context.getWeakMapFactory(), weakMap);
+        assert isJSWeakMap(obj);
+        return context.trackAllocation(obj);
+    }
+
     @SuppressWarnings("unchecked")
     public static Map<DynamicObject, Object> getInternalWeakMap(DynamicObject obj) {
         assert isJSWeakMap(obj);
-        return (Map<DynamicObject, Object>) WEAKMAP_PROPERTY.get(obj, isJSWeakMap(obj));
-    }
-
-    public static PropertyGetNode createKeyMapGetterNode(JSContext context) {
-        return PropertyGetNode.createGetHidden(JSWeakMap.WEAKMAP_ID, context);
+        // return (Map<DynamicObject, Object>) WEAKMAP_PROPERTY.get(obj, isJSWeakMap(obj));
+        return ((WeakMapImpl) obj).getWeakHashMap();
     }
 
     @Override
     public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, WeakMapPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
@@ -100,7 +115,6 @@ public final class JSWeakMap extends JSBuiltinObject implements JSConstructorFac
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSWeakMap.INSTANCE, context);
-        initialShape = initialShape.addProperty(WEAKMAP_PROPERTY);
         return initialShape;
     }
 
@@ -129,7 +143,7 @@ public final class JSWeakMap extends JSBuiltinObject implements JSConstructorFac
     }
 
     public static boolean isJSWeakMap(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSWeakMap((DynamicObject) obj);
+        return JSObject.isJSObject(obj) && isJSWeakMap((DynamicObject) obj);
     }
 
     public static boolean isJSWeakMap(DynamicObject obj) {

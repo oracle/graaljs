@@ -108,7 +108,7 @@ public class SharedMemMessagingBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @Specialization
         public Object enter(DynamicObject self, DynamicObject nativeMessagePortData) {
             assert JSExternalObject.isJSExternalObject(nativeMessagePortData);
-            GraalJSAccess access = (GraalJSAccess) SharedMemMessagingBindings.getApiField(self);
+            GraalJSAccess access = SharedMemMessagingBindings.getApiField(self);
             access.setCurrentMessagePortData(nativeMessagePortData);
             return self;
         }
@@ -125,7 +125,7 @@ public class SharedMemMessagingBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @Specialization
         public boolean encodedJavaRefs(DynamicObject self) {
-            GraalJSAccess access = (GraalJSAccess) SharedMemMessagingBindings.getApiField(self);
+            GraalJSAccess access = SharedMemMessagingBindings.getApiField(self);
             assert access.getCurrentMessagePortData() != null;
             return access.getCurrentMessagePortData().encodedJavaRefs();
         }
@@ -142,7 +142,7 @@ public class SharedMemMessagingBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @Specialization
         public Object free(DynamicObject self) {
-            GraalJSAccess access = (GraalJSAccess) SharedMemMessagingBindings.getApiField(self);
+            GraalJSAccess access = SharedMemMessagingBindings.getApiField(self);
             access.getCurrentMessagePortData().disposeLastMessageRefs();
             return self;
         }
@@ -159,7 +159,7 @@ public class SharedMemMessagingBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @Specialization
         public Object leave(DynamicObject self) {
-            GraalJSAccess access = (GraalJSAccess) SharedMemMessagingBindings.getApiField(self);
+            GraalJSAccess access = SharedMemMessagingBindings.getApiField(self);
             access.unsetCurrentMessagePortData();
             return self;
         }

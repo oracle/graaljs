@@ -47,6 +47,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public abstract class HasHiddenKeyCacheNode extends JavaScriptBaseNode {
     protected final HiddenKey key;
@@ -75,7 +76,7 @@ public abstract class HasHiddenKeyCacheNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "isJSObject(object)", replaces = {"doCached"})
     protected final boolean doUncached(DynamicObject object) {
-        return object.containsKey(key);
+        return JSDynamicObject.hasProperty(object, key);
     }
 
     @Specialization(guards = "!isJSObject(object)")

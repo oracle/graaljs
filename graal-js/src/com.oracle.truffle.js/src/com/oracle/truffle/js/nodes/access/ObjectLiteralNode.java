@@ -366,8 +366,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             Shape newShape;
             Property newProperty;
             if (property != null) {
-                if (JSProperty.isData(property) && !JSProperty.isProxy(property)) {
-                    assert JSProperty.isWritable(property);
+                if (JSProperty.isData(property) && !JSProperty.isProxy(property) && (property.getFlags() & JSAttributes.ATTRIBUTES_MASK) == attributes) {
                     property.setGeneric(obj, value, null);
                 } else {
                     JSObjectUtil.defineDataProperty(obj, name, value, attributes);

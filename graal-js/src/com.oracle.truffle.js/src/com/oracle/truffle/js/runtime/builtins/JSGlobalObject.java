@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -64,22 +65,33 @@ public final class JSGlobalObject extends JSBuiltinObject {
     public static DynamicObject create(JSRealm realm, DynamicObject objectPrototype) {
         CompilerAsserts.neverPartOfCompilation();
         JSContext context = realm.getContext();
-        DynamicObject global;
-        if (context.isMultiContext()) {
-            Shape shape = context.makeEmptyShapeWithPrototypeInObject(INSTANCE, JSObject.PROTO_PROPERTY);
-            global = JSObject.createInit(shape);
-            JSObject.PROTO_PROPERTY.setSafe(global, objectPrototype, shape);
-        } else {
-            // keep a separate shape tree for the global object in order not to pollute user objects
-            Shape shape = JSShape.makeUniqueRootWithPrototype(JSObject.LAYOUT, INSTANCE, context, objectPrototype);
-            global = JSObject.createInit(shape);
-        }
+        Shape globalObjectShape = makeGlobalObjectShape(context, objectPrototype);
+
+        DynamicObject global = new GlobalObject(globalObjectShape);
+        JSObjectUtil.setOrVerifyPrototype(context, global, objectPrototype);
+
         JSObjectUtil.putDataProperty(context, global, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return global;
     }
 
+    public static Shape makeGlobalObjectShape(JSContext context, DynamicObject objectPrototype) {
+        // keep a separate shape tree for the global object in order not to pollute user objects
+        boolean singleContext = !context.isMultiContext();
+        Shape globalObjectShape = JSShape.newBuilder(context, JSGlobalObject.INSTANCE).propertyAssumptions(singleContext).singleContextAssumption(
+                        singleContext ? context.getSingleRealmAssumption() : null).build();
+        if (singleContext) {
+            globalObjectShape = Shape.newBuilder(globalObjectShape).addConstantProperty(JSObject.HIDDEN_PROTO, objectPrototype, 0).build();
+        }
+        return globalObjectShape;
+    }
+
+    public static DynamicObject createGlobalScope(JSContext context) {
+        CompilerAsserts.neverPartOfCompilation();
+        return new GlobalObject(context.getGlobalScopeShape());
+    }
+
     public static boolean isJSGlobalObject(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSGlobalObject((DynamicObject) obj);
+        return JSObject.isJSObject(obj) && isJSGlobalObject((DynamicObject) obj);
     }
 
     public static boolean isJSGlobalObject(DynamicObject obj) {
@@ -91,4 +103,14 @@ public final class JSGlobalObject extends JSBuiltinObject {
         return CLASS_NAME;
     }
 
+    public static final class GlobalObject extends JSBasicObject {
+        protected GlobalObject(Shape shape) {
+            super(shape);
+        }
+
+        @Override
+        public String getClassName() {
+            return CLASS_NAME;
+        }
+    }
 }

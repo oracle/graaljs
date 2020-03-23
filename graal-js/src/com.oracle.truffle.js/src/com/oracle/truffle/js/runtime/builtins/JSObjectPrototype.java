@@ -53,6 +53,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantEmptyPrototypeArray;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
 public final class JSObjectPrototype extends JSBuiltinObject {
@@ -66,14 +67,11 @@ public final class JSObjectPrototype extends JSBuiltinObject {
     }
 
     public static DynamicObject create(JSContext context) {
-        Shape objectPrototypeShape = context.makeEmptyShapeWithNullPrototype(INSTANCE);
-        DynamicObject obj = JSObject.createInit(objectPrototypeShape);
-        JSAbstractArray.putArrayProperties(obj, ConstantEmptyPrototypeArray.createConstantEmptyPrototypeArray());
-        return obj;
+        return ObjectPrototypeImpl.create(context.makeEmptyShapeWithNullPrototype(JSObjectPrototype.INSTANCE));
     }
 
     public static boolean isJSObjectPrototype(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSObjectPrototype((DynamicObject) obj);
+        return JSObject.isJSObject(obj) && isJSObjectPrototype((DynamicObject) obj);
     }
 
     public static boolean isJSObjectPrototype(DynamicObject obj) {
@@ -215,6 +213,17 @@ public final class JSObjectPrototype extends JSBuiltinObject {
             JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
         }
         return result;
+    }
+
+    public static class ObjectPrototypeImpl extends JSArrayBase {
+        protected ObjectPrototypeImpl(Shape shape) {
+            super(shape, ConstantEmptyPrototypeArray.createConstantEmptyPrototypeArray(), ScriptArray.EMPTY_OBJECT_ARRAY, null, 0, 0, 0, 0, 0);
+        }
+
+        public static DynamicObject create(Shape shape) {
+            assert JSShape.getJSClassNoCast(shape) == JSObjectPrototype.INSTANCE;
+            return new ObjectPrototypeImpl(shape);
+        }
     }
 
 }

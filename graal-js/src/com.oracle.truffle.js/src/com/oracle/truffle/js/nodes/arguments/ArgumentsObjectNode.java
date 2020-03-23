@@ -40,16 +40,25 @@
  */
 package com.oracle.truffle.js.nodes.arguments;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.RealmNode;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 import java.util.Set;
@@ -63,11 +72,22 @@ public abstract class ArgumentsObjectNode extends JavaScriptNode {
     private final int leadingArgCount;
     private final int trailingArgCount;
 
+    @Child private DynamicObjectLibrary putLengthNode;
+    @Child private DynamicObjectLibrary putSymbolIteratorNode;
+    @Child private DynamicObjectLibrary putCalleeNode;
+    @Child private DynamicObjectLibrary putCallerNode;
+
+    private static final int THROWER_ACCESSOR_PROPERTY_FLAGS = JSAttributes.notConfigurableNotEnumerable() | JSProperty.ACCESSOR;
+
     protected ArgumentsObjectNode(JSContext context, boolean strict, int leadingArgCount, int trailingArgCount) {
         this.strict = strict;
         this.realmNode = RealmNode.create(context);
         this.leadingArgCount = leadingArgCount;
         this.trailingArgCount = trailingArgCount;
+
+        this.putLengthNode = JSObjectUtil.createDispatched(JSArgumentsObject.LENGTH, JSConfig.PropertyCacheLimit);
+        this.putSymbolIteratorNode = JSObjectUtil.createDispatched(Symbol.SYMBOL_ITERATOR, JSConfig.PropertyCacheLimit);
+        this.putCalleeNode = JSObjectUtil.createDispatched(JSArgumentsObject.CALLEE, JSConfig.PropertyCacheLimit);
     }
 
     public static JavaScriptNode create(JSContext context, boolean strict, int leadingArgCount, int trailingArgCount) {
@@ -84,13 +104,43 @@ public abstract class ArgumentsObjectNode extends JavaScriptNode {
     @Specialization(guards = "isStrict(frame)")
     protected DynamicObject doStrict(VirtualFrame frame) {
         Object[] arguments = getObjectArray(frame);
-        return JSArgumentsObject.createStrict(realmNode.getContext(), realmNode.execute(frame), arguments);
+        JSContext context = realmNode.getContext();
+        JSRealm realm = realmNode.execute(frame);
+
+        JSObjectFactory factory = context.getStrictArgumentsFactory();
+        DynamicObject argumentsObject = JSArgumentsObject.createUnmapped(factory.getShape(realm), arguments);
+        factory.initProto(argumentsObject, realm);
+
+        putLengthNode.putWithFlags(argumentsObject, JSArgumentsObject.LENGTH, arguments.length, JSAttributes.getDefaultNotEnumerable());
+        putSymbolIteratorNode.putWithFlags(argumentsObject, Symbol.SYMBOL_ITERATOR, realm.getArrayProtoValuesIterator(), JSAttributes.getDefaultNotEnumerable());
+
+        putCalleeNode.putWithFlags(argumentsObject, JSArgumentsObject.CALLEE, realm.getThrowerAccessor(), THROWER_ACCESSOR_PROPERTY_FLAGS);
+        if (realm.getContext().getEcmaScriptVersion() < JSConfig.ECMAScript2017) {
+            if (putCallerNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                putCallerNode = insert(JSObjectUtil.createDispatched(JSArgumentsObject.CALLER, JSConfig.PropertyCacheLimit));
+            }
+            putCallerNode.putWithFlags(argumentsObject, JSArgumentsObject.CALLER, realm.getThrowerAccessor(), THROWER_ACCESSOR_PROPERTY_FLAGS);
+        }
+        return context.trackAllocation(argumentsObject);
     }
 
     @Specialization(guards = "!isStrict(frame)")
     protected DynamicObject doNonStrict(VirtualFrame frame) {
         Object[] arguments = getObjectArray(frame);
-        return JSArgumentsObject.createNonStrict(realmNode.getContext(), realmNode.execute(frame), arguments, getFunctionObject(frame));
+        JSContext context = realmNode.getContext();
+        JSRealm realm = realmNode.execute(frame);
+        DynamicObject callee = getFunctionObject(frame);
+
+        JSObjectFactory factory = context.getNonStrictArgumentsFactory();
+        DynamicObject argumentsObject = JSArgumentsObject.createMapped(factory.getShape(realm), arguments);
+        factory.initProto(argumentsObject, realm);
+
+        putLengthNode.putWithFlags(argumentsObject, JSArgumentsObject.LENGTH, arguments.length, JSAttributes.getDefaultNotEnumerable());
+        putSymbolIteratorNode.putWithFlags(argumentsObject, Symbol.SYMBOL_ITERATOR, realm.getArrayProtoValuesIterator(), JSAttributes.getDefaultNotEnumerable());
+
+        putCalleeNode.putWithFlags(argumentsObject, JSArgumentsObject.CALLEE, callee, JSAttributes.getDefaultNotEnumerable());
+        return context.trackAllocation(argumentsObject);
     }
 
     private static DynamicObject getFunctionObject(VirtualFrame frame) {

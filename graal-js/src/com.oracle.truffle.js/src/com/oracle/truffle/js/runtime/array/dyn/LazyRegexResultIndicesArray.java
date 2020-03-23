@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.array.dyn;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArray;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayType;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetLength;
-import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetRegexResult;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -52,6 +51,8 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSRegExp;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.Constants;
@@ -75,9 +76,14 @@ public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
     public static Object materializeGroup(JSContext context, TRegexUtil.TRegexResultAccessor resultAccessor, DynamicObject object, int index, boolean condition) {
         Object[] internalArray = getArray(object, condition);
         if (internalArray[index] == null) {
-            internalArray[index] = getIntIndicesArray(context, resultAccessor, arrayGetRegexResult(object, condition), index);
+            internalArray[index] = getIntIndicesArray(context, resultAccessor, getRegexResultSlow(object), index);
         }
         return internalArray[index];
+    }
+
+    private static Object getRegexResultSlow(DynamicObject object) {
+        assert JSArray.isJSArray(object) && JSArray.arrayGetArrayType(object) == LAZY_REGEX_RESULT_INDICES_ARRAY;
+        return JSDynamicObject.getOrNull(object, JSRegExp.GROUPS_RESULT_ID);
     }
 
     public static Object getIntIndicesArray(JSContext context, TRegexUtil.TRegexResultAccessor resultAccessor, Object regexResult, int index) {

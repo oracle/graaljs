@@ -41,42 +41,29 @@
 package com.oracle.truffle.trufflenode;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
+import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSShape;
 
 public final class JSExternalObject extends JSBuiltinObject {
 
     public static final String CLASS_NAME = "external";
     public static final JSExternalObject INSTANCE = new JSExternalObject();
 
-    private static final HiddenKey POINTER_KEY = new HiddenKey("pointer");
-    private static final Property POINTER_PROPERTY;
-
     private JSExternalObject() {
-    }
-
-    static {
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        POINTER_PROPERTY = JSObjectUtil.makeHiddenProperty(POINTER_KEY, allocator.locationForType(long.class));
     }
 
     public static DynamicObject create(JSContext context, long pointer) {
         ContextData contextData = GraalJSAccess.getContextEmbedderData(context);
-        DynamicObject obj = contextData.getExternalObjectShape().newInstance();
-        setPointer(obj, pointer);
+        DynamicObject obj = JSExternalObjectImpl.create(contextData.getExternalObjectShape(), pointer);
+        assert isJSExternalObject(obj);
         return obj;
     }
 
     public static Shape makeInitialShape(JSContext ctx) {
-        Shape initialShape = ctx.getEmptyShapeNullPrototype().changeType(INSTANCE);
-        initialShape = initialShape.addProperty(POINTER_PROPERTY);
-        return initialShape;
+        return ctx.makeEmptyShapeWithNullPrototype(INSTANCE);
     }
 
     public static boolean isJSExternalObject(Object obj) {
@@ -92,14 +79,25 @@ public final class JSExternalObject extends JSBuiltinObject {
         return CLASS_NAME;
     }
 
-    public static void setPointer(DynamicObject obj, long pointer) {
-        assert isJSExternalObject(obj);
-        POINTER_PROPERTY.setSafe(obj, pointer, null);
-    }
-
     public static long getPointer(DynamicObject obj) {
         assert isJSExternalObject(obj);
-        return (long) POINTER_PROPERTY.get(obj, isJSExternalObject(obj));
+        return ((JSExternalObjectImpl) obj).getPointer();
+    }
+}
+
+final class JSExternalObjectImpl extends JSBasicObject {
+    private long pointer;
+
+    private JSExternalObjectImpl(Shape shape, long pointer) {
+        super(shape);
+        this.pointer = pointer;
     }
 
+    public long getPointer() {
+        return pointer;
+    }
+
+    public static DynamicObject create(Shape shape, long pointer) {
+        return new JSExternalObjectImpl(shape, pointer);
+    }
 }

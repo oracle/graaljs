@@ -265,7 +265,7 @@ public final class DefinePropertyUtil {
             } else {
                 assert descriptor.isGenericDescriptor();
                 if (currentProperty.getFlags() != newAttr) {
-                    JSObjectUtil.changeFlags(thisObj, key, newAttr);
+                    JSObjectUtil.changePropertyFlags(thisObj, key, newAttr);
                 }
             }
             return true;

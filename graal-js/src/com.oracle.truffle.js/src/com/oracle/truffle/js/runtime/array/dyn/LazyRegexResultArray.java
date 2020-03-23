@@ -72,7 +72,7 @@ public final class LazyRegexResultArray extends AbstractConstantArray {
     public static Object materializeGroup(TRegexUtil.TRegexMaterializeResultNode materializeResultNode, DynamicObject object, int index, boolean condition) {
         Object[] internalArray = getArray(object, condition);
         if (internalArray[index] == null) {
-            internalArray[index] = materializeResultNode.materializeGroup(arrayGetRegexResult(object, condition), index, arrayGetRegexResultOriginalInput(object, condition));
+            internalArray[index] = materializeResultNode.materializeGroup(arrayGetRegexResult(object), index, arrayGetRegexResultOriginalInput(object));
         }
         return internalArray[index];
     }
@@ -92,11 +92,9 @@ public final class LazyRegexResultArray extends AbstractConstantArray {
 
     @Override
     public Object getElementInBounds(DynamicObject object, int index, boolean condition) {
-        boolean lrraCondition = condition && arrayGetArrayType(object, condition) instanceof LazyRegexResultArray;
         final Object[] internalArray = getArray(object, condition);
         if (internalArray[index] == null) {
-            internalArray[index] = TRegexUtil.TRegexMaterializeResultNode.getUncached().materializeGroup(arrayGetRegexResult(object, lrraCondition), index,
-                            arrayGetRegexResultOriginalInput(object, lrraCondition));
+            internalArray[index] = TRegexUtil.TRegexMaterializeResultNode.getUncached().materializeGroup(arrayGetRegexResult(object), index, arrayGetRegexResultOriginalInput(object));
         }
         return internalArray[index];
     }

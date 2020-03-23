@@ -44,14 +44,15 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.util.CompilableBiFunction;
 
 public final class JSUserObject extends JSBuiltinObject implements PrototypeSupplier {
 
@@ -60,6 +61,9 @@ public final class JSUserObject extends JSBuiltinObject implements PrototypeSupp
     public static final String PROTOTYPE_NAME = "Object.prototype";
 
     public static final JSUserObject INSTANCE = new JSUserObject();
+    public static final CompilableBiFunction<JSContext, DynamicObject, Shape> SHAPE_SUPPLIER = (ctx, proto) -> JSObjectUtil.getProtoChildShape(proto, INSTANCE, ctx);
+
+    public static final JSUserObject BARE_INSTANCE = new JSUserObject();
 
     private JSUserObject() {
     }
@@ -68,43 +72,81 @@ public final class JSUserObject extends JSBuiltinObject implements PrototypeSupp
         return create(context, context.getRealm());
     }
 
+    public static DynamicObject create(JSContext context, JSObjectFactory factory) {
+        return createWithRealm(context, factory, context.getRealm());
+    }
+
+    public static DynamicObject createWithRealm(JSContext context, JSObjectFactory factory, JSRealm realm) {
+        DynamicObject obj = JSOrdinaryObjectImpl.create(factory.getShape(realm));
+        factory.initProto(obj, realm);
+        return context.trackAllocation(obj);
+    }
+
     public static DynamicObject create(JSContext context, JSRealm realm) {
-        if (context.isMultiContext()) {
-            return createWithPrototypeInObject(realm.getObjectPrototype(), context);
-        }
-        return JSObject.createWithRealm(context, context.getOrdinaryObjectFactory(), realm, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+        return createWithRealm(context, context.getOrdinaryObjectFactory(), realm);
     }
 
     @TruffleBoundary
     public static DynamicObject createWithPrototype(DynamicObject prototype, JSContext context) {
-        assert prototype == Null.instance || JSRuntime.isObject(prototype);
-        return JSObject.create(context, prototype, INSTANCE);
+        assert JSObjectUtil.isValidPrototype(prototype);
+        if (prototype == Null.instance) {
+            return createWithNullPrototype(context);
+        } else {
+            return context.trackAllocation(JSOrdinaryObjectImpl.create(JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context)));
+        }
     }
 
     public static DynamicObject createWithNullPrototype(JSContext context) {
-        return JSObject.create(context, context.getEmptyShapeNullPrototype());
+        return context.trackAllocation(JSOrdinaryObjectImpl.create(context.getEmptyShapeNullPrototype()));
     }
 
-    public static DynamicObject createWithPrototypeInObject(DynamicObject prototype, JSContext context) {
-        assert prototype == Null.instance || JSRuntime.isObject(prototype);
+    public static DynamicObject createInitWithInstancePrototype(DynamicObject prototype, JSContext context) {
+        assert JSObjectUtil.isValidPrototype(prototype);
         Shape shape = context.getEmptyShapePrototypeInObject();
-        DynamicObject obj = JSObject.create(context, shape);
-        JSObject.PROTO_PROPERTY.setSafe(obj, prototype, shape);
+        JSOrdinaryObjectImpl obj = JSOrdinaryObjectImpl.create(shape);
+        setProtoSlow(obj, prototype);
         return obj;
+    }
+
+    private static void setProtoSlow(DynamicObject obj, DynamicObject prototype) {
+        JSObjectUtil.putHiddenProperty(obj, JSObject.HIDDEN_PROTO, prototype);
+    }
+
+    public static DynamicObject createWithoutPrototype(JSContext context) {
+        Shape shape = context.getEmptyShapePrototypeInObject();
+        DynamicObject obj = create(context, shape);
+        // prototype is set in caller
+        return obj;
+    }
+
+    public static DynamicObject create(JSContext context, Shape shape) {
+        assert JSShape.getJSClass(shape) == JSUserObject.INSTANCE;
+        return context.trackAllocation(JSOrdinaryObjectImpl.create(shape));
     }
 
     public static DynamicObject createInit(JSRealm realm) {
         CompilerAsserts.neverPartOfCompilation();
-        return JSObject.createInit(realm, realm.getObjectPrototype(), INSTANCE);
+        return createInit(realm, realm.getObjectPrototype());
     }
 
     public static DynamicObject createInit(JSRealm realm, DynamicObject prototype) {
         CompilerAsserts.neverPartOfCompilation();
-        return JSObject.createInit(realm, prototype, INSTANCE);
+        assert JSObjectUtil.isValidPrototype(prototype);
+        JSContext context = realm.getContext();
+        if (context.isMultiContext()) {
+            return createInitWithInstancePrototype(prototype, context);
+        } else {
+            return JSOrdinaryObjectImpl.create(prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context));
+        }
+    }
+
+    public static DynamicObject createWithNullPrototypeInit(JSContext context) {
+        CompilerAsserts.neverPartOfCompilation();
+        return JSOrdinaryObjectImpl.create(context.getEmptyShapeNullPrototype());
     }
 
     public static boolean isJSUserObject(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSUserObject((DynamicObject) obj);
+        return JSObject.isJSObject(obj) && isJSUserObject((DynamicObject) obj);
     }
 
     public static boolean isJSUserObject(DynamicObject obj) {

@@ -79,6 +79,7 @@ import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.doubleconv.DoubleConversion;
 import com.oracle.truffle.js.runtime.external.DToA;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -2394,7 +2395,7 @@ public final class JSRuntime {
 
     public static boolean isRevokedCallableProxy(DynamicObject revokedProxy) {
         assert JSProxy.isProxy(revokedProxy) && JSProxy.isRevoked(revokedProxy);
-        return Boolean.TRUE == revokedProxy.get(JSProxy.REVOKED_CALLABLE);
+        return Boolean.TRUE == JSDynamicObject.getOrDefault(revokedProxy, JSProxy.REVOKED_CALLABLE, Boolean.FALSE);
     }
 
     /**

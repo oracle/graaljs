@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.util.EnumSet;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -50,9 +49,6 @@ import com.ibm.icu.text.PluralRules;
 import com.ibm.icu.text.PluralRules.PluralType;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.intl.PluralRulesFunctionBuiltins;
 import com.oracle.truffle.js.builtins.intl.PluralRulesPrototypeBuiltins;
@@ -63,7 +59,6 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public final class JSPluralRules extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
@@ -71,21 +66,13 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
     public static final String CLASS_NAME = "PluralRules";
     public static final String PROTOTYPE_NAME = "PluralRules.prototype";
 
-    private static final HiddenKey INTERNAL_STATE_ID = new HiddenKey("_internalState");
-    private static final Property INTERNAL_STATE_PROPERTY;
-
     public static final JSPluralRules INSTANCE = new JSPluralRules();
-
-    static {
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        INTERNAL_STATE_PROPERTY = JSObjectUtil.makeHiddenProperty(INTERNAL_STATE_ID, allocator.locationForType(InternalState.class, EnumSet.of(LocationModifier.NonNull, LocationModifier.Final)));
-    }
 
     private JSPluralRules() {
     }
 
     public static boolean isJSPluralRules(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSPluralRules((DynamicObject) obj);
+        return JSObject.isJSObject(obj) && isJSPluralRules((DynamicObject) obj);
     }
 
     public static boolean isJSPluralRules(DynamicObject obj) {
@@ -105,7 +92,7 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject pluralRulesPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject pluralRulesPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, pluralRulesPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, pluralRulesPrototype, PluralRulesPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putDataProperty(ctx, pluralRulesPrototype, Symbol.SYMBOL_TO_STRING_TAG, "Intl.PluralRules", JSAttributes.configurableNotEnumerableNotWritable());
@@ -115,7 +102,6 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
     @Override
     public Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
-        initialShape = initialShape.addProperty(INTERNAL_STATE_PROPERTY);
         return initialShape;
     }
 
@@ -125,9 +111,9 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
 
     public static DynamicObject create(JSContext context) {
         InternalState state = new InternalState();
-        DynamicObject result = JSObject.create(context, context.getPluralRulesFactory(), state);
-        assert isJSPluralRules(result);
-        return result;
+        DynamicObject obj = IntlObject.create(context.getRealm(), context.getPluralRulesFactory(), state);
+        assert isJSPluralRules(obj);
+        return context.trackAllocation(obj);
     }
 
     public static PluralRules getPluralRulesProperty(DynamicObject obj) {
@@ -182,8 +168,9 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
         return state.toResolvedOptionsObject(context);
     }
 
-    public static InternalState getInternalState(DynamicObject pluralRulesObj) {
-        return (InternalState) INTERNAL_STATE_PROPERTY.get(pluralRulesObj, isJSPluralRules(pluralRulesObj));
+    public static InternalState getInternalState(DynamicObject obj) {
+        assert isJSPluralRules(obj);
+        return ((IntlObject) obj).getInternalState();
     }
 
     @Override

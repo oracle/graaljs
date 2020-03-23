@@ -40,11 +40,11 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.Map;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -53,9 +53,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JSArgumentsObject extends JSAbstractArgumentsObject {
     public static final JSArgumentsObject INSTANCE = new JSArgumentsObject();
@@ -63,64 +61,96 @@ public final class JSArgumentsObject extends JSAbstractArgumentsObject {
     private JSArgumentsObject() {
     }
 
-    public static DynamicObject createStrict(JSContext context, JSRealm realm, Object[] elements) {
-        // (array, arrayType, length, usedLength, indexOffset, arrayOffset, holeCount, length)
-        if (context.getEcmaScriptVersion() < JSConfig.ECMAScript2017) {
-            return JSObject.createWithPrototype(context, context.getStrictArgumentsFactory(), realm, realm.getObjectPrototype(),
-                            elements, ScriptArray.createConstantArray(elements), null, elements.length, 0, 0, 0, 0, elements.length, elements.length, realm.getArrayProtoValuesIterator(),
-                            realm.getThrowerAccessor(), realm.getThrowerAccessor());
+    public static class AbstractArgumentsObjectImpl extends JSArrayBase {
+
+        protected AbstractArgumentsObjectImpl(Shape shape, ScriptArray arrayType, Object array, int length) {
+            super(shape, arrayType, array, null, length, 0, 0, 0, 0);
         }
-        return JSObject.createWithPrototype(context, context.getStrictArgumentsFactory(), realm, realm.getObjectPrototype(),
-                        elements, ScriptArray.createConstantArray(elements), null, elements.length, 0, 0, 0, 0, elements.length, elements.length, realm.getArrayProtoValuesIterator(),
-                        realm.getThrowerAccessor());
-    }
 
-    public static DynamicObject createNonStrict(JSContext context, JSRealm realm, Object[] elements, DynamicObject callee) {
-        // (array, arrayType, len, usedLen, indexOffset, arrayOffset, holeCount, length, callee)
-        return JSObject.createWithPrototype(context, context.getNonStrictArgumentsFactory(), realm, realm.getObjectPrototype(),
-                        elements, ScriptArray.createConstantArray(elements), null, elements.length, 0, 0, 0, 0, elements.length, elements.length, realm.getArrayProtoValuesIterator(), callee);
-    }
-
-    public static Shape makeInitialNonStrictArgumentsShape(JSContext context, DynamicObject objectPrototype) {
-        DynamicObject dummyArray = JSObject.createInit(JSObjectUtil.getProtoChildShape(objectPrototype, INSTANCE, context));
-
-        putArrayProperties(dummyArray, ScriptArray.createConstantEmptyArray());
-
-        JSObjectUtil.putHiddenProperty(dummyArray, CONNECTED_ARGUMENT_COUNT_PROPERTY, 0);
-
-        // force these to non-final to avoid obsolescence of initial shape (same below).
-        // (GR-2051) make final and do not obsolete initial shape or allow obsolescence
-        Property lengthProperty = JSObjectUtil.makeDataProperty(LENGTH, dummyArray.getShape().allocator().locationForType(Object.class, EnumSet.of(LocationModifier.NonNull)),
-                        JSAttributes.configurableNotEnumerableWritable());
-        JSObjectUtil.putDataProperty(context, dummyArray, lengthProperty, 0);
-
-        putIteratorProperty(context, dummyArray);
-
-        Property calleeProperty = JSObjectUtil.makeDataProperty(CALLEE, dummyArray.getShape().allocator().locationForType(Object.class, EnumSet.of(LocationModifier.NonNull)),
-                        JSAttributes.configurableNotEnumerableWritable());
-        JSObjectUtil.putDataProperty(context, dummyArray, calleeProperty, Undefined.instance);
-        return dummyArray.getShape();
-    }
-
-    public static Shape makeInitialStrictArgumentsShape(JSContext context, DynamicObject objectPrototype) {
-        DynamicObject dummyArray = JSObject.createInit(JSObjectUtil.getProtoChildShape(objectPrototype, INSTANCE, context));
-
-        putArrayProperties(dummyArray, ScriptArray.createConstantEmptyArray());
-
-        JSObjectUtil.putHiddenProperty(dummyArray, CONNECTED_ARGUMENT_COUNT_PROPERTY, 0);
-
-        Property lengthProperty = JSObjectUtil.makeDataProperty(LENGTH, dummyArray.getShape().allocator().locationForType(Object.class, EnumSet.of(LocationModifier.NonNull)),
-                        JSAttributes.configurableNotEnumerableWritable());
-        JSObjectUtil.putDataProperty(context, dummyArray, lengthProperty, 0);
-
-        putIteratorProperty(context, dummyArray);
-
-        Accessor throwerAccessor = new Accessor(Undefined.instance, Undefined.instance);
-        JSObjectUtil.putAccessorProperty(context, dummyArray, CALLEE, throwerAccessor, JSAttributes.notConfigurableNotEnumerable());
-        if (context.getEcmaScriptVersion() < JSConfig.ECMAScript2017) {
-            JSObjectUtil.putAccessorProperty(context, dummyArray, CALLER, throwerAccessor, JSAttributes.notConfigurableNotEnumerable());
+        @Override
+        public final String getClassName() {
+            return CLASS_NAME;
         }
-        return dummyArray.getShape();
+    }
+
+    public static class UnmappedArgumentsObjectImpl extends AbstractArgumentsObjectImpl {
+
+        protected UnmappedArgumentsObjectImpl(Shape shape, ScriptArray arrayType, Object array, int length) {
+            super(shape, arrayType, array, length);
+        }
+    }
+
+    public static class MappedArgumentsObjectImpl extends AbstractArgumentsObjectImpl {
+
+        protected MappedArgumentsObjectImpl(Shape shape, ScriptArray arrayType, Object array, int length) {
+            super(shape, arrayType, array, length);
+            this.connectedArgumentCount = length;
+        }
+
+        protected int connectedArgumentCount;
+        protected Map<Long, Object> disconnectedIndices;
+
+        public static int getConnectedArgumentCount(DynamicObject argumentsArray) {
+            assert JSArgumentsObject.isJSArgumentsObject(argumentsArray);
+            return ((MappedArgumentsObjectImpl) argumentsArray).connectedArgumentCount;
+        }
+
+        @TruffleBoundary
+        public static Map<Long, Object> getDisconnectedIndices(DynamicObject argumentsArray) {
+            assert hasDisconnectedIndices(argumentsArray);
+            return ((MappedArgumentsObjectImpl) argumentsArray).disconnectedIndices;
+        }
+
+        @TruffleBoundary
+        public static void initDisconnectedIndices(DynamicObject argumentsArray) {
+            assert hasDisconnectedIndices(argumentsArray);
+            ((MappedArgumentsObjectImpl) argumentsArray).disconnectedIndices = new HashMap<>();
+        }
+
+        public static boolean hasDisconnectedIndices(DynamicObject argumentsArray) {
+            return JSSlowArgumentsObject.isJSSlowArgumentsObject(argumentsArray);
+        }
+    }
+
+    public static UnmappedArgumentsObjectImpl createUnmapped(Shape shape, Object[] elements) {
+        return new UnmappedArgumentsObjectImpl(shape, ScriptArray.createConstantArray(elements), elements, elements.length);
+    }
+
+    public static MappedArgumentsObjectImpl createMapped(Shape shape, Object[] elements) {
+        return new MappedArgumentsObjectImpl(shape, ScriptArray.createConstantArray(elements), elements, elements.length);
+    }
+
+    @TruffleBoundary
+    public static DynamicObject createStrictSlow(JSRealm realm, Object[] elements) {
+        JSContext context = realm.getContext();
+        JSObjectFactory factory = context.getStrictArgumentsFactory();
+        DynamicObject argumentsObject = createUnmapped(factory.getShape(realm), elements);
+        factory.initProto(argumentsObject, realm);
+
+        JSObjectUtil.putDataProperty(context, argumentsObject, LENGTH, elements.length, JSAttributes.configurableNotEnumerableWritable());
+        JSObjectUtil.putDataProperty(context, argumentsObject, Symbol.SYMBOL_ITERATOR, realm.getArrayProtoValuesIterator(), JSAttributes.configurableNotEnumerableWritable());
+
+        Accessor throwerAccessor = realm.getThrowerAccessor();
+        JSObjectUtil.putBuiltinAccessorProperty(argumentsObject, CALLEE, throwerAccessor, JSAttributes.notConfigurableNotEnumerable());
+        if (context.getEcmaScriptVersion() < JSConfig.ECMAScript2017) {
+            JSObjectUtil.putBuiltinAccessorProperty(argumentsObject, CALLER, throwerAccessor, JSAttributes.notConfigurableNotEnumerable());
+        }
+
+        return context.trackAllocation(argumentsObject);
+    }
+
+    @TruffleBoundary
+    public static DynamicObject createNonStrictSlow(JSRealm realm, Object[] elements, DynamicObject callee) {
+        JSContext context = realm.getContext();
+        JSObjectFactory factory = context.getNonStrictArgumentsFactory();
+        DynamicObject argumentsObject = createMapped(factory.getShape(realm), elements);
+        factory.initProto(argumentsObject, realm);
+
+        JSObjectUtil.putDataProperty(context, argumentsObject, LENGTH, elements.length, JSAttributes.configurableNotEnumerableWritable());
+        JSObjectUtil.putDataProperty(context, argumentsObject, Symbol.SYMBOL_ITERATOR, realm.getArrayProtoValuesIterator(), JSAttributes.configurableNotEnumerableWritable());
+
+        JSObjectUtil.putDataProperty(context, argumentsObject, CALLEE, callee, JSAttributes.configurableNotEnumerableWritable());
+        return context.trackAllocation(argumentsObject);
     }
 
     public static boolean isJSArgumentsObject(DynamicObject obj) {
@@ -137,11 +167,5 @@ public final class JSArgumentsObject extends JSAbstractArgumentsObject {
 
     public static boolean isJSFastArgumentsObject(Object obj) {
         return isInstance(obj, INSTANCE);
-    }
-
-    private static void putIteratorProperty(JSContext context, DynamicObject dummyArray) {
-        Property iteratorProperty = JSObjectUtil.makeDataProperty(Symbol.SYMBOL_ITERATOR, dummyArray.getShape().allocator().locationForType(Object.class, EnumSet.of(LocationModifier.NonNull)),
-                        JSAttributes.configurableNotEnumerableWritable());
-        JSObjectUtil.putDataProperty(context, dummyArray, iteratorProperty, Undefined.instance);
     }
 }

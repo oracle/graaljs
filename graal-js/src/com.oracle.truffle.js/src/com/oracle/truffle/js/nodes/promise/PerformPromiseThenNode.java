@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,7 +61,6 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
     private final JSContext context;
     @Child private IsCallableNode isCallableFulfillNode = IsCallableNode.create();
     @Child private IsCallableNode isCallableRejectNode = IsCallableNode.create();
-    @Child private PropertyGetNode getPromiseStateNode;
     @Child private PropertyGetNode getPromiseFulfillReactionsNode;
     @Child private PropertyGetNode getPromiseRejectReactionsNode;
     @Child private PropertyGetNode getPromiseResultNode;
@@ -75,7 +74,6 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
 
     protected PerformPromiseThenNode(JSContext context) {
         this.context = context;
-        this.getPromiseStateNode = PropertyGetNode.createGetHidden(JSPromise.PROMISE_STATE, context);
         this.getPromiseFulfillReactionsNode = PropertyGetNode.createGetHidden(JSPromise.PROMISE_FULFILL_REACTIONS, context);
         this.getPromiseRejectReactionsNode = PropertyGetNode.createGetHidden(JSPromise.PROMISE_REJECT_REACTIONS, context);
         this.setPromiseIsHandledNode = PropertySetNode.createSetHidden(JSPromise.PROMISE_IS_HANDLED, context);
@@ -94,7 +92,7 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
         PromiseReactionRecord fulfillReaction = PromiseReactionRecord.create(resultCapability, onFulfilledHandler, true);
         PromiseReactionRecord rejectReaction = PromiseReactionRecord.create(resultCapability, onRejectedHandler, false);
 
-        int promiseState = getPromiseState(promise);
+        int promiseState = JSPromise.getPromiseState(promise);
         if (pendingProf.profile(promiseState == JSPromise.PENDING)) {
             ((SimpleArrayList<? super PromiseReactionRecord>) getPromiseFulfillReactionsNode.getValue(promise)).add(fulfillReaction, growProfile);
             ((SimpleArrayList<? super PromiseReactionRecord>) getPromiseRejectReactionsNode.getValue(promise)).add(rejectReaction, growProfile);
@@ -141,14 +139,6 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
                 getPromiseIsHandledNode = insert(PropertyGetNode.createGetHidden(JSPromise.PROMISE_IS_HANDLED, context));
             }
             return getPromiseIsHandledNode.getValueBoolean(promise);
-        } catch (UnexpectedResultException e) {
-            throw Errors.shouldNotReachHere();
-        }
-    }
-
-    private int getPromiseState(DynamicObject promise) {
-        try {
-            return getPromiseStateNode.getValueInt(promise);
         } catch (UnexpectedResultException e) {
             throw Errors.shouldNotReachHere();
         }

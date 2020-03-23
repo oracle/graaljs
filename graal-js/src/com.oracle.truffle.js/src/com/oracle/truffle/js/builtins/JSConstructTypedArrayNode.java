@@ -84,6 +84,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -514,13 +515,13 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         @Specialization(guards = {"!isDefaultPrototype(proto)", "proto == cachedProto"}, limit = "1")
         DynamicObject doCachedProto(DynamicObject arrayBuffer, TypedArray typedArray, int offset, int length, DynamicObject proto,
                         @Cached("proto") DynamicObject cachedProto,
-                        @Cached("makeObjectFactory(cachedProto, typedArray)") JSObjectFactory objectFactory) {
+                        @Cached("makeObjectFactory(cachedProto)") JSObjectFactory objectFactory) {
             return JSArrayBufferView.createArrayBufferView(context, objectFactory, arrayBuffer, typedArray, offset, length);
         }
 
         @Specialization(guards = "!isDefaultPrototype(proto)", replaces = "doCachedProto")
         DynamicObject doUncachedProto(DynamicObject arrayBuffer, TypedArray typedArray, int offset, int length, DynamicObject proto) {
-            return JSArrayBufferView.createArrayBufferView(context, makeObjectFactory(proto, typedArray), arrayBuffer, typedArray, offset, length);
+            return JSArrayBufferView.createArrayBufferView(context, makeObjectFactory(proto), arrayBuffer, typedArray, offset, length);
         }
 
         boolean isDefaultPrototype(DynamicObject proto) {
@@ -528,8 +529,8 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         }
 
         @TruffleBoundary
-        JSObjectFactory makeObjectFactory(DynamicObject prototype, TypedArray typedArray) {
-            return JSObjectFactory.createBound(context, prototype, JSArrayBufferView.makeInitialArrayBufferViewShape(context, prototype, typedArray.isDirect()).createFactory());
+        JSObjectFactory makeObjectFactory(DynamicObject prototype) {
+            return JSObjectFactory.createBound(context, prototype, JSObjectUtil.getProtoChildShape(prototype, JSArrayBufferView.INSTANCE, context));
         }
     }
 }

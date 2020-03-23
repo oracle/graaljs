@@ -40,22 +40,18 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.util.EnumSet;
 import java.lang.ref.WeakReference;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.WeakRefPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSShape;
 
 public final class JSWeakRef extends JSBuiltinObject implements JSConstructorFactory.Default, PrototypeSupplier {
 
@@ -64,34 +60,49 @@ public final class JSWeakRef extends JSBuiltinObject implements JSConstructorFac
     public static final String CLASS_NAME = "WeakRef";
     public static final String PROTOTYPE_NAME = "WeakRef.prototype";
 
-    private static final HiddenKey WEAKREF_ID = new HiddenKey("weakref");
-    private static final Property WEAKREF_PROPERTY;
+    public static class WeakRefImpl extends JSBasicObject {
+        private final TruffleWeakReference<Object> weakReference;
 
-    static {
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        WEAKREF_PROPERTY = JSObjectUtil.makeHiddenProperty(WEAKREF_ID, allocator.locationForType(TruffleWeakReference.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
+        protected WeakRefImpl(JSRealm realm, JSObjectFactory factory, TruffleWeakReference<Object> weakReference) {
+            super(realm, factory);
+            this.weakReference = weakReference;
+        }
+
+        protected WeakRefImpl(Shape shape, TruffleWeakReference<Object> weakReference) {
+            super(shape);
+            this.weakReference = weakReference;
+        }
+
+        public TruffleWeakReference<Object> getWeakReference() {
+            return weakReference;
+        }
+
+        public static WeakRefImpl create(JSRealm realm, JSObjectFactory factory, TruffleWeakReference<Object> weakReference) {
+            return new WeakRefImpl(realm, factory, weakReference);
+        }
     }
 
     private JSWeakRef() {
     }
 
     public static DynamicObject create(JSContext context, Object referent) {
-        DynamicObject obj = JSObject.create(context, context.getWeakRefFactory(), new TruffleWeakReference<>(referent));
+        TruffleWeakReference<Object> weakReference = new TruffleWeakReference<>(referent);
+        DynamicObject obj = WeakRefImpl.create(context.getRealm(), context.getWeakRefFactory(), weakReference);
         assert isJSWeakRef(obj);
         // Used for KeepDuringJob(target) in the specification
         context.addWeakRefTargetToSet(referent);
-        return obj;
+        return context.trackAllocation(obj);
     }
 
     public static TruffleWeakReference<?> getInternalWeakRef(DynamicObject obj) {
         assert isJSWeakRef(obj);
-        return (TruffleWeakReference<?>) WEAKREF_PROPERTY.get(obj, isJSWeakRef(obj));
+        return ((WeakRefImpl) obj).getWeakReference();
     }
 
     @Override
     public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, WeakRefPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
@@ -101,7 +112,6 @@ public final class JSWeakRef extends JSBuiltinObject implements JSConstructorFac
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSWeakRef.INSTANCE, context);
-        initialShape = initialShape.addProperty(WEAKREF_PROPERTY);
         return initialShape;
     }
 

@@ -50,9 +50,10 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSBasicObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JSPromise extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctionsAndSpecies, PrototypeSupplier {
@@ -64,7 +65,6 @@ public final class JSPromise extends JSBuiltinObject implements JSConstructorFac
     public static final String RESOLVE = "resolve";
     public static final String THEN = "then";
 
-    public static final HiddenKey PROMISE_STATE = new HiddenKey("PromiseState");
     public static final HiddenKey PROMISE_RESULT = new HiddenKey("PromiseResult");
     public static final HiddenKey PROMISE_IS_HANDLED = new HiddenKey("PromiseIsHandled");
 
@@ -91,14 +91,20 @@ public final class JSPromise extends JSBuiltinObject implements JSConstructorFac
     }
 
     public static DynamicObject create(JSContext context) {
-        return JSObject.create(context, context.getPromiseFactory());
+        return context.trackAllocation(PromiseImpl.create(context.getRealm(), context.getPromiseFactory(), PENDING));
     }
 
-    public static DynamicObject createWithPrototypeInObject(DynamicObject prototype, JSContext context) {
-        assert prototype == Null.instance || JSRuntime.isObject(prototype);
+    public static DynamicObject create(JSContext context, Shape shape) {
+        PromiseImpl promise = PromiseImpl.create(shape, PENDING);
+        assert isJSPromise(promise);
+        return context.trackAllocation(promise);
+    }
+
+    public static DynamicObject createWithoutPrototype(JSContext context) {
         Shape shape = context.getPromiseShapePrototypeInObject();
-        DynamicObject obj = JSObject.create(context, shape);
-        JSObject.PROTO_PROPERTY.setSafe(obj, prototype, shape);
+        DynamicObject obj = PromiseImpl.create(shape, PENDING);
+        // prototype is set in caller
+        assert isJSPromise(obj);
         return obj;
     }
 
@@ -113,7 +119,7 @@ public final class JSPromise extends JSBuiltinObject implements JSConstructorFac
     }
 
     public static boolean isJSPromise(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSPromise((DynamicObject) obj);
+        return JSObject.isJSObject(obj) && isJSPromise((DynamicObject) obj);
     }
 
     public static boolean isJSPromise(DynamicObject obj) {
@@ -121,18 +127,25 @@ public final class JSPromise extends JSBuiltinObject implements JSConstructorFac
     }
 
     public static boolean isRejected(DynamicObject promise) {
-        assert isJSPromise(promise);
-        return REJECTED == (int) promise.get(JSPromise.PROMISE_STATE, PENDING);
+        return REJECTED == getPromiseState(promise);
     }
 
     public static boolean isPending(DynamicObject promise) {
-        assert isJSPromise(promise);
-        return PENDING == (int) promise.get(JSPromise.PROMISE_STATE, PENDING);
+        return PENDING == getPromiseState(promise);
     }
 
     public static boolean isFulfilled(DynamicObject promise) {
+        return FULFILLED == getPromiseState(promise);
+    }
+
+    public static int getPromiseState(DynamicObject promise) {
         assert isJSPromise(promise);
-        return FULFILLED == (int) promise.get(JSPromise.PROMISE_STATE, PENDING);
+        return ((PromiseImpl) promise).getPromiseState();
+    }
+
+    public static void setPromiseState(DynamicObject promise, int promiseState) {
+        assert isJSPromise(promise);
+        ((PromiseImpl) promise).setPromiseState(promiseState);
     }
 
     @Override
@@ -148,14 +161,13 @@ public final class JSPromise extends JSBuiltinObject implements JSConstructorFac
         } else if (isRejected(obj)) {
             return "rejected";
         } else {
-            assert isPending(obj) || !obj.containsKey(JSPromise.PROMISE_STATE);
+            assert isPending(obj);
             return "pending";
         }
     }
 
     private static Object getValue(DynamicObject obj) {
-        Object result = obj.get(PROMISE_RESULT);
-        return (result == null) ? Undefined.instance : result;
+        return JSDynamicObject.getOrDefault(obj, PROMISE_RESULT, Undefined.instance);
     }
 
     @Override
@@ -166,7 +178,7 @@ public final class JSPromise extends JSBuiltinObject implements JSConstructorFac
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject constructor) {
         JSContext context = realm.getContext();
-        DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(context, prototype, constructor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, PromisePrototypeBuiltins.BUILTINS);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
@@ -181,4 +193,35 @@ public final class JSPromise extends JSBuiltinObject implements JSConstructorFac
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getPromisePrototype();
     }
+
+    public static class PromiseImpl extends JSBasicObject {
+        private int promiseState;
+
+        protected PromiseImpl(JSRealm realm, JSObjectFactory factory, int promiseState) {
+            super(realm, factory);
+            this.promiseState = promiseState;
+        }
+
+        protected PromiseImpl(Shape shape, int promiseState) {
+            super(shape);
+            this.promiseState = promiseState;
+        }
+
+        public int getPromiseState() {
+            return promiseState;
+        }
+
+        public void setPromiseState(int promiseState) {
+            this.promiseState = promiseState;
+        }
+
+        public static PromiseImpl create(JSRealm realm, JSObjectFactory factory, int promiseState) {
+            return new PromiseImpl(realm, factory, promiseState);
+        }
+
+        public static PromiseImpl create(Shape shape, int promiseState) {
+            return new PromiseImpl(shape, promiseState);
+        }
+    }
+
 }

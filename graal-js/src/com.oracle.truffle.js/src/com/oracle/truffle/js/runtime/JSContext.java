@@ -66,8 +66,8 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -127,10 +127,10 @@ import com.oracle.truffle.js.runtime.objects.JSPrototypeData;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.JSShapeData;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.CompilableBiFunction;
-import com.oracle.truffle.js.runtime.util.CompilableFunction;
 import com.oracle.truffle.js.runtime.util.DebugJSAgent;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TimeProfiler;
@@ -188,6 +188,8 @@ public class JSContext {
     /** The TRegex engine, as obtained from RegexLanguage. */
     @CompilationFinal private Object regexEngine;
     @CompilationFinal private Object tRegexEmptyResult;
+
+    private final Shape regExpGroupsEmptyShape;
 
     private PrepareStackTraceCallback prepareStackTraceCallback;
     private final Assumption prepareStackTraceCallbackNotUsedAssumption;
@@ -271,8 +273,8 @@ public class JSContext {
         CollatorGetCompare,
         NumberFormatGetFormat,
         DateTimeFormatGetFormat,
-        SegmeterBreakType,
-        SegmeterPosition,
+        SegmenterBreakType,
+        SegmenterPosition,
         LocaleBaseName,
         LocaleCalendar,
         LocaleCaseFirst,
@@ -335,10 +337,10 @@ public class JSContext {
 
     private final JSFunctionFactory boundFunctionFactory;
 
-    static final CompilableFunction<JSRealm, DynamicObject> functionPrototypeSupplier = JSRealm::getFunctionPrototype;
-    static final CompilableFunction<JSRealm, DynamicObject> asyncFunctionPrototypeSupplier = JSRealm::getAsyncFunctionPrototype;
-    static final CompilableFunction<JSRealm, DynamicObject> generatorFunctionPrototypeSupplier = JSRealm::getGeneratorFunctionPrototype;
-    static final CompilableFunction<JSRealm, DynamicObject> asyncGeneratorFunctionPrototypeSupplier = JSRealm::getAsyncGeneratorFunctionPrototype;
+    static final PrototypeSupplier functionPrototypeSupplier = JSRealm::getFunctionPrototype;
+    static final PrototypeSupplier asyncFunctionPrototypeSupplier = JSRealm::getAsyncFunctionPrototype;
+    static final PrototypeSupplier generatorFunctionPrototypeSupplier = JSRealm::getGeneratorFunctionPrototype;
+    static final PrototypeSupplier asyncGeneratorFunctionPrototypeSupplier = JSRealm::getAsyncGeneratorFunctionPrototype;
 
     private final JSObjectFactory ordinaryObjectFactory;
     private final JSObjectFactory arrayFactory;
@@ -354,7 +356,6 @@ public class JSContext {
     private final JSObjectFactory strictArgumentsFactory;
     private final JSObjectFactory callSiteFactory;
     @CompilationFinal(dimensions = 1) private final JSObjectFactory[] errorObjectFactories;
-    @CompilationFinal(dimensions = 1) private final JSObjectFactory[] errorWithMessageObjectFactories;
 
     private final JSObjectFactory symbolFactory;
     private final JSObjectFactory mapFactory;
@@ -398,6 +399,16 @@ public class JSContext {
 
     @CompilationFinal private Locale locale;
 
+    private final PropertyProxy argumentsPropertyProxy;
+    private final PropertyProxy callerPropertyProxy;
+
+    /**
+     * A shared root node that acts as a parent providing a lock to nodes that are not rooted in a
+     * tree but in shared object factories for the purpose of adding properties to newly allocated
+     * objects.
+     */
+    private final SharedRootNode sharedRootNode;
+
     protected JSContext(Evaluator evaluator, JSContextOptions contextOptions, JavaScriptLanguage lang, TruffleLanguage.Env env) {
         this.contextOptions = contextOptions;
 
@@ -409,6 +420,8 @@ public class JSContext {
         this.language = lang;
         this.contextRef = getContextReference(lang);
         this.truffleLanguageEnv = env;
+
+        this.sharedRootNode = new SharedRootNode();
 
         this.emptyShape = createEmptyShape();
         this.emptyShapePrototypeInObject = createEmptyShapePrototypeInObject();
@@ -426,7 +439,7 @@ public class JSContext {
         this.evaluator = evaluator;
         this.nodeFactory = evaluator.getDefaultNodeFactory();
 
-        this.moduleNamespaceFactory = JSObjectFactory.createBound(this, Null.instance, JSModuleNamespace.makeInitialShape(this).createFactory());
+        this.moduleNamespaceFactory = JSObjectFactory.createBound(this, Null.instance, JSModuleNamespace.makeInitialShape(this));
 
         this.prepareStackTraceCallbackNotUsedAssumption = Truffle.getRuntime().createAssumption("prepareStackTraceCallbackNotUsedAssumption");
         this.promiseHookNotUsedAssumption = Truffle.getRuntime().createAssumption("promiseHookNotUsedAssumption");
@@ -453,7 +466,7 @@ public class JSContext {
 
         // shapes and factories
         PrototypeSupplier objectPrototypeSupplier = JSUserObject.INSTANCE;
-        CompilableBiFunction<JSContext, DynamicObject, Shape> ordinaryObjectShapeSupplier = JSUserObject.INSTANCE::makeInitialShape;
+        CompilableBiFunction<JSContext, DynamicObject, Shape> ordinaryObjectShapeSupplier = JSUserObject.SHAPE_SUPPLIER;
         JSObjectFactory.IntrinsicBuilder builder = new JSObjectFactory.IntrinsicBuilder(this);
 
         this.functionFactory = builder.function(functionPrototypeSupplier, false, false, false, false, false);
@@ -469,8 +482,8 @@ public class JSContext {
 
         this.ordinaryObjectFactory = builder.create(JSUserObject.INSTANCE);
         this.arrayFactory = builder.create(JSArray.INSTANCE);
-        this.lazyRegexArrayFactory = builder.create(JSArray.INSTANCE, JSRegExp::makeLazyRegexArrayShape);
-        this.lazyRegexIndicesArrayFactory = builder.create(JSArray.INSTANCE, JSRegExp::makeLazyRegexIndicesArrayShape);
+        this.lazyRegexArrayFactory = builder.create(JSArray.INSTANCE);
+        this.lazyRegexIndicesArrayFactory = builder.create(JSArray.INSTANCE);
         this.booleanFactory = builder.create(JSBoolean.INSTANCE);
         this.numberFactory = builder.create(JSNumber.INSTANCE);
         this.bigIntFactory = builder.create(JSBigInt.INSTANCE);
@@ -499,22 +512,13 @@ public class JSContext {
         }
 
         this.errorObjectFactories = new JSObjectFactory[JSErrorType.errorTypes().length];
-        this.errorWithMessageObjectFactories = new JSObjectFactory[JSErrorType.errorTypes().length];
         for (JSErrorType type : JSErrorType.errorTypes()) {
-            if (type == JSErrorType.AggregateError) {
-                errorObjectFactories[type.ordinal()] = builder.create(JSErrorType.AggregateError,
-                                (c, p) -> JSError.addAggregateErrorsPropertyToShape(JSError.INSTANCE.makeInitialShape(c, p)));
-                errorWithMessageObjectFactories[type.ordinal()] = builder.create(JSErrorType.AggregateError,
-                                (c, p) -> JSError.addAggregateErrorsPropertyToShape(JSError.addMessagePropertyToShape(JSError.INSTANCE.makeInitialShape(c, p))));
-            } else {
-                errorObjectFactories[type.ordinal()] = builder.create(type, JSError.INSTANCE::makeInitialShape);
-                errorWithMessageObjectFactories[type.ordinal()] = builder.create(type, (c, p) -> JSError.addMessagePropertyToShape(JSError.INSTANCE.makeInitialShape(c, p)));
-            }
+            errorObjectFactories[type.ordinal()] = builder.create(type, JSError.INSTANCE::makeInitialShape);
         }
 
         this.callSiteFactory = builder.create(JSRealm::getCallSitePrototype, JSError::makeInitialCallSiteShape);
-        this.nonStrictArgumentsFactory = builder.create(objectPrototypeSupplier, JSArgumentsObject::makeInitialNonStrictArgumentsShape);
-        this.strictArgumentsFactory = builder.create(objectPrototypeSupplier, JSArgumentsObject::makeInitialStrictArgumentsShape);
+        this.nonStrictArgumentsFactory = builder.create(objectPrototypeSupplier, JSArgumentsObject.INSTANCE);
+        this.strictArgumentsFactory = builder.create(objectPrototypeSupplier, JSArgumentsObject.INSTANCE);
         this.enumerateIteratorFactory = builder.create(JSRealm::getEnumerateIteratorPrototype, JSFunction::makeInitialEnumerateIteratorShape);
         this.forInIteratorFactory = builder.create(JSRealm::getForInIteratorPrototype, JSFunction::makeInitialForInIteratorShape);
 
@@ -541,6 +545,11 @@ public class JSContext {
         this.dictionaryObjectFactory = JSConfig.DictionaryObject ? builder.create(objectPrototypeSupplier, JSDictionaryObject::makeDictionaryShape) : null;
 
         this.factoryCount = builder.finish();
+
+        this.argumentsPropertyProxy = new JSFunction.ArgumentsProxyProperty(this);
+        this.callerPropertyProxy = new JSFunction.CallerProxyProperty(this);
+
+        this.regExpGroupsEmptyShape = JSRegExp.makeInitialGroupsObjectShape(this);
     }
 
     @SuppressWarnings("deprecation")
@@ -634,11 +643,11 @@ public class JSContext {
     }
 
     private Shape createEmptyShapePrototypeInObject() {
-        return makeEmptyShapeWithPrototypeInObject(JSUserObject.INSTANCE, JSObject.PROTO_PROPERTY);
+        return makeEmptyShapeWithPrototypeInObject(JSUserObject.INSTANCE);
     }
 
     private Shape createPromiseShapePrototypeInObject() {
-        return makeEmptyShapeWithPrototypeInObject(JSPromise.INSTANCE, JSObject.PROTO_PROPERTY);
+        return makeEmptyShapeWithPrototypeInObject(JSPromise.INSTANCE);
     }
 
     public final Shape makeEmptyShapeWithNullPrototype(JSClass jsclass) {
@@ -646,19 +655,19 @@ public class JSContext {
         if (protoChildTree != null) {
             return protoChildTree;
         }
-        return nullPrototypeData.getOrAddProtoChildTree(jsclass, JSShape.makeEmptyRoot(JSObject.LAYOUT, jsclass, this));
+        return nullPrototypeData.getOrAddProtoChildTree(jsclass, JSShape.makeEmptyRoot(jsclass, this));
     }
 
-    public final Shape makeEmptyShapeWithPrototypeInObject(JSClass jsclass, Property protoProperty) {
+    public final Shape makeEmptyShapeWithPrototypeInObject(JSClass jsclass) {
         Shape protoChildTree = inObjectPrototypeData.getProtoChildTree(jsclass);
         if (protoChildTree != null) {
             return protoChildTree;
         }
-        return inObjectPrototypeData.getOrAddProtoChildTree(jsclass, JSShape.makeEmptyRoot(JSObject.LAYOUT, jsclass, this, protoProperty));
+        return inObjectPrototypeData.getOrAddProtoChildTree(jsclass, JSShape.makeEmptyRootWithInstanceProto(this, jsclass));
     }
 
     private Shape createGlobalScopeShape() {
-        return JSShape.makeEmptyRoot(JSObject.LAYOUT, JSGlobalObject.INSTANCE, this);
+        return JSShape.makeEmptyRoot(JSGlobalObject.INSTANCE, this);
     }
 
     public final Map<String, Symbol> getSymbolRegistry() {
@@ -854,8 +863,8 @@ public class JSContext {
         return callSiteFactory;
     }
 
-    public final JSObjectFactory getErrorFactory(JSErrorType type, boolean withMessage) {
-        return (withMessage ? errorWithMessageObjectFactories : errorObjectFactories)[type.ordinal()];
+    public final JSObjectFactory getErrorFactory(JSErrorType type) {
+        return errorObjectFactories[type.ordinal()];
     }
 
     public final JSObjectFactory getPromiseFactory() {
@@ -990,6 +999,10 @@ public class JSContext {
         } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
             throw Errors.shouldNotReachHere(e);
         }
+    }
+
+    public Shape getRegExpGroupsEmptyShape() {
+        return regExpGroupsEmptyShape;
     }
 
     public void setSymbolRegistry(Map<String, Symbol> newSymbolRegistry) {
@@ -1637,6 +1650,32 @@ public class JSContext {
             return Locale.getDefault();
         } else {
             return Locale.forLanguageTag(name);
+        }
+    }
+
+    public PropertyProxy getArgumentsPropertyProxy() {
+        return argumentsPropertyProxy;
+    }
+
+    public PropertyProxy getCallerPropertyProxy() {
+        return callerPropertyProxy;
+    }
+
+    public <T extends Node> T adoptNode(T node) {
+        assert node.getParent() == null;
+        sharedRootNode.insertAccessor(node);
+        return node;
+    }
+
+    static final class SharedRootNode extends JavaScriptRootNode {
+        @Override
+        public Object execute(VirtualFrame frame) {
+            throw Errors.shouldNotReachHere();
+        }
+
+        void insertAccessor(Node node) {
+            CompilerAsserts.neverPartOfCompilation();
+            super.insert(node);
         }
     }
 }

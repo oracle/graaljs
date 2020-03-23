@@ -45,24 +45,24 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetReg
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.EnumSet;
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultIndicesArray;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultIndicesArray;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
@@ -94,25 +94,8 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     public static final String INDEX = "index";
     public static final String INDICES = "indices";
 
-    private static final HiddenKey COMPILED_REGEX_ID = new HiddenKey("compiledRegex");
-    private static final Property COMPILED_REGEX_PROPERTY;
-    private static final HiddenKey GROUPS_FACTORY_ID = new HiddenKey("groupsFactory");
-    private static final Property GROUPS_FACTORY_PROPERTY;
-    private static final HiddenKey REALM_ID = new HiddenKey("realm");
-    private static final Property REALM_PROPERTY;
-    private static final HiddenKey LEGACY_FEATURES_ENABLED_ID = new HiddenKey("legacyFeaturesEnabled");
-    private static final Property LEGACY_FEATURES_ENABLED_PROPERTY;
-
-    private static final Property LAZY_INDEX_PROXY = JSObjectUtil.makeProxyProperty(INDEX, new LazyRegexResultIndexProxyProperty(), JSAttributes.getDefault());
-
-    // A pointer from the `groups` object of a regex result back to the regex result.
-    // Needed to calculate the contents of the `groups` object lazily.
+    public static final PropertyProxy LAZY_INDEX_PROXY = new LazyRegexResultIndexProxyProperty();
     public static final HiddenKey GROUPS_RESULT_ID = new HiddenKey("regexResult");
-    public static final HiddenKey GROUPS_ORIGINAL_INPUT_ID = new HiddenKey("regexResultOriginalIndex");
-    public static final HiddenKey GROUPS_IS_INDICES_ID = new HiddenKey("isIndices");
-    private static final Property GROUPS_RESULT_PROPERTY;
-    private static final Property GROUPS_ORIGINAL_INPUT_PROPERTY;
-    private static final Property GROUPS_IS_INDICES_PROPERTY;
 
     /**
      * Since we cannot use nodes here, access to this property is special-cased in
@@ -153,11 +136,12 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
 
         @Override
         public Object get(DynamicObject object) {
-            Object regexResult = GROUPS_RESULT_PROPERTY.get(object, false);
-            if (isIndicesObject.profile((boolean) GROUPS_IS_INDICES_PROPERTY.get(object, false))) {
+            RegExpGroupsObjectImpl groups = (RegExpGroupsObjectImpl) object;
+            Object regexResult = groups.getRegexResult();
+            if (isIndicesObject.profile(groups.isIndices())) {
                 return LazyRegexResultIndicesArray.getIntIndicesArray(JavaScriptLanguage.getCurrentJSRealm().getContext(), TRegexResultAccessor.getUncached(), regexResult, groupIndex);
             } else {
-                String input = (String) GROUPS_ORIGINAL_INPUT_PROPERTY.get(object, false);
+                String input = groups.getInputString();
                 return materializeNode.materializeGroup(regexResult, groupIndex, input);
             }
         }
@@ -169,21 +153,98 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         }
     }
 
-    static {
-        Shape.Allocator regExpAllocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        regExpAllocator.addLocation(JSObject.PROTO_PROPERTY.getLocation());
-        COMPILED_REGEX_PROPERTY = JSObjectUtil.makeHiddenProperty(COMPILED_REGEX_ID, regExpAllocator.locationForType(Object.class, EnumSet.of(LocationModifier.NonNull)));
-        GROUPS_FACTORY_PROPERTY = JSObjectUtil.makeHiddenProperty(GROUPS_FACTORY_ID, regExpAllocator.locationForType(JSObjectFactory.class));
-        REALM_PROPERTY = JSObjectUtil.makeHiddenProperty(REALM_ID, regExpAllocator.locationForType(JSRealm.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
-        LEGACY_FEATURES_ENABLED_PROPERTY = JSObjectUtil.makeHiddenProperty(LEGACY_FEATURES_ENABLED_ID,
-                        regExpAllocator.locationForType(boolean.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
+    public static class JSRegExpImpl extends JSBasicObject {
+        private Object compiledRegex;
+        private JSObjectFactory groupsFactory;
+        private final JSRealm realm;
+        private final boolean legacyFeaturesEnabled;
 
-        Shape.Allocator resultAllocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        GROUPS_RESULT_PROPERTY = JSObjectUtil.makeHiddenProperty(GROUPS_RESULT_ID, resultAllocator.locationForType(Object.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
-        GROUPS_ORIGINAL_INPUT_PROPERTY = JSObjectUtil.makeHiddenProperty(GROUPS_ORIGINAL_INPUT_ID,
-                        resultAllocator.locationForType(String.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
-        GROUPS_IS_INDICES_PROPERTY = JSObjectUtil.makeHiddenProperty(GROUPS_IS_INDICES_ID,
-                        resultAllocator.locationForType(Boolean.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
+        protected JSRegExpImpl(Shape shape, Object compiledRegex, JSObjectFactory groupsFactory, JSRealm realm, boolean legacyFeaturesEnabled) {
+            super(shape);
+            this.compiledRegex = compiledRegex;
+            this.groupsFactory = groupsFactory;
+            this.realm = realm;
+            this.legacyFeaturesEnabled = legacyFeaturesEnabled;
+        }
+
+        protected JSRegExpImpl(JSRealm realm, JSObjectFactory factory, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
+            super(realm, factory);
+            this.realm = realm;
+            this.compiledRegex = compiledRegex;
+            this.groupsFactory = groupsFactory;
+            this.legacyFeaturesEnabled = legacyFeaturesEnabled;
+        }
+
+        public Object getCompiledRegex() {
+            return compiledRegex;
+        }
+
+        public void setCompiledRegex(Object compiledRegex) {
+            this.compiledRegex = compiledRegex;
+        }
+
+        public JSObjectFactory getGroupsFactory() {
+            return groupsFactory;
+        }
+
+        public void setGroupsFactory(JSObjectFactory groupsFactory) {
+            this.groupsFactory = groupsFactory;
+        }
+
+        public JSRealm getRealm() {
+            return realm;
+        }
+
+        public boolean getLegacyFeaturesEnabled() {
+            return legacyFeaturesEnabled;
+        }
+
+        @Override
+        public String getClassName() {
+            return JSRegExp.CLASS_NAME;
+        }
+
+        public static DynamicObject create(JSRealm realm, JSObjectFactory factory, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
+            return new JSRegExpImpl(realm, factory, compiledRegex, groupsFactory, legacyFeaturesEnabled);
+        }
+
+        public static DynamicObject create(Shape shape, Object compiledRegex, JSRealm realm) {
+            return new JSRegExpImpl(shape, compiledRegex, null, realm, false);
+        }
+    }
+
+    public static class RegExpGroupsObjectImpl extends JSBasicObject {
+        private Object regexResult;
+        private String input;
+        private boolean isIndices;
+
+        protected RegExpGroupsObjectImpl(JSRealm realm, JSObjectFactory factory, Object regexResult, String inputString, boolean isIndices) {
+            super(realm, factory);
+            this.regexResult = regexResult;
+            this.input = inputString;
+            this.isIndices = isIndices;
+        }
+
+        public Object getRegexResult() {
+            return regexResult;
+        }
+
+        public String getInputString() {
+            return input;
+        }
+
+        public boolean isIndices() {
+            return isIndices;
+        }
+
+        @Override
+        public String getClassName() {
+            return JSUserObject.CLASS_NAME;
+        }
+
+        public static DynamicObject create(JSRealm realm, JSObjectFactory factory, Object regexResult, String inputString, boolean isIndices) {
+            return new RegExpGroupsObjectImpl(realm, factory, regexResult, inputString, isIndices);
+        }
     }
 
     private JSRegExp() {
@@ -191,42 +252,22 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
 
     public static Object getCompiledRegex(DynamicObject thisObj) {
         assert isJSRegExp(thisObj);
-        return COMPILED_REGEX_PROPERTY.get(thisObj, isJSRegExp(thisObj));
-    }
-
-    public static Object getCompiledRegexUnchecked(DynamicObject thisObj, boolean guard) {
-        assert isJSRegExp(thisObj);
-        return COMPILED_REGEX_PROPERTY.get(thisObj, guard);
+        return ((JSRegExpImpl) thisObj).getCompiledRegex();
     }
 
     public static JSObjectFactory getGroupsFactory(DynamicObject thisObj) {
         assert isJSRegExp(thisObj);
-        return (JSObjectFactory) GROUPS_FACTORY_PROPERTY.get(thisObj, isJSRegExp(thisObj));
-    }
-
-    public static JSObjectFactory getGroupsFactoryUnchecked(DynamicObject thisObj, boolean guard) {
-        assert isJSRegExp(thisObj);
-        return (JSObjectFactory) GROUPS_FACTORY_PROPERTY.get(thisObj, guard);
+        return ((JSRegExpImpl) thisObj).getGroupsFactory();
     }
 
     public static Object getRealm(DynamicObject thisObj) {
         assert isJSRegExp(thisObj);
-        return REALM_PROPERTY.get(thisObj, isJSRegExp(thisObj));
-    }
-
-    public static Object getRealmUnchecked(DynamicObject thisObj, boolean guard) {
-        assert isJSRegExp(thisObj);
-        return REALM_PROPERTY.get(thisObj, guard);
+        return ((JSRegExpImpl) thisObj).getRealm();
     }
 
     public static boolean getLegacyFeaturesEnabled(DynamicObject thisObj) {
         assert isJSRegExp(thisObj);
-        return (boolean) LEGACY_FEATURES_ENABLED_PROPERTY.get(thisObj, isJSRegExp(thisObj));
-    }
-
-    public static boolean getLegacyFeaturesEnabledUnchecked(DynamicObject thisObj, boolean guard) {
-        assert isJSRegExp(thisObj);
-        return (boolean) LEGACY_FEATURES_ENABLED_PROPERTY.get(thisObj, guard);
+        return ((JSRegExpImpl) thisObj).getLegacyFeaturesEnabled();
     }
 
     /**
@@ -238,36 +279,44 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
      * consider using the {@code com.oracle.truffle.js.nodes.intl.CreateRegExpNode}.
      */
     public static DynamicObject create(JSContext ctx, Object compiledRegex) {
-        DynamicObject obj = create(ctx, compiledRegex, computeGroupsFactory(ctx, compiledRegex));
+        JSObjectFactory groupsFactory = computeGroupsFactory(ctx, compiledRegex);
+        DynamicObject obj = create(ctx, compiledRegex, groupsFactory);
         JSObjectUtil.putDataProperty(ctx, obj, LAST_INDEX, 0, JSAttributes.notConfigurableNotEnumerableWritable());
+        assert isJSRegExp(obj);
         return obj;
     }
 
     /**
      * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
      */
-    public static DynamicObject create(JSContext ctx, Object compiledRegex, JSObjectFactory groupsFactory) {
-        return create(ctx, compiledRegex, groupsFactory, true);
+    public static DynamicObject create(JSContext context, Object compiledRegex, JSObjectFactory groupsFactory) {
+        return create(context, compiledRegex, groupsFactory, true);
     }
 
     /**
      * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
      */
-    public static DynamicObject create(JSContext ctx, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
-        // (compiledRegex, groupsFactory, realm, legacyFeaturesEnabled)
-        DynamicObject regExp = JSObject.create(ctx, ctx.getRegExpFactory(), compiledRegex, groupsFactory, ctx.getRealm(), legacyFeaturesEnabled);
+    public static DynamicObject create(JSContext context, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
+        JSRealm realm = context.getRealm();
+        DynamicObject regExp = JSRegExpImpl.create(realm, context.getRegExpFactory(), compiledRegex, groupsFactory, legacyFeaturesEnabled);
         assert isJSRegExp(regExp);
-        return regExp;
+        return context.trackAllocation(regExp);
     }
 
     private static void initialize(JSContext ctx, DynamicObject regExp, Object regex) {
-        COMPILED_REGEX_PROPERTY.setSafe(regExp, regex, null);
-        GROUPS_FACTORY_PROPERTY.setSafe(regExp, computeGroupsFactory(ctx, regex), null);
+        ((JSRegExpImpl) regExp).setCompiledRegex(regex);
+        ((JSRegExpImpl) regExp).setGroupsFactory(computeGroupsFactory(ctx, regex));
     }
 
     public static void updateCompilation(JSContext ctx, DynamicObject thisObj, Object regex) {
         assert isJSRegExp(thisObj) && regex != null;
         initialize(ctx, thisObj, regex);
+    }
+
+    public static DynamicObject createGroupsObject(JSContext context, JSObjectFactory groupsFactory, Object regexResult, String input, boolean isIndices) {
+        JSRealm realm = context.getRealm();
+        DynamicObject obj = RegExpGroupsObjectImpl.create(realm, groupsFactory, regexResult, input, isIndices);
+        return context.trackAllocation(obj);
     }
 
     @TruffleBoundary
@@ -289,10 +338,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
 
     @TruffleBoundary
     public static JSObjectFactory buildGroupsFactory(JSContext ctx, Object namedCaptureGroups) {
-        Shape groupsShape = ctx.getEmptyShapeNullPrototype();
-        groupsShape = groupsShape.addProperty(GROUPS_RESULT_PROPERTY);
-        groupsShape = groupsShape.addProperty(GROUPS_ORIGINAL_INPUT_PROPERTY);
-        groupsShape = groupsShape.addProperty(GROUPS_IS_INDICES_PROPERTY);
+        Shape groupsShape = ctx.getRegExpGroupsEmptyShape();
         List<Object> keys = JSInteropUtil.keys(namedCaptureGroups);
         List<Pair<Integer, String>> pairs = new ArrayList<>(keys.size());
         for (Object key : keys) {
@@ -301,13 +347,14 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
             pairs.add(new Pair<>(groupIndex, groupName));
         }
         Collections.sort(pairs, NAMED_GROUPS_COMPARATOR);
+        Shape.DerivedBuilder builder = Shape.newBuilder(groupsShape);
         for (Pair<Integer, String> pair : pairs) {
             int groupIndex = pair.getFirst();
             String groupName = pair.getSecond();
-            Property groupProperty = JSObjectUtil.makeProxyProperty(groupName, new LazyNamedCaptureGroupProperty(groupName, groupIndex), JSAttributes.getDefault());
-            groupsShape = groupsShape.addProperty(groupProperty);
+            builder.addConstantProperty(groupName, new LazyNamedCaptureGroupProperty(groupName, groupIndex), JSAttributes.getDefault() | JSProperty.PROXY);
         }
-        return JSObjectFactory.createBound(ctx, Null.instance, groupsShape.createFactory());
+        groupsShape = builder.build();
+        return JSObjectFactory.createBound(ctx, Null.instance, groupsShape);
     }
 
     /**
@@ -329,7 +376,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
 
     // non-standard according to ES2015, 7.2.8 IsRegExp (@@match check missing)
     public static boolean isJSRegExp(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSRegExp((DynamicObject) obj);
+        return JSObject.isJSObject(obj) && isJSRegExp((DynamicObject) obj);
     }
 
     // non-standard according to ES2015, 7.2.8 IsRegExp (@@match check missing)
@@ -340,11 +387,16 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), ctx.getEcmaScriptVersion() < 6 ? JSRegExp.INSTANCE : JSUserObject.INSTANCE);
+        DynamicObject prototype;
         if (ctx.getEcmaScriptVersion() < 6) {
-            JSObjectUtil.putHiddenProperty(prototype, COMPILED_REGEX_PROPERTY, compileEarly(realm, "", ""));
+            Shape shape = JSShape.createPrototypeShape(realm.getContext(), INSTANCE, realm.getObjectPrototype());
+            prototype = JSRegExpImpl.create(shape, compileEarly(realm, "", ""), realm);
+            JSObjectUtil.setOrVerifyPrototype(ctx, prototype, realm.getObjectPrototype());
             JSObjectUtil.putDataProperty(ctx, prototype, LAST_INDEX, 0, JSAttributes.notConfigurableNotEnumerableWritable());
+        } else {
+            prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         }
+
         putRegExpPropertyAccessor(realm, prototype, SOURCE);
         putRegExpPropertyAccessor(realm, prototype, FLAGS);
         putRegExpPropertyAccessor(realm, prototype, MULTILINE);
@@ -365,7 +417,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
 
     private static void putRegExpPropertyAccessor(JSRealm realm, DynamicObject prototype, String name) {
         DynamicObject getter = realm.lookupFunction(RegExpPrototypeBuiltins.RegExpPrototypeGetterBuiltins.BUILTINS, name);
-        JSObjectUtil.putConstantAccessorProperty(realm.getContext(), prototype, name, getter, Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, name, getter, Undefined.instance);
     }
 
     private static Object compileEarly(JSRealm realm, String pattern, String flags) {
@@ -374,38 +426,12 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
 
     @Override
     public Shape makeInitialShape(JSContext ctx, DynamicObject thisObj) {
-        // @formatter:off
-        return JSObjectUtil.getProtoChildShape(thisObj, INSTANCE, ctx).
-                        addProperty(COMPILED_REGEX_PROPERTY).
-                        addProperty(GROUPS_FACTORY_PROPERTY).
-                        addProperty(REALM_PROPERTY).
-                        addProperty(LEGACY_FEATURES_ENABLED_PROPERTY);
-        // @formatter:on
+        return JSObjectUtil.getProtoChildShape(thisObj, INSTANCE, ctx);
     }
 
-    public static Shape makeLazyRegexArrayShape(JSContext ctx, DynamicObject prototype) {
-        Shape initialShape = JSArray.INSTANCE.makeInitialShape(ctx, prototype);
-        initialShape = initialShape.addProperty(JSAbstractArray.LAZY_REGEX_RESULT_PROPERTY);
-        initialShape = initialShape.addProperty(JSAbstractArray.LAZY_REGEX_ORIGINAL_INPUT_PROPERTY);
-        final Property inputProperty = JSObjectUtil.makeDataProperty(JSRegExp.INPUT, initialShape.allocator().locationForType(String.class, EnumSet.of(LocationModifier.NonNull)),
-                        JSAttributes.getDefault());
-        initialShape = initialShape.addProperty(inputProperty);
-        initialShape = initialShape.addProperty(LAZY_INDEX_PROXY);
-        initialShape = initialShape.addProperty(JSObjectUtil.makeDataProperty(GROUPS, initialShape.allocator().locationForType(DynamicObject.class,
-                        EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)), JSAttributes.getDefault()));
-        if (ctx.isOptionRegexpMatchIndices()) {
-            initialShape = initialShape.addProperty(JSObjectUtil.makeDataProperty(INDICES, initialShape.allocator().locationForType(DynamicObject.class,
-                            EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)), JSAttributes.getDefault()));
-        }
-        return initialShape;
-    }
-
-    public static Shape makeLazyRegexIndicesArrayShape(JSContext ctx, DynamicObject prototype) {
-        Shape initialShape = JSArray.INSTANCE.makeInitialShape(ctx, prototype);
-        initialShape = initialShape.addProperty(JSAbstractArray.LAZY_REGEX_RESULT_PROPERTY);
-        initialShape = initialShape.addProperty(JSObjectUtil.makeDataProperty(GROUPS, initialShape.allocator().locationForType(DynamicObject.class,
-                        EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)), JSAttributes.getDefault()));
-        return initialShape;
+    public static Shape makeInitialGroupsObjectShape(JSContext context) {
+        CompilerAsserts.neverPartOfCompilation();
+        return JSShape.createRootWithNullProto(context, JSUserObject.BARE_INSTANCE);
     }
 
     @Override

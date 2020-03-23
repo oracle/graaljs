@@ -45,7 +45,9 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -107,7 +109,7 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
     public DynamicObject doCachedProto(@SuppressWarnings("unused") DynamicObject target, @SuppressWarnings("unused") DynamicObject prototype,
                     @Cached("prototype") @SuppressWarnings("unused") DynamicObject cachedPrototype,
                     @Cached("getProtoChildShape(prototype)") Shape shape) {
-        return JSObject.create(context, shape);
+        return JSUserObject.create(context, shape);
     }
 
     /** Many different prototypes. */
@@ -115,12 +117,16 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
     @Specialization(guards = {"!isBuiltin", "isConstructor", "!context.isMultiContext()", "isJSObject(prototype)"}, replaces = "doCachedProto")
     public DynamicObject doUncachedProto(@SuppressWarnings("unused") DynamicObject target, DynamicObject prototype,
                     @Cached("create()") BranchProfile slowBranch) {
-        return JSObject.createBoundary(context, JSObjectUtil.getProtoChildShape(prototype, JSUserObject.INSTANCE, context, slowBranch));
+        Shape shape = JSObjectUtil.getProtoChildShape(prototype, JSUserObject.INSTANCE, context, slowBranch);
+        return JSUserObject.create(context, shape);
     }
 
     @Specialization(guards = {"!isBuiltin", "isConstructor", "context.isMultiContext()", "isJSObject(prototype)"})
-    public DynamicObject createWithProto(@SuppressWarnings("unused") DynamicObject target, DynamicObject prototype) {
-        return JSUserObject.createWithPrototypeInObject(prototype, context);
+    public DynamicObject createWithProto(@SuppressWarnings("unused") DynamicObject target, DynamicObject prototype,
+                    @CachedLibrary(limit = "3") DynamicObjectLibrary setProtoNode) {
+        DynamicObject object = JSUserObject.createWithoutPrototype(context);
+        setProtoNode.put(object, JSObject.HIDDEN_PROTO, prototype);
+        return object;
     }
 
     @Specialization(guards = {"!isBuiltin", "isConstructor", "!isJSObject(prototype)"})
@@ -128,9 +134,9 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
         // user-provided prototype is not an object
         JSRealm realm = JSRuntime.getFunctionRealm(target, context);
         if (isAsyncGenerator) {
-            return JSObject.createWithRealm(context, context.getAsyncGeneratorObjectFactory(), realm);
+            return JSUserObject.createWithRealm(context, context.getAsyncGeneratorObjectFactory(), realm);
         } else if (isGenerator) {
-            return JSObject.createWithRealm(context, context.getGeneratorObjectFactory(), realm);
+            return JSUserObject.createWithRealm(context, context.getGeneratorObjectFactory(), realm);
         }
         return JSUserObject.create(context, realm);
     }

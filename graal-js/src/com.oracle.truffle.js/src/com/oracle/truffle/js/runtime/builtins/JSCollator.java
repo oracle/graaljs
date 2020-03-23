@@ -42,7 +42,6 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import java.text.Normalizer;
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
@@ -59,8 +58,6 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.intl.CollatorFunctionBuiltins;
@@ -79,7 +76,6 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
@@ -87,9 +83,6 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
 
     public static final String CLASS_NAME = "Collator";
     public static final String PROTOTYPE_NAME = "Collator.prototype";
-
-    private static final HiddenKey INTERNAL_STATE_ID = new HiddenKey("_internalState");
-    private static final Property INTERNAL_STATE_PROPERTY;
 
     static final HiddenKey BOUND_OBJECT_KEY = new HiddenKey(CLASS_NAME);
 
@@ -121,16 +114,11 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
                     "zhuyin"
     }));
 
-    static {
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        INTERNAL_STATE_PROPERTY = JSObjectUtil.makeHiddenProperty(INTERNAL_STATE_ID, allocator.locationForType(InternalState.class, EnumSet.of(LocationModifier.NonNull, LocationModifier.Final)));
-    }
-
     private JSCollator() {
     }
 
     public static boolean isJSCollator(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSCollator((DynamicObject) obj);
+        return JSObject.isJSObject(obj) && isJSCollator((DynamicObject) obj);
     }
 
     public static boolean isJSCollator(DynamicObject obj) {
@@ -150,10 +138,10 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject collatorPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject collatorPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, collatorPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, collatorPrototype, CollatorPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putConstantAccessorProperty(ctx, collatorPrototype, "compare", createCompareFunctionGetter(realm, ctx), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(collatorPrototype, "compare", createCompareFunctionGetter(realm, ctx), Undefined.instance);
         JSObjectUtil.putDataProperty(ctx, collatorPrototype, Symbol.SYMBOL_TO_STRING_TAG, "Intl.Collator", JSAttributes.configurableNotEnumerableNotWritable());
         return collatorPrototype;
     }
@@ -249,7 +237,6 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
     @Override
     public Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
-        initialShape = initialShape.addProperty(INTERNAL_STATE_PROPERTY);
         return initialShape;
     }
 
@@ -259,9 +246,9 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
 
     public static DynamicObject create(JSContext context) {
         InternalState state = new InternalState();
-        DynamicObject result = JSObject.create(context, context.getCollatorFactory(), state);
-        assert isJSCollator(result);
-        return result;
+        DynamicObject obj = IntlObject.create(context.getRealm(), context.getCollatorFactory(), state);
+        assert isJSCollator(obj);
+        return context.trackAllocation(obj);
     }
 
     public static Collator getCollatorProperty(DynamicObject obj) {
@@ -341,7 +328,8 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
     }
 
     public static InternalState getInternalState(DynamicObject collatorObj) {
-        return (InternalState) INTERNAL_STATE_PROPERTY.get(collatorObj, isJSCollator(collatorObj));
+        assert isJSCollator(collatorObj);
+        return ((IntlObject) collatorObj).getInternalState();
     }
 
     private static CallTarget createGetCompareCallTarget(JSContext context) {

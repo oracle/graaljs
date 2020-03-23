@@ -42,7 +42,6 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import java.text.AttributedCharacterIterator;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 
@@ -57,9 +56,6 @@ import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.intl.RelativeTimeFormatFunctionBuiltins;
 import com.oracle.truffle.js.builtins.intl.RelativeTimeFormatPrototypeBuiltins;
@@ -70,7 +66,6 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.LazyValue;
 
@@ -79,21 +74,13 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
     public static final String CLASS_NAME = "RelativeTimeFormat";
     public static final String PROTOTYPE_NAME = "RelativeTimeFormat.prototype";
 
-    private static final HiddenKey INTERNAL_STATE_ID = new HiddenKey("_internalState");
-    private static final Property INTERNAL_STATE_PROPERTY;
-
     public static final JSRelativeTimeFormat INSTANCE = new JSRelativeTimeFormat();
-
-    static {
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        INTERNAL_STATE_PROPERTY = JSObjectUtil.makeHiddenProperty(INTERNAL_STATE_ID, allocator.locationForType(InternalState.class, EnumSet.of(LocationModifier.NonNull, LocationModifier.Final)));
-    }
 
     private JSRelativeTimeFormat() {
     }
 
     public static boolean isJSRelativeTimeFormat(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSRelativeTimeFormat((DynamicObject) obj);
+        return JSObject.isJSObject(obj) && isJSRelativeTimeFormat((DynamicObject) obj);
     }
 
     public static boolean isJSRelativeTimeFormat(DynamicObject obj) {
@@ -113,7 +100,7 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject relativeTimeFormatPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject relativeTimeFormatPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, relativeTimeFormatPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, relativeTimeFormatPrototype, RelativeTimeFormatPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putDataProperty(ctx, relativeTimeFormatPrototype, Symbol.SYMBOL_TO_STRING_TAG, "Intl.RelativeTimeFormat", JSAttributes.configurableNotEnumerableNotWritable());
@@ -123,7 +110,6 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
     @Override
     public Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
-        initialShape = initialShape.addProperty(INTERNAL_STATE_PROPERTY);
         return initialShape;
     }
 
@@ -133,9 +119,9 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
 
     public static DynamicObject create(JSContext context) {
         InternalState state = new InternalState();
-        DynamicObject result = JSObject.create(context, context.getRelativeTimeFormatFactory(), state);
-        assert isJSRelativeTimeFormat(result);
-        return result;
+        DynamicObject obj = IntlObject.create(context.getRealm(), context.getRelativeTimeFormatFactory(), state);
+        assert isJSRelativeTimeFormat(obj);
+        return context.trackAllocation(obj);
     }
 
     public static RelativeDateTimeFormatter getRelativeDateTimeFormatterProperty(DynamicObject obj) {
@@ -249,8 +235,9 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
         return state.toResolvedOptionsObject(context);
     }
 
-    public static InternalState getInternalState(DynamicObject relativeTimeFormatObj) {
-        return (InternalState) INTERNAL_STATE_PROPERTY.get(relativeTimeFormatObj, isJSRelativeTimeFormat(relativeTimeFormatObj));
+    public static InternalState getInternalState(DynamicObject obj) {
+        assert isJSRelativeTimeFormat(obj);
+        return ((IntlObject) obj).getInternalState();
     }
 
     @Override

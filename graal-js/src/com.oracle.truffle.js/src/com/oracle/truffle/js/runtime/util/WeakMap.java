@@ -51,7 +51,8 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
 /**
@@ -80,8 +81,8 @@ public class WeakMap implements Map<DynamicObject, Object> {
 
     @SuppressWarnings("unchecked")
     private static Map<WeakMap, Object> getInvertedMap(DynamicObject k, boolean put) {
-        if (k.containsKey(INVERTED_WEAK_MAP_KEY)) {
-            return (WeakHashMap<WeakMap, Object>) k.get(INVERTED_WEAK_MAP_KEY);
+        if (JSDynamicObject.hasProperty(k, INVERTED_WEAK_MAP_KEY)) {
+            return (WeakHashMap<WeakMap, Object>) JSDynamicObject.getOrNull(k, INVERTED_WEAK_MAP_KEY);
         } else {
             if (put) {
                 return putInvertedMap(k);
@@ -93,14 +94,10 @@ public class WeakMap implements Map<DynamicObject, Object> {
 
     private static WeakHashMap<WeakMap, Object> putInvertedMap(DynamicObject k) {
         WeakHashMap<WeakMap, Object> invertedMap = new WeakHashMap<>();
-        boolean wasNotExtensible = !JSShape.isExtensible(k.getShape());
-        k.define(INVERTED_WEAK_MAP_KEY, invertedMap);
-        if (wasNotExtensible && JSObject.isExtensible(k)) {
-            // not-extensible marker property is expected to be the last property; ensure it is.
-            k.delete(JSShape.NOT_EXTENSIBLE_KEY);
-            JSObject.preventExtensions(k);
-            assert !JSObject.isExtensible(k);
-        }
+        boolean wasExtensible = false;
+        assert (wasExtensible = ((JSDynamicObject.getObjectFlags(k) & JSShape.NOT_EXTENSIBLE_FLAG) == 0)) || Boolean.TRUE;
+        JSObjectUtil.putHiddenProperty(k, INVERTED_WEAK_MAP_KEY, invertedMap);
+        assert wasExtensible == ((JSDynamicObject.getObjectFlags(k) & JSShape.NOT_EXTENSIBLE_FLAG) == 0);
         return invertedMap;
     }
 

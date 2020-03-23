@@ -65,6 +65,7 @@ import com.oracle.truffle.js.runtime.PromiseHook;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
 
@@ -221,7 +222,8 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
             @Override
             public AsyncStackTraceInfo getAsyncStackTraceInfo(DynamicObject handlerFunction) {
                 assert JSFunction.isJSFunction(handlerFunction) && ((RootCallTarget) JSFunction.getFunctionData(handlerFunction).getCallTarget()).getRootNode() == this;
-                return new AsyncStackTraceInfo((DynamicObject) handlerFunction.get(PROMISE_KEY, null), null);
+                DynamicObject promise = (DynamicObject) JSObjectUtil.getHiddenProperty(handlerFunction, PROMISE_KEY);
+                return new AsyncStackTraceInfo(promise, null);
             }
         }
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseResolveRootNode());
@@ -292,7 +294,8 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
             @Override
             public AsyncStackTraceInfo getAsyncStackTraceInfo(DynamicObject handlerFunction) {
                 assert JSFunction.isJSFunction(handlerFunction) && ((RootCallTarget) JSFunction.getFunctionData(handlerFunction).getCallTarget()).getRootNode() == this;
-                return new AsyncStackTraceInfo((DynamicObject) handlerFunction.get(PROMISE_KEY, null), null);
+                DynamicObject promise = (DynamicObject) JSObjectUtil.getHiddenProperty(handlerFunction, PROMISE_KEY);
+                return new AsyncStackTraceInfo(promise, null);
             }
         }
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseRejectRootNode());

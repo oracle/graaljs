@@ -44,19 +44,16 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.builtins.IntlObject;
 import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 
 /**
@@ -71,30 +68,17 @@ public final class SharedMemMessagingBindings extends JSBuiltinObject {
 
     private static final String CLASS_NAME = "SharedMemMessaging";
 
-    private static final HiddenKey API = new HiddenKey("api");
-    private static final Property API_PROPERTY;
-
-    static {
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        API_PROPERTY = JSObjectUtil.makeHiddenProperty(API, allocator.locationForType(Object.class));
-    }
-
-    public static void setApiField(DynamicObject obj, Object api) {
-        API_PROPERTY.setSafe(obj, api, null);
-    }
-
-    public static Object getApiField(DynamicObject obj) {
-        return API_PROPERTY.get(obj, isInstance(obj, INSTANCE));
-    }
-
     private SharedMemMessagingBindings() {
+    }
+
+    public static GraalJSAccess getApiField(DynamicObject self) {
+        return ((IntlObject) self).getInternalState();
     }
 
     @TruffleBoundary
     private static DynamicObject create(JSContext context, GraalJSAccess graalJSAccess) {
-        DynamicObject obj = context.createEmptyShape().addProperty(API_PROPERTY).newInstance();
+        DynamicObject obj = IntlObject.create(context.makeEmptyShapeWithNullPrototype(INSTANCE), graalJSAccess);
         JSObjectUtil.putFunctionsFromContainer(context.getRealm(), obj, BUILTINS);
-        setApiField(obj, graalJSAccess);
         return obj;
     }
 
@@ -116,6 +100,14 @@ public final class SharedMemMessagingBindings extends JSBuiltinObject {
         };
         JSFunctionData functionData = JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(wrapperNode), 2, "SharedMemMessagingInit");
         return JSFunction.create(realm, functionData);
+    }
+
+    public static boolean isSharedMemMessagingBindings(Object obj) {
+        return JSObject.isDynamicObject(obj) && isSharedMemMessagingBindings((DynamicObject) obj);
+    }
+
+    public static boolean isSharedMemMessagingBindings(DynamicObject obj) {
+        return isInstance(obj, INSTANCE);
     }
 
 }

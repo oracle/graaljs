@@ -40,10 +40,12 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -61,6 +63,8 @@ import com.oracle.truffle.js.runtime.objects.JSProperty;
 public final class InitErrorObjectNode extends JavaScriptBaseNode {
     @Child private PropertySetNode setException;
     @Child private PropertySetNode setFormattedStack;
+    @Child private DynamicObjectLibrary setMessage;
+    @Child private DynamicObjectLibrary setErrors;
     @Child private DefineStackPropertyNode defineStackProperty;
     private final boolean defaultColumnNumber;
     @Child private CreateMethodPropertyNode setLineNumber;
@@ -69,6 +73,7 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
     private InitErrorObjectNode(JSContext context, boolean defaultColumnNumber) {
         this.setException = PropertySetNode.createSetHidden(JSError.EXCEPTION_PROPERTY_NAME, context);
         this.setFormattedStack = PropertySetNode.createSetHidden(JSError.FORMATTED_STACK_NAME, context);
+        this.setMessage = JSObjectUtil.createDispatched(JSError.MESSAGE);
         this.defineStackProperty = DefineStackPropertyNode.create();
         this.defaultColumnNumber = defaultColumnNumber;
         if (context.isOptionNashornCompatibilityMode()) {
@@ -85,7 +90,18 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
         return new InitErrorObjectNode(context, defaultColumnNumber);
     }
 
-    public DynamicObject execute(DynamicObject errorObj, GraalJSException exception) {
+    public DynamicObject execute(DynamicObject errorObj, GraalJSException exception, String messageOpt) {
+        return execute(errorObj, exception, messageOpt, null);
+    }
+
+    public DynamicObject execute(DynamicObject errorObj, GraalJSException exception, String messageOpt, DynamicObject errorsOpt) {
+        if (messageOpt != null) {
+            setMessage.putWithFlags(errorObj, JSError.MESSAGE, messageOpt, JSError.MESSAGE_ATTRIBUTES);
+        }
+        if (errorsOpt != null) {
+            setErrorsNode().putWithFlags(errorObj, JSError.ERRORS_NAME, errorsOpt, JSError.ERRORS_ATTRIBUTES);
+        }
+
         setException.setValue(errorObj, exception);
         // stack is not formatted until it is accessed
         setFormattedStack.setValue(errorObj, null);
@@ -97,6 +113,15 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
             setColumnNumber.executeVoid(errorObj, defaultColumnNumber ? JSError.DEFAULT_COLUMN_NUMBER : topStackTraceElement.getColumnNumber());
         }
         return errorObj;
+    }
+
+    private DynamicObjectLibrary setErrorsNode() {
+        DynamicObjectLibrary errorsLib = setErrors;
+        if (errorsLib == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            setErrors = errorsLib = insert(JSObjectUtil.createDispatched(JSError.ERRORS_NAME));
+        }
+        return errorsLib;
     }
 
     @ImportStatic(JSError.class)
