@@ -67,6 +67,7 @@ import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_CW
 import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_CORE_MODULES_REPLACEMENTS_NAME;
 import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_GLOBAL_PROPERTIES_NAME;
 import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_NAME;
+import static com.oracle.truffle.js.runtime.JSContextOptions.ECMASCRIPT_VERSION_NAME;
 import static com.oracle.truffle.js.runtime.JSContextOptions.GLOBAL_PROPERTY_NAME;
 import static org.junit.Assert.assertEquals;
 
@@ -88,6 +89,7 @@ public class CommonJSRequireTest {
 
     private static Context testContext(Path tempFolder, OutputStream out, OutputStream err) {
         Map<String, String> options = new HashMap<>();
+        options.put(ECMASCRIPT_VERSION_NAME, "2020");
         options.put(COMMONJS_REQUIRE_NAME, "true");
         options.put(COMMONJS_REQUIRE_CWD_NAME, tempFolder.toAbsolutePath().toString());
         return testContext(out, err, options);
@@ -137,6 +139,43 @@ public class CommonJSRequireTest {
             assertEquals(expectedMessage, t.getMessage());
         }
     }
+
+    private static void runAndExpectOutput(Source src, String expectedOutput, Map<String, String> options) throws IOException {
+        runAndExpectOutput(src, expectedOutput, "", options);
+    }
+
+    private static void runAndExpectOutput(String src, String expectedOutput, Map<String, String> options) throws IOException {
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.js").build(), expectedOutput, "", options);
+    }
+
+    private static void runAndExpectOutput(Source src, String expectedOutput, String expectedErr, Map<String, String> options) throws IOException {
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        final ByteArrayOutputStream err = new ByteArrayOutputStream();
+        try (Context cx = testContext(out, err, options)) {
+            cx.eval(src);
+            out.flush();
+            err.flush();
+            String outPrint = new String(out.toByteArray());
+            String errPrint = new String(err.toByteArray());
+            Assert.assertEquals(expectedOutput, outPrint);
+            Assert.assertEquals(expectedErr, errPrint);
+        }
+    }
+
+    private static void runAndExpectOutput(String src, String expectedOutput) throws IOException {
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.js").build(), expectedOutput, "", getDefaultOptions());
+    }
+
+    private static Map<String, String> getDefaultOptions() {
+        Path root = getTestRootFolder();
+        Map<String, String> options = new HashMap<>();
+        options.put(COMMONJS_REQUIRE_NAME, "true");
+        options.put(COMMONJS_REQUIRE_CWD_NAME, root.toAbsolutePath().toString());
+        options.put(ECMASCRIPT_VERSION_NAME, "2020");
+        return options;
+    }
+
+    // ##### CommonJs Modules
 
     @Test
     public void absoluteFilename() {
@@ -419,4 +458,132 @@ public class CommonJSRequireTest {
         }
     }
 
+    // ##### ES Modules
+
+    @Test
+    public void testDynamicImportAbsoluteURL() throws IOException {
+        String absolutePath = getTestRootFolder().toAbsolutePath().toString();
+        final String src = "import('file://" + absolutePath + "/a.mjs').then(x => console.log(x.hello)).catch(console.log);";
+        final String out = "hello module!\n";
+        runAndExpectOutput(src, out);
+    }
+
+    @Test
+    public void testDynamicImportFile() throws IOException {
+        final String src = "import('./a.mjs').then(x => console.log(x.hello)).catch(console.log);";
+        final String out = "hello module!\n";
+        runAndExpectOutput(src, out);
+    }
+
+    @Test
+    public void testDynamicImportModule() throws IOException {
+        final String src = "import('esm-basic').then(x => console.log(x.hello)).catch(console.log);";
+        final String out = "hello esm-module!\n";
+        runAndExpectOutput(src, out);
+    }
+
+    @Test
+    public void testDynamicImportModuleNested() throws IOException {
+        final String src = "import('esm-nested').then(x => console.log(x.hi)).catch(console.log);";
+        final String out = "hello esm-nested-module! hello esm-module!\n";
+        runAndExpectOutput(src, out);
+    }
+
+    @Test
+    public void unknownEsModule() throws IOException {
+        final String src = "import('unknown').then(x => {throw 'unexpected'}).catch(console.log);";
+        final String out = "TypeError: Cannot load module: 'unknown'\n";
+        runAndExpectOutput(src, out);
+    }
+
+    @Test
+    public void unknownEsFile() throws IOException {
+        final String src = "import('./unknown.mjs').then(x => {throw 'unexpected'}).catch(console.log);";
+        final String out = "TypeError: Cannot load module: './unknown.mjs'\n";
+        runAndExpectOutput(src, out);
+    }
+
+    @Test
+    public void unsupportedUrl() throws IOException {
+        final String src = "import('https://unpkg.com/@esm/ms').then(x => {throw 'unexpected'}).catch(console.log);";
+        final String out = "TypeError: Only file:// urls are supported: FileSystem for: https scheme is not supported.\n";
+        runAndExpectOutput(src, out);
+    }
+
+    @Test
+    public void dontImportCommonJs() throws IOException {
+        final String src = "import('with-package').then(x => {throw 'unexpected'}).catch(console.log);";
+        final String out = "TypeError: do not use import() to load non-ES modules.\n";
+        runAndExpectOutput(src, out);
+    }
+
+    @Test
+    public void badModuleName() throws IOException {
+        final String src = "import('__foo__ + /some/garbage.js').then(x => {throw 'unexpected'}).catch(console.log);";
+        final String out = "TypeError: Cannot load module: '__foo__ + /some/garbage.js'\n";
+        runAndExpectOutput(src, out);
+    }
+
+    @Test
+    public void emptyModuleName() throws IOException {
+        final String src = "import('').then(x => {throw 'unexpected'}).catch(console.log);";
+        final String out = "TypeError: Cannot load module: ''\n";
+        runAndExpectOutput(src, out);
+    }
+
+    @Test
+    public void importModuleCwd() throws IOException {
+        final String src = "import equal from './equal.mjs'; equal(42, 42); console.log('OK!');";
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "OK!\n", getDefaultOptions());
+    }
+
+    @Test
+    public void dynamicImportBuiltinModule2() throws IOException {
+        final String src = "import('assert').then(a => {a.equal(42, 42); console.log('OK!');}).catch(console.log);";
+        Map<String, String> options = getDefaultOptions();
+        // requiring the 'assert' module will resolve `builtin-assert-mockup.js`
+        options.put(COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, "assert:./builtin-assert-mockup.js");
+        runAndExpectOutput(src, "OK!\n", options);
+    }
+
+    @Test
+    public void importBuiltinModule() throws IOException {
+        final String src = "import assert from 'assert'; assert.equal(42, 42); console.log('OK!');";
+        Map<String, String> options = getDefaultOptions();
+        options.put(COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, "assert:./builtin-assert-mockup.js");
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "OK!\n", options);
+    }
+
+    @Test
+    public void importNamedBuiltinModule() throws IOException {
+        final String src = "import {equal} from 'assert'; equal(42, 42); console.log('OK!');";
+        Map<String, String> options = getDefaultOptions();
+        options.put(COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, "assert:./builtin-assert-mockup.js");
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "OK!\n", options);
+    }
+
+    @Test
+    public void importNamedBuiltinModuleEs() throws IOException {
+        final String src = "import {equal} from 'assert'; equal(42, 42); console.log('OK!');";
+        Map<String, String> options = getDefaultOptions();
+        options.put(COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, "assert:./builtin-assert-mockup.mjs");
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "OK!\n", options);
+    }
+
+    @Test
+    public void importBuiltinModuleEs() throws IOException {
+        final String src = "import assert from 'assert'; assert.equal(42, 42); console.log('OK!');";
+        Map<String, String> options = getDefaultOptions();
+        options.put(COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, "assert:./builtin-assert-mockup.mjs");
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "OK!\n", options);
+    }
+
+    @Test
+    public void importNestedBuiltinModuleEs() throws IOException {
+        Path root = getTestRootFolder();
+        Path dirFile = Paths.get(root.toAbsolutePath().toString(), "nested_imports.js");
+        Map<String, String> options = getDefaultOptions();
+        options.put(COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, "assert:./builtin-assert-mockup.mjs");
+        runAndExpectOutput(Source.newBuilder(ID, dirFile.toFile()).build(), "all OK!\n", options);
+    }
 }

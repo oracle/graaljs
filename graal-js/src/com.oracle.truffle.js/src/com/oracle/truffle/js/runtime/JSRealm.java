@@ -40,12 +40,9 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.Writer;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -56,6 +53,8 @@ import java.util.SplittableRandom;
 import java.util.TimeZone;
 import java.util.WeakHashMap;
 
+import com.oracle.truffle.js.builtins.commonjs.NpmCompatibleESModuleLoader;
+import com.oracle.truffle.js.runtime.objects.DefaultESModuleLoader;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
 
@@ -71,7 +70,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.builtins.ArrayIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.AtomicsBuiltins;
 import com.oracle.truffle.js.builtins.ConsoleBuiltins;
@@ -149,16 +147,16 @@ import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
-import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
-import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.LocalTimeZoneHolder;
 import com.oracle.truffle.js.runtime.util.PrintWriterWrapper;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
+
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
 
 /**
  * Container for JavaScript globals (i.e. an ECMAScript 6 Realm object).
@@ -1342,6 +1340,10 @@ public class JSRealm {
             this.commonJSPreLoadedBuiltins = new HashMap<>();
             for (Map.Entry<String, String> entry : commonJSRequireBuiltins.entrySet()) {
                 String builtinModule = entry.getValue();
+                // ES Modules are handled by the default module loader if used.
+                if (builtinModule.endsWith(MODULE_SOURCE_NAME_SUFFIX)) {
+                    continue;
+                }
                 DynamicObject obj = (DynamicObject) JSFunction.call(JSArguments.create(commonJSRequireFunctionObject, commonJSRequireFunctionObject, builtinModule));
                 this.commonJSPreLoadedBuiltins.put(entry.getKey(), obj);
             }
@@ -2078,70 +2080,11 @@ public class JSRealm {
     @TruffleBoundary
     private synchronized void createModuleLoader() {
         if (moduleLoader == null) {
-            moduleLoader = new JSModuleLoader() {
-                private final Map<String, JSModuleRecord> moduleMap = new HashMap<>();
-
-                private URI asURI(String specifier) {
-                    if (!specifier.contains(":")) {
-                        return null;
-                    }
-                    try {
-                        URI uri = new URI(specifier);
-                        return uri.getScheme() != null ? uri : null;
-                    } catch (URISyntaxException e) {
-                        return null;
-                    }
-                }
-
-                @Override
-                public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, String specifier) {
-                    String refPath = referrer == null ? null : referrer.getSource().getPath();
-                    try {
-                        TruffleFile moduleFile;
-                        if (refPath == null) {
-                            // Importing module source does not originate from a file.
-                            URI maybeUri = asURI(specifier);
-                            if (maybeUri != null) {
-                                moduleFile = getEnv().getPublicTruffleFile(maybeUri).getCanonicalFile();
-                            } else {
-                                moduleFile = getEnv().getPublicTruffleFile(specifier).getCanonicalFile();
-                            }
-                        } else {
-                            TruffleFile refFile = getEnv().getPublicTruffleFile(refPath);
-                            moduleFile = refFile.resolveSibling(specifier).getCanonicalFile();
-                        }
-                        String canonicalPath = moduleFile.getPath();
-                        JSModuleRecord existingModule = moduleMap.get(canonicalPath);
-                        if (existingModule != null) {
-                            return existingModule;
-                        }
-                        Source source = Source.newBuilder(JavaScriptLanguage.ID, moduleFile).name(specifier).build();
-                        JSModuleRecord newModule = getContext().getEvaluator().parseModule(getContext(), source, this);
-                        moduleMap.put(canonicalPath, newModule);
-                        return newModule;
-                    } catch (IOException | SecurityException e) {
-                        throw Errors.createErrorFromException(e);
-                    }
-                }
-
-                @Override
-                public JSModuleRecord loadModule(Source source) {
-                    String path = source.getPath();
-                    String canonicalPath;
-                    if (path == null) {
-                        // Source does not originate from a file.
-                        canonicalPath = source.getName();
-                    } else {
-                        try {
-                            TruffleFile moduleFile = getEnv().getPublicTruffleFile(path);
-                            canonicalPath = moduleFile.getCanonicalFile().getPath();
-                        } catch (IOException | SecurityException e) {
-                            throw Errors.createErrorFromException(e);
-                        }
-                    }
-                    return moduleMap.computeIfAbsent(canonicalPath, (key) -> getContext().getEvaluator().parseModule(getContext(), source, this));
-                }
-            };
+            if (context.getContextOptions().isCommonJSRequire()) {
+                moduleLoader = NpmCompatibleESModuleLoader.create(this);
+            } else {
+                moduleLoader = DefaultESModuleLoader.create(this);
+            }
         }
     }
 
