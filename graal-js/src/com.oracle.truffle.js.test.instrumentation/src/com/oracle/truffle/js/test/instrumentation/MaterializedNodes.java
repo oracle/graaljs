@@ -169,7 +169,7 @@ public class MaterializedNodes {
         // materialization should return a node of the same class
         JavaScriptNode desugared = (JavaScriptNode) optimized.materializeInstrumentableNodes(s);
         // otherwise cloning will crash
-        JavaScriptNode cloned = JavaScriptNode.cloneUninitialized(desugared);
+        JavaScriptNode cloned = JavaScriptNode.cloneUninitialized(desugared, null);
         assertTrue(cloned.getClass() == desugared.getClass());
     }
 
@@ -189,7 +189,7 @@ public class MaterializedNodes {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new DummyConstantNode(value);
         }
 

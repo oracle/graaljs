@@ -72,6 +72,8 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
+import java.util.Set;
+
 @GenerateWrapper
 public abstract class ArrayLiteralNode extends JavaScriptNode {
 
@@ -407,8 +409,8 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new DefaultArrayLiteralNode(context, cloneUninitialized(elements));
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new DefaultArrayLiteralNode(context, cloneUninitialized(elements, materializedTags));
         }
 
         @Override
@@ -433,8 +435,8 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new DefaultArrayLiteralOneElementNode(context, cloneUninitialized(child));
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new DefaultArrayLiteralOneElementNode(context, cloneUninitialized(child, materializedTags));
         }
 
         @Override
@@ -479,8 +481,8 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new DefaultObjectArrayWithEmptyLiteralNode(context, cloneUninitialized(elements));
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new DefaultObjectArrayWithEmptyLiteralNode(context, cloneUninitialized(elements, materializedTags));
         }
     }
 
@@ -503,7 +505,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return copy();
         }
     }
@@ -523,7 +525,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return copy();
         }
     }
@@ -540,7 +542,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return copy();
         }
     }
@@ -583,8 +585,8 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new DefaultArrayLiteralWithSpreadNode(context, cloneUninitialized(elements));
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new DefaultArrayLiteralWithSpreadNode(context, cloneUninitialized(elements, materializedTags));
         }
     }
 
@@ -621,10 +623,10 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             SpreadArrayNode copy = (SpreadArrayNode) copy();
-            copy.getIteratorNode = cloneUninitialized(getIteratorNode);
-            copy.iteratorStepNode = cloneUninitialized(iteratorStepNode);
+            copy.getIteratorNode = cloneUninitialized(getIteratorNode, materializedTags);
+            copy.iteratorStepNode = cloneUninitialized(iteratorStepNode, materializedTags);
             return copy;
         }
     }

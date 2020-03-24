@@ -53,6 +53,8 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
 
+import java.util.Set;
+
 @NodeInfo(shortName = "-")
 public abstract class JSUnaryMinusNode extends JSUnaryNode {
 
@@ -125,7 +127,7 @@ public abstract class JSUnaryMinusNode extends JSUnaryNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return JSUnaryMinusNodeGen.create(cloneUninitialized(getOperand()));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return JSUnaryMinusNodeGen.create(cloneUninitialized(getOperand(), materializedTags));
     }
 }

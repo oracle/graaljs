@@ -102,7 +102,7 @@ public class CallApplyArgumentsNode extends JavaScriptNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(context, cloneUninitialized(callNode));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return create(context, cloneUninitialized(callNode, materializedTags));
     }
 }

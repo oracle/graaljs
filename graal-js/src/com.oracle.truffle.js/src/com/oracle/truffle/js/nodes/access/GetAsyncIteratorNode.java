@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -53,6 +54,8 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+
+import java.util.Set;
 
 /**
  * GetIterator(obj, hint = async).
@@ -86,8 +89,8 @@ public abstract class GetAsyncIteratorNode extends GetIteratorNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return GetAsyncIteratorNodeGen.create(context, cloneUninitialized(objectNode));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return GetAsyncIteratorNodeGen.create(context, cloneUninitialized(objectNode, materializedTags));
     }
 
     private DynamicObject createAsyncFromSyncIterator(IteratorRecord syncIteratorRecord) {

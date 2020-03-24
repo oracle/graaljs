@@ -49,6 +49,8 @@ import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
+import java.util.Set;
+
 public final class GeneratorWrapperNode extends JavaScriptNode implements RepeatingNode {
     @Child private JavaScriptNode childNode;
     @Child private JavaScriptNode stateNode;
@@ -129,7 +131,7 @@ public final class GeneratorWrapperNode extends JavaScriptNode implements Repeat
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return createWrapper(cloneUninitialized(childNode), cloneUninitialized(stateNode), (WriteNode) cloneUninitialized((JavaScriptNode) writeStateNode));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return createWrapper(cloneUninitialized(childNode, materializedTags), cloneUninitialized(stateNode, materializedTags), (WriteNode) cloneUninitialized((JavaScriptNode) writeStateNode, materializedTags));
     }
 }

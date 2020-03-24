@@ -48,6 +48,8 @@ import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 
+import java.util.Set;
+
 @NodeInfo(shortName = "+")
 public abstract class JSUnaryPlusNode extends JSToNumberNode.JSToNumberUnaryNode {
 
@@ -80,8 +82,8 @@ public abstract class JSUnaryPlusNode extends JSToNumberNode.JSToNumberUnaryNode
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return JSUnaryPlusNodeGen.create(cloneUninitialized(getOperand()));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return JSUnaryPlusNodeGen.create(cloneUninitialized(getOperand(), materializedTags));
     }
 
     @Override

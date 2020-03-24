@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -59,6 +60,8 @@ import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+
+import java.util.Set;
 
 public abstract class SetViewValueNode extends JavaScriptNode {
     private final TypedArrayFactory factory;
@@ -134,7 +137,7 @@ public abstract class SetViewValueNode extends JavaScriptNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return SetViewValueNodeGen.create(context, factory, cloneUninitialized(viewNode), cloneUninitialized(requestIndexNode), cloneUninitialized(isLittleEndianNode), cloneUninitialized(valueNode));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return SetViewValueNodeGen.create(context, factory, cloneUninitialized(viewNode, materializedTags), cloneUninitialized(requestIndexNode, materializedTags), cloneUninitialized(isLittleEndianNode, materializedTags), cloneUninitialized(valueNode, materializedTags));
     }
 }

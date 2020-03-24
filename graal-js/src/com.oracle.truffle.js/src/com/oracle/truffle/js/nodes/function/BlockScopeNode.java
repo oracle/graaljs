@@ -125,7 +125,7 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
         @Override
         public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
             if (materializedTags.contains(DeclareTag.class) && !DeclareTagProvider.isMaterializedFrameProvider(this)) {
-                JavaScriptNode materialized = DeclareTagProvider.createMaterializedBlockNode(block, frameDescriptor, parentSlot, getSourceSection());
+                JavaScriptNode materialized = DeclareTagProvider.createMaterializedBlockNode(cloneUninitialized(block, materializedTags), frameDescriptor, parentSlot, getSourceSection());
                 transferSourceSectionAndTags(this, materialized);
                 return materialized;
             } else {
@@ -174,8 +174,8 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new FrameBlockScopeNode(cloneUninitialized(block), frameDescriptor, parentSlot);
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new FrameBlockScopeNode(cloneUninitialized(block, materializedTags), frameDescriptor, parentSlot);
         }
     }
 }

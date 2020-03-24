@@ -47,6 +47,8 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 
+import java.util.Set;
+
 /**
  * 12.9 The return Statement.
  */
@@ -100,9 +102,9 @@ public class ReturnNode extends StatementNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         ReturnNode copy = (ReturnNode) copy();
-        copy.expression = cloneUninitialized(expression);
+        copy.expression = cloneUninitialized(expression, materializedTags);
         return copy;
     }
 

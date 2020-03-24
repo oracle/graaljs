@@ -50,6 +50,8 @@ import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.runtime.JSContext;
 
+import java.util.Set;
+
 @NodeInfo(cost = NodeCost.NONE)
 public class GlobalObjectNode extends JavaScriptNode implements RepeatableNode {
     private final JSContext context;
@@ -99,7 +101,7 @@ public class GlobalObjectNode extends JavaScriptNode implements RepeatableNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return create(context);
     }
 }

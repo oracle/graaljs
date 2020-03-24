@@ -98,7 +98,7 @@ public abstract class JSBitwiseXorConstantNode extends JSUnaryNode {
         if (materializedTags.contains(BinaryOperationTag.class)) {
             // need to call the generated factory directly to avoid constant optimizations
             JSConstantNode constantNode = JSConstantNode.create(isInt ? rightIntValue : rightBigIntValue);
-            JavaScriptNode node = JSBitwiseXorNodeGen.create(getOperand(), constantNode);
+            JavaScriptNode node = JSBitwiseXorNodeGen.create(cloneUninitialized(getOperand(), materializedTags), constantNode);
             transferSourceSectionAddExpressionTag(this, constantNode);
             transferSourceSectionAndTags(this, node);
             return node;
@@ -148,13 +148,17 @@ public abstract class JSBitwiseXorConstantNode extends JSUnaryNode {
     protected Object doGeneric(Object a,
                     @Cached("create()") JSToNumericNode toNumeric,
                     @Cached("createBinaryProfile()") ConditionProfile profileIsBigInt,
-                    @Cached("copyUninitialized()") JavaScriptNode innerXorNode) {
+                    @Cached("makeCopy()") JavaScriptNode innerXorNode) {
         Object numericA = toNumeric.execute(a);
         if (profileIsBigInt.profile(JSRuntime.isBigInt(numericA))) {
             throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
         } else {
             return ((JSBitwiseXorConstantNode) innerXorNode).executeObject(numericA);
         }
+    }
+
+    protected JSBitwiseXorConstantNode makeCopy() {
+        return (JSBitwiseXorConstantNode) copyUninitialized(null);
     }
 
     // Workaround for SpotBugs warning in JSBitwiseXorConstantNodeGen
@@ -175,8 +179,8 @@ public abstract class JSBitwiseXorConstantNode extends JSUnaryNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return JSBitwiseXorConstantNodeGen.create(cloneUninitialized(getOperand()), isInt ? rightIntValue : rightBigIntValue);
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return JSBitwiseXorConstantNodeGen.create(cloneUninitialized(getOperand(), materializedTags), isInt ? rightIntValue : rightBigIntValue);
     }
 
     @Override

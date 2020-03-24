@@ -41,10 +41,13 @@
 package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+
+import java.util.Set;
 
 public final class ExprBlockNode extends AbstractBlockNode implements SequenceNode {
     ExprBlockNode(JavaScriptNode[] statements) {
@@ -104,8 +107,8 @@ public final class ExprBlockNode extends AbstractBlockNode implements SequenceNo
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new ExprBlockNode(cloneUninitialized(getStatements()));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new ExprBlockNode(cloneUninitialized(getStatements(), materializedTags));
     }
 
     @Override

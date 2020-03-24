@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.binary;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -52,6 +53,8 @@ import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
+
+import java.util.Set;
 
 @NodeInfo(shortName = "*")
 public abstract class JSMultiplyNode extends JSBinaryNode {
@@ -138,7 +141,7 @@ public abstract class JSMultiplyNode extends JSBinaryNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return JSMultiplyNodeGen.create(cloneUninitialized(getLeft()), cloneUninitialized(getRight()));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return JSMultiplyNodeGen.create(cloneUninitialized(getLeft(), materializedTags), cloneUninitialized(getRight(), materializedTags));
     }
 }

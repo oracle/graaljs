@@ -41,9 +41,12 @@
 package com.oracle.truffle.js.nodes.binary;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.unary.JSIsNullOrUndefinedNode;
+
+import java.util.Set;
 
 @NodeInfo(shortName = "??")
 public class JSNullishCoalescingNode extends JSLogicalNode {
@@ -64,8 +67,8 @@ public class JSNullishCoalescingNode extends JSLogicalNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new JSNullishCoalescingNode(cloneUninitialized(getLeft()), cloneUninitialized(getRight()));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new JSNullishCoalescingNode(cloneUninitialized(getLeft(), materializedTags), cloneUninitialized(getRight(), materializedTags));
     }
 
     @Override

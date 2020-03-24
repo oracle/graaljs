@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.cast;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -52,6 +53,8 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
+
+import java.util.Set;
 
 /**
  * This implements ECMA 9.3 ToNumber.
@@ -171,8 +174,8 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
-            return create(cloneUninitialized(getOperand()));
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return create(cloneUninitialized(getOperand(), materializedTags));
         }
 
         @Override

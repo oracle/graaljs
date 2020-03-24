@@ -99,8 +99,9 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(BinaryOperationTag.class)) {
             JSConstantNode constantNode = isUndefined ? JSConstantNode.createUndefined() : JSConstantNode.createNull();
-            JavaScriptNode left = isLeft ? constantNode : getOperand();
-            JavaScriptNode right = isLeft ? getOperand() : constantNode;
+            JavaScriptNode newOperand = cloneUninitialized(getOperand(), materializedTags);
+            JavaScriptNode left = isLeft ? constantNode : newOperand;
+            JavaScriptNode right = isLeft ? newOperand : constantNode;
             JavaScriptNode materialized = JSEqualNode.createUnoptimized(left, right);
             transferSourceSectionAddExpressionTag(this, constantNode);
             transferSourceSectionAndTags(this, materialized);
@@ -209,7 +210,7 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return JSIsNullOrUndefinedNodeGen.create(cloneUninitialized(getOperand()), isUndefined, isLeft);
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return JSIsNullOrUndefinedNodeGen.create(cloneUninitialized(getOperand(), materializedTags), isUndefined, isLeft);
     }
 }

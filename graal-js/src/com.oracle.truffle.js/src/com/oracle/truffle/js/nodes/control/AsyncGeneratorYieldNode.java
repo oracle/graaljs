@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
@@ -63,6 +64,8 @@ import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+
+import java.util.Set;
 
 public class AsyncGeneratorYieldNode extends AwaitNode {
     @Child protected ReturnNode returnNode;
@@ -145,8 +148,8 @@ public class AsyncGeneratorYieldNode extends AwaitNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return createYield(context, cloneUninitialized(expression), cloneUninitialized(readAsyncContextNode), cloneUninitialized(readAsyncResultNode), cloneUninitialized(returnNode));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return createYield(context, cloneUninitialized(expression, materializedTags), cloneUninitialized(readAsyncContextNode, materializedTags), cloneUninitialized(readAsyncResultNode, materializedTags), cloneUninitialized(returnNode, materializedTags));
     }
 }
 
@@ -360,8 +363,8 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return createYieldStar(context, cloneUninitialized(expression), cloneUninitialized(readAsyncContextNode), cloneUninitialized(readAsyncResultNode), cloneUninitialized(returnNode),
-                        cloneUninitialized(readIteratorTemp), (WriteNode) cloneUninitialized((JavaScriptNode) writeIteratorTemp));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return createYieldStar(context, cloneUninitialized(expression, materializedTags), cloneUninitialized(readAsyncContextNode, materializedTags), cloneUninitialized(readAsyncResultNode, materializedTags), cloneUninitialized(returnNode, materializedTags),
+                        cloneUninitialized(readIteratorTemp, materializedTags), (WriteNode) cloneUninitialized((JavaScriptNode) writeIteratorTemp, materializedTags));
     }
 }

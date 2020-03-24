@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -49,6 +50,8 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+
+import java.util.Set;
 
 /**
  * ES6 7.3.9 GetMethod(O, P).
@@ -107,7 +110,7 @@ public class GetMethodNode extends JSTargetableNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new GetMethodNode(getContext(), cloneUninitialized(targetNode), cacheNode.getKey());
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new GetMethodNode(getContext(), cloneUninitialized(targetNode, materializedTags), cacheNode.getKey());
     }
 }

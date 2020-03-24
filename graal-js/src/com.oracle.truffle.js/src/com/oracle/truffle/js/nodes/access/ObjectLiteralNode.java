@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import java.util.Arrays;
+import java.util.Set;
 import java.util.concurrent.locks.Lock;
 
 import com.oracle.truffle.api.Assumption;
@@ -135,8 +136,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
-            return create(makeMethodNode.getContext(), cloneUninitialized(functionNode));
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return create(makeMethodNode.getContext(), cloneUninitialized(functionNode, materializedTags));
         }
     }
 
@@ -198,12 +199,12 @@ public class ObjectLiteralNode extends JavaScriptNode {
             return valueNode.execute(frame);
         }
 
-        protected abstract ObjectLiteralMemberNode copyUninitialized();
+        protected abstract ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags);
 
-        public static ObjectLiteralMemberNode[] cloneUninitialized(ObjectLiteralMemberNode[] members) {
+        public static ObjectLiteralMemberNode[] cloneUninitialized(ObjectLiteralMemberNode[] members, Set<Class<? extends Tag>> materializedTags) {
             ObjectLiteralMemberNode[] copy = members.clone();
             for (int i = 0; i < copy.length; i++) {
-                copy[i] = copy[i].copyUninitialized();
+                copy[i] = copy[i].copyUninitialized(materializedTags);
             }
             return copy;
         }
@@ -382,8 +383,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        protected ObjectLiteralMemberNode copyUninitialized() {
-            return new ObjectLiteralDataMemberNode(name, isStatic, attributes, JavaScriptNode.cloneUninitialized(valueNode), isField);
+        protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new ObjectLiteralDataMemberNode(name, isStatic, attributes, JavaScriptNode.cloneUninitialized(valueNode, materializedTags), isField);
         }
     }
 
@@ -479,8 +480,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        protected ObjectLiteralMemberNode copyUninitialized() {
-            return new ObjectLiteralAccessorMemberNode(name, isStatic, attributes, JavaScriptNode.cloneUninitialized(getterNode), JavaScriptNode.cloneUninitialized(setterNode));
+        protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new ObjectLiteralAccessorMemberNode(name, isStatic, attributes, JavaScriptNode.cloneUninitialized(getterNode, materializedTags), JavaScriptNode.cloneUninitialized(setterNode, materializedTags));
         }
     }
 
@@ -530,9 +531,9 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        protected ObjectLiteralMemberNode copyUninitialized() {
-            return new ComputedObjectLiteralDataMemberNode(JavaScriptNode.cloneUninitialized(propertyKey), isStatic, attributes,
-                            JavaScriptNode.cloneUninitialized(valueNode), isField, isAnonymousFunctionDefinition);
+        protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new ComputedObjectLiteralDataMemberNode(JavaScriptNode.cloneUninitialized(propertyKey, materializedTags), isStatic, attributes,
+                            JavaScriptNode.cloneUninitialized(valueNode, materializedTags), isField, isAnonymousFunctionDefinition);
         }
     }
 
@@ -586,9 +587,9 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        protected ObjectLiteralMemberNode copyUninitialized() {
-            return new ComputedObjectLiteralAccessorMemberNode(JavaScriptNode.cloneUninitialized(propertyKey), isStatic, attributes,
-                            JavaScriptNode.cloneUninitialized(getterNode), JavaScriptNode.cloneUninitialized(setterNode));
+        protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new ComputedObjectLiteralAccessorMemberNode(JavaScriptNode.cloneUninitialized(propertyKey, materializedTags), isStatic, attributes,
+                            JavaScriptNode.cloneUninitialized(getterNode, materializedTags), JavaScriptNode.cloneUninitialized(setterNode, materializedTags));
         }
     }
 
@@ -612,8 +613,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        protected ObjectLiteralMemberNode copyUninitialized() {
-            return new ObjectLiteralProtoMemberNode(isStatic, JavaScriptNode.cloneUninitialized(valueNode));
+        protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new ObjectLiteralProtoMemberNode(isStatic, JavaScriptNode.cloneUninitialized(valueNode, materializedTags));
         }
     }
 
@@ -643,8 +644,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        protected ObjectLiteralMemberNode copyUninitialized() {
-            return new ObjectLiteralSpreadMemberNode(isStatic, attributes, JavaScriptNode.cloneUninitialized(valueNode));
+        protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new ObjectLiteralSpreadMemberNode(isStatic, attributes, JavaScriptNode.cloneUninitialized(valueNode, materializedTags));
         }
     }
 
@@ -667,8 +668,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        protected ObjectLiteralMemberNode copyUninitialized() {
-            return new DictionaryObjectDataMemberNode(name, isStatic, attributes, JavaScriptNode.cloneUninitialized(valueNode));
+        protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new DictionaryObjectDataMemberNode(name, isStatic, attributes, JavaScriptNode.cloneUninitialized(valueNode, materializedTags));
         }
     }
 
@@ -700,8 +701,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        protected ObjectLiteralMemberNode copyUninitialized() {
-            return new PrivateFieldMemberNode(JavaScriptNode.cloneUninitialized(keyNode), isStatic, JavaScriptNode.cloneUninitialized(valueNode), JavaScriptNode.cloneUninitialized(writePrivateNode));
+        protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new PrivateFieldMemberNode(JavaScriptNode.cloneUninitialized(keyNode, materializedTags), isStatic, JavaScriptNode.cloneUninitialized(valueNode, materializedTags), JavaScriptNode.cloneUninitialized(writePrivateNode, materializedTags));
         }
     }
 
@@ -722,8 +723,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        protected ObjectLiteralMemberNode copyUninitialized() {
-            return new PrivateMethodMemberNode(isStatic, JavaScriptNode.cloneUninitialized(valueNode), JavaScriptNode.cloneUninitialized(writePrivateNode));
+        protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new PrivateMethodMemberNode(isStatic, JavaScriptNode.cloneUninitialized(valueNode, materializedTags), JavaScriptNode.cloneUninitialized(writePrivateNode, materializedTags));
         }
     }
 
@@ -756,9 +757,9 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        protected ObjectLiteralMemberNode copyUninitialized() {
-            return new PrivateAccessorMemberNode(isStatic, JavaScriptNode.cloneUninitialized(getterNode), JavaScriptNode.cloneUninitialized(setterNode),
-                            JavaScriptNode.cloneUninitialized(writePrivateNode));
+        protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new PrivateAccessorMemberNode(isStatic, JavaScriptNode.cloneUninitialized(getterNode, materializedTags), JavaScriptNode.cloneUninitialized(setterNode, materializedTags),
+                            JavaScriptNode.cloneUninitialized(writePrivateNode, materializedTags));
         }
     }
 
@@ -887,7 +888,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new ObjectLiteralNode(ObjectLiteralMemberNode.cloneUninitialized(members), objectCreateNode.copyUninitialized());
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new ObjectLiteralNode(ObjectLiteralMemberNode.cloneUninitialized(members, materializedTags), objectCreateNode.copyUninitialized(materializedTags));
     }
 }

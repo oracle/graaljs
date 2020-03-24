@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.control;
 
 import java.util.Objects;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -123,9 +124,9 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(context, cloneUninitialized(tryBlock), cloneUninitialized(catchBlock), cloneUninitialized(writeErrorVar), cloneUninitialized(blockScope), cloneUninitialized(destructuring),
-                        cloneUninitialized(conditionExpression));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return create(context, cloneUninitialized(tryBlock, materializedTags), cloneUninitialized(catchBlock, materializedTags), cloneUninitialized(writeErrorVar, materializedTags), cloneUninitialized(blockScope, materializedTags), cloneUninitialized(destructuring, materializedTags),
+                        cloneUninitialized(conditionExpression, materializedTags));
     }
 
     @Override

@@ -66,6 +66,8 @@ import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
+import java.util.Set;
+
 public final class AsyncFunctionBodyNode extends JavaScriptNode {
 
     @NodeInfo(cost = NodeCost.NONE, language = "JavaScript", description = "The root node of async functions in JavaScript.")
@@ -227,13 +229,13 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return atomic(() -> {
             if (resumptionTarget == null) {
-                return create(getContext(), cloneUninitialized(functionBody), cloneUninitialized(writeAsyncContext), cloneUninitialized(writeAsyncResult), functionName);
+                return create(getContext(), cloneUninitialized(functionBody, materializedTags), cloneUninitialized(writeAsyncContext, materializedTags), cloneUninitialized(writeAsyncResult, materializedTags), functionName);
             } else {
                 AsyncFunctionRootNode asyncFunctionRoot = (AsyncFunctionRootNode) ((RootCallTarget) resumptionTarget).getRootNode();
-                return create(getContext(), cloneUninitialized(asyncFunctionRoot.functionBody), cloneUninitialized(writeAsyncContext), cloneUninitialized(asyncFunctionRoot.writeAsyncResult),
+                return create(getContext(), cloneUninitialized(asyncFunctionRoot.functionBody, materializedTags), cloneUninitialized(writeAsyncContext, materializedTags), cloneUninitialized(asyncFunctionRoot.writeAsyncResult, materializedTags),
                                 functionName);
             }
         });

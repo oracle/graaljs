@@ -56,10 +56,12 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.binary.JSAddNode;
+import com.oracle.truffle.js.nodes.binary.JSBinaryNode;
 import com.oracle.truffle.js.nodes.binary.JSSubtractNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
+import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
@@ -197,11 +199,20 @@ abstract class LocalVarOpMaterializedNode extends LocalVarIncNode {
     @Child protected JavaScriptNode convertOld;
     @Child protected JavaScriptNode writeNew;
 
-    LocalVarOpMaterializedNode(LocalVarIncNode from) {
+    LocalVarOpMaterializedNode(LocalVarIncNode from, Set<Class<? extends Tag>> materializedTags) {
         super(from.op, from.frameSlot, from.hasTemporalDeadZone, from.scopeFrameNode);
 
         JavaScriptNode readOld = JSReadFrameSlotNode.create(frameSlot, scopeFrameNode, hasTemporalDeadZone);
         JavaScriptNode convert = JSToNumericNode.create(readOld);
+        if (materializedTags != null) {
+            // need to force materialization, because the convert node might not have source section at this point
+            JavaScriptNode materializedConvertNode = (JavaScriptNode) convert.materializeInstrumentableNodes(materializedTags);
+            if (convert == materializedConvertNode) {
+                convert = cloneUninitialized(convert, materializedTags);
+            } else {
+                convert = materializedConvertNode;
+            }
+        }
         convertOld = JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, convert, hasTemporalDeadZone);
 
         JavaScriptNode readTmp = JSReadFrameSlotNode.create(frameSlot, scopeFrameNode, hasTemporalDeadZone);
@@ -212,9 +223,23 @@ abstract class LocalVarOpMaterializedNode extends LocalVarIncNode {
         } else {
             opNode = JSAddNode.create(readTmp, one);
         }
+        if (materializedTags != null) {
+            // need to force materialization, because the convert node might not have source section at this point
+            JavaScriptNode materializedOpNode = (JavaScriptNode) opNode.materializeInstrumentableNodes(materializedTags);
+            if (opNode == materializedOpNode) {
+                opNode = cloneUninitialized(opNode, materializedTags);
+            } else {
+                opNode = materializedOpNode;
+            }
+        }
         this.writeNew = JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, opNode, hasTemporalDeadZone);
-        transferSourceSectionAddExpressionTag(from, readTmp);
-        transferSourceSectionAddExpressionTag(from, one);
+        // The readTmp and one nodes are no longer valid, they have been cloned
+        if (opNode instanceof JSBinaryNode) {
+            transferSourceSectionAddExpressionTag(from, ((JSBinaryNode) opNode).getLeft());
+            transferSourceSectionAddExpressionTag(from, ((JSBinaryNode) opNode).getRight());
+        } else if (opNode instanceof JSUnaryNode) {
+            transferSourceSectionAddExpressionTag(from, ((JSUnaryNode) opNode).getOperand());
+        }
         transferSourceSectionAddExpressionTag(from, writeNew);
         transferSourceSectionAddExpressionTag(from, opNode);
         transferSourceSectionAndTags(from, this);
@@ -233,8 +258,8 @@ class LocalVarPostfixIncMaterializedNode extends LocalVarOpMaterializedNode {
         super(op, slot, hasTdz, scope, read, write);
     }
 
-    LocalVarPostfixIncMaterializedNode(LocalVarPostfixIncNode from) {
-        super(from);
+    LocalVarPostfixIncMaterializedNode(LocalVarPostfixIncNode from, Set<Class<? extends Tag>> materializedTags) {
+        super(from, materializedTags);
     }
 
     @Override
@@ -245,8 +270,8 @@ class LocalVarPostfixIncMaterializedNode extends LocalVarOpMaterializedNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new LocalVarPostfixIncMaterializedNode(op, frameSlot, hasTemporalDeadZone(), scopeFrameNode, cloneUninitialized(convertOld), cloneUninitialized(writeNew));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new LocalVarPostfixIncMaterializedNode(op, frameSlot, hasTemporalDeadZone(), scopeFrameNode, cloneUninitialized(convertOld, materializedTags), cloneUninitialized(writeNew, materializedTags));
     }
 }
 
@@ -256,8 +281,8 @@ class LocalVarPrefixIncMaterializedNode extends LocalVarOpMaterializedNode {
         super(op, slot, hasTdz, scope, read, write);
     }
 
-    LocalVarPrefixIncMaterializedNode(LocalVarPrefixIncNode from) {
-        super(from);
+    LocalVarPrefixIncMaterializedNode(LocalVarPrefixIncNode from, Set<Class<? extends Tag>> materializedTags) {
+        super(from, materializedTags);
     }
 
     @Override
@@ -267,8 +292,8 @@ class LocalVarPrefixIncMaterializedNode extends LocalVarOpMaterializedNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new LocalVarPrefixIncMaterializedNode(op, frameSlot, hasTemporalDeadZone(), scopeFrameNode, cloneUninitialized(convertOld), cloneUninitialized(writeNew));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new LocalVarPrefixIncMaterializedNode(op, frameSlot, hasTemporalDeadZone(), scopeFrameNode, cloneUninitialized(convertOld, materializedTags), cloneUninitialized(writeNew, materializedTags));
     }
 
 }
@@ -285,7 +310,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
                         materializedTags.contains(WriteVariableTag.class) ||
                         materializedTags.contains(StandardTags.ReadVariableTag.class) ||
                         materializedTags.contains(StandardTags.WriteVariableTag.class)) {
-            return new LocalVarPostfixIncMaterializedNode(this);
+            return new LocalVarPostfixIncMaterializedNode(this, materializedTags);
         } else {
             return this;
         }
@@ -398,7 +423,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return LocalVarPostfixIncNodeGen.create(op, getFrameSlot(), hasTemporalDeadZone(), NodeUtil.cloneNode(getLevelFrameNode()));
     }
 }
@@ -415,7 +440,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
                         materializedTags.contains(WriteVariableTag.class) ||
                         materializedTags.contains(StandardTags.ReadVariableTag.class) ||
                         materializedTags.contains(StandardTags.WriteVariableTag.class)) {
-            return new LocalVarPrefixIncMaterializedNode(this);
+            return new LocalVarPrefixIncMaterializedNode(this, materializedTags);
         } else {
             return this;
         }
@@ -532,7 +557,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return LocalVarPrefixIncNodeGen.create(op, getFrameSlot(), hasTemporalDeadZone(), NodeUtil.cloneNode(getLevelFrameNode()));
     }
 }

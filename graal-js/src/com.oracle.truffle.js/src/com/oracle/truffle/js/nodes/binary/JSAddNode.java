@@ -48,6 +48,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -67,6 +68,8 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
+
+import java.util.Set;
 
 @NodeInfo(shortName = "+")
 @ReportPolymorphism
@@ -239,7 +242,7 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return JSAddNodeGen.createUnoptimized(cloneUninitialized(getLeft()), cloneUninitialized(getRight()), truncate);
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return JSAddNodeGen.createUnoptimized(cloneUninitialized(getLeft(), materializedTags), cloneUninitialized(getRight(), materializedTags), truncate);
     }
 }

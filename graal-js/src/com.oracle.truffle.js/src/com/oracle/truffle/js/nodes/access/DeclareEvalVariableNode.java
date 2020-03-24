@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.control.StatementNode;
@@ -48,6 +49,8 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+
+import java.util.Set;
 
 public class DeclareEvalVariableNode extends StatementNode {
     @Child private JavaScriptNode dynamicScopeNode;
@@ -92,7 +95,7 @@ public class DeclareEvalVariableNode extends StatementNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new DeclareEvalVariableNode(context, varName, cloneUninitialized(dynamicScopeNode), (WriteNode) cloneUninitialized((JavaScriptNode) initScopeNode));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new DeclareEvalVariableNode(context, varName, cloneUninitialized(dynamicScopeNode, materializedTags), (WriteNode) cloneUninitialized((JavaScriptNode) initScopeNode, materializedTags));
     }
 }

@@ -41,10 +41,13 @@
 package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
+
+import java.util.Set;
 
 public final class GeneratorExprBlockNode extends AbstractGeneratorBlockNode {
 
@@ -129,7 +132,7 @@ public final class GeneratorExprBlockNode extends AbstractGeneratorBlockNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new GeneratorExprBlockNode(cloneUninitialized(getStatements()), cloneUninitialized(readStateNode), (WriteNode) cloneUninitialized((JavaScriptNode) writeStateNode));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new GeneratorExprBlockNode(cloneUninitialized(getStatements(), materializedTags), cloneUninitialized(readStateNode, materializedTags), (WriteNode) cloneUninitialized((JavaScriptNode) writeStateNode, materializedTags));
     }
 }

@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -49,6 +50,8 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+
+import java.util.Set;
 
 public final class ConstructorResultNode extends JavaScriptNode {
     @Child private JavaScriptNode bodyNode;
@@ -95,7 +98,7 @@ public final class ConstructorResultNode extends JavaScriptNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new ConstructorResultNode(derived, cloneUninitialized(bodyNode), cloneUninitialized(thisNode));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new ConstructorResultNode(derived, cloneUninitialized(bodyNode, materializedTags), cloneUninitialized(thisNode, materializedTags));
     }
 }

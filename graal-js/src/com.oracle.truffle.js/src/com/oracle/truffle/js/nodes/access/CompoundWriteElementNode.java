@@ -41,9 +41,12 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSContext;
+
+import java.util.Set;
 
 public class CompoundWriteElementNode extends WriteElementNode {
     @Child private JSWriteFrameSlotNode writeIndexNode;
@@ -115,8 +118,8 @@ public class CompoundWriteElementNode extends WriteElementNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(cloneUninitialized(targetNode), cloneUninitialized(indexNode), cloneUninitialized(valueNode), cloneUninitialized(writeIndexNode), getContext(), isStrict(), writeOwn());
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return create(cloneUninitialized(targetNode, materializedTags), cloneUninitialized(indexNode, materializedTags), cloneUninitialized(valueNode, materializedTags), cloneUninitialized(writeIndexNode, materializedTags), getContext(), isStrict(), writeOwn());
     }
 
     @Override

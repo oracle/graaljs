@@ -42,9 +42,12 @@ package com.oracle.truffle.js.nodes.unary;
 
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
+
+import java.util.Set;
 
 public abstract class IsIdenticalIntegerNode extends IsIdenticalBaseNode {
 
@@ -87,8 +90,8 @@ public abstract class IsIdenticalIntegerNode extends IsIdenticalBaseNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(integer, cloneUninitialized(getOperand()), leftConstant);
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return create(integer, cloneUninitialized(getOperand(), materializedTags), leftConstant);
     }
 
     @Override

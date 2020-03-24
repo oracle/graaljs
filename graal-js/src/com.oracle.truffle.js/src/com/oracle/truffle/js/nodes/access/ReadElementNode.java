@@ -143,10 +143,16 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(ReadElementTag.class) && !alreadyMaterialized()) {
-            JavaScriptNode clonedTarget = targetNode == null || targetNode.hasSourceSection() ? targetNode : JSTaggedExecutionNode.createForInput(targetNode, this);
-            JavaScriptNode clonedIndex = indexNode == null || indexNode.hasSourceSection() ? indexNode : JSTaggedExecutionNode.createForInput(indexNode, this);
+            JavaScriptNode clonedTarget = targetNode == null || targetNode.hasSourceSection() ? targetNode : JSTaggedExecutionNode.createForInput(targetNode, this, materializedTags);
+            JavaScriptNode clonedIndex = indexNode == null || indexNode.hasSourceSection() ? indexNode : JSTaggedExecutionNode.createForInput(indexNode, this, materializedTags);
             if (clonedTarget == targetNode && clonedIndex == indexNode) {
                 return this;
+            }
+            if (clonedTarget == targetNode) {
+                clonedTarget = cloneUninitialized(targetNode, materializedTags);
+            }
+            if (clonedIndex == indexNode) {
+                clonedIndex = cloneUninitialized(indexNode, materializedTags);
             }
             JavaScriptNode cloned = ReadElementNode.create(clonedTarget, clonedIndex, getContext());
             transferSourceSectionAndTags(this, cloned);
@@ -1647,8 +1653,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(cloneUninitialized(targetNode), cloneUninitialized(getIndexNode()), getContext());
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return create(cloneUninitialized(targetNode, materializedTags), cloneUninitialized(getIndexNode(), materializedTags), getContext());
     }
 
     @Override

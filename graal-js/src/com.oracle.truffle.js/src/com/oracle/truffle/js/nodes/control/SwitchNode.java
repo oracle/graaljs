@@ -48,6 +48,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -106,17 +107,27 @@ public final class SwitchNode extends StatementNode {
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(ControlFlowRootTag.class)) {
+        if (materializedTags.contains(ControlFlowRootTag.class) && needsMaterialization()) {
             JavaScriptNode[] newCaseExpressions = new JavaScriptNode[caseExpressions.length];
+            boolean somethingChanged = false;
             for (int i = 0; i < caseExpressions.length; i++) {
                 InstrumentableNode materialized = caseExpressions[i].materializeInstrumentableNodes(materializedTags);
                 newCaseExpressions[i] = JSTaggedExecutionNode.createForInput((JavaScriptNode) materialized, ControlFlowBranchTag.class,
-                                JSTags.createNodeObjectDescriptor("type", ControlFlowBranchTag.Type.Condition.name()));
+                                JSTags.createNodeObjectDescriptor("type", ControlFlowBranchTag.Type.Condition.name()), materializedTags);
+                if (newCaseExpressions[i] != caseExpressions[i]) {
+                    somethingChanged = true;
+                }
             }
             JavaScriptNode[] newStatements = new JavaScriptNode[statements.length];
             for (int i = 0; i < statements.length; i++) {
                 InstrumentableNode materialized = statements[i].materializeInstrumentableNodes(materializedTags);
-                newStatements[i] = JSTaggedExecutionNode.createFor((JavaScriptNode) materialized, ControlFlowBlockTag.class);
+                newStatements[i] = JSTaggedExecutionNode.createFor((JavaScriptNode) materialized, ControlFlowBlockTag.class, materializedTags);
+                if (newStatements[i] != statements[i]) {
+                    somethingChanged = true;
+                }
+            }
+            if (!somethingChanged) {
+                return this;
             }
             SwitchNode materialized = SwitchNode.create(newCaseExpressions, jumptable, newStatements);
             transferSourceSectionAndTags(this, materialized);
@@ -124,6 +135,21 @@ public final class SwitchNode extends StatementNode {
         } else {
             return this;
         }
+    }
+
+    private boolean needsMaterialization() {
+        boolean needsMaterialization = false;
+        for (int i = 0; i < caseExpressions.length && !needsMaterialization; i++) {
+            if (!JSNodeUtil.isTaggedNode(caseExpressions[i])) {
+                needsMaterialization = true;
+            }
+        }
+        for (int i = 0; i < statements.length && !needsMaterialization; i++) {
+            if (!JSNodeUtil.isTaggedNode(statements[i])) {
+                needsMaterialization = true;
+            }
+        }
+        return needsMaterialization;
     }
 
     @Override
@@ -155,7 +181,7 @@ public final class SwitchNode extends StatementNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(cloneUninitialized(caseExpressions), jumptable, cloneUninitialized(statements));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return create(cloneUninitialized(caseExpressions, materializedTags), jumptable, cloneUninitialized(statements, materializedTags));
     }
 }

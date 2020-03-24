@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.control;
 
 import java.util.ArrayDeque;
+import java.util.Set;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -50,6 +51,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -238,14 +240,14 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return atomic(() -> {
             if (resumeTarget == null) {
-                return create(context, cloneUninitialized(functionBody), cloneUninitialized(writeYieldValueNode), cloneUninitialized(readYieldResultNode), cloneUninitialized(writeAsyncContext));
+                return create(context, cloneUninitialized(functionBody, materializedTags), cloneUninitialized(writeYieldValueNode, materializedTags), cloneUninitialized(readYieldResultNode, materializedTags), cloneUninitialized(writeAsyncContext, materializedTags));
             } else {
                 AsyncGeneratorRootNode generatorRoot = (AsyncGeneratorRootNode) resumeTarget.getRootNode();
-                return create(context, cloneUninitialized(generatorRoot.functionBody), cloneUninitialized(generatorRoot.writeYieldValue), cloneUninitialized(generatorRoot.readYieldResult),
-                                cloneUninitialized(writeAsyncContext));
+                return create(context, cloneUninitialized(generatorRoot.functionBody, materializedTags), cloneUninitialized(generatorRoot.writeYieldValue, materializedTags), cloneUninitialized(generatorRoot.readYieldResult, materializedTags),
+                        cloneUninitialized(writeAsyncContext, materializedTags));
             }
         });
     }

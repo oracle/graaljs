@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -50,6 +51,8 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+
+import java.util.Set;
 
 /**
  * Reads the {@code with} binding object and performs Object Environment HasBinding(name). Returns
@@ -132,7 +135,7 @@ public final class WithTargetNode extends JavaScriptNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new WithTargetNode(context, (String) withObjectHasProperty.getKey(), cloneUninitialized(withVariable));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new WithTargetNode(context, (String) withObjectHasProperty.getKey(), cloneUninitialized(withVariable, materializedTags));
     }
 }

@@ -42,11 +42,14 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
+
+import java.util.Set;
 
 public abstract class IsJSClassNode extends JSUnaryNode {
 
@@ -88,8 +91,8 @@ public abstract class IsJSClassNode extends JSUnaryNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(jsclass, cloneUninitialized(getOperand()));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return create(jsclass, cloneUninitialized(getOperand(), materializedTags));
     }
 
     @Override

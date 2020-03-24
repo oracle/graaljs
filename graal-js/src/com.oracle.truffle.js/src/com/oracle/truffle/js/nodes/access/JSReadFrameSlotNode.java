@@ -60,6 +60,8 @@ import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.SafeInteger;
 
+import java.util.Set;
+
 @ImportStatic(FrameSlotKind.class)
 public abstract class JSReadFrameSlotNode extends FrameSlotNode implements RepeatableNode, ReadNode {
     JSReadFrameSlotNode(FrameSlot slot) {
@@ -158,7 +160,7 @@ abstract class JSReadScopeFrameSlotNode extends JSReadFrameSlotNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return JSReadScopeFrameSlotNodeGen.create(frameSlot, getLevelFrameNode());
     }
 }
@@ -180,7 +182,7 @@ abstract class JSReadScopeFrameSlotWithTDZNode extends JSReadScopeFrameSlotNode 
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return JSReadScopeFrameSlotWithTDZNodeGen.create(frameSlot, getLevelFrameNode());
     }
 }
@@ -221,7 +223,7 @@ abstract class JSReadCurrentFrameSlotNode extends JSReadFrameSlotNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return JSReadCurrentFrameSlotNodeGen.create(frameSlot);
     }
 }

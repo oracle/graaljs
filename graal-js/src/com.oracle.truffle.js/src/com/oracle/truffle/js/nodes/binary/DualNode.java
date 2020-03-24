@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.binary;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -52,6 +53,8 @@ import com.oracle.truffle.js.nodes.control.ExprBlockNode;
 import com.oracle.truffle.js.nodes.control.ResumableNode;
 import com.oracle.truffle.js.nodes.control.SequenceNode;
 import com.oracle.truffle.js.nodes.control.YieldException;
+
+import java.util.Set;
 
 @NodeInfo(cost = NodeCost.NONE)
 public class DualNode extends JavaScriptNode implements SequenceNode, ResumableNode {
@@ -179,8 +182,8 @@ public class DualNode extends JavaScriptNode implements SequenceNode, ResumableN
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new DualNode(cloneUninitialized(left), cloneUninitialized(right));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new DualNode(cloneUninitialized(left, materializedTags), cloneUninitialized(right, materializedTags));
     }
 
     public JavaScriptNode getLeft() {

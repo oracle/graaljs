@@ -41,10 +41,13 @@
 package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.control.YieldNode.ExceptionYieldResultNode;
 import com.oracle.truffle.js.nodes.control.YieldNode.YieldResultNode;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+
+import java.util.Set;
 
 /**
  * A synthetic yield statement that suspends execution when the module function has successfully
@@ -86,7 +89,7 @@ public class ModuleYieldNode extends JavaScriptNode implements ResumableNode, Su
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return create();
     }
 

@@ -57,6 +57,8 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.SafeInteger;
 
+import java.util.Set;
+
 @GenerateWrapper
 public abstract class JavaScriptNode extends JavaScriptBaseNode implements InstrumentableNode {
     /** Source or SourceSection. */
@@ -348,35 +350,41 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
         charIndex |= EXPRESSION_TAG_BIT;
     }
 
-    protected JavaScriptNode copyUninitialized() {
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         if (this instanceof WrapperNode) {
             WrapperNode wrapperNode = (WrapperNode) this;
-            return cloneUninitialized((JavaScriptNode) wrapperNode.getDelegateNode());
+            return cloneUninitialized((JavaScriptNode) wrapperNode.getDelegateNode(), materializedTags);
         }
 
         throw Errors.notImplemented(getClass().getSimpleName() + ".copyUninitialized()");
     }
 
     @SuppressWarnings("unchecked")
-    public static <T extends JavaScriptNode> T cloneUninitialized(T node) {
+    public static <T extends JavaScriptNode> T cloneUninitialized(T node, Set<Class<? extends Tag>> materializedTags) {
         if (node == null) {
             return null;
         } else {
-            T copy = (T) node.copyUninitialized();
-            // Assertion might not always hold and fail spuriously.
-            assert copy.getClass() == node.getClass() || node instanceof JSBuiltinNode || node instanceof WrapperNode : node.getClass() + " => " + copy.getClass();
-            transferSourceSectionAndTags(node, copy);
+            T copy = node;
+            if (materializedTags != null && node.isInstrumentable()) {
+                copy = (T) node.materializeInstrumentableNodes(materializedTags);
+            }
+            if (node == copy) {
+                copy = (T) node.copyUninitialized(materializedTags);
+                // Assertion might not always hold and fail spuriously.
+                assert copy.getClass() == node.getClass() || node instanceof JSBuiltinNode || node instanceof WrapperNode : node.getClass() + " => " + copy.getClass();
+                transferSourceSectionAndTags(node, copy);
+            }
             return copy;
         }
     }
 
-    public static <T extends JavaScriptNode> T[] cloneUninitialized(T[] nodeArray) {
+    public static <T extends JavaScriptNode> T[] cloneUninitialized(T[] nodeArray, Set<Class<? extends Tag>> materializedTags) {
         if (nodeArray == null) {
             return null;
         } else {
             T[] copy = nodeArray.clone();
             for (int i = 0; i < copy.length; i++) {
-                copy[i] = cloneUninitialized(copy[i]);
+                copy[i] = cloneUninitialized(copy[i], materializedTags);
             }
             return copy;
         }

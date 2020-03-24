@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -48,6 +49,8 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.CompilableFunction;
+
+import java.util.Set;
 
 public class GetPrototypeFromConstructorNode extends JavaScriptNode {
     private final CompilableFunction<JSRealm, DynamicObject> intrinsicDefaultProto;
@@ -95,7 +98,7 @@ public class GetPrototypeFromConstructorNode extends JavaScriptNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new GetPrototypeFromConstructorNode(getPrototypeNode.getContext(), cloneUninitialized(constructorNode), intrinsicDefaultProto);
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new GetPrototypeFromConstructorNode(getPrototypeNode.getContext(), cloneUninitialized(constructorNode, materializedTags), intrinsicDefaultProto);
     }
 }

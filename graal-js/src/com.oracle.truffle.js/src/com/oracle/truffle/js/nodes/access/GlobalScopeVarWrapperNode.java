@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import java.util.Objects;
+import java.util.Set;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -117,8 +118,8 @@ public final class GlobalScopeVarWrapperNode extends JavaScriptNode implements R
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new GlobalScopeVarWrapperNode(varName, cloneUninitialized(defaultDelegate), cloneUninitialized(dynamicScopeNode), cloneUninitialized(scopeAccessNode));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new GlobalScopeVarWrapperNode(varName, cloneUninitialized(defaultDelegate, materializedTags), cloneUninitialized(dynamicScopeNode, materializedTags), cloneUninitialized(scopeAccessNode, materializedTags));
     }
 
     public void setMethod() {

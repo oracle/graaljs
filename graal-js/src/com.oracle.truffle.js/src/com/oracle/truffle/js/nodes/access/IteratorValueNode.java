@@ -42,10 +42,13 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+
+import java.util.Set;
 
 /**
  * ES6 7.4.4 IteratorValue(iterResult).
@@ -75,7 +78,7 @@ public abstract class IteratorValueNode extends JavaScriptNode {
     public abstract Object execute(DynamicObject iterResult);
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return IteratorValueNodeGen.create(getValueNode.getContext(), cloneUninitialized(iterResultNode));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return IteratorValueNodeGen.create(getValueNode.getContext(), cloneUninitialized(iterResultNode, materializedTags));
     }
 }

@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -60,6 +61,8 @@ import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+
+import java.util.Set;
 
 /**
  * This implements ECMA 9.8. ToString.
@@ -202,8 +205,8 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
-            return JSToStringWrapperNodeGen.create(cloneUninitialized(getOperand()));
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return JSToStringWrapperNodeGen.create(cloneUninitialized(getOperand(), materializedTags));
         }
     }
 }

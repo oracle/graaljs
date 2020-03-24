@@ -43,10 +43,13 @@ package com.oracle.truffle.js.nodes.arguments;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.CallApplyArgumentsNode;
 import com.oracle.truffle.js.runtime.JSArguments;
+
+import java.util.Set;
 
 /**
  * This node accesses the arguments array optimistically directly as {@code Object[]}, but can fall
@@ -108,8 +111,8 @@ public final class AccessArgumentsArrayDirectlyNode extends JavaScriptNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        AccessArgumentsArrayDirectlyNode copy = new AccessArgumentsArrayDirectlyNode(cloneUninitialized(writeArgumentsNode), cloneUninitialized(readArgumentsNode), leadingArgCount, trailingArgCount);
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        AccessArgumentsArrayDirectlyNode copy = new AccessArgumentsArrayDirectlyNode(cloneUninitialized(writeArgumentsNode, materializedTags), cloneUninitialized(readArgumentsNode, materializedTags), leadingArgCount, trailingArgCount);
         copy.directArrayAccess = directArrayAccess;
         return copy;
     }

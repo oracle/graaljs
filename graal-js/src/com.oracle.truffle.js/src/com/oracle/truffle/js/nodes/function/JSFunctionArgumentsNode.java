@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -48,6 +49,8 @@ import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
+
+import java.util.Set;
 
 class JSFunctionArgumentsNode extends AbstractFunctionArgumentsNode {
 
@@ -87,8 +90,8 @@ class JSFunctionArgumentsNode extends AbstractFunctionArgumentsNode {
     }
 
     @Override
-    protected AbstractFunctionArgumentsNode copyUninitialized() {
-        return new JSFunctionArgumentsNode(JavaScriptNode.cloneUninitialized(args));
+    protected AbstractFunctionArgumentsNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new JSFunctionArgumentsNode(JavaScriptNode.cloneUninitialized(args, materializedTags));
     }
 
     @Override
@@ -117,7 +120,7 @@ class JSFunctionZeroArgumentsNode extends AbstractFunctionArgumentsNode {
     }
 
     @Override
-    protected AbstractFunctionArgumentsNode copyUninitialized() {
+    protected AbstractFunctionArgumentsNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return new JSFunctionZeroArgumentsNode();
     }
 
@@ -159,8 +162,8 @@ class JSFunctionOneArgumentNode extends AbstractFunctionArgumentsNode {
     }
 
     @Override
-    protected AbstractFunctionArgumentsNode copyUninitialized() {
-        return new JSFunctionOneArgumentNode(JavaScriptNode.cloneUninitialized(child));
+    protected AbstractFunctionArgumentsNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new JSFunctionOneArgumentNode(JavaScriptNode.cloneUninitialized(child, materializedTags));
     }
 
     @Override
@@ -202,7 +205,7 @@ class SpreadFunctionArgumentsNode extends JSFunctionArgumentsNode {
     }
 
     @Override
-    protected AbstractFunctionArgumentsNode copyUninitialized() {
-        return new SpreadFunctionArgumentsNode(JavaScriptNode.cloneUninitialized(args));
+    protected AbstractFunctionArgumentsNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new SpreadFunctionArgumentsNode(JavaScriptNode.cloneUninitialized(args, materializedTags));
     }
 }

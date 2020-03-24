@@ -40,8 +40,11 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.js.nodes.*;
+
+import java.util.Set;
 
 @NodeInfo(shortName = "&&")
 public class JSAndNode extends JSLogicalNode {
@@ -60,7 +63,7 @@ public class JSAndNode extends JSLogicalNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new JSAndNode(cloneUninitialized(getLeft()), cloneUninitialized(getRight()));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new JSAndNode(cloneUninitialized(getLeft(), materializedTags), cloneUninitialized(getRight(), materializedTags));
     }
 }

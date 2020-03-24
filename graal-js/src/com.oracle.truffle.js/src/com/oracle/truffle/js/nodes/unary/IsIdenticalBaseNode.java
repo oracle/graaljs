@@ -74,10 +74,11 @@ public abstract class IsIdenticalBaseNode extends JSUnaryNode {
         if (materializedTags.contains(BinaryOperationTag.class)) {
             JSConstantNode constantNode = JSConstantNode.create(getConstantValue());
             JavaScriptNode materialized;
+            JavaScriptNode newOperand = cloneUninitialized(getOperand(), materializedTags);
             if (leftConstant) {
-                materialized = JSIdenticalNode.createUnoptimized(constantNode, getOperand());
+                materialized = JSIdenticalNode.createUnoptimized(constantNode, newOperand);
             } else {
-                materialized = JSIdenticalNode.createUnoptimized(getOperand(), constantNode);
+                materialized = JSIdenticalNode.createUnoptimized(newOperand, constantNode);
             }
             transferSourceSectionAddExpressionTag(this, constantNode);
             transferSourceSectionAndTags(this, materialized);

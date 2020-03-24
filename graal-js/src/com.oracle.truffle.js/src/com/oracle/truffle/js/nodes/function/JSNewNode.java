@@ -123,8 +123,8 @@ public abstract class JSNewNode extends JavaScriptNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializationNeeded(materializedTags)) {
-            JavaScriptNode newTarget = JSInputGeneratingNodeWrapper.create(getTarget());
-            JSNewNode materialized = JSNewNodeGen.create(context, newTarget, arguments);
+            JavaScriptNode newTarget = JSInputGeneratingNodeWrapper.create(cloneUninitialized(getTarget(), materializedTags));
+            JSNewNode materialized = JSNewNodeGen.create(context, newTarget, AbstractFunctionArgumentsNode.cloneUninitialized(arguments, materializedTags));
             arguments.materializeInstrumentableArguments();
             transferSourceSectionAndTags(this, materialized);
             return materialized;
@@ -288,7 +288,7 @@ public abstract class JSNewNode extends JavaScriptNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return JSNewNodeGen.create(context, cloneUninitialized(getTarget()), AbstractFunctionArgumentsNode.cloneUninitialized(arguments));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return JSNewNodeGen.create(context, cloneUninitialized(getTarget(), materializedTags), AbstractFunctionArgumentsNode.cloneUninitialized(arguments, materializedTags));
     }
 }

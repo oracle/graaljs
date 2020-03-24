@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.module;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
@@ -50,6 +51,8 @@ import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
+
+import java.util.Set;
 
 /**
  * Resolves a named import binding and writes the resolved binding into the frame. Throws a
@@ -100,8 +103,8 @@ public class ResolveNamedImportNode extends StatementNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(context, cloneUninitialized(moduleNode), moduleRequest, importName, cloneUninitialized(writeLocalNode));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return create(context, cloneUninitialized(moduleNode, materializedTags), moduleRequest, importName, cloneUninitialized(writeLocalNode, materializedTags));
     }
 
 }

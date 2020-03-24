@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNameNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNodeGen;
@@ -76,6 +77,8 @@ import com.oracle.truffle.js.runtime.builtins.JSTestV8;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+
+import java.util.Set;
 
 /**
  * Contains builtins to support special behavior used by TestV8.
@@ -356,8 +359,8 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
-            return TestV8ToLengthNodeGen.create(getContext(), getBuiltin(), cloneUninitialized(getArguments()));
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return TestV8ToLengthNodeGen.create(getContext(), getBuiltin(), cloneUninitialized(getArguments(), materializedTags));
         }
     }
 

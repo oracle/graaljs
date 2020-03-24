@@ -133,8 +133,8 @@ public abstract class JSMaterializedInvokeTargetableNode extends JSTargetableNod
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new MaterializedTargetableReadElementNode(cloneUninitialized(getTarget()), cloneUninitialized(getIndexNode()), context);
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new MaterializedTargetableReadElementNode(cloneUninitialized(getTarget(), materializedTags), cloneUninitialized(getIndexNode(), materializedTags), context);
         }
     }
 
@@ -182,8 +182,8 @@ public abstract class JSMaterializedInvokeTargetableNode extends JSTargetableNod
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new MaterializedTargetablePropertyNode(getContext(), cloneUninitialized(getTarget()), getPropertyKey(), isOwnProperty(), isMethod());
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new MaterializedTargetablePropertyNode(getContext(), cloneUninitialized(getTarget(), materializedTags), getPropertyKey(), isOwnProperty(), isMethod());
         }
     }
 
@@ -219,7 +219,7 @@ public abstract class JSMaterializedInvokeTargetableNode extends JSTargetableNod
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new EchoTargetValueNode();
         }
     }

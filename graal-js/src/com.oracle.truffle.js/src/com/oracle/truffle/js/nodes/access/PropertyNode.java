@@ -101,7 +101,10 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
                 // this node is already materialized
                 return this;
             }
-            JavaScriptNode clonedTarget = JSTaggedExecutionNode.createForInput(target, this);
+            JavaScriptNode clonedTarget = JSTaggedExecutionNode.createForInput(target, this, materializedTags);
+            if (clonedTarget == target) {
+                return this;
+            }
             PropertyNode propertyNode = new PropertyNode(cache.getContext(), clonedTarget, cache.getKey(), cache.isOwnProperty(), cache.isMethod());
             transferSourceSectionAndTags(this, propertyNode);
             return propertyNode;
@@ -199,8 +202,8 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new PropertyNode(cache.getContext(), cloneUninitialized(target), cache.getKey(), cache.isOwnProperty(), cache.isMethod());
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new PropertyNode(cache.getContext(), cloneUninitialized(target, materializedTags), cache.getKey(), cache.isOwnProperty(), cache.isMethod());
     }
 
     @Override

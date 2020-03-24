@@ -43,10 +43,13 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.*;
 import com.oracle.truffle.js.nodes.*;
 import com.oracle.truffle.js.runtime.*;
 import com.oracle.truffle.js.runtime.objects.*;
+
+import java.util.Set;
 
 /**
  * ES6 12.2.9.3 Runtime Semantics: GetTemplateObject(templateLiteral).
@@ -103,7 +106,7 @@ public abstract class GetTemplateObjectNode extends JavaScriptNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return GetTemplateObjectNodeGen.create(context, cloneUninitialized(rawStrings), cloneUninitialized(cookedStrings), identity);
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return GetTemplateObjectNodeGen.create(context, cloneUninitialized(rawStrings, materializedTags), cloneUninitialized(cookedStrings, materializedTags), identity);
     }
 }

@@ -144,7 +144,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializationNeeded() && materializedTags.contains(JSTags.ControlFlowBranchTag.class)) {
             JSTargetableNode materializedInput = JSMaterializedInvokeTargetableNode.EchoTargetValueNode.create();
-            AwaitNode materialized = new AwaitNode(context, expression, readAsyncContextNode, readAsyncResultNode, materializedInput);
+            AwaitNode materialized = new AwaitNode(context, cloneUninitialized(expression, materializedTags), cloneUninitialized(readAsyncContextNode, materializedTags), cloneUninitialized(readAsyncResultNode, materializedTags), materializedInput);
             transferSourceSection(this, materialized);
             return materialized;
         }
@@ -307,10 +307,10 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        JavaScriptNode expressionCopy = cloneUninitialized(expression);
-        JSReadFrameSlotNode asyncResultCopy = cloneUninitialized(readAsyncResultNode);
-        JSReadFrameSlotNode asyncContextCopy = cloneUninitialized(readAsyncContextNode);
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        JavaScriptNode expressionCopy = cloneUninitialized(expression, materializedTags);
+        JSReadFrameSlotNode asyncResultCopy = cloneUninitialized(readAsyncResultNode, materializedTags);
+        JSReadFrameSlotNode asyncContextCopy = cloneUninitialized(readAsyncContextNode, materializedTags);
         return create(context, expressionCopy, asyncContextCopy, asyncResultCopy);
     }
 }

@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -66,6 +67,8 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
+
+import java.util.Set;
 
 @NodeInfo(shortName = "===")
 @ImportStatic(JSRuntime.class)
@@ -322,7 +325,7 @@ public abstract class JSIdenticalNode extends JSCompareNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return JSIdenticalNodeGen.create(cloneUninitialized(getLeft()), cloneUninitialized(getRight()), type);
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return JSIdenticalNodeGen.create(cloneUninitialized(getLeft(), materializedTags), cloneUninitialized(getRight(), materializedTags), type);
     }
 }

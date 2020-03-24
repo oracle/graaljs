@@ -150,7 +150,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new DefaultFunctionExpressionNode(functionData, functionNode);
         }
     }
@@ -169,7 +169,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new AutonomousFunctionExpressionNode(functionData, functionNode);
         }
     }
@@ -189,8 +189,8 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new LexicalThisFunctionExpressionNode(functionData, functionNode, cloneUninitialized(thisNode));
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new LexicalThisFunctionExpressionNode(functionData, functionNode, cloneUninitialized(thisNode, materializedTags));
         }
     }
 }

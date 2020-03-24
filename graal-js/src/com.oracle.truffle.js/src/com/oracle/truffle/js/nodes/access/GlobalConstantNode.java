@@ -55,6 +55,8 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
 import com.oracle.truffle.js.runtime.JSContext;
 
+import java.util.Set;
+
 public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
 
     @Child private GlobalObjectNode globalObjectNode;
@@ -126,8 +128,8 @@ public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new GlobalConstantNode(globalObjectNode.getContext(), propertyName, cloneUninitialized(constantNode));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new GlobalConstantNode(globalObjectNode.getContext(), propertyName, cloneUninitialized(constantNode, materializedTags));
     }
 
     static final class LineNumberNode extends JSConstantNode {

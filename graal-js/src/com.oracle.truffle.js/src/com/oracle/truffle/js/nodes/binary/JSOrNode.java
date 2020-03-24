@@ -40,9 +40,12 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.js.nodes.*;
 import com.oracle.truffle.js.runtime.objects.*;
+
+import java.util.Set;
 
 @NodeInfo(shortName = "||")
 public class JSOrNode extends JSLogicalNode {
@@ -65,8 +68,8 @@ public class JSOrNode extends JSLogicalNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new JSOrNode(cloneUninitialized(getLeft()), cloneUninitialized(getRight()));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new JSOrNode(cloneUninitialized(getLeft(), materializedTags), cloneUninitialized(getRight(), materializedTags));
     }
 
     public static class NotUndefinedOrNode extends JSOrNode {
@@ -80,8 +83,8 @@ public class JSOrNode extends JSLogicalNode {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new NotUndefinedOrNode(cloneUninitialized(getLeft()), cloneUninitialized(getRight()));
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new NotUndefinedOrNode(cloneUninitialized(getLeft(), materializedTags), cloneUninitialized(getRight(), materializedTags));
         }
     }
 }

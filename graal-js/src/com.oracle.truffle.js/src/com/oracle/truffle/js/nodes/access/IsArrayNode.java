@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -56,6 +57,8 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+
+import java.util.Set;
 
 /**
  * Non-standard IsArray. Checks for array exotic objects.
@@ -154,8 +157,8 @@ public abstract class IsArrayNode extends JavaScriptBaseNode {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
-            return createIsArray(cloneUninitialized(getOperand()));
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return createIsArray(cloneUninitialized(getOperand(), materializedTags));
         }
     }
 }

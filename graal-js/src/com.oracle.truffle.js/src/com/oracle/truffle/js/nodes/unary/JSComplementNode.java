@@ -79,7 +79,7 @@ public abstract class JSComplementNode extends JSUnaryNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(UnaryOperationTag.class) && !(getOperand() instanceof JSInputGeneratingNodeWrapper)) {
-            JSComplementNode materialized = JSComplementNodeGen.create(JSInputGeneratingNodeWrapper.create(getOperand()));
+            JSComplementNode materialized = JSComplementNodeGen.create(JSInputGeneratingNodeWrapper.create(cloneUninitialized(getOperand(), materializedTags)));
             transferSourceSectionAddExpressionTag(this, materialized);
             return materialized;
         }
@@ -109,7 +109,7 @@ public abstract class JSComplementNode extends JSUnaryNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return JSComplementNodeGen.create(cloneUninitialized(getOperand()));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return JSComplementNodeGen.create(cloneUninitialized(getOperand(), materializedTags));
     }
 }

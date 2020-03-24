@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -52,6 +53,8 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
+
+import java.util.Set;
 
 /**
  * Implementation of the abstract operation RequireObjectCoercible(argument) (ES6 7.2.1).
@@ -146,8 +149,8 @@ public abstract class RequireObjectCoercibleNode extends JavaScriptBaseNode {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
-            return RequireObjectCoercibleWrapperNode.create(cloneUninitialized(getOperand()));
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return RequireObjectCoercibleWrapperNode.create(cloneUninitialized(getOperand(), materializedTags));
         }
     }
 }

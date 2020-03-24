@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -52,6 +53,8 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+
+import java.util.Set;
 
 /**
  * Combines IteratorStep and IteratorValue in one node.
@@ -134,7 +137,7 @@ public abstract class IteratorGetNextValueNode extends JavaScriptNode {
     public abstract Object execute(VirtualFrame frame, IteratorRecord iteratorRecord);
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(getValueNode.getContext(), cloneUninitialized(iteratorNode), cloneUninitialized(doneResultNode), setDone);
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return create(getValueNode.getContext(), cloneUninitialized(iteratorNode, materializedTags), cloneUninitialized(doneResultNode, materializedTags), setDone);
     }
 }

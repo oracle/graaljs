@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.cast;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -60,6 +61,8 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+
+import java.util.Set;
 
 public abstract class JSToUInt32Node extends JavaScriptBaseNode {
 
@@ -207,8 +210,8 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
-            return JSToUInt32WrapperNodeGen.create(cloneUninitialized(getOperand()));
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return JSToUInt32WrapperNodeGen.create(cloneUninitialized(getOperand(), materializedTags));
         }
     }
 }

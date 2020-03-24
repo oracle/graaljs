@@ -47,6 +47,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -77,6 +78,8 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+
+import java.util.Set;
 
 /*
  * ES6, 12.9.4: Runtime Semantics: InstanceofOperator(O, C).
@@ -172,8 +175,8 @@ public abstract class InstanceofNode extends JSBinaryNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return InstanceofNodeGen.create(context, cloneUninitialized(getLeft()), cloneUninitialized(getRight()));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return InstanceofNodeGen.create(context, cloneUninitialized(getLeft(), materializedTags), cloneUninitialized(getRight(), materializedTags));
     }
 
     // ES6, 7.3.19, OrdinaryHasInstance (C, O).

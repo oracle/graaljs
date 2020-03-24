@@ -208,9 +208,18 @@ public class WriteElementNode extends JSTargetableNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializationNeeded() && materializedTags.contains(WriteElementTag.class)) {
-            JavaScriptNode clonedTarget = targetNode == null || targetNode.hasSourceSection() ? targetNode : JSTaggedExecutionNode.createForInput(targetNode, this);
-            JavaScriptNode clonedIndex = indexNode == null || indexNode.hasSourceSection() ? indexNode : JSTaggedExecutionNode.createForInput(indexNode, this);
-            JavaScriptNode clonedValue = valueNode == null || valueNode.hasSourceSection() ? valueNode : JSTaggedExecutionNode.createForInput(valueNode, this);
+            JavaScriptNode clonedTarget = targetNode == null || targetNode.hasSourceSection() ? targetNode : JSTaggedExecutionNode.createForInput(targetNode, this, materializedTags);
+            JavaScriptNode clonedIndex = indexNode == null || indexNode.hasSourceSection() ? indexNode : JSTaggedExecutionNode.createForInput(indexNode, this, materializedTags);
+            JavaScriptNode clonedValue = valueNode == null || valueNode.hasSourceSection() ? valueNode : JSTaggedExecutionNode.createForInput(valueNode, this, materializedTags);
+            if (clonedTarget == targetNode) {
+                clonedTarget = cloneUninitialized(targetNode, materializedTags);
+            }
+            if (clonedIndex == indexNode) {
+                clonedIndex = cloneUninitialized(indexNode, materializedTags);
+            }
+            if (clonedValue == valueNode) {
+                clonedValue = cloneUninitialized(valueNode, materializedTags);
+            }
             WriteElementNode cloned = createMaterialized(clonedTarget, clonedIndex, clonedValue);
             transferSourceSectionAndTags(this, cloned);
             return cloned;
@@ -1872,8 +1881,8 @@ public class WriteElementNode extends JSTargetableNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(cloneUninitialized(targetNode), cloneUninitialized(indexNode), cloneUninitialized(valueNode), getContext(), isStrict(), writeOwn());
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return create(cloneUninitialized(targetNode, materializedTags), cloneUninitialized(indexNode, materializedTags), cloneUninitialized(valueNode, materializedTags), getContext(), isStrict(), writeOwn());
     }
 
     @Override

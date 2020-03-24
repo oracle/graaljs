@@ -103,7 +103,7 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(BinaryOperationTag.class)) {
             JSConstantNode constantNode = isInt ? JSConstantNode.createInt(rightInt) : JSConstantNode.createDouble(rightDouble);
-            JavaScriptNode node = JSAddNode.createUnoptimized(getOperand(), constantNode, truncate);
+            JavaScriptNode node = JSAddNode.createUnoptimized(cloneUninitialized(getOperand(), materializedTags), constantNode, truncate);
             transferSourceSectionAddExpressionTag(this, constantNode);
             transferSourceSectionAndTags(this, node);
             return node;
@@ -184,8 +184,8 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return JSAddConstantRightNumberNodeGen.create(cloneUninitialized(getOperand()), getRightValue(), truncate);
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return JSAddConstantRightNumberNodeGen.create(cloneUninitialized(getOperand(), materializedTags), getRightValue(), truncate);
     }
 
     @Override

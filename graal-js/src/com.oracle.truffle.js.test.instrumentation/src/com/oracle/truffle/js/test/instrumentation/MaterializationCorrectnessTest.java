@@ -118,7 +118,7 @@ public class MaterializationCorrectnessTest extends FineGrainedAccessTest {
         assertFalse(readElementNodeList.isEmpty());
 
         InstrumentedNodesExecutionEventListener listener = new InstrumentedNodesExecutionEventListener(ReadElementNode.class);
-        instrumenter.attachExecutionEventListener(SourceSectionFilter.ANY, listener);
+        instrumenter.attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(JSTags.ReadElementTag.class).build(), listener);
 
         evalWithCurrentBinding(source);
 
@@ -212,7 +212,9 @@ public class MaterializationCorrectnessTest extends FineGrainedAccessTest {
         assertFalse(whileOrForNodeList.isEmpty());
 
         InstrumentedNodesExecutionEventListener listener = new InstrumentedNodesExecutionEventListener(whileOrForNodeClass);
-        instrumenter.attachExecutionEventListener(SourceSectionFilter.ANY, listener);
+        instrumenter.attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(JSTags.ControlFlowRootTag.class,
+                        JSTags.ControlFlowBranchTag.class,
+                        JSTags.ControlFlowBlockTag.class).build(), listener);
 
         evalWithCurrentBinding(source);
 

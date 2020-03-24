@@ -53,6 +53,8 @@ import com.oracle.truffle.js.runtime.RegexCompilerInterface;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.CompileRegexNode;
 
+import java.util.Set;
+
 public class RegExpLiteralNode extends JavaScriptNode {
     private final JSContext context;
     private final String pattern;
@@ -113,7 +115,7 @@ public class RegExpLiteralNode extends JavaScriptNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return create(context, pattern, flags);
     }
 }

@@ -120,8 +120,17 @@ public class WritePropertyNode extends JSTargetableWriteNode {
             // if we have no source section, we must assign one to be discoverable at
             // instrumentation time.
             if (materializationNeeded()) {
-                JavaScriptNode clonedTarget = targetNode == null || targetNode.hasSourceSection() ? targetNode : JSTaggedExecutionNode.createForInput(targetNode, this);
-                JavaScriptNode clonedRhs = rhsNode == null || rhsNode.hasSourceSection() ? rhsNode : JSTaggedExecutionNode.createForInput(rhsNode, this);
+                JavaScriptNode clonedTarget = targetNode == null || targetNode.hasSourceSection() ? targetNode : JSTaggedExecutionNode.createForInput(targetNode, this, materializedTags);
+                JavaScriptNode clonedRhs = rhsNode == null || rhsNode.hasSourceSection() ? rhsNode : JSTaggedExecutionNode.createForInput(rhsNode, this, materializedTags);
+                if (clonedTarget == targetNode && clonedRhs == rhsNode) {
+                    return this;
+                }
+                if (clonedTarget == targetNode) {
+                    clonedTarget = cloneUninitialized(targetNode, materializedTags);
+                }
+                if (clonedRhs == rhsNode) {
+                    clonedRhs = cloneUninitialized(rhsNode, materializedTags);
+                }
                 WritePropertyNode clone = WritePropertyNode.create(clonedTarget, cache.getKey(), clonedRhs, cache.isGlobal(), cache.getContext(), cache.isStrict());
                 transferSourceSectionAndTags(this, clone);
                 return clone;
@@ -287,8 +296,8 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(cloneUninitialized(targetNode), cache.getKey(), cloneUninitialized(rhsNode), cache.isGlobal(), cache.getContext(), cache.isStrict());
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return create(cloneUninitialized(targetNode, materializedTags), cache.getKey(), cloneUninitialized(rhsNode, materializedTags), cache.isGlobal(), cache.getContext(), cache.isStrict());
     }
 
     @Override

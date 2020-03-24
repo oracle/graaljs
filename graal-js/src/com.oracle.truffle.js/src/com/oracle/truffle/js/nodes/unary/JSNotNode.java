@@ -121,7 +121,7 @@ public abstract class JSNotNode extends JSUnaryNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return JSNotNodeGen.create(cloneUninitialized(getOperand()));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return JSNotNodeGen.create(cloneUninitialized(getOperand(), materializedTags));
     }
 }

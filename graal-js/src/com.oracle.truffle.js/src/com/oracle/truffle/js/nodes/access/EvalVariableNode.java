@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import java.util.Objects;
+import java.util.Set;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -157,7 +158,7 @@ public final class EvalVariableNode extends JSTargetableNode implements ReadNode
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new EvalVariableNode(context, varName, cloneUninitialized(defaultDelegate), cloneUninitialized(dynamicScopeNode), cloneUninitialized(scopeAccessNode));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new EvalVariableNode(context, varName, cloneUninitialized(defaultDelegate, materializedTags), cloneUninitialized(dynamicScopeNode, materializedTags), cloneUninitialized(scopeAccessNode, materializedTags));
     }
 }
