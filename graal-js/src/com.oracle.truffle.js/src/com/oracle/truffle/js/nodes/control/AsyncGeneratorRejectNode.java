@@ -46,7 +46,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -58,12 +57,10 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class AsyncGeneratorRejectNode extends JavaScriptBaseNode {
     @Child private PropertyGetNode getAsyncGeneratorQueueNode;
-    @Child private CreateIterResultObjectNode createIterResultObjectNode;
     @Child private JSFunctionCallNode callRejectNode;
     @Child private AsyncGeneratorResumeNextNode asyncGeneratorResumeNextNode;
 
     protected AsyncGeneratorRejectNode(JSContext context) {
-        this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
         this.getAsyncGeneratorQueueNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
         this.callRejectNode = JSFunctionCallNode.createCall();
     }

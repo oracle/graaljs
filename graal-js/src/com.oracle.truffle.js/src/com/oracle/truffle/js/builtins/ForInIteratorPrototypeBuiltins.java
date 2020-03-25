@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
@@ -57,9 +58,9 @@ import com.oracle.truffle.js.builtins.ForInIteratorPrototypeBuiltinsFactory.HasO
 import com.oracle.truffle.js.builtins.helper.ListGetNode;
 import com.oracle.truffle.js.builtins.helper.ListSizeNode;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -70,7 +71,6 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -115,8 +115,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
     }
 
     public abstract static class ForInIteratorPrototypeNextNode extends JSBuiltinNode {
-        @Child private PropertySetNode setValueNode;
-        @Child private PropertySetNode setDoneNode;
+        @Child private CreateIterResultObjectNode createIterResultObjectNode;
         @Child private PropertyGetNode getIteratorNode;
         @Child private GetPrototypeNode getPrototypeNode;
         @Child private HasOnlyShapePropertiesNode hasOnlyShapePropertiesNode;
@@ -132,8 +131,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         public ForInIteratorPrototypeNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.setValueNode = PropertySetNode.create(JSRuntime.VALUE, false, context, false);
-            this.setDoneNode = PropertySetNode.create(JSRuntime.DONE, false, context, false);
+            this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
             this.getIteratorNode = PropertyGetNode.createGetHidden(JSRuntime.FOR_IN_ITERATOR_ID, context);
             this.getPrototypeNode = GetPrototypeNode.create();
             this.hasOnlyShapePropertiesNode = HasOnlyShapePropertiesNode.create();
@@ -142,7 +140,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization
-        public DynamicObject execute(Object target,
+        public DynamicObject execute(VirtualFrame frame, Object target,
                         @Cached("createEqualityProfile()") PrimitiveValueProfile valuesProfile) {
             Object iteratorValue = getIteratorNode.getValue(target);
             if (iteratorValue == Undefined.instance) {
@@ -161,7 +159,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                     assert nextValue instanceof String;
                 }
             }
-            return createIterResultObject(nextValue, done);
+            return createIterResultObjectNode.execute(frame, nextValue, done);
         }
 
         private Object findNext(ForInIterator state) {
@@ -281,12 +279,6 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             }
         }
 
-        private DynamicObject createIterResultObject(Object value, boolean done) {
-            DynamicObject iterResultObject = JSUserObject.create(getContext());
-            setValueNode.setValue(iterResultObject, value);
-            setDoneNode.setValueBoolean(iterResultObject, done);
-            return iterResultObject;
-        }
     }
 
     @ImportStatic({JSObject.class})

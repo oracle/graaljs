@@ -41,11 +41,12 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.FinalizationRegistryCleanupIteratorPrototypeBuiltinsFactory.CleanupNextNodeGen;
+import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -54,7 +55,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.FinalizationRecord;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -93,21 +93,19 @@ public final class FinalizationRegistryCleanupIteratorPrototypeBuiltins
     }
 
     public abstract static class CleanupNextNode extends JSBuiltinNode {
-        @Child private PropertySetNode setValueNode;
-        @Child private PropertySetNode setDoneNode;
+        @Child private CreateIterResultObjectNode createIterResultObjectNode;
         @Child private PropertyGetNode getFinalizationRegistryNode;
         private final BranchProfile errorBranch;
 
         public CleanupNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.setValueNode = PropertySetNode.create(JSRuntime.VALUE, false, context, false);
-            this.setDoneNode = PropertySetNode.create(JSRuntime.DONE, false, context, false);
+            this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
             this.getFinalizationRegistryNode = PropertyGetNode.createGetHidden(JSRuntime.FINALIZATION_GROUP_CLEANUP_ITERATOR_ID, context);
             this.errorBranch = BranchProfile.create();
         }
 
         @Specialization
-        public DynamicObject execute(Object target) {
+        public DynamicObject execute(VirtualFrame frame, Object target) {
             Object finalizationRegistry = getFinalizationRegistryNode.getValue(target);
             if (finalizationRegistry == Undefined.instance || !JSFinalizationRegistry.isJSFinalizationRegistry(finalizationRegistry)) {
                 errorBranch.enter();
@@ -115,16 +113,10 @@ public final class FinalizationRegistryCleanupIteratorPrototypeBuiltins
             }
             FinalizationRecord record = JSFinalizationRegistry.removeCellEmptyTarget((DynamicObject) finalizationRegistry);
             if (record != null) {
-                return createIterResultObject(record.getHeldValue(), false);
+                return createIterResultObjectNode.execute(frame, record.getHeldValue(), false);
             }
-            return createIterResultObject(Undefined.instance, true);
+            return createIterResultObjectNode.execute(frame, Undefined.instance, true);
         }
 
-        private DynamicObject createIterResultObject(Object value, boolean done) {
-            DynamicObject iterResultObject = JSUserObject.create(getContext());
-            setValueNode.setValue(iterResultObject, value);
-            setDoneNode.setValueBoolean(iterResultObject, done);
-            return iterResultObject;
-        }
     }
 }
