@@ -42,12 +42,13 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -81,25 +82,11 @@ public abstract class PrivateFieldSetNode extends JSTargetableNode {
         this.context = context;
     }
 
-    @Specialization(guards = {"isJSObject(target)", "key == hasNode.getKey()"}, limit = "1")
-    Object doFieldCachedKey(DynamicObject target, HiddenKey key, Object value,
-                    @Cached("create(key)") HasHiddenKeyCacheNode hasNode,
-                    @Cached("createSetHidden(key, context)") PropertySetNode setNode,
-                    @Cached @Shared("errorBranch") BranchProfile errorBranch) {
-        if (hasNode.executeHasHiddenKey(target)) {
-            setNode.setValue(target, value);
-        } else {
-            errorBranch.enter();
-            missing(target, key, value);
-        }
-        return value;
-    }
-
-    @TruffleBoundary
-    @Specialization(guards = {"isJSObject(target)"}, replaces = "doFieldCachedKey")
-    Object doFieldUncachedKey(DynamicObject target, HiddenKey key, Object value,
-                    @Cached @Shared("errorBranch") BranchProfile errorBranch) {
-        if (!target.set(key, value)) {
+    @Specialization(guards = {"isJSObject(target)"}, limit = "3")
+    Object doField(DynamicObject target, HiddenKey key, Object value,
+                    @CachedLibrary("target") DynamicObjectLibrary access,
+                    @Cached BranchProfile errorBranch) {
+        if (!access.putIfPresent(target, key, value)) {
             errorBranch.enter();
             missing(target, key, value);
         }
@@ -109,7 +96,7 @@ public abstract class PrivateFieldSetNode extends JSTargetableNode {
     @Specialization(guards = {"isJSObject(target)"})
     Object doAccessor(DynamicObject target, Accessor accessor, Object value,
                     @Cached("createCall()") JSFunctionCallNode callNode,
-                    @Cached @Shared("errorBranch") BranchProfile errorBranch) {
+                    @Cached BranchProfile errorBranch) {
         DynamicObject setter = accessor.getSetter();
         if (setter == Undefined.instance) {
             errorBranch.enter();

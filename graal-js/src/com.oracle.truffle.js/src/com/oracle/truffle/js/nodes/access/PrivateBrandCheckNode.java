@@ -40,13 +40,13 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -75,20 +75,10 @@ public abstract class PrivateBrandCheckNode extends JSTargetableNode {
         this.brandNode = brandNode;
     }
 
-    @Specialization(guards = {"isJSObject(target)", "brandKey == hasNode.getKey()"}, limit = "1")
-    Object doCachedKey(DynamicObject target, @SuppressWarnings("unused") HiddenKey brandKey,
-                    @Cached("create(brandKey)") HasHiddenKeyCacheNode hasNode) {
-        if (hasNode.executeHasHiddenKey(target)) {
-            return target;
-        } else {
-            return denied(target, brandKey);
-        }
-    }
-
-    @TruffleBoundary
-    @Specialization(guards = {"isJSObject(target)"}, replaces = "doCachedKey")
-    Object doUncachedKey(DynamicObject target, HiddenKey brandKey) {
-        if (target.containsKey(brandKey)) {
+    @Specialization(guards = {"isJSObject(target)"}, limit = "3")
+    Object doInstance(DynamicObject target, HiddenKey brandKey,
+                    @CachedLibrary("target") DynamicObjectLibrary access) {
+        if (access.containsKey(target, brandKey)) {
             return target;
         } else {
             return denied(target, brandKey);
