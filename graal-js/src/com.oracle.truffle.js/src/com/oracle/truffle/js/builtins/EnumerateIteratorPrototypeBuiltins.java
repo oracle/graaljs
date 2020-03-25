@@ -43,12 +43,13 @@ package com.oracle.truffle.js.builtins;
 import java.util.Iterator;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.builtins.EnumerateIteratorPrototypeBuiltinsFactory.EnumerateNextNodeGen;
+import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
@@ -58,7 +59,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -96,8 +96,7 @@ public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContaine
     }
 
     public abstract static class EnumerateNextNode extends JSBuiltinNode {
-        @Child private PropertySetNode setValueNode;
-        @Child private PropertySetNode setDoneNode;
+        @Child private CreateIterResultObjectNode createIterResultObjectNode;
         @Child private PropertyGetNode getIteratorNode;
         @Child private JSForeignToJSTypeNode importValueNode;
         private final BranchProfile errorBranch;
@@ -105,8 +104,7 @@ public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContaine
 
         public EnumerateNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.setValueNode = PropertySetNode.create(JSRuntime.VALUE, false, context, false);
-            this.setDoneNode = PropertySetNode.create(JSRuntime.DONE, false, context, false);
+            this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
             this.getIteratorNode = PropertyGetNode.createGetHidden(JSRuntime.ENUMERATE_ITERATOR_ID, context);
             this.importValueNode = JSForeignToJSTypeNode.create();
             this.errorBranch = BranchProfile.create();
@@ -114,7 +112,7 @@ public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContaine
         }
 
         @Specialization
-        public DynamicObject execute(Object target) {
+        public DynamicObject execute(VirtualFrame frame, Object target) {
             Object iteratorValue = getIteratorNode.getValue(target);
             if (iteratorValue == Undefined.instance) {
                 errorBranch.enter();
@@ -124,16 +122,10 @@ public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContaine
             if (Boundaries.iteratorHasNext(iterator)) {
                 Object nextValue = Boundaries.iteratorNext(iterator);
                 Object importedValue = importValueNode.executeWithTarget(nextValue);
-                return createIterResultObject(importedValue, false);
+                return createIterResultObjectNode.execute(frame, importedValue, false);
             }
-            return createIterResultObject(Undefined.instance, true);
+            return createIterResultObjectNode.execute(frame, Undefined.instance, true);
         }
 
-        private DynamicObject createIterResultObject(Object value, boolean done) {
-            DynamicObject iterResultObject = JSUserObject.create(getContext());
-            setValueNode.setValue(iterResultObject, value);
-            setDoneNode.setValueBoolean(iterResultObject, done);
-            return iterResultObject;
-        }
     }
 }
