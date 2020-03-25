@@ -62,6 +62,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -69,6 +70,7 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
@@ -84,8 +86,8 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropList;
 
@@ -617,8 +619,8 @@ public abstract class JSScope {
             this.scope = scope;
         }
 
-        static boolean isConst(DynamicScopeWrapper wrapper, String name) {
-            return JSProperty.isConst(wrapper.scope.getShape().getProperty(name));
+        final boolean isConst(String name, DynamicObjectLibrary access) {
+            return JSProperty.isConst(access.getProperty(scope, name));
         }
 
         @SuppressWarnings("static-method")
@@ -629,11 +631,12 @@ public abstract class JSScope {
 
         @ExportMessage
         @TruffleBoundary
-        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        Object getMembers(@SuppressWarnings("unused") boolean includeInternal,
+                        @CachedLibrary("this.scope") DynamicObjectLibrary access) {
             List<String> keys = new ArrayList<>();
-            for (Object key : scope.getShape().getKeys()) {
+            for (Object key : access.getKeyArray(scope)) {
                 if (key instanceof String) {
-                    Object value = scope.get(key);
+                    Object value = access.getOrDefault(scope, key, null);
                     if (value != null && value != Dead.instance()) {
                         keys.add((String) key);
                     }
@@ -644,8 +647,9 @@ public abstract class JSScope {
 
         @ExportMessage
         @TruffleBoundary
-        boolean isMemberReadable(String name) {
-            Object value = scope.get(name);
+        boolean isMemberReadable(String name,
+                        @CachedLibrary("this.scope") DynamicObjectLibrary access) {
+            Object value = access.getOrDefault(scope, name, null);
             if (value == null || value == Dead.instance()) {
                 return false;
             }
@@ -654,8 +658,9 @@ public abstract class JSScope {
 
         @ExportMessage
         @TruffleBoundary
-        boolean isMemberModifiable(String name) {
-            return isMemberReadable(name) && !isConst(this, name);
+        boolean isMemberModifiable(String name,
+                        @CachedLibrary("this.scope") DynamicObjectLibrary access) {
+            return isMemberReadable(name, access) && !isConst(name, access);
         }
 
         @SuppressWarnings("static-method")
@@ -666,8 +671,9 @@ public abstract class JSScope {
 
         @ExportMessage
         @TruffleBoundary
-        Object readMember(String name) throws UnknownIdentifierException {
-            Object value = scope.get(name);
+        Object readMember(String name,
+                        @CachedLibrary("this.scope") DynamicObjectLibrary access) throws UnknownIdentifierException {
+            Object value = access.getOrDefault(scope, name, null);
             if (value == null || value == Dead.instance()) {
                 throw UnknownIdentifierException.create(name);
             } else {
@@ -677,12 +683,13 @@ public abstract class JSScope {
 
         @ExportMessage
         @TruffleBoundary
-        void writeMember(String name, Object value) throws UnsupportedMessageException, UnknownIdentifierException {
-            Object curValue = scope.get(name);
+        void writeMember(String name, Object value,
+                        @CachedLibrary("this.scope") DynamicObjectLibrary access) throws UnsupportedMessageException, UnknownIdentifierException {
+            Object curValue = access.getOrDefault(scope, name, null);
             if (curValue == null || curValue == Dead.instance()) {
                 throw UnknownIdentifierException.create(name);
-            } else if (!isConst(this, name)) {
-                scope.set(name, value);
+            } else if (!isConst(name, access)) {
+                access.putIfPresent(scope, name, value);
             } else {
                 throw UnsupportedMessageException.create();
             }
