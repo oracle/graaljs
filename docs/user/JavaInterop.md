@@ -192,7 +192,7 @@ GraalVM JavaScript supports iterating over such map similar to Nashorn:
 ```js
 for (var key in map) {
     print(key);
-    print(map[key]);
+    print(map.get(key));
 }
 ```
 
