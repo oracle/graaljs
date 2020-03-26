@@ -40,10 +40,8 @@
  */
 package com.oracle.truffle.js.test.instrumentation;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.EventContext;
-import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
-import com.oracle.truffle.api.nodes.Node;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -51,7 +49,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.junit.Assert.*;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
+import com.oracle.truffle.api.nodes.Node;
 
 public class InstrumentedNodesExecutionEventListener implements ExecutionEventListener {
     List<Node> enteredNodes = new ArrayList<>();
@@ -97,7 +98,7 @@ public class InstrumentedNodesExecutionEventListener implements ExecutionEventLi
         checkNodes(expected, enteredNodes);
     }
 
-    private void checkNodes(List<? extends Node> expected, List<? extends Node> actual) {
+    private static void checkNodes(List<? extends Node> expected, List<? extends Node> actual) {
         assertEquals(expected.size(), actual.size());
         for (int i = 0; i < expected.size(); i++) {
             assertSame(expected.get(i), actual.get(i));
