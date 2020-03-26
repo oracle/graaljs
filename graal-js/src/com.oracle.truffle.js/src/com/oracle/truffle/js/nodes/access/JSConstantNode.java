@@ -105,7 +105,7 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
     @Override
     public Object getNodeObject() {
         NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
-        if (this instanceof JSConstantDoubleNode || this instanceof JSConstantIntegerNode) {
+        if (this instanceof JSConstantDoubleNode || this instanceof JSConstantIntegerNode || this instanceof JSConstantBigIntNode || this instanceof JSConstantSafeIntegerNode) {
             descriptor.addProperty(LiteralTag.TYPE, LiteralTag.Type.NumericLiteral.name());
         } else if (this instanceof JSConstantBooleanNode) {
             descriptor.addProperty(LiteralTag.TYPE, LiteralTag.Type.BooleanLiteral.name());
@@ -115,6 +115,8 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
             descriptor.addProperty(LiteralTag.TYPE, LiteralTag.Type.NullLiteral.name());
         } else if (this instanceof JSConstantUndefinedNode) {
             descriptor.addProperty(LiteralTag.TYPE, LiteralTag.Type.UndefinedLiteral.name());
+        } else if (this instanceof JSConstantObjectNode || this instanceof JSConstantJSObjectNode) {
+            descriptor.addProperty(LiteralTag.TYPE, LiteralTag.Type.ObjectLiteral.name());
         }
         return descriptor;
     }
