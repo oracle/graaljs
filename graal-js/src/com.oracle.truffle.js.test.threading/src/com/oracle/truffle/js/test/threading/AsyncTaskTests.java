@@ -48,7 +48,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
@@ -62,7 +61,7 @@ public class AsyncTaskTests {
      * synchronization).
      */
     @Test
-    public void completableFuture() throws IOException, InterruptedException {
+    public void completableFuture() throws InterruptedException {
         final AtomicBoolean asyncTaskExecuted = new AtomicBoolean(false);
         final AtomicReference<Throwable> asyncException = new AtomicReference<>();
         final AtomicReference<Object> asyncJsResult = new AtomicReference<>();
@@ -70,11 +69,8 @@ public class AsyncTaskTests {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
         final ByteArrayOutputStream err = new ByteArrayOutputStream();
         try (Context cx = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowPolyglotAccess(PolyglotAccess.ALL).out(out).err(err).build()) {
-            // Enter the current context from the main thread.
-            cx.enter();
             // Expose a Java method as a JavaScript function.
             cx.getBindings("js").putMember("javaNextTick", (CallableInt) (jsLambda) -> {
-                // cx.leave();
                 // Submit a JavaScript function for async execution in another thread.
                 CompletableFuture.supplyAsync(() -> {
                     asyncTaskExecuted.set(true);
@@ -102,14 +98,11 @@ public class AsyncTaskTests {
             // The callback will execute a JS function in another concurrent thread. Synchronization
             // is needed to prevent data races.
             synchronized (cx) {
-                // Execute the JS function
+                // Execute the JS function. Context enter and leave are implicit.
                 jsFunction.executeVoid();
-                // Leave the current context to allow concurrent execution from another thread.
-                cx.leave();
             }
             testExecutor.shutdown();
             testExecutor.awaitTermination(1, TimeUnit.MINUTES);
-            out.flush();
             Assert.assertNull(asyncException.get());
             Assert.assertTrue(asyncTaskExecuted.get());
             Assert.assertTrue(new String(err.toByteArray()).isEmpty());
@@ -119,11 +112,75 @@ public class AsyncTaskTests {
     }
 
     /**
+     * A JavaScript function can be executed asynchronously in another thread (using proper
+     * synchronization). Asynchronous execution can be mapped to a JavaScript Promise.
+     */
+    @Test
+    public void completableFuturePromise() throws InterruptedException {
+        final AtomicBoolean asyncTaskExecuted = new AtomicBoolean(false);
+        final AtomicReference<Throwable> asyncException = new AtomicReference<>();
+        final AtomicReference<Object> asyncJsResult = new AtomicReference<>();
+        final ForkJoinPool testExecutor = new ForkJoinPool();
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        final ByteArrayOutputStream err = new ByteArrayOutputStream();
+        try (Context cx = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowPolyglotAccess(PolyglotAccess.ALL).out(out).err(err).build()) {
+            // Expose a Java method as a JavaScript function.
+            cx.getBindings("js").putMember("javaPromiseInstance", (ThenableInt) (onResolve, onReject) -> {
+                // Submit a JavaScript function for async execution in another thread.
+                CompletableFuture.supplyAsync(() -> {
+                    asyncTaskExecuted.set(true);
+                    synchronized (cx) {
+                        // Re-enter context.
+                        cx.enter();
+                        try {
+                            // Resolve the JS Promise with completion value 'post'.
+                            // Execution flow will continue in the JS engine.
+                            onResolve.execute("post");
+                            // Returned value from Java completable future will be dispatched to
+                            // Java's `whenComplete`.
+                            return 42;
+                        } catch (Throwable t) {
+                            onReject.executeVoid(t);
+                            return t;
+                        } finally {
+                            // Leave context.
+                            cx.leave();
+                        }
+                    }
+                }, testExecutor).whenComplete((r, ex) -> {
+                    asyncException.set(ex);
+                    asyncJsResult.set(r);
+                });
+            });
+            // Create an async JS function that will wait for an async task executed in a Java async
+            // executor.
+            Value asyncJsFunction = cx.eval("js", "(async function() {" +
+                            "    console.log('pre');" +
+                            "    var post = await javaPromiseInstance;" +
+                            "    console.log(post);" +
+                            "})");
+            // The callback will execute a JS function in another concurrent thread. Synchronization
+            // is needed to prevent data races.
+            synchronized (cx) {
+                // Execute the JS function. Context enter and leave are implicit.
+                asyncJsFunction.executeVoid();
+            }
+            testExecutor.shutdown();
+            testExecutor.awaitTermination(1, TimeUnit.MINUTES);
+            Assert.assertNull(asyncException.get());
+            Assert.assertTrue(asyncTaskExecuted.get());
+            Assert.assertTrue(new String(err.toByteArray()).isEmpty());
+            Assert.assertEquals("pre\npost\n", new String(out.toByteArray()));
+            Assert.assertEquals(42, asyncJsResult.get());
+        }
+    }
+
+    /**
      * A running JavaScript thread can be suspended (blocked) while JS execution can continue in
      * another thread.
      */
     @Test
-    public void plainJavaThread() throws IOException {
+    public void plainJavaThread() {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
         final AtomicReference<Object> asyncJsResult = new AtomicReference<>();
         try (Context cx = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowPolyglotAccess(PolyglotAccess.ALL).out(out).err(out).build()) {
@@ -131,8 +188,6 @@ public class AsyncTaskTests {
             cx.enter();
             // Expose a Java method as a JavaScript function.
             cx.getBindings("js").putMember("aJavaFunction", (CallableInt) (jsLambda) -> {
-                // Leave the current context.
-                cx.leave();
                 // Create a new thread
                 Thread thread = new Thread(() -> {
                     // Enter the JS context from another thread.
@@ -143,8 +198,11 @@ public class AsyncTaskTests {
                     // Leave the current context
                     cx.leave();
                 });
+                // Leave the current context.
+                cx.leave();
                 // Start thread and wait for completion.
                 thread.start();
+                // Halt until thread completes.
                 thread.join();
                 // Re-enter context from main thread.
                 cx.enter();
@@ -158,7 +216,6 @@ public class AsyncTaskTests {
             // The context can be used again from the current thread
             cx.eval("js", "console.log('something else');");
         }
-        out.flush();
         Assert.assertEquals(42, ((Value) asyncJsResult.get()).asInt());
         Assert.assertEquals("something\nsomething else\n", new String(out.toByteArray()));
     }
@@ -166,5 +223,10 @@ public class AsyncTaskTests {
     @FunctionalInterface
     public interface CallableInt {
         void execute(Value jsLambda) throws InterruptedException;
+    }
+
+    @FunctionalInterface
+    public interface ThenableInt {
+        void then(Value onResolve, Value onReject);
     }
 }
