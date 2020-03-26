@@ -211,6 +211,9 @@ public class WriteElementNode extends JSTargetableNode {
             JavaScriptNode clonedTarget = targetNode == null || targetNode.hasSourceSection() ? targetNode : JSTaggedExecutionNode.createForInput(targetNode, this, materializedTags);
             JavaScriptNode clonedIndex = indexNode == null || indexNode.hasSourceSection() ? indexNode : JSTaggedExecutionNode.createForInput(indexNode, this, materializedTags);
             JavaScriptNode clonedValue = valueNode == null || valueNode.hasSourceSection() ? valueNode : JSTaggedExecutionNode.createForInput(valueNode, this, materializedTags);
+            if (clonedTarget == targetNode && clonedIndex == indexNode && clonedValue == valueNode) {
+                return this;
+            }
             if (clonedTarget == targetNode) {
                 clonedTarget = cloneUninitialized(targetNode, materializedTags);
             }

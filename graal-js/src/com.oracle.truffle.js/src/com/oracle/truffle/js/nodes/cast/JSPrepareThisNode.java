@@ -143,6 +143,6 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return JSPrepareThisNodeGen.create(context, getOperand());
+        return JSPrepareThisNodeGen.create(context, cloneUninitialized(getOperand(), materializedTags));
     }
 }
