@@ -105,8 +105,10 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
     @Override
     public Object getNodeObject() {
         NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
-        if (this instanceof JSConstantDoubleNode || this instanceof JSConstantIntegerNode || this instanceof JSConstantBigIntNode || this instanceof JSConstantSafeIntegerNode) {
+        if (this instanceof JSConstantDoubleNode || this instanceof JSConstantIntegerNode || this instanceof JSConstantSafeIntegerNode) {
             descriptor.addProperty(LiteralTag.TYPE, LiteralTag.Type.NumericLiteral.name());
+        } else if (this instanceof JSConstantBigIntNode) {
+            descriptor.addProperty(LiteralTag.TYPE, LiteralTag.Type.BigIntLiteral.name());
         } else if (this instanceof JSConstantBooleanNode) {
             descriptor.addProperty(LiteralTag.TYPE, LiteralTag.Type.BooleanLiteral.name());
         } else if (this instanceof JSConstantStringNode) {
@@ -244,11 +246,6 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
 
         private JSConstantBigIntNode(BigInt value) {
             this.bigIntValue = value;
-        }
-
-        @Override
-        public boolean isInstrumentable() {
-            return false;
         }
 
         @Override

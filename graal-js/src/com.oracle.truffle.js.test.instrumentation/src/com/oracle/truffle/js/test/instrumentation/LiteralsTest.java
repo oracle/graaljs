@@ -40,10 +40,13 @@
  */
 package com.oracle.truffle.js.test.instrumentation;
 
+import java.math.BigInteger;
+
 import org.junit.Test;
 
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class LiteralsTest extends FineGrainedAccessTest {
@@ -117,5 +120,10 @@ public class LiteralsTest extends FineGrainedAccessTest {
     @Test
     public void anonFunction() {
         testLiteral("x = () => {};", LiteralTag.Type.FunctionLiteral);
+    }
+
+    @Test
+    public void bigint() {
+        testLiteral("x = 42n;", LiteralTag.Type.BigIntLiteral, new BigInt(BigInteger.valueOf(42)));
     }
 }

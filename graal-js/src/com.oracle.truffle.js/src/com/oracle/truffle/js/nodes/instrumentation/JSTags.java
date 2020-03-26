@@ -158,6 +158,7 @@ public final class JSTags {
             NullLiteral,
             UndefinedLiteral,
             RegExpLiteral,
+            BigIntLiteral,
         }
 
         private LiteralTag() {
