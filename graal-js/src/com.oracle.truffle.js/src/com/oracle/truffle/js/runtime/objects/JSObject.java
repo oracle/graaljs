@@ -466,10 +466,6 @@ public final class JSObject {
     }
 
     public static ScriptArray getArray(DynamicObject obj) {
-        return JSObject.getArray(obj, JSObject.hasArray(obj));
-    }
-
-    public static ScriptArray getArray(DynamicObject obj, boolean customFloatingCondition) {
         assert hasArray(obj);
         if (obj instanceof JSArrayBase) {
             return ((JSArrayBase) obj).getArrayType();

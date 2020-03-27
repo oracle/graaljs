@@ -624,7 +624,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             DynamicObject targetObject = (DynamicObject) target;
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition)) {
-                ScriptArray array = JSObject.getArray(targetObject, arrayCondition);
+                ScriptArray array = JSObject.getArray(targetObject);
                 Object objIndex = toArrayIndex(index);
 
                 if (arrayIndexProfile.profile(objIndex instanceof Long)) {
@@ -655,7 +655,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             DynamicObject targetObject = (DynamicObject) target;
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition)) {
-                ScriptArray array = JSObject.getArray(targetObject, arrayCondition);
+                ScriptArray array = JSObject.getArray(targetObject);
                 if (arrayIndexProfile.profile(index >= 0)) {
                     return executeArrayGet(targetObject, array, index, receiver, defaultValue, arrayCondition, root.context);
                 } else {
@@ -671,7 +671,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             DynamicObject targetObject = (DynamicObject) target;
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition)) {
-                ScriptArray array = JSObject.getArray(targetObject, arrayCondition);
+                ScriptArray array = JSObject.getArray(targetObject);
                 Object objIndex = toArrayIndex(index);
 
                 if (arrayIndexProfile.profile(objIndex instanceof Long)) {
@@ -690,7 +690,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             DynamicObject targetObject = (DynamicObject) target;
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition)) {
-                ScriptArray array = JSObject.getArray(targetObject, arrayCondition);
+                ScriptArray array = JSObject.getArray(targetObject);
 
                 if (arrayIndexProfile.profile(index >= 0)) {
                     return executeArrayGetInt(targetObject, array, index, receiver, defaultValue, arrayCondition, root.context);
@@ -707,7 +707,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             DynamicObject targetObject = (DynamicObject) target;
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition)) {
-                ScriptArray array = JSObject.getArray(targetObject, arrayCondition);
+                ScriptArray array = JSObject.getArray(targetObject);
                 Object objIndex = toArrayIndex(index);
 
                 if (arrayIndexProfile.profile(objIndex instanceof Long)) {
@@ -726,7 +726,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             DynamicObject targetObject = (DynamicObject) target;
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition)) {
-                ScriptArray array = JSObject.getArray(targetObject, arrayCondition);
+                ScriptArray array = JSObject.getArray(targetObject);
 
                 if (arrayIndexProfile.profile(index >= 0)) {
                     return executeArrayGetDouble(targetObject, array, index, receiver, defaultValue, arrayCondition, root.context);

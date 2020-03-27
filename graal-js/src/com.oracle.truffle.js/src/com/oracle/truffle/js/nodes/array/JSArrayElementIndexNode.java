@@ -67,18 +67,18 @@ public abstract class JSArrayElementIndexNode extends JavaScriptBaseNode {
         return JSObject.getArray(object).hasHoles(object, isArray);
     }
 
-    protected static ScriptArray getArrayType(DynamicObject object, boolean arrayCondition) {
-        return JSObject.getArray(object, arrayCondition);
+    protected static ScriptArray getArrayType(DynamicObject object) {
+        return JSObject.getArray(object);
     }
 
     /**
      * Workaround for GR-830: Cached values are initialized before guards are evaluated.
      */
-    protected static ScriptArray getArrayTypeIfArray(DynamicObject object, boolean arrayCondition) {
-        if (!arrayCondition) {
+    protected static ScriptArray getArrayTypeIfArray(DynamicObject object, boolean isArray) {
+        if (!isArray) {
             return null;
         }
-        return getArrayType(object, arrayCondition);
+        return getArrayType(object);
     }
 
     protected final boolean isSuitableForEnumBasedProcessingUsingOwnKeys(Object object, long length) {

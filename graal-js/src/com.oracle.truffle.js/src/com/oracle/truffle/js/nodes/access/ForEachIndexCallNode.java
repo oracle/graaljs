@@ -196,7 +196,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
     }
 
     protected final Object readElementInBounds(DynamicObject target, long index, boolean arrayCondition) {
-        return readElementNode.executeArrayGet(target, JSObject.getArray(target, arrayCondition), index, target, Undefined.instance, arrayCondition, context);
+        return readElementNode.executeArrayGet(target, JSObject.getArray(target), index, target, Undefined.instance, arrayCondition, context);
     }
 
     protected final boolean hasProperty(Object target, long index) {

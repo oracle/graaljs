@@ -67,8 +67,8 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
     protected ArrayLengthNode() {
     }
 
-    protected static ScriptArray getArrayType(DynamicObject target, boolean condition) {
-        return JSObject.getArray(target, condition);
+    protected static ScriptArray getArrayType(DynamicObject target) {
+        return JSObject.getArray(target);
     }
 
     public abstract static class ArrayLengthReadNode extends ArrayLengthNode {
@@ -89,22 +89,22 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
             return (double) result;
         }
 
-        @Specialization(guards = {"arrayType.isInstance(getArrayType(target, condition))", "arrayType.isStatelessType()", "isLengthAlwaysInt(arrayType)"}, limit = "MAX_TYPE_COUNT")
+        @Specialization(guards = {"arrayType.isInstance(getArrayType(target))", "arrayType.isStatelessType()", "isLengthAlwaysInt(arrayType)"}, limit = "MAX_TYPE_COUNT")
         protected static int doIntLength(DynamicObject target, boolean condition,
-                        @Cached("getArrayType(target, condition)") ScriptArray arrayType) {
+                        @Cached("getArrayType(target)") ScriptArray arrayType) {
             return arrayType.lengthInt(target, condition);
         }
 
-        @Specialization(guards = {"arrayType.isInstance(getArrayType(target, condition))", "arrayType.isStatelessType()"}, replaces = "doIntLength", limit = "MAX_TYPE_COUNT")
+        @Specialization(guards = {"arrayType.isInstance(getArrayType(target))", "arrayType.isStatelessType()"}, replaces = "doIntLength", limit = "MAX_TYPE_COUNT")
         protected static double doLongLength(DynamicObject target, boolean condition,
-                        @Cached("getArrayType(target, condition)") ScriptArray arrayType) {
+                        @Cached("getArrayType(target)") ScriptArray arrayType) {
             return arrayType.length(target, condition);
         }
 
         @Specialization(replaces = {"doIntLength", "doLongLength"}, rewriteOn = UnexpectedResultException.class)
         protected static int doUncachedIntLength(DynamicObject target, boolean condition) throws UnexpectedResultException {
             long uint32Len = JSAbstractArray.arrayGetLength(target, condition);
-            assert uint32Len == getArrayType(target, condition).length(target, condition);
+            assert uint32Len == getArrayType(target).length(target, condition);
             if (JSRuntime.longIsRepresentableAsInt(uint32Len)) {
                 return (int) uint32Len;
             } else {
@@ -116,7 +116,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
         @Specialization(replaces = {"doUncachedIntLength"})
         protected static double doUncachedLongLength(DynamicObject target, boolean condition) {
             long uint32Len = JSAbstractArray.arrayGetLength(target, condition);
-            assert uint32Len == getArrayType(target, condition).length(target, condition);
+            assert uint32Len == getArrayType(target).length(target, condition);
             return uint32Len;
         }
 
@@ -144,9 +144,9 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
             this.strict = strict;
         }
 
-        @Specialization(guards = {"arrayType.isInstance(getArrayType(arrayObj, condition))", "arrayType.isStatelessType()"}, limit = "MAX_TYPE_COUNT")
+        @Specialization(guards = {"arrayType.isInstance(getArrayType(arrayObj))", "arrayType.isStatelessType()"}, limit = "MAX_TYPE_COUNT")
         protected void doCached(DynamicObject arrayObj, int length, boolean condition,
-                        @Cached("getArrayType(arrayObj, condition)") ScriptArray arrayType,
+                        @Cached("getArrayType(arrayObj)") ScriptArray arrayType,
                         @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {
             assert length >= 0;
             if (arrayType.isSealed()) {
@@ -161,7 +161,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
                         @Cached("createBinaryProfile()") ConditionProfile sealedProfile,
                         @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {
             assert length >= 0;
-            ScriptArray arrayType = getArrayType(arrayObj, condition);
+            ScriptArray arrayType = getArrayType(arrayObj);
             if (sealedProfile.profile(arrayType.isSealed())) {
                 setLengthSealed(arrayObj, length, arrayType, condition, setLengthProfile);
                 return;
@@ -188,9 +188,9 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
             this.strict = strict;
         }
 
-        @Specialization(guards = {"arrayType.isInstance(getArrayType(arrayObj, condition))", "arrayType.isStatelessType()"}, limit = "MAX_TYPE_COUNT")
+        @Specialization(guards = {"arrayType.isInstance(getArrayType(arrayObj))", "arrayType.isStatelessType()"}, limit = "MAX_TYPE_COUNT")
         protected void doCached(DynamicObject arrayObj, int length, boolean condition,
-                        @Cached("getArrayType(arrayObj, condition)") ScriptArray arrayType,
+                        @Cached("getArrayType(arrayObj)") ScriptArray arrayType,
                         @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {
             assert length >= 0;
             if (arrayType.isLengthNotWritable() || arrayType.isSealed()) {
@@ -205,7 +205,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
                         @Cached("createBinaryProfile()") ConditionProfile mustDeleteProfile,
                         @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {
             assert length >= 0;
-            ScriptArray arrayType = getArrayType(arrayObj, condition);
+            ScriptArray arrayType = getArrayType(arrayObj);
             if (mustDeleteProfile.profile(arrayType.isLengthNotWritable() || arrayType.isSealed())) {
                 deleteAndSetLength(arrayObj, length, arrayType, condition, setLengthProfile);
                 return;

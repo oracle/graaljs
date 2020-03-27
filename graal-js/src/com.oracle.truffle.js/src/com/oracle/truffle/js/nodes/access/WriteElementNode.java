@@ -537,7 +537,7 @@ public class WriteElementNode extends JSTargetableNode {
             DynamicObject targetObject = JSObject.castJSObject(target);
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition)) {
-                ScriptArray array = JSObject.getArray(targetObject, arrayCondition);
+                ScriptArray array = JSObject.getArray(targetObject);
                 Object objIndex = toArrayIndex(index);
 
                 if (intOrStringIndexProfile.profile(objIndex instanceof Long)) {
@@ -566,7 +566,7 @@ public class WriteElementNode extends JSTargetableNode {
             DynamicObject targetObject = JSObject.castJSObject(target);
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition)) {
-                ScriptArray array = JSObject.getArray(targetObject, arrayCondition);
+                ScriptArray array = JSObject.getArray(targetObject);
 
                 if (intOrStringIndexProfile.profile(index >= 0)) {
                     if (!executeSetArray(targetObject, array, index, value, arrayCondition, root)) {
