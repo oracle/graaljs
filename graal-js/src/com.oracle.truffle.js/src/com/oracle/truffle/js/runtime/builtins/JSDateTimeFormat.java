@@ -685,12 +685,14 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
     private static final LazyValue<UnmodifiableEconomicMap<DateFormat.Field, String>> fieldToTypeMap = new LazyValue<>(JSDateTimeFormat::initializeFieldToTypeMap);
 
+    @SuppressWarnings("deprecation")
     private static UnmodifiableEconomicMap<DateFormat.Field, String> initializeFieldToTypeMap() {
         CompilerAsserts.neverPartOfCompilation();
         EconomicMap<DateFormat.Field, String> map = EconomicMap.create(14);
         map.put(DateFormat.Field.AM_PM, "dayPeriod");
         map.put(DateFormat.Field.ERA, "era");
         map.put(DateFormat.Field.YEAR, "year");
+        map.put(DateFormat.Field.RELATED_YEAR, "relatedYear");
         map.put(DateFormat.Field.MONTH, "month");
         map.put(DateFormat.Field.DOW_LOCAL, "weekday");
         map.put(DateFormat.Field.DAY_OF_WEEK, "weekday");
