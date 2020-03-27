@@ -248,7 +248,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             if (dateStyleOpt == null) {
                 String skeleton = makeSkeleton(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hc, hour12Opt, minuteOpt, secondOpt, tzNameOpt);
 
-                DateTimePatternGenerator patternGenerator = DateTimePatternGenerator.getInstance(strippedLocale);
+                DateTimePatternGenerator patternGenerator = DateTimePatternGenerator.getInstance(javaLocale);
                 String bestPattern = patternGenerator.getBestPattern(skeleton);
                 String baseSkeleton = patternGenerator.getBaseSkeleton(bestPattern);
 
