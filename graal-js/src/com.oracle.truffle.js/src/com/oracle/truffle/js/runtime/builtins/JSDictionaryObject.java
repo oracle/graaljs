@@ -297,9 +297,6 @@ public final class JSDictionaryObject extends JSBuiltinObject {
                 // normal properties
                 Object value = p.get(obj, false);
                 hashMap.put(key, toPropertyDescriptor(p, value));
-
-                // invalidate property assumptions (for final properties)
-                JSShape.invalidatePropertyAssumption(currentShape, key);
             }
         }
 

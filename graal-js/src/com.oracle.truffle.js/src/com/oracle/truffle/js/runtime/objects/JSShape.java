@@ -120,7 +120,7 @@ public final class JSShape {
 
     public static Assumption getPropertyAssumption(Shape shape, Object key) {
         assert JSRuntime.isPropertyKey(key) || key instanceof HiddenKey;
-        return getSharedData(shape).getPropertyAssumption(key);
+        return shape.getPropertyAssumption(key);
     }
 
     public static Assumption getPropertyAssumption(Shape shape, Object key, boolean prototype) {
@@ -128,11 +128,7 @@ public final class JSShape {
         if (prototype && JSConfig.LeafShapeAssumption) {
             return shape.getLeafAssumption();
         }
-        return getSharedData(shape).getPropertyAssumption(key);
-    }
-
-    public static void invalidatePropertyAssumption(Shape shape, Object propertyName) {
-        getSharedData(shape).invalidatePropertyAssumption(propertyName);
+        return shape.getPropertyAssumption(key);
     }
 
     public static JSContext getJSContext(Shape shape) {

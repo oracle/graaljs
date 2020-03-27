@@ -368,9 +368,6 @@ public final class JSObjectUtil {
                 } else {
                     sameLocations = false;
 
-                    // we're allocating new property locations, so previous assumptions are invalid
-                    JSShape.invalidatePropertyAssumption(oldShape, key);
-
                     Object value = archive.get(key);
                     newShape = newShape.defineProperty(key, value, p.getFlags());
                     newShape.getLastProperty().setSafe(object, value, newShape.getParent(), newShape);
