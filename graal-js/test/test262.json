@@ -1602,22 +1602,6 @@
     "status" : "FAIL",
     "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2540"
   }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/format/related-year-zh.js",
-    "status" : "FAIL",
-    "comment" : "new failures after 2020-03 update"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/pattern-on-calendar.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/related-year-zh.js",
-    "status" : "FAIL",
-    "comment" : "new failures after 2020-03 update"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/related-year.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/hourCycle-default.js",
     "status" : "FAIL",
     "comment" : "new failures after 2020-03 update"
