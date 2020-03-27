@@ -248,7 +248,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             if (dateStyleOpt == null) {
                 String skeleton = makeSkeleton(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hc, hour12Opt, minuteOpt, secondOpt, tzNameOpt);
 
-                DateTimePatternGenerator patternGenerator = DateTimePatternGenerator.getInstance(strippedLocale);
+                DateTimePatternGenerator patternGenerator = DateTimePatternGenerator.getInstance(javaLocale);
                 String bestPattern = patternGenerator.getBestPattern(skeleton);
                 String baseSkeleton = patternGenerator.getBaseSkeleton(bestPattern);
 
@@ -685,12 +685,14 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
     private static final LazyValue<UnmodifiableEconomicMap<DateFormat.Field, String>> fieldToTypeMap = new LazyValue<>(JSDateTimeFormat::initializeFieldToTypeMap);
 
+    @SuppressWarnings("deprecation")
     private static UnmodifiableEconomicMap<DateFormat.Field, String> initializeFieldToTypeMap() {
         CompilerAsserts.neverPartOfCompilation();
         EconomicMap<DateFormat.Field, String> map = EconomicMap.create(14);
         map.put(DateFormat.Field.AM_PM, "dayPeriod");
         map.put(DateFormat.Field.ERA, "era");
         map.put(DateFormat.Field.YEAR, "year");
+        map.put(DateFormat.Field.RELATED_YEAR, "relatedYear");
         map.put(DateFormat.Field.MONTH, "month");
         map.put(DateFormat.Field.DOW_LOCAL, "weekday");
         map.put(DateFormat.Field.DAY_OF_WEEK, "weekday");
@@ -713,6 +715,8 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
     public static DynamicObject formatToParts(JSContext context, DynamicObject numberFormatObj, Object n) {
 
         DateFormat dateFormat = getDateFormatProperty(numberFormatObj);
+        String yearPattern = yearRelatedSubpattern(dateFormat);
+        int yearPatternIndex = 0;
 
         double x = timeClip(context, n);
 
@@ -728,8 +732,19 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                 for (AttributedCharacterIterator.Attribute a : attKeySet) {
                     if (a instanceof DateFormat.Field) {
                         String value = formatted.substring(fit.getRunStart(), fit.getRunLimit());
-                        String type = fieldToType((DateFormat.Field) a);
-                        assert type != null : a;
+                        String type;
+                        if (a == DateFormat.Field.YEAR) {
+                            // DateFormat.Field.YEAR covers both "year" and "yearName"
+                            if (yearPatternIndex < yearPattern.length() && yearPattern.charAt(yearPatternIndex) == 'U') {
+                                type = IntlUtil.YEAR_NAME;
+                            } else {
+                                type = IntlUtil.YEAR;
+                            }
+                            yearPatternIndex++;
+                        } else {
+                            type = fieldToType((DateFormat.Field) a);
+                            assert type != null : a;
+                        }
                         resultParts.add(makePart(context, type, value));
                         i = fit.getRunLimit();
                         break;
@@ -744,6 +759,23 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             }
         }
         return JSArray.createConstant(context, resultParts.toArray());
+    }
+
+    private static String yearRelatedSubpattern(DateFormat dateFormat) {
+        if (dateFormat instanceof SimpleDateFormat) {
+            String pattern = ((SimpleDateFormat) dateFormat).toPattern();
+            StringBuilder sb = new StringBuilder();
+            boolean quoted = false;
+            for (char c : pattern.toCharArray()) {
+                if (c == '\'') {
+                    quoted = !quoted;
+                } else if (!quoted && (c == 'y' || c == 'Y' || c == 'u' || c == 'U')) {
+                    sb.append(c);
+                }
+            }
+            return sb.toString();
+        }
+        return "";
     }
 
     private static Object makePart(JSContext context, String type, String value) {
