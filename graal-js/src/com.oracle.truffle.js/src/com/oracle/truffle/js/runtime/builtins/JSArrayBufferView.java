@@ -125,22 +125,22 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         return typedArray().getArrayBuffer(thisObj);
     }
 
-    public static int getByteLength(DynamicObject store, boolean condition, JSContext ctx) {
+    public static int getByteLength(DynamicObject store, JSContext ctx) {
         assert JSArrayBufferView.isJSArrayBufferView(store);
         if (JSArrayBufferView.hasDetachedBuffer(store, ctx)) {
             return 0;
         }
         TypedArray typedArray = typedArrayGetArrayType(store);
-        return typedArray.lengthInt(store, condition) * typedArray.bytesPerElement();
+        return typedArray.lengthInt(store) * typedArray.bytesPerElement();
     }
 
-    public static int getByteLength(DynamicObject store, boolean condition, JSContext ctx, ValueProfile profile) {
+    public static int getByteLength(DynamicObject store, JSContext ctx, ValueProfile profile) {
         assert JSArrayBufferView.isJSArrayBufferView(store);
         if (JSArrayBufferView.hasDetachedBuffer(store, ctx)) {
             return 0;
         }
         TypedArray typedArray = profile.profile(typedArrayGetArrayType(store));
-        return typedArray.lengthInt(store, condition) * typedArray.bytesPerElement();
+        return typedArray.lengthInt(store) * typedArray.bytesPerElement();
     }
 
     public static int getByteOffset(DynamicObject store, JSContext ctx) {
@@ -432,7 +432,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         putArrayBufferViewPrototypeGetter(realm, prototype, BYTE_LENGTH, BuiltinFunctionKey.ArrayBufferViewByteLength, new ArrayBufferViewGetter() {
             @Override
             public Object apply(DynamicObject view, boolean condition) {
-                return getByteLength(view, condition, ctx);
+                return getByteLength(view, ctx);
             }
         });
         putArrayBufferViewPrototypeGetter(realm, prototype, BYTE_OFFSET, BuiltinFunctionKey.ArrayBufferViewByteByteOffset, new ArrayBufferViewGetter() {

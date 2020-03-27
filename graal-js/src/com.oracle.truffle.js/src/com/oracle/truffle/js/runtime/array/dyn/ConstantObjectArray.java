@@ -75,33 +75,29 @@ public final class ConstantObjectArray extends AbstractConstantArray {
         return (Object[]) arrayGetArray(object);
     }
 
-    private static Object[] getArray(DynamicObject object, boolean condition) {
-        return (Object[]) arrayGetArray(object, condition);
-    }
-
     @Override
     public boolean hasElement(DynamicObject object, long index, boolean condition) {
-        if (index >= 0 && index < getArray(object, condition).length) {
-            return !holes || getArray(object, condition)[(int) index] != null;
+        if (index >= 0 && index < getArray(object).length) {
+            return !holes || getArray(object)[(int) index] != null;
         }
         return false;
     }
 
     @Override
     public Object getElementInBounds(DynamicObject object, int index, boolean condition) {
-        Object value = getElementInBoundsDirect(object, index, condition);
+        Object value = getElementInBoundsDirect(object, index);
         if (holes && value == null) {
             return Undefined.instance;
         }
         return value;
     }
 
-    private static boolean isEmpty(DynamicObject object, int index, boolean condition) {
-        return getArray(object, condition)[index] == null;
+    private static boolean isEmpty(DynamicObject object, int index) {
+        return getArray(object)[index] == null;
     }
 
-    public static Object getElementInBoundsDirect(DynamicObject object, int index, boolean condition) {
-        return getArray(object, condition)[index];
+    public static Object getElementInBoundsDirect(DynamicObject object, int index) {
+        return getArray(object)[index];
     }
 
     @Override
@@ -110,8 +106,8 @@ public final class ConstantObjectArray extends AbstractConstantArray {
     }
 
     @Override
-    public int lengthInt(DynamicObject object, boolean condition) {
-        return getArray(object, condition).length;
+    public int lengthInt(DynamicObject object) {
+        return getArray(object).length;
     }
 
     @Override
@@ -137,7 +133,7 @@ public final class ConstantObjectArray extends AbstractConstantArray {
         int index = (int) index0;
         do {
             index++;
-        } while (index < super.lastElementIndex(object, condition) && isEmpty(object, index, condition));
+        } while (index < super.lastElementIndex(object) && isEmpty(object, index));
         return index;
     }
 
@@ -149,32 +145,32 @@ public final class ConstantObjectArray extends AbstractConstantArray {
         int index = (int) index0;
         do {
             index--;
-        } while (index >= super.firstElementIndex(object, condition) && isEmpty(object, index, condition));
+        } while (index >= super.firstElementIndex(object) && isEmpty(object, index));
         return index;
     }
 
     @Override
-    public long firstElementIndex(DynamicObject object, boolean condition) {
+    public long firstElementIndex(DynamicObject object) {
         if (!holes) {
-            return super.firstElementIndex(object, condition);
+            return super.firstElementIndex(object);
         }
         int index = 0;
-        int length = lengthInt(object, condition);
-        while (index < length && isEmpty(object, index, condition)) {
+        int length = lengthInt(object);
+        while (index < length && isEmpty(object, index)) {
             index++;
         }
         return index;
     }
 
     @Override
-    public long lastElementIndex(DynamicObject object, boolean condition) {
+    public long lastElementIndex(DynamicObject object) {
         if (!holes) {
-            return super.lastElementIndex(object, condition);
+            return super.lastElementIndex(object);
         }
-        int index = lengthInt(object, condition);
+        int index = lengthInt(object);
         do {
             index--;
-        } while (index >= 0 && isEmpty(object, index, condition));
+        } while (index >= 0 && isEmpty(object, index));
         return index;
     }
 
@@ -205,11 +201,11 @@ public final class ConstantObjectArray extends AbstractConstantArray {
 
     @Override
     public AbstractObjectArray createWriteableObject(DynamicObject object, long index, Object value, boolean condition, ProfileHolder profile) {
-        Object[] array = getArray(object, condition);
+        Object[] array = getArray(object);
         AbstractObjectArray newArray;
         if (holes) {
-            int arrayOffset = (int) firstElementIndex(object, condition);
-            int usedLength = (int) lastElementIndex(object, condition) + 1 - arrayOffset;
+            int arrayOffset = (int) firstElementIndex(object);
+            int usedLength = (int) lastElementIndex(object) + 1 - arrayOffset;
             int holeCount = countHoles(object);
             newArray = HolesObjectArray.makeHolesObjectArray(object, array.length, ArrayCopy.objectToObject(array), 0, arrayOffset, usedLength, holeCount, integrityLevel);
         } else {

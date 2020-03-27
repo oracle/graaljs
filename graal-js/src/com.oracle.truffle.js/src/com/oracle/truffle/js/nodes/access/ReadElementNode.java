@@ -976,8 +976,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition, JSContext context) {
             ConstantObjectArray constantObjectArray = (ConstantObjectArray) cast(array);
-            if (inBounds.profile(constantObjectArray.isInBoundsFast(target, index, arrayCondition))) {
-                Object value = ConstantObjectArray.getElementInBoundsDirect(target, (int) index, arrayCondition);
+            if (inBounds.profile(constantObjectArray.isInBoundsFast(target, index))) {
+                Object value = ConstantObjectArray.getElementInBoundsDirect(target, (int) index);
                 if (holeArrayProfile.profile(!constantObjectArray.hasHoles(target, arrayCondition))) {
                     return value;
                 } else {
@@ -1009,7 +1009,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition, JSContext context) {
             LazyRegexResultArray lazyRegexResultArray = (LazyRegexResultArray) array;
             if (inBounds.profile(lazyRegexResultArray.hasElement(target, (int) index))) {
-                return LazyRegexResultArray.materializeGroup(getMaterializeResultNode(), target, (int) index, arrayCondition && array instanceof LazyRegexResultArray);
+                return LazyRegexResultArray.materializeGroup(getMaterializeResultNode(), target, (int) index);
             } else {
                 return readOutOfBounds(target, index, receiver, defaultValue, context);
             }
@@ -1035,7 +1035,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition, JSContext context) {
             LazyRegexResultIndicesArray lazyRegexResultIndicesArray = (LazyRegexResultIndicesArray) array;
             if (inBounds.profile(lazyRegexResultIndicesArray.hasElement(target, (int) index))) {
-                return LazyRegexResultIndicesArray.materializeGroup(context, getResultAccessor(), target, (int) index, arrayCondition && array instanceof LazyRegexResultIndicesArray);
+                return LazyRegexResultIndicesArray.materializeGroup(context, getResultAccessor(), target, (int) index);
             } else {
                 return readOutOfBounds(target, index, receiver, defaultValue, context);
             }
@@ -1051,7 +1051,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition, JSContext context) {
             AbstractWritableArray writableArray = (AbstractWritableArray) cast(array);
-            if (inBounds.profile(writableArray.isInBoundsFast(target, index, arrayCondition))) {
+            if (inBounds.profile(writableArray.isInBoundsFast(target, index))) {
                 return writableArray.getInBoundsFast(target, (int) index, arrayCondition);
             } else {
                 return readOutOfBounds(target, index, receiver, defaultValue, context);
@@ -1062,7 +1062,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected int executeArrayGetInt(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition, JSContext context)
                         throws UnexpectedResultException {
             AbstractWritableArray writableArray = (AbstractWritableArray) cast(array);
-            if (inBounds.profile(writableArray.isInBoundsFast(target, index, arrayCondition))) {
+            if (inBounds.profile(writableArray.isInBoundsFast(target, index))) {
                 return writableArray.getInBoundsFastInt(target, (int) index, arrayCondition);
             } else {
                 return JSTypesGen.expectInteger(readOutOfBounds(target, index, receiver, defaultValue, context));
@@ -1073,7 +1073,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected double executeArrayGetDouble(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition, JSContext context)
                         throws UnexpectedResultException {
             AbstractWritableArray writableArray = (AbstractWritableArray) cast(array);
-            if (inBounds.profile(writableArray.isInBoundsFast(target, index, arrayCondition))) {
+            if (inBounds.profile(writableArray.isInBoundsFast(target, index))) {
                 return writableArray.getInBoundsFastDouble(target, (int) index, arrayCondition);
             } else {
                 return JSTypesGen.expectDouble(readOutOfBounds(target, index, receiver, defaultValue, context));
@@ -1091,7 +1091,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition, JSContext context) {
             HolesIntArray holesIntArray = (HolesIntArray) cast(array);
-            if (inBounds.profile(holesIntArray.isInBoundsFast(target, index, arrayCondition))) {
+            if (inBounds.profile(holesIntArray.isInBoundsFast(target, index))) {
                 int value = holesIntArray.getInBoundsFastInt(target, (int) index, arrayCondition);
                 if (holeProfile.profile(!HolesIntArray.isHoleValue(value))) {
                     return value;
@@ -1111,7 +1111,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition, JSContext context) {
             HolesDoubleArray holesDoubleArray = (HolesDoubleArray) cast(array);
-            if (inBounds.profile(holesDoubleArray.isInBoundsFast(target, index, arrayCondition))) {
+            if (inBounds.profile(holesDoubleArray.isInBoundsFast(target, index))) {
                 double value = holesDoubleArray.getInBoundsFastDouble(target, (int) index, arrayCondition);
                 if (holeProfile.profile(!HolesDoubleArray.isHoleValue(value))) {
                     return value;
@@ -1131,7 +1131,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition, JSContext context) {
             HolesJSObjectArray holesArray = (HolesJSObjectArray) cast(array);
-            if (inBounds.profile(holesArray.isInBoundsFast(target, index, arrayCondition))) {
+            if (inBounds.profile(holesArray.isInBoundsFast(target, index))) {
                 DynamicObject value = holesArray.getInBoundsFastJSObject(target, (int) index, arrayCondition);
                 if (holeProfile.profile(!HolesJSObjectArray.isHoleValue(value))) {
                     return value;
@@ -1151,7 +1151,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition, JSContext context) {
             HolesObjectArray holesArray = (HolesObjectArray) cast(array);
-            if (inBounds.profile(holesArray.isInBoundsFast(target, index, arrayCondition))) {
+            if (inBounds.profile(holesArray.isInBoundsFast(target, index))) {
                 Object value = holesArray.getInBoundsFastObject(target, (int) index, arrayCondition);
                 if (holeProfile.profile(!HolesObjectArray.isHoleValue(value))) {
                     return value;

@@ -59,31 +59,27 @@ public final class ConstantByteArray extends AbstractConstantArray {
         super(integrityLevel, cache);
     }
 
-    private static byte[] getArray(DynamicObject object, boolean condition) {
-        return (byte[]) arrayGetArray(object, condition);
-    }
-
     private static byte[] getArray(DynamicObject object) {
         return (byte[]) arrayGetArray(object);
     }
 
     @Override
     public Object getElementInBounds(DynamicObject object, int index, boolean condition) {
-        return getElementByte(object, index, condition);
+        return getElementByte(object, index);
     }
 
-    public static int getElementByte(DynamicObject object, int index, boolean condition) {
-        return getArray(object, condition)[index];
+    public static int getElementByte(DynamicObject object, int index) {
+        return getArray(object)[index];
     }
 
     @Override
-    public int lengthInt(DynamicObject object, boolean condition) {
-        return getArray(object, condition).length;
+    public int lengthInt(DynamicObject object) {
+        return getArray(object).length;
     }
 
     @Override
     public boolean hasElement(DynamicObject object, long index, boolean condition) {
-        return index >= 0 && index < getArray(object, condition).length;
+        return index >= 0 && index < getArray(object).length;
     }
 
     @Override
@@ -103,7 +99,7 @@ public final class ConstantByteArray extends AbstractConstantArray {
 
     @Override
     public ZeroBasedIntArray createWriteableInt(DynamicObject object, long index, int value, boolean condition, ProfileHolder profile) {
-        int[] intCopy = ArrayCopy.byteToInt(getArray(object, condition));
+        int[] intCopy = ArrayCopy.byteToInt(getArray(object));
         ZeroBasedIntArray newArray = ZeroBasedIntArray.makeZeroBasedIntArray(object, intCopy.length, intCopy.length, intCopy, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
@@ -113,7 +109,7 @@ public final class ConstantByteArray extends AbstractConstantArray {
 
     @Override
     public ZeroBasedDoubleArray createWriteableDouble(DynamicObject object, long index, double value, boolean condition, ProfileHolder profile) {
-        double[] doubleCopy = ArrayCopy.byteToDouble(getArray(object, condition));
+        double[] doubleCopy = ArrayCopy.byteToDouble(getArray(object));
         ZeroBasedDoubleArray newArray = ZeroBasedDoubleArray.makeZeroBasedDoubleArray(object, doubleCopy.length, doubleCopy.length, doubleCopy, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
@@ -128,7 +124,7 @@ public final class ConstantByteArray extends AbstractConstantArray {
 
     @Override
     public ZeroBasedObjectArray createWriteableObject(DynamicObject object, long index, Object value, boolean condition, ProfileHolder profile) {
-        Object[] doubleCopy = ArrayCopy.byteToObject(getArray(object, condition));
+        Object[] doubleCopy = ArrayCopy.byteToObject(getArray(object));
         ZeroBasedObjectArray newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, doubleCopy.length, doubleCopy.length, doubleCopy, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);

@@ -105,8 +105,8 @@ public abstract class AbstractWritableArray extends DynamicArray {
      * Returns true if the index can be written using inBoundsFast access mode.
      */
     @Override
-    public final boolean isInBoundsFast(DynamicObject object, long index, boolean condition) {
-        return firstElementIndex(object, condition) <= index && index <= lastElementIndex(object, condition);
+    public final boolean isInBoundsFast(DynamicObject object, long index) {
+        return firstElementIndex(object) <= index && index <= lastElementIndex(object);
     }
 
     protected abstract int prepareInBoundsFast(DynamicObject object, long index, boolean condition);
@@ -121,19 +121,19 @@ public abstract class AbstractWritableArray extends DynamicArray {
 
     protected abstract int prepareInBounds(DynamicObject object, int index, boolean condition, ProfileHolder profile);
 
-    protected static void prepareInBoundsZeroBased(DynamicObject object, int index, boolean condition, ProfileHolder profile) {
-        long length = arrayGetLength(object, condition);
+    protected static void prepareInBoundsZeroBased(DynamicObject object, int index, ProfileHolder profile) {
+        long length = arrayGetLength(object);
         if (SET_SUPPORTED_PROFILE_ACCESS.inBoundsZeroBasedSetLength(profile, index >= length)) {
             arraySetLength(object, length + 1);
         }
-        int usedLength = getUsedLength(object, condition);
+        int usedLength = getUsedLength(object);
         if (SET_SUPPORTED_PROFILE_ACCESS.inBoundsZeroBasedSetUsedLength(profile, index >= usedLength)) {
             arraySetUsedLength(object, usedLength + 1);
         }
     }
 
     Object getArrayObject(DynamicObject object) {
-        return JSAbstractArray.arrayGetArray(object, arrayCondition());
+        return JSAbstractArray.arrayGetArray(object);
     }
 
     abstract int getArrayLength(Object array);
@@ -142,13 +142,9 @@ public abstract class AbstractWritableArray extends DynamicArray {
         return arrayGetUsedLength(object);
     }
 
-    protected static int getUsedLength(DynamicObject object, boolean condition) {
-        return arrayGetUsedLength(object, condition);
-    }
-
     protected final int prepareInBoundsContiguous(DynamicObject object, int index, boolean condition, ProfileHolder profile) {
         int internalIndex = ensureCapacityContiguous(object, prepareInBoundsFast(object, index, condition), condition, profile);
-        updateContiguousState(object, internalIndex, condition, profile);
+        updateContiguousState(object, internalIndex, profile);
         return internalIndex;
     }
 
@@ -170,28 +166,28 @@ public abstract class AbstractWritableArray extends DynamicArray {
 
     public abstract boolean isSupported(DynamicObject object, long index, boolean condition);
 
-    public static boolean isSupportedZeroBased(DynamicObject object, int index, boolean condition) {
-        return index >= 0 && index <= getUsedLength(object, condition); // lastIndex+1 can be set!
+    public static boolean isSupportedZeroBased(DynamicObject object, int index) {
+        return index >= 0 && index <= getUsedLength(object); // lastIndex+1 can be set!
     }
 
-    public final boolean isSupportedContiguous(DynamicObject object, long index, boolean condition) {
-        return index >= firstElementIndex(object, condition) - 1 && index <= lastElementIndex(object, condition) + 1;
+    public final boolean isSupportedContiguous(DynamicObject object, long index) {
+        return index >= firstElementIndex(object) - 1 && index <= lastElementIndex(object) + 1;
     }
 
-    public final boolean isSupportedHoles(DynamicObject object, long index, boolean condition) {
-        return index >= firstElementIndex(object, condition) - JSConfig.MaxArrayHoleSize && index <= lastElementIndex(object, condition) + JSConfig.MaxArrayHoleSize;
+    public final boolean isSupportedHoles(DynamicObject object, long index) {
+        return index >= firstElementIndex(object) - JSConfig.MaxArrayHoleSize && index <= lastElementIndex(object) + JSConfig.MaxArrayHoleSize;
     }
 
     protected abstract int prepareSupported(DynamicObject object, int index, boolean condition, ProfileHolder profile);
 
     protected final void prepareSupportedZeroBased(DynamicObject object, int index, boolean condition, ProfileHolder profile) {
         ensureCapacity(object, index, 0, condition, profile);
-        prepareInBoundsZeroBased(object, index, condition, profile);
+        prepareInBoundsZeroBased(object, index, profile);
     }
 
     protected final int prepareSupportedContiguous(DynamicObject object, int index, boolean condition, ProfileHolder profile) {
         int internalIndex = ensureCapacityContiguous(object, prepareInBoundsFast(object, index, condition), condition, profile);
-        updateContiguousState(object, internalIndex, condition, profile);
+        updateContiguousState(object, internalIndex, profile);
         return internalIndex;
     }
 
@@ -220,11 +216,6 @@ public abstract class AbstractWritableArray extends DynamicArray {
     }
 
     @SuppressWarnings("unused")
-    protected int getArrayOffset(DynamicObject object, boolean condition) {
-        return 0;
-    }
-
-    @SuppressWarnings("unused")
     protected void setArrayOffset(DynamicObject object, int value) {
         throw Errors.shouldNotReachHere();
     }
@@ -234,11 +225,6 @@ public abstract class AbstractWritableArray extends DynamicArray {
      */
     @SuppressWarnings("unused")
     protected long getIndexOffset(DynamicObject object) {
-        throw Errors.shouldNotReachHere();
-    }
-
-    @SuppressWarnings("unused")
-    protected long getIndexOffset(DynamicObject object, boolean condition) {
         throw Errors.shouldNotReachHere();
     }
 
@@ -282,24 +268,24 @@ public abstract class AbstractWritableArray extends DynamicArray {
     }
 
     private int ensureCapacityContiguous(DynamicObject object, int internalIndex, boolean condition, ProfileHolder profile) {
-        int offset = ensureCapacity(object, internalIndex, getIndexOffset(object, condition), condition, profile);
+        int offset = ensureCapacity(object, internalIndex, getIndexOffset(object), condition, profile);
         if (offset != 0) {
-            setIndexOffset(object, getIndexOffset(object, condition) - offset);
-            setArrayOffset(object, getArrayOffset(object, condition) + offset);
+            setIndexOffset(object, getIndexOffset(object) - offset);
+            setArrayOffset(object, getArrayOffset(object) + offset);
         }
         return internalIndex + offset;
     }
 
-    private void updateContiguousState(DynamicObject object, int internalIndex, boolean condition, ProfileHolder profile) {
-        int offset = getArrayOffset(object, condition);
-        int used = getUsedLength(object, condition);
+    private void updateContiguousState(DynamicObject object, int internalIndex, ProfileHolder profile) {
+        int offset = getArrayOffset(object);
+        int used = getUsedLength(object);
         if (SET_SUPPORTED_PROFILE_ACCESS.updateStatePrepend(profile, internalIndex < offset)) {
             arraySetUsedLength(object, used + 1);
             setArrayOffset(object, offset - 1);
         } else if (SET_SUPPORTED_PROFILE_ACCESS.updateStateAppend(profile, internalIndex >= offset + used)) {
             arraySetUsedLength(object, used + 1);
-            long length = arrayGetLength(object, condition);
-            long calcLength = getIndexOffset(object, condition) + offset + used + 1;
+            long length = arrayGetLength(object);
+            long calcLength = getIndexOffset(object) + offset + used + 1;
             if (SET_SUPPORTED_PROFILE_ACCESS.updateStateSetLength(profile, calcLength > length)) {
                 arraySetLength(object, calcLength);
             }
@@ -307,8 +293,8 @@ public abstract class AbstractWritableArray extends DynamicArray {
     }
 
     private int updateHolesState(DynamicObject object, int internalIndex, boolean condition, ProfileHolder profile) {
-        int offset = getArrayOffset(object, condition);
-        int used = getUsedLength(object, condition);
+        int offset = getArrayOffset(object);
+        int used = getUsedLength(object);
         int size;
         if (SET_SUPPORTED_PROFILE_ACCESS.updateStatePrepend(profile, internalIndex < offset)) {
             size = -(offset - internalIndex);
@@ -330,8 +316,8 @@ public abstract class AbstractWritableArray extends DynamicArray {
             offset += size;
         } else {
             used += size;
-            long length = arrayGetLength(object, condition);
-            long calcLength = getIndexOffset(object, condition) + offset + used;
+            long length = arrayGetLength(object);
+            long calcLength = getIndexOffset(object) + offset + used;
             if (SET_SUPPORTED_PROFILE_ACCESS.updateStateSetLength(profile, calcLength > length)) {
                 arraySetLength(object, calcLength);
             }
@@ -389,22 +375,22 @@ public abstract class AbstractWritableArray extends DynamicArray {
 
     protected abstract void resizeArray(DynamicObject object, int newCapacity, int oldCapacity, int offset, boolean condition);
 
-    public final boolean isSparse(DynamicObject object, long index, boolean condition) {
-        return !isSupportedHoles(object, index, condition);
+    public final boolean isSparse(DynamicObject object, long index) {
+        return !isSupportedHoles(object, index);
     }
 
     @Override
     public boolean hasElement(DynamicObject object, long index, boolean condition) {
-        return isInBoundsFast(object, index, condition);
+        return isInBoundsFast(object, index);
     }
 
     @Override
     public long nextElementIndex(DynamicObject object, long index, boolean condition) {
-        long firstI = firstElementIndex(object, condition);
+        long firstI = firstElementIndex(object);
         if (index < firstI) {
             return firstI;
         }
-        long lastI = lastElementIndex(object, condition);
+        long lastI = lastElementIndex(object);
         if ((index + 1) > lastI) {
             // length is not enough; could be the
             // prototype with shorter length
@@ -421,11 +407,11 @@ public abstract class AbstractWritableArray extends DynamicArray {
 
     protected final long nextElementIndexHoles(DynamicObject object, long index0, boolean condition) {
         long index = index0;
-        long firstIdx = firstElementIndex(object, condition);
+        long firstIdx = firstElementIndex(object);
         if (index0 < firstIdx) {
             return firstIdx;
         }
-        long lastI = lastElementIndex(object, condition);
+        long lastI = lastElementIndex(object);
         do {
             index++;
             if (index > lastI) {
@@ -435,9 +421,9 @@ public abstract class AbstractWritableArray extends DynamicArray {
         return index;
     }
 
-    protected final long nextElementIndexZeroBased(DynamicObject object, long index, boolean condition) {
+    protected final long nextElementIndexZeroBased(DynamicObject object, long index) {
         assert index >= -1;
-        long lastI = lastElementIndex(object, condition);
+        long lastI = lastElementIndex(object);
         if ((index + 1) > lastI) {
             // length is not enough; could be the
             // prototype with shorter length
@@ -448,11 +434,11 @@ public abstract class AbstractWritableArray extends DynamicArray {
 
     @Override
     public long previousElementIndex(DynamicObject object, long index, boolean condition) {
-        long lastIdx = lastElementIndex(object, condition);
+        long lastIdx = lastElementIndex(object);
         if (index > lastIdx) {
             return lastIdx;
         }
-        if (index - 1 < firstElementIndex(object, condition)) {
+        if (index - 1 < firstElementIndex(object)) {
             return -1;
         }
         return index - 1;
@@ -460,11 +446,11 @@ public abstract class AbstractWritableArray extends DynamicArray {
 
     protected final long previousElementIndexHoles(DynamicObject object, long index0, boolean condition) {
         long index = index0;
-        long lastIdx = lastElementIndex(object, condition);
+        long lastIdx = lastElementIndex(object);
         if (index0 > lastIdx) {
             return lastIdx;
         }
-        long firstIdx = firstElementIndex(object, condition);
+        long firstIdx = firstElementIndex(object);
         do {
             index--;
         } while (index >= firstIdx && isHolePrepared(object, prepareInBoundsFast(object, index, condition), condition));
@@ -475,13 +461,13 @@ public abstract class AbstractWritableArray extends DynamicArray {
     }
 
     @Override
-    public final long length(DynamicObject object, boolean condition) {
-        return arrayGetLength(object, condition);
+    public final long length(DynamicObject object) {
+        return arrayGetLength(object);
     }
 
     @Override
-    public final int lengthInt(DynamicObject object, boolean condition) {
-        return (int) length(object, condition);
+    public final int lengthInt(DynamicObject object) {
+        return (int) length(object);
     }
 
     @Override
@@ -489,7 +475,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
         if (SET_LENGTH_PROFILE.lengthZero(profile, length == 0)) {
             arraySetLength(object, length);
             return ConstantEmptyArray.createConstantEmptyArray();
-        } else if (SET_LENGTH_PROFILE.lengthLess(profile, length < length(object, condition))) {
+        } else if (SET_LENGTH_PROFILE.lengthLess(profile, length < length(object))) {
             setLengthLess(object, length, condition, profile);
         } else {
             arraySetLength(object, length);
@@ -499,10 +485,10 @@ public abstract class AbstractWritableArray extends DynamicArray {
 
     protected abstract void setLengthLess(DynamicObject object, long length, boolean condition, ProfileHolder profile);
 
-    protected void setLengthLessZeroBased(DynamicObject object, long length, boolean condition, ProfileHolder profile) {
-        long oldLength = arrayGetLength(object, condition);
+    protected void setLengthLessZeroBased(DynamicObject object, long length, ProfileHolder profile) {
+        long oldLength = arrayGetLength(object);
         arraySetLength(object, length);
-        if (SET_LENGTH_PROFILE.zeroBasedSetUsedLength(profile, getUsedLength(object, condition) > length)) {
+        if (SET_LENGTH_PROFILE.zeroBasedSetUsedLength(profile, getUsedLength(object) > length)) {
             arraySetUsedLength(object, (int) length);
         }
         if (SET_LENGTH_PROFILE.zeroBasedClearUnusedArea(profile, length < oldLength)) {
@@ -511,8 +497,8 @@ public abstract class AbstractWritableArray extends DynamicArray {
     }
 
     protected final void setLengthLessContiguous(DynamicObject object, long length, boolean condition, ProfileHolder profile) {
-        long indexOffset = getIndexOffset(object, condition);
-        int arrayOffset = getArrayOffset(object, condition);
+        long indexOffset = getIndexOffset(object);
+        int arrayOffset = getArrayOffset(object);
         arraySetLength(object, length);
         if (SET_LENGTH_PROFILE.contiguousZeroUsed(profile, length <= indexOffset)) {
             arraySetUsedLength(object, 0);
@@ -521,7 +507,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
             long arrayCapacity = getArrayCapacity(object, condition);
             clearUnusedArea(object, 0, (int) arrayCapacity, 0, profile);
         } else {
-            int oldUsed = getUsedLength(object, condition);
+            int oldUsed = getUsedLength(object);
             int newUsed = Math.min(oldUsed, (int) (length - indexOffset - arrayOffset));
             int newUsedLength = (int) (previousElementIndex(object, indexOffset + arrayOffset + newUsed) + 1 - arrayOffset - indexOffset);
 
@@ -534,7 +520,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
             if (SET_LENGTH_PROFILE.contiguousShrinkUsed(profile, newUsedLength < oldUsed)) {
                 if (isHolesType()) {
                     incrementHolesCount(object, -countHolesPrepared(object, arrayOffset + newUsedLength, arrayOffset + oldUsed, condition));
-                    assert arrayGetHoleCount(object, condition) == countHoles(object);
+                    assert arrayGetHoleCount(object) == countHoles(object);
                 }
 
                 // use old arrayOffset
@@ -560,7 +546,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
 
     @Override
     public final Object getElement(DynamicObject object, long index, boolean condition) {
-        if (isInBoundsFast(object, index, condition)) {
+        if (isInBoundsFast(object, index)) {
             return getInBoundsFast(object, (int) index, condition);
         } else {
             return Undefined.instance;
@@ -569,7 +555,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
 
     @Override
     public final Object getElementInBounds(DynamicObject object, long index, boolean condition) {
-        assert isInBoundsFast(object, index, condition);
+        assert isInBoundsFast(object, index);
         return getInBoundsFast(object, (int) index, condition);
     }
 
@@ -624,10 +610,10 @@ public abstract class AbstractWritableArray extends DynamicArray {
     }
 
     protected final ScriptArray deleteElementHoles(DynamicObject object, long index, boolean condition) {
-        if (isInBoundsFast(object, index, condition)) {
+        if (isInBoundsFast(object, index)) {
             int preparedindex = prepareInBoundsFast(object, (int) index, condition);
             if (!isHolePrepared(object, preparedindex, condition)) {
-                int arrayOffset = getArrayOffset(object, condition);
+                int arrayOffset = getArrayOffset(object);
                 if (arrayOffset == preparedindex) {
                     long nextNonHoles = nextElementIndexHoles(object, index, condition);
                     if (nextNonHoles == JSRuntime.MAX_SAFE_INTEGER_LONG) {
@@ -639,15 +625,15 @@ public abstract class AbstractWritableArray extends DynamicArray {
                         int preparedNextNonHoles = prepareInBoundsFast(object, (int) nextNonHoles, condition);
                         int delta = preparedNextNonHoles - preparedindex;
                         setArrayOffset(object, preparedindex + delta);
-                        arraySetUsedLength(object, arrayGetUsedLength(object, condition) - delta);
+                        arraySetUsedLength(object, arrayGetUsedLength(object) - delta);
                         incrementHolesCount(object, -countHolesPrepared(object, preparedindex, preparedNextNonHoles, condition));
                     }
                     setHoleValue(object, preparedindex); // clear unused
-                } else if (arrayOffset + arrayGetUsedLength(object, condition) == preparedindex) {
+                } else if (arrayOffset + arrayGetUsedLength(object) == preparedindex) {
                     long previousNonHoles = previousElementIndexHoles(object, index, condition);
                     assert previousNonHoles >= 0;
                     int preparedPreviousNonHoles = prepareInBoundsFast(object, (int) previousNonHoles, condition);
-                    arraySetUsedLength(object, arrayGetUsedLength(object, condition) - preparedindex + preparedPreviousNonHoles);
+                    arraySetUsedLength(object, arrayGetUsedLength(object) - preparedindex + preparedPreviousNonHoles);
                     incrementHolesCount(object, -countHolesPrepared(object, preparedPreviousNonHoles, preparedindex, condition));
                     setHoleValue(object, preparedindex); // clear unused
                 } else {
@@ -656,7 +642,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
                 }
             }
         }
-        assert arrayGetHoleCount(object, condition) == countHoles(object);
+        assert arrayGetHoleCount(object) == countHoles(object);
         return this;
     }
 
@@ -734,7 +720,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
         int iOffset = (int) offset;
         Object array = getArrayObject(object);
         int arrayLength = getArrayLength(array);
-        int length = lengthInt(object, arrayCondition());
+        int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         if (usedLength < offset) {
             arraySetLength(object, length + size);

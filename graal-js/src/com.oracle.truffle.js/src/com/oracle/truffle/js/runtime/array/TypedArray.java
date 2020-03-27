@@ -72,12 +72,12 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     @Override
-    public final long length(DynamicObject object, boolean condition) {
-        return lengthInt(object, condition);
+    public final long length(DynamicObject object) {
+        return lengthInt(object);
     }
 
     @Override
-    public final int lengthInt(DynamicObject object, boolean condition) {
+    public final int lengthInt(DynamicObject object) {
         return typedArrayGetLength(object);
     }
 
@@ -87,13 +87,13 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     @Override
-    public final long firstElementIndex(DynamicObject object, boolean condition) {
+    public final long firstElementIndex(DynamicObject object) {
         return 0;
     }
 
     @Override
-    public final long lastElementIndex(DynamicObject object, boolean condition) {
-        return length(object, condition) - 1;
+    public final long lastElementIndex(DynamicObject object) {
+        return length(object) - 1;
     }
 
     @Override
@@ -123,7 +123,7 @@ public abstract class TypedArray extends ScriptArray {
 
     @Override
     public final boolean hasElement(DynamicObject object, long index, boolean condition) {
-        return 0 <= index && index < length(object, condition);
+        return 0 <= index && index < length(object);
     }
 
     protected static byte[] getByteArray(DynamicObject object) {

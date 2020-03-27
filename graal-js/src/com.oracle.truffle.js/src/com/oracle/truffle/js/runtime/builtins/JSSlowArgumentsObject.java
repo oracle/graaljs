@@ -63,7 +63,7 @@ public final class JSSlowArgumentsObject extends JSAbstractArgumentsObject {
         Object oldValue = indexDisconnected ? null : get(thisObj, index);
 
         boolean wasDeleted;
-        ScriptArray arrayType = arrayGetArrayType(thisObj, isJSSlowArgumentsObject(thisObj));
+        ScriptArray arrayType = arrayGetArrayType(thisObj);
         if (arrayType.hasElement(thisObj, index)) {
             arraySetArrayType(thisObj, arrayType.deleteElement(thisObj, index, false));
             wasDeleted = true;

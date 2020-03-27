@@ -78,9 +78,9 @@ public abstract class AbstractIntArray extends AbstractWritableArray {
 
     private ScriptArray rewrite(DynamicObject object, long index, Object value, boolean condition) {
         if (value instanceof Integer) {
-            if (isSupportedContiguous(object, index, condition)) {
+            if (isSupportedContiguous(object, index)) {
                 return toContiguous(object, index, value, condition);
-            } else if (isSupportedHoles(object, index, condition)) {
+            } else if (isSupportedHoles(object, index)) {
                 return toHoles(object, index, value, condition);
             } else {
                 return toSparse(object, index, value);
@@ -107,7 +107,7 @@ public abstract class AbstractIntArray extends AbstractWritableArray {
     }
 
     protected static int[] getArray(DynamicObject object, boolean condition) {
-        return arrayCast(arrayGetArray(object, condition), int[].class, condition);
+        return arrayCast(arrayGetArray(object), int[].class, condition);
     }
 
     @Override
@@ -172,7 +172,7 @@ public abstract class AbstractIntArray extends AbstractWritableArray {
 
     protected static Object[] convertToObject(DynamicObject object, boolean condition) {
         int[] array = getArray(object, condition);
-        int usedLength = getUsedLength(object, condition);
+        int usedLength = getUsedLength(object);
         Object[] obj = new Object[array.length];
         for (int i = 0; i < usedLength; i++) {
             obj[i] = array[i];
@@ -182,7 +182,7 @@ public abstract class AbstractIntArray extends AbstractWritableArray {
 
     protected static boolean containsHoleValue(DynamicObject object, boolean condition) {
         int[] array = getArray(object, condition);
-        int usedLength = getUsedLength(object, condition);
+        int usedLength = getUsedLength(object);
         for (int i = 0; i < usedLength; i++) {
             if (array[i] == HolesIntArray.HOLE_VALUE) {
                 return true;

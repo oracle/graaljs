@@ -76,41 +76,41 @@ public abstract class JSArrayFirstElementIndexNode extends JSArrayElementIndexNo
 
     @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "getArrayType(object) == cachedArrayType",
                     "!cachedArrayType.hasHoles(object, isArray)"}, limit = "MAX_CACHED_ARRAY_TYPES")
-    public long doWithoutHolesCached(DynamicObject object, @SuppressWarnings("unused") long length, boolean isArray,
+    public long doWithoutHolesCached(DynamicObject object, @SuppressWarnings("unused") long length, @SuppressWarnings("unused") boolean isArray,
                     @Cached("getArrayTypeIfArray(object, isArray)") ScriptArray cachedArrayType) {
         assert isSupportedArray(object) && cachedArrayType == getArrayType(object);
-        return cachedArrayType.firstElementIndex(object, isArray);
+        return cachedArrayType.firstElementIndex(object);
     }
 
     @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "!hasHoles(object, isArray)"}, replaces = "doWithoutHolesCached")
-    public long doWithoutHolesUncached(DynamicObject object, @SuppressWarnings("unused") long length, boolean isArray) {
+    public long doWithoutHolesUncached(DynamicObject object, @SuppressWarnings("unused") long length, @SuppressWarnings("unused") boolean isArray) {
         assert isSupportedArray(object);
-        return getArrayType(object).firstElementIndex(object, isArray);
+        return getArrayType(object).firstElementIndex(object);
     }
 
     @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "getArrayType(object) == cachedArrayType",
                     "cachedArrayType.hasHoles(object, isArray)"}, limit = "MAX_CACHED_ARRAY_TYPES")
-    public long doWithHolesCached(DynamicObject object, long length, boolean isArray,
+    public long doWithHolesCached(DynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
                     @Cached("getArrayTypeIfArray(object, isArray)") ScriptArray cachedArrayType,
                     @Cached("create(context)") JSArrayNextElementIndexNode nextElementIndexNode,
                     @Cached("createBinaryProfile()") ConditionProfile isZero) {
         assert isSupportedArray(object) && cachedArrayType == getArrayType(object);
-        return holesArrayImpl(object, length, cachedArrayType, nextElementIndexNode, isZero, isArray);
+        return holesArrayImpl(object, length, cachedArrayType, nextElementIndexNode, isZero);
     }
 
     @Specialization(guards = {"isArray", "hasPrototypeElements(object) || hasHoles(object, isArray)"}, replaces = "doWithHolesCached")
-    public long doWithHolesUncached(DynamicObject object, long length, boolean isArray,
+    public long doWithHolesUncached(DynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
                     @Cached("create(context)") JSArrayNextElementIndexNode nextElementIndexNode,
                     @Cached("createBinaryProfile()") ConditionProfile isZero,
                     @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
         assert isSupportedArray(object);
         ScriptArray array = arrayTypeProfile.profile(getArrayType(object));
-        return holesArrayImpl(object, length, array, nextElementIndexNode, isZero, isArray);
+        return holesArrayImpl(object, length, array, nextElementIndexNode, isZero);
     }
 
     private long holesArrayImpl(DynamicObject object, long length, ScriptArray array,
-                    JSArrayNextElementIndexNode nextElementIndexNode, ConditionProfile isZero, boolean isArray) {
-        long firstIndex = array.firstElementIndex(object, isArray);
+                    JSArrayNextElementIndexNode nextElementIndexNode, ConditionProfile isZero) {
+        long firstIndex = array.firstElementIndex(object);
         if (isZero.profile(firstIndex == 0)) {
             return firstIndex;
         }

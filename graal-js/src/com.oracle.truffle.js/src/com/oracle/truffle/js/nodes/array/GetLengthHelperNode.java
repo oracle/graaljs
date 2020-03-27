@@ -85,15 +85,15 @@ abstract class GetLengthHelperNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isArray", rewriteOn = UnexpectedResultException.class)
-    public int getArrayLengthInt(DynamicObject target, boolean isArray,
+    public int getArrayLengthInt(DynamicObject target, @SuppressWarnings("unused") boolean isArray,
                     @Cached("create()") ArrayLengthReadNode arrayLengthReadNode) throws UnexpectedResultException {
-        return arrayLengthReadNode.executeInt(target, isArray);
+        return arrayLengthReadNode.executeInt(target);
     }
 
     @Specialization(guards = "isArray")
-    public double getArrayLength(DynamicObject target, boolean isArray,
+    public double getArrayLength(DynamicObject target, @SuppressWarnings("unused") boolean isArray,
                     @Cached("create()") ArrayLengthReadNode arrayLengthReadNode) {
-        return arrayLengthReadNode.executeDouble(target, isArray);
+        return arrayLengthReadNode.executeDouble(target);
     }
 
     @Specialization(guards = "!isArray")

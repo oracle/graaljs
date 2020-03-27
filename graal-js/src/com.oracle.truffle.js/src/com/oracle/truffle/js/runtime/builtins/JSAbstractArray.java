@@ -87,11 +87,6 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     public static final HiddenKey LAZY_REGEX_ORIGINAL_INPUT_ID = new HiddenKey("lazyRegexResultOriginalInput");
 
     public static ScriptArray arrayGetArrayType(DynamicObject thisObj) {
-        assert JSArray.isJSArray(thisObj) || JSArgumentsObject.isJSArgumentsObject(thisObj);
-        return ArrayAccess.SINGLETON.getArrayType(thisObj);
-    }
-
-    public static ScriptArray arrayGetArrayType(DynamicObject thisObj, boolean arrayCondition) {
         assert JSArray.isJSArray(thisObj) || JSArgumentsObject.isJSArgumentsObject(thisObj) || JSObjectPrototype.isJSObjectPrototype(thisObj);
         return ArrayAccess.SINGLETON.getArrayType(thisObj);
     }
@@ -100,32 +95,16 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         return ArrayAccess.SINGLETON.getLength(thisObj);
     }
 
-    public static long arrayGetLength(DynamicObject thisObj, boolean arrayCondition) {
-        return ArrayAccess.SINGLETON.getLength(thisObj, arrayCondition);
-    }
-
     public static int arrayGetUsedLength(DynamicObject thisObj) {
         return ArrayAccess.SINGLETON.getUsedLength(thisObj);
-    }
-
-    public static int arrayGetUsedLength(DynamicObject thisObj, boolean arrayCondition) {
-        return ArrayAccess.SINGLETON.getUsedLength(thisObj, arrayCondition);
     }
 
     public static long arrayGetIndexOffset(DynamicObject thisObj) {
         return ArrayAccess.SINGLETON.getIndexOffset(thisObj);
     }
 
-    public static long arrayGetIndexOffset(DynamicObject thisObj, boolean arrayCondition) {
-        return ArrayAccess.SINGLETON.getIndexOffset(thisObj, arrayCondition);
-    }
-
     public static int arrayGetArrayOffset(DynamicObject thisObj) {
         return ArrayAccess.SINGLETON.getArrayOffset(thisObj);
-    }
-
-    public static int arrayGetArrayOffset(DynamicObject thisObj, boolean arrayCondition) {
-        return ArrayAccess.SINGLETON.getArrayOffset(thisObj, arrayCondition);
     }
 
     public static void arraySetArrayType(DynamicObject thisObj, ScriptArray arrayType) {
@@ -157,12 +136,8 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     }
 
     public static Object arrayGetArray(DynamicObject thisObj) {
-        return ArrayAccess.SINGLETON.getArray(thisObj);
-    }
-
-    public static Object arrayGetArray(DynamicObject thisObj, boolean arrayCondition) {
         assert JSObject.hasArray(thisObj);
-        return ArrayAccess.SINGLETON.getArray(thisObj, arrayCondition);
+        return ArrayAccess.SINGLETON.getArray(thisObj);
     }
 
     public static void arraySetArray(DynamicObject thisObj, Object array) {
@@ -172,11 +147,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     }
 
     public static int arrayGetHoleCount(DynamicObject thisObj) {
-        return arrayGetHoleCount(thisObj, JSArray.isJSArray(thisObj));
-    }
-
-    public static int arrayGetHoleCount(DynamicObject thisObj, boolean arrayCondition) {
-        return ArrayAccess.SINGLETON.getHoleCount(thisObj, arrayCondition);
+        return ArrayAccess.SINGLETON.getHoleCount(thisObj);
     }
 
     public static void arraySetHoleCount(DynamicObject thisObj, int holeCount) {
@@ -185,11 +156,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     }
 
     public static ArrayAllocationSite arrayGetAllocationSite(DynamicObject thisObj) {
-        return arrayGetAllocationSite(thisObj, JSArray.isJSArray(thisObj));
-    }
-
-    public static ArrayAllocationSite arrayGetAllocationSite(DynamicObject thisObj, boolean arrayCondition) {
-        return ArrayAccess.SINGLETON.getAllocationSite(thisObj, arrayCondition);
+        return ArrayAccess.SINGLETON.getAllocationSite(thisObj);
     }
 
     public static Object arrayGetRegexResult(DynamicObject thisObj) {
@@ -784,7 +751,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
 
         long idx = JSRuntime.propertyKeyToArrayIndex(key);
         if (JSRuntime.isArrayIndex(idx)) {
-            ScriptArray array = arrayGetArrayType(thisObj, false);
+            ScriptArray array = arrayGetArrayType(thisObj);
             if (array.hasElement(thisObj, idx)) {
                 Object value = array.getElement(thisObj, idx);
                 return PropertyDescriptor.createData(value, true, !array.isFrozen(), !array.isSealed());

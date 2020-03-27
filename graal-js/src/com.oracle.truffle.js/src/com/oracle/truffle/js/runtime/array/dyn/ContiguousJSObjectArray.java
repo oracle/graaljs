@@ -74,16 +74,16 @@ public final class ContiguousJSObjectArray extends AbstractContiguousJSObjectArr
 
     @Override
     public boolean isSupported(DynamicObject object, long index, boolean condition) {
-        return isSupportedContiguous(object, index, condition);
+        return isSupportedContiguous(object, index);
     }
 
     @Override
     public HolesJSObjectArray toHoles(DynamicObject object, long index, Object value, boolean condition) {
         DynamicObject[] array = getArray(object, condition);
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
-        int arrayOffset = getArrayOffset(object, condition);
-        long indexOffset = getIndexOffset(object, condition);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
+        int arrayOffset = getArrayOffset(object);
+        long indexOffset = getIndexOffset(object);
 
         HolesJSObjectArray newArray = HolesJSObjectArray.makeHolesJSObjectArray(object, length, array, indexOffset, arrayOffset, usedLength, 0, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
@@ -97,8 +97,8 @@ public final class ContiguousJSObjectArray extends AbstractContiguousJSObjectArr
         setSupported(object, index, (DynamicObject) value, condition, profile);
 
         DynamicObject[] array = getArray(object, condition);
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
         ZeroBasedJSObjectArray newArray = ZeroBasedJSObjectArray.makeZeroBasedJSObjectArray(object, length, usedLength, array, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
@@ -109,10 +109,10 @@ public final class ContiguousJSObjectArray extends AbstractContiguousJSObjectArr
     @Override
     public ContiguousObjectArray toObject(DynamicObject object, long index, Object value, boolean condition) {
         DynamicObject[] array = getArray(object, condition);
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
-        int arrayOffset = getArrayOffset(object, condition);
-        long indexOffset = getIndexOffset(object, condition);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
+        int arrayOffset = getArrayOffset(object);
+        long indexOffset = getIndexOffset(object);
 
         Object[] doubleCopy = ArrayCopy.jsobjectToObject(array, arrayOffset, usedLength);
         ContiguousObjectArray newArray = ContiguousObjectArray.makeContiguousObjectArray(object, length, doubleCopy, indexOffset, arrayOffset, usedLength, integrityLevel);

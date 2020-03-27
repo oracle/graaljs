@@ -258,9 +258,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Specialization(guards = "isJSArrayBufferView(thisObj)")
         protected DynamicObject subarray(DynamicObject thisObj, int begin, int end,
                         @Cached("createIdentityProfile()") ValueProfile arrayTypeProfile) {
-            boolean condition = JSArrayBufferView.isJSArrayBufferView(thisObj);
             TypedArray array = arrayTypeProfile.profile(typedArrayGetArrayType(thisObj));
-            int length = (int) array.length(thisObj, condition);
+            int length = (int) array.length(thisObj);
             int clampedBegin = JSArrayBufferSliceNode.clampIndex(begin, 0, length);
             int clampedEnd = JSArrayBufferSliceNode.clampIndex(end, clampedBegin, length);
             return subarrayImpl(thisObj, array, clampedBegin, clampedEnd);
@@ -272,9 +271,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("createBinaryProfile()") ConditionProfile negativeBegin,
                         @Cached("createBinaryProfile()") ConditionProfile negativeEnd,
                         @Cached("createBinaryProfile()") ConditionProfile smallerEnd) {
-            boolean condition = JSArrayBufferView.isJSArrayBufferView(thisObj);
             TypedArray array = arrayTypeProfile.profile(typedArrayGetArrayType(thisObj));
-            long len = array.length(thisObj, condition);
+            long len = array.length(thisObj);
             long relativeBegin = toInteger(begin0);
             long beginIndex = negativeBegin.profile(relativeBegin < 0) ? Math.max(len + relativeBegin, 0) : Math.min(relativeBegin, len);
             long relativeEnd = end0 == Undefined.instance ? len : toInteger(end0);
@@ -382,12 +380,10 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         private void setFastArray(DynamicObject thisObj, DynamicObject array, int offset) {
             assert JSArrayBufferView.isJSArrayBufferView(thisObj);
             assert JSArray.isJSFastArray(array);
-            boolean sourceCondition = JSArray.isJSArray(array);
-            boolean targetCondition = JSArrayBufferView.isJSArrayBufferView(thisObj);
-            ScriptArray sourceArray = sourceArrayProf.profile(arrayGetArrayType(array, sourceCondition));
-            TypedArray targetArray = targetArrayProf.profile(JSArrayBufferView.typedArrayGetArrayType(thisObj, targetCondition));
-            long sourceLen = sourceArray.length(array, sourceCondition);
-            rangeCheck(0, sourceLen, offset, targetArray.length(thisObj, targetCondition));
+            ScriptArray sourceArray = sourceArrayProf.profile(arrayGetArrayType(array));
+            TypedArray targetArray = targetArrayProf.profile(JSArrayBufferView.typedArrayGetArrayType(thisObj));
+            long sourceLen = sourceArray.length(array);
+            rangeCheck(0, sourceLen, offset, targetArray.length(thisObj));
 
             for (int i = 0, j = offset; i < sourceLen; i++, j++) {
                 targetArray.setElement(thisObj, j, sourceArray.getElement(array, i), false);
@@ -397,7 +393,6 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         private void setOther(DynamicObject thisObj, Object array, int offset) {
             assert JSArrayBufferView.isJSArrayBufferView(thisObj);
             assert !JSArray.isJSFastArray(array);
-            boolean targetCondition = JSArrayBufferView.isJSArrayBufferView(thisObj);
             if (getContext().isOptionV8CompatibilityMode() && JSRuntime.isNumber(array)) {
                 throw Errors.createTypeError("invalid_argument");
             }
@@ -405,7 +400,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             long srcLength = objectGetLength(src);
             TypedArray targetArray = targetArrayProf.profile(JSArrayBufferView.typedArrayGetArrayType(thisObj));
 
-            rangeCheck(0, srcLength, offset, targetArray.length(thisObj, targetCondition));
+            rangeCheck(0, srcLength, offset, targetArray.length(thisObj));
 
             boolean isJSObject = JSObject.isJSObject(src);
             for (int i = 0, j = offset; i < srcLength; i++, j++) {
@@ -424,13 +419,11 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             assert JSArrayBufferView.isJSArrayBufferView(targetView);
             assert JSArrayBufferView.isJSArrayBufferView(sourceView);
             checkHasDetachedBuffer(sourceView);
-            boolean sourceCondition = JSArrayBufferView.isJSArrayBufferView(sourceView);
             TypedArray sourceArray = sourceArrayProf.profile(typedArrayGetArrayType(sourceView));
-            boolean targetCondition = JSArrayBufferView.isJSArrayBufferView(targetView);
             TypedArray targetArray = targetArrayProf.profile(typedArrayGetArrayType(targetView));
-            long sourceLength = sourceArray.length(sourceView, sourceCondition);
+            long sourceLength = sourceArray.length(sourceView);
 
-            rangeCheck(0, sourceLength, offset, targetArray.length(targetView, targetCondition));
+            rangeCheck(0, sourceLength, offset, targetArray.length(targetView));
 
             int sourceLen = (int) sourceLength;
             DynamicObject sourceBuffer = JSArrayBufferView.getArrayBuffer(sourceView);

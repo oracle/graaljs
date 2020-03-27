@@ -1015,8 +1015,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             super(context, builtin);
         }
 
-        protected static boolean isSparseArray(DynamicObject thisObj, boolean isArray) {
-            return arrayGetArrayType(thisObj, isArray) instanceof SparseArray;
+        protected static boolean isSparseArray(DynamicObject thisObj) {
+            return arrayGetArrayType(thisObj) instanceof SparseArray;
         }
 
         protected static boolean isArrayWithoutHoles(DynamicObject thisObj, IsArrayNode isArrayNode, TestArrayNode hasHolesNode) {
@@ -1048,7 +1048,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         protected static boolean isArrayWithHoles(DynamicObject thisObj, IsArrayNode isArrayNode, TestArrayNode hasHolesNode) {
             boolean isArray = isArrayNode.execute(thisObj);
-            return isArray && hasHolesNode.executeBoolean(thisObj, isArray) && !isSparseArray(thisObj, isArray);
+            return isArray && hasHolesNode.executeBoolean(thisObj, isArray) && !isSparseArray(thisObj);
         }
 
         @Specialization(guards = {"isArrayWithHoles(thisObj, isArrayNode, hasHolesNode)"}, limit = "1")
@@ -1075,7 +1075,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        @Specialization(guards = {"isArrayNode.execute(thisObj)", "isSparseArray(thisObj, isArrayNode.execute(thisObj))"}, limit = "1")
+        @Specialization(guards = {"isArrayNode.execute(thisObj)", "isSparseArray(thisObj)"}, limit = "1")
         protected Object shiftSparse(DynamicObject thisObj,
                         @Shared("isArray") @Cached("createIsArray()") @SuppressWarnings("unused") IsArrayNode isArrayNode,
                         @Shared("deleteProperty") @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode,
@@ -1780,7 +1780,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             boolean isJSArray = JSArray.isJSArray(thisObj);
             if (isJSArray) {
                 DynamicObject dynObj = (DynamicObject) thisObj;
-                ScriptArray arrayType = arrayGetArrayType(dynObj, isJSArray);
+                ScriptArray arrayType = arrayGetArrayType(dynObj);
                 spliceJSArray.execute(dynObj, len, actualStart, actualDeleteCount, itemCount, arrayType, this);
             } else if (JSObject.isJSObject(thisObj)) {
                 objectBranch.enter();

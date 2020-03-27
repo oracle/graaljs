@@ -78,9 +78,9 @@ public abstract class AbstractDoubleArray extends AbstractWritableArray {
 
     private ScriptArray rewrite(DynamicObject object, long index, Object value, boolean condition) {
         if (value instanceof Integer || value instanceof Double) {
-            if (isSupportedContiguous(object, index, condition)) {
+            if (isSupportedContiguous(object, index)) {
                 return toContiguous(object, index, value, condition);
-            } else if (isSupportedHoles(object, index, condition)) {
+            } else if (isSupportedHoles(object, index)) {
                 return toHoles(object, index, value, condition);
             } else {
                 return toSparse(object, index, value);
@@ -108,7 +108,7 @@ public abstract class AbstractDoubleArray extends AbstractWritableArray {
     }
 
     protected static double[] getArray(DynamicObject object, boolean condition) {
-        return arrayCast(arrayGetArray(object, condition), double[].class, condition);
+        return arrayCast(arrayGetArray(object), double[].class, condition);
     }
 
     public final void setInBounds(DynamicObject object, int index, double value, boolean condition, ProfileHolder profile) {

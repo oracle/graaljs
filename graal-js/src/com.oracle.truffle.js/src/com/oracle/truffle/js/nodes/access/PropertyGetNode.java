@@ -1240,26 +1240,26 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
             if (!longLength) {
                 try {
-                    return arrayLengthRead.executeInt(receiverCheck.getStore(thisObj), guard);
+                    return arrayLengthRead.executeInt(receiverCheck.getStore(thisObj));
                 } catch (UnexpectedResultException e) {
                     longLength = true;
                     return e.getResult();
                 }
             } else {
-                return arrayLengthRead.executeDouble(receiverCheck.getStore(thisObj), guard);
+                return arrayLengthRead.executeDouble(receiverCheck.getStore(thisObj));
             }
         }
 
         @Override
         protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) throws UnexpectedResultException {
             assert assertIsArray(thisObj);
-            return arrayLengthRead.executeInt(receiverCheck.getStore(thisObj), guard);
+            return arrayLengthRead.executeInt(receiverCheck.getStore(thisObj));
         }
 
         @Override
         protected double getValueDouble(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             assert assertIsArray(thisObj);
-            return arrayLengthRead.executeDouble(receiverCheck.getStore(thisObj), guard);
+            return arrayLengthRead.executeDouble(receiverCheck.getStore(thisObj));
         }
 
         private boolean assertIsArray(Object thisObj) {

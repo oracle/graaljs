@@ -83,7 +83,7 @@ public final class ZeroBasedDoubleArray extends AbstractDoubleArray {
 
     @Override
     public boolean isSupported(DynamicObject object, long index, boolean condition) {
-        return isSupportedZeroBased(object, (int) index, condition);
+        return isSupportedZeroBased(object, (int) index);
     }
 
     @Override
@@ -93,7 +93,7 @@ public final class ZeroBasedDoubleArray extends AbstractDoubleArray {
 
     @Override
     protected int prepareInBounds(DynamicObject object, int index, boolean condition, ProfileHolder profile) {
-        prepareInBoundsZeroBased(object, index, condition, profile);
+        prepareInBoundsZeroBased(object, index, profile);
         return index;
     }
 
@@ -105,7 +105,7 @@ public final class ZeroBasedDoubleArray extends AbstractDoubleArray {
 
     @Override
     protected void setLengthLess(DynamicObject object, long length, boolean condition, ProfileHolder profile) {
-        setLengthLessZeroBased(object, length, condition, profile);
+        setLengthLessZeroBased(object, length, profile);
     }
 
     @Override
@@ -116,8 +116,8 @@ public final class ZeroBasedDoubleArray extends AbstractDoubleArray {
     @Override
     public ZeroBasedObjectArray toObject(DynamicObject object, long index, Object value, boolean condition) {
         double[] array = getArray(object, condition);
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
         Object[] doubleCopy = ArrayCopy.doubleToObject(array, 0, usedLength);
         ZeroBasedObjectArray newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, length, usedLength, doubleCopy, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
@@ -129,8 +129,8 @@ public final class ZeroBasedDoubleArray extends AbstractDoubleArray {
     @Override
     public ContiguousDoubleArray toContiguous(DynamicObject object, long index, Object value, boolean condition) {
         double[] array = getArray(object, condition);
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
         ContiguousDoubleArray newArray = ContiguousDoubleArray.makeContiguousDoubleArray(object, length, array, 0, 0, usedLength, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
@@ -141,8 +141,8 @@ public final class ZeroBasedDoubleArray extends AbstractDoubleArray {
     @Override
     public HolesDoubleArray toHoles(DynamicObject object, long index, Object value, boolean condition) {
         double[] array = getArray(object, condition);
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
         HolesDoubleArray newArray = HolesDoubleArray.makeHolesDoubleArray(object, length, array, 0, 0, usedLength, 0, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
@@ -151,13 +151,13 @@ public final class ZeroBasedDoubleArray extends AbstractDoubleArray {
     }
 
     @Override
-    public long firstElementIndex(DynamicObject object, boolean condition) {
+    public long firstElementIndex(DynamicObject object) {
         return 0;
     }
 
     @Override
-    public long lastElementIndex(DynamicObject object, boolean condition) {
-        return getUsedLength(object, condition) - 1;
+    public long lastElementIndex(DynamicObject object) {
+        return getUsedLength(object) - 1;
     }
 
     @Override
@@ -175,8 +175,8 @@ public final class ZeroBasedDoubleArray extends AbstractDoubleArray {
 
     @Override
     public boolean hasHoles(DynamicObject object, boolean condition) {
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
         return usedLength < length;
     }
 
@@ -187,6 +187,6 @@ public final class ZeroBasedDoubleArray extends AbstractDoubleArray {
 
     @Override
     public long nextElementIndex(DynamicObject object, long index, boolean condition) {
-        return nextElementIndexZeroBased(object, index, condition);
+        return nextElementIndexZeroBased(object, index);
     }
 }

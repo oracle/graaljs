@@ -91,19 +91,19 @@ public final class HolesDoubleArray extends AbstractContiguousDoubleArray {
     }
 
     public boolean isHoleFast(DynamicObject object, int index, boolean condition) {
-        int internalIndex = (int) (index - getIndexOffset(object, condition));
+        int internalIndex = (int) (index - getIndexOffset(object));
         return isHolePrepared(object, internalIndex, condition);
     }
 
     public void setInBoundsFastHole(DynamicObject object, int index, double value, boolean condition) {
-        int internalIndex = (int) (index - getIndexOffset(object, condition));
+        int internalIndex = (int) (index - getIndexOffset(object));
         assert isHolePrepared(object, internalIndex, condition);
         incrementHolesCount(object, -1);
         setInBoundsFastIntl(object, index, internalIndex, value, condition);
     }
 
     public void setInBoundsFastNonHole(DynamicObject object, int index, double value, boolean condition) {
-        int internalIndex = (int) (index - getIndexOffset(object, condition));
+        int internalIndex = (int) (index - getIndexOffset(object));
         assert !isHolePrepared(object, internalIndex, condition);
         setInBoundsFastIntl(object, index, internalIndex, value, condition);
     }
@@ -117,21 +117,21 @@ public final class HolesDoubleArray extends AbstractContiguousDoubleArray {
 
     @Override
     public boolean containsHoles(DynamicObject object, long index, boolean condition) {
-        return arrayGetHoleCount(object, condition) > 0 || !isInBoundsFast(object, index, condition);
+        return arrayGetHoleCount(object) > 0 || !isInBoundsFast(object, index);
     }
 
     @Override
     public AbstractDoubleArray toNonHoles(DynamicObject object, long index, Object value, boolean condition) {
         assert !containsHoles(object, index, condition);
         double[] array = getArray(object, condition);
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
-        int arrayOffset = getArrayOffset(object, condition);
-        long indexOffset = getIndexOffset(object, condition);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
+        int arrayOffset = getArrayOffset(object);
+        long indexOffset = getIndexOffset(object);
 
         AbstractDoubleArray newArray;
         setInBoundsFastNonHole(object, (int) index, (double) value, condition);
-        if (isInBoundsFast(object, 0, condition)) {
+        if (isInBoundsFast(object, 0)) {
             newArray = ZeroBasedDoubleArray.makeZeroBasedDoubleArray(object, length, usedLength, array, integrityLevel);
         } else {
             newArray = ContiguousDoubleArray.makeContiguousDoubleArray(object, length, array, indexOffset, arrayOffset, usedLength, integrityLevel);
@@ -149,7 +149,7 @@ public final class HolesDoubleArray extends AbstractContiguousDoubleArray {
 
     @Override
     public boolean isSupported(DynamicObject object, long index, boolean condition) {
-        return isSupportedHoles(object, index, condition);
+        return isSupportedHoles(object, index);
     }
 
     @Override
@@ -174,11 +174,11 @@ public final class HolesDoubleArray extends AbstractContiguousDoubleArray {
     @Override
     public AbstractWritableArray toObject(DynamicObject object, long index, Object value, boolean condition) {
         double[] array = getArray(object, condition);
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
-        int arrayOffset = getArrayOffset(object, condition);
-        long indexOffset = getIndexOffset(object, condition);
-        int holeCount = arrayGetHoleCount(object, condition);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
+        int arrayOffset = getArrayOffset(object);
+        long indexOffset = getIndexOffset(object);
+        int holeCount = arrayGetHoleCount(object);
 
         Object[] objectCopy = ArrayCopy.doubleToObjectHoles(array, arrayOffset, usedLength);
         HolesObjectArray newArray = HolesObjectArray.makeHolesObjectArray(object, length, objectCopy, indexOffset, arrayOffset, usedLength, holeCount, integrityLevel);

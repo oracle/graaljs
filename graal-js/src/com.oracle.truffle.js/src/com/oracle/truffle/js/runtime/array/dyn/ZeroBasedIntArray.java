@@ -71,7 +71,7 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
 
     @Override
     public boolean isSupported(DynamicObject object, long index, boolean condition) {
-        return isSupportedZeroBased(object, (int) index, condition);
+        return isSupportedZeroBased(object, (int) index);
     }
 
     @Override
@@ -94,7 +94,7 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
 
     @Override
     protected int prepareInBounds(DynamicObject object, int index, boolean condition, ProfileHolder profile) {
-        prepareInBoundsZeroBased(object, index, condition, profile);
+        prepareInBoundsZeroBased(object, index, profile);
         return index;
     }
 
@@ -106,7 +106,7 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
 
     @Override
     protected void setLengthLess(DynamicObject object, long length, boolean condition, ProfileHolder profile) {
-        setLengthLessZeroBased(object, length, condition, profile);
+        setLengthLessZeroBased(object, length, profile);
     }
 
     @Override
@@ -117,8 +117,8 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
     @Override
     public ZeroBasedDoubleArray toDouble(DynamicObject object, long index, double value, boolean condition) {
         int[] array = getArray(object, condition);
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
 
         double[] doubleCopy = ArrayCopy.intToDouble(array, 0, usedLength);
         ZeroBasedDoubleArray newArray = ZeroBasedDoubleArray.makeZeroBasedDoubleArray(object, length, usedLength, doubleCopy, integrityLevel);
@@ -131,8 +131,8 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
     @Override
     public ZeroBasedObjectArray toObject(DynamicObject object, long index, Object value, boolean condition) {
         int[] array = getArray(object, condition);
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
 
         Object[] doubleCopy = ArrayCopy.intToObject(array, 0, usedLength);
         ZeroBasedObjectArray newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, length, usedLength, doubleCopy, integrityLevel);
@@ -145,8 +145,8 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
     @Override
     public ContiguousIntArray toContiguous(DynamicObject object, long index, Object value, boolean condition) {
         int[] array = getArray(object, condition);
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
 
         ContiguousIntArray newArray = ContiguousIntArray.makeContiguousIntArray(object, length, array, 0, 0, usedLength, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
@@ -158,8 +158,8 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
     @Override
     public AbstractWritableArray toHoles(DynamicObject object, long index, Object value, boolean condition) {
         int[] array = getArray(object, condition);
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
 
         AbstractWritableArray newArray;
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, containsHoleValue(object, condition))) {
@@ -175,19 +175,19 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
 
     @Override
     protected HolesObjectArray toObjectHoles(DynamicObject object, boolean condition) {
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
         return HolesObjectArray.makeHolesObjectArray(object, length, convertToObject(object, condition), 0, 0, usedLength, 0, integrityLevel);
     }
 
     @Override
-    public long firstElementIndex(DynamicObject object, boolean condition) {
+    public long firstElementIndex(DynamicObject object) {
         return 0;
     }
 
     @Override
-    public long lastElementIndex(DynamicObject object, boolean condition) {
-        return getUsedLength(object, condition) - 1;
+    public long lastElementIndex(DynamicObject object) {
+        return getUsedLength(object) - 1;
     }
 
     @Override
@@ -205,8 +205,8 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
 
     @Override
     public boolean hasHoles(DynamicObject object, boolean condition) {
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
         return usedLength < length;
     }
 
@@ -217,6 +217,6 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
 
     @Override
     public long nextElementIndex(DynamicObject object, long index, boolean condition) {
-        return nextElementIndexZeroBased(object, index, condition);
+        return nextElementIndexZeroBased(object, index);
     }
 }

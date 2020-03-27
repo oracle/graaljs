@@ -77,29 +77,29 @@ public class LazyArray extends AbstractConstantArray {
         return new LazyArray(newIntegrityLevel, cache);
     }
 
-    static List<?> arrayGetLazyList(DynamicObject object, boolean condition) {
-        return (List<?>) arrayGetArray(object, condition);
+    private static List<?> arrayGetLazyList(DynamicObject object) {
+        return (List<?>) arrayGetArray(object);
     }
 
     @Override
     public Object getElementInBounds(DynamicObject object, int index, boolean condition) {
-        return Boundaries.listGet(arrayGetLazyList(object, condition), index);
+        return Boundaries.listGet(arrayGetLazyList(object), index);
     }
 
     @Override
     public boolean hasElement(DynamicObject object, long index, boolean condition) {
-        return index >= 0 && index < lengthInt(object, condition);
+        return index >= 0 && index < lengthInt(object);
     }
 
     @Override
-    public int lengthInt(DynamicObject object, boolean condition) {
-        return (int) arrayGetLength(object, condition);
+    public int lengthInt(DynamicObject object) {
+        return (int) arrayGetLength(object);
     }
 
     @Override
     public AbstractWritableArray createWriteableObject(DynamicObject object, long index, Object value, boolean condition, ProfileHolder profile) {
         // enumerate the whole array
-        int len = lengthInt(object, condition);
+        int len = lengthInt(object);
         Object[] array = new Object[len];
         for (int i = 0; i < len; i++) {
             array[i] = getElementInBounds(object, i, condition);

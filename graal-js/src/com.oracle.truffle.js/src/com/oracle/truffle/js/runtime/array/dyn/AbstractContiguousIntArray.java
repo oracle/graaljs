@@ -57,12 +57,12 @@ public abstract class AbstractContiguousIntArray extends AbstractIntArray {
 
     @Override
     public int getInBoundsFastInt(DynamicObject object, int index, boolean condition) {
-        return getArray(object, condition)[(int) (index - getIndexOffset(object, condition))];
+        return getArray(object, condition)[(int) (index - getIndexOffset(object))];
     }
 
     @Override
     public void setInBoundsFast(DynamicObject object, int index, int value, boolean condition) {
-        getArray(object, condition)[(int) (index - getIndexOffset(object, condition))] = value;
+        getArray(object, condition)[(int) (index - getIndexOffset(object))] = value;
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBoundsFast", index, value);
         }
@@ -75,7 +75,7 @@ public abstract class AbstractContiguousIntArray extends AbstractIntArray {
 
     @Override
     protected final int prepareInBoundsFast(DynamicObject object, long index, boolean condition) {
-        return (int) (index - getIndexOffset(object, condition));
+        return (int) (index - getIndexOffset(object));
     }
 
     @Override
@@ -89,11 +89,6 @@ public abstract class AbstractContiguousIntArray extends AbstractIntArray {
     }
 
     @Override
-    protected final int getArrayOffset(DynamicObject object, boolean condition) {
-        return arrayGetArrayOffset(object, condition);
-    }
-
-    @Override
     protected final void setIndexOffset(DynamicObject object, long indexOffset) {
         arraySetIndexOffset(object, indexOffset);
     }
@@ -104,18 +99,13 @@ public abstract class AbstractContiguousIntArray extends AbstractIntArray {
     }
 
     @Override
-    protected final long getIndexOffset(DynamicObject object, boolean condition) {
-        return arrayGetIndexOffset(object, condition);
+    public final long firstElementIndex(DynamicObject object) {
+        return getIndexOffset(object) + getArrayOffset(object);
     }
 
     @Override
-    public final long firstElementIndex(DynamicObject object, boolean condition) {
-        return getIndexOffset(object, condition) + getArrayOffset(object, condition);
-    }
-
-    @Override
-    public final long lastElementIndex(DynamicObject object, boolean condition) {
-        return getIndexOffset(object, condition) + getArrayOffset(object, condition) + getUsedLength(object, condition) - 1;
+    public final long lastElementIndex(DynamicObject object) {
+        return getIndexOffset(object) + getArrayOffset(object) + getUsedLength(object) - 1;
     }
 
     @Override

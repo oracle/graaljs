@@ -173,7 +173,7 @@ public abstract class JSAbstractArgumentsObject extends JSAbstractArray {
             isIndexConnected = isMappedArguments && !wasIndexDisconnected(thisObj, index);
             oldValue = super.get(thisObj, index);
 
-            ScriptArray arrayType = arrayGetArrayType(thisObj, JSArgumentsObject.isJSArgumentsObject(thisObj));
+            ScriptArray arrayType = arrayGetArrayType(thisObj);
             if (arrayType.hasElement(thisObj, index)) {
                 // apply the default attributes to the property first
                 JSContext context = JSObject.getJSContext(thisObj);

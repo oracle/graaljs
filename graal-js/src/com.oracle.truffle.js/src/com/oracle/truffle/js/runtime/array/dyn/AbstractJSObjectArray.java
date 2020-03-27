@@ -77,9 +77,9 @@ public abstract class AbstractJSObjectArray extends AbstractWritableArray {
     }
 
     private ScriptArray rewrite(DynamicObject object, long index, Object value, boolean condition) {
-        if (isSupportedContiguous(object, index, condition)) {
+        if (isSupportedContiguous(object, index)) {
             return toContiguous(object, index, value, condition);
-        } else if (isSupportedHoles(object, index, condition)) {
+        } else if (isSupportedHoles(object, index)) {
             return toHoles(object, index, value, condition);
         } else {
             return toObject(object, index, value, condition);
@@ -101,7 +101,7 @@ public abstract class AbstractJSObjectArray extends AbstractWritableArray {
     }
 
     protected static DynamicObject[] getArray(DynamicObject object, boolean condition) {
-        return arrayCast(arrayGetArray(object, condition), DynamicObject[].class, condition);
+        return arrayCast(arrayGetArray(object), DynamicObject[].class, condition);
     }
 
     public abstract DynamicObject getInBoundsFastJSObject(DynamicObject object, int index, boolean condition);

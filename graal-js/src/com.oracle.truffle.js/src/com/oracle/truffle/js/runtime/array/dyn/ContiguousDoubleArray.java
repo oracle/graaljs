@@ -74,16 +74,16 @@ public final class ContiguousDoubleArray extends AbstractContiguousDoubleArray {
 
     @Override
     public boolean isSupported(DynamicObject object, long index, boolean condition) {
-        return isSupportedContiguous(object, index, condition);
+        return isSupportedContiguous(object, index);
     }
 
     @Override
     public ContiguousObjectArray toObject(DynamicObject object, long index, Object value, boolean condition) {
         double[] array = getArray(object, condition);
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
-        int arrayOffset = getArrayOffset(object, condition);
-        long indexOffset = getIndexOffset(object, condition);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
+        int arrayOffset = getArrayOffset(object);
+        long indexOffset = getIndexOffset(object);
 
         Object[] doubleCopy = ArrayCopy.doubleToObject(array, arrayOffset, usedLength);
         ContiguousObjectArray newArray = ContiguousObjectArray.makeContiguousObjectArray(object, length, doubleCopy, indexOffset, arrayOffset, usedLength, integrityLevel);
@@ -98,8 +98,8 @@ public final class ContiguousDoubleArray extends AbstractContiguousDoubleArray {
         setSupported(object, index, (double) value, condition, profile);
 
         double[] array = getArray(object, condition);
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
         ZeroBasedDoubleArray newArray = ZeroBasedDoubleArray.makeZeroBasedDoubleArray(object, length, usedLength, array, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
@@ -110,10 +110,10 @@ public final class ContiguousDoubleArray extends AbstractContiguousDoubleArray {
     @Override
     public HolesDoubleArray toHoles(DynamicObject object, long index, Object value, boolean condition) {
         double[] array = getArray(object, condition);
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
-        int arrayOffset = getArrayOffset(object, condition);
-        long indexOffset = getIndexOffset(object, condition);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
+        int arrayOffset = getArrayOffset(object);
+        long indexOffset = getIndexOffset(object);
 
         HolesDoubleArray newArray = HolesDoubleArray.makeHolesDoubleArray(object, length, array, indexOffset, arrayOffset, usedLength, 0, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {

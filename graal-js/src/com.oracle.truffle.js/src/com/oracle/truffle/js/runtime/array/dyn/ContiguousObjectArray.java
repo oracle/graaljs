@@ -74,16 +74,16 @@ public final class ContiguousObjectArray extends AbstractContiguousObjectArray {
 
     @Override
     public boolean isSupported(DynamicObject object, long index, boolean condition) {
-        return isSupportedContiguous(object, index, condition);
+        return isSupportedContiguous(object, index);
     }
 
     @Override
     public HolesObjectArray toHoles(DynamicObject object, long index, Object value, boolean condition) {
         Object[] array = getArray(object, condition);
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
-        int arrayOffset = getArrayOffset(object, condition);
-        long indexOffset = getIndexOffset(object, condition);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
+        int arrayOffset = getArrayOffset(object);
+        long indexOffset = getIndexOffset(object);
         HolesObjectArray newArray = HolesObjectArray.makeHolesObjectArray(object, length, array, indexOffset, arrayOffset, usedLength, 0, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
@@ -96,8 +96,8 @@ public final class ContiguousObjectArray extends AbstractContiguousObjectArray {
         setSupported(object, index, value, condition);
 
         Object[] array = getArray(object, condition);
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
         ZeroBasedObjectArray newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, length, usedLength, array, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);

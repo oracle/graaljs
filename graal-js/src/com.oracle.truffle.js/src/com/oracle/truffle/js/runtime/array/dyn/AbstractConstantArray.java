@@ -69,7 +69,7 @@ public abstract class AbstractConstantArray extends DynamicArray {
 
     @Override
     public final Object getElement(DynamicObject object, long index, boolean condition) {
-        if (isInBoundsFast(object, index, condition)) {
+        if (isInBoundsFast(object, index)) {
             return getElementInBounds(object, (int) index, condition);
         } else {
             return Undefined.instance;
@@ -78,30 +78,30 @@ public abstract class AbstractConstantArray extends DynamicArray {
 
     @Override
     public final Object getElementInBounds(DynamicObject object, long index, boolean condition) {
-        assert isInBoundsFast(object, index, condition);
+        assert isInBoundsFast(object, index);
         return getElementInBounds(object, (int) index, condition);
     }
 
     public abstract Object getElementInBounds(DynamicObject object, int index, boolean condition);
 
     @Override
-    public final long length(DynamicObject object, boolean condition) {
-        return lengthInt(object, condition);
+    public final long length(DynamicObject object) {
+        return lengthInt(object);
     }
 
     @Override
-    public long firstElementIndex(DynamicObject object, boolean condition) {
+    public long firstElementIndex(DynamicObject object) {
         return 0;
     }
 
     @Override
-    public long lastElementIndex(DynamicObject object, boolean condition) {
-        return length(object, condition) - 1;
+    public long lastElementIndex(DynamicObject object) {
+        return length(object) - 1;
     }
 
     @Override
     public long nextElementIndex(DynamicObject object, long index, boolean condition) {
-        if (index >= lastElementIndex(object, condition)) {
+        if (index >= lastElementIndex(object)) {
             return JSRuntime.MAX_SAFE_INTEGER_LONG;
         }
         return index + 1;
@@ -116,8 +116,8 @@ public abstract class AbstractConstantArray extends DynamicArray {
      * Returns true if the index can be written using inBoundsFast access mode.
      */
     @Override
-    public final boolean isInBoundsFast(DynamicObject object, long index, boolean condition) {
-        return firstElementIndex(object, condition) <= index && index <= lastElementIndex(object, condition);
+    public final boolean isInBoundsFast(DynamicObject object, long index) {
+        return firstElementIndex(object) <= index && index <= lastElementIndex(object);
     }
 
     public abstract AbstractWritableArray createWriteableDouble(DynamicObject object, long index, double value, boolean condition, ProfileHolder profile);

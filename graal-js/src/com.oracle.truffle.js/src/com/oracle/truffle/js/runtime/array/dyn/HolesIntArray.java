@@ -85,19 +85,19 @@ public final class HolesIntArray extends AbstractContiguousIntArray {
     }
 
     public boolean isHoleFast(DynamicObject object, int index, boolean condition) {
-        int internalIndex = (int) (index - getIndexOffset(object, condition));
+        int internalIndex = (int) (index - getIndexOffset(object));
         return isHolePrepared(object, internalIndex, condition);
     }
 
     public void setInBoundsFastHole(DynamicObject object, int index, int value, boolean condition) {
-        int internalIndex = (int) (index - getIndexOffset(object, condition));
+        int internalIndex = (int) (index - getIndexOffset(object));
         assert isHolePrepared(object, internalIndex, condition);
         incrementHolesCount(object, -1);
         setInBoundyFastIntl(object, index, internalIndex, value, condition);
     }
 
     public void setInBoundsFastNonHole(DynamicObject object, int index, int value, boolean condition) {
-        int internalIndex = (int) (index - getIndexOffset(object, condition));
+        int internalIndex = (int) (index - getIndexOffset(object));
         assert !isHolePrepared(object, internalIndex, condition);
         setInBoundyFastIntl(object, index, internalIndex, value, condition);
     }
@@ -111,7 +111,7 @@ public final class HolesIntArray extends AbstractContiguousIntArray {
 
     @Override
     public boolean containsHoles(DynamicObject object, long index, boolean condition) {
-        return arrayGetHoleCount(object, condition) > 0 || !isInBoundsFast(object, index, condition);
+        return arrayGetHoleCount(object) > 0 || !isInBoundsFast(object, index);
     }
 
     @Override
@@ -121,7 +121,7 @@ public final class HolesIntArray extends AbstractContiguousIntArray {
 
     @Override
     public boolean isSupported(DynamicObject object, long index, boolean condition) {
-        return isSupportedHoles(object, index, condition);
+        return isSupportedHoles(object, index);
     }
 
     @Override
@@ -133,10 +133,10 @@ public final class HolesIntArray extends AbstractContiguousIntArray {
     public AbstractIntArray toNonHoles(DynamicObject object, long index, Object value, boolean condition) {
         assert !containsHoles(object, index, condition);
         int[] array = getArray(object, condition);
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
-        int arrayOffset = getArrayOffset(object, condition);
-        long indexOffset = getIndexOffset(object, condition);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
+        int arrayOffset = getArrayOffset(object);
+        long indexOffset = getIndexOffset(object);
 
         AbstractIntArray newArray;
         setInBoundsFastNonHole(object, (int) index, (int) value, condition);
@@ -173,11 +173,11 @@ public final class HolesIntArray extends AbstractContiguousIntArray {
     @Override
     public AbstractWritableArray toDouble(DynamicObject object, long index, double value, boolean condition) {
         int[] array = getArray(object, condition);
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
-        int arrayOffset = getArrayOffset(object, condition);
-        long indexOffset = getIndexOffset(object, condition);
-        int holeCount = arrayGetHoleCount(object, condition);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
+        int arrayOffset = getArrayOffset(object);
+        long indexOffset = getIndexOffset(object);
+        int holeCount = arrayGetHoleCount(object);
 
         double[] doubleCopy = ArrayCopy.intToDoubleHoles(array, arrayOffset, usedLength);
         HolesDoubleArray newArray = HolesDoubleArray.makeHolesDoubleArray(object, length, doubleCopy, indexOffset, arrayOffset, usedLength, holeCount, integrityLevel);
@@ -190,11 +190,11 @@ public final class HolesIntArray extends AbstractContiguousIntArray {
     @Override
     public AbstractWritableArray toObject(DynamicObject object, long index, Object value, boolean condition) {
         int[] array = getArray(object, condition);
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
-        int arrayOffset = getArrayOffset(object, condition);
-        long indexOffset = getIndexOffset(object, condition);
-        int holeCount = arrayGetHoleCount(object, condition);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
+        int arrayOffset = getArrayOffset(object);
+        long indexOffset = getIndexOffset(object);
+        int holeCount = arrayGetHoleCount(object);
 
         Object[] objectCopy = ArrayCopy.intToObjectHoles(array, arrayOffset, usedLength);
         HolesObjectArray newArray = HolesObjectArray.makeHolesObjectArray(object, length, objectCopy, indexOffset, arrayOffset, usedLength, holeCount, integrityLevel);

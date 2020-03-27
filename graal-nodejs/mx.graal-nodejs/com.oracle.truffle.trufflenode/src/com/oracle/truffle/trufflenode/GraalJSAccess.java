@@ -1209,7 +1209,7 @@ public final class GraalJSAccess {
         if (JSDataView.isJSDataView(arrayBufferView)) {
             return JSDataView.typedArrayGetLength(arrayBufferView);
         } else {
-            return JSArrayBufferView.getByteLength(arrayBufferView, JSArrayBufferView.isJSArrayBufferView(arrayBufferView), context);
+            return JSArrayBufferView.getByteLength(arrayBufferView, context);
         }
     }
 

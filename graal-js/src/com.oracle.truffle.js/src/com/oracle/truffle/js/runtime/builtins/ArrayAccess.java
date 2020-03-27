@@ -56,15 +56,7 @@ public class ArrayAccess {
         return ((JSArrayBase) thisObj).arrayType;
     }
 
-    public ScriptArray getArrayType(Object thisObj, boolean arrayCondition) {
-        return ((JSArrayBase) thisObj).arrayType;
-    }
-
     public long getLength(Object thisObj) {
-        return Integer.toUnsignedLong(((JSArrayBase) thisObj).length);
-    }
-
-    public long getLength(Object thisObj, boolean arrayCondition) {
         return Integer.toUnsignedLong(((JSArrayBase) thisObj).length);
     }
 
@@ -72,23 +64,11 @@ public class ArrayAccess {
         return ((JSArrayBase) thisObj).usedLength;
     }
 
-    public int getUsedLength(Object thisObj, boolean arrayCondition) {
-        return ((JSArrayBase) thisObj).usedLength;
-    }
-
     public long getIndexOffset(Object thisObj) {
         return Integer.toUnsignedLong(((JSArrayBase) thisObj).indexOffset);
     }
 
-    public long getIndexOffset(Object thisObj, boolean arrayCondition) {
-        return Integer.toUnsignedLong(((JSArrayBase) thisObj).indexOffset);
-    }
-
     public int getArrayOffset(Object thisObj) {
-        return ((JSArrayBase) thisObj).arrayOffset;
-    }
-
-    public int getArrayOffset(Object thisObj, boolean arrayCondition) {
         return ((JSArrayBase) thisObj).arrayOffset;
     }
 
@@ -120,10 +100,6 @@ public class ArrayAccess {
         return ((JSArrayBase) thisObj).theArray;
     }
 
-    public Object getArray(Object thisObj, boolean arrayCondition) {
-        return ((JSArrayBase) thisObj).theArray;
-    }
-
     public void setArray(Object thisObj, Object array) {
         assert array != null && (array.getClass().isArray() || array instanceof TreeMap<?, ?>);
         ((JSArrayBase) thisObj).theArray = array;
@@ -133,20 +109,12 @@ public class ArrayAccess {
         return ((JSArrayBase) thisObj).holeCount;
     }
 
-    public int getHoleCount(Object thisObj, boolean arrayCondition) {
-        return ((JSArrayBase) thisObj).holeCount;
-    }
-
     public void setHoleCount(Object thisObj, int holeCount) {
         assert holeCount >= 0;
         ((JSArrayBase) thisObj).holeCount = holeCount;
     }
 
     public ArrayAllocationSite getAllocationSite(Object thisObj) {
-        return ((JSArrayBase) thisObj).allocationSite;
-    }
-
-    public ArrayAllocationSite getAllocationSite(Object thisObj, boolean arrayCondition) {
         return ((JSArrayBase) thisObj).allocationSite;
     }
 }

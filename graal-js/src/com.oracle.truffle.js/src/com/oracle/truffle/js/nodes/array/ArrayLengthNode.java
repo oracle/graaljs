@@ -77,12 +77,12 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
             return ArrayLengthReadNodeGen.create();
         }
 
-        public abstract int executeInt(DynamicObject target, boolean condition) throws UnexpectedResultException;
+        public abstract int executeInt(DynamicObject target) throws UnexpectedResultException;
 
-        public abstract Object executeObject(DynamicObject target, boolean condition);
+        public abstract Object executeObject(DynamicObject target);
 
-        public final double executeDouble(DynamicObject target, boolean condition) {
-            Object result = executeObject(target, condition);
+        public final double executeDouble(DynamicObject target) {
+            Object result = executeObject(target);
             if (result instanceof Integer) {
                 return (int) result;
             }
@@ -90,21 +90,21 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
         }
 
         @Specialization(guards = {"arrayType.isInstance(getArrayType(target))", "arrayType.isStatelessType()", "isLengthAlwaysInt(arrayType)"}, limit = "MAX_TYPE_COUNT")
-        protected static int doIntLength(DynamicObject target, boolean condition,
+        protected static int doIntLength(DynamicObject target,
                         @Cached("getArrayType(target)") ScriptArray arrayType) {
-            return arrayType.lengthInt(target, condition);
+            return arrayType.lengthInt(target);
         }
 
         @Specialization(guards = {"arrayType.isInstance(getArrayType(target))", "arrayType.isStatelessType()"}, replaces = "doIntLength", limit = "MAX_TYPE_COUNT")
-        protected static double doLongLength(DynamicObject target, boolean condition,
+        protected static double doLongLength(DynamicObject target,
                         @Cached("getArrayType(target)") ScriptArray arrayType) {
-            return arrayType.length(target, condition);
+            return arrayType.length(target);
         }
 
         @Specialization(replaces = {"doIntLength", "doLongLength"}, rewriteOn = UnexpectedResultException.class)
-        protected static int doUncachedIntLength(DynamicObject target, boolean condition) throws UnexpectedResultException {
-            long uint32Len = JSAbstractArray.arrayGetLength(target, condition);
-            assert uint32Len == getArrayType(target).length(target, condition);
+        protected static int doUncachedIntLength(DynamicObject target) throws UnexpectedResultException {
+            long uint32Len = JSAbstractArray.arrayGetLength(target);
+            assert uint32Len == getArrayType(target).length(target);
             if (JSRuntime.longIsRepresentableAsInt(uint32Len)) {
                 return (int) uint32Len;
             } else {
@@ -114,9 +114,9 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
         }
 
         @Specialization(replaces = {"doUncachedIntLength"})
-        protected static double doUncachedLongLength(DynamicObject target, boolean condition) {
-            long uint32Len = JSAbstractArray.arrayGetLength(target, condition);
-            assert uint32Len == getArrayType(target).length(target, condition);
+        protected static double doUncachedLongLength(DynamicObject target) {
+            long uint32Len = JSAbstractArray.arrayGetLength(target);
+            assert uint32Len == getArrayType(target).length(target);
             return uint32Len;
         }
 
@@ -170,7 +170,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
         }
 
         private void setLengthSealed(DynamicObject arrayObj, int length, ScriptArray arrayType, boolean condition, ScriptArray.ProfileHolder setLengthProfile) {
-            long minLength = arrayType.lastElementIndex(arrayObj, condition) + 1;
+            long minLength = arrayType.lastElementIndex(arrayObj) + 1;
             if (length < minLength) {
                 ScriptArray array = arrayType.setLength(arrayObj, minLength, strict, condition, setLengthProfile);
                 arraySetArrayType(arrayObj, array);
@@ -215,7 +215,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
 
         private void deleteAndSetLength(DynamicObject arrayObj, int length, ScriptArray arrayType, boolean condition, ScriptArray.ProfileHolder setLengthProfile) {
             ScriptArray array = arrayType;
-            for (int i = array.lengthInt(arrayObj, condition) - 1; i >= length; i--) {
+            for (int i = array.lengthInt(arrayObj) - 1; i >= length; i--) {
                 if (array.canDeleteElement(arrayObj, i, strict, condition)) {
                     array = array.deleteElement(arrayObj, i, strict, condition);
                     arraySetArrayType(arrayObj, array);

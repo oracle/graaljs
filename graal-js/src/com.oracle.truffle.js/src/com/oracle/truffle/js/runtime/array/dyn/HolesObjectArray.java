@@ -84,19 +84,19 @@ public final class HolesObjectArray extends AbstractContiguousObjectArray {
     }
 
     public boolean isHoleFast(DynamicObject object, int index, boolean condition) {
-        int internalIndex = (int) (index - getIndexOffset(object, condition));
+        int internalIndex = (int) (index - getIndexOffset(object));
         return isHolePrepared(object, internalIndex, condition);
     }
 
     public void setInBoundsFastHole(DynamicObject object, int index, Object value, boolean condition) {
-        int internalIndex = (int) (index - getIndexOffset(object, condition));
+        int internalIndex = (int) (index - getIndexOffset(object));
         assert isHolePrepared(object, internalIndex, condition);
         incrementHolesCount(object, -1);
         setInBoundsFastIntl(object, index, internalIndex, value, condition);
     }
 
     public void setInBoundsFastNonHole(DynamicObject object, int index, Object value, boolean condition) {
-        int internalIndex = (int) (index - getIndexOffset(object, condition));
+        int internalIndex = (int) (index - getIndexOffset(object));
         assert !isHolePrepared(object, internalIndex, condition);
         setInBoundsFastIntl(object, index, internalIndex, checkNonNull(value), condition);
     }
@@ -110,17 +110,17 @@ public final class HolesObjectArray extends AbstractContiguousObjectArray {
 
     @Override
     public boolean containsHoles(DynamicObject object, long index, boolean condition) {
-        return arrayGetHoleCount(object, condition) > 0 || !isInBoundsFast(object, index, condition);
+        return arrayGetHoleCount(object) > 0 || !isInBoundsFast(object, index);
     }
 
     @Override
     public AbstractObjectArray toNonHoles(DynamicObject object, long index, Object value, boolean condition) {
         assert !containsHoles(object, index, condition);
         Object[] array = getArray(object, condition);
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
-        int arrayOffset = getArrayOffset(object, condition);
-        long indexOffset = getIndexOffset(object, condition);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
+        int arrayOffset = getArrayOffset(object);
+        long indexOffset = getIndexOffset(object);
 
         AbstractObjectArray newArray;
         setInBoundsFastNonHole(object, (int) index, value, condition);
@@ -147,7 +147,7 @@ public final class HolesObjectArray extends AbstractContiguousObjectArray {
 
     @Override
     public boolean isSupported(DynamicObject object, long index, boolean condition) {
-        return isSupportedHoles(object, index, condition);
+        return isSupportedHoles(object, index);
     }
 
     @Override

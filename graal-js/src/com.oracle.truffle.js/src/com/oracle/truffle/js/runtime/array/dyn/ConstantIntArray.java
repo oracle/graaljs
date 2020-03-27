@@ -61,29 +61,25 @@ public final class ConstantIntArray extends AbstractConstantArray {
 
     @Override
     public Object getElementInBounds(DynamicObject object, int index, boolean condition) {
-        return getElementInt(object, index, condition);
+        return getElementInt(object, index);
     }
 
-    public static int getElementInt(DynamicObject object, int index, boolean condition) {
-        return getArray(object, condition)[index];
+    public static int getElementInt(DynamicObject object, int index) {
+        return getArray(object)[index];
     }
 
     private static int[] getArray(DynamicObject object) {
         return (int[]) arrayGetArray(object);
     }
 
-    public static int[] getArray(DynamicObject object, boolean condition) {
-        return (int[]) arrayGetArray(object, condition);
-    }
-
     @Override
-    public int lengthInt(DynamicObject object, boolean condition) {
-        return getArray(object, condition).length;
+    public int lengthInt(DynamicObject object) {
+        return getArray(object).length;
     }
 
     @Override
     public boolean hasElement(DynamicObject object, long index, boolean condition) {
-        return index >= 0 && index < getArray(object, condition).length;
+        return index >= 0 && index < getArray(object).length;
     }
 
     @Override
@@ -103,7 +99,7 @@ public final class ConstantIntArray extends AbstractConstantArray {
 
     @Override
     public AbstractIntArray createWriteableInt(DynamicObject object, long index, int value, boolean condition, ProfileHolder profile) {
-        int[] copyArray = ArrayCopy.intToInt(getArray(object, condition));
+        int[] copyArray = ArrayCopy.intToInt(getArray(object));
         ZeroBasedIntArray newArray = ZeroBasedIntArray.makeZeroBasedIntArray(object, copyArray.length, copyArray.length, copyArray, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
@@ -113,7 +109,7 @@ public final class ConstantIntArray extends AbstractConstantArray {
 
     @Override
     public AbstractWritableArray createWriteableDouble(DynamicObject object, long index, double value, boolean condition, ProfileHolder profile) {
-        double[] copyArray = ArrayCopy.intToDouble(getArray(object, condition));
+        double[] copyArray = ArrayCopy.intToDouble(getArray(object));
         ZeroBasedDoubleArray newArray = ZeroBasedDoubleArray.makeZeroBasedDoubleArray(object, copyArray.length, copyArray.length, copyArray, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
@@ -128,7 +124,7 @@ public final class ConstantIntArray extends AbstractConstantArray {
 
     @Override
     public AbstractWritableArray createWriteableObject(DynamicObject object, long index, Object value, boolean condition, ProfileHolder profile) {
-        Object[] copyArray = ArrayCopy.intToObject(getArray(object, condition));
+        Object[] copyArray = ArrayCopy.intToObject(getArray(object));
         ZeroBasedObjectArray newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, copyArray.length, copyArray.length, copyArray, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);

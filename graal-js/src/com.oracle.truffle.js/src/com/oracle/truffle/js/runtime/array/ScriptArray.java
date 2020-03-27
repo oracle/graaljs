@@ -99,7 +99,7 @@ public abstract class ScriptArray {
             }
             return this;
         } else if (isLengthNotWritable()) {
-            if (index >= length(object, condition)) {
+            if (index >= length(object)) {
                 if (strict) {
                     throw Errors.createTypeErrorLengthNotWritable();
                 }
@@ -155,17 +155,9 @@ public abstract class ScriptArray {
 
     public abstract boolean hasElement(DynamicObject object, long index, boolean condition);
 
-    public final long length(DynamicObject object) {
-        return length(object, arrayCondition());
-    }
+    public abstract long length(DynamicObject object);
 
-    public abstract long length(DynamicObject object, boolean condition);
-
-    public final int lengthInt(DynamicObject object) {
-        return lengthInt(object, arrayCondition());
-    }
-
-    public abstract int lengthInt(DynamicObject object, boolean condition);
+    public abstract int lengthInt(DynamicObject object);
 
     protected interface ProfileAccess {
     }
@@ -220,7 +212,7 @@ public abstract class ScriptArray {
             }
             return this;
         } else if (isSealed()) {
-            assert len >= lastElementIndex(object, condition) + 1; // to be checked by caller
+            assert len >= lastElementIndex(object) + 1; // to be checked by caller
         }
         return setLengthImpl(object, len, condition, profile);
     }
@@ -232,26 +224,12 @@ public abstract class ScriptArray {
     /**
      * First element index (inclusive).
      */
-    public final long firstElementIndex(DynamicObject object) {
-        return firstElementIndex(object, arrayCondition());
-    }
+    public abstract long firstElementIndex(DynamicObject object);
 
     /**
      * Last element index (inclusive).
      */
-    public final long lastElementIndex(DynamicObject object) {
-        return lastElementIndex(object, arrayCondition());
-    }
-
-    /**
-     * First element index (inclusive).
-     */
-    public abstract long firstElementIndex(DynamicObject object, boolean condition);
-
-    /**
-     * Last element index (inclusive).
-     */
-    public abstract long lastElementIndex(DynamicObject object, boolean condition);
+    public abstract long lastElementIndex(DynamicObject object);
 
     /**
      * Returns the next index. The index is guaranteed either to exist, or be larger than
@@ -285,15 +263,8 @@ public abstract class ScriptArray {
     /**
      * Range check only, might be a hole depending on array type.
      */
-    public boolean isInBoundsFast(DynamicObject object, long index, boolean condition) {
-        return firstElementIndex(object, condition) <= index && index <= lastElementIndex(object, condition);
-    }
-
-    /**
-     * Range check only, might be a hole depending on array type.
-     */
-    public final boolean isInBoundsFast(DynamicObject object, long index) {
-        return isInBoundsFast(object, index, arrayCondition());
+    public boolean isInBoundsFast(DynamicObject object, long index) {
+        return firstElementIndex(object) <= index && index <= lastElementIndex(object);
     }
 
     public Iterable<Object> asIterable(DynamicObject object) {
