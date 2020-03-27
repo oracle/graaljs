@@ -98,6 +98,7 @@ import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
+import com.oracle.truffle.js.runtime.builtins.JSTypedArrayImpl;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
@@ -215,11 +216,12 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
         return PROXY_OBJECT;
     }
 
-    @Specialization(guards = {"isJSArrayBufferView(value)", "cachedArray == getScriptArray(value)"})
-    protected final int doArrayBufferView(DynamicObject value,
-                    @Cached("getScriptArray(value)") ScriptArray cachedArray,
+    @Specialization(guards = {"cachedArray == value.getArrayType()"})
+    protected final int doArrayBufferView(JSTypedArrayImpl value,
+                    @Cached("value.getArrayType()") TypedArray cachedArray,
                     @Cached("identifyType(cachedArray)") int cachedTypeInt,
                     @Cached("create(getContext())") ArrayBufferViewGetByteLengthNode getByteLengthNode) {
+        assert JSArrayBufferView.isJSArrayBufferView(value);
         if (useSharedBuffer) {
             graalAccess.getSharedBuffer().putInt(getByteLengthNode.executeInt(value));
             graalAccess.getSharedBuffer().putInt(GraalJSAccess.arrayBufferViewByteOffset(context, value));
@@ -227,14 +229,15 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
         return cachedTypeInt;
     }
 
-    @Specialization(guards = {"isJSArrayBufferView(value)"}, replaces = "doArrayBufferView")
-    protected final int doArrayBufferViewOverLimit(DynamicObject value,
+    @Specialization(replaces = "doArrayBufferView")
+    protected final int doArrayBufferViewOverLimit(JSTypedArrayImpl value,
                     @Cached("create(getContext())") ArrayBufferViewGetByteLengthNode getByteLengthNode) {
+        assert JSArrayBufferView.isJSArrayBufferView(value);
         if (useSharedBuffer) {
             graalAccess.getSharedBuffer().putInt(getByteLengthNode.executeInt(value));
             graalAccess.getSharedBuffer().putInt(GraalJSAccess.arrayBufferViewByteOffset(context, value));
         }
-        ScriptArray array = getScriptArray(value);
+        TypedArray array = value.getArrayType();
         return identifyType(array);
     }
 
@@ -245,11 +248,6 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
             graalAccess.getSharedBuffer().putInt(GraalJSAccess.arrayBufferViewByteOffset(context, value));
         }
         return DATA_VIEW_OBJECT;
-    }
-
-    protected ScriptArray getScriptArray(DynamicObject obj) {
-        boolean condition = JSArrayBufferView.isJSArrayBufferView(obj);
-        return JSObject.getArray(obj, condition);
     }
 
     protected int identifyType(ScriptArray array) {
