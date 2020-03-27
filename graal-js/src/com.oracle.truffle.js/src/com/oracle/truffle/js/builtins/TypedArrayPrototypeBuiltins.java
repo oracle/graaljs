@@ -259,7 +259,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected DynamicObject subarray(DynamicObject thisObj, int begin, int end,
                         @Cached("createIdentityProfile()") ValueProfile arrayTypeProfile) {
             boolean condition = JSArrayBufferView.isJSArrayBufferView(thisObj);
-            TypedArray array = arrayTypeProfile.profile(typedArrayGetArrayType(thisObj, condition));
+            TypedArray array = arrayTypeProfile.profile(typedArrayGetArrayType(thisObj));
             int length = (int) array.length(thisObj, condition);
             int clampedBegin = JSArrayBufferSliceNode.clampIndex(begin, 0, length);
             int clampedEnd = JSArrayBufferSliceNode.clampIndex(end, clampedBegin, length);
@@ -273,7 +273,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("createBinaryProfile()") ConditionProfile negativeEnd,
                         @Cached("createBinaryProfile()") ConditionProfile smallerEnd) {
             boolean condition = JSArrayBufferView.isJSArrayBufferView(thisObj);
-            TypedArray array = arrayTypeProfile.profile(typedArrayGetArrayType(thisObj, condition));
+            TypedArray array = arrayTypeProfile.profile(typedArrayGetArrayType(thisObj));
             long len = array.length(thisObj, condition);
             long relativeBegin = toInteger(begin0);
             long beginIndex = negativeBegin.profile(relativeBegin < 0) ? Math.max(len + relativeBegin, 0) : Math.min(relativeBegin, len);
@@ -294,7 +294,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected DynamicObject subarrayImpl(DynamicObject thisObj, TypedArray arrayType, int begin, int end) {
             assert arrayType == JSArrayBufferView.typedArrayGetArrayType(thisObj);
             int offset = JSArrayBufferView.typedArrayGetOffset(thisObj);
-            DynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(thisObj, JSArrayBufferView.isJSArrayBufferView(thisObj));
+            DynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(thisObj);
             return getArraySpeciesConstructorNode().typedArraySpeciesCreate(thisObj, arrayBuffer, offset + begin * arrayType.bytesPerElement(), end - begin);
         }
 
@@ -403,7 +403,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
             Object src = toObject(array);
             long srcLength = objectGetLength(src);
-            TypedArray targetArray = targetArrayProf.profile(JSArrayBufferView.typedArrayGetArrayType(thisObj, targetCondition));
+            TypedArray targetArray = targetArrayProf.profile(JSArrayBufferView.typedArrayGetArrayType(thisObj));
 
             rangeCheck(0, srcLength, offset, targetArray.length(thisObj, targetCondition));
 
@@ -425,16 +425,16 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             assert JSArrayBufferView.isJSArrayBufferView(sourceView);
             checkHasDetachedBuffer(sourceView);
             boolean sourceCondition = JSArrayBufferView.isJSArrayBufferView(sourceView);
-            TypedArray sourceArray = sourceArrayProf.profile(typedArrayGetArrayType(sourceView, sourceCondition));
+            TypedArray sourceArray = sourceArrayProf.profile(typedArrayGetArrayType(sourceView));
             boolean targetCondition = JSArrayBufferView.isJSArrayBufferView(targetView);
-            TypedArray targetArray = targetArrayProf.profile(typedArrayGetArrayType(targetView, targetCondition));
+            TypedArray targetArray = targetArrayProf.profile(typedArrayGetArrayType(targetView));
             long sourceLength = sourceArray.length(sourceView, sourceCondition);
 
             rangeCheck(0, sourceLength, offset, targetArray.length(targetView, targetCondition));
 
             int sourceLen = (int) sourceLength;
-            DynamicObject sourceBuffer = JSArrayBufferView.getArrayBuffer(sourceView, sourceCondition);
-            DynamicObject targetBuffer = JSArrayBufferView.getArrayBuffer(targetView, targetCondition);
+            DynamicObject sourceBuffer = JSArrayBufferView.getArrayBuffer(sourceView);
+            DynamicObject targetBuffer = JSArrayBufferView.getArrayBuffer(targetView);
             int srcByteOffset = JSArrayBufferView.typedArrayGetOffset(sourceView);
             int targetByteOffset = JSArrayBufferView.typedArrayGetOffset(targetView);
 
@@ -490,8 +490,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 objectToObjectBranch.enter();
                 boolean littleEndian = ByteOrder.LITTLE_ENDIAN == ByteOrder.nativeOrder();
                 for (int i = 0; i < sourceLength; i++) {
-                    Object value = sourceType.getBufferElement(sourceBuffer, sourceByteIndex + i * sourceElementSize, littleEndian, false);
-                    targetType.setBufferElement(targetBuffer, targetByteIndex + i * targetElementSize, littleEndian, false, value);
+                    Object value = sourceType.getBufferElement(sourceBuffer, sourceByteIndex + i * sourceElementSize, littleEndian);
+                    targetType.setBufferElement(targetBuffer, targetByteIndex + i * targetElementSize, littleEndian, value);
                 }
             }
         }
@@ -551,7 +551,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Specialization(guards = "isJSArrayBufferView(thisJSObj)")
         protected Object forEach(DynamicObject thisJSObj, Object callback, Object thisArg) {
             checkHasDetachedBuffer(thisJSObj);
-            long length = JSArrayBufferView.typedArrayGetArrayType(thisJSObj, JSArrayBufferView.isJSArrayBufferView(thisJSObj)).length(thisJSObj);
+            long length = JSArrayBufferView.typedArrayGetArrayType(thisJSObj).length(thisJSObj);
             Object callbackFn = checkCallbackIsFunction(callback);
             return forEachIndexCall(thisJSObj, callbackFn, thisArg, 0, length, Undefined.instance);
         }

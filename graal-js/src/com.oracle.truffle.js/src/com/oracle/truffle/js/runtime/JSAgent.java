@@ -130,7 +130,7 @@ public abstract class JSAgent implements EcmaAgent {
     public void atomicSectionEnter(DynamicObject target) {
         assert !inAtomicSection;
         assert JSArrayBufferView.isJSArrayBufferView(target);
-        DynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target, JSArrayBufferView.isJSArrayBufferView(target));
+        DynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
         JSAgentWaiterList waiterList = JSSharedArrayBuffer.getWaiterList(arrayBuffer);
         waiterList.lock();
         inAtomicSection = true;
@@ -139,7 +139,7 @@ public abstract class JSAgent implements EcmaAgent {
     public void atomicSectionLeave(DynamicObject target) {
         assert inAtomicSection;
         assert JSArrayBufferView.isJSArrayBufferView(target);
-        DynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target, JSArrayBufferView.isJSArrayBufferView(target));
+        DynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
         JSAgentWaiterList waiterList = JSSharedArrayBuffer.getWaiterList(arrayBuffer);
         inAtomicSection = false;
         waiterList.unlock();

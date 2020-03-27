@@ -1468,7 +1468,7 @@ public class WriteElementNode extends JSTargetableNode {
             int iValue = toInt(value); // could throw
             checkDetachedArrayBuffer(target, root);
             if (inBoundsProfile.profile(typedArray.hasElement(target, index, arrayCondition))) {
-                typedArray.setInt(target, (int) index, iValue, arrayCondition);
+                typedArray.setInt(target, (int) index, iValue);
             } else {
                 // do nothing; cf. ES6 9.4.5.9 IntegerIndexedElementSet(O, index, value)
             }
@@ -1508,7 +1508,7 @@ public class WriteElementNode extends JSTargetableNode {
             BigInt biValue = toBigIntNode.executeBigInteger(value); // could throw
             checkDetachedArrayBuffer(target, root);
             if (inBoundsProfile.profile(typedArray.hasElement(target, index, arrayCondition))) {
-                typedArray.setBigInt(target, (int) index, biValue, arrayCondition);
+                typedArray.setBigInt(target, (int) index, biValue);
             }
             return true;
         }
@@ -1582,7 +1582,7 @@ public class WriteElementNode extends JSTargetableNode {
             double dValue = toDouble(value); // could throw
             checkDetachedArrayBuffer(target, root);
             if (inBoundsProfile.profile(typedArray.hasElement(target, index, arrayCondition))) {
-                typedArray.setDouble(target, (int) index, dValue, arrayCondition);
+                typedArray.setDouble(target, (int) index, dValue);
             } else {
                 // do nothing; cf. ES6 9.4.5.9 IntegerIndexedElementSet(O, index, value)
             }

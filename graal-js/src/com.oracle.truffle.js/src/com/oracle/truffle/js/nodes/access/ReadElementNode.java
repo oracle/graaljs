@@ -1172,7 +1172,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             checkDetachedArrayBuffer(target, context);
             TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index, arrayCondition))) {
-                return typedArray.getInt(target, (int) index, arrayCondition);
+                return typedArray.getInt(target, (int) index);
             } else {
                 return defaultValue;
             }
@@ -1184,7 +1184,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             checkDetachedArrayBuffer(target, context);
             TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index, arrayCondition))) {
-                return typedArray.getInt(target, (int) index, arrayCondition);
+                return typedArray.getInt(target, (int) index);
             } else {
                 throw new UnexpectedResultException(defaultValue);
             }
@@ -1196,7 +1196,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             checkDetachedArrayBuffer(target, context);
             TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index, arrayCondition))) {
-                return typedArray.getInt(target, (int) index, arrayCondition);
+                return typedArray.getInt(target, (int) index);
             } else {
                 throw new UnexpectedResultException(defaultValue);
             }
@@ -1215,7 +1215,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             checkDetachedArrayBuffer(target, context);
             TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index, arrayCondition))) {
-                int intValue = typedArray.getInt(target, (int) index, arrayCondition);
+                int intValue = typedArray.getInt(target, (int) index);
                 if (isSignedProfile.profile(intValue >= 0)) {
                     return intValue;
                 } else {
@@ -1232,7 +1232,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             checkDetachedArrayBuffer(target, context);
             TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index, arrayCondition))) {
-                int intValue = typedArray.getInt(target, (int) index, arrayCondition);
+                int intValue = typedArray.getInt(target, (int) index);
                 if (isSignedProfile.profile(intValue >= 0)) {
                     return intValue;
                 } else {
@@ -1249,7 +1249,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             checkDetachedArrayBuffer(target, context);
             TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index, arrayCondition))) {
-                return typedArray.getInt(target, (int) index, arrayCondition) & 0xffff_ffffL;
+                return typedArray.getInt(target, (int) index) & 0xffff_ffffL;
             } else {
                 throw new UnexpectedResultException(defaultValue);
             }
@@ -1267,7 +1267,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             checkDetachedArrayBuffer(target, context);
             TypedArray.TypedFloatArray<?> typedArray = (TypedArray.TypedFloatArray<?>) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index, arrayCondition))) {
-                return typedArray.getDouble(target, (int) index, arrayCondition);
+                return typedArray.getDouble(target, (int) index);
             } else {
                 return defaultValue;
             }
@@ -1279,7 +1279,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             checkDetachedArrayBuffer(target, context);
             TypedArray.TypedFloatArray<?> typedArray = (TypedArray.TypedFloatArray<?>) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index, arrayCondition))) {
-                return typedArray.getDouble(target, (int) index, arrayCondition);
+                return typedArray.getDouble(target, (int) index);
             } else {
                 throw new UnexpectedResultException(defaultValue);
             }
@@ -1297,7 +1297,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             checkDetachedArrayBuffer(target, context);
             TypedArray.TypedBigIntArray<?> typedArray = (TypedArray.TypedBigIntArray<?>) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index, arrayCondition))) {
-                return typedArray.getBigInt(target, (int) index, arrayCondition);
+                return typedArray.getBigInt(target, (int) index);
             } else {
                 return defaultValue;
             }

@@ -78,7 +78,7 @@ public abstract class TypedArray extends ScriptArray {
 
     @Override
     public final int lengthInt(DynamicObject object, boolean condition) {
-        return typedArrayGetLength(object, condition);
+        return typedArrayGetLength(object);
     }
 
     @Override
@@ -126,15 +126,15 @@ public abstract class TypedArray extends ScriptArray {
         return 0 <= index && index < length(object, condition);
     }
 
-    protected static byte[] getByteArray(DynamicObject object, boolean condition) {
-        return typedArrayGetByteArray(object, condition);
+    protected static byte[] getByteArray(DynamicObject object) {
+        return typedArrayGetByteArray(object);
     }
 
     /**
      * Get ByteBuffer from TypedArray with unspecified byte order.
      */
-    protected static ByteBuffer getByteBuffer(DynamicObject object, boolean condition) {
-        return typedArrayGetByteBuffer(object, condition);
+    protected static ByteBuffer getByteBuffer(DynamicObject object) {
+        return typedArrayGetByteBuffer(object);
     }
 
     /**
@@ -144,13 +144,13 @@ public abstract class TypedArray extends ScriptArray {
         return buffer.duplicate().order(ByteOrder.nativeOrder());
     }
 
-    public final Object getBufferFromTypedArray(DynamicObject object, boolean condition) {
-        return isDirect() ? getByteBuffer(object, condition) : getByteArray(object, condition);
+    public final Object getBufferFromTypedArray(DynamicObject object) {
+        return isDirect() ? getByteBuffer(object) : getByteArray(object);
     }
 
-    protected final int getOffset(DynamicObject object, boolean condition) {
+    protected final int getOffset(DynamicObject object) {
         if (offset) {
-            return typedArrayGetOffset(object, condition);
+            return typedArrayGetOffset(object);
         } else {
             return 0;
         }
@@ -240,15 +240,15 @@ public abstract class TypedArray extends ScriptArray {
         return littleEndian ? ByteArraySupport.LITTLE_ENDIAN_ORDER : ByteArraySupport.BIG_ENDIAN_ORDER;
     }
 
-    protected static ByteBuffer getByteBufferFromBuffer(DynamicObject buffer, boolean littleEndian, boolean condition) {
-        ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(buffer, condition);
+    protected static ByteBuffer getByteBufferFromBuffer(DynamicObject buffer, boolean littleEndian) {
+        ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(buffer);
         ByteOrder byteOrder = littleEndian ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN;
         return byteBuffer.duplicate().order(byteOrder);
     }
 
-    public abstract Object getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition);
+    public abstract Object getBufferElement(DynamicObject buffer, int index, boolean littleEndian);
 
-    public abstract void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value);
+    public abstract void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, Object value);
 
     public static TypedArrayFactory[] factories(JSContext context) {
         if (context.getContextOptions().isBigInt()) {
@@ -266,7 +266,7 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public Object getElement(DynamicObject object, long index, boolean condition) {
             if (hasElement(object, index, condition)) {
-                return getInt(object, (int) index, condition);
+                return getInt(object, (int) index);
             } else {
                 return Undefined.instance;
             }
@@ -275,28 +275,28 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public Object getElementInBounds(DynamicObject object, long index, boolean condition) {
             assert hasElement(object, index, condition);
-            return getInt(object, (int) index, condition);
+            return getInt(object, (int) index);
         }
 
         @Override
         public TypedIntArray<T> setElementImpl(DynamicObject object, long index, Object value, boolean strict, boolean condition) {
             if (hasElement(object, index, condition)) {
-                setInt(object, (int) index, JSRuntime.toInt32(value), condition);
+                setInt(object, (int) index, JSRuntime.toInt32(value));
             }
             return this;
         }
 
-        public final int getInt(DynamicObject object, int index, boolean condition) {
-            return getIntImpl(getBufferFromTypedArrayT(object, condition), getOffset(object, condition), index);
+        public final int getInt(DynamicObject object, int index) {
+            return getIntImpl(getBufferFromTypedArrayT(object), getOffset(object), index);
         }
 
-        public final void setInt(DynamicObject object, int index, int value, boolean condition) {
-            setIntImpl(getBufferFromTypedArrayT(object, condition), getOffset(object, condition), index, value);
+        public final void setInt(DynamicObject object, int index, int value) {
+            setIntImpl(getBufferFromTypedArrayT(object), getOffset(object), index, value);
         }
 
         @SuppressWarnings("unchecked")
-        private T getBufferFromTypedArrayT(DynamicObject object, boolean condition) {
-            return (T) super.getBufferFromTypedArray(object, condition);
+        private T getBufferFromTypedArrayT(DynamicObject object) {
+            return (T) super.getBufferFromTypedArray(object);
         }
 
         public abstract int getIntImpl(T buffer, int offset, int index);
@@ -322,13 +322,13 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            return getBufferAccess(littleEndian).getInt8(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1);
+        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian) {
+            return getBufferAccess(littleEndian).getInt8(JSArrayBuffer.getByteArray(buffer), 0, index, 1);
         }
 
         @Override
-        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            getBufferAccess(littleEndian).putInt8(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1, JSRuntime.toInt32((Number) value));
+        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, Object value) {
+            getBufferAccess(littleEndian).putInt8(JSArrayBuffer.getByteArray(buffer), 0, index, 1, JSRuntime.toInt32((Number) value));
         }
     }
 
@@ -353,13 +353,13 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            return (int) getByteBufferFromBuffer(buffer, littleEndian, condition).get(index);
+        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian) {
+            return (int) getByteBufferFromBuffer(buffer, littleEndian).get(index);
         }
 
         @Override
-        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            getByteBufferFromBuffer(buffer, littleEndian, condition).put(index, (byte) JSRuntime.toInt32((Number) value));
+        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, Object value) {
+            getByteBufferFromBuffer(buffer, littleEndian).put(index, (byte) JSRuntime.toInt32((Number) value));
         }
     }
 
@@ -381,13 +381,13 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            return getBufferAccess(littleEndian).getUint8(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1);
+        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian) {
+            return getBufferAccess(littleEndian).getUint8(JSArrayBuffer.getByteArray(buffer), 0, index, 1);
         }
 
         @Override
-        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            getBufferAccess(littleEndian).putInt8(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1, JSRuntime.toInt32((Number) value));
+        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, Object value) {
+            getBufferAccess(littleEndian).putInt8(JSArrayBuffer.getByteArray(buffer), 0, index, 1, JSRuntime.toInt32((Number) value));
         }
     }
 
@@ -412,13 +412,13 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            return getByteBufferFromBuffer(buffer, littleEndian, condition).get(index) & 0xff;
+        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian) {
+            return getByteBufferFromBuffer(buffer, littleEndian).get(index) & 0xff;
         }
 
         @Override
-        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            getByteBufferFromBuffer(buffer, littleEndian, condition).put(index, (byte) JSRuntime.toInt32((Number) value));
+        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, Object value) {
+            getByteBufferFromBuffer(buffer, littleEndian).put(index, (byte) JSRuntime.toInt32((Number) value));
         }
     }
 
@@ -430,7 +430,7 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public TypedIntArray<T> setElementImpl(DynamicObject object, long index, Object value, boolean strict, boolean condition) {
             if (hasElement(object, index, condition)) {
-                setInt(object, (int) index, toInt(JSRuntime.toDouble(value)), condition);
+                setInt(object, (int) index, toInt(JSRuntime.toDouble(value)));
             }
             return this;
         }
@@ -460,13 +460,13 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            return getBufferAccess(littleEndian).getUint8(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1);
+        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian) {
+            return getBufferAccess(littleEndian).getUint8(JSArrayBuffer.getByteArray(buffer), 0, index, 1);
         }
 
         @Override
-        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            getBufferAccess(littleEndian).putInt8(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1, uint8Clamp(toInt(JSRuntime.toDouble((Number) value))));
+        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, Object value) {
+            getBufferAccess(littleEndian).putInt8(JSArrayBuffer.getByteArray(buffer), 0, index, 1, uint8Clamp(toInt(JSRuntime.toDouble((Number) value))));
         }
     }
 
@@ -491,13 +491,13 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            return getByteBufferFromBuffer(buffer, littleEndian, condition).get(index) & 0xff;
+        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian) {
+            return getByteBufferFromBuffer(buffer, littleEndian).get(index) & 0xff;
         }
 
         @Override
-        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            getByteBufferFromBuffer(buffer, littleEndian, condition).put(index, (byte) uint8Clamp(toInt(JSRuntime.toDouble((Number) value))));
+        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, Object value) {
+            getByteBufferFromBuffer(buffer, littleEndian).put(index, (byte) uint8Clamp(toInt(JSRuntime.toDouble((Number) value))));
         }
     }
 
@@ -519,13 +519,13 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            return getBufferAccess(littleEndian).getInt16(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1);
+        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian) {
+            return getBufferAccess(littleEndian).getInt16(JSArrayBuffer.getByteArray(buffer), 0, index, 1);
         }
 
         @Override
-        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            getBufferAccess(littleEndian).putInt16(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1, JSRuntime.toInt32((Number) value));
+        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, Object value) {
+            getBufferAccess(littleEndian).putInt16(JSArrayBuffer.getByteArray(buffer), 0, index, 1, JSRuntime.toInt32((Number) value));
         }
     }
 
@@ -550,13 +550,13 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            return (int) getByteBufferFromBuffer(buffer, littleEndian, condition).getShort(index);
+        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian) {
+            return (int) getByteBufferFromBuffer(buffer, littleEndian).getShort(index);
         }
 
         @Override
-        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            getByteBufferFromBuffer(buffer, littleEndian, condition).putShort(index, (short) JSRuntime.toInt32((Number) value));
+        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, Object value) {
+            getByteBufferFromBuffer(buffer, littleEndian).putShort(index, (short) JSRuntime.toInt32((Number) value));
         }
     }
 
@@ -578,13 +578,13 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            return getBufferAccess(littleEndian).getUint16(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1);
+        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian) {
+            return getBufferAccess(littleEndian).getUint16(JSArrayBuffer.getByteArray(buffer), 0, index, 1);
         }
 
         @Override
-        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            getBufferAccess(littleEndian).putInt16(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1, JSRuntime.toInt32((Number) value));
+        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, Object value) {
+            getBufferAccess(littleEndian).putInt16(JSArrayBuffer.getByteArray(buffer), 0, index, 1, JSRuntime.toInt32((Number) value));
         }
     }
 
@@ -609,13 +609,13 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            return (int) getByteBufferFromBuffer(buffer, littleEndian, condition).getChar(index);
+        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian) {
+            return (int) getByteBufferFromBuffer(buffer, littleEndian).getChar(index);
         }
 
         @Override
-        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            getByteBufferFromBuffer(buffer, littleEndian, condition).putChar(index, (char) JSRuntime.toInt32((Number) value));
+        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, Object value) {
+            getByteBufferFromBuffer(buffer, littleEndian).putChar(index, (char) JSRuntime.toInt32((Number) value));
         }
     }
 
@@ -637,13 +637,13 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            return getBufferAccess(littleEndian).getInt32(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1);
+        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian) {
+            return getBufferAccess(littleEndian).getInt32(JSArrayBuffer.getByteArray(buffer), 0, index, 1);
         }
 
         @Override
-        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            getBufferAccess(littleEndian).putInt32(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1, JSRuntime.toInt32((Number) value));
+        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, Object value) {
+            getBufferAccess(littleEndian).putInt32(JSArrayBuffer.getByteArray(buffer), 0, index, 1, JSRuntime.toInt32((Number) value));
         }
     }
 
@@ -668,13 +668,13 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            return getByteBufferFromBuffer(buffer, littleEndian, condition).getInt(index);
+        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian) {
+            return getByteBufferFromBuffer(buffer, littleEndian).getInt(index);
         }
 
         @Override
-        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            getByteBufferFromBuffer(buffer, littleEndian, condition).putInt(index, JSRuntime.toInt32((Number) value));
+        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, Object value) {
+            getByteBufferFromBuffer(buffer, littleEndian).putInt(index, JSRuntime.toInt32((Number) value));
         }
     }
 
@@ -688,7 +688,7 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public Object getElement(DynamicObject object, long index, boolean condition) {
             if (hasElement(object, index, condition)) {
-                int value = getInt(object, (int) index, condition);
+                int value = getInt(object, (int) index);
                 return toUint32(value);
             } else {
                 return Undefined.instance;
@@ -706,7 +706,7 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public Object getElementInBounds(DynamicObject object, long index, boolean condition) {
             assert hasElement(object, index, condition);
-            return toUint32(getInt(object, (int) index, condition));
+            return toUint32(getInt(object, (int) index));
         }
     }
 
@@ -726,13 +726,13 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            return toUint32((int) getBufferAccess(littleEndian).getUint32(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1));
+        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian) {
+            return toUint32((int) getBufferAccess(littleEndian).getUint32(JSArrayBuffer.getByteArray(buffer), 0, index, 1));
         }
 
         @Override
-        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            getBufferAccess(littleEndian).putInt32(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1, JSRuntime.toInt32((Number) value));
+        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, Object value) {
+            getBufferAccess(littleEndian).putInt32(JSArrayBuffer.getByteArray(buffer), 0, index, 1, JSRuntime.toInt32((Number) value));
         }
     }
 
@@ -757,13 +757,13 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            return toUint32(getByteBufferFromBuffer(buffer, littleEndian, condition).getInt(index));
+        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian) {
+            return toUint32(getByteBufferFromBuffer(buffer, littleEndian).getInt(index));
         }
 
         @Override
-        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            getByteBufferFromBuffer(buffer, littleEndian, condition).putInt(index, JSRuntime.toInt32((Number) value));
+        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, Object value) {
+            getByteBufferFromBuffer(buffer, littleEndian).putInt(index, JSRuntime.toInt32((Number) value));
         }
     }
 
@@ -775,7 +775,7 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public Object getElement(DynamicObject object, long index, boolean condition) {
             if (hasElement(object, index, condition)) {
-                return getBigInt(object, (int) index, condition);
+                return getBigInt(object, (int) index);
             } else {
                 return Undefined.instance;
             }
@@ -784,28 +784,28 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public Object getElementInBounds(DynamicObject object, long index, boolean condition) {
             assert hasElement(object, index, condition);
-            return getBigInt(object, (int) index, condition);
+            return getBigInt(object, (int) index);
         }
 
         @Override
         public TypedBigIntArray<T> setElementImpl(DynamicObject object, long index, Object value, boolean strict, boolean condition) {
             if (hasElement(object, index, condition)) {
-                setBigInt(object, (int) index, JSRuntime.toBigInt(value), condition);
+                setBigInt(object, (int) index, JSRuntime.toBigInt(value));
             }
             return this;
         }
 
-        public final BigInt getBigInt(DynamicObject object, int index, boolean condition) {
-            return getBigIntImpl(getBufferFromTypedArrayT(object, condition), getOffset(object, condition), index);
+        public final BigInt getBigInt(DynamicObject object, int index) {
+            return getBigIntImpl(getBufferFromTypedArrayT(object), getOffset(object), index);
         }
 
-        public final void setBigInt(DynamicObject object, int index, BigInt value, boolean condition) {
-            setBigIntImpl(getBufferFromTypedArrayT(object, condition), getOffset(object, condition), index, value);
+        public final void setBigInt(DynamicObject object, int index, BigInt value) {
+            setBigIntImpl(getBufferFromTypedArrayT(object), getOffset(object), index, value);
         }
 
         @SuppressWarnings("unchecked")
-        private T getBufferFromTypedArrayT(DynamicObject object, boolean condition) {
-            return (T) super.getBufferFromTypedArray(object, condition);
+        private T getBufferFromTypedArrayT(DynamicObject object) {
+            return (T) super.getBufferFromTypedArray(object);
         }
 
         public abstract BigInt getBigIntImpl(T buffer, int offset, int index);
@@ -821,13 +821,13 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public BigInt getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            return BigInt.valueOf(getBufferAccess(littleEndian).getInt64(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1));
+        public BigInt getBufferElement(DynamicObject buffer, int index, boolean littleEndian) {
+            return BigInt.valueOf(getBufferAccess(littleEndian).getInt64(JSArrayBuffer.getByteArray(buffer), 0, index, 1));
         }
 
         @Override
-        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            getBufferAccess(littleEndian).putInt64(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1, JSRuntime.toBigInt(value).longValue());
+        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, Object value) {
+            getBufferAccess(littleEndian).putInt64(JSArrayBuffer.getByteArray(buffer), 0, index, 1, JSRuntime.toBigInt(value).longValue());
         }
 
         @Override
@@ -852,13 +852,13 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public BigInt getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            return BigInt.valueOf(getByteBufferFromBuffer(buffer, littleEndian, condition).getLong(index));
+        public BigInt getBufferElement(DynamicObject buffer, int index, boolean littleEndian) {
+            return BigInt.valueOf(getByteBufferFromBuffer(buffer, littleEndian).getLong(index));
         }
 
         @Override
-        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            getByteBufferFromBuffer(buffer, littleEndian, condition).putLong(index, JSRuntime.toBigInt(value).longValue());
+        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, Object value) {
+            getByteBufferFromBuffer(buffer, littleEndian).putLong(index, JSRuntime.toBigInt(value).longValue());
         }
 
         @Override
@@ -880,13 +880,13 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public BigInt getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            return BigInt.valueOfUnsigned(getBufferAccess(littleEndian).getInt64(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1));
+        public BigInt getBufferElement(DynamicObject buffer, int index, boolean littleEndian) {
+            return BigInt.valueOfUnsigned(getBufferAccess(littleEndian).getInt64(JSArrayBuffer.getByteArray(buffer), 0, index, 1));
         }
 
         @Override
-        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            getBufferAccess(littleEndian).putInt64(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1, JSRuntime.toBigInt(value).longValue());
+        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, Object value) {
+            getBufferAccess(littleEndian).putInt64(JSArrayBuffer.getByteArray(buffer), 0, index, 1, JSRuntime.toBigInt(value).longValue());
         }
 
         @Override
@@ -912,13 +912,13 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public BigInt getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            return BigInt.valueOfUnsigned(getByteBufferFromBuffer(buffer, littleEndian, condition).getLong(index));
+        public BigInt getBufferElement(DynamicObject buffer, int index, boolean littleEndian) {
+            return BigInt.valueOfUnsigned(getByteBufferFromBuffer(buffer, littleEndian).getLong(index));
         }
 
         @Override
-        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            getByteBufferFromBuffer(buffer, littleEndian, condition).putLong(index, JSRuntime.toBigInt(value).longValue());
+        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, Object value) {
+            getByteBufferFromBuffer(buffer, littleEndian).putLong(index, JSRuntime.toBigInt(value).longValue());
         }
 
         @Override
@@ -940,7 +940,7 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public final Object getElement(DynamicObject object, long index, boolean condition) {
             if (hasElement(object, index, condition)) {
-                return getDouble(object, (int) index, condition);
+                return getDouble(object, (int) index);
             } else {
                 return Undefined.instance;
             }
@@ -949,28 +949,28 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public Object getElementInBounds(DynamicObject object, long index, boolean condition) {
             assert hasElement(object, index, condition);
-            return getDouble(object, (int) index, condition);
+            return getDouble(object, (int) index);
         }
 
         @Override
         public final TypedFloatArray<T> setElementImpl(DynamicObject object, long index, Object value, boolean strict, boolean condition) {
             if (hasElement(object, index, condition)) {
-                setDouble(object, (int) index, JSRuntime.toDouble(value), condition);
+                setDouble(object, (int) index, JSRuntime.toDouble(value));
             }
             return this;
         }
 
         @SuppressWarnings("unchecked")
-        private T getBufferFromTypedArrayT(DynamicObject object, boolean condition) {
-            return (T) super.getBufferFromTypedArray(object, condition);
+        private T getBufferFromTypedArrayT(DynamicObject object) {
+            return (T) super.getBufferFromTypedArray(object);
         }
 
-        public final double getDouble(DynamicObject object, int index, boolean condition) {
-            return getDoubleImpl(getBufferFromTypedArrayT(object, condition), getOffset(object, condition), index);
+        public final double getDouble(DynamicObject object, int index) {
+            return getDoubleImpl(getBufferFromTypedArrayT(object), getOffset(object), index);
         }
 
-        public final void setDouble(DynamicObject object, int index, double value, boolean condition) {
-            setDoubleImpl(getBufferFromTypedArrayT(object, condition), getOffset(object, condition), index, value);
+        public final void setDouble(DynamicObject object, int index, double value) {
+            setDoubleImpl(getBufferFromTypedArrayT(object), getOffset(object), index, value);
         }
 
         public abstract double getDoubleImpl(T buffer, int offset, int index);
@@ -996,13 +996,13 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            return (double) getBufferAccess(littleEndian).getFloat(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1);
+        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian) {
+            return (double) getBufferAccess(littleEndian).getFloat(JSArrayBuffer.getByteArray(buffer), 0, index, 1);
         }
 
         @Override
-        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            getBufferAccess(littleEndian).putFloat(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1, JSRuntime.floatValue((Number) value));
+        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, Object value) {
+            getBufferAccess(littleEndian).putFloat(JSArrayBuffer.getByteArray(buffer), 0, index, 1, JSRuntime.floatValue((Number) value));
         }
     }
 
@@ -1027,13 +1027,13 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            return (double) getByteBufferFromBuffer(buffer, littleEndian, condition).getFloat(index);
+        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian) {
+            return (double) getByteBufferFromBuffer(buffer, littleEndian).getFloat(index);
         }
 
         @Override
-        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            getByteBufferFromBuffer(buffer, littleEndian, condition).putFloat(index, JSRuntime.floatValue((Number) value));
+        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, Object value) {
+            getByteBufferFromBuffer(buffer, littleEndian).putFloat(index, JSRuntime.floatValue((Number) value));
         }
     }
 
@@ -1055,13 +1055,13 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            return getBufferAccess(littleEndian).getDouble(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1);
+        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian) {
+            return getBufferAccess(littleEndian).getDouble(JSArrayBuffer.getByteArray(buffer), 0, index, 1);
         }
 
         @Override
-        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            getBufferAccess(littleEndian).putDouble(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1, JSRuntime.doubleValue((Number) value));
+        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, Object value) {
+            getBufferAccess(littleEndian).putDouble(JSArrayBuffer.getByteArray(buffer), 0, index, 1, JSRuntime.doubleValue((Number) value));
         }
     }
 
@@ -1086,13 +1086,13 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            return getByteBufferFromBuffer(buffer, littleEndian, condition).getDouble(index);
+        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian) {
+            return getByteBufferFromBuffer(buffer, littleEndian).getDouble(index);
         }
 
         @Override
-        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            getByteBufferFromBuffer(buffer, littleEndian, condition).putDouble(index, JSRuntime.doubleValue((Number) value));
+        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, Object value) {
+            getByteBufferFromBuffer(buffer, littleEndian).putDouble(index, JSRuntime.doubleValue((Number) value));
         }
     }
 }

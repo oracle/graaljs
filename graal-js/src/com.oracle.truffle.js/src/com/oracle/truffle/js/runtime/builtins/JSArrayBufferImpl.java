@@ -66,10 +66,6 @@ public abstract class JSArrayBufferImpl extends JSBasicObject {
     public abstract void detachArrayBuffer();
 
     public static byte[] getByteArray(DynamicObject thisObj) {
-        return getByteArray(thisObj, JSAbstractBuffer.isJSAbstractHeapBuffer(thisObj));
-    }
-
-    public static byte[] getByteArray(DynamicObject thisObj, boolean condition) {
         assert JSAbstractBuffer.isJSAbstractHeapBuffer(thisObj);
         return ((HeapArrayBuffer) thisObj).getByteArray();
     }
@@ -83,15 +79,11 @@ public abstract class JSArrayBufferImpl extends JSBasicObject {
         return getDirectByteBuffer(thisObj).capacity();
     }
 
-    public static ByteBuffer getDirectByteBuffer(DynamicObject thisObj) {
-        return getDirectByteBuffer(thisObj, JSArrayBuffer.isJSDirectArrayBuffer(thisObj));
-    }
-
     public static void setDirectByteBuffer(DynamicObject thisObj, ByteBuffer buffer) {
         ((AbstractDirectArrayBuffer) thisObj).setByteBuffer(buffer);
     }
 
-    public static ByteBuffer getDirectByteBuffer(DynamicObject thisObj, boolean condition) {
+    public static ByteBuffer getDirectByteBuffer(DynamicObject thisObj) {
         assert JSArrayBuffer.isJSDirectArrayBuffer(thisObj) || JSSharedArrayBuffer.isJSSharedArrayBuffer(thisObj);
         return DirectByteBufferHelper.cast(((AbstractDirectArrayBuffer) thisObj).getByteBuffer());
     }

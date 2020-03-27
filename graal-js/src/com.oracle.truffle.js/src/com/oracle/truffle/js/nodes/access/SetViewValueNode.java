@@ -128,7 +128,7 @@ public abstract class SetViewValueNode extends JavaScriptNode {
         assert getIndex + viewOffset <= Integer.MAX_VALUE;
         int bufferIndex = (int) (getIndex + viewOffset);
         TypedArray strategy = typeProfile.profile(factory.createArrayType(JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer), true));
-        strategy.setBufferElement(buffer, bufferIndex, isLittleEndian, JSDataView.isJSDataView(view), numberValue);
+        strategy.setBufferElement(buffer, bufferIndex, isLittleEndian, numberValue);
         return Undefined.instance;
     }
 

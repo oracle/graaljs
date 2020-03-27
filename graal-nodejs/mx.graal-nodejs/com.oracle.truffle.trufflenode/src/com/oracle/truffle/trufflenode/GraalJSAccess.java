@@ -1222,7 +1222,7 @@ public final class GraalJSAccess {
         if (JSDataView.isJSDataView(arrayBufferView)) {
             return JSDataView.typedArrayGetOffset(arrayBufferView);
         } else {
-            return JSArrayBufferView.getByteOffset(arrayBufferView, JSArrayBufferView.isJSArrayBufferView(arrayBufferView), context);
+            return JSArrayBufferView.getByteOffset(arrayBufferView, context);
         }
     }
 

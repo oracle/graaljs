@@ -96,12 +96,8 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
     }
 
     public static ByteBuffer getDirectByteBuffer(DynamicObject thisObj) {
-        return getDirectByteBuffer(thisObj, JSArrayBuffer.isJSDirectArrayBuffer(thisObj));
-    }
-
-    public static ByteBuffer getDirectByteBuffer(DynamicObject thisObj, boolean condition) {
         assert isJSDirectArrayBuffer(thisObj) || JSSharedArrayBuffer.isJSSharedArrayBuffer(thisObj);
-        return JSArrayBufferImpl.getDirectByteBuffer(thisObj, condition);
+        return JSArrayBufferImpl.getDirectByteBuffer(thisObj);
     }
 
     public static DynamicObject createDirectArrayBuffer(JSContext context, int length) {
@@ -239,10 +235,10 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
     public static boolean isDetachedBuffer(DynamicObject arrayBuffer) {
         assert isJSAbstractBuffer(arrayBuffer);
         if (isJSHeapArrayBuffer(arrayBuffer)) {
-            return getByteArray(arrayBuffer, isJSHeapArrayBuffer(arrayBuffer)) == null;
+            return getByteArray(arrayBuffer) == null;
         } else {
             assert isJSDirectOrSharedArrayBuffer(arrayBuffer);
-            return getDirectByteBuffer(arrayBuffer, isJSDirectArrayBuffer(arrayBuffer)) == null;
+            return getDirectByteBuffer(arrayBuffer) == null;
         }
     }
 

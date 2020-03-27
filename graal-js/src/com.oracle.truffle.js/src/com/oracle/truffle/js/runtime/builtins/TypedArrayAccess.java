@@ -57,10 +57,6 @@ public class TypedArrayAccess {
         return ((JSArrayBufferViewBase) thisObj).length;
     }
 
-    public int getLength(DynamicObject thisObj, boolean condition) {
-        return ((JSArrayBufferViewBase) thisObj).length;
-    }
-
     public void setLength(DynamicObject thisObj, int length) {
         ((JSArrayBufferViewBase) thisObj).length = length;
     }
@@ -69,20 +65,12 @@ public class TypedArrayAccess {
         return ((JSArrayBufferViewBase) thisObj).offset;
     }
 
-    public int getOffset(DynamicObject thisObj, boolean condition) {
-        return ((JSArrayBufferViewBase) thisObj).offset;
-    }
-
     public void setOffset(DynamicObject thisObj, int offset) {
         ((JSArrayBufferViewBase) thisObj).offset = offset;
     }
 
     public byte[] getByteArray(DynamicObject thisObj) {
-        return getByteArray(thisObj, JSArrayBufferView.isJSArrayBufferView(thisObj));
-    }
-
-    public byte[] getByteArray(DynamicObject thisObj, boolean condition) {
-        byte[] byteArray = ((JSArrayBufferImpl.HeapArrayBuffer) getArrayBuffer(thisObj, condition)).getByteArray();
+        byte[] byteArray = ((JSArrayBufferImpl.HeapArrayBuffer) getArrayBuffer(thisObj)).getByteArray();
         if (byteArray == null) {
             CompilerDirectives.transferToInterpreter();
             throw Errors.createTypeErrorDetachedBuffer();
@@ -90,8 +78,8 @@ public class TypedArrayAccess {
         return byteArray;
     }
 
-    public ByteBuffer getByteBuffer(DynamicObject thisObj, boolean condition) {
-        ByteBuffer byteBuffer = ((JSArrayBufferImpl.AbstractDirectArrayBuffer) getArrayBuffer(thisObj, condition)).getByteBuffer();
+    public ByteBuffer getByteBuffer(DynamicObject thisObj) {
+        ByteBuffer byteBuffer = ((JSArrayBufferImpl.AbstractDirectArrayBuffer) getArrayBuffer(thisObj)).getByteBuffer();
         if (byteBuffer == null) {
             CompilerDirectives.transferToInterpreter();
             throw Errors.createTypeErrorDetachedBuffer();
@@ -99,20 +87,12 @@ public class TypedArrayAccess {
         return byteBuffer;
     }
 
-    public DynamicObject getArrayBuffer(DynamicObject thisObj, boolean condition) {
+    public DynamicObject getArrayBuffer(DynamicObject thisObj) {
         assert JSArrayBufferView.isJSArrayBufferView(thisObj);
         return ((JSArrayBufferViewBase) thisObj).getArrayBuffer();
     }
 
-    public DynamicObject getArrayBuffer(DynamicObject thisObj) {
-        return getArrayBuffer(thisObj, JSArrayBufferView.isJSArrayBufferView(thisObj));
-    }
-
     public TypedArray getArrayType(Object thisObj) {
-        return ((JSTypedArrayImpl) thisObj).arrayType;
-    }
-
-    public TypedArray getArrayType(Object thisObj, boolean arrayCondition) {
         return ((JSTypedArrayImpl) thisObj).arrayType;
     }
 

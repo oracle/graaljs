@@ -93,40 +93,24 @@ public final class JSArrayBufferView extends JSBuiltinObject {
     }
 
     public static TypedArray typedArrayGetArrayType(DynamicObject thisObj) {
-        return typedArrayGetArrayType(thisObj, JSArrayBufferView.isJSArrayBufferView(thisObj));
-    }
-
-    public static TypedArray typedArrayGetArrayType(DynamicObject thisObj, boolean condition) {
         assert JSArrayBufferView.isJSArrayBufferView(thisObj);
-        return typedArray().getArrayType(thisObj, condition);
+        return typedArray().getArrayType(thisObj);
     }
 
     public static int typedArrayGetLength(DynamicObject thisObj) {
-        return typedArrayGetLength(thisObj, JSArrayBufferView.isJSArrayBufferView(thisObj));
-    }
-
-    public static int typedArrayGetLength(DynamicObject thisObj, boolean condition) {
-        return typedArray().getLength(thisObj, condition);
+        return typedArray().getLength(thisObj);
     }
 
     public static int typedArrayGetOffset(DynamicObject thisObj) {
-        return typedArrayGetOffset(thisObj, JSArrayBufferView.isJSArrayBufferView(thisObj));
-    }
-
-    public static int typedArrayGetOffset(DynamicObject thisObj, boolean condition) {
-        return typedArray().getOffset(thisObj, condition);
+        return typedArray().getOffset(thisObj);
     }
 
     public static byte[] typedArrayGetByteArray(DynamicObject thisObj) {
-        return typedArrayGetByteArray(thisObj, JSArrayBufferView.isJSArrayBufferView(thisObj));
+        return typedArray().getByteArray(thisObj);
     }
 
-    public static byte[] typedArrayGetByteArray(DynamicObject thisObj, boolean condition) {
-        return typedArray().getByteArray(thisObj, condition);
-    }
-
-    public static ByteBuffer typedArrayGetByteBuffer(DynamicObject thisObj, boolean condition) {
-        return DirectByteBufferHelper.cast(typedArray().getByteBuffer(thisObj, condition));
+    public static ByteBuffer typedArrayGetByteBuffer(DynamicObject thisObj) {
+        return DirectByteBufferHelper.cast(typedArray().getByteBuffer(thisObj));
     }
 
     private static String typedArrayGetName(DynamicObject thisObj) {
@@ -136,13 +120,9 @@ public final class JSArrayBufferView extends JSBuiltinObject {
     private JSArrayBufferView() {
     }
 
-    public static DynamicObject getArrayBuffer(DynamicObject thisObj, boolean condition) {
-        assert JSArrayBufferView.isJSArrayBufferView(thisObj);
-        return typedArray().getArrayBuffer(thisObj, condition);
-    }
-
     public static DynamicObject getArrayBuffer(DynamicObject thisObj) {
-        return getArrayBuffer(thisObj, JSArrayBufferView.isJSArrayBufferView(thisObj));
+        assert JSArrayBufferView.isJSArrayBufferView(thisObj);
+        return typedArray().getArrayBuffer(thisObj);
     }
 
     public static int getByteLength(DynamicObject store, boolean condition, JSContext ctx) {
@@ -150,7 +130,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         if (JSArrayBufferView.hasDetachedBuffer(store, ctx)) {
             return 0;
         }
-        TypedArray typedArray = typedArrayGetArrayType(store, condition);
+        TypedArray typedArray = typedArrayGetArrayType(store);
         return typedArray.lengthInt(store, condition) * typedArray.bytesPerElement();
     }
 
@@ -159,16 +139,16 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         if (JSArrayBufferView.hasDetachedBuffer(store, ctx)) {
             return 0;
         }
-        TypedArray typedArray = profile.profile(typedArrayGetArrayType(store, condition));
+        TypedArray typedArray = profile.profile(typedArrayGetArrayType(store));
         return typedArray.lengthInt(store, condition) * typedArray.bytesPerElement();
     }
 
-    public static int getByteOffset(DynamicObject store, boolean condition, JSContext ctx) {
+    public static int getByteOffset(DynamicObject store, JSContext ctx) {
         assert JSArrayBufferView.isJSArrayBufferView(store);
         if (JSArrayBufferView.hasDetachedBuffer(store, ctx)) {
             return 0;
         }
-        return typedArrayGetOffset(store, condition);
+        return typedArrayGetOffset(store);
     }
 
     @TruffleBoundary
@@ -328,7 +308,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         if (JSRuntime.isNegativeZero(d) || d < 0) {
             return false;
         }
-        return d < JSArrayBufferView.typedArrayGetLength(thisObj, JSArrayBufferView.isJSArrayBufferView(thisObj));
+        return d < JSArrayBufferView.typedArrayGetLength(thisObj);
     }
 
     public static DynamicObject createArrayBufferView(JSContext context, DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length) {
@@ -440,13 +420,13 @@ public final class JSArrayBufferView extends JSBuiltinObject {
                 if (detachedBufferProfile.profile(JSArrayBufferView.hasDetachedBuffer(view, ctx))) {
                     return 0;
                 }
-                return typedArrayGetLength(view, condition);
+                return typedArrayGetLength(view);
             }
         });
         putArrayBufferViewPrototypeGetter(realm, prototype, BUFFER, BuiltinFunctionKey.ArrayBufferViewBuffer, new ArrayBufferViewGetter() {
             @Override
             public Object apply(DynamicObject view, boolean condition) {
-                return getArrayBuffer(view, condition);
+                return getArrayBuffer(view);
             }
         });
         putArrayBufferViewPrototypeGetter(realm, prototype, BYTE_LENGTH, BuiltinFunctionKey.ArrayBufferViewByteLength, new ArrayBufferViewGetter() {
@@ -458,7 +438,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         putArrayBufferViewPrototypeGetter(realm, prototype, BYTE_OFFSET, BuiltinFunctionKey.ArrayBufferViewByteByteOffset, new ArrayBufferViewGetter() {
             @Override
             public Object apply(DynamicObject view, boolean condition) {
-                return getByteOffset(view, condition, ctx);
+                return getByteOffset(view, ctx);
             }
         });
         JSFunctionData toStringData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.ArrayBufferViewToString, (c) -> {
