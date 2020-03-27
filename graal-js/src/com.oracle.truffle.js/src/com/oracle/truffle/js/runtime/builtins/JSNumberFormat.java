@@ -90,7 +90,6 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.SafeInteger;
-import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -135,7 +134,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         JSObjectUtil.putConstructorProperty(ctx, numberFormatPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, numberFormatPrototype, NumberFormatPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putBuiltinAccessorProperty(numberFormatPrototype, "format", createFormatFunctionGetter(realm, ctx), Undefined.instance);
-        JSObjectUtil.putDataProperty(ctx, numberFormatPrototype, Symbol.SYMBOL_TO_STRING_TAG, "Intl.NumberFormat", JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putToStringTag(numberFormatPrototype, "Intl.NumberFormat");
         return numberFormatPrototype;
     }
 

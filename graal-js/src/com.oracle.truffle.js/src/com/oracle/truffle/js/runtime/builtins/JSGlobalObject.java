@@ -45,8 +45,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -70,7 +68,7 @@ public final class JSGlobalObject extends JSBuiltinObject {
         DynamicObject global = new GlobalObject(globalObjectShape);
         JSObjectUtil.setOrVerifyPrototype(context, global, objectPrototype);
 
-        JSObjectUtil.putDataProperty(context, global, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putToStringTag(global, CLASS_NAME);
         return global;
     }
 

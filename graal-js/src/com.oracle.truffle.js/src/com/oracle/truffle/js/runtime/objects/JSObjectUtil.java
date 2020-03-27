@@ -60,6 +60,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.Builtin;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -216,6 +217,11 @@ public final class JSObjectUtil {
 
     public static void putConstructorPrototypeProperty(JSContext ctx, DynamicObject constructor, DynamicObject prototype) {
         putDataProperty(ctx, constructor, JSObject.PROTOTYPE, prototype, JSAttributes.notConfigurableNotEnumerableNotWritable());
+    }
+
+    public static void putToStringTag(DynamicObject prototype, String toStringTag) {
+        assert checkForExistingProperty(prototype, Symbol.SYMBOL_TO_STRING_TAG);
+        DynamicObjectLibrary.getUncached().putWithFlags(prototype, Symbol.SYMBOL_TO_STRING_TAG, toStringTag, JSAttributes.configurableNotEnumerableNotWritable());
     }
 
     @TruffleBoundary

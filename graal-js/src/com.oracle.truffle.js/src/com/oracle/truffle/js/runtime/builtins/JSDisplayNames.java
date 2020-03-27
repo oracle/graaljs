@@ -52,7 +52,6 @@ import com.oracle.truffle.js.builtins.intl.DisplayNamesPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -93,7 +92,7 @@ public final class JSDisplayNames extends JSBuiltinObject implements JSConstruct
         DynamicObject displayNamesPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, displayNamesPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, displayNamesPrototype, DisplayNamesPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putDataProperty(ctx, displayNamesPrototype, Symbol.SYMBOL_TO_STRING_TAG, "Intl.DisplayNames", JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putToStringTag(displayNamesPrototype, "Intl.DisplayNames");
         return displayNamesPrototype;
     }
 

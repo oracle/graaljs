@@ -59,7 +59,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -210,7 +209,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
         DynamicObject segmenterPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, segmenterPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, segmenterPrototype, SegmenterPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putDataProperty(ctx, segmenterPrototype, Symbol.SYMBOL_TO_STRING_TAG, "Intl.Segmenter", JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putToStringTag(segmenterPrototype, "Intl.Segmenter");
         return segmenterPrototype;
     }
 
@@ -341,7 +340,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
     public static DynamicObject createSegmentIteratorPrototype(JSContext context, JSRealm realm) {
         DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, realm.getIteratorPrototype());
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, SegmentIteratorPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putToStringTag(prototype, ITERATOR_CLASS_NAME);
         JSFunctionData breakTypeFd = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.SegmenterBreakType, (c) -> {
             CallTarget ct = createPropertyGetterCallTarget(context, it -> it.getBreakType() != null ? it.getBreakType() : Undefined.instance);
             return JSFunctionData.createCallOnly(c, ct, 0, "get " + IntlUtil.BREAK_TYPE);

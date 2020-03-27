@@ -62,7 +62,6 @@ import com.oracle.truffle.js.builtins.intl.RelativeTimeFormatPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -103,7 +102,7 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
         DynamicObject relativeTimeFormatPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, relativeTimeFormatPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, relativeTimeFormatPrototype, RelativeTimeFormatPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putDataProperty(ctx, relativeTimeFormatPrototype, Symbol.SYMBOL_TO_STRING_TAG, "Intl.RelativeTimeFormat", JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putToStringTag(relativeTimeFormatPrototype, "Intl.RelativeTimeFormat");
         return relativeTimeFormatPrototype;
     }
 

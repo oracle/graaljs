@@ -127,7 +127,7 @@ public final class JSMap extends JSBuiltinObject implements JSConstructorFactory
         // sets the size just for the prototype
         JSObjectUtil.putBuiltinAccessorProperty(prototype, SIZE, createSizeGetterFunction(realm), Undefined.instance);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, MapPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
         // The initial value of the @@iterator property is the same function object as
         // the initial value of the entries property.
         Object entriesFunction = JSDynamicObject.getOrNull(prototype, JSArray.ENTRIES);

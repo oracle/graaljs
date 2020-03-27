@@ -146,7 +146,7 @@ public final class JSSet extends JSBuiltinObject implements JSConstructorFactory
         // sets the size just for the prototype
         JSObjectUtil.putBuiltinAccessorProperty(prototype, SIZE, createSizeGetterFunction(realm), Undefined.instance);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, SetPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
         Object values = JSDynamicObject.getOrNull(prototype, "values");
         // The initial value of the keys and @@iterator properties is the same function object as
         // the initial value of the values property.

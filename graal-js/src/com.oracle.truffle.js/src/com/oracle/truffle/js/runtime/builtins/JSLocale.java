@@ -56,8 +56,6 @@ import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -96,7 +94,7 @@ public final class JSLocale extends JSBuiltinObject implements JSConstructorFact
         JSContext ctx = realm.getContext();
         DynamicObject localePrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, localePrototype, ctor);
-        JSObjectUtil.putDataProperty(ctx, localePrototype, Symbol.SYMBOL_TO_STRING_TAG, "Intl.Locale", JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putToStringTag(localePrototype, "Intl.Locale");
         JSObjectUtil.putFunctionsFromContainer(realm, localePrototype, LocalePrototypeBuiltins.BUILTINS);
         JSObjectUtil.putBuiltinAccessorProperty(localePrototype, IntlUtil.BASE_NAME, createBaseNameGetterFunction(realm), Undefined.instance);
         JSObjectUtil.putBuiltinAccessorProperty(localePrototype, IntlUtil.CALENDAR, createCalendarGetterFunction(realm), Undefined.instance);

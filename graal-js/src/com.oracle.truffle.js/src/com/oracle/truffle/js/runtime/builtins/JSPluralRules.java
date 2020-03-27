@@ -55,7 +55,6 @@ import com.oracle.truffle.js.builtins.intl.PluralRulesPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -95,7 +94,7 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
         DynamicObject pluralRulesPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, pluralRulesPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, pluralRulesPrototype, PluralRulesPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putDataProperty(ctx, pluralRulesPrototype, Symbol.SYMBOL_TO_STRING_TAG, "Intl.PluralRules", JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putToStringTag(pluralRulesPrototype, "Intl.PluralRules");
         return pluralRulesPrototype;
     }
 
