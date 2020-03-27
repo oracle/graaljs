@@ -173,6 +173,7 @@ public final class IntlUtil {
     public static final String WORD = "word";
     public static final String WEEKDAY = "weekday";
     public static final String YEAR = "year";
+    public static final String YEAR_NAME = "yearName";
 
     public static String selectedLocale(JSContext ctx, String[] locales) {
         Locale matchedLocale = lookupMatcher(ctx, locales);
