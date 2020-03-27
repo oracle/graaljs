@@ -1634,14 +1634,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
   }, {
-    "filePath" : "intl402/RelativeTimeFormat/prototype/format/en-us-numeric-auto.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "intl402/RelativeTimeFormat/prototype/formatToParts/en-us-numeric-auto.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
     "filePath" : "intl402/Segmenter/constructor/supportedLocalesOf/locales-specific.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
