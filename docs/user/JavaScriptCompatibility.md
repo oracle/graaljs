@@ -43,41 +43,6 @@ Once you activate the Internationalization API, you can use the following built-
 
 Functionality of a few other built-ins is then also updated according to the specification linked above.
 
-### Regular Expressions
-
-GraalVM JavaScript strives to support all regular expression features of ECMAScript.
-It employs two regular expression engines:
-* [TRegex](https://github.com/oracle/graal/tree/master/regex), an advanced engine producing tree-based automata with high peak performance.
-* [Joni](https://github.com/jruby/joni), an adopted port of Nashorn's regular expression engine (a bytecode compiler).
-
-While both engines support most regular expressions, they lack support for some of the advaced features of the newest ECMAScript specifications.
-TRegex is the default engine, and Joni will be used in case a feature is not supported in TRegex.
-In the rare case several features are mixed in one regular expression so no single engine can execute the expression, GraalVM JavaScript has to throw a JavaScript Error.
-We are working on improving both engines to limit the number of unsupported regular expressions.
-
-The current status of feature support in both engines is listed below (features not listed are supported by both engines):
-
-Feature                                                                                      | TRegex | Joni
--------------------------------------------------------------------------------------------- | ------ | ----
-Backreferences                                                                               | ❌     | ✓
-Negative lookaround<sup>[1](#fn1)</sup>                                                      | ❌     | ✓
-Unicode mode (`'u'` flag)                                                                    | ✓      | ❌
-[Unicode property escapes](https://github.com/tc39/proposal-regexp-unicode-property-escapes) | ✓      | ❌
-[Full lookbehind](https://github.com/tc39/proposal-regexp-lookbehind)<sup>[2](#fn2)</sup>    | ❌     | ❌
-
-<sub>
-<a name="fn1">1</a>: Positive lookaround is supported in both engines.
-<br/>
-<a name="fn2">2</a>: TRegex and Joni only support a subset of the lookbehind assertions that can match at most a bounded number of characters.
-</sub>
-
-<br/>
-<br/>
-
-We are currently working on implementing negative lookahead and more support for lookbehind in TRegex. On the other hand, full support of backreferences is out of scope for a finite state automaton engine like TRegex.
-GraalVM JavaScript uses [Nashorn](http://openjdk.java.net/projects/nashorn/)'s port of the Joni engine, which is based on ECMAScript 5 and misses support for most features of ECMAScript 6 and beyond.
-For more details on the implementation of the engines, see [RegExpImplementation.md](../contributor/RegExpImplementation.md).
-
 ### JavaScript modules
 
 GraalVM JavaScript supports modules as defined by ECMAScript 6 and later.
