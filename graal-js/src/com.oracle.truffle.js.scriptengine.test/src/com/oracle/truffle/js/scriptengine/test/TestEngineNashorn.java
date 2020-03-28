@@ -63,12 +63,9 @@ import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import javax.script.SimpleScriptContext;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.HostAccess;
 import org.junit.Test;
 
 import com.oracle.truffle.js.scriptengine.GraalJSEngineFactory;
-import com.oracle.truffle.js.scriptengine.GraalJSScriptEngine;
 
 /**
  * Tests for JSR-223 script engine from the Nashorn test suite.
@@ -81,9 +78,10 @@ public class TestEngineNashorn {
         return manager.getEngineByName(TestEngine.TESTED_ENGINE_NAME);
     }
 
-    private static ScriptEngine getEngineNashornCompat() {
-        return GraalJSScriptEngine.create(null,
-                        Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowHostClassLookup(s -> true).allowExperimentalOptions(true).option("js.nashorn-compat", "true"));
+    private ScriptEngine getEngineNashornCompat() {
+        ScriptEngine engine = getEngine();
+        engine.getBindings(ScriptContext.ENGINE_SCOPE).put("polyglot.js.nashorn-compat", true);
+        return engine;
     }
 
     private static void invertedAssertEquals(Object actual, Object expected) {
@@ -506,5 +504,13 @@ public class TestEngineNashorn {
 
     private static String println(final String str) {
         return str + '\n';
+    }
+
+    @Test
+    public void twoNashornEngines() throws ScriptException {
+        // Checks for a regression that causes the initialization of the second
+        // ScriptEngine to fail.
+        assertEquals("foo", getEngineNashornCompat().eval("'foo'"));
+        assertEquals("bar", getEngineNashornCompat().eval("'bar'"));
     }
 }
