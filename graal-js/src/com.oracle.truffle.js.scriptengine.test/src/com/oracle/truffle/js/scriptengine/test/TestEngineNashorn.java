@@ -505,4 +505,12 @@ public class TestEngineNashorn {
     private static String println(final String str) {
         return str + '\n';
     }
+
+    @Test
+    public void twoNashornEngines() throws ScriptException {
+        // Checks for a regression that causes the initialization of the second
+        // ScriptEngine to fail.
+        assertEquals("foo", getEngineNashornCompat().eval("'foo'"));
+        assertEquals("bar", getEngineNashornCompat().eval("'bar'"));
+    }
 }
