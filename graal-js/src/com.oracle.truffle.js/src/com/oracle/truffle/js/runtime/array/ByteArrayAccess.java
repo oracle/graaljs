@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -169,7 +169,7 @@ abstract class NormalByteArrayAccess extends ByteArrayAccess {
 
     @Override
     public final void putFloat(byte[] buffer, int offset, int index, int bytesPerElement, float value) {
-        putInt32(buffer, offset, index, bytesPerElement, Float.floatToIntBits(value));
+        putInt32(buffer, offset, index, bytesPerElement, Float.floatToRawIntBits(value));
     }
 
     @Override

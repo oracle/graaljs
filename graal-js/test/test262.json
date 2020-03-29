@@ -1594,9 +1594,9 @@
     "filePath" : "built-ins/TypedArray/prototype/set/typedarray-arg-set-values-same-buffer-other-type.js",
     "status" : "PASS",
     "statusOverrides" : {
-      "BIG_ENDIAN" : "SKIP"
+      "BIG_ENDIAN" : "FAIL"
     },
-    "comment" : "Fails on big endian and works on little endian"
+    "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
   }, {
     "filePath" : "intl402/DateTimeFormat/invalid-numbering-system-calendar-options.js",
     "status" : "FAIL",
