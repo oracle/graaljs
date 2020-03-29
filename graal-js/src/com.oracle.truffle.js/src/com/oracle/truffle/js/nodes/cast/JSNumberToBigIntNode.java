@@ -77,7 +77,7 @@ public abstract class JSNumberToBigIntNode extends JavaScriptBaseNode {
         if (!JSRuntime.isInteger(value)) {
             throw Errors.createRangeError("BigInt out of range");
         }
-        long bits = Double.doubleToLongBits(value);
+        long bits = Double.doubleToRawLongBits(value);
         boolean negative = (bits & 0x8000000000000000L) != 0;
         int exponentOffset = 1023;
         int mantissaLength = 52;
