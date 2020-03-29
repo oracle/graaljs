@@ -48,12 +48,11 @@ import org.graalvm.polyglot.PolyglotException;
 import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.test.JSTest;
 
 public class GR21356 {
 
     private static void expectSyntaxError(String code) {
-        try (Context context = JSTest.newContextBuilder().build()) {
+        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).build()) {
             try {
                 context.eval(JavaScriptLanguage.ID, code);
                 fail("SyntaxError expected!");
