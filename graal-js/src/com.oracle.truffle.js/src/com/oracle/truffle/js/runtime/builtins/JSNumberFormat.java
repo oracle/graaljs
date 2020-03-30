@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import java.math.BigDecimal;
 import java.text.AttributedCharacterIterator;
 import java.util.ArrayList;
 import java.util.Currency;
@@ -206,13 +207,16 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
     @TruffleBoundary
     public static void setupInternalNumberFormat(InternalState state) {
+        NumberFormat numberFormat;
         if (state.style.equals(IntlUtil.CURRENCY)) {
-            state.numberFormat = NumberFormat.getCurrencyInstance(state.javaLocale);
+            numberFormat = NumberFormat.getCurrencyInstance(state.javaLocale);
         } else if (state.style.equals(IntlUtil.PERCENT)) {
-            state.numberFormat = NumberFormat.getPercentInstance(state.javaLocale);
+            numberFormat = NumberFormat.getPercentInstance(state.javaLocale);
         } else {
-            state.numberFormat = NumberFormat.getInstance(state.javaLocale);
+            numberFormat = NumberFormat.getInstance(state.javaLocale);
         }
+        numberFormat.setRoundingMode(BigDecimal.ROUND_HALF_UP);
+        state.numberFormat = numberFormat;
     }
 
     public static NumberFormat getNumberFormatProperty(DynamicObject obj) {
