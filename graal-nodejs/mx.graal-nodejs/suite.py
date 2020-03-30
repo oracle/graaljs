@@ -114,7 +114,7 @@ suite = {
         "com.oracle.truffle.trufflenode"
       ],
       "checkstyle" : "com.oracle.truffle.trufflenode",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "Truffle,JavaScript,NodeJS",
     },
     "com.oracle.truffle.trufflenode.test" : {
@@ -125,7 +125,7 @@ suite = {
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.trufflenode",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "Truffle,JavaScript,NodeJS",
     },
     "coremodules" : {
