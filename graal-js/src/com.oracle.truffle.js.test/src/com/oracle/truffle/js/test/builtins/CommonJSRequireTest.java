@@ -184,14 +184,24 @@ public class CommonJSRequireTest {
         return options;
     }
 
+    private static String logicalAbsolutePath(Path path) {
+        String pathStr = path.toAbsolutePath().toString();
+        if (System.getProperty("os.name").startsWith("Windows")) {
+            // On Windows we support logical Unix-like paths
+            pathStr = pathStr.replaceFirst(path.getRoot().toString() + "\\", "/");
+            pathStr = pathStr.replace("\\", "/");
+        }
+        return pathStr;
+    }
+
     // ##### CommonJs Modules
 
     @Test
     public void absoluteFilename() {
         Path f = getTestRootFolder();
         try (Context cx = testContext(f)) {
-            Path path = Paths.get(f.toAbsolutePath().toString(), "module.js");
-            Value js = cx.eval(ID, "require('" + path.toString() + "').foo;");
+            String logicalAbsolutePath = logicalAbsolutePath(f) + "/module.js";
+            Value js = cx.eval(ID, "require('" + logicalAbsolutePath + "').foo;");
             Assert.assertEquals(42, js.asInt());
         }
     }
@@ -514,8 +524,9 @@ public class CommonJSRequireTest {
 
     @Test
     public void testDynamicImportAbsoluteURL() throws IOException {
-        String absolutePath = getTestRootFolder().toAbsolutePath().toString();
-        final String src = "import('file://" + absolutePath + "/a.mjs').then(x => console.log(x.hello)).catch(console.log);";
+        String logicalAbsolutePath = logicalAbsolutePath(getTestRootFolder());
+        String logicalAbsoluteUri = new File(logicalAbsolutePath).toURI().toString();
+        final String src = "import('" + logicalAbsoluteUri + "/a.mjs').then(x => console.log(x.hello)).catch(console.log);";
         final String out = "hello module!\n";
         runAndExpectOutput(src, out);
     }
