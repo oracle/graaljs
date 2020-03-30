@@ -158,15 +158,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         lazy_generator = ['--lazy-generator'] if newest_generated_config_file_ts.isNewerThan(newest_config_file_ts) else []
 
         if _currentOs == 'windows':
-            devkit_root = build_env.get('DEVKIT_ROOT')
-            if devkit_root is not None:
-                _setEnvVar('GYP_MSVS_OVERRIDE_PATH', devkit_root, build_env)
-                _setEnvVar('GYP_MSVS_VERSION', build_env.get('DEVKIT_VERSION'), build_env)
-                _setEnvVar('PATH', '%s%s%s' % (join(devkit_root, 'VC', 'bin', 'x64'), os.pathsep, build_env['PATH']), build_env)
-                _setEnvVar('WINDOWSSDKDIR', join(devkit_root, '10'), build_env)
-                _setEnvVar('INCLUDE', r'{devkit}\VC\include;{devkit}\VC\atlmfc\include;{devkit}\10\include\shared;{devkit}\10\include\ucrt;{devkit}\10\include\um;{devkit}\10\include\winrt;{prev}'.format(devkit=devkit_root, prev=build_env['INCLUDE']), build_env)
-                _setEnvVar('LIB', r'{devkit}\VC\lib\x64;{devkit}\VC\atlmfc\lib\x64;{devkit}\10\lib\x64;{prev}'.format(devkit=devkit_root, prev=build_env['LIB']), build_env)
-
+            processDevkitRoot(env=build_env)
             _setEnvVar('PATH', os.pathsep.join([build_env['PATH']] + [mx.library(lib_name).get_path(True) for lib_name in ('NASM', 'NINJA')]), build_env)
             extra_flags = ['--ninja', '--dest-cpu=x64', '--without-etw', '--without-snapshot']
         else:
@@ -409,10 +401,25 @@ def setLibraryPath(additionalPath=None):
 
     _setEnvVar('LD_LIBRARY_PATH', libraryPath)
 
+def processDevkitRoot(env=None):
+    assert _currentOs == 'windows'
+    _env = env or os.environ
+    devkit_root = _env.get('DEVKIT_ROOT')
+    if devkit_root is not None:
+        _setEnvVar('GYP_MSVS_OVERRIDE_PATH', devkit_root, _env)
+        _setEnvVar('GYP_MSVS_VERSION', _env.get('DEVKIT_VERSION'), _env)
+        _setEnvVar('PATH', '%s%s%s' % (join(devkit_root, 'VC', 'bin', 'x64'), os.pathsep, _env['PATH']), _env)
+        _setEnvVar('WINDOWSSDKDIR', join(devkit_root, '10'), _env)
+        _setEnvVar('INCLUDE', r'{devkit}\VC\include;{devkit}\VC\atlmfc\include;{devkit}\10\include\shared;{devkit}\10\include\ucrt;{devkit}\10\include\um;{devkit}\10\include\winrt;{prev}'.format(devkit=devkit_root, prev=_env['INCLUDE']), _env)
+        _setEnvVar('LIB', r'{devkit}\VC\lib\x64;{devkit}\VC\atlmfc\lib\x64;{devkit}\10\lib\x64;{prev}'.format(devkit=devkit_root, prev=_env['LIB']), _env)
+
 def setupNodeEnvironment(args, add_graal_vm_args=True):
     args = args if args else []
     mode, vmArgs, progArgs = _parseArgs(args)
     setLibraryPath()
+
+    if _currentOs == 'windows':
+        processDevkitRoot()
 
     if mx.suite('vm', fatalIfMissing=False) is not None and mx.suite('substratevm', fatalIfMissing=False) is not None:
         _prepare_svm_env()
