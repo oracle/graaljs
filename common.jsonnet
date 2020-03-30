@@ -12,7 +12,6 @@
 
   jdk11: {
     downloads+: {
-      EXTRA_JAVA_HOMES: labsjdk8,
       JAVA_HOME: labsjdk_ce_11,
     },
   },
