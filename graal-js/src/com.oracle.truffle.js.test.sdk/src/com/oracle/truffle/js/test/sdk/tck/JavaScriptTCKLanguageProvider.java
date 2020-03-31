@@ -124,7 +124,8 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         // function
         vals.add(createValueConstructor(context, "function(){}", TypeDescriptor.intersection(
                         TypeDescriptor.EXECUTABLE,
-                        TypeDescriptor.OBJECT)));
+                        TypeDescriptor.OBJECT,
+                        TypeDescriptor.META_OBJECT)));
         // proxy executable & object
         vals.add(createValueConstructor(
                         context,
@@ -164,6 +165,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                         TypeDescriptor.DATE,
                         TypeDescriptor.DURATION,
                         TypeDescriptor.TIME_ZONE,
+                        TypeDescriptor.META_OBJECT,
                         noType);
         // +
         ops.add(createBinaryOperator(context, "+", TypeDescriptor.NUMBER, numericAndNull, numericAndNull));
