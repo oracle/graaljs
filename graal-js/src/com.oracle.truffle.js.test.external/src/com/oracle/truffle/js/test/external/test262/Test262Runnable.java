@@ -218,6 +218,7 @@ public class Test262Runnable extends TestRunnable {
     }));
     private static final Set<String> ES2021_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "FinalizationRegistry",
+                    "String.prototype.replaceAll",
                     "WeakRef",
                     "class-fields-private",
                     "class-fields-public",

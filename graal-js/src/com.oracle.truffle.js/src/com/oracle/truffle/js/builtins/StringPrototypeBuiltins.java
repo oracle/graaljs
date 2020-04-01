@@ -226,9 +226,11 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (EnumSet.range(startsWith, normalize).contains(this)) {
                 return 6;
             } else if (EnumSet.range(padStart, padEnd).contains(this)) {
-                return 8;
-            } else if (EnumSet.range(matchAll, replaceAll).contains(this)) {
+                return JSConfig.ECMAScript2017;
+            } else if (matchAll == this) {
                 return JSConfig.ECMAScript2020;
+            } else if (replaceAll == this) {
+                return JSConfig.ECMAScript2021;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
