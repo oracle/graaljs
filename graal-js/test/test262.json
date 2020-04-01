@@ -1,8 +1,40 @@
 {
   "testFiles" : [ {
-    "filePath" : "built-ins/Date/parse/without-utc-offset.js",
+    "filePath" : "built-ins/AsyncFromSyncIteratorPrototype/next/absent-value-not-passed.js",
     "status" : "FAIL",
-    "comment" : "Incorrect test, see https://github.com/tc39/test262/pull/2523"
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "built-ins/AsyncFromSyncIteratorPrototype/return/absent-value-not-passed.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "built-ins/AsyncFromSyncIteratorPrototype/throw/absent-value-not-passed.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "built-ins/Proxy/create-handler-is-revoked-proxy.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "built-ins/Proxy/create-target-is-revoked-function-proxy.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "built-ins/Proxy/create-target-is-revoked-proxy.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "built-ins/Proxy/has/trap-is-missing-target-is-proxy.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "built-ins/Proxy/has/trap-is-null-target-is-proxy.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "built-ins/Proxy/set/trap-is-null-target-is-proxy.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Alphabetic.js",
     "status" : "SKIP",
@@ -424,6 +456,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Chorasmian.js",
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Common.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -449,6 +485,10 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Devanagari.js",
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
+  }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Dives_Akuru.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
@@ -573,6 +613,10 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Kharoshthi.js",
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
+  }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Khitan_Small_Script.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
@@ -932,6 +976,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Yezidi.js",
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Yi.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -1032,6 +1080,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Chorasmian.js",
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Common.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -1057,6 +1109,10 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Devanagari.js",
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
+  }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Dives_Akuru.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
@@ -1181,6 +1237,10 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Kharoshthi.js",
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
+  }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Khitan_Small_Script.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
@@ -1540,6 +1600,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Yezidi.js",
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Yi.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -1584,6 +1648,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/prototype/Symbol.replace/coerce-lastindex.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
     "filePath" : "built-ins/String/prototype/toLowerCase/Final_Sigma_U180E.js",
     "status" : "FAIL",
     "comment" : "String.toLowerCase() does not handle Final_Sigma special casing with respect to u180e correctly"
@@ -1598,17 +1666,9 @@
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
   }, {
-    "filePath" : "intl402/DateTimeFormat/invalid-numbering-system-calendar-options.js",
-    "status" : "FAIL",
-    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2540"
-  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/hourCycle-default.js",
     "status" : "FAIL",
     "comment" : "new failures after 2020-03 update"
-  }, {
-    "filePath" : "intl402/NumberFormat/invalid-numbering-system-options.js",
-    "status" : "FAIL",
-    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2540"
   }, {
     "filePath" : "language/expressions/arrow-function/scope-param-rest-elem-var-close.js",
     "status" : "FAIL"
@@ -1646,6 +1706,18 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
   }, {
+    "filePath" : "language/expressions/class/elements/private-field-after-optional-chain.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/expressions/class/elements/static-as-valid-instance-field-assigned.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/expressions/class/elements/static-as-valid-instance-field.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
     "filePath" : "language/expressions/class/elements/syntax/early-errors/grammar-special-meth-ctor-async-meth.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
@@ -1654,6 +1726,126 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
+    "filePath" : "language/expressions/new/ctorExpr-isCtor-after-args-eval-fn-wrapup.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/expressions/new/ctorExpr-isCtor-after-args-eval.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/part-unicode-10.0.0-escaped.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/part-unicode-10.0.0.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/part-unicode-11.0.0-escaped.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/part-unicode-11.0.0.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/part-unicode-12.0.0-escaped.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/part-unicode-12.0.0.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/part-unicode-13.0.0-escaped.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/part-unicode-13.0.0.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/part-unicode-7.0.0-escaped.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/part-unicode-7.0.0.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/part-unicode-8.0.0-escaped.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/part-unicode-8.0.0.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/part-unicode-9.0.0-escaped.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/part-unicode-9.0.0.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/start-unicode-10.0.0-escaped.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/start-unicode-10.0.0.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/start-unicode-11.0.0-escaped.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/start-unicode-11.0.0.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/start-unicode-12.0.0-escaped.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/start-unicode-12.0.0.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/start-unicode-13.0.0-escaped.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/start-unicode-13.0.0.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/start-unicode-7.0.0-escaped.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/start-unicode-7.0.0.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/start-unicode-8.0.0-escaped.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/start-unicode-8.0.0.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/start-unicode-9.0.0-escaped.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/identifiers/start-unicode-9.0.0.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
     "filePath" : "language/statements/class/accessor-name-inst-computed-yield-expr.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
@@ -1661,6 +1853,18 @@
     "filePath" : "language/statements/class/accessor-name-static-computed-yield-expr.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
+  }, {
+    "filePath" : "language/statements/class/elements/private-field-after-optional-chain.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/statements/class/elements/static-as-valid-instance-field-assigned.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
+  }, {
+    "filePath" : "language/statements/class/elements/static-as-valid-instance-field.js",
+    "status" : "FAIL",
+    "comment" : "new failures update 2020-04-01"
   }, {
     "filePath" : "language/statements/class/elements/syntax/early-errors/grammar-special-meth-ctor-async-meth.js",
     "status" : "FAIL",
