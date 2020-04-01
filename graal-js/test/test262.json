@@ -1610,14 +1610,6 @@
     "status" : "FAIL",
     "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2540"
   }, {
-    "filePath" : "intl402/Segmenter/constructor/supportedLocalesOf/locales-specific.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "intl402/supportedLocalesOf-consistent-with-resolvedOptions.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
     "filePath" : "language/expressions/arrow-function/scope-param-rest-elem-var-close.js",
     "status" : "FAIL"
   }, {

@@ -78,10 +78,6 @@
     "filePath" : "intl/general/supported-locales-of.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "intl/list-format/supported-locale.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "intl/locale/locale-constructor.js",
     "status" : "FAIL",
     "comment" : "Contains a test for a bug in ICU4C (that is not in ICU4J)"
@@ -197,14 +193,6 @@
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
     "filePath" : "intl/relative-time-format/default-locale-pt-BR.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/relative-time-format/supported-locale.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/supported-locale.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
