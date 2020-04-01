@@ -248,6 +248,10 @@ public final class IntlUtil {
         try {
             for (ULocale ul : ULocale.getAvailableLocales()) {
                 result.add(ul.toLocale());
+                if (!ul.getScript().isEmpty()) {
+                    // Add also a version without the script subtag
+                    result.add(new Locale(ul.getLanguage(), ul.getCountry()));
+                }
             }
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError(e);
