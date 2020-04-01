@@ -72,7 +72,7 @@ public final class JSContextOptions {
     public static final String ECMASCRIPT_VERSION_NAME = JS_OPTION_PREFIX + "ecmascript-version";
     @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, help = "ECMAScript Version.") //
     public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(
-                    JSConfig.LatestECMAScriptVersion,
+                    JSConfig.CurrentECMAScriptVersion,
                     new OptionType<>(
                                     "ecmascript-version",
                                     new Function<String, Integer>() {

@@ -111,7 +111,7 @@ public class TestV8Runnable extends TestRunnable {
         // ecma versions
         TestFile.EcmaVersion ecmaVersion = testFile.getEcmaVersion();
         if (ecmaVersion == null) {
-            ecmaVersion = TestFile.EcmaVersion.forVersions(JSConfig.LatestECMAScriptVersion);
+            ecmaVersion = TestFile.EcmaVersion.forVersions(JSConfig.CurrentECMAScriptVersion);
         }
 
         if (flags.contains(HARMONY_PUBLIC_FIELDS) || flags.contains(HARMONY_PRIVATE_FIELDS)) {

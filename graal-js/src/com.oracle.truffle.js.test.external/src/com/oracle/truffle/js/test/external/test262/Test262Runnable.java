@@ -266,7 +266,7 @@ public class Test262Runnable extends TestRunnable {
         Source[] harnessSources = ((Test262) suite).getHarnessSources(runStrict, asyncTest, getIncludes(scriptCodeList));
 
         boolean supported = true;
-        int featureVersion = JSConfig.LatestECMAScriptVersion;
+        int featureVersion = JSConfig.CurrentECMAScriptVersion;
         for (String feature : features) {
             if (SUPPORTED_FEATURES.contains(feature)) {
                 assert !UNSUPPORTED_FEATURES.contains(feature) : feature;
