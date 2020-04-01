@@ -354,29 +354,52 @@ public final class JSFunctionData {
         CompilerAsserts.neverPartOfCompilation();
         Initializer init = lazyInit;
         assert init != null;
-        if (rootTarget == null) {
+        CallTarget rootCallTarget = rootTarget;
+        if (rootCallTarget == null) {
             // synchronizing on context so we do not need one lock per function
             synchronized (context) {
-                if (rootTarget == null) {
+                rootCallTarget = rootTarget;
+                if (rootCallTarget == null) {
                     init.initializeRoot(this);
+                    rootCallTarget = rootTarget;
+
+                    // release lazy initialization closure
                     if (!(init instanceof CallTargetInitializer)) {
-                        lazyInit = init = (CallTargetInitializer) ((RootCallTarget) rootTarget).getRootNode();
+                        lazyInit = init = (CallTargetInitializer) ((RootCallTarget) rootCallTarget).getRootNode();
                     }
                 }
             }
         }
+        assert rootCallTarget != null;
         AtomicReferenceFieldUpdater<JSFunctionData, CallTarget> updater = target.getUpdater();
         CallTarget result = updater.get(this);
         if (result != null) {
             return result;
         }
-        if (!(init instanceof CallTargetInitializer)) {
-            init = (CallTargetInitializer) ((RootCallTarget) rootTarget).getRootNode();
+        CallTargetInitializer callTargetInit;
+        if (init instanceof CallTargetInitializer) {
+            callTargetInit = (CallTargetInitializer) init;
+        } else {
+            callTargetInit = (CallTargetInitializer) ((RootCallTarget) rootCallTarget).getRootNode();
         }
-        ((CallTargetInitializer) init).initializeCallTarget(this, target, rootTarget);
+        callTargetInit.initializeCallTarget(this, target, rootCallTarget);
         result = updater.get(this);
         assert result != null;
         return result;
+    }
+
+    public void materialize() {
+        CompilerAsserts.neverPartOfCompilation();
+        assert !isBuiltin();
+        Initializer init = lazyInit;
+        if (init != null && rootTarget == null) {
+            // synchronizing on context so we do not need one lock per function
+            synchronized (context) {
+                if (rootTarget == null) {
+                    init.initializeRoot(this);
+                }
+            }
+        }
     }
 
     public enum Target {
