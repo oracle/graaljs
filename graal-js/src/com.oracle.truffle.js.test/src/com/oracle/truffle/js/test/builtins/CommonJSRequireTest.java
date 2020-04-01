@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.test.builtins;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -84,7 +85,15 @@ public class CommonJSRequireTest {
     }
 
     private static Context testContext(OutputStream out, OutputStream err, Map<String, String> options) {
-        return JSTest.newContextBuilder().allowPolyglotAccess(PolyglotAccess.ALL).options(options).out(out).err(err).allowIO(true).build();
+        return JSTest.newContextBuilder().//
+                        allowPolyglotAccess(PolyglotAccess.ALL).//
+                        allowHostAccess(HostAccess.ALL).//
+                        allowHostClassLoading(true).//
+                        allowHostClassLookup((s) -> true).//
+                        options(options).out(out).//
+                        err(err).//
+                        allowIO(true).//
+                        build();
     }
 
     private static Context testContext(Path tempFolder, OutputStream out, OutputStream err) {
@@ -428,6 +437,52 @@ public class CommonJSRequireTest {
         try (Context cx = testContext(options)) {
             Value js = cx.eval(ID, "require('path').foo + require('fs').foo;");
             Assert.assertEquals(84, js.asInt());
+        }
+    }
+
+    @Test
+    public void testCustomNodeBuiltinJavaInterop() {
+        Path root = getTestRootFolder();
+        Map<String, String> options = new HashMap<>();
+        options.put(COMMONJS_REQUIRE_NAME, "true");
+        options.put(COMMONJS_REQUIRE_CWD_NAME, root.toAbsolutePath().toString());
+        // requiring the 'util' built-in modules will resolve the `java-interop-replacement` module.
+        options.put(COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, "util:java-interop-replacement");
+        try (Context cx = testContext(options)) {
+            Value max = cx.eval(ID, "const m1 = Java.type('java.lang.Math').max(21, 42);" +
+                            "const m2 = require('util').min(82, m1);" +
+                            "const m3 = require('util').max(21, m2);" +
+                            "const {max, min} = require('util');" +
+                            "min(max(m3, m3), m3);");
+            Assert.assertTrue(max.fitsInInt());
+            Assert.assertEquals(42, max.asInt());
+        }
+    }
+
+    @Test
+    public void testJavaBuiltinInModule() {
+        Path root = getTestRootFolder();
+        Map<String, String> options = new HashMap<>();
+        options.put(COMMONJS_REQUIRE_NAME, "true");
+        options.put(COMMONJS_REQUIRE_CWD_NAME, root.toAbsolutePath().toString());
+        try (Context cx = testContext(options)) {
+            Value max = cx.eval(ID, "const {max, min} = require('java-interop-replacement');" +
+                            "min(max(21, 42), 84);");
+            Assert.assertTrue(max.fitsInInt());
+            Assert.assertEquals(42, max.asInt());
+        }
+    }
+
+    @Test
+    public void testExportedNumber() {
+        Path root = getTestRootFolder();
+        Map<String, String> options = new HashMap<>();
+        options.put(COMMONJS_REQUIRE_NAME, "true");
+        options.put(COMMONJS_REQUIRE_CWD_NAME, root.toAbsolutePath().toString());
+        try (Context cx = testContext(options)) {
+            Value max = cx.eval(ID, "require('exports-number');");
+            Assert.assertTrue(max.fitsInInt());
+            Assert.assertEquals(42, max.asInt());
         }
     }
 
