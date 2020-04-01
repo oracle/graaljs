@@ -114,7 +114,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
         if (JSConfig.LazyFunctionData && !materializedTags.isEmpty()) {
             // when instruments require the materialization of function expression nodes, we force
             // initialization.
-            functionData.getCallTarget();
+            functionData.materialize();
         }
         return this;
     }
