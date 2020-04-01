@@ -189,8 +189,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                     String numberingSystemOpt,
                     String dateStyleOpt,
                     String timeStyleOpt) {
-        String selectedTag = IntlUtil.selectedLocale(ctx, locales);
-        Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : ctx.getLocale();
+        Locale selectedLocale = IntlUtil.selectedLocale(ctx, locales);
         Locale strippedLocale = selectedLocale.stripExtensions();
 
         Locale.Builder builder = new Locale.Builder();

@@ -175,63 +175,65 @@ public final class IntlUtil {
     public static final String YEAR = "year";
     public static final String YEAR_NAME = "yearName";
 
-    public static String selectedLocale(JSContext ctx, String[] locales) {
-        Locale matchedLocale = lookupMatcher(ctx, locales);
-        return matchedLocale != null ? matchedLocale.toLanguageTag() : null;
+    public static Locale selectedLocale(JSContext ctx, String[] locales) {
+        // We don't distinguish BestFitMatcher and LookupMatcher i.e.
+        // the implementation dependent BestFitMatcher is implemented as LookupMatcher
+        return lookupMatcher(ctx, locales);
     }
 
-    @TruffleBoundary
-    private static Locale lookupMatcher(JSContext ctx, String[] languageTags) {
-        for (String lt : languageTags) {
-            // BestAvailableLocale: http://ecma-international.org/ecma-402/1.0/#sec-9.2.2
-            Locale candidate = Locale.forLanguageTag(lt);
-            while (true) {
-                if (lookupMatch(ctx, candidate, true)) {
-                    return candidate;
+    public static Locale bestAvailableLocale(JSContext context, Locale locale) {
+        Locale candidate = locale;
+        while (true) {
+            if (isAvailableLocale(context, candidate)) {
+                return candidate;
+            }
+            String candidateLanguageTag = candidate.toLanguageTag();
+            int pos = candidateLanguageTag.lastIndexOf('-');
+            if (pos == -1) {
+                return null;
+            } else {
+                if (pos >= 2 && candidateLanguageTag.charAt(pos - 2) == '-') {
+                    pos -= 2;
                 }
-                String candidateLanguageTag = candidate.toLanguageTag();
-                int pos = candidateLanguageTag.lastIndexOf('-');
-                if (pos != -1) {
-                    if (pos >= 2 && candidateLanguageTag.charAt(pos - 2) == '-') {
-                        pos -= 2;
-                    }
-                    candidateLanguageTag = candidateLanguageTag.substring(0, pos);
-                    candidate = Locale.forLanguageTag(candidateLanguageTag);
-                } else {
-                    break;
-                }
+                candidateLanguageTag = candidateLanguageTag.substring(0, pos);
+                candidate = Locale.forLanguageTag(candidateLanguageTag);
             }
         }
-        return null;
     }
 
     @TruffleBoundary
-    public static List<Object> supportedLocales(JSContext ctx, String[] locales, @SuppressWarnings("unused") String matcher) {
+    public static Locale lookupMatcher(JSContext ctx, String[] requestedLocales) {
+        for (String locale : requestedLocales) {
+            Locale requestedLocale = Locale.forLanguageTag(locale);
+            Locale noExtensionsLocale = requestedLocale.stripExtensions();
+            Locale availableLocale = bestAvailableLocale(ctx, noExtensionsLocale);
+            if (availableLocale != null) {
+                String unicodeExtension = requestedLocale.getExtension('u');
+                if (unicodeExtension != null) {
+                    availableLocale = new Locale.Builder().setLocale(availableLocale).setExtension('u', unicodeExtension).build();
+                }
+                return availableLocale;
+            }
+        }
+        return ctx.getLocale();
+    }
+
+    @TruffleBoundary
+    public static List<Object> supportedLocales(JSContext ctx, String[] requestedLocales, @SuppressWarnings("unused") String matcher) {
         List<Object> result = new ArrayList<>();
-        for (String l : locales) {
-            if (lookupMatch(ctx, Locale.forLanguageTag(l), true)) {
-                result.add(l);
+        for (String locale : requestedLocales) {
+            Locale noExtensionsLocale = Locale.forLanguageTag(locale).stripExtensions();
+            Locale availableLocale = bestAvailableLocale(ctx, noExtensionsLocale);
+            if (availableLocale != null) {
+                result.add(locale);
             }
         }
         return result;
     }
 
-    private static boolean lookupMatch(JSContext ctx, Locale locale, boolean stripIt) {
-        Locale lookForLocale = stripIt ? locale.stripExtensions() : locale;
-        Set<Locale> availableLocales = getAvailableLocales();
-        if (availableLocales.contains(lookForLocale)) {
-            return true;
-        }
-
+    private static boolean isAvailableLocale(JSContext ctx, Locale locale) {
         // default locale might be missing in the available locale list
-        if (ctx.getLocale().equals(lookForLocale)) {
-            return true;
-        }
-
-        // Check if the locale is among the available ones when we add likely sub-tags
-        ULocale ulocale = ULocale.forLocale(lookForLocale);
-        ulocale = ULocale.addLikelySubtags(ulocale);
-        return availableLocales.contains(ulocale.toLocale());
+        return getAvailableLocales().contains(locale) || ctx.getLocale().equals(locale);
     }
 
     private static final LazyValue<Set<Locale>> AVAILABLE_LOCALES = new LazyValue<>(IntlUtil::initAvailableLocales);
@@ -246,6 +248,10 @@ public final class IntlUtil {
         try {
             for (ULocale ul : ULocale.getAvailableLocales()) {
                 result.add(ul.toLocale());
+                if (!ul.getScript().isEmpty()) {
+                    // Add also a version without the script subtag
+                    result.add(new Locale(ul.getLanguage(), ul.getCountry()));
+                }
             }
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError(e);
@@ -464,9 +470,7 @@ public final class IntlUtil {
 
     @TruffleBoundary
     public static Locale selectedLocaleStripped(JSContext ctx, String[] locales) {
-        String selectedTag = IntlUtil.selectedLocale(ctx, locales);
-        Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : ctx.getLocale();
-        return selectedLocale.stripExtensions();
+        return IntlUtil.selectedLocale(ctx, locales).stripExtensions();
     }
 
     public static DynamicObject makePart(JSContext context, String type, String value) {

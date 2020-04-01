@@ -175,8 +175,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
     @TruffleBoundary
     public static void setLocaleAndNumberingSystem(JSContext ctx, BasicInternalState state, String[] locales, String numberingSystemOpt) {
-        String selectedTag = IntlUtil.selectedLocale(ctx, locales);
-        Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : ctx.getLocale();
+        Locale selectedLocale = IntlUtil.selectedLocale(ctx, locales);
         Locale strippedLocale = selectedLocale.stripExtensions();
         if (strippedLocale.toLanguageTag().equals(IntlUtil.UND)) {
             selectedLocale = ctx.getLocale();

@@ -219,8 +219,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
 
     @TruffleBoundary
     public static void setLocale(JSContext ctx, InternalState state, String[] locales) {
-        String selectedTag = IntlUtil.selectedLocale(ctx, locales);
-        Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : ctx.getLocale();
+        Locale selectedLocale = IntlUtil.selectedLocale(ctx, locales);
         Locale strippedLocale = selectedLocale.stripExtensions();
         if (strippedLocale.toLanguageTag().equals(IntlUtil.UND)) {
             selectedLocale = ctx.getLocale();
