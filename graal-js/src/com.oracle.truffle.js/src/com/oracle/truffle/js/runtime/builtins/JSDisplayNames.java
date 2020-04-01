@@ -148,8 +148,7 @@ public final class JSDisplayNames extends JSBuiltinObject implements JSConstruct
 
     @TruffleBoundary
     public static void setupInternalState(JSContext ctx, InternalState state, String[] locales, String optStyle, String optType, String optFallback) {
-        String selectedTag = IntlUtil.selectedLocale(ctx, locales);
-        Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : ctx.getLocale();
+        Locale selectedLocale = IntlUtil.selectedLocale(ctx, locales);
         Locale strippedLocale = selectedLocale.stripExtensions();
         if (strippedLocale.toLanguageTag().equals(IntlUtil.UND)) {
             selectedLocale = ctx.getLocale();

@@ -163,8 +163,7 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
                     String sensitivity, Boolean ignorePunctuation) {
         state.initializedCollator = true;
         state.usage = usage;
-        String selectedTag = IntlUtil.selectedLocale(ctx, locales);
-        Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : ctx.getLocale();
+        Locale selectedLocale = IntlUtil.selectedLocale(ctx, locales);
         Locale strippedLocale = selectedLocale.stripExtensions();
         Locale.Builder builder = new Locale.Builder().setLocale(strippedLocale);
 
