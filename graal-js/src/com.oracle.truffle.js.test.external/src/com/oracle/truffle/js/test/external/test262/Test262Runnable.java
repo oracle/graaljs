@@ -211,6 +211,8 @@ public class Test262Runnable extends TestRunnable {
                     "Intl.DateTimeFormat-fractionalSecondDigits",
                     "Intl.NumberFormat-unified",
                     "IsHTMLDDA",
+                    "Promise.any",
+                    "logical-assignment-operators",
                     "tail-call-optimization",
                     "top-level-await",
     }));
