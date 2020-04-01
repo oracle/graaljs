@@ -249,7 +249,7 @@ public class JSRealm {
     private Object reflectApplyFunctionObject;
     private Object reflectConstructFunctionObject;
     private Object commonJSRequireFunctionObject;
-    private Map<String, DynamicObject> commonJSPreLoadedBuiltins;
+    private Map<String, Object> commonJSPreLoadedBuiltins;
     private Object jsonParseFunctionObject;
 
     private final DynamicObject arrayBufferConstructor;
@@ -1344,8 +1344,8 @@ public class JSRealm {
                 if (builtinModule.endsWith(MODULE_SOURCE_NAME_SUFFIX)) {
                     continue;
                 }
-                DynamicObject obj = (DynamicObject) JSFunction.call(JSArguments.create(commonJSRequireFunctionObject, commonJSRequireFunctionObject, builtinModule));
-                this.commonJSPreLoadedBuiltins.put(entry.getKey(), obj);
+                Object loadedModule = JSFunction.call(JSArguments.create(commonJSRequireFunctionObject, commonJSRequireFunctionObject, builtinModule));
+                this.commonJSPreLoadedBuiltins.put(entry.getKey(), loadedModule);
             }
         }
     }
@@ -1377,11 +1377,11 @@ public class JSRealm {
         addConsoleGlobals();
         addPrintGlobals();
         addPerformanceGlobal();
-        addCommonJSGlobals();
 
         if (isJavaInteropEnabled()) {
             setupJavaInterop();
         }
+        addCommonJSGlobals();
     }
 
     private void addGlobalGlobal() {
