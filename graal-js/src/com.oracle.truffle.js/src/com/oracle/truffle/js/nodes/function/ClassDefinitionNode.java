@@ -180,7 +180,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
             InitializeInstanceElementsNode defineStaticFields = this.staticFieldsNode;
             if (defineStaticFields == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.staticFieldsNode = defineStaticFields = InitializeInstanceElementsNode.create(context);
+                this.staticFieldsNode = defineStaticFields = insert(InitializeInstanceElementsNode.create(context));
             }
             defineStaticFields.executeStaticFields(constructor, staticFields);
         }
