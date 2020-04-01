@@ -144,7 +144,8 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializationNeeded() && materializedTags.contains(JSTags.ControlFlowBranchTag.class)) {
             JSTargetableNode materializedInput = JSMaterializedInvokeTargetableNode.EchoTargetValueNode.create();
-            AwaitNode materialized = new AwaitNode(context, cloneUninitialized(expression, materializedTags), cloneUninitialized(readAsyncContextNode, materializedTags), cloneUninitialized(readAsyncResultNode, materializedTags), materializedInput);
+            AwaitNode materialized = new AwaitNode(context, cloneUninitialized(expression, materializedTags), cloneUninitialized(readAsyncContextNode, materializedTags),
+                            cloneUninitialized(readAsyncResultNode, materializedTags), materializedInput);
             transferSourceSection(this, materialized);
             return materialized;
         }

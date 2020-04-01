@@ -125,7 +125,8 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(context, cloneUninitialized(tryBlock, materializedTags), cloneUninitialized(catchBlock, materializedTags), cloneUninitialized(writeErrorVar, materializedTags), cloneUninitialized(blockScope, materializedTags), cloneUninitialized(destructuring, materializedTags),
+        return create(context, cloneUninitialized(tryBlock, materializedTags), cloneUninitialized(catchBlock, materializedTags), cloneUninitialized(writeErrorVar, materializedTags),
+                        cloneUninitialized(blockScope, materializedTags), cloneUninitialized(destructuring, materializedTags),
                         cloneUninitialized(conditionExpression, materializedTags));
     }
 

@@ -133,6 +133,7 @@ public final class GeneratorExprBlockNode extends AbstractGeneratorBlockNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new GeneratorExprBlockNode(cloneUninitialized(getStatements(), materializedTags), cloneUninitialized(readStateNode, materializedTags), (WriteNode) cloneUninitialized((JavaScriptNode) writeStateNode, materializedTags));
+        return new GeneratorExprBlockNode(cloneUninitialized(getStatements(), materializedTags), cloneUninitialized(readStateNode, materializedTags),
+                        (WriteNode) cloneUninitialized((JavaScriptNode) writeStateNode, materializedTags));
     }
 }

@@ -136,6 +136,7 @@ abstract class RestObjectWithExcludedNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return RestObjectWithExcludedNodeGen.create(context, cloneUninitialized(targetNode, materializedTags), cloneUninitialized(sourceNode, materializedTags), cloneUninitialized(excludedNode, materializedTags));
+        return RestObjectWithExcludedNodeGen.create(context, cloneUninitialized(targetNode, materializedTags), cloneUninitialized(sourceNode, materializedTags),
+                        cloneUninitialized(excludedNode, materializedTags));
     }
 }

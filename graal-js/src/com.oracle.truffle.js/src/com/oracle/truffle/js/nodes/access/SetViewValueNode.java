@@ -138,6 +138,7 @@ public abstract class SetViewValueNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return SetViewValueNodeGen.create(context, factory, cloneUninitialized(viewNode, materializedTags), cloneUninitialized(requestIndexNode, materializedTags), cloneUninitialized(isLittleEndianNode, materializedTags), cloneUninitialized(valueNode, materializedTags));
+        return SetViewValueNodeGen.create(context, factory, cloneUninitialized(viewNode, materializedTags), cloneUninitialized(requestIndexNode, materializedTags),
+                        cloneUninitialized(isLittleEndianNode, materializedTags), cloneUninitialized(valueNode, materializedTags));
     }
 }

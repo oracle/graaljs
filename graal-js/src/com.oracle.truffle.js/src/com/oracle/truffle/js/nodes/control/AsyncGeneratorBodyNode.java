@@ -243,11 +243,13 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return atomic(() -> {
             if (resumeTarget == null) {
-                return create(context, cloneUninitialized(functionBody, materializedTags), cloneUninitialized(writeYieldValueNode, materializedTags), cloneUninitialized(readYieldResultNode, materializedTags), cloneUninitialized(writeAsyncContext, materializedTags));
+                return create(context, cloneUninitialized(functionBody, materializedTags), cloneUninitialized(writeYieldValueNode, materializedTags),
+                                cloneUninitialized(readYieldResultNode, materializedTags), cloneUninitialized(writeAsyncContext, materializedTags));
             } else {
                 AsyncGeneratorRootNode generatorRoot = (AsyncGeneratorRootNode) resumeTarget.getRootNode();
-                return create(context, cloneUninitialized(generatorRoot.functionBody, materializedTags), cloneUninitialized(generatorRoot.writeYieldValue, materializedTags), cloneUninitialized(generatorRoot.readYieldResult, materializedTags),
-                        cloneUninitialized(writeAsyncContext, materializedTags));
+                return create(context, cloneUninitialized(generatorRoot.functionBody, materializedTags), cloneUninitialized(generatorRoot.writeYieldValue, materializedTags),
+                                cloneUninitialized(generatorRoot.readYieldResult, materializedTags),
+                                cloneUninitialized(writeAsyncContext, materializedTags));
             }
         });
     }

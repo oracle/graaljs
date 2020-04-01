@@ -119,7 +119,8 @@ public final class GlobalScopeVarWrapperNode extends JavaScriptNode implements R
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new GlobalScopeVarWrapperNode(varName, cloneUninitialized(defaultDelegate, materializedTags), cloneUninitialized(dynamicScopeNode, materializedTags), cloneUninitialized(scopeAccessNode, materializedTags));
+        return new GlobalScopeVarWrapperNode(varName, cloneUninitialized(defaultDelegate, materializedTags), cloneUninitialized(dynamicScopeNode, materializedTags),
+                        cloneUninitialized(scopeAccessNode, materializedTags));
     }
 
     public void setMethod() {

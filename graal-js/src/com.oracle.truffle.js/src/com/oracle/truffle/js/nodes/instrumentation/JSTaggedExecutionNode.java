@@ -76,10 +76,8 @@ public final class JSTaggedExecutionNode extends JavaScriptNode {
         return createImpl(originalNode, transferSourcesFrom, null, true, null, materializedTags);
     }
 
-    private static JavaScriptNode createImpl(JavaScriptNode originalNode, JavaScriptNode transferSourcesFrom, Class<? extends Tag> expectedTag, boolean inputTag, NodeObjectDescriptor descriptor, Set<Class<? extends Tag>> materializedTags) {
-        if (originalNode == null) {
-            return null;
-        }
+    private static JavaScriptNode createImpl(JavaScriptNode originalNode, JavaScriptNode transferSourcesFrom, Class<? extends Tag> expectedTag, boolean inputTag, NodeObjectDescriptor descriptor,
+                    Set<Class<? extends Tag>> materializedTags) {
         // check if the node has already been tagged
         JavaScriptNode realOriginal = originalNode;
         if (originalNode instanceof WrapperNode) {

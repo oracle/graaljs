@@ -149,7 +149,8 @@ public class AsyncGeneratorYieldNode extends AwaitNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return createYield(context, cloneUninitialized(expression, materializedTags), cloneUninitialized(readAsyncContextNode, materializedTags), cloneUninitialized(readAsyncResultNode, materializedTags), cloneUninitialized(returnNode, materializedTags));
+        return createYield(context, cloneUninitialized(expression, materializedTags), cloneUninitialized(readAsyncContextNode, materializedTags),
+                        cloneUninitialized(readAsyncResultNode, materializedTags), cloneUninitialized(returnNode, materializedTags));
     }
 }
 
@@ -364,7 +365,8 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return createYieldStar(context, cloneUninitialized(expression, materializedTags), cloneUninitialized(readAsyncContextNode, materializedTags), cloneUninitialized(readAsyncResultNode, materializedTags), cloneUninitialized(returnNode, materializedTags),
+        return createYieldStar(context, cloneUninitialized(expression, materializedTags), cloneUninitialized(readAsyncContextNode, materializedTags),
+                        cloneUninitialized(readAsyncResultNode, materializedTags), cloneUninitialized(returnNode, materializedTags),
                         cloneUninitialized(readIteratorTemp, materializedTags), (WriteNode) cloneUninitialized((JavaScriptNode) writeIteratorTemp, materializedTags));
     }
 }

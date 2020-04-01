@@ -112,7 +112,8 @@ public final class AccessArgumentsArrayDirectlyNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        AccessArgumentsArrayDirectlyNode copy = new AccessArgumentsArrayDirectlyNode(cloneUninitialized(writeArgumentsNode, materializedTags), cloneUninitialized(readArgumentsNode, materializedTags), leadingArgCount, trailingArgCount);
+        AccessArgumentsArrayDirectlyNode copy = new AccessArgumentsArrayDirectlyNode(cloneUninitialized(writeArgumentsNode, materializedTags), cloneUninitialized(readArgumentsNode, materializedTags),
+                        leadingArgCount, trailingArgCount);
         copy.directArrayAccess = directArrayAccess;
         return copy;
     }

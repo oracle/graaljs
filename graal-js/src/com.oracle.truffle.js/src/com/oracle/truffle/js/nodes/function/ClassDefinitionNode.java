@@ -232,7 +232,8 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(context, (JSFunctionExpressionNode) cloneUninitialized(constructorFunctionNode, materializedTags), cloneUninitialized(classHeritageNode, materializedTags), ObjectLiteralMemberNode.cloneUninitialized(memberNodes, materializedTags),
+        return create(context, (JSFunctionExpressionNode) cloneUninitialized(constructorFunctionNode, materializedTags), cloneUninitialized(classHeritageNode, materializedTags),
+                        ObjectLiteralMemberNode.cloneUninitialized(memberNodes, materializedTags),
                         cloneUninitialized(writeClassBindingNode, materializedTags), hasName, instanceFieldCount, staticFieldCount, setPrivateBrandNode != null);
     }
 }

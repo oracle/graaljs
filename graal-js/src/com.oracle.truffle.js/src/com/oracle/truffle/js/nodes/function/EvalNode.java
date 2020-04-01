@@ -151,7 +151,8 @@ public abstract class EvalNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return EvalNodeGen.create(context, cloneUninitialized(functionNode, materializedTags), AbstractFunctionArgumentsNode.cloneUninitialized(arguments, materializedTags), directEvalNode.copyUninitialized(materializedTags));
+        return EvalNodeGen.create(context, cloneUninitialized(functionNode, materializedTags), AbstractFunctionArgumentsNode.cloneUninitialized(arguments, materializedTags),
+                        directEvalNode.copyUninitialized(materializedTags));
     }
 
     protected abstract static class DirectEvalNode extends JavaScriptBaseNode {

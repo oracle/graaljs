@@ -65,6 +65,7 @@ public final class GeneratorVoidBlockNode extends AbstractGeneratorBlockNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new GeneratorVoidBlockNode(cloneUninitialized(getStatements(), materializedTags), cloneUninitialized(readStateNode, materializedTags), (WriteNode) cloneUninitialized((JavaScriptNode) writeStateNode, materializedTags));
+        return new GeneratorVoidBlockNode(cloneUninitialized(getStatements(), materializedTags), cloneUninitialized(readStateNode, materializedTags),
+                        (WriteNode) cloneUninitialized((JavaScriptNode) writeStateNode, materializedTags));
     }
 }

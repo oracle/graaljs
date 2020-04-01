@@ -539,7 +539,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                     return this;
                 } else {
                     JavaScriptNode materializedTargetNode = JSInputGeneratingNodeWrapper.create(JSConstantUndefinedNode.createUndefined());
-                    JavaScriptNode call = createCall(cloneUninitialized(functionNode, materializedTags), materializedTargetNode, cloneUninitialized(getArgumentNodes(), materializedTags), isNew(flags), isNewTarget(flags));
+                    JavaScriptNode call = createCall(cloneUninitialized(functionNode, materializedTags), materializedTargetNode, cloneUninitialized(getArgumentNodes(), materializedTags), isNew(flags),
+                                    isNewTarget(flags));
                     transferSourceSectionAndTags(this, call);
                     return call;
                 }
@@ -904,7 +905,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new InvokeSpreadNode(cloneUninitialized(targetNode, materializedTags), cloneUninitialized(functionTargetNode, materializedTags), cloneUninitialized(arguments, materializedTags), flags);
+            return new InvokeSpreadNode(cloneUninitialized(targetNode, materializedTags), cloneUninitialized(functionTargetNode, materializedTags), cloneUninitialized(arguments, materializedTags),
+                            flags);
         }
     }
 

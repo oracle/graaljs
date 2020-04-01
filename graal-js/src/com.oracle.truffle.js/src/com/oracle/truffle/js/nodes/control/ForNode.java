@@ -99,7 +99,8 @@ public final class ForNode extends StatementNode implements ResumableNode {
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (hasMaterializationTag(materializedTags) && AbstractRepeatingNode.materializationNeeded(loop.getRepeatingNode())) {
             IterationScopeNode newCopy = cloneUninitialized(copy, materializedTags);
-            // The repeating node might not be instrumentable at this point, because source section is transferred later,
+            // The repeating node might not be instrumentable at this point, because source section
+            // is transferred later,
             // so we need to force the materialization of repeating node.
             AbstractRepeatingNode materializedLoop = (AbstractRepeatingNode) ((AbstractRepeatingNode) loop.getRepeatingNode()).materializeInstrumentableNodes(materializedTags);
             if (materializedLoop == loop.getRepeatingNode()) {
@@ -276,7 +277,8 @@ public final class ForNode extends StatementNode implements ResumableNode {
 
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new ForRepeatingNode(cloneUninitialized(conditionNode, materializedTags), cloneUninitialized(bodyNode, materializedTags), cloneUninitialized(modify, materializedTags), cloneUninitialized(copy, materializedTags), cloneUninitialized(isFirstNode, materializedTags),
+            return new ForRepeatingNode(cloneUninitialized(conditionNode, materializedTags), cloneUninitialized(bodyNode, materializedTags), cloneUninitialized(modify, materializedTags),
+                            cloneUninitialized(copy, materializedTags), cloneUninitialized(isFirstNode, materializedTags),
                             cloneUninitialized(setNotFirstNode, materializedTags));
         }
     }

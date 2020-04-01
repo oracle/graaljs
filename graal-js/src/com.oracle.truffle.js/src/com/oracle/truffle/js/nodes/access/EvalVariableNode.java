@@ -159,6 +159,7 @@ public final class EvalVariableNode extends JSTargetableNode implements ReadNode
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new EvalVariableNode(context, varName, cloneUninitialized(defaultDelegate, materializedTags), cloneUninitialized(dynamicScopeNode, materializedTags), cloneUninitialized(scopeAccessNode, materializedTags));
+        return new EvalVariableNode(context, varName, cloneUninitialized(defaultDelegate, materializedTags), cloneUninitialized(dynamicScopeNode, materializedTags),
+                        cloneUninitialized(scopeAccessNode, materializedTags));
     }
 }

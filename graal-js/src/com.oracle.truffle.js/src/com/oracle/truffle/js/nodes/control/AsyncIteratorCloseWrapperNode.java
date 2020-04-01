@@ -190,7 +190,8 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new AsyncIteratorCloseWrapperNode(context, cloneUninitialized(loopNode, materializedTags), cloneUninitialized(iteratorNode, materializedTags), cloneUninitialized(readAsyncContextNode, materializedTags),
+        return new AsyncIteratorCloseWrapperNode(context, cloneUninitialized(loopNode, materializedTags), cloneUninitialized(iteratorNode, materializedTags),
+                        cloneUninitialized(readAsyncContextNode, materializedTags),
                         cloneUninitialized(readAsyncResultNode, materializedTags));
     }
 }

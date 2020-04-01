@@ -119,7 +119,8 @@ public class CompoundWriteElementNode extends WriteElementNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(cloneUninitialized(targetNode, materializedTags), cloneUninitialized(indexNode, materializedTags), cloneUninitialized(valueNode, materializedTags), cloneUninitialized(writeIndexNode, materializedTags), getContext(), isStrict(), writeOwn());
+        return create(cloneUninitialized(targetNode, materializedTags), cloneUninitialized(indexNode, materializedTags), cloneUninitialized(valueNode, materializedTags),
+                        cloneUninitialized(writeIndexNode, materializedTags), getContext(), isStrict(), writeOwn());
     }
 
     @Override

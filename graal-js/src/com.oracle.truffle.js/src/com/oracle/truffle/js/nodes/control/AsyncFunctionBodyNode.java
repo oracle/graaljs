@@ -232,10 +232,12 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return atomic(() -> {
             if (resumptionTarget == null) {
-                return create(getContext(), cloneUninitialized(functionBody, materializedTags), cloneUninitialized(writeAsyncContext, materializedTags), cloneUninitialized(writeAsyncResult, materializedTags), functionName);
+                return create(getContext(), cloneUninitialized(functionBody, materializedTags), cloneUninitialized(writeAsyncContext, materializedTags),
+                                cloneUninitialized(writeAsyncResult, materializedTags), functionName);
             } else {
                 AsyncFunctionRootNode asyncFunctionRoot = (AsyncFunctionRootNode) ((RootCallTarget) resumptionTarget).getRootNode();
-                return create(getContext(), cloneUninitialized(asyncFunctionRoot.functionBody, materializedTags), cloneUninitialized(writeAsyncContext, materializedTags), cloneUninitialized(asyncFunctionRoot.writeAsyncResult, materializedTags),
+                return create(getContext(), cloneUninitialized(asyncFunctionRoot.functionBody, materializedTags), cloneUninitialized(writeAsyncContext, materializedTags),
+                                cloneUninitialized(asyncFunctionRoot.writeAsyncResult, materializedTags),
                                 functionName);
             }
         });

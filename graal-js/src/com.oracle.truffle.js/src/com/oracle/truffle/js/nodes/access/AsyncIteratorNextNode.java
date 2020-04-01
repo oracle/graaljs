@@ -101,6 +101,7 @@ public class AsyncIteratorNextNode extends AwaitNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new AsyncIteratorNextNode(context, cloneUninitialized(expression, materializedTags), cloneUninitialized(readAsyncContextNode, materializedTags), cloneUninitialized(readAsyncResultNode, materializedTags));
+        return new AsyncIteratorNextNode(context, cloneUninitialized(expression, materializedTags), cloneUninitialized(readAsyncContextNode, materializedTags),
+                        cloneUninitialized(readAsyncResultNode, materializedTags));
     }
 }

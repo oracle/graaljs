@@ -132,6 +132,7 @@ public final class GeneratorWrapperNode extends JavaScriptNode implements Repeat
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return createWrapper(cloneUninitialized(childNode, materializedTags), cloneUninitialized(stateNode, materializedTags), (WriteNode) cloneUninitialized((JavaScriptNode) writeStateNode, materializedTags));
+        return createWrapper(cloneUninitialized(childNode, materializedTags), cloneUninitialized(stateNode, materializedTags),
+                        (WriteNode) cloneUninitialized((JavaScriptNode) writeStateNode, materializedTags));
     }
 }

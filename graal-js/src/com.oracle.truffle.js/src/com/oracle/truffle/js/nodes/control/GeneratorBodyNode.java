@@ -242,10 +242,12 @@ public final class GeneratorBodyNode extends JavaScriptNode {
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return atomic(() -> {
             if (generatorCallTarget == null) {
-                return create(context, cloneUninitialized(functionBody, materializedTags), cloneUninitialized(writeYieldValueNode, materializedTags), cloneUninitialized(readYieldResultNode, materializedTags));
+                return create(context, cloneUninitialized(functionBody, materializedTags), cloneUninitialized(writeYieldValueNode, materializedTags),
+                                cloneUninitialized(readYieldResultNode, materializedTags));
             } else {
                 GeneratorRootNode generatorRoot = (GeneratorRootNode) generatorCallTarget.getRootNode();
-                return create(context, cloneUninitialized(generatorRoot.functionBody, materializedTags), cloneUninitialized(generatorRoot.writeYieldValue, materializedTags), cloneUninitialized(generatorRoot.readYieldResult, materializedTags));
+                return create(context, cloneUninitialized(generatorRoot.functionBody, materializedTags), cloneUninitialized(generatorRoot.writeYieldValue, materializedTags),
+                                cloneUninitialized(generatorRoot.readYieldResult, materializedTags));
             }
         });
     }

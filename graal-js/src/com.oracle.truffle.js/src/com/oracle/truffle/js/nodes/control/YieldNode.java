@@ -174,7 +174,8 @@ public class YieldNode extends JavaScriptNode implements ResumableNode, SuspendN
         JavaScriptNode expressionCopy = cloneUninitialized(expression, materializedTags);
         JavaScriptNode yieldValueCopy = cloneUninitialized(yieldValue, materializedTags);
         ReturnNode returnCopy = cloneUninitialized(returnNode, materializedTags);
-        JSWriteFrameSlotNode writeYieldValueCopy = cloneUninitialized(generatorYieldNode instanceof FrameYieldResultNode ? ((FrameYieldResultNode) generatorYieldNode).writeYieldValueNode : null, materializedTags);
+        JSWriteFrameSlotNode writeYieldValueCopy = cloneUninitialized(generatorYieldNode instanceof FrameYieldResultNode ? ((FrameYieldResultNode) generatorYieldNode).writeYieldValueNode : null,
+                        materializedTags);
         if (this instanceof YieldStarNode) {
             return createYieldStar(context, expressionCopy, yieldValueCopy, returnCopy, writeYieldValueCopy);
         } else {
