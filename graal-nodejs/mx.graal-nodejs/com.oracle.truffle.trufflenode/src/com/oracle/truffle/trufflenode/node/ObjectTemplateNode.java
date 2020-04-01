@@ -42,8 +42,10 @@ package com.oracle.truffle.trufflenode.node;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -51,8 +53,8 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
+import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionExpressionNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -154,7 +156,7 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
         }
 
         @Override
-        protected ObjectLiteralMemberNode copyUninitialized() {
+        protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new InternalFieldNode(isStatic, attributes, (HiddenKey) setNode.getKey(), value, setNode.getContext());
         }
     }
