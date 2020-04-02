@@ -511,6 +511,10 @@
     "filePath" : "mjsunit/es6/proxies-bind.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/es6/proxies-constructor.js",
+    "status" : "FAIL",
+    "comment" : "outdated test; proxy constructor now accepts revoked proxy arguments"
+  }, {
     "filePath" : "mjsunit/es6/proxies-cross-realm-exception.js",
     "status" : "FAIL"
   }, {
@@ -527,6 +531,10 @@
     },
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests, disabled on SVM (GR-21828)"
+  }, {
+    "filePath" : "mjsunit/es6/proxies-revocable.js",
+    "status" : "FAIL",
+    "comment" : "outdated test; proxy constructor now accepts revoked proxy arguments"
   }, {
     "filePath" : "mjsunit/es6/regress/regress-2322.js",
     "status" : "FAIL"
