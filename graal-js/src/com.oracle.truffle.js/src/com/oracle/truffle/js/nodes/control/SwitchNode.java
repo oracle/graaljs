@@ -109,13 +109,13 @@ public final class SwitchNode extends StatementNode {
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(ControlFlowRootTag.class) && needsMaterialization()) {
             JavaScriptNode[] newCaseExpressions = new JavaScriptNode[caseExpressions.length];
-            boolean somethingChanged = false;
+            boolean wasChanged = false;
             for (int i = 0; i < caseExpressions.length; i++) {
                 InstrumentableNode materialized = caseExpressions[i].materializeInstrumentableNodes(materializedTags);
                 newCaseExpressions[i] = JSTaggedExecutionNode.createForInput((JavaScriptNode) materialized, ControlFlowBranchTag.class,
                                 JSTags.createNodeObjectDescriptor("type", ControlFlowBranchTag.Type.Condition.name()), materializedTags);
                 if (newCaseExpressions[i] != caseExpressions[i]) {
-                    somethingChanged = true;
+                    wasChanged = true;
                 }
             }
             JavaScriptNode[] newStatements = new JavaScriptNode[statements.length];
@@ -123,11 +123,23 @@ public final class SwitchNode extends StatementNode {
                 InstrumentableNode materialized = statements[i].materializeInstrumentableNodes(materializedTags);
                 newStatements[i] = JSTaggedExecutionNode.createFor((JavaScriptNode) materialized, ControlFlowBlockTag.class, materializedTags);
                 if (newStatements[i] != statements[i]) {
-                    somethingChanged = true;
+                    wasChanged = true;
                 }
             }
-            if (!somethingChanged) {
+            if (!wasChanged) {
                 return this;
+            } else {
+                // clone expressions and statements that were not cloned by materialization
+                for (int i = 0; i < caseExpressions.length; i++) {
+                    if (newCaseExpressions[i] == caseExpressions[i]) {
+                        newCaseExpressions[i] = cloneUninitialized(caseExpressions[i], materializedTags);
+                    }
+                }
+                for (int i = 0; i < statements.length; i++) {
+                    if (newStatements[i] == statements[i]) {
+                        newStatements[i] = cloneUninitialized(statements[i], materializedTags);
+                    }
+                }
             }
             SwitchNode materialized = SwitchNode.create(newCaseExpressions, jumptable, newStatements);
             transferSourceSectionAndTags(this, materialized);

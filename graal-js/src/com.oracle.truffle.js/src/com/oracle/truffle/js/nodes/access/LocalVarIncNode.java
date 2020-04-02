@@ -56,12 +56,10 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.binary.JSAddNode;
-import com.oracle.truffle.js.nodes.binary.JSBinaryNode;
 import com.oracle.truffle.js.nodes.binary.JSSubtractNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
-import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
@@ -203,18 +201,8 @@ abstract class LocalVarOpMaterializedNode extends LocalVarIncNode {
         super(from.op, from.frameSlot, from.hasTemporalDeadZone, from.scopeFrameNode);
 
         JavaScriptNode readOld = JSReadFrameSlotNode.create(frameSlot, scopeFrameNode, hasTemporalDeadZone);
-        JavaScriptNode convert = JSToNumericNode.create(readOld);
-        if (materializedTags != null) {
-            // need to force materialization, because the convert node might not have source section
-            // at this point
-            JavaScriptNode materializedConvertNode = (JavaScriptNode) convert.materializeInstrumentableNodes(materializedTags);
-            if (convert == materializedConvertNode) {
-                convert = cloneUninitialized(convert, materializedTags);
-            } else {
-                convert = materializedConvertNode;
-            }
-        }
-        convertOld = JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, convert, hasTemporalDeadZone);
+        JavaScriptNode convert = (JavaScriptNode) JSToNumericNode.create(readOld).materializeInstrumentableNodes(materializedTags);
+        convertOld = cloneUninitialized(JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, convert, hasTemporalDeadZone), materializedTags);
 
         JavaScriptNode readTmp = JSReadFrameSlotNode.create(frameSlot, scopeFrameNode, hasTemporalDeadZone);
         JavaScriptNode one = JSConstantNode.createInt(1);
@@ -224,26 +212,15 @@ abstract class LocalVarOpMaterializedNode extends LocalVarIncNode {
         } else {
             opNode = JSAddNode.create(readTmp, one);
         }
-        if (materializedTags != null) {
-            // need to force materialization, because the convert node might not have source section
-            // at this point
-            JavaScriptNode materializedOpNode = (JavaScriptNode) opNode.materializeInstrumentableNodes(materializedTags);
-            if (opNode == materializedOpNode) {
-                opNode = cloneUninitialized(opNode, materializedTags);
-            } else {
-                opNode = materializedOpNode;
-            }
-        }
-        this.writeNew = JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, opNode, hasTemporalDeadZone);
-        // The readTmp and one nodes are no longer valid, they have been cloned
-        if (opNode instanceof JSBinaryNode) {
-            transferSourceSectionAddExpressionTag(from, ((JSBinaryNode) opNode).getLeft());
-            transferSourceSectionAddExpressionTag(from, ((JSBinaryNode) opNode).getRight());
-        } else if (opNode instanceof JSUnaryNode) {
-            transferSourceSectionAddExpressionTag(from, ((JSUnaryNode) opNode).getOperand());
-        }
-        transferSourceSectionAddExpressionTag(from, writeNew);
+        /*
+         * Have to transfer source sections before cloning and materialization. Some nodes might
+         * become instrumentable by this operation.
+         */
+        transferSourceSectionAddExpressionTag(from, readTmp);
+        transferSourceSectionAddExpressionTag(from, one);
         transferSourceSectionAddExpressionTag(from, opNode);
+        this.writeNew = cloneUninitialized(JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, opNode, hasTemporalDeadZone), materializedTags);
+        transferSourceSectionAddExpressionTag(from, writeNew);
         transferSourceSectionAndTags(from, this);
     }
 
