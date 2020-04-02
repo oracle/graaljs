@@ -169,6 +169,9 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
     @TruffleBoundary
     @Override
     public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
+        if (receiver != thisObj) {
+            return ordinarySetWithReceiver(thisObj, key, value, receiver, isStrict);
+        }
         long index = JSRuntime.propertyKeyToArrayIndex(key);
         if (index >= 0 && index < getStringLength(thisObj)) {
             // Indexed properties of a String are non-writable and non-configurable.
@@ -184,6 +187,9 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
     @TruffleBoundary
     @Override
     public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
+        if (receiver != thisObj) {
+            return ordinarySetWithReceiver(thisObj, Boundaries.stringValueOf(index), value, receiver, isStrict);
+        }
         if (index < getStringLength(thisObj)) {
             // Indexed properties of a String are non-writable and non-configurable.
             if (isStrict) {

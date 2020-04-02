@@ -12,10 +12,6 @@
     "status" : "FAIL",
     "comment" : "new failures update 2020-04-01"
   }, {
-    "filePath" : "built-ins/Proxy/set/trap-is-null-target-is-proxy.js",
-    "status" : "FAIL",
-    "comment" : "new failures update 2020-04-01"
-  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Alphabetic.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
