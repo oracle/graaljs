@@ -1958,18 +1958,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     @ImportStatic(value = {JSProxy.class})
     public abstract static class ConstructJSProxyNode extends ConstructWithNewTargetNode {
-        private final ConditionProfile revoked = ConditionProfile.createBinaryProfile();
         private final ConditionProfile targetNonObject = ConditionProfile.createBinaryProfile();
         private final ConditionProfile handlerNonObject = ConditionProfile.createBinaryProfile();
 
         public ConstructJSProxyNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
             super(context, builtin, isNewTargetCase);
-        }
-
-        private void checkRevokedProxy(Object obj) {
-            if (JSProxy.isProxy(obj) && revoked.profile(JSProxy.isRevoked((DynamicObject) obj))) {
-                throw Errors.createTypeError("argument cannot be a revoked proxy");
-            }
         }
 
         @Specialization
@@ -1982,8 +1975,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 throw Errors.createTypeError("handler expected to be an object");
             }
             DynamicObject handlerObj = (DynamicObject) handler;
-            checkRevokedProxy(target);
-            checkRevokedProxy(handlerObj);
             return swapPrototype(JSProxy.create(getContext(), target, handlerObj), newTarget);
         }
 

@@ -69,7 +69,6 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
 
     @Child protected GetMethodNode trapGet;
     @Child private JSFunctionCallNode callNode;
-    @Child private JSToPropertyKeyNode toPropertyKeyNode;
     @Child private JSGetOwnPropertyNode getOwnPropertyNode;
     @Child private JSIdenticalNode sameValueNode;
     private final BranchProfile errorBranch = BranchProfile.create();
@@ -87,12 +86,13 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
 
     @Specialization
     protected Object doGeneric(DynamicObject proxy, Object receiver, Object key,
+                    @Cached JSToPropertyKeyNode toPropertyKeyNode,
                     @Cached("createBinaryProfile()") ConditionProfile hasTrap,
                     @Cached JSClassProfile targetClassProfile) {
         assert JSProxy.isProxy(proxy);
         assert !(key instanceof HiddenKey);
-        Object propertyKey = toPropertyKey(key);
-        DynamicObject handler = JSProxy.getHandler(proxy);
+        Object propertyKey = toPropertyKeyNode.execute(key);
+        DynamicObject handler = JSProxy.getHandlerChecked(proxy, errorBranch);
         Object target = JSProxy.getTarget(proxy);
         Object trapFun = trapGet.executeWithTarget(handler);
         if (hasTrap.profile(trapFun == Undefined.instance)) {
@@ -144,13 +144,5 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
             getOwnPropertyNode = insert(JSGetOwnPropertyNode.create());
         }
         return getOwnPropertyNode.execute(target, propertyKey);
-    }
-
-    private Object toPropertyKey(Object key) {
-        if (toPropertyKeyNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toPropertyKeyNode = insert(JSToPropertyKeyNode.create());
-        }
-        return toPropertyKeyNode.execute(key);
     }
 }

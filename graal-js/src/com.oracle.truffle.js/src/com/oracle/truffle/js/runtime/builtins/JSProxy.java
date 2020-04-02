@@ -50,6 +50,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.ProxyFunctionBuiltins;
 import com.oracle.truffle.js.runtime.Boundaries;
@@ -102,15 +103,6 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
         PROXY_TARGET_PROPERTY = JSObjectUtil.makeHiddenProperty(PROXY_TARGET, allocator.locationForType(Object.class));
         PROXY_HANDLER_PROPERTY = JSObjectUtil.makeHiddenProperty(PROXY_HANDLER, allocator.locationForType(DynamicObject.class));
-    }
-
-    public static boolean isAccessibleProperty(DynamicObject proxy, Object key) {
-        Object target = JSProxy.getTarget(proxy);
-        if (JSObject.isJSObject(target)) {
-            return checkPropertyIsSettable(target, key);
-        } else {
-            return true; // best guess
-        }
     }
 
     public static boolean checkPropertyIsSettable(Object truffleTarget, Object key) {
@@ -176,7 +168,16 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     public static DynamicObject getHandlerChecked(DynamicObject obj) {
         DynamicObject handler = getHandler(obj);
         if (handler == Null.instance) {
-            throw Errors.createTypeError("proxy handler must not be null");
+            throw Errors.createTypeErrorProxyRevoked();
+        }
+        return handler;
+    }
+
+    public static DynamicObject getHandlerChecked(DynamicObject obj, BranchProfile errorBranch) {
+        DynamicObject handler = getHandler(obj);
+        if (handler == Null.instance) {
+            errorBranch.enter();
+            throw Errors.createTypeErrorProxyRevoked();
         }
         return handler;
     }
@@ -222,7 +223,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     @TruffleBoundary
     private static Object proxyGetHelper(DynamicObject proxy, Object key, Object receiver) {
         assert JSRuntime.isPropertyKey(key);
-        DynamicObject handler = getHandler(proxy);
+        DynamicObject handler = getHandlerChecked(proxy);
         Object target = getTarget(proxy);
         Object trap = getTrapFromObject(handler, GET);
         if (trap == Undefined.instance) {
@@ -276,7 +277,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     @TruffleBoundary
     private static boolean proxySet(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
         assert JSRuntime.isPropertyKey(key);
-        DynamicObject handler = getHandler(thisObj);
+        DynamicObject handler = getHandlerChecked(thisObj);
         Object target = getTarget(thisObj);
         Object trap = getTrapFromObject(handler, SET);
         if (trap == Undefined.instance) {
@@ -348,20 +349,22 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     @Override
     public boolean hasProperty(DynamicObject thisObj, Object key) {
         assert JSRuntime.isPropertyKey(key);
-        DynamicObject handler = getHandler(thisObj);
+        DynamicObject handler = getHandlerChecked(thisObj);
         Object target = getTarget(thisObj);
         Object trap = getTrapFromObject(handler, HAS);
         if (trap == Undefined.instance) {
             if (JSObject.isJSObject(target)) {
-                return JSObject.hasOwnProperty((DynamicObject) target, key);
+                return JSObject.hasProperty((DynamicObject) target, key);
             } else {
                 return JSInteropUtil.hasProperty(target, key);
             }
         }
 
         boolean trapResult = JSRuntime.toBoolean(JSRuntime.call(trap, handler, new Object[]{target, key}));
-        if (!trapResult && !isAccessibleProperty(thisObj, key)) {
-            throw Errors.createTypeErrorConfigurableExpected();
+        if (!trapResult) {
+            if (!JSProxy.checkPropertyIsSettable(target, key)) {
+                throw Errors.createTypeErrorConfigurableExpected();
+            }
         }
         return trapResult;
     }

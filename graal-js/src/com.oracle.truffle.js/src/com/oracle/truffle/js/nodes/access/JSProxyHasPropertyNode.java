@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -67,6 +68,7 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
     @Child private JSFunctionCallNode callNode;
     @Child private JSToBooleanNode toBooleanNode;
     @Child private JSToPropertyKeyNode toPropertyKeyNode;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     public JSProxyHasPropertyNode(JSContext context) {
         this.callNode = JSFunctionCallNode.createCall();
@@ -81,19 +83,13 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
 
     public abstract boolean executeWithTargetAndKeyBoolean(Object shared, Object key);
 
-    private void checkTrapResult(boolean accessible, boolean trapResult) {
-        if (!accessible && !trapResult) {
-            throw Errors.createTypeError("Proxy can't successfully access a non-writable, non-configurable property", this);
-        }
-    }
-
     @Specialization
     protected boolean doGeneric(DynamicObject proxy, Object key,
                     @Cached("createBinaryProfile()") ConditionProfile trapFunProfile) {
         assert JSProxy.isProxy(proxy);
         Object propertyKey = toPropertyKeyNode.execute(key);
+        DynamicObject handler = JSProxy.getHandlerChecked(proxy, errorBranch);
         Object target = JSProxy.getTarget(proxy);
-        DynamicObject handler = JSProxy.getHandler(proxy);
         Object trapFun = trapGetter.executeWithTarget(handler);
         if (trapFunProfile.profile(trapFun == Undefined.instance)) {
             if (JSObject.isJSObject(target)) {
@@ -104,8 +100,12 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
         } else {
             Object callResult = callNode.executeCall(JSArguments.create(handler, trapFun, target, propertyKey));
             boolean trapResult = toBooleanNode.executeBoolean(callResult);
-            boolean accessible = JSProxy.checkPropertyIsSettable(target, propertyKey);
-            checkTrapResult(accessible, trapResult);
+            if (!trapResult) {
+                errorBranch.enter();
+                if (!JSProxy.checkPropertyIsSettable(target, propertyKey)) {
+                    throw Errors.createTypeError("Proxy can't successfully access a non-writable, non-configurable property", this);
+                }
+            }
             return trapResult;
         }
     }
