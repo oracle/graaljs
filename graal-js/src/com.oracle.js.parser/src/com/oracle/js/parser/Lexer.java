@@ -2033,7 +2033,7 @@ public class Lexer extends Scanner {
             } else if (isStringDelimiter(ch0)) {
                 // Scan and add a string.
                 scanString(true);
-            } else if (Character.isDigit(ch0)) {
+            } else if ('0' <= ch0 && ch0 <= '9') {
                 // Scan and add a number.
                 scanNumber();
             } else if (isTemplateDelimiter(ch0) && isES6()) {
