@@ -74,6 +74,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
@@ -445,9 +446,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     public abstract JavaScriptNode getTarget();
 
     protected final Object evaluateReceiver(VirtualFrame frame, Object target) {
-        Node targetNode = getTarget();
-        if (targetNode instanceof WrapperNode) {
-            targetNode = ((WrapperNode) targetNode).getDelegateNode();
+        JavaScriptNode targetNode = getTarget();
+        if (JSNodeUtil.isWrapperNode(targetNode)) {
+            targetNode = JSNodeUtil.getWrappedNode(targetNode);
         }
         if (targetNode instanceof SuperPropertyReferenceNode) {
             return ((SuperPropertyReferenceNode) targetNode).evaluateTarget(frame);
