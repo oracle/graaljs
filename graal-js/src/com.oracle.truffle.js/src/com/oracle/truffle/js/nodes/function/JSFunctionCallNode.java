@@ -446,10 +446,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     public abstract JavaScriptNode getTarget();
 
     protected final Object evaluateReceiver(VirtualFrame frame, Object target) {
-        JavaScriptNode targetNode = getTarget();
-        if (JSNodeUtil.isWrapperNode(targetNode)) {
-            targetNode = JSNodeUtil.getWrappedNode(targetNode);
-        }
+        JavaScriptNode targetNode = JSNodeUtil.getWrappedNodeRecursive(getTarget(), Integer.MAX_VALUE);
         if (targetNode instanceof SuperPropertyReferenceNode) {
             return ((SuperPropertyReferenceNode) targetNode).evaluateTarget(frame);
         }

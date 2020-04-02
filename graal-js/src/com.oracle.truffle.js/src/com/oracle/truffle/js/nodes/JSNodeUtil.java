@@ -148,27 +148,47 @@ public final class JSNodeUtil {
     }
 
     /**
-     * Helper to retrieve the node wrapped by a given JavaScript node.
+     * Convenience method for {@link JSNodeUtil#getWrappedNodeRecursive(JavaScriptNode, int)} with
+     * maxDepth == 1.
      *
-     * @param node a JavaScript node that is possibly a wrapper
-     * @return the (delegate) node that is wrapped by the parameter <code>node</code>, or
-     *         <code>node</code> itself if it is not a wrapper that can be stripped
      */
     public static JavaScriptNode getWrappedNode(JavaScriptNode node) {
+        return getWrappedNodeRecursive(node, 1);
+    }
+
+    /**
+     * Helper to retrieve the node wrapped by an instrumentation wrapper and/or JavaScript wrapper
+     * node(s).
+     *
+     * @param node a JavaScript node that is possibly a wrapper or an instrumentation wrapper
+     *            wrapping a JavaScript node.
+     * @return the (delegate) node that is wrapped by the parameter <code>node</code>, or
+     *         <code>node</code> itself if it is not a wrapper that can be stripped. This method
+     *         proceeds recursively until a node that is not a wrapper is found or maxDepth is
+     *         reached.
+     */
+    public static JavaScriptNode getWrappedNodeRecursive(JavaScriptNode node, int maxDepth) {
+        assert maxDepth > 0 : "maxDepth for getWrappedNodeRecursive must be at least 1!";
+        JavaScriptNode wrapped;
         JavaScriptNode unwrapped = node;
-        if (node instanceof WrapperNode) {
-            WrapperNode wrapper = (WrapperNode) node;
-            // JavaScriptNode wrappers have a JavaScriptNode as delegate
-            unwrapped = (JavaScriptNode) wrapper.getDelegateNode();
-        } else if (node instanceof GlobalScopeVarWrapperNode) {
-            unwrapped = ((GlobalScopeVarWrapperNode) node).getDelegateNode();
-        } else if (node instanceof JSInputGeneratingNodeWrapper) {
-            unwrapped = ((JSInputGeneratingNodeWrapper) node).getDelegateNode();
-        } else if (node instanceof JSTaggedExecutionNode) {
-            unwrapped = ((JSTaggedExecutionNode) node).getDelegateNode();
-        } else if (node instanceof JSTargetableWrapperNode) {
-            unwrapped = ((JSTargetableWrapperNode) node).getDelegate();
-        }
+        int depth = 0;
+        do {
+            wrapped = unwrapped;
+            if (wrapped instanceof WrapperNode) {
+                WrapperNode wrapper = (WrapperNode) wrapped;
+                // JavaScriptNode wrappers have a JavaScriptNode as delegate
+                unwrapped = (JavaScriptNode) wrapper.getDelegateNode();
+            } else if (wrapped instanceof GlobalScopeVarWrapperNode) {
+                unwrapped = ((GlobalScopeVarWrapperNode) wrapped).getDelegateNode();
+            } else if (wrapped instanceof JSInputGeneratingNodeWrapper) {
+                unwrapped = ((JSInputGeneratingNodeWrapper) wrapped).getDelegateNode();
+            } else if (wrapped instanceof JSTaggedExecutionNode) {
+                unwrapped = ((JSTaggedExecutionNode) wrapped).getDelegateNode();
+            } else if (wrapped instanceof JSTargetableWrapperNode) {
+                unwrapped = ((JSTargetableWrapperNode) wrapped).getDelegate();
+            }
+            depth++;
+        } while (unwrapped != wrapped && depth < maxDepth);
         assert !isWrapperNode(unwrapped);
         return unwrapped;
     }
