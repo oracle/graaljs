@@ -152,7 +152,6 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.LocalTimeZoneHolder;
 import com.oracle.truffle.js.runtime.util.PrintWriterWrapper;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
@@ -342,9 +341,9 @@ public class JSRealm {
     private String staticRegexResultOriginalInputString;
 
     /**
-     * Local time zone information. Initialized lazily.
+     * Local time zone ID. Initialized lazily.
      */
-    @CompilationFinal private LocalTimeZoneHolder localTimeZoneHolder;
+    @CompilationFinal private ZoneId localTimeZoneId;
 
     public static final long NANOSECONDS_PER_MILLISECOND = 1000000;
     private SplittableRandom random;
@@ -1832,8 +1831,8 @@ public class JSRealm {
         addArgumentsFromEnv(newEnv);
 
         // Reflect any changes to the timezone option.
-        if (localTimeZoneHolder != null) {
-            localTimeZoneHolder = getTimeZoneFromEnv();
+        if (localTimeZoneId != null) {
+            localTimeZoneId = getTimeZoneFromEnv();
         }
         initTimeOffsetAndRandom();
 
@@ -2099,33 +2098,25 @@ public class JSRealm {
         this.agent = newAgent;
     }
 
-    private LocalTimeZoneHolder getLocalTimeZoneHolder() {
-        LocalTimeZoneHolder holder = localTimeZoneHolder;
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, holder == null)) {
-            if (CompilerDirectives.isPartialEvaluationConstant(holder)) {
+    public ZoneId getLocalTimeZoneId() {
+        ZoneId id = localTimeZoneId;
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, id == null)) {
+            if (CompilerDirectives.isPartialEvaluationConstant(id)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
             }
-            holder = getTimeZoneFromEnv();
-            localTimeZoneHolder = holder;
+            id = getTimeZoneFromEnv();
+            localTimeZoneId = id;
         }
-        return holder;
+        return id;
     }
 
     @TruffleBoundary
-    private LocalTimeZoneHolder getTimeZoneFromEnv() {
+    private ZoneId getTimeZoneFromEnv() {
         OptionValues options = getEnv().getOptions();
         if (JSContextOptions.TIME_ZONE.hasBeenSet(options)) {
-            return new LocalTimeZoneHolder(TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(options)).toZoneId());
+            return TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(options)).toZoneId();
         }
-        return new LocalTimeZoneHolder(getEnv().getTimeZone());
-    }
-
-    public final ZoneId getLocalTimeZoneId() {
-        return getLocalTimeZoneHolder().localTimeZoneId;
-    }
-
-    public final long getLocalTZA() {
-        return getLocalTimeZoneHolder().localTZA;
+        return getEnv().getTimeZone();
     }
 
     private void initTimeOffsetAndRandom() {

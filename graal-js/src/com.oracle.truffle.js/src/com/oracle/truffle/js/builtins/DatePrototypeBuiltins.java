@@ -46,7 +46,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateGetDateNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateGetDayNodeGen;
@@ -80,7 +79,6 @@ import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToStrin
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToTimeStringNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateValueOfNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltins.ObjectOperation;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
@@ -93,7 +91,6 @@ import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -547,11 +544,9 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
     }
 
     public abstract static class JSDateGetFullYearNode extends JSDateOperation {
-        @Child protected LocalDayNode localDayNode;
 
         public JSDateGetFullYearNode(JSContext context, JSBuiltin builtin, boolean isUTC) {
             super(context, builtin, isUTC);
-            localDayNode = isUTC ? null : LocalDayNode.create(context);
         }
 
         @Specialization
@@ -560,21 +555,15 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return Double.NaN;
             }
-            if (isUTC) {
-                return JSDate.yearFromTime((long) t);
-            } else {
-                int daysAfter1970 = localDayNode.execute((long) t);
-                return JSDate.yearFromDays(daysAfter1970);
-            }
+            t = isUTC ? t : JSDate.localTime(t, getContext());
+            return JSDate.yearFromTime((long) t);
         }
     }
 
     public abstract static class JSDateGetYearNode extends JSDateOperation {
-        @Child protected LocalDayNode localDayNode;
 
         public JSDateGetYearNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, false);
-            localDayNode = isUTC ? null : LocalDayNode.create(context);
         }
 
         @Specialization
@@ -583,17 +572,15 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return Double.NaN;
             }
-            int daysAfter1970 = localDayNode.execute((long) t);
-            return JSDate.yearFromDays(daysAfter1970) - 1900d;
+            t = JSDate.localTime(t, getContext());
+            return JSDate.yearFromTime((long) t) - 1900d;
         }
     }
 
     public abstract static class JSDateGetMonthNode extends JSDateOperation {
-        @Child protected LocalDayNode localDayNode;
 
         public JSDateGetMonthNode(JSContext context, JSBuiltin builtin, boolean isUTC) {
             super(context, builtin, isUTC);
-            localDayNode = isUTC ? null : LocalDayNode.create(context);
         }
 
         @Specialization
@@ -602,23 +589,15 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (Double.isNaN(t)) {
                 return Double.NaN;
             }
-            if (isUTC) {
-                return JSDate.monthFromTime(t);
-            } else {
-                int daysAfter1970 = localDayNode.execute((long) t);
-                return JSDate.monthFromDays(daysAfter1970);
-            }
+            t = isUTC ? t : JSDate.localTime(t, getContext());
+            return JSDate.monthFromTime(t);
         }
     }
 
     public abstract static class JSDateGetDateNode extends JSDateOperation {
-        private static final int DAYS_FROM_1970_TO_1901 = JSDate.dayFromYear(1901);
-        private static final int DAYS_FROM_1970_TO_2100 = JSDate.dayFromYear(2100);
-        @Child protected LocalDayNode localDayNode;
 
         public JSDateGetDateNode(JSContext context, JSBuiltin builtin, boolean isUTC) {
             super(context, builtin, isUTC);
-            localDayNode = isUTC ? null : LocalDayNode.create(context);
         }
 
         @Specialization
@@ -627,26 +606,15 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return Double.NaN;
             }
-            if (isUTC) {
-                return JSDate.dateFromTime(t);
-            } else {
-                int daysAfter1970 = localDayNode.execute((long) t);
-                if (DAYS_FROM_1970_TO_1901 <= daysAfter1970 && daysAfter1970 <= DAYS_FROM_1970_TO_2100) {
-                    // There are regular leap years between 1.1.1901 and 1.1.2100
-                    return JSDate.dateFromDaysRegularLeapYears(daysAfter1970);
-                } else {
-                    return JSDate.dateFromDays(daysAfter1970);
-                }
-            }
+            t = isUTC ? t : JSDate.localTime(t, getContext());
+            return JSDate.dateFromTime(t);
         }
     }
 
     public abstract static class JSDateGetDayNode extends JSDateOperation {
-        @Child protected LocalDayNode localDayNode;
 
         public JSDateGetDayNode(JSContext context, JSBuiltin builtin, boolean isUTC) {
             super(context, builtin, isUTC);
-            localDayNode = isUTC ? null : LocalDayNode.create(context);
         }
 
         @Specialization
@@ -655,14 +623,8 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return Double.NaN;
             }
-            if (isUTC) {
-                return JSDate.weekDay(t);
-            } else {
-                int daysAfter1970 = localDayNode.execute((long) t);
-                int result = (daysAfter1970 + 4) % 7;
-                return result >= 0 ? result : (result + 7);
-            }
-
+            t = isUTC ? t : JSDate.localTime(t, getContext());
+            return JSDate.weekDay(t);
         }
     }
 
@@ -960,37 +922,6 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 throw Errors.createTypeError("invalid hint");
             }
         }
-    }
-
-    public static final class LocalDayNode extends JavaScriptBaseNode {
-        private final JSContext context;
-        private final BranchProfile dstNeededProfile = BranchProfile.create();
-
-        private LocalDayNode(JSContext context) {
-            this.context = context;
-        }
-
-        public static LocalDayNode create(JSContext context) {
-            return new LocalDayNode(context);
-        }
-
-        public int execute(long t) {
-            JSRealm realm = context.getRealm();
-            long localNoDST = t + realm.getLocalTZA();
-            long day = Math.floorDiv(localNoDST, JSDate.MS_PER_DAY);
-            assert JSRuntime.longIsRepresentableAsInt(day);
-            int iday = (int) day;
-            long timeInDay = localNoDST - JSDate.MS_PER_DAY * day;
-            if (timeInDay < JSDate.MS_PER_DAY - JSDate.MS_MAX_DST) {
-                // DST offset cannot change the day
-                return iday;
-            } else {
-                dstNeededProfile.enter();
-                timeInDay += JSDate.daylightSavingTA(realm.getLocalTimeZoneId(), t);
-                return (timeInDay < JSDate.MS_PER_DAY) ? iday : (iday + 1);
-            }
-        }
-
     }
 
 }

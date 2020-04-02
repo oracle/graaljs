@@ -40,9 +40,9 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.Year;
 import java.time.ZoneId;
@@ -96,9 +96,6 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     private static final int MS_PER_HOUR = 3600000;
     public static final int MS_PER_DAY = 3600000 * 24;
     public static final double MAX_DATE = 8.64E15;
-
-    // Maximal size of DST offset
-    public static final int MS_MAX_DST = 2 * MS_PER_HOUR;
 
     private static final int DAYS_IN_4_YEARS = 4 * 365 + 1;
     private static final int DAYS_IN_100_YEARS = 25 * DAYS_IN_4_YEARS - 1;
@@ -270,15 +267,6 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
         return monthFromTimeIntl(leapYear, day);
     }
 
-    @TruffleBoundary
-    public static int monthFromDays(int daysAfter1970) {
-        int year = yearFromDays(daysAfter1970);
-        boolean leapYear = isLeapYear(year);
-        int day = daysAfter1970 - dayFromYear(year);
-
-        return monthFromTimeIntl(leapYear, day);
-    }
-
     private static int monthFromTimeIntl(boolean leapYear, int day) {
         assert (0 <= day) && (day < (365 + (leapYear ? 1 : 0))) : "should not reach here";
 
@@ -357,33 +345,6 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
         return (int) Math.floorDiv(t, MS_PER_DAY) - dayFromYear(year);
     }
 
-    @TruffleBoundary
-    public static int dateFromDays(int daysAfter1970) {
-        int year = yearFromDays(daysAfter1970);
-        int day = daysAfter1970 - dayFromYear(year);
-        return dateFromDayInYear(year, day);
-    }
-
-    @TruffleBoundary
-    public static double dateFromDaysRegularLeapYears(int daysAfter1970) {
-        // we need days relative to a year divisible by 4
-        int daysAfter2000 = daysAfter1970 - DAYS_FROM_1970_TO_2000;
-        // days after year 1900 (as if it was a leap year)
-        int days = daysAfter2000 + 25 * DAYS_IN_4_YEARS;
-        // we need days > 0 to ensure that integer division rounds correctly
-        assert days > 0;
-        int year = 4 * (days / DAYS_IN_4_YEARS);
-        int remainingDays = days % DAYS_IN_4_YEARS;
-        remainingDays--;
-        year += remainingDays / 365 + 1900;
-        remainingDays %= 365;
-        boolean leapYear = (year & 3) == 0;
-        if (leapYear) {
-            remainingDays++;
-        }
-        return dateFromDayInYear(year, remainingDays);
-    }
-
     // 15.9.1.5
     @TruffleBoundary
     public static int dateFromTime(double dt) {
@@ -435,49 +396,54 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
         return result >= 0 ? result : result + 7;
     }
 
-    /**
-     * ES5 15.9.1.8 Daylight Saving Time Adjustment, in milliseconds.
-     */
-    @TruffleBoundary
-    public static long daylightSavingTA(ZoneId zone, double t) {
-        Duration d = zone.getRules().getDaylightSavings(Instant.ofEpochMilli((long) t));
-        long offset = d.getSeconds() * 1000L;
-        assert 0 <= offset && offset <= MS_MAX_DST;
-        return offset;
-    }
-
-    // 15.9.1.9
     public static double localTime(double t, JSContext context) {
-        JSRealm realm = context.getRealm();
-        long localTZA = realm.getLocalTZA();
-        return t + localTZA + daylightSavingTA(realm.getLocalTimeZoneId(), t);
+        return t + localTZA(t, true, context);
     }
 
     private static double utc(double t, JSContext context) {
-        JSRealm realm = context.getRealm();
-        long localTZA = realm.getLocalTZA();
-        return t - localTZA - daylightSavingTA(realm.getLocalTimeZoneId(), t - localTZA);
+        return t - localTZA(t, false, context);
+    }
+
+    public static long localTZA(double t, boolean isUTC, JSContext context) {
+        return localTZA(t, isUTC, context.getRealm().getLocalTimeZoneId());
+    }
+
+    @TruffleBoundary
+    public static long localTZA(double t, boolean isUTC, ZoneId zoneId) {
+        ZoneOffset zoneOffset;
+        if (isUTC) {
+            zoneOffset = zoneId.getRules().getOffset(Instant.ofEpochMilli((long) t));
+        } else {
+            if (!(Math.abs(t) < MAX_DATE + MS_PER_DAY)) {
+                // No need to calculate the offset for times that will be time clipped after
+                // adjustment anyway.
+                return 0;
+            }
+            LocalDateTime localDateTime = LocalDateTime.of(yearFromTime((long) t), 1 + monthFromTime(t), dateFromTime(t), hourFromTime(t), minFromTime(t), secFromTime(t), msFromTime(t));
+            zoneOffset = zoneId.getRules().getOffset(localDateTime);
+        }
+        return zoneOffset.getTotalSeconds() * 1000L;
     }
 
     // 15.9.1.10
     @TruffleBoundary
-    public static double hourFromTime(double t) {
+    public static int hourFromTime(double t) {
         return (int) secureNegativeModulo(floor(t / MS_PER_HOUR), HOURS_PER_DAY);
     }
 
     @TruffleBoundary
-    public static double minFromTime(double t) {
+    public static int minFromTime(double t) {
         return (int) secureNegativeModulo(floor(t / MS_PER_MINUTE), MINUTES_PER_HOUR);
     }
 
     @TruffleBoundary
-    public static double secFromTime(double t) {
+    public static int secFromTime(double t) {
         return (int) secureNegativeModulo(floor(t / MS_PER_SECOND), SECONDS_PER_MINUTE);
     }
 
     @TruffleBoundary
-    public static double msFromTime(double t) {
-        return (long) secureNegativeModulo(t, MS_PER_SECOND);
+    public static int msFromTime(double t) {
+        return (int) secureNegativeModulo(t, MS_PER_SECOND);
     }
 
     private static double secureNegativeModulo(double value, double modulo) {
@@ -845,15 +811,6 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
         } else {
             return formattedDate;
         }
-    }
-
-    /**
-     * The local time zone adjustment is a value LocalTZA measured in milliseconds which when added
-     * to UTC represents the local standard time. Daylight saving time is not reflected by LocalTZA.
-     */
-    public static long getLocalTZA(ZoneId localTimeZoneId) {
-        ZoneOffset localTimeZoneOffset = localTimeZoneId.getRules().getOffset(Instant.ofEpochMilli(0));
-        return localTimeZoneOffset.getTotalSeconds() * 1000L;
     }
 
     @Override
