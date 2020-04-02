@@ -1209,9 +1209,6 @@
     "filePath" : "mjsunit/regress/regress-2989.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/regress/regress-3116.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/regress/regress-319722-ArrayBuffer.js",
     "status" : "FAIL"
   }, {
