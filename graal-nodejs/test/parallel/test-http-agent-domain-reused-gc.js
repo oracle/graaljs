@@ -55,7 +55,10 @@ server.emit('connection', serverSide);
 
 // HTTP Agent that only returns the fake connection.
 class TestAgent extends http.Agent {
-  createConnection = common.mustCall(() => wrappedClientSide)
+  constructor(options) {
+    super(options);
+    this.createConnection = common.mustCall(() => wrappedClientSide)
+  }
 }
 const agent = new TestAgent({ keepAlive: true, maxSockets: 1 });
 
