@@ -1497,14 +1497,10 @@ public final class JSRuntime {
         } else if (b instanceof Boolean) {
             return equal(a, booleanToNumber((Boolean) b));
         } else if (isObject(a)) {
-            if (b == Undefined.instance || b == Null.instance) {
-                return false;
-            }
+            assert b != Undefined.instance && b != Null.instance; // covered by (DynOb, DynOb)
             return equal(JSObject.toPrimitive((DynamicObject) a), b);
         } else if (isObject(b)) {
-            if (a == Undefined.instance || a == Null.instance) {
-                return false;
-            }
+            assert b != Undefined.instance && b != Null.instance; // covered by (DynOb, DynOb)
             return equal(a, JSObject.toPrimitive(((DynamicObject) b)));
         } else if (isForeignObject(a) || isForeignObject(b)) {
             return equalInterop(a, b);
@@ -1740,7 +1736,7 @@ public final class JSRuntime {
         int firstIdx = firstNonWhitespaceIndex(string, useLineTerminators);
         int lastIdx = lastNonWhitespaceIndex(string, useLineTerminators);
         if (firstIdx == 0) {
-            if (lastIdx == string.length()) {
+            if ((lastIdx + 1) == string.length()) {
                 return string;
             }
         } else if (firstIdx > lastIdx) {

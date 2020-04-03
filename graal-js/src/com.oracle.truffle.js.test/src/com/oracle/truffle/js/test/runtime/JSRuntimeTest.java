@@ -44,6 +44,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.math.BigInteger;
 
@@ -81,12 +82,15 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.test.JSTest;
 import com.oracle.truffle.js.test.polyglot.ForeignTestMap;
 
 public class JSRuntimeTest extends JSTest {
+
+    private static final double BIGDELTA = 0.00001;
 
     @Override
     public void setup() {
@@ -110,6 +114,20 @@ public class JSRuntimeTest extends JSTest {
         assertFalse(JSRuntime.equal(true, Undefined.instance));
         assertFalse(JSRuntime.equal(Undefined.instance, 1));
         assertTrue(JSRuntime.equal(Float.MAX_VALUE, Float.MAX_VALUE));
+
+        DynamicObject obj = JSUserObject.create(context);
+        assertFalse(JSRuntime.equal(obj, Null.instance));
+        assertFalse(JSRuntime.equal(obj, Undefined.instance));
+        assertFalse(JSRuntime.equal(Null.instance, obj));
+        assertFalse(JSRuntime.equal(Undefined.instance, obj));
+        assertTrue(JSRuntime.equal(obj, obj));
+        assertFalse(JSRuntime.equal(obj, JSUserObject.create(context)));
+
+        BigInt bi1a = new BigInt(new BigInteger("0123456789"));
+        BigInt bi1b = new BigInt(new BigInteger("0123456789"));
+        BigInt bi2 = new BigInt(new BigInteger("9876543210"));
+        assertTrue(JSRuntime.equal(bi1a, bi1b));
+        assertFalse(JSRuntime.equal(bi1a, bi2));
     }
 
     @Test
@@ -133,6 +151,8 @@ public class JSRuntimeTest extends JSTest {
 
     @Test
     public void testImportValue() {
+        testHelper.getJSContext(); // initialize JSContext
+
         assertEquals(Null.instance, JSRuntime.importValue(null));
 
         assertEquals(42, JSRuntime.importValue(42));
@@ -143,6 +163,17 @@ public class JSRuntimeTest extends JSTest {
         // same for now, might not hold eternally
         assertSame(42, JSRuntime.importValue((byte) 42));
         assertSame(42, JSRuntime.importValue((short) 42));
+
+        assertSame(42, JSRuntime.importValue(42L));
+        assertEquals(BigInt.valueOf(Long.MAX_VALUE), JSRuntime.importValue(Long.MAX_VALUE));
+        assertEquals(42.0, (double) JSRuntime.importValue((float) 42), BIGDELTA);
+
+        try {
+            JSRuntime.importValue(new Object());
+            fail();
+        } catch (Exception ex) {
+            assertTrue(ex.getMessage().contains("not supported in JavaScript"));
+        }
     }
 
     @Test
@@ -338,5 +369,168 @@ public class JSRuntimeTest extends JSTest {
         String str = jsnode.toString();
         assertTrue(str.contains("DualNode"));
         assertTrue(str.contains(":program"));
+    }
+
+    @Test
+    public void testToLength() {
+        // toLength(double)
+        assertTrue(JSRuntime.toLength(-3.14) == 0);
+        assertTrue(JSRuntime.toLength(JSRuntime.MAX_SAFE_INTEGER * 2) == JSRuntime.MAX_SAFE_INTEGER);
+        assertTrue(JSRuntime.toLength(Math.PI) == Math.PI);
+
+        // toLength(int)
+        assertTrue(JSRuntime.toLength(-3) == 0);
+        assertTrue(JSRuntime.toLength(42) == 42);
+    }
+
+    @Test
+    public void testLength() {
+        testHelper.getJSContext(); // intializes Context
+
+        // lengthIntl(CharSequence)
+        assertEquals(3, JSRuntime.length("ABC"));
+        assertEquals(42, JSRuntime.length(new TestCharSequence()));
+        assertEquals(40, JSRuntime.length(createLazyString()));
+    }
+
+    private static CharSequence createLazyString() {
+        return JSLazyString.create("01234567890123456789", "01234567890123456789");
+    }
+
+    @Test
+    public void testCharAt() {
+        testHelper.getJSContext(); // initializes Context
+
+        // charAt(CharSequence, int)
+        assertEquals('A', JSRuntime.charAt("ABC", 0));
+        assertEquals('A', JSRuntime.charAt(new TestCharSequence(), 0));
+        assertEquals('0', JSRuntime.charAt(createLazyString(), 0));
+    }
+
+    private static class TestCharSequence implements CharSequence {
+        @Override
+        public int length() {
+            return 42;
+        }
+
+        @Override
+        public char charAt(int index) {
+            return 'A';
+        }
+
+        @Override
+        public CharSequence subSequence(int start, int end) {
+            return null;
+        }
+    }
+
+    @Test
+    public void testToUInt8() {
+        // toUInt8(Object)
+        assertTrue(JSRuntime.toUInt8((Object) 3) == 3);
+        assertTrue(JSRuntime.toUInt8((Object) 3.14) == 3);
+        assertTrue(JSRuntime.toUInt8((Object) Double.POSITIVE_INFINITY) == 0);
+    }
+
+    @Test
+    public void testToInt8() {
+        // toInt8(Object)
+        assertTrue(JSRuntime.toInt8((Object) 3) == 3);
+        assertTrue(JSRuntime.toInt8((Object) 3.14) == 3);
+        assertTrue(JSRuntime.toInt8((Object) Double.POSITIVE_INFINITY) == 0);
+    }
+
+    @Test
+    public void testToUInt16() {
+        // toUInt16(Object)
+        assertTrue(JSRuntime.toUInt16((Object) 3) == 3);
+        assertTrue(JSRuntime.toUInt16((Object) 3.14) == 3);
+        assertTrue(JSRuntime.toUInt16((Object) Double.POSITIVE_INFINITY) == 0);
+    }
+
+    @Test
+    public void testToInt16() {
+        // toInt16(Object)
+        assertTrue(JSRuntime.toInt16((Object) 3) == 3);
+        assertTrue(JSRuntime.toInt16((Object) 3.14) == 3);
+        assertTrue(JSRuntime.toInt16((Object) Double.POSITIVE_INFINITY) == 0);
+    }
+
+    @Test
+    public void testToInt32() {
+        // toInt32(Object)
+        assertTrue(JSRuntime.toInt32((Object) 3) == 3);
+        assertTrue(JSRuntime.toInt32((Object) 3.14) == 3);
+        assertTrue(JSRuntime.toInt32((Object) 3L) == 3);
+        assertTrue(JSRuntime.toInt32((Object) Double.POSITIVE_INFINITY) == 0);
+    }
+
+    @Test
+    public void testToObject() {
+        JSContext ctx = testHelper.getJSContext();
+
+        // toObjectFromPrimitive(Object)
+        assertTrue(JSRuntime.toObject(ctx, true) != null);
+        assertTrue(JSRuntime.toObject(ctx, "String") != null);
+        assertTrue(JSRuntime.toObject(ctx, (float) 3.14) != null);
+    }
+
+    @Test
+    public void testToStringIsString() {
+        testHelper.getJSContext(); // initialize JSContext
+
+        // toStringIsString(Object)
+        assertEquals("ABC", JSRuntime.toStringIsString("ABC"));
+        assertEquals(40, JSRuntime.toStringIsString(createLazyString()).length());
+    }
+
+    @Test
+    public void testTrimJSWhiteSpace() {
+        // trimJSWhiteSpace(String)
+        assertEquals("A", JSRuntime.trimJSWhiteSpace(" A "));
+        assertEquals("A", JSRuntime.trimJSWhiteSpace("A "));
+        assertEquals("A", JSRuntime.trimJSWhiteSpace(" A"));
+        assertEquals("A", JSRuntime.trimJSWhiteSpace("A"));
+        assertEquals("A", JSRuntime.trimJSWhiteSpace(" A "));
+        assertEquals("AB", JSRuntime.trimJSWhiteSpace("AB  "));
+        assertEquals("AB", JSRuntime.trimJSWhiteSpace("  AB"));
+        assertEquals("AB", JSRuntime.trimJSWhiteSpace("AB"));
+        assertEquals("", JSRuntime.trimJSWhiteSpace("  "));
+        assertEquals("", JSRuntime.trimJSWhiteSpace(""));
+    }
+
+    @Test
+    public void testIntValue() {
+        // intValue(Number)
+        assertEquals(42, JSRuntime.intValue(42));
+        assertEquals(42, JSRuntime.intValue(42.3));
+        assertEquals(42, JSRuntime.intValue(42L));
+    }
+
+    @Test
+    public void testFloatValue() {
+        // floatValue(Number)
+        assertEquals(42, JSRuntime.floatValue(42), BIGDELTA);
+        assertEquals(42.3, JSRuntime.floatValue(42.3), BIGDELTA);
+        assertEquals(42, JSRuntime.floatValue(42L), BIGDELTA);
+    }
+
+    @Test
+    public void testMathCeil() {
+        // mathCeil(double)
+        assertTrue(Double.isNaN(JSRuntime.mathCeil(Double.NaN)));
+        assertTrue(JSRuntime.isNegativeZero(JSRuntime.mathCeil(-0.0)));
+    }
+
+    @Test
+    public void testExportValue() {
+        testHelper.getJSContext(); // initialize JSContext
+
+        // exportValue(Object)
+        assertEquals(42.0, (double) JSRuntime.exportValue(SafeInteger.valueOf(42)), BIGDELTA);
+
+        Object exportedLazyString = JSRuntime.exportValue(createLazyString());
+        assertTrue(exportedLazyString instanceof String);
+        assertEquals(createLazyString().toString(), exportedLazyString);
     }
 }

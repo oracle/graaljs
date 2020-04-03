@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -103,7 +103,7 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
         @Specialization
         protected DynamicObject arrayOf(Object thisObj, Object... args) {
             if (!isTypedArrayConstructor(thisObj)) {
-                throw Errors.createTypeErrorNotAConstructor(thisObj);
+                throw Errors.createTypeErrorNotAConstructor(thisObj, getContext());
             }
             int len = args.length;
             DynamicObject newObj = getArraySpeciesConstructorNode().typedArrayCreate((DynamicObject) thisObj, len);
@@ -133,7 +133,7 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
             Object thisArg = JSRuntime.getArgOrUndefined(args, 2);
 
             if (!JSFunction.isConstructor(thisObj)) {
-                throw Errors.createTypeErrorNotAConstructor(thisObj);
+                throw Errors.createTypeErrorNotAConstructor(thisObj, getContext());
             }
             return arrayFromIntl(thisObj, source, mapFn, thisArg, false);
         }
