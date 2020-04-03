@@ -1736,7 +1736,7 @@ public final class JSRuntime {
         int firstIdx = firstNonWhitespaceIndex(string, useLineTerminators);
         int lastIdx = lastNonWhitespaceIndex(string, useLineTerminators);
         if (firstIdx == 0) {
-            if (lastIdx == string.length()) {
+            if ((lastIdx + 1) == string.length()) {
                 return string;
             }
         } else if (firstIdx > lastIdx) {
