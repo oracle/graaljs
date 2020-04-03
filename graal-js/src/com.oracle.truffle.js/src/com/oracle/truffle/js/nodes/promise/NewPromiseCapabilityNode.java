@@ -93,7 +93,7 @@ public class NewPromiseCapabilityNode extends JavaScriptBaseNode {
     public PromiseCapabilityRecord execute(DynamicObject constructor) {
         if (!isConstructor.executeBoolean(constructor)) {
             errorBranch.enter();
-            throw Errors.createTypeErrorNotAConstructor(constructor);
+            throw Errors.createTypeErrorNotAConstructor(constructor, context);
         }
         PromiseCapabilityRecord promiseCapability = PromiseCapabilityRecord.create(Undefined.instance, Undefined.instance, Undefined.instance);
         DynamicObject executor = getCapabilitiesExecutor(promiseCapability);

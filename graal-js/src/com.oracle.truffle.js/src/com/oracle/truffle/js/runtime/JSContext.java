@@ -1051,7 +1051,7 @@ public class JSContext {
             synchronized (this) {
                 result = notConstructibleCallTargetCache;
                 if (result == null) {
-                    result = notConstructibleCallTargetCache = createNotConstructibleCallTarget(getLanguage(), false);
+                    result = notConstructibleCallTargetCache = createNotConstructibleCallTarget(getLanguage(), false, this);
                 }
             }
         }
@@ -1065,21 +1065,21 @@ public class JSContext {
             synchronized (this) {
                 result = generatorNotConstructibleCallTargetCache;
                 if (result == null) {
-                    result = generatorNotConstructibleCallTargetCache = createNotConstructibleCallTarget(getLanguage(), true);
+                    result = generatorNotConstructibleCallTargetCache = createNotConstructibleCallTarget(getLanguage(), true, this);
                 }
             }
         }
         return result;
     }
 
-    private static RootCallTarget createNotConstructibleCallTarget(JavaScriptLanguage lang, boolean generator) {
+    private static RootCallTarget createNotConstructibleCallTarget(JavaScriptLanguage lang, boolean generator, JSContext context) {
         return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(lang, null, null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 if (generator) {
                     throw Errors.createTypeError("cannot construct a generator");
                 } else {
-                    throw Errors.createTypeErrorNotConstructible((DynamicObject) JSArguments.getFunctionObject(frame.getArguments()));
+                    throw Errors.createTypeErrorNotAConstructor(JSArguments.getFunctionObject(frame.getArguments()), context);
                 }
             }
         });

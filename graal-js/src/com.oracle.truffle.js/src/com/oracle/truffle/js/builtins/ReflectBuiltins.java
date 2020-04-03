@@ -230,7 +230,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
                         @Cached IsConstructorNode isConstructorNode) {
             if (!isConstructorNode.executeBoolean(target)) {
                 errorBranch.enter();
-                throw Errors.createTypeErrorNotAConstructor(target);
+                throw Errors.createTypeErrorNotAConstructor(target, getContext());
             }
             Object newTarget;
             if (optionalArgs.length == 0) {
@@ -239,7 +239,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
                 newTarget = optionalArgs[0];
                 if (!isConstructorNode.executeBoolean(newTarget)) {
                     errorBranch.enter();
-                    throw Errors.createTypeErrorNotAConstructor(newTarget);
+                    throw Errors.createTypeErrorNotAConstructor(newTarget, getContext());
                 }
             }
 

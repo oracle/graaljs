@@ -142,6 +142,6 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"!isConstructor"})
     public DynamicObject throwNotConstructorFunctionTypeError(DynamicObject target, @SuppressWarnings("unused") Object proto) {
-        throw Errors.createTypeErrorNotConstructible(target);
+        throw Errors.createTypeErrorNotAConstructor(target, context);
     }
 }

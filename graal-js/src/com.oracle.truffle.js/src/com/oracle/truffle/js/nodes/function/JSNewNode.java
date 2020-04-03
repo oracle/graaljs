@@ -261,7 +261,7 @@ public abstract class JSNewNode extends JavaScriptNode {
         if (context.isOptionNashornCompatibilityMode()) {
             throw Errors.createTypeErrorNotAFunction(targetForError, this);
         } else {
-            throw Errors.createTypeErrorNotAConstructor(targetForError, this);
+            throw Errors.createTypeErrorNotAConstructor(targetForError, this, context);
         }
     }
 

@@ -135,13 +135,14 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorNotAConstructor(Object object) {
-        return createTypeErrorNotAConstructor(object, null);
+    public static JSException createTypeErrorNotAConstructor(Object object, JSContext context) {
+        return createTypeErrorNotAConstructor(object, null, context);
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorNotAConstructor(Object object, Node originatingNode) {
-        return JSException.create(JSErrorType.TypeError, String.format("%s is not a constructor", JSRuntime.safeToString(object)), originatingNode);
+    public static JSException createTypeErrorNotAConstructor(Object object, Node originatingNode, JSContext context) {
+        String msg = String.format(context.isOptionNashornCompatibilityMode() ? "%s is not a constructor function" : "%s is not a constructor", JSRuntime.safeToString(object));
+        return JSException.create(JSErrorType.TypeError, msg, originatingNode);
     }
 
     @TruffleBoundary
@@ -377,13 +378,6 @@ public final class Errors {
 
     private static String quoteKey(JSContext context, Object key) {
         return context.isOptionNashornCompatibilityMode() ? "\"" + key + "\"" : key.toString();
-    }
-
-    @TruffleBoundary
-    public static JSException createTypeErrorNotConstructible(DynamicObject functionObj) {
-        assert JSFunction.isJSFunction(functionObj);
-        String message = String.format("%s is not a constructor function", JSRuntime.toString(functionObj));
-        return JSException.create(JSErrorType.TypeError, message);
     }
 
     @TruffleBoundary
