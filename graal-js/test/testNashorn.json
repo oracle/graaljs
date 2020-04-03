@@ -32,18 +32,6 @@
     "filePath" : "basic/es6/class.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "basic/es6/computed-property-getter.js",
-    "status" : "FAIL",
-    "comment" : "Java interop migration"
-  }, {
-    "filePath" : "basic/es6/computed-property-method.js",
-    "status" : "FAIL",
-    "comment" : "Java interop migration"
-  }, {
-    "filePath" : "basic/es6/computed-property.js",
-    "status" : "FAIL",
-    "comment" : "Java interop migration"
-  }, {
     "filePath" : "basic/es6/const-reassign.js",
     "status" : "FAIL"
   }, {
