@@ -487,9 +487,9 @@ public class TruffleJSONParser {
 
     @TruffleBoundary
     public static RuntimeException createSyntaxError(Exception ex, JSContext context) {
-        throw context.isOptionV8CompatibilityMode() ? Errors.createSyntaxError(ex.getMessage().replace("\r\n", "\n"))
-                        : Errors.createSyntaxError("Invalid JSON: " +
-                                        ex.getMessage().replace("\r\n", "\n"));
+        String msg = ex.getMessage().replace("\r\n", "\n");
+        throw context.isOptionNashornCompatibilityMode() ? Errors.createSyntaxError("Invalid JSON: " + msg)
+                        : Errors.createSyntaxError(msg);
     }
 
     // ************************* Helper Functions ****************************************//

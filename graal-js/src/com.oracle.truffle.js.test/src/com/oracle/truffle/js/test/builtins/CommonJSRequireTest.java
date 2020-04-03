@@ -346,10 +346,7 @@ public class CommonJSRequireTest {
                 throw new AssertionError("Unexpected exception " + t);
             }
             assertEquals(t.getMessage(),
-                            "SyntaxError: Invalid JSON: <json>:1:1 Expected " +
-                                            ", or } but found n\n" +
-                                            "{not_a_valid:##json}\n" +
-                                            " ^");
+                            "SyntaxError: Unexpected token n in JSON at position 1");
         }
     }
 
