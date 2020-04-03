@@ -475,9 +475,9 @@ public class JSONParser {
     }
 
     private ParserException expectedError(final int start, final String expected, final String found) {
-        return context.isOptionV8CompatibilityMode()
-                        ? expectedErrorV8(start, found)
-                        : error(parserMessage("expected", expected, found), start);
+        return context.isOptionNashornCompatibilityMode()
+                        ? error(parserMessage("expected", expected, found), start)
+                        : expectedErrorV8(start, found);
     }
 
     private static ParserException expectedErrorV8(final int start, final String found) {
