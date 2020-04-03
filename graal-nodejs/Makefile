@@ -305,7 +305,7 @@ jstest: build-addons build-js-native-api-tests build-node-api-tests ## Runs addo
 
 .PHONY: tooltest
 tooltest:
-	@$(PYTHON) test/tools/test-js2c.py
+	@$(PYTHON) -m unittest discover -s ./test/tools
 
 .PHONY: coverage-run-js
 coverage-run-js:
@@ -751,7 +751,7 @@ $(LINK_DATA): $(wildcard lib/*.js) tools/doc/apilinks.js
 	$(call available-node, $(gen-apilink))
 
 out/doc/api/%.json out/doc/api/%.html: doc/api/%.md tools/doc/generate.js \
-	tools/doc/html.js tools/doc/json.js tools/doc/apilinks.js | $(LINK_DATA)
+	tools/doc/markdown.js tools/doc/html.js tools/doc/json.js tools/doc/apilinks.js | $(LINK_DATA)
 	$(call available-node, $(gen-api))
 
 out/doc/api/all.html: $(apidocs_html) tools/doc/allhtml.js \

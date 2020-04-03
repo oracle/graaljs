@@ -28,7 +28,6 @@
 #include "string_bytes.h"
 #include "string_search.h"
 #include "util-inl.h"
-#include "v8-profiler.h"
 #include "v8.h"
 
 #include <cstring>
@@ -219,10 +218,10 @@ size_t Length(Local<Object> obj) {
 }
 
 
-inline MaybeLocal<Uint8Array> New(Environment* env,
-                                  Local<ArrayBuffer> ab,
-                                  size_t byte_offset,
-                                  size_t length) {
+MaybeLocal<Uint8Array> New(Environment* env,
+                           Local<ArrayBuffer> ab,
+                           size_t byte_offset,
+                           size_t length) {
   CHECK(!env->buffer_prototype_object().IsEmpty());
   Local<Uint8Array> ui = Uint8Array::New(ab, byte_offset, length);
   Maybe<bool> mb =
