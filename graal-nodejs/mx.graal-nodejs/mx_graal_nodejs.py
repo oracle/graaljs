@@ -46,6 +46,7 @@ class GraalNodeJsTags:
     allTests = 'all'
     unitTests = 'unit'
     jniProfilerTests = 'jniprofiler'
+    windows = 'windows'  # we cannot run `node-gyp` in our CI unless we install the "Visual Studio Build Tools" (using the "Visual C++ build tools" workload)
 
 def _graal_nodejs_post_gate_runner(args, tasks):
     _setEnvVar('NODE_INTERNAL_ERROR_CHECK', 'true')
@@ -61,17 +62,20 @@ def _graal_nodejs_post_gate_runner(args, tasks):
             npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
             npm(['--scripts-prepend-node-path=auto', 'test'] + commonArgs, cwd=unitTestDir)
 
-    with Task('TestNpm', tasks, tags=[GraalNodeJsTags.allTests]) as t:
+    with Task('TestNpm', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.windows]) as t:
         if t:
             tmpdir = tempfile.mkdtemp()
             try:
                 npm(['init', '-y'], cwd=tmpdir)
-                npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir, '--build-from-source', 'microtime'], cwd=tmpdir)
+                if _is_windows:
+                    npm(['install', 'microtime'], cwd=tmpdir)
+                else:
+                    npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir, '--build-from-source', 'microtime'], cwd=tmpdir)
                 node(['-e', 'console.log(require("microtime").now());'], cwd=tmpdir)
             finally:
                 mx.rmtree(tmpdir, ignore_errors=True)
 
-    with Task('TestNpx', tasks, tags=[GraalNodeJsTags.allTests]) as t:
+    with Task('TestNpx', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.windows]) as t:
         if t:
             npx(['cowsay', 'GraalVM rules!'])
 
@@ -86,7 +90,7 @@ def _graal_nodejs_post_gate_runner(args, tasks):
             npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
             node(['-profile-native-boundary', 'test.js'] + commonArgs, cwd=unitTestDir)
 
-    with Task('TestNodeInstrument', tasks, tags=[GraalNodeJsTags.allTests]) as t:
+    with Task('TestNodeInstrument', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.windows]) as t:
         if t:
             testnodeInstrument([])
 

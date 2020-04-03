@@ -46,7 +46,7 @@ local common = import '../common.jsonnet';
 
   local gateTruffleTip = buildTruffleTip + {
     run+: [
-      gateCmd + ['--tags', 'all'],
+      gateCmd + ['--tags', '$TAGS'],
     ],
     timelimit: '30:00',
   },
@@ -96,13 +96,13 @@ local common = import '../common.jsonnet';
   builds: [
     // gates
     graalNodeJs + common.jdk8  + gateTruffleImport                                                                                                 + common.gate + common.linux          + {name: 'nodejs-gate-graal-import-jdk8-linux-amd64'},
-    graalNodeJs + common.jdk8  + gateTruffleTip                                                                                                    + common.gate + common.linux          + {name: 'nodejs-gate-graal-tip-jdk8-linux-amd64'},
-    graalNodeJs + common.jdk11 + gateTruffleTip                                                                                                    + common.gate + common.linux          + {name: 'nodejs-gate-graal-tip-jdk11-linux-amd64'},
-    graalNodeJs + common.jdk11 + gateTruffleTip                                                                                                    + common.gate + common.linux_aarch64  + {name: 'nodejs-gate-graal-tip-jdk11-linux-aarch64'},
-    graalNodeJs + common.jdk8  + gateTruffleTip                                                                                                    + common.gate + common.darwin         + {name: 'nodejs-gate-graal-tip-jdk8-darwin-amd64'},
-    graalNodeJs + common.jdk11 + gateTruffleTip                                                                                                    + common.gate + common.darwin         + {name: 'nodejs-gate-graal-tip-jdk11-darwin-amd64'},
-    graalNodeJs + common.jdk8  + gateTruffleTip                                                                                                    + common.gate + common.windows_vs2010 + {name: 'nodejs-gate-graal-tip-jdk8-windows-amd64'},
-    graalNodeJs + common.jdk11 + gateTruffleTip                                                                                                    + common.gate + common.windows        + {name: 'nodejs-gate-graal-tip-jdk11-windows-amd64'},
+    graalNodeJs + common.jdk8  + gateTruffleTip                                          + {environment+: {TAGS: 'all'}}                           + common.gate + common.linux          + {name: 'nodejs-gate-graal-tip-jdk8-linux-amd64'},
+    graalNodeJs + common.jdk11 + gateTruffleTip                                          + {environment+: {TAGS: 'all'}}                           + common.gate + common.linux          + {name: 'nodejs-gate-graal-tip-jdk11-linux-amd64'},
+    graalNodeJs + common.jdk11 + gateTruffleTip                                          + {environment+: {TAGS: 'all'}}                           + common.gate + common.linux_aarch64  + {name: 'nodejs-gate-graal-tip-jdk11-linux-aarch64'},
+    graalNodeJs + common.jdk8  + gateTruffleTip                                          + {environment+: {TAGS: 'all'}}                           + common.gate + common.darwin         + {name: 'nodejs-gate-graal-tip-jdk8-darwin-amd64'},
+    graalNodeJs + common.jdk11 + gateTruffleTip                                          + {environment+: {TAGS: 'all'}}                           + common.gate + common.darwin         + {name: 'nodejs-gate-graal-tip-jdk11-darwin-amd64'},
+    graalNodeJs + common.jdk8  + gateTruffleTip                                          + {environment+: {TAGS: 'windows'}}                       + common.gate + common.windows_vs2010 + {name: 'nodejs-gate-graal-tip-jdk8-windows-amd64'},
+    graalNodeJs + common.jdk11 + gateTruffleTip                                          + {environment+: {TAGS: 'windows'}}                       + common.gate + common.windows        + {name: 'nodejs-gate-graal-tip-jdk11-windows-amd64'},
     graalNodeJs + common.jdk8  + gateSubstrateVmTip                                                                                                + common.gate + common.linux          + {name: 'nodejs-gate-substratevm-tip-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8  + gateSubstrateVmTip                                                                                                + common.gate + common.darwin         + {name: 'nodejs-gate-substratevm-tip-jdk8-darwin-amd64'},
     graalNodeJs + common.jdk11 + gateSubstrateVmTip                                                                                                + common.gate + common.linux          + {name: 'nodejs-gate-substratevm-tip-jdk11-linux-amd64'},
