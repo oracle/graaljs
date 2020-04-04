@@ -172,4 +172,8 @@ public final class JSNodeUtil {
         assert !isWrapperNode(unwrapped);
         return unwrapped;
     }
+
+    public static boolean isTaggedNode(Node node) {
+        return node instanceof JSTaggedExecutionNode || (node instanceof WrapperNode && ((WrapperNode) node).getDelegateNode() instanceof JSTaggedExecutionNode);
+    }
 }

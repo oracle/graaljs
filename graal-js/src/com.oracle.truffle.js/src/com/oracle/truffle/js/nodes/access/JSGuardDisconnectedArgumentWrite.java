@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,8 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
+
+import java.util.Set;
 
 public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode implements WriteNode {
     private final int index;
@@ -132,7 +134,8 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return JSGuardDisconnectedArgumentWriteNodeGen.create(index, cloneUninitialized(writeArgumentsElementNode), cloneUninitialized(argumentsArrayNode), cloneUninitialized(rhsNode), slot);
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return JSGuardDisconnectedArgumentWriteNodeGen.create(index, cloneUninitialized(writeArgumentsElementNode, materializedTags), cloneUninitialized(argumentsArrayNode, materializedTags),
+                        cloneUninitialized(rhsNode, materializedTags), slot);
     }
 }

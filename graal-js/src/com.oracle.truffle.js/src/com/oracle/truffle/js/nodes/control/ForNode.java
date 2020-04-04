@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RepeatingNode;
+import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.IterationScopeNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
@@ -97,8 +98,15 @@ public final class ForNode extends StatementNode implements ResumableNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (hasMaterializationTag(materializedTags) && AbstractRepeatingNode.materializationNeeded(loop.getRepeatingNode())) {
-            IterationScopeNode newCopy = cloneUninitialized(copy);
+            IterationScopeNode newCopy = cloneUninitialized(copy, materializedTags);
+            /*
+             * The repeating node might not be instrumentable at this point, because source section
+             * is transferred later, so we need to force the materialization of repeating node.
+             */
             AbstractRepeatingNode materializedLoop = (AbstractRepeatingNode) ((AbstractRepeatingNode) loop.getRepeatingNode()).materializeInstrumentableNodes(materializedTags);
+            if (materializedLoop == loop.getRepeatingNode()) {
+                materializedLoop = cloneUninitialized((AbstractRepeatingNode) loop.getRepeatingNode(), materializedTags);
+            }
             transferSourceSection(this, materializedLoop.bodyNode);
             ForNode materializedNode = new ForNode(materializedLoop, newCopy);
             transferSourceSectionAndTags(this, materializedNode);
@@ -144,8 +152,8 @@ public final class ForNode extends StatementNode implements ResumableNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new ForNode((RepeatingNode) cloneUninitialized((JavaScriptNode) loop.getRepeatingNode()), cloneUninitialized(copy));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new ForNode((RepeatingNode) cloneUninitialized((JavaScriptNode) loop.getRepeatingNode(), materializedTags), cloneUninitialized(copy, materializedTags));
     }
 
     public LoopNode getLoopNode() {
@@ -170,11 +178,21 @@ public final class ForNode extends StatementNode implements ResumableNode {
         @Override
         public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
             if (hasMaterializationTag(materializedTags) && materializationNeeded()) {
-                JavaScriptNode newBody = JSTaggedExecutionNode.createFor(bodyNode, ControlFlowBlockTag.class);
+                JavaScriptNode newBody = JSTaggedExecutionNode.createFor(bodyNode, ControlFlowBlockTag.class, materializedTags);
+
                 JavaScriptNode newCondition = JSTaggedExecutionNode.createForInput(conditionNode, ControlFlowBranchTag.class,
-                                JSTags.createNodeObjectDescriptor("type", ControlFlowBranchTag.Type.Condition.name()));
-                JavaScriptNode newLoop = new ForRepeatingNode(newCondition, newBody, cloneUninitialized(modify),
-                                cloneUninitialized(copy), isFirstNode, cloneUninitialized(setNotFirstNode));
+                                JSTags.createNodeObjectDescriptor("type", ControlFlowBranchTag.Type.Condition.name()), materializedTags);
+                if (newBody == bodyNode && newCondition == conditionNode) {
+                    return this;
+                }
+                if (newBody == bodyNode) {
+                    newBody = cloneUninitialized(bodyNode, materializedTags);
+                }
+                if (newCondition == conditionNode) {
+                    newCondition = cloneUninitialized(conditionNode, materializedTags);
+                }
+                JavaScriptNode newLoop = new ForRepeatingNode(newCondition, newBody, cloneUninitialized(modify, materializedTags),
+                                cloneUninitialized(copy, materializedTags), isFirstNode, cloneUninitialized(setNotFirstNode, materializedTags));
                 transferSourceSectionAndTags(this, newLoop);
                 return newLoop;
             } else {
@@ -184,7 +202,7 @@ public final class ForNode extends StatementNode implements ResumableNode {
 
         private boolean materializationNeeded() {
             // if body is tagged, no materialization is needed.
-            return !(bodyNode instanceof JSTaggedExecutionNode);
+            return !JSNodeUtil.isTaggedNode(bodyNode);
         }
 
         @Override
@@ -259,9 +277,10 @@ public final class ForNode extends StatementNode implements ResumableNode {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new ForRepeatingNode(cloneUninitialized(conditionNode), cloneUninitialized(bodyNode), cloneUninitialized(modify), cloneUninitialized(copy), cloneUninitialized(isFirstNode),
-                            cloneUninitialized(setNotFirstNode));
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new ForRepeatingNode(cloneUninitialized(conditionNode, materializedTags), cloneUninitialized(bodyNode, materializedTags), cloneUninitialized(modify, materializedTags),
+                            cloneUninitialized(copy, materializedTags), cloneUninitialized(isFirstNode, materializedTags),
+                            cloneUninitialized(setNotFirstNode, materializedTags));
         }
     }
 }

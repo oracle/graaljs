@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.control;
 
 import java.text.MessageFormat;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.debug.DebuggerTags;
@@ -92,7 +93,7 @@ public class DebuggerNode extends StatementNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return create();
     }
 

@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.function;
 
 import java.util.Arrays;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -127,7 +128,7 @@ public abstract class JSBuiltinNode extends AbstractBodyNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return createBuiltin(context, builtin, construct, newTarget);
     }
 

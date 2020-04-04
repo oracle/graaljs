@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.cast;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -49,6 +50,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -114,8 +116,8 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
             }
 
             @Override
-            protected JavaScriptNode copyUninitialized() {
-                return new Unary(cloneUninitialized(getOperand()));
+            protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+                return new Unary(cloneUninitialized(getOperand(), materializedTags));
             }
         }
         return new Unary(operand);

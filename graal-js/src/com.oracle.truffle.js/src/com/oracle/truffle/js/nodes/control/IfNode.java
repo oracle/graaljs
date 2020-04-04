@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
@@ -100,9 +101,22 @@ public final class IfNode extends StatementNode implements ResumableNode {
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (hasMaterializationTag(materializedTags) && materializationNeeded()) {
             JavaScriptNode newCondition = JSTaggedExecutionNode.createForInput(condition, ControlFlowBranchTag.class,
-                            JSTags.createNodeObjectDescriptor("type", ControlFlowBranchTag.Type.Condition.name()));
-            JavaScriptNode newThenPart = thenPart != null ? JSTaggedExecutionNode.createForInput(thenPart, JSTags.ControlFlowBlockTag.class) : null;
-            JavaScriptNode newElsePart = elsePart != null ? JSTaggedExecutionNode.createForInput(elsePart, JSTags.ControlFlowBlockTag.class) : null;
+                            JSTags.createNodeObjectDescriptor("type", ControlFlowBranchTag.Type.Condition.name()), materializedTags);
+            JavaScriptNode newThenPart = thenPart != null ? JSTaggedExecutionNode.createForInput(thenPart, JSTags.ControlFlowBlockTag.class, materializedTags) : null;
+
+            JavaScriptNode newElsePart = elsePart != null ? JSTaggedExecutionNode.createForInput(elsePart, JSTags.ControlFlowBlockTag.class, materializedTags) : null;
+            if (newCondition == condition && newThenPart == thenPart && newElsePart == elsePart) {
+                return this;
+            }
+            if (newCondition == condition) {
+                newCondition = cloneUninitialized(condition, materializedTags);
+            }
+            if (newThenPart == thenPart) {
+                newThenPart = cloneUninitialized(thenPart, materializedTags);
+            }
+            if (newElsePart == elsePart) {
+                newElsePart = cloneUninitialized(elsePart, materializedTags);
+            }
             JavaScriptNode newIf = IfNode.create(newCondition, newThenPart, newElsePart);
             transferSourceSectionAndTags(this, newIf);
             return newIf;
@@ -113,7 +127,7 @@ public final class IfNode extends StatementNode implements ResumableNode {
 
     private boolean materializationNeeded() {
         // If we are using tagged nodes, this node is already materialized.
-        return !(condition instanceof JSTaggedExecutionNode && (elsePart == null || elsePart instanceof JSTaggedExecutionNode) && (thenPart == null || thenPart instanceof JSTaggedExecutionNode));
+        return !(JSNodeUtil.isTaggedNode(condition) && (elsePart == null || JSNodeUtil.isTaggedNode(elsePart)) && (thenPart == null || JSNodeUtil.isTaggedNode(thenPart)));
     }
 
     private static boolean hasMaterializationTag(Set<Class<? extends Tag>> materializedTags) {
@@ -212,8 +226,8 @@ public final class IfNode extends StatementNode implements ResumableNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new IfNode(cloneUninitialized(condition), cloneUninitialized(thenPart), cloneUninitialized(elsePart));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new IfNode(cloneUninitialized(condition, materializedTags), cloneUninitialized(thenPart, materializedTags), cloneUninitialized(elsePart, materializedTags));
     }
 
     protected boolean executeCondition(VirtualFrame frame) {

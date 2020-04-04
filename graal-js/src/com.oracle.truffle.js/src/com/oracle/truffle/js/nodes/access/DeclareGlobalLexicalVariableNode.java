@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -53,6 +54,8 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
+
+import java.util.Set;
 
 public abstract class DeclareGlobalLexicalVariableNode extends DeclareGlobalNode {
     private final boolean isConst;
@@ -116,7 +119,7 @@ public abstract class DeclareGlobalLexicalVariableNode extends DeclareGlobalNode
     }
 
     @Override
-    protected DeclareGlobalNode copyUninitialized() {
+    protected DeclareGlobalNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return create(varName, isConst);
     }
 }

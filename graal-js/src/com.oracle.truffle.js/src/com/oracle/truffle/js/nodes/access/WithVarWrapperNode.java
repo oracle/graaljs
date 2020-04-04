@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,10 +41,13 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+
+import java.util.Set;
 
 public class WithVarWrapperNode extends JSTargetableNode implements ReadNode, WriteNode {
 
@@ -100,8 +103,8 @@ public class WithVarWrapperNode extends JSTargetableNode implements ReadNode, Wr
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(varName, cloneUninitialized(withTarget), cloneUninitialized(withAccessNode), cloneUninitialized(globalDelegate));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return create(varName, cloneUninitialized(withTarget, materializedTags), cloneUninitialized(withAccessNode, materializedTags), cloneUninitialized(globalDelegate, materializedTags));
     }
 
     @Override

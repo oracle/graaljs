@@ -164,7 +164,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
                 info = new Object[]{type.name().toLowerCase(), true, true};
             }
             JavaScriptNode lhs = JSConstantNode.create(info[0]);
-            JavaScriptNode rhs = TypeOfNode.create(getOperand());
+            JavaScriptNode rhs = TypeOfNode.create(cloneUninitialized(getOperand(), materializedTags));
             if ((Boolean) info[2]) {
                 JavaScriptNode tmp = lhs;
                 lhs = rhs;
@@ -350,7 +350,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return JSTypeofIdenticalNodeGen.create(cloneUninitialized(getOperand()), type);
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return JSTypeofIdenticalNodeGen.create(cloneUninitialized(getOperand(), materializedTags), type);
     }
 }

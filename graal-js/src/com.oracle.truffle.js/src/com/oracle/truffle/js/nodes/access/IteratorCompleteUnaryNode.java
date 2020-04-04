@@ -42,10 +42,13 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+
+import java.util.Set;
 
 /**
  * IteratorComplete(iterResult) unary expression.
@@ -89,7 +92,7 @@ public class IteratorCompleteUnaryNode extends JavaScriptNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(getDoneNode.getContext(), cloneUninitialized(iterResultNode));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return create(getDoneNode.getContext(), cloneUninitialized(iterResultNode, materializedTags));
     }
 }

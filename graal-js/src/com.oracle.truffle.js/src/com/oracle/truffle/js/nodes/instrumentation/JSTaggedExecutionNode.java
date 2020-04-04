@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.instrumentation;
 
 import java.util.Objects;
+import java.util.Set;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -59,23 +60,24 @@ public final class JSTaggedExecutionNode extends JavaScriptNode {
     private final boolean inputTag;
     private final NodeObjectDescriptor descriptor;
 
-    public static JavaScriptNode createFor(JavaScriptNode originalNode, Class<? extends Tag> expectedTag) {
-        return createImpl(originalNode, originalNode, expectedTag, false, null);
+    public static JavaScriptNode createFor(JavaScriptNode originalNode, Class<? extends Tag> expectedTag, Set<Class<? extends Tag>> materializedTags) {
+        return createImpl(originalNode, originalNode, expectedTag, false, null, materializedTags);
     }
 
-    public static JavaScriptNode createForInput(JavaScriptNode originalNode, Class<? extends Tag> expectedTag) {
-        return createImpl(originalNode, originalNode, expectedTag, true, null);
+    public static JavaScriptNode createForInput(JavaScriptNode originalNode, Class<? extends Tag> expectedTag, Set<Class<? extends Tag>> materializedTags) {
+        return createImpl(originalNode, originalNode, expectedTag, true, null, materializedTags);
     }
 
-    public static JavaScriptNode createForInput(JavaScriptNode originalNode, Class<? extends Tag> expectedTag, NodeObjectDescriptor descriptor) {
-        return createImpl(originalNode, originalNode, expectedTag, true, descriptor);
+    public static JavaScriptNode createForInput(JavaScriptNode originalNode, Class<? extends Tag> expectedTag, NodeObjectDescriptor descriptor, Set<Class<? extends Tag>> materializedTags) {
+        return createImpl(originalNode, originalNode, expectedTag, true, descriptor, materializedTags);
     }
 
-    public static JavaScriptNode createForInput(JavaScriptNode originalNode, JavaScriptNode transferSourcesFrom) {
-        return createImpl(originalNode, transferSourcesFrom, null, true, null);
+    public static JavaScriptNode createForInput(JavaScriptNode originalNode, JavaScriptNode transferSourcesFrom, Set<Class<? extends Tag>> materializedTags) {
+        return createImpl(originalNode, transferSourcesFrom, null, true, null, materializedTags);
     }
 
-    private static JavaScriptNode createImpl(JavaScriptNode originalNode, JavaScriptNode transferSourcesFrom, Class<? extends Tag> expectedTag, boolean inputTag, NodeObjectDescriptor descriptor) {
+    private static JavaScriptNode createImpl(JavaScriptNode originalNode, JavaScriptNode transferSourcesFrom, Class<? extends Tag> expectedTag, boolean inputTag, NodeObjectDescriptor descriptor,
+                    Set<Class<? extends Tag>> materializedTags) {
         // check if the node has already been tagged
         JavaScriptNode realOriginal = originalNode;
         if (originalNode instanceof WrapperNode) {
@@ -84,7 +86,7 @@ public final class JSTaggedExecutionNode extends JavaScriptNode {
         if (realOriginal.hasTag(expectedTag) && (!inputTag || realOriginal.hasTag(JSTags.InputNodeTag.class))) {
             return originalNode;
         }
-        JavaScriptNode clone = cloneUninitialized(originalNode);
+        JavaScriptNode clone = cloneUninitialized(originalNode, materializedTags);
         JavaScriptNode wrapper = new JSTaggedExecutionNode(clone, expectedTag, inputTag, descriptor);
         transferSourceSection(transferSourcesFrom, wrapper);
         return wrapper;
@@ -122,8 +124,8 @@ public final class JSTaggedExecutionNode extends JavaScriptNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new JSTaggedExecutionNode(cloneUninitialized(child), expectedTag, inputTag, descriptor);
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new JSTaggedExecutionNode(cloneUninitialized(child, materializedTags), expectedTag, inputTag, descriptor);
     }
 
     public JavaScriptNode getDelegateNode() {

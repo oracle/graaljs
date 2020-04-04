@@ -42,11 +42,14 @@ package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.CompilerDirectives.*;
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.*;
 import com.oracle.truffle.js.nodes.*;
 import com.oracle.truffle.js.runtime.*;
 import com.oracle.truffle.js.runtime.builtins.*;
 import com.oracle.truffle.js.runtime.objects.*;
+
+import java.util.Set;
 
 /**
  * This node can be used to add a {@link JSFunction} to the queue of pending tasks in a given
@@ -75,7 +78,7 @@ public abstract class JSEnqueueJobNode extends JavaScriptNode {
     abstract JavaScriptNode getFunction();
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return JSEnqueueJobNodeGen.create(context, cloneUninitialized(getFunction()));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return JSEnqueueJobNodeGen.create(context, cloneUninitialized(getFunction(), materializedTags));
     }
 }

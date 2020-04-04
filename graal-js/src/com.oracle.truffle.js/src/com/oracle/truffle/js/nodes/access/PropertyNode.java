@@ -49,6 +49,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
@@ -96,11 +97,14 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(ReadPropertyTag.class) && !isScopeAccess()) {
-            if (target instanceof JSTaggedExecutionNode) {
+            if (JSNodeUtil.isTaggedNode(target)) {
                 // this node is already materialized
                 return this;
             }
-            JavaScriptNode clonedTarget = JSTaggedExecutionNode.createForInput(target, this);
+            JavaScriptNode clonedTarget = JSTaggedExecutionNode.createForInput(target, this, materializedTags);
+            if (clonedTarget == target) {
+                return this;
+            }
             PropertyNode propertyNode = new PropertyNode(cache.getContext(), clonedTarget, cache.getKey(), cache.isOwnProperty(), cache.isMethod());
             transferSourceSectionAndTags(this, propertyNode);
             return propertyNode;
@@ -198,8 +202,8 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new PropertyNode(cache.getContext(), cloneUninitialized(target), cache.getKey(), cache.isOwnProperty(), cache.isMethod());
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new PropertyNode(cache.getContext(), cloneUninitialized(target, materializedTags), cache.getKey(), cache.isOwnProperty(), cache.isMethod());
     }
 
     @Override

@@ -50,6 +50,8 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
+import java.util.Set;
+
 @NodeInfo(shortName = "void", cost = NodeCost.NONE)
 public abstract class VoidNode extends JSUnaryNode {
 
@@ -93,7 +95,7 @@ public abstract class VoidNode extends JSUnaryNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return VoidNodeGen.create(cloneUninitialized(getOperand()));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return VoidNodeGen.create(cloneUninitialized(getOperand(), materializedTags));
     }
 }

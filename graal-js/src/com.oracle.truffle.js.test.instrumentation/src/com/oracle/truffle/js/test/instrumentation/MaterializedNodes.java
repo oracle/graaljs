@@ -49,6 +49,7 @@ import java.util.Set;
 import org.graalvm.polyglot.Context;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -105,6 +106,11 @@ public class MaterializedNodes {
 
     private JSContext jsContext;
     private Context polyContext;
+
+    @BeforeClass
+    public static void initClass() {
+        dummyWithSourceSection.setSourceSection(dummySourceSection);
+    }
 
     @Before
     public void init() {
@@ -163,7 +169,7 @@ public class MaterializedNodes {
         // materialization should return a node of the same class
         JavaScriptNode desugared = (JavaScriptNode) optimized.materializeInstrumentableNodes(s);
         // otherwise cloning will crash
-        JavaScriptNode cloned = JavaScriptNode.cloneUninitialized(desugared);
+        JavaScriptNode cloned = JavaScriptNode.cloneUninitialized(desugared, null);
         assertTrue(cloned.getClass() == desugared.getClass());
     }
 
@@ -183,13 +189,14 @@ public class MaterializedNodes {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new DummyConstantNode(value);
         }
 
     }
 
     private static final JSConstantNode dummy = JSConstantNode.createUndefined();
+    private static final JSConstantNode dummyWithSourceSection = JSConstantNode.createUndefined();
     private static final JavaScriptNode dummyInt = JSConstantNode.createInt(42);
     private static final JavaScriptNode dummyDouble = JSConstantNode.createDouble(42.42);
     private static final JavaScriptNode dummyJSNode = new DummyConstantNode(42);
@@ -215,6 +222,12 @@ public class MaterializedNodes {
     @Test
     public void materializeTwiceElementRead() {
         ReadElementNode elem = ReadElementNode.create(dummy, dummy, getDummyCx());
+        assertNotMaterializedTwice(elem, ReadElementTag.class);
+    }
+
+    @Test
+    public void materializeTwiceElementReadIndexAndTargetWithSourceSection() {
+        ReadElementNode elem = ReadElementNode.create(dummyWithSourceSection, dummyWithSourceSection, getDummyCx());
         assertNotMaterializedTwice(elem, ReadElementTag.class);
     }
 

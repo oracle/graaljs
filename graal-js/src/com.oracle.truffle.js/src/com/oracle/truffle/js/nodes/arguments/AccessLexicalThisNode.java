@@ -41,11 +41,14 @@
 package com.oracle.truffle.js.nodes.arguments;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+
+import java.util.Set;
 
 public final class AccessLexicalThisNode extends JavaScriptNode implements RepeatableNode {
     @Child private JavaScriptNode readFunctionObject;
@@ -69,7 +72,7 @@ public final class AccessLexicalThisNode extends JavaScriptNode implements Repea
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(cloneUninitialized(readFunctionObject));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return create(cloneUninitialized(readFunctionObject, materializedTags));
     }
 }

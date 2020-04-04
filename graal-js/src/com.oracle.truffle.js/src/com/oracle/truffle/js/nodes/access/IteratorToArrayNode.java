@@ -42,10 +42,12 @@ package com.oracle.truffle.js.nodes.access;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -84,7 +86,7 @@ public abstract class IteratorToArrayNode extends JavaScriptNode {
     public abstract Object execute(VirtualFrame frame, IteratorRecord iteratorRecord);
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return IteratorToArrayNodeGen.create(context, cloneUninitialized(iteratorNode), cloneUninitialized(iteratorStepNode));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return IteratorToArrayNodeGen.create(context, cloneUninitialized(iteratorNode, materializedTags), cloneUninitialized(iteratorStepNode, materializedTags));
     }
 }

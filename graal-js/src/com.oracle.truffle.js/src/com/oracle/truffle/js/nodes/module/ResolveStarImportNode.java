@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.module;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
@@ -48,6 +49,8 @@ import com.oracle.truffle.js.nodes.control.StatementNode;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
+
+import java.util.Set;
 
 /**
  * Resolves a star import: gets the imported module's namespace object and initializes the local
@@ -85,8 +88,8 @@ public class ResolveStarImportNode extends StatementNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(context, cloneUninitialized(moduleNode), moduleRequest, cloneUninitialized(writeLocalNode));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return create(context, cloneUninitialized(moduleNode, materializedTags), moduleRequest, cloneUninitialized(writeLocalNode, materializedTags));
     }
 
 }

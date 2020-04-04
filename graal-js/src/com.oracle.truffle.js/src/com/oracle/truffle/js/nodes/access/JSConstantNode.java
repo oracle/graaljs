@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.access;
 import java.math.BigInteger;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -480,7 +481,7 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return copy();
     }
 

@@ -42,9 +42,12 @@ package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
+
+import java.util.Set;
 
 public final class RuntimeErrorNode extends StatementNode {
 
@@ -71,7 +74,7 @@ public final class RuntimeErrorNode extends StatementNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return create(errorType, message);
     }
 }

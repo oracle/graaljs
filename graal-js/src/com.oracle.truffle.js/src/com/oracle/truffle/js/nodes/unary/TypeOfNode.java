@@ -69,6 +69,8 @@ import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
+import java.util.Set;
+
 /**
  * @see JSRuntime#typeof(Object)
  * @see JSTypeofIdenticalNode
@@ -195,8 +197,8 @@ public abstract class TypeOfNode extends JSUnaryNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return TypeOfNodeGen.create(cloneUninitialized(getOperand()));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return TypeOfNodeGen.create(cloneUninitialized(getOperand(), materializedTags));
     }
 
 }

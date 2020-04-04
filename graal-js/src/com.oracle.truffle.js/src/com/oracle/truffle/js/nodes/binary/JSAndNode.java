@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,11 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.js.nodes.*;
+
+import java.util.Set;
 
 @NodeInfo(shortName = "&&")
 public class JSAndNode extends JSLogicalNode {
@@ -60,7 +63,7 @@ public class JSAndNode extends JSLogicalNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new JSAndNode(cloneUninitialized(getLeft()), cloneUninitialized(getRight()));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new JSAndNode(cloneUninitialized(getLeft(), materializedTags), cloneUninitialized(getRight(), materializedTags));
     }
 }

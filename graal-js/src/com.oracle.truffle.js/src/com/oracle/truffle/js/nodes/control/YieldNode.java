@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -65,6 +66,8 @@ import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+
+import java.util.Set;
 
 public class YieldNode extends JavaScriptNode implements ResumableNode, SuspendNode {
 
@@ -167,11 +170,12 @@ public class YieldNode extends JavaScriptNode implements ResumableNode, SuspendN
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        JavaScriptNode expressionCopy = cloneUninitialized(expression);
-        JavaScriptNode yieldValueCopy = cloneUninitialized(yieldValue);
-        ReturnNode returnCopy = cloneUninitialized(returnNode);
-        JSWriteFrameSlotNode writeYieldValueCopy = cloneUninitialized(generatorYieldNode instanceof FrameYieldResultNode ? ((FrameYieldResultNode) generatorYieldNode).writeYieldValueNode : null);
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        JavaScriptNode expressionCopy = cloneUninitialized(expression, materializedTags);
+        JavaScriptNode yieldValueCopy = cloneUninitialized(yieldValue, materializedTags);
+        ReturnNode returnCopy = cloneUninitialized(returnNode, materializedTags);
+        JSWriteFrameSlotNode writeYieldValueCopy = cloneUninitialized(generatorYieldNode instanceof FrameYieldResultNode ? ((FrameYieldResultNode) generatorYieldNode).writeYieldValueNode : null,
+                        materializedTags);
         if (this instanceof YieldStarNode) {
             return createYieldStar(context, expressionCopy, yieldValueCopy, returnCopy, writeYieldValueCopy);
         } else {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,9 +41,11 @@
 package com.oracle.truffle.js.nodes.access;
 
 import java.util.List;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -117,14 +119,14 @@ public class GlobalDeclarationInstantiationNode extends StatementNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new GlobalDeclarationInstantiationNode(context, cloneUninitialized(globalDeclarations));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new GlobalDeclarationInstantiationNode(context, cloneUninitialized(globalDeclarations, materializedTags));
     }
 
-    private static DeclareGlobalNode[] cloneUninitialized(DeclareGlobalNode[] members) {
+    private static DeclareGlobalNode[] cloneUninitialized(DeclareGlobalNode[] members, Set<Class<? extends Tag>> materializedTags) {
         DeclareGlobalNode[] copy = members.clone();
         for (int i = 0; i < copy.length; i++) {
-            copy[i] = copy[i].copyUninitialized();
+            copy[i] = copy[i].copyUninitialized(materializedTags);
         }
         return copy;
     }

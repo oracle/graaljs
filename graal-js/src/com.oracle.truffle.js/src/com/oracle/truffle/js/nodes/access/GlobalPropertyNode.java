@@ -194,8 +194,8 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        GlobalPropertyNode copy = new GlobalPropertyNode(context, propertyName, cloneUninitialized(globalObjectNode));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        GlobalPropertyNode copy = new GlobalPropertyNode(context, propertyName, cloneUninitialized(globalObjectNode, materializedTags));
         if (this.cache != null && this.cache.isMethod()) {
             copy.getCache().setMethod();
         }

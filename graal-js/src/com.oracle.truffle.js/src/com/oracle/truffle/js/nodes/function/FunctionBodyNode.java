@@ -74,8 +74,8 @@ public class FunctionBodyNode extends AbstractBodyNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(cloneUninitialized(body));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return create(cloneUninitialized(body, materializedTags));
     }
 
     @Override
@@ -83,7 +83,7 @@ public class FunctionBodyNode extends AbstractBodyNode {
         if (materializedTags.contains(DeclareTag.class) && !DeclareTagProvider.isMaterializedFrameProvider(this)) {
             assert getRootNode() instanceof FunctionRootNode : "Malformed AST";
             FrameDescriptor frameDescriptor = getRootNode().getFrameDescriptor();
-            JavaScriptNode materialized = DeclareTagProvider.createMaterializedFunctionBodyNode(body, getSourceSection(), frameDescriptor);
+            JavaScriptNode materialized = DeclareTagProvider.createMaterializedFunctionBodyNode(cloneUninitialized(body, materializedTags), getSourceSection(), frameDescriptor);
             materialized.setSourceSection(getSourceSection());
             return materialized;
         } else {

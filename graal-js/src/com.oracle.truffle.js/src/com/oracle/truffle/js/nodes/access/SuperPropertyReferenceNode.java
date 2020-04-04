@@ -41,11 +41,17 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNode.RequireObjectCoercibleWrapperNode;
 
-public final class SuperPropertyReferenceNode extends JSTargetableNode implements RepeatableNode {
+import java.util.Set;
+
+@GenerateWrapper
+public class SuperPropertyReferenceNode extends JSTargetableNode implements RepeatableNode {
 
     @Child private JavaScriptNode baseValueNode;
     @Child private JavaScriptNode thisValueNode;
@@ -53,6 +59,11 @@ public final class SuperPropertyReferenceNode extends JSTargetableNode implement
     private SuperPropertyReferenceNode(JavaScriptNode baseNode, JavaScriptNode thisValueNode) {
         this.baseValueNode = baseNode;
         this.thisValueNode = thisValueNode;
+    }
+
+    SuperPropertyReferenceNode(SuperPropertyReferenceNode copy) {
+        this.baseValueNode = copy.baseValueNode;
+        this.thisValueNode = copy.thisValueNode;
     }
 
     public static JSTargetableNode create(JavaScriptNode baseNode, JavaScriptNode thisValueNode) {
@@ -91,7 +102,12 @@ public final class SuperPropertyReferenceNode extends JSTargetableNode implement
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new SuperPropertyReferenceNode(cloneUninitialized(baseValueNode), cloneUninitialized(thisValueNode));
+    public WrapperNode createWrapper(ProbeNode probe) {
+        return new SuperPropertyReferenceNodeWrapper(this, this, probe);
+    }
+
+    @Override
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new SuperPropertyReferenceNode(cloneUninitialized(baseValueNode, materializedTags), cloneUninitialized(thisValueNode, materializedTags));
     }
 }

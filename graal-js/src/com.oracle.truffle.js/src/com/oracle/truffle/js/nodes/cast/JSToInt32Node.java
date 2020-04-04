@@ -58,6 +58,8 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 
+import java.util.Set;
+
 /**
  * This node implements the behavior of 9.5 ToInt32. Not to confuse with 9.4 ToInteger, etc.
  *
@@ -210,7 +212,7 @@ public abstract class JSToInt32Node extends JSUnaryNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return JSToInt32NodeGen.create(cloneUninitialized(getOperand()));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return JSToInt32NodeGen.create(cloneUninitialized(getOperand(), materializedTags));
     }
 }

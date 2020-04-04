@@ -41,8 +41,11 @@
 package com.oracle.truffle.js.nodes.unary;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.objects.Null;
+
+import java.util.Set;
 
 public abstract class IsNullNode extends IsIdenticalBaseNode {
 
@@ -60,8 +63,8 @@ public abstract class IsNullNode extends IsIdenticalBaseNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return IsNullNode.create(cloneUninitialized(getOperand()), leftConstant);
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return IsNullNode.create(cloneUninitialized(getOperand(), materializedTags), leftConstant);
     }
 
     @Override

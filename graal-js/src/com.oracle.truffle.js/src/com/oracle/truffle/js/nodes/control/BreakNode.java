@@ -47,6 +47,8 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 
+import java.util.Set;
+
 /**
  * 12.8 The break Statement.
  */
@@ -91,7 +93,7 @@ public final class BreakNode extends StatementNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return copy();
     }
 

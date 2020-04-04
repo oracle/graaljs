@@ -63,6 +63,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JSTypesGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -142,8 +143,17 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(ReadElementTag.class) && !alreadyMaterialized()) {
-            JavaScriptNode clonedTarget = targetNode == null || targetNode.hasSourceSection() ? targetNode : JSTaggedExecutionNode.createForInput(targetNode, this);
-            JavaScriptNode clonedIndex = indexNode == null || indexNode.hasSourceSection() ? indexNode : JSTaggedExecutionNode.createForInput(indexNode, this);
+            JavaScriptNode clonedTarget = targetNode == null || targetNode.hasSourceSection() ? targetNode : JSTaggedExecutionNode.createForInput(targetNode, this, materializedTags);
+            JavaScriptNode clonedIndex = indexNode == null || indexNode.hasSourceSection() ? indexNode : JSTaggedExecutionNode.createForInput(indexNode, this, materializedTags);
+            if (clonedTarget == targetNode && clonedIndex == indexNode) {
+                return this;
+            }
+            if (clonedTarget == targetNode) {
+                clonedTarget = cloneUninitialized(targetNode, materializedTags);
+            }
+            if (clonedIndex == indexNode) {
+                clonedIndex = cloneUninitialized(indexNode, materializedTags);
+            }
             JavaScriptNode cloned = ReadElementNode.create(clonedTarget, clonedIndex, getContext());
             transferSourceSectionAndTags(this, cloned);
             return cloned;
@@ -152,7 +162,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     private boolean alreadyMaterialized() {
-        return targetNode instanceof JSTaggedExecutionNode || indexNode instanceof JSTaggedExecutionNode;
+        return JSNodeUtil.isTaggedNode(targetNode) || JSNodeUtil.isTaggedNode(indexNode);
     }
 
     @Override
@@ -1643,8 +1653,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(cloneUninitialized(targetNode), cloneUninitialized(getIndexNode()), getContext());
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return create(cloneUninitialized(targetNode, materializedTags), cloneUninitialized(getIndexNode(), materializedTags), getContext());
     }
 
     @Override

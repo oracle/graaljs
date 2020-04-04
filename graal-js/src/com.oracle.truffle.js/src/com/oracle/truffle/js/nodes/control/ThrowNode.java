@@ -61,6 +61,8 @@ import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
+import java.util.Set;
+
 /**
  * 12.13 The throw Statement.
  */
@@ -145,8 +147,8 @@ public class ThrowNode extends StatementNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(cloneUninitialized(exceptionNode), context);
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return create(cloneUninitialized(exceptionNode, materializedTags), context);
     }
 
     @Override

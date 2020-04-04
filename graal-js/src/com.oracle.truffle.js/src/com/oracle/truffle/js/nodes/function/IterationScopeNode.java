@@ -44,11 +44,14 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
+
+import java.util.Set;
 
 public abstract class IterationScopeNode extends JavaScriptNode {
 
@@ -101,8 +104,8 @@ public abstract class IterationScopeNode extends JavaScriptNode {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new FrameIterationScopeNode(frameDescriptor, cloneUninitialized(reads), cloneUninitialized(writes));
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new FrameIterationScopeNode(frameDescriptor, cloneUninitialized(reads, materializedTags), cloneUninitialized(writes, materializedTags));
         }
     }
 }

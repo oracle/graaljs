@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -57,6 +58,8 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
+
+import java.util.Set;
 
 /**
  * GetIterator(obj, hint = sync).
@@ -130,8 +133,8 @@ public abstract class GetIteratorNode extends JavaScriptNode {
     public abstract IteratorRecord execute(Object iteratedObject);
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return GetIteratorNodeGen.create(getContext(), cloneUninitialized(objectNode));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return GetIteratorNodeGen.create(getContext(), cloneUninitialized(objectNode, materializedTags));
     }
 
     protected GetMethodNode getIteratorMethodNode() {

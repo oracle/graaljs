@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -49,6 +50,8 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+
+import java.util.Set;
 
 public class IteratorCloseWrapperNode extends JavaScriptNode implements ResumableNode {
     @Child private JavaScriptNode blockNode;
@@ -121,7 +124,7 @@ public class IteratorCloseWrapperNode extends JavaScriptNode implements Resumabl
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new IteratorCloseWrapperNode(context, cloneUninitialized(blockNode), cloneUninitialized(iteratorNode));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new IteratorCloseWrapperNode(context, cloneUninitialized(blockNode, materializedTags), cloneUninitialized(iteratorNode, materializedTags));
     }
 }

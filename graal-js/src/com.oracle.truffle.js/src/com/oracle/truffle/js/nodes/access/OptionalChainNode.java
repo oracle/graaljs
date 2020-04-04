@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -48,6 +49,8 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.control.DeletePropertyNode;
 import com.oracle.truffle.js.nodes.unary.JSIsNullOrUndefinedNode;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+
+import java.util.Set;
 
 /**
  * Wrapper node for an optional chain that returns the result (usually undefined) on short circuit.
@@ -109,8 +112,8 @@ public final class OptionalChainNode extends JavaScriptNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new OptionalChainNode(cloneUninitialized(accessNode), result);
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new OptionalChainNode(cloneUninitialized(accessNode, materializedTags), result);
     }
 
     public JavaScriptNode getAccessNode() {
@@ -154,8 +157,8 @@ public final class OptionalChainNode extends JavaScriptNode {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new ShortCircuitNode(cloneUninitialized(expressionNode));
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new ShortCircuitNode(cloneUninitialized(expressionNode, materializedTags));
         }
     }
 
@@ -210,8 +213,8 @@ public final class OptionalChainNode extends JavaScriptNode {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new ShortCircuitTargetableNode(cloneUninitialized(expressionNode));
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new ShortCircuitTargetableNode(cloneUninitialized(expressionNode, materializedTags));
         }
     }
 

@@ -99,7 +99,7 @@ public abstract class JSRightShiftConstantNode extends JSUnaryNode {
         if (materializedTags.contains(BinaryOperationTag.class)) {
             // need to call the generated factory directly to avoid constant optimizations
             JSConstantNode constantNode = JSConstantNode.createInt(shiftValue);
-            JavaScriptNode node = JSRightShiftNodeGen.create(getOperand(), constantNode);
+            JavaScriptNode node = JSRightShiftNodeGen.create(cloneUninitialized(getOperand(), materializedTags), constantNode);
             transferSourceSectionAddExpressionTag(this, constantNode);
             transferSourceSectionAndTags(this, node);
             return node;
@@ -145,12 +145,12 @@ public abstract class JSRightShiftConstantNode extends JSUnaryNode {
     }
 
     protected JSRightShiftConstantNode makeCopy() {
-        return (JSRightShiftConstantNode) copyUninitialized();
+        return (JSRightShiftConstantNode) copyUninitialized(null);
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return JSRightShiftConstantNodeGen.create(cloneUninitialized(getOperand()), shiftValue);
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return JSRightShiftConstantNodeGen.create(cloneUninitialized(getOperand(), materializedTags), shiftValue);
     }
 
     @Override

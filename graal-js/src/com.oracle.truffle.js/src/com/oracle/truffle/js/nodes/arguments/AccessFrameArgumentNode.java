@@ -42,11 +42,14 @@ package com.oracle.truffle.js.nodes.arguments;
 
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.runtime.JSArguments;
+
+import java.util.Set;
 
 /**
  * Reads an indexed argument from a function frame.
@@ -74,7 +77,7 @@ public final class AccessFrameArgumentNode extends JavaScriptNode implements Rep
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return new AccessFrameArgumentNode(NodeUtil.cloneNode(accessFrame), argIndex);
     }
 }

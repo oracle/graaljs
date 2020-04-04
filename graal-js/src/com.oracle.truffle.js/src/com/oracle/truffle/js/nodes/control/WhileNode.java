@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -127,11 +127,21 @@ public final class WhileNode extends StatementNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (hasMaterializationTag(materializedTags) && AbstractRepeatingNode.materializationNeeded(loop.getRepeatingNode())) {
+            // The repeating node should not have a wrapper, because it has no source section
             if (loop.getRepeatingNode() instanceof AbstractRepeatingNode) {
                 AbstractRepeatingNode repeatingNode = (AbstractRepeatingNode) loop.getRepeatingNode();
-                JavaScriptNode bodyNode = JSTaggedExecutionNode.createFor(repeatingNode.bodyNode, ControlFlowBlockTag.class);
+                JavaScriptNode bodyNode = JSTaggedExecutionNode.createFor(repeatingNode.bodyNode, ControlFlowBlockTag.class, materializedTags);
                 JavaScriptNode conditionNode = JSTaggedExecutionNode.createForInput(repeatingNode.conditionNode, ControlFlowBranchTag.class,
-                                JSTags.createNodeObjectDescriptor("type", ControlFlowBranchTag.Type.Condition.name()));
+                                JSTags.createNodeObjectDescriptor("type", ControlFlowBranchTag.Type.Condition.name()), materializedTags);
+                if (bodyNode == repeatingNode.bodyNode && conditionNode == repeatingNode.conditionNode) {
+                    return this;
+                }
+                if (bodyNode == repeatingNode.bodyNode) {
+                    bodyNode = cloneUninitialized(repeatingNode.bodyNode, materializedTags);
+                }
+                if (conditionNode == repeatingNode.conditionNode) {
+                    conditionNode = cloneUninitialized(repeatingNode.conditionNode, materializedTags);
+                }
                 transferSourceSection(this, bodyNode);
                 WhileNode materialized;
                 if (repeatingNode instanceof DoWhileRepeatingNode) {
@@ -153,8 +163,8 @@ public final class WhileNode extends StatementNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new WhileNode((RepeatingNode) cloneUninitialized((JavaScriptNode) loop.getRepeatingNode()), loopType);
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new WhileNode((RepeatingNode) cloneUninitialized((JavaScriptNode) loop.getRepeatingNode(), materializedTags), loopType);
     }
 
     @Override
@@ -203,8 +213,8 @@ public final class WhileNode extends StatementNode {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new DoWhileRepeatingNode(cloneUninitialized(conditionNode), cloneUninitialized(bodyNode));
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new DoWhileRepeatingNode(cloneUninitialized(conditionNode, materializedTags), cloneUninitialized(bodyNode, materializedTags));
         }
     }
 
@@ -240,8 +250,8 @@ public final class WhileNode extends StatementNode {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new WhileDoRepeatingNode(cloneUninitialized(conditionNode), cloneUninitialized(bodyNode));
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new WhileDoRepeatingNode(cloneUninitialized(conditionNode, materializedTags), cloneUninitialized(bodyNode, materializedTags));
         }
     }
 }

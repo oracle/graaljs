@@ -98,7 +98,7 @@ public abstract class JSLeftShiftConstantNode extends JSUnaryNode {
         if (materializedTags.contains(BinaryOperationTag.class)) {
             // need to call the generated factory directly to avoid constant optimizations
             JSConstantNode constantNode = JSConstantNode.createInt(shiftValue);
-            JavaScriptNode node = JSLeftShiftNodeGen.create(getOperand(), constantNode);
+            JavaScriptNode node = JSLeftShiftNodeGen.create(cloneUninitialized(getOperand(), materializedTags), constantNode);
             transferSourceSectionAddExpressionTag(this, constantNode);
             transferSourceSectionAndTags(this, node);
             return node;
@@ -144,12 +144,12 @@ public abstract class JSLeftShiftConstantNode extends JSUnaryNode {
     }
 
     protected JSLeftShiftConstantNode makeCopy() {
-        return (JSLeftShiftConstantNode) copyUninitialized();
+        return (JSLeftShiftConstantNode) copyUninitialized(null);
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return JSLeftShiftConstantNodeGen.create(cloneUninitialized(getOperand()), shiftValue);
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return JSLeftShiftConstantNodeGen.create(cloneUninitialized(getOperand(), materializedTags), shiftValue);
     }
 
     @Override

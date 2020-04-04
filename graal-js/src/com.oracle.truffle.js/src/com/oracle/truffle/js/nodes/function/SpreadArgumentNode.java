@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
@@ -50,6 +51,8 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
+
+import java.util.Set;
 
 public final class SpreadArgumentNode extends JavaScriptNode {
     @Child private GetIteratorNode getIteratorNode;
@@ -96,10 +99,10 @@ public final class SpreadArgumentNode extends JavaScriptNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         SpreadArgumentNode copy = (SpreadArgumentNode) copy();
-        copy.getIteratorNode = cloneUninitialized(getIteratorNode);
-        copy.iteratorStepNode = cloneUninitialized(iteratorStepNode);
+        copy.getIteratorNode = cloneUninitialized(getIteratorNode, materializedTags);
+        copy.iteratorStepNode = cloneUninitialized(iteratorStepNode, materializedTags);
         return copy;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
@@ -58,6 +59,8 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
+
+import java.util.Set;
 
 public abstract class GetPrototypeNode extends JavaScriptBaseNode {
     static final int MAX_SHAPE_COUNT = 2;
@@ -85,7 +88,7 @@ public abstract class GetPrototypeNode extends JavaScriptBaseNode {
             }
 
             @Override
-            protected JavaScriptNode copyUninitialized() {
+            protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
                 return new GetPrototypeOfNode();
             }
         }

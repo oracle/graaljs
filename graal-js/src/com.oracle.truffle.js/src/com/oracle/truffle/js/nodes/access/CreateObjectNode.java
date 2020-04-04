@@ -44,6 +44,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -57,6 +58,8 @@ import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
+
+import java.util.Set;
 
 public abstract class CreateObjectNode extends JavaScriptBaseNode {
     protected final JSContext context;
@@ -87,7 +90,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
 
     public abstract DynamicObject executeDynamicObject(VirtualFrame frame);
 
-    protected abstract CreateObjectNode copyUninitialized();
+    protected abstract CreateObjectNode copyUninitialized(Set<Class<? extends Tag>> materializedTags);
 
     final JSContext getContext() {
         return context;
@@ -104,7 +107,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         }
 
         @Override
-        protected CreateObjectNode copyUninitialized() {
+        protected CreateObjectNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new CreateOrdinaryObjectNode(context);
         }
     }
@@ -120,7 +123,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         public abstract DynamicObject executeDynamicObject(VirtualFrame frame, DynamicObject prototype);
 
         @Override
-        protected abstract CreateObjectWithPrototypeNode copyUninitialized();
+        protected abstract CreateObjectWithPrototypeNode copyUninitialized(Set<Class<? extends Tag>> materializedTags);
     }
 
     protected abstract static class CreateObjectWithCachedPrototypeNode extends CreateObjectWithPrototypeNode {
@@ -175,8 +178,8 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         }
 
         @Override
-        protected CreateObjectWithPrototypeNode copyUninitialized() {
-            return create(context, JavaScriptNode.cloneUninitialized(prototypeExpression), jsclass);
+        protected CreateObjectWithPrototypeNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return create(context, JavaScriptNode.cloneUninitialized(prototypeExpression, materializedTags), jsclass);
         }
     }
 
@@ -191,7 +194,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         }
 
         @Override
-        protected CreateObjectNode copyUninitialized() {
+        protected CreateObjectNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new CreateDictionaryObjectNode(context);
         }
     }

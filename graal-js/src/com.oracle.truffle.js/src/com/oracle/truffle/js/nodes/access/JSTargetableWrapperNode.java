@@ -41,8 +41,11 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+
+import java.util.Set;
 
 public class JSTargetableWrapperNode extends JSTargetableNode {
 
@@ -103,7 +106,7 @@ public class JSTargetableWrapperNode extends JSTargetableNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new JSTargetableWrapperNode(cloneUninitialized(delegate), cloneUninitialized(targetNode));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new JSTargetableWrapperNode(cloneUninitialized(delegate, materializedTags), cloneUninitialized(targetNode, materializedTags));
     }
 }

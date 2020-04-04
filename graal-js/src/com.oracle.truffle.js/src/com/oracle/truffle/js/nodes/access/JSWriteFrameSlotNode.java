@@ -188,8 +188,8 @@ abstract class JSWriteScopeFrameSlotNode extends JSWriteFrameSlotNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return JSWriteScopeFrameSlotNodeGen.create(frameSlot, getLevelFrameNode(), cloneUninitialized(getRhs()));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return JSWriteScopeFrameSlotNodeGen.create(frameSlot, getLevelFrameNode(), cloneUninitialized(getRhs(), materializedTags));
     }
 }
 
@@ -261,8 +261,8 @@ abstract class JSWriteCurrentFrameSlotNode extends JSWriteFrameSlotNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return JSWriteCurrentFrameSlotNodeGen.create(frameSlot, cloneUninitialized(getRhs()));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return JSWriteCurrentFrameSlotNodeGen.create(frameSlot, cloneUninitialized(getRhs(), materializedTags));
     }
 
     @Override

@@ -68,6 +68,8 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
+import java.util.Set;
+
 public abstract class EvalNode extends JavaScriptNode {
     private final JSContext context;
     @Child @Executed protected JavaScriptNode functionNode;
@@ -148,8 +150,9 @@ public abstract class EvalNode extends JavaScriptNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return EvalNodeGen.create(context, cloneUninitialized(functionNode), AbstractFunctionArgumentsNode.cloneUninitialized(arguments), directEvalNode.copyUninitialized());
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return EvalNodeGen.create(context, cloneUninitialized(functionNode, materializedTags), AbstractFunctionArgumentsNode.cloneUninitialized(arguments, materializedTags),
+                        directEvalNode.copyUninitialized(materializedTags));
     }
 
     protected abstract static class DirectEvalNode extends JavaScriptBaseNode {
@@ -252,8 +255,8 @@ public abstract class EvalNode extends JavaScriptNode {
             return Source.newBuilder(JavaScriptLanguage.ID, sourceCode.toString(), evalSourceName).internal(internal).build();
         }
 
-        protected DirectEvalNode copyUninitialized() {
-            return create(context, cloneUninitialized(thisNode), currEnv);
+        protected DirectEvalNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return create(context, cloneUninitialized(thisNode, materializedTags), currEnv);
         }
 
     }

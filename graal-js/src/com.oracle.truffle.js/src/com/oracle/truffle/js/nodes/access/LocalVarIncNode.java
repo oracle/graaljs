@@ -197,12 +197,12 @@ abstract class LocalVarOpMaterializedNode extends LocalVarIncNode {
     @Child protected JavaScriptNode convertOld;
     @Child protected JavaScriptNode writeNew;
 
-    LocalVarOpMaterializedNode(LocalVarIncNode from) {
+    LocalVarOpMaterializedNode(LocalVarIncNode from, Set<Class<? extends Tag>> materializedTags) {
         super(from.op, from.frameSlot, from.hasTemporalDeadZone, from.scopeFrameNode);
 
         JavaScriptNode readOld = JSReadFrameSlotNode.create(frameSlot, scopeFrameNode, hasTemporalDeadZone);
-        JavaScriptNode convert = JSToNumericNode.create(readOld);
-        convertOld = JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, convert, hasTemporalDeadZone);
+        JavaScriptNode convert = (JavaScriptNode) JSToNumericNode.create(readOld).materializeInstrumentableNodes(materializedTags);
+        convertOld = cloneUninitialized(JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, convert, hasTemporalDeadZone), materializedTags);
 
         JavaScriptNode readTmp = JSReadFrameSlotNode.create(frameSlot, scopeFrameNode, hasTemporalDeadZone);
         JavaScriptNode one = JSConstantNode.createInt(1);
@@ -212,11 +212,15 @@ abstract class LocalVarOpMaterializedNode extends LocalVarIncNode {
         } else {
             opNode = JSAddNode.create(readTmp, one);
         }
-        this.writeNew = JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, opNode, hasTemporalDeadZone);
+        /*
+         * Have to transfer source sections before cloning and materialization. Some nodes might
+         * become instrumentable by this operation.
+         */
         transferSourceSectionAddExpressionTag(from, readTmp);
         transferSourceSectionAddExpressionTag(from, one);
-        transferSourceSectionAddExpressionTag(from, writeNew);
         transferSourceSectionAddExpressionTag(from, opNode);
+        this.writeNew = cloneUninitialized(JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, opNode, hasTemporalDeadZone), materializedTags);
+        transferSourceSectionAddExpressionTag(from, writeNew);
         transferSourceSectionAndTags(from, this);
     }
 
@@ -233,8 +237,8 @@ class LocalVarPostfixIncMaterializedNode extends LocalVarOpMaterializedNode {
         super(op, slot, hasTdz, scope, read, write);
     }
 
-    LocalVarPostfixIncMaterializedNode(LocalVarPostfixIncNode from) {
-        super(from);
+    LocalVarPostfixIncMaterializedNode(LocalVarPostfixIncNode from, Set<Class<? extends Tag>> materializedTags) {
+        super(from, materializedTags);
     }
 
     @Override
@@ -245,8 +249,9 @@ class LocalVarPostfixIncMaterializedNode extends LocalVarOpMaterializedNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new LocalVarPostfixIncMaterializedNode(op, frameSlot, hasTemporalDeadZone(), scopeFrameNode, cloneUninitialized(convertOld), cloneUninitialized(writeNew));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new LocalVarPostfixIncMaterializedNode(op, frameSlot, hasTemporalDeadZone(), scopeFrameNode, cloneUninitialized(convertOld, materializedTags),
+                        cloneUninitialized(writeNew, materializedTags));
     }
 }
 
@@ -256,8 +261,8 @@ class LocalVarPrefixIncMaterializedNode extends LocalVarOpMaterializedNode {
         super(op, slot, hasTdz, scope, read, write);
     }
 
-    LocalVarPrefixIncMaterializedNode(LocalVarPrefixIncNode from) {
-        super(from);
+    LocalVarPrefixIncMaterializedNode(LocalVarPrefixIncNode from, Set<Class<? extends Tag>> materializedTags) {
+        super(from, materializedTags);
     }
 
     @Override
@@ -267,8 +272,9 @@ class LocalVarPrefixIncMaterializedNode extends LocalVarOpMaterializedNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new LocalVarPrefixIncMaterializedNode(op, frameSlot, hasTemporalDeadZone(), scopeFrameNode, cloneUninitialized(convertOld), cloneUninitialized(writeNew));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new LocalVarPrefixIncMaterializedNode(op, frameSlot, hasTemporalDeadZone(), scopeFrameNode, cloneUninitialized(convertOld, materializedTags),
+                        cloneUninitialized(writeNew, materializedTags));
     }
 
 }
@@ -285,7 +291,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
                         materializedTags.contains(WriteVariableTag.class) ||
                         materializedTags.contains(StandardTags.ReadVariableTag.class) ||
                         materializedTags.contains(StandardTags.WriteVariableTag.class)) {
-            return new LocalVarPostfixIncMaterializedNode(this);
+            return new LocalVarPostfixIncMaterializedNode(this, materializedTags);
         } else {
             return this;
         }
@@ -398,7 +404,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return LocalVarPostfixIncNodeGen.create(op, getFrameSlot(), hasTemporalDeadZone(), NodeUtil.cloneNode(getLevelFrameNode()));
     }
 }
@@ -415,7 +421,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
                         materializedTags.contains(WriteVariableTag.class) ||
                         materializedTags.contains(StandardTags.ReadVariableTag.class) ||
                         materializedTags.contains(StandardTags.WriteVariableTag.class)) {
-            return new LocalVarPrefixIncMaterializedNode(this);
+            return new LocalVarPrefixIncMaterializedNode(this, materializedTags);
         } else {
             return this;
         }
@@ -532,7 +538,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return LocalVarPrefixIncNodeGen.create(op, getFrameSlot(), hasTemporalDeadZone(), NodeUtil.cloneNode(getLevelFrameNode()));
     }
 }

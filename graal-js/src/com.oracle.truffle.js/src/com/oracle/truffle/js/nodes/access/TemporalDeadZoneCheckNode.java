@@ -43,11 +43,14 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+
+import java.util.Set;
 
 public final class TemporalDeadZoneCheckNode extends FrameSlotNode {
     @Child private JavaScriptNode child;
@@ -107,7 +110,7 @@ public final class TemporalDeadZoneCheckNode extends FrameSlotNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new TemporalDeadZoneCheckNode(frameSlot, NodeUtil.cloneNode(levelFrameNode), cloneUninitialized(child));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new TemporalDeadZoneCheckNode(frameSlot, NodeUtil.cloneNode(levelFrameNode), cloneUninitialized(child, materializedTags));
     }
 }

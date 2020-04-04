@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.instrumentation;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -128,8 +129,8 @@ public final class DeclareTagProvider {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new MaterializedFrameBlockScopeNode(cloneUninitialized(block), frameDescriptor, parentSlot, getSourceSection());
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new MaterializedFrameBlockScopeNode(cloneUninitialized(block, materializedTags), frameDescriptor, parentSlot, getSourceSection());
         }
     }
 
@@ -155,8 +156,8 @@ public final class DeclareTagProvider {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new MaterializedFunctionBodyNode(cloneUninitialized(getBody()), getSourceSection(), frameDescriptor);
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new MaterializedFunctionBodyNode(cloneUninitialized(getBody(), materializedTags), getSourceSection(), frameDescriptor);
         }
     }
 
@@ -202,7 +203,7 @@ public final class DeclareTagProvider {
         }
 
         @Override
-        protected JavaScriptNode copyUninitialized() {
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new DeclareProviderNode(slot);
         }
     }

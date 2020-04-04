@@ -45,9 +45,9 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.profiles.LoopConditionProfile;
+import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
-import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.runtime.JSCancelledExecutionException;
 
 abstract class AbstractRepeatingNode extends JavaScriptNode implements RepeatingNode, ResumableNode {
@@ -95,7 +95,8 @@ abstract class AbstractRepeatingNode extends JavaScriptNode implements Repeating
         }
         assert repeatingNode instanceof AbstractRepeatingNode;
         // If we are using tagged nodes, this node is already materialized.
-        return !(((AbstractRepeatingNode) repeatingNode).bodyNode instanceof JSTaggedExecutionNode);
+        JavaScriptNode rnBodyNode = ((AbstractRepeatingNode) repeatingNode).bodyNode;
+        return !JSNodeUtil.isTaggedNode(rnBodyNode);
     }
 
 }

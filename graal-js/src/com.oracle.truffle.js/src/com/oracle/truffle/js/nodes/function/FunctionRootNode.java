@@ -105,7 +105,7 @@ public class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements
 
     @Override
     protected JavaScriptRootNode cloneUninitialized() {
-        return new FunctionRootNode((AbstractBodyNode) JavaScriptNode.cloneUninitialized(body), getFrameDescriptor(), functionData, getSourceSection(), internalFunctionName);
+        return new FunctionRootNode((AbstractBodyNode) JavaScriptNode.cloneUninitialized(body, null), getFrameDescriptor(), functionData, getSourceSection(), internalFunctionName);
     }
 
     public boolean isInlineImmediately() {

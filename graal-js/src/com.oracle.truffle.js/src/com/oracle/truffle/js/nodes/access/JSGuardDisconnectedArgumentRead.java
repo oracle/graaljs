@@ -58,6 +58,8 @@ import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
+import java.util.Set;
+
 public abstract class JSGuardDisconnectedArgumentRead extends JavaScriptNode implements RepeatableNode, ReadNode {
     private final int index;
     @Child @Executed JavaScriptNode argumentsArrayNode;
@@ -122,7 +124,7 @@ public abstract class JSGuardDisconnectedArgumentRead extends JavaScriptNode imp
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return JSGuardDisconnectedArgumentReadNodeGen.create(index, cloneUninitialized(readElementNode), cloneUninitialized(argumentsArrayNode), slot);
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return JSGuardDisconnectedArgumentReadNodeGen.create(index, cloneUninitialized(readElementNode, materializedTags), cloneUninitialized(argumentsArrayNode, materializedTags), slot);
     }
 }

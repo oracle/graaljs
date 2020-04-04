@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,8 @@ import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
 import com.oracle.truffle.js.runtime.JSContext;
+
+import java.util.Set;
 
 public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
 
@@ -126,8 +128,8 @@ public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new GlobalConstantNode(globalObjectNode.getContext(), propertyName, cloneUninitialized(constantNode));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new GlobalConstantNode(globalObjectNode.getContext(), propertyName, cloneUninitialized(constantNode, materializedTags));
     }
 
     static final class LineNumberNode extends JSConstantNode {

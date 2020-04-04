@@ -124,8 +124,8 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializationNeeded() && materializedTags.contains(UnaryOperationTag.class)) {
-            JavaScriptNode key = cloneUninitialized(propertyNode);
-            JavaScriptNode target = cloneUninitialized(targetNode);
+            JavaScriptNode key = cloneUninitialized(propertyNode, materializedTags);
+            JavaScriptNode target = cloneUninitialized(targetNode, materializedTags);
             transferSourceSectionAddExpressionTag(this, key);
             transferSourceSectionAddExpressionTag(this, target);
             DeletePropertyNode node = DeletePropertyNode.create(target, key, strict, context);
@@ -286,8 +286,8 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(cloneUninitialized(getTarget()), cloneUninitialized(propertyNode), strict, context);
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return create(cloneUninitialized(getTarget(), materializedTags), cloneUninitialized(propertyNode, materializedTags), strict, context);
     }
 
     @Override

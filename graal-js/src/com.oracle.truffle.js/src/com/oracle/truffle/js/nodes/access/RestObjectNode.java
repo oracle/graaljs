@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,11 +43,14 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectArrayNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.runtime.JSContext;
+
+import java.util.Set;
 
 public abstract class RestObjectNode extends JavaScriptNode {
     @Child @Executed protected JavaScriptNode targetNode;
@@ -91,8 +94,8 @@ public abstract class RestObjectNode extends JavaScriptNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return RestObjectNodeGen.create(context, cloneUninitialized(targetNode), cloneUninitialized(sourceNode));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return RestObjectNodeGen.create(context, cloneUninitialized(targetNode, materializedTags), cloneUninitialized(sourceNode, materializedTags));
     }
 }
 
@@ -132,7 +135,8 @@ abstract class RestObjectWithExcludedNode extends JavaScriptNode {
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return RestObjectWithExcludedNodeGen.create(context, cloneUninitialized(targetNode), cloneUninitialized(sourceNode), cloneUninitialized(excludedNode));
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return RestObjectWithExcludedNodeGen.create(context, cloneUninitialized(targetNode, materializedTags), cloneUninitialized(sourceNode, materializedTags),
+                        cloneUninitialized(excludedNode, materializedTags));
     }
 }
