@@ -74,7 +74,6 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
-import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
@@ -85,6 +84,7 @@ import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.SuperPropertyReferenceNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
 import com.oracle.truffle.js.nodes.instrumentation.JSMaterializedInvokeTargetableNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementTag;
@@ -446,7 +446,19 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     public abstract JavaScriptNode getTarget();
 
     protected final Object evaluateReceiver(VirtualFrame frame, Object target) {
-        JavaScriptNode targetNode = JSNodeUtil.getWrappedNodeRecursive(getTarget(), Integer.MAX_VALUE);
+        Node targetNode = getTarget();
+        /*
+         * SuperPropertyReferenceNode's instrumentation wrapper is an instance of
+         * SuperPropertyReferenceNode. So, normally we wouldn't need to unwrap it. However, it can
+         * be wrapped by JSTaggedExecutionNode and that could be wrapped by an instrumentation
+         * wrapper. If that's the case, we have to unwrap twice.
+         */
+        if (targetNode instanceof WrapperNode) {
+            targetNode = ((WrapperNode) targetNode).getDelegateNode();
+        }
+        if (targetNode instanceof JSTaggedExecutionNode) {
+            targetNode = ((JSTaggedExecutionNode) targetNode).getDelegateNode();
+        }
         if (targetNode instanceof SuperPropertyReferenceNode) {
             return ((SuperPropertyReferenceNode) targetNode).evaluateTarget(frame);
         }
