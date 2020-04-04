@@ -171,6 +171,9 @@ public final class IdentUtils {
                     0x1ee59, 0x1ee5b, 0x1ee5b, 0x1ee5d, 0x1ee5d, 0x1ee5f, 0x1ee5f, 0x1ee61, 0x1ee62, 0x1ee64, 0x1ee64, 0x1ee67, 0x1ee6a, 0x1ee6c, 0x1ee72, 0x1ee74, 0x1ee77, 0x1ee79, 0x1ee7c, 0x1ee7e,
                     0x1ee7e, 0x1ee80, 0x1ee89, 0x1ee8b, 0x1ee9b, 0x1eea1, 0x1eea3, 0x1eea5, 0x1eea9, 0x1eeab, 0x1eebb, 0x20000, 0x2a6dd, 0x2a700, 0x2b734, 0x2b740, 0x2b81d, 0x2b820, 0x2cea1, 0x2ceb0,
                     0x2ebe0, 0x2f800, 0x2fa1d, 0x30000, 0x3134a};
+    private static final int PRECOMPUTED_ARRAY_SIZE = 128;
+    private static final boolean[] ID_PART_ARRAY = initArray(ID_PART_RANGES);
+    private static final boolean[] ID_START_ARRAY = initArray(ID_START_RANGES);
 
     private IdentUtils() {
     }
@@ -184,7 +187,7 @@ public final class IdentUtils {
      *         {@code false} otherwise.
      */
     public static boolean isIdentifierStart(int codePoint) {
-        return contains(ID_START_RANGES, codePoint);
+        return (codePoint < PRECOMPUTED_ARRAY_SIZE) ? ID_START_ARRAY[codePoint] : contains(ID_START_RANGES, codePoint);
     }
 
     /**
@@ -196,7 +199,7 @@ public final class IdentUtils {
      *         {@code false} otherwise.
      */
     public static boolean isIdentifierPart(int codePoint) {
-        return contains(ID_PART_RANGES, codePoint);
+        return (codePoint < PRECOMPUTED_ARRAY_SIZE) ? ID_PART_ARRAY[codePoint] : contains(ID_PART_RANGES, codePoint);
     }
 
     private static boolean contains(int[] ranges, int codePoint) {
@@ -213,6 +216,14 @@ public final class IdentUtils {
             }
         }
         return false;
+    }
+
+    private static boolean[] initArray(int[] ranges) {
+        boolean[] array = new boolean[PRECOMPUTED_ARRAY_SIZE];
+        for (int i = 0; i < PRECOMPUTED_ARRAY_SIZE; i++) {
+            array[i] = contains(ranges, i);
+        }
+        return array;
     }
 
 }
