@@ -1624,10 +1624,6 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
-    "filePath" : "built-ins/RegExp/prototype/Symbol.replace/coerce-lastindex.js",
-    "status" : "FAIL",
-    "comment" : "new failures update 2020-04-01"
-  }, {
     "filePath" : "built-ins/String/prototype/toLowerCase/Final_Sigma_U180E.js",
     "status" : "FAIL",
     "comment" : "String.toLowerCase() does not handle Final_Sigma special casing with respect to u180e correctly"

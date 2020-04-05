@@ -1183,8 +1183,13 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 }
                 if (global) {
                     if (matchLength == 0) {
-                        int lastI = (int) toLength(getLastIndex(rx));
-                        setLastIndex(rx, fullUnicode ? advanceStringIndexUnicode(s, lastI) : lastI + 1);
+                        long lastI = toLength(getLastIndex(rx));
+                        long nextIndex = lastI + 1;
+                        if (JSRuntime.longIsRepresentableAsInt(nextIndex)) {
+                            setLastIndex(rx, fullUnicode ? advanceStringIndexUnicode(s, (int) lastI) : (int) nextIndex);
+                        } else {
+                            setLastIndex(rx, (double) nextIndex);
+                        }
                     }
                 } else {
                     break;
