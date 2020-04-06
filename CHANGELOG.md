@@ -21,6 +21,7 @@ The main focus is on user-observable behavior of the engine.
 * Enabled the [Hashbang Grammar](https://github.com/tc39/proposal-hashbang) proposal, by enabling the `--js.shebang` option by default in ECMAScript 2020 or later.
 * Updated ICU4J library to version 66.1.
 * Moved `String.prototype.replaceAll` to ECMAScript version 2021 (`--js.ecmascript-version=2021`).
+* Removed [SIMD.js](https://github.com/tc39/ecmascript_simd) implementation.
 
 ## Version 20.0.0
 * Implemented support for public and private class fields, both instance and static (based on the [class fields](https://github.com/tc39/proposal-class-fields) and [static class features](https://github.com/tc39/proposal-static-class-features) proposals). This feature is available by default in Node.js and can be enabled using the experimental option `js.class-fields`.
