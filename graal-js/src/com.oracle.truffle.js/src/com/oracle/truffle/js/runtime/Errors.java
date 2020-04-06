@@ -765,9 +765,4 @@ public final class Errors {
     public static JSException createTypeErrorCannotAddPrivateMember(String name, Node originatingNode) {
         return createTypeError(String.format("Duplicate private member %s.", name), originatingNode);
     }
-
-    @TruffleBoundary
-    public static JSException createSIMDExpected() {
-        return Errors.createTypeError("SIMD type expected");
-    }
 }

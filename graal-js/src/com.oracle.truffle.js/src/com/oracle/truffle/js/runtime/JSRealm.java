@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
+
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.Writer;
@@ -53,8 +55,6 @@ import java.util.SplittableRandom;
 import java.util.TimeZone;
 import java.util.WeakHashMap;
 
-import com.oracle.truffle.js.builtins.commonjs.NpmCompatibleESModuleLoader;
-import com.oracle.truffle.js.runtime.objects.DefaultESModuleLoader;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
 
@@ -90,6 +90,7 @@ import com.oracle.truffle.js.builtins.SetIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.StringIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.commonjs.CommonJSRequireBuiltin;
 import com.oracle.truffle.js.builtins.commonjs.GlobalCommonJSRequireBuiltins;
+import com.oracle.truffle.js.builtins.commonjs.NpmCompatibleESModuleLoader;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
@@ -128,7 +129,6 @@ import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
-import com.oracle.truffle.js.runtime.builtins.JSSIMD;
 import com.oracle.truffle.js.runtime.builtins.JSSegmenter;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
@@ -140,11 +140,10 @@ import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
-import com.oracle.truffle.js.runtime.builtins.SIMDType;
-import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDTypeFactory;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.Accessor;
+import com.oracle.truffle.js.runtime.objects.DefaultESModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -154,8 +153,6 @@ import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.PrintWriterWrapper;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
-
-import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
 
 /**
  * Container for JavaScript globals (i.e. an ECMAScript 6 Realm object).
@@ -280,8 +277,6 @@ public class JSRealm {
     private final DynamicObject forInIteratorPrototype;
     private final DynamicObject finalizationRegistryCleanupIteratorPrototype;
 
-    @CompilationFinal(dimensions = 1) private final JSConstructor[] simdTypeConstructors;
-
     private final DynamicObject generatorFunctionConstructor;
     private final DynamicObject generatorFunctionPrototype;
     private final DynamicObject generatorObjectPrototype;
@@ -306,9 +301,6 @@ public class JSRealm {
     private final DynamicObject arrayProtoValuesIterator;
     @CompilationFinal private DynamicObject typedArrayConstructor;
     @CompilationFinal private DynamicObject typedArrayPrototype;
-
-    @CompilationFinal private DynamicObject simdTypeConstructor;
-    @CompilationFinal private DynamicObject simdTypePrototype;
 
     private DynamicObject preinitIntlObject;
     private DynamicObject preinitConsoleBuiltinObject;
@@ -501,12 +493,6 @@ public class JSRealm {
         this.dataViewConstructor = ctor.getFunctionObject();
         this.dataViewPrototype = ctor.getPrototype();
 
-        if (context.getContextOptions().isSIMDjs()) {
-            this.simdTypeConstructors = new JSConstructor[SIMDType.FACTORIES.length];
-            initializeSIMDTypeConstructors();
-        } else {
-            this.simdTypeConstructors = null;
-        }
         if (context.getContextOptions().isBigInt()) {
             ctor = JSBigInt.createConstructor(this);
             this.bigIntConstructor = ctor.getFunctionObject();
@@ -660,18 +646,6 @@ public class JSRealm {
             JSConstructor constructor = JSArrayBufferView.createConstructor(this, factory, taConst);
             typedArrayConstructors[factory.getFactoryIndex()] = constructor.getFunctionObject();
             typedArrayPrototypes[factory.getFactoryIndex()] = constructor.getPrototype();
-        }
-    }
-
-    private void initializeSIMDTypeConstructors() {
-        assert context.getContextOptions().isSIMDjs();
-        JSConstructor taConst = JSSIMD.createSIMDTypeConstructor(this);
-        simdTypeConstructor = taConst.getFunctionObject();
-        simdTypePrototype = taConst.getPrototype();
-
-        for (SIMDTypeFactory<? extends SIMDType> factory : SIMDType.FACTORIES) {
-            JSConstructor constructor = JSSIMD.createConstructor(this, factory, taConst);
-            simdTypeConstructors[factory.getFactoryIndex()] = constructor;
         }
     }
 
@@ -1197,13 +1171,6 @@ public class JSRealm {
         }
         putGlobalProperty(JSDataView.CLASS_NAME, getDataViewConstructor());
 
-        if (context.getContextOptions().isSIMDjs()) {
-            DynamicObject simdObject = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
-            for (SIMDTypeFactory<? extends SIMDType> factory : SIMDType.FACTORIES) {
-                JSObjectUtil.putDataProperty(context, simdObject, factory.getName(), getSIMDTypeConstructor(factory).getFunctionObject(), JSAttributes.getDefaultNotEnumerable());
-            }
-            putGlobalProperty(JSSIMD.SIMD_OBJECT_NAME, simdObject);
-        }
         if (context.getContextOptions().isBigInt()) {
             putGlobalProperty(JSBigInt.CLASS_NAME, getBigIntConstructor());
         }
@@ -1452,10 +1419,6 @@ public class JSRealm {
                 }
             }), 0, "isGraalRuntime");
         });
-    }
-
-    public JSConstructor getSIMDTypeConstructor(SIMDTypeFactory<? extends SIMDType> factory) {
-        return simdTypeConstructors[factory.getFactoryIndex()];
     }
 
     /**

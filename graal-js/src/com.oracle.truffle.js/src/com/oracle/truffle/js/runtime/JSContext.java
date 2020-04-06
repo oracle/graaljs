@@ -108,7 +108,6 @@ import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
-import com.oracle.truffle.js.runtime.builtins.JSSIMD;
 import com.oracle.truffle.js.runtime.builtins.JSSegmenter;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
@@ -119,8 +118,6 @@ import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
-import com.oracle.truffle.js.runtime.builtins.SIMDType;
-import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDTypeFactory;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.java.adapter.JavaAdapterFactory;
@@ -393,8 +390,6 @@ public class JSContext {
     private final JSObjectFactory jsAdapterFactory;
     private final JSObjectFactory dictionaryObjectFactory;
 
-    @CompilationFinal(dimensions = 1) private final JSObjectFactory[] simdTypeFactories;
-
     private final int factoryCount;
 
     @CompilationFinal private Locale locale;
@@ -531,11 +526,6 @@ public class JSContext {
         boolean nashornCompat = isOptionNashornCompatibilityMode();
         this.jsAdapterFactory = nashornCompat ? builder.create(JSAdapter.INSTANCE) : null;
         this.javaImporterFactory = nashornCompat ? builder.create(JavaImporter.instance()) : null;
-
-        this.simdTypeFactories = new JSObjectFactory[SIMDType.factories().length];
-        for (SIMDType.SIMDTypeFactory<? extends SIMDType> factory : SIMDType.factories()) {
-            simdTypeFactories[factory.getFactoryIndex()] = builder.create(factory, (c, p) -> JSSIMD.makeInitialSIMDShape(c, p));
-        }
 
         this.dictionaryObjectFactory = JSConfig.DictionaryObject ? builder.create(objectPrototypeSupplier, JSDictionaryObject::makeDictionaryShape) : null;
 
@@ -921,10 +911,6 @@ public class JSContext {
 
     public final JSObjectFactory getJavaPackageFactory() {
         return javaPackageFactory;
-    }
-
-    public JSObjectFactory getSIMDTypeFactory(SIMDTypeFactory<? extends SIMDType> factory) {
-        return simdTypeFactories[factory.getFactoryIndex()];
     }
 
     public JSObjectFactory getDictionaryObjectFactory() {

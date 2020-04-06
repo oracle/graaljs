@@ -70,7 +70,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
-import com.oracle.truffle.js.runtime.builtins.JSSIMD;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
@@ -312,9 +311,7 @@ public final class JSRuntime {
         if (value == Null.instance || value == Undefined.instance) {
             return value;
         } else if (value instanceof TruffleObject) {
-            if (JSSIMD.isJSSIMD(value)) {
-                return value;
-            } else if (JSObject.isJSObject(value)) {
+            if (JSObject.isJSObject(value)) {
                 return JSObject.toPrimitive((DynamicObject) value, hint);
             } else if (isForeignObject(value)) {
                 TruffleObject tObj = (TruffleObject) value;
