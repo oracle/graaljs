@@ -157,11 +157,6 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         return Undefined.instance;
     }
 
-    @Specialization(guards = "isJSSIMD(value)")
-    protected DynamicObject doSIMD(DynamicObject value) {
-        return value;
-    }
-
     @Specialization(guards = "isJSObject(object)")
     protected Object doJSObject(DynamicObject object,
                     @Cached("createGetToPrimitive(object)") PropertyNode getToPrimitive,

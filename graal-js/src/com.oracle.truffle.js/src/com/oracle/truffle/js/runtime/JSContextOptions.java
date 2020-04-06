@@ -363,10 +363,6 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> FOREIGN_OBJECT_PROTOTYPE = new OptionKey<>(false);
     @CompilationFinal private boolean hasForeignObjectPrototype;
 
-    public static final String SIMDJS_NAME = JS_OPTION_PREFIX + "simdjs";
-    @Option(name = SIMDJS_NAME, category = OptionCategory.EXPERT, help = "Provide an experimental implementation of the SIMD.js proposal.") //
-    public static final OptionKey<Boolean> SIMDJS = new OptionKey<>(false);
-
     // limit originally from TestV8 regress-1122.js, regress-605470.js
     public static final String FUNCTION_ARGUMENTS_LIMIT_NAME = JS_OPTION_PREFIX + "function-arguments-limit";
     @Option(name = FUNCTION_ARGUMENTS_LIMIT_NAME, category = OptionCategory.EXPERT, help = "Maximum number of arguments for functions.") //
@@ -788,10 +784,6 @@ public final class JSContextOptions {
 
     public boolean isPolyglotEvalFile() {
         return POLYGLOT_EVALFILE.getValue(optionValues);
-    }
-
-    public boolean isSIMDjs() {
-        return SIMDJS.getValue(optionValues);
     }
 
     public boolean isLoadFromURL() {
