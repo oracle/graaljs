@@ -295,6 +295,7 @@ public class JSRealm {
 
     private final DynamicObject promiseConstructor;
     private final DynamicObject promisePrototype;
+    private DynamicObject promiseAllFunctionObject;
 
     @CompilationFinal private DynamicObject javaPackageToPrimitiveFunction;
 
@@ -1051,6 +1052,10 @@ public class JSRealm {
         return jsonParseFunctionObject;
     }
 
+    public final DynamicObject getPromiseAllFunctionObject() {
+        return promiseAllFunctionObject;
+    }
+
     private static void putProtoAccessorProperty(final JSRealm realm) {
         JSContext context = realm.getContext();
         DynamicObject getProto = JSFunction.create(realm, context.protoGetterFunctionData);
@@ -1220,6 +1225,7 @@ public class JSRealm {
 
             putGlobalProperty(JSProxy.CLASS_NAME, getProxyConstructor());
             putGlobalProperty(JSPromise.CLASS_NAME, getPromiseConstructor());
+            this.promiseAllFunctionObject = (DynamicObject) JSObject.get(getPromiseConstructor(), "all");
         }
 
         if (context.isOptionSharedArrayBuffer()) {

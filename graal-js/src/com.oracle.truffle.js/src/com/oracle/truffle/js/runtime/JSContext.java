@@ -1250,6 +1250,10 @@ public class JSContext {
         return contextOptions.isDisableWith();
     }
 
+    public boolean isOptionAsyncStackTraces() {
+        return contextOptions.isAsyncStackTraces();
+    }
+
     public long getTimerResolution() {
         assert !(getEnv() != null && getEnv().isPreInitialization()) : "Patchable option timer-resolution accessed during context pre-initialization.";
         return contextOptions.getTimerResolution();

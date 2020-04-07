@@ -40,15 +40,23 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -61,13 +69,16 @@ import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSMaterializedInvokeTargetableNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.promise.CreateResolvingFunctionNode;
 import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
+import com.oracle.truffle.js.nodes.promise.PerformPromiseAllNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseThenNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -75,7 +86,9 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
+import com.oracle.truffle.js.runtime.objects.PromiseReactionRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendNode {
 
@@ -89,6 +102,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     @Child private PropertySetNode setPromiseIsHandledNode;
     @Child private PropertySetNode setAsyncContextNode;
     @Child private PropertySetNode setAsyncTargetNode;
+    @Child private PropertySetNode setAsyncCallNode;
     @Child private PropertySetNode setAsyncGeneratorNode;
     @Child private JSTargetableNode materializedInputNode;
     protected final JSContext context;
@@ -98,6 +112,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     static final HiddenKey ASYNC_CONTEXT = new HiddenKey("AsyncContext");
     static final HiddenKey ASYNC_TARGET = new HiddenKey("AsyncTarget");
     static final HiddenKey ASYNC_GENERATOR = new HiddenKey("AsyncGenerator");
+    static final HiddenKey ASYNC_CALL_NODE = new HiddenKey("AsyncCallNode");
 
     protected AwaitNode(JSContext context, JavaScriptNode expression, JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readAsyncResultNode) {
         this(context, expression, readAsyncContextNode, readAsyncResultNode, null);
@@ -112,6 +127,9 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
         this.setAsyncContextNode = PropertySetNode.createSetHidden(ASYNC_CONTEXT, context);
         this.setAsyncTargetNode = PropertySetNode.createSetHidden(ASYNC_TARGET, context);
         this.setAsyncGeneratorNode = PropertySetNode.createSetHidden(ASYNC_GENERATOR, context);
+        if (expression != null && expression.hasTag(StandardTags.CallTag.class)) {
+            this.setAsyncCallNode = PropertySetNode.createSetHidden(ASYNC_CALL_NODE, context);
+        }
 
         this.performPromiseThenNode = PerformPromiseThenNode.create(context);
         if (context.usePromiseResolve()) {
@@ -251,6 +269,9 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
         setAsyncTargetNode.setValue(function, resumeTarget);
         setAsyncContextNode.setValue(function, asyncContext);
         setAsyncGeneratorNode.setValue(function, generator);
+        if (setAsyncCallNode != null) {
+            setAsyncCallNode.setValue(function, expression);
+        }
         return function;
     }
 
@@ -282,6 +303,9 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
         setAsyncTargetNode.setValue(function, resumeTarget);
         setAsyncContextNode.setValue(function, asyncContext);
         setAsyncGeneratorNode.setValue(function, generator);
+        if (setAsyncCallNode != null) {
+            setAsyncCallNode.setValue(function, expression);
+        }
         return function;
     }
 
@@ -313,5 +337,50 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
         JSReadFrameSlotNode asyncResultCopy = cloneUninitialized(readAsyncResultNode, materializedTags);
         JSReadFrameSlotNode asyncContextCopy = cloneUninitialized(readAsyncContextNode, materializedTags);
         return create(context, expressionCopy, asyncContextCopy, asyncResultCopy);
+    }
+
+    public static List<TruffleStackTraceElement> findAsyncStackFrames(DynamicObject promise) {
+        assert JSPromise.isJSPromise(promise);
+        Object fulfillReactions = promise.get(JSPromise.PROMISE_FULFILL_REACTIONS);
+        if (fulfillReactions instanceof SimpleArrayList<?> && ((SimpleArrayList<?>) fulfillReactions).size() == 1) {
+            SimpleArrayList<?> fulfillList = (SimpleArrayList<?>) fulfillReactions;
+            PromiseReactionRecord reaction = (PromiseReactionRecord) fulfillList.get(0);
+            Object handler = reaction.getHandler();
+            if (JSFunction.isJSFunction(handler)) {
+                DynamicObject handlerFunction = (DynamicObject) handler;
+                Object asyncContext = handlerFunction.get(AwaitNode.ASYNC_CONTEXT);
+                if (asyncContext instanceof MaterializedFrame) {
+                    MaterializedFrame asyncContextFrame = (MaterializedFrame) asyncContext;
+                    RootCallTarget asyncTarget = (RootCallTarget) handlerFunction.get(AwaitNode.ASYNC_TARGET);
+                    Node callNode = (Node) handlerFunction.get(AwaitNode.ASYNC_CALL_NODE);
+                    TruffleStackTraceElement asyncStackTraceElement = TruffleStackTraceElement.create(callNode, asyncTarget, asyncContextFrame);
+                    List<TruffleStackTraceElement> all = new ArrayList<>(4);
+                    all.add(asyncStackTraceElement);
+                    List<TruffleStackTraceElement> rest = TruffleStackTrace.getAsynchronousStackTrace(asyncTarget, asyncContextFrame);
+                    if (rest != null) {
+                        all.addAll(rest);
+                    }
+                    return all;
+                } else if (JSFunction.getFunctionData(handlerFunction).isBuiltin()) {
+                    PerformPromiseAllNode.ResolveElementArgs resolveArgs = PerformPromiseAllNode.getResolveElementArgsFromHandler(handlerFunction);
+                    if (resolveArgs != null) {
+                        List<TruffleStackTraceElement> all = new ArrayList<>(4);
+                        int promiseIndex = resolveArgs.index;
+                        JSRealm realm = JSFunction.getRealm(handlerFunction);
+                        all.add(PerformPromiseAllNode.createPromiseAllStackTraceElement(promiseIndex, realm));
+                        all.addAll(findAsyncStackFrames(resolveArgs.capability.getPromise()));
+                        return all;
+                    }
+                    Object thenPromise = CreateResolvingFunctionNode.getPromiseFromHandler(handlerFunction);
+                    if (thenPromise != null) {
+                        return findAsyncStackFrames((DynamicObject) thenPromise);
+                    }
+                }
+            }
+            if (reaction.getCapability() != null) {
+                return findAsyncStackFrames(reaction.getCapability().getPromise());
+            }
+        }
+        return Collections.emptyList();
     }
 }

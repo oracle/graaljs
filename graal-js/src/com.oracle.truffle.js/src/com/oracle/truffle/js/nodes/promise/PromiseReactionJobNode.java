@@ -40,9 +40,13 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
+import java.util.List;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -51,6 +55,7 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.control.AwaitNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -103,6 +108,10 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
             @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
             private final ConditionProfile handlerProf = ConditionProfile.createBinaryProfile();
             private final ValueProfile typeProfile = ValueProfile.createClassProfile();
+
+            PromiseReactionJob() {
+                super(context.getLanguage(), null, null);
+            }
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -186,6 +195,26 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
                     callHandlerNode = insert(JSFunctionCallNode.createCall());
                 }
                 return callHandlerNode;
+            }
+
+            @Override
+            public boolean isCaptureFramesForTrace() {
+                return context.isOptionAsyncStackTraces();
+            }
+
+            @Override
+            protected List<TruffleStackTraceElement> findAsynchronousFrames(Frame frame) {
+                if (!context.isOptionAsyncStackTraces()) {
+                    return null;
+                }
+
+                DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+                PromiseReactionRecord reaction = (PromiseReactionRecord) getReaction.getValue(functionObject);
+                PromiseCapabilityRecord promiseCapability = reaction.getCapability();
+                if (promiseCapability != null) {
+                    return AwaitNode.findAsyncStackFrames(promiseCapability.getPromise());
+                }
+                return null;
             }
         }
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseReactionJob());

@@ -193,7 +193,7 @@ public final class CallSitePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                     }
                     return JSRuntime.nullToUndefined(stackTraceElement.getThisOrGlobal());
                 case toString:
-                    return stackTraceElement.toString();
+                    return stackTraceElement.toString(getContext());
                 case getTypeName:
                     return JSRuntime.toJSNull(stackTraceElement.getTypeName());
                 case getFunctionName: {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -79,7 +79,10 @@ public class RejectPromiseNode extends JavaScriptBaseNode {
         assert JSPromise.isPending(promise);
         Object reactions = getPromiseRejectReactions.getValue(promise);
         setPromiseResult.setValue(promise, reason);
-        setPromiseFulfillReactions.setValue(promise, Undefined.instance);
+        // We preserve reactions for lazy async stack traces.
+        if (!context.isOptionAsyncStackTraces()) {
+            setPromiseFulfillReactions.setValue(promise, Undefined.instance);
+        }
         setPromiseRejectReactions.setValue(promise, Undefined.instance);
         setPromiseState.setValueInt(promise, JSPromise.REJECTED);
         if (unhandledProf.profile(getPromiseIsHandled.getValue(promise) != Boolean.TRUE)) {

@@ -450,6 +450,11 @@ public final class JSContextOptions {
     public static final OptionKey<Integer> MAX_PROTOTYPE_CHAIN_LENGTH = new OptionKey<>(JSConfig.MaxPrototypeChainLength);
     @CompilationFinal private int maxPrototypeChainLength;
 
+    public static final String ASYNC_STACK_TRACES_NAME = JS_OPTION_PREFIX + "async-stack-traces";
+    @Option(name = ASYNC_STACK_TRACES_NAME, category = OptionCategory.EXPERT, help = "Include async function frames in stack traces.") //
+    public static final OptionKey<Boolean> ASYNC_STACK_TRACES = new OptionKey<>(true);
+    @CompilationFinal private boolean asyncStackTraces;
+
     public static final String PROPERTY_CACHE_LIMIT_NAME = JS_OPTION_PREFIX + "property-cache-limit";
     @Option(name = PROPERTY_CACHE_LIMIT_NAME, category = OptionCategory.INTERNAL, help = "Maximum allowed size of a property cache.") //
     public static final OptionKey<Integer> PROPERTY_CACHE_LIMIT = new OptionKey<>(JSConfig.PropertyCacheLimit);
@@ -542,6 +547,7 @@ public final class JSContextOptions {
         this.maxTypedArrayLength = readIntegerOption(MAX_TYPED_ARRAY_LENGTH);
         this.maxApplyArgumentLength = readIntegerOption(MAX_APPLY_ARGUMENT_LENGTH);
         this.maxPrototypeChainLength = readIntegerOption(MAX_PROTOTYPE_CHAIN_LENGTH);
+        this.asyncStackTraces = readBooleanOption(ASYNC_STACK_TRACES);
 
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
@@ -888,6 +894,10 @@ public final class JSContextOptions {
         return functionCacheLimit;
     }
 
+    public boolean isAsyncStackTraces() {
+        return asyncStackTraces;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -929,6 +939,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.testCloneUninitialized ? 1 : 0);
         hash = 53 * hash + (this.lazyTranslation ? 1 : 0);
         hash = 53 * hash + this.stackTraceLimit;
+        hash = 53 * hash + (this.asyncStackTraces ? 1 : 0);
         hash = 53 * hash + this.maxTypedArrayLength;
         hash = 53 * hash + this.maxApplyArgumentLength;
         hash = 53 * hash + this.maxPrototypeChainLength;
@@ -1058,6 +1069,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.stackTraceLimit != other.stackTraceLimit) {
+            return false;
+        }
+        if (this.asyncStackTraces != other.asyncStackTraces) {
             return false;
         }
         if (this.maxTypedArrayLength != other.maxTypedArrayLength) {

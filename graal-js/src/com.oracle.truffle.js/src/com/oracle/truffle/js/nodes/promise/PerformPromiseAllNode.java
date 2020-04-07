@@ -41,19 +41,26 @@
 package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
+import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -78,11 +85,11 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
         }
     }
 
-    protected static final class ResolveElementArgs {
+    public static final class ResolveElementArgs {
+        public final int index;
+        public final PromiseCapabilityRecord capability;
         boolean alreadyCalled;
-        final int index;
         final SimpleArrayList<Object> values;
-        final PromiseCapabilityRecord capability;
         final BoxedInt remainingElements;
 
         ResolveElementArgs(int index, SimpleArrayList<Object> values, PromiseCapabilityRecord capability, BoxedInt remainingElements) {
@@ -94,7 +101,7 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
         }
     }
 
-    protected static final HiddenKey RESOLVE_ELEMENT_ARGS_KEY = new HiddenKey("ResolveElementArgs");
+    static final HiddenKey RESOLVE_ELEMENT_ARGS_KEY = new HiddenKey("ResolveElementArgs");
 
     @Child protected JSFunctionCallNode callResolve;
     @Child protected PropertyGetNode getThen;
@@ -179,5 +186,41 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
         }
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseAllResolveElementRootNode());
         return JSFunctionData.createCallOnly(context, callTarget, 1, "");
+    }
+
+    public static ResolveElementArgs getResolveElementArgsFromHandler(DynamicObject handlerFunction) {
+        return (ResolveElementArgs) handlerFunction.get(RESOLVE_ELEMENT_ARGS_KEY, null);
+    }
+
+    public static TruffleStackTraceElement createPromiseAllStackTraceElement(int promiseIndex, JSRealm realm) {
+        return TruffleStackTraceElement.create(new PromiseAllMarkerRootNode(null, JSBuiltin.createSourceSection()),
+                        (RootCallTarget) JSFunction.getFunctionData(realm.getPromiseAllFunctionObject()).getCallTarget(),
+                        Truffle.getRuntime().createMaterializedFrame(JSArguments.createOneArg(realm.getPromiseConstructor(), realm.getPromiseAllFunctionObject(), promiseIndex)));
+    }
+
+    public static final class PromiseAllMarkerRootNode extends JavaScriptRootNode {
+        PromiseAllMarkerRootNode(JavaScriptLanguage lang, SourceSection sourceSection) {
+            super(lang, sourceSection, null);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            throw Errors.shouldNotReachHere();
+        }
+
+        @Override
+        public boolean isInternal() {
+            return false;
+        }
+
+        @Override
+        protected boolean isInstrumentable() {
+            return false;
+        }
+
+        @Override
+        public String getName() {
+            return "Promise.all";
+        }
     }
 }

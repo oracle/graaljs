@@ -430,7 +430,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
             if (isAsyncFunction) {
                 ensureHasSourceSection(body, functionNode);
-                body = handleAsyncFunctionBody(body, currentFunction.getFunctionName());
+                body = handleAsyncFunctionBody(body);
             }
         }
 
@@ -511,14 +511,15 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
      *
      * @return instrumented function body
      */
-    private JavaScriptNode handleAsyncFunctionBody(JavaScriptNode body, String functionName) {
+    private JavaScriptNode handleAsyncFunctionBody(JavaScriptNode body) {
         assert currentFunction().isAsyncFunction() && !currentFunction().isGeneratorFunction();
         VarRef asyncContextVar = environment.findAsyncContextVar();
         VarRef asyncResultVar = environment.findAsyncResultVar();
         JSWriteFrameSlotNode writeResultNode = (JSWriteFrameSlotNode) asyncResultVar.createWriteNode(null);
         JSWriteFrameSlotNode writeContextNode = (JSWriteFrameSlotNode) asyncContextVar.createWriteNode(null);
+        JSReadFrameSlotNode readContextNode = (JSReadFrameSlotNode) asyncContextVar.createReadNode();
         JavaScriptNode instrumentedBody = instrumentSuspendNodes(body);
-        return factory.createAsyncFunctionBody(context, instrumentedBody, writeContextNode, writeResultNode, functionName);
+        return factory.createAsyncFunctionBody(context, instrumentedBody, writeContextNode, readContextNode, writeResultNode);
     }
 
     /**
@@ -550,15 +551,17 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode handleAsyncGeneratorBody(JavaScriptNode body) {
         assert currentFunction().isAsyncGeneratorFunction();
-        JSWriteFrameSlotNode writeAsyncContextNode = (JSWriteFrameSlotNode) environment.findAsyncContextVar().createWriteNode(null);
+        VarRef asyncContextVar = environment.findAsyncContextVar();
         JavaScriptNode instrumentedBody = instrumentSuspendNodes(body);
         VarRef yieldVar = environment.findAsyncResultVar();
+        JSWriteFrameSlotNode writeAsyncContextNode = (JSWriteFrameSlotNode) asyncContextVar.createWriteNode(null);
+        JSReadFrameSlotNode readAsyncContextNode = (JSReadFrameSlotNode) asyncContextVar.createReadNode();
         JSWriteFrameSlotNode writeYieldValueNode = (JSWriteFrameSlotNode) yieldVar.createWriteNode(null);
         if (lc.getCurrentFunction().isModule()) {
             return factory.createTopLevelAsyncModuleBody(context, instrumentedBody, writeYieldValueNode, writeAsyncContextNode);
         }
         JSReadFrameSlotNode readYieldResultNode = JSConfig.YieldResultInFrame ? (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getYieldResultSlot()).createReadNode() : null;
-        return factory.createAsyncGeneratorBody(context, instrumentedBody, writeYieldValueNode, readYieldResultNode, writeAsyncContextNode);
+        return factory.createAsyncGeneratorBody(context, instrumentedBody, writeYieldValueNode, readYieldResultNode, writeAsyncContextNode, readAsyncContextNode);
     }
 
     /**

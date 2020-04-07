@@ -848,8 +848,9 @@ public class NodeFactory {
         return AsyncGeneratorYieldNode.createYieldStar(context, expression, asyncContextNode, asyncResultNode, returnNode, readTemp, writeTemp);
     }
 
-    public JavaScriptNode createAsyncFunctionBody(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode asyncContext, JSWriteFrameSlotNode asyncResult, String functionName) {
-        return AsyncFunctionBodyNode.create(context, body, asyncContext, asyncResult, functionName);
+    public JavaScriptNode createAsyncFunctionBody(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode writeAsyncContext, JSReadFrameSlotNode readAsyncContext,
+                    JSWriteFrameSlotNode writeAsyncResult) {
+        return AsyncFunctionBodyNode.create(context, body, writeAsyncContext, readAsyncContext, writeAsyncResult);
     }
 
     public JavaScriptNode createGeneratorBody(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode writeYieldValue, JSReadFrameSlotNode readYieldResult) {
@@ -857,8 +858,8 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createAsyncGeneratorBody(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode writeYieldValue, JSReadFrameSlotNode readYieldResult,
-                    JSWriteFrameSlotNode writeAsyncContext) {
-        return AsyncGeneratorBodyNode.create(context, body, writeYieldValue, readYieldResult, writeAsyncContext);
+                    JSWriteFrameSlotNode writeAsyncContext, JSReadFrameSlotNode readAsyncContext) {
+        return AsyncGeneratorBodyNode.create(context, body, writeYieldValue, readYieldResult, writeAsyncContext, readAsyncContext);
     }
 
     public JavaScriptNode createGeneratorWrapper(JavaScriptNode child, JavaScriptNode state, WriteNode writeStateNode) {
