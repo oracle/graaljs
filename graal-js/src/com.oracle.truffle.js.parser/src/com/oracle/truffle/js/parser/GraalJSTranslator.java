@@ -286,14 +286,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return ScriptNode.fromFunctionRoot(context, functionExpression.getFunctionNode());
     }
 
-    protected final JavaScriptNode translateExpression(Expression expression) {
-        try (EnvironmentCloseable dummyFunctionEnv = enterFunctionEnvironment(true, false, false, false, false, false)) {
-            currentFunction().setNeedsParentFrame(true);
-            currentFunction().freeze(); // cannot add frame slots
-            return transform(expression);
-        }
-    }
-
     protected final JavaScriptNode transformFunction(FunctionNode functionNode) {
         return transform(functionNode);
     }
