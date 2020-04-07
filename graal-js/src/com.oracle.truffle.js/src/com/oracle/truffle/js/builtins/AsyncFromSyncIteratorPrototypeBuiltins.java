@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.AsyncFromSyncIteratorPrototypeBuiltinsFactory.AsyncFromSyncNextNodeGen;
 import com.oracle.truffle.js.builtins.AsyncFromSyncIteratorPrototypeBuiltinsFactory.AsyncFromSyncReturnNodeGen;
 import com.oracle.truffle.js.builtins.AsyncFromSyncIteratorPrototypeBuiltinsFactory.AsyncFromSyncThrowNodeGen;
@@ -145,6 +146,8 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
 
         @Child protected PropertyGetNode getSyncIteratorRecordNode;
         @Child private PropertySetNode setDoneNode;
+
+        protected ConditionProfile valuePresenceProfile = ConditionProfile.createBinaryProfile();
 
         AsyncFromSyncBaseNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -255,7 +258,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         }
 
         @Specialization(guards = "isObject(thisObj)")
-        protected Object next(DynamicObject thisObj, Object value) {
+        protected Object next(VirtualFrame frame, DynamicObject thisObj, Object value) {
             PromiseCapabilityRecord promiseCapability = createPromiseCapability();
             if (!isAsyncFromSyncIterator(thisObj)) {
                 JSException typeError = Errors.createTypeErrorIncompatibleReceiver(thisObj);
@@ -265,7 +268,11 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             DynamicObject nextResult;
             IteratorRecord syncIteratorRecord = (IteratorRecord) getSyncIteratorRecordNode.getValue(thisObj);
             try {
-                nextResult = iteratorNextNode.execute(syncIteratorRecord, value);
+                if (valuePresenceProfile.profile(JSArguments.getUserArgumentCount(frame.getArguments()) == 0)) {
+                    nextResult = iteratorNextNode.execute(syncIteratorRecord);
+                } else {
+                    nextResult = iteratorNextNode.execute(syncIteratorRecord, value);
+                }
             } catch (GraalJSException e) {
                 promiseCapabilityReject(promiseCapability, e);
                 return promiseCapability.getPromise();
@@ -303,7 +310,11 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             }
             Object returnResult;
             try {
-                returnResult = executeReturnMethod.executeCall(JSArguments.create(syncIterator, method, value));
+                if (valuePresenceProfile.profile(JSArguments.getUserArgumentCount(frame.getArguments()) == 0)) {
+                    returnResult = executeReturnMethod.executeCall(JSArguments.create(syncIterator, method));
+                } else {
+                    returnResult = executeReturnMethod.executeCall(JSArguments.create(syncIterator, method, value));
+                }
             } catch (GraalJSException e) {
                 promiseCapabilityReject(promiseCapability, e);
                 return promiseCapability.getPromise();
