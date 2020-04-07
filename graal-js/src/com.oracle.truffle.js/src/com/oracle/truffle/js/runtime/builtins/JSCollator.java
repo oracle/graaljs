@@ -62,6 +62,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.intl.CollatorFunctionBuiltins;
 import com.oracle.truffle.js.builtins.intl.CollatorPrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -348,6 +349,7 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
 
             @CompilationFinal private ContextReference<JSRealm> realmRef;
             @Child private PropertySetNode setBoundObjectNode = PropertySetNode.createSetHidden(BOUND_OBJECT_KEY, context);
+            private final BranchProfile errorBranch = BranchProfile.create();
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -360,6 +362,7 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
                     InternalState state = getInternalState((DynamicObject) collatorObj);
 
                     if (state == null || !state.initializedCollator) {
+                        errorBranch.enter();
                         throw Errors.createTypeErrorMethodCalledOnNonObjectOrWrongType("compare");
                     }
 
@@ -385,6 +388,7 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
 
                     return state.boundCompareFunction;
                 }
+                errorBranch.enter();
                 throw Errors.createTypeErrorTypeXExpected(CLASS_NAME);
             }
         });
