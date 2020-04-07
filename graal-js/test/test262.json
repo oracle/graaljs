@@ -2,15 +2,15 @@
   "testFiles" : [ {
     "filePath" : "built-ins/AsyncFromSyncIteratorPrototype/next/absent-value-not-passed.js",
     "status" : "FAIL",
-    "comment" : "new failures update 2020-04-01"
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/pull/2551#issuecomment-609595231"
   }, {
     "filePath" : "built-ins/AsyncFromSyncIteratorPrototype/return/absent-value-not-passed.js",
     "status" : "FAIL",
-    "comment" : "new failures update 2020-04-01"
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/pull/2551#issuecomment-609595231"
   }, {
     "filePath" : "built-ins/AsyncFromSyncIteratorPrototype/throw/absent-value-not-passed.js",
     "status" : "FAIL",
-    "comment" : "new failures update 2020-04-01"
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/pull/2551#issuecomment-609595231"
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Alphabetic.js",
     "status" : "SKIP",
