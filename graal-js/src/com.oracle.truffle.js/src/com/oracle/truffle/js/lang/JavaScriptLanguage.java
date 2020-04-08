@@ -122,6 +122,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.JavaScriptLanguageView;
                 StandardTags.CallTag.class,
                 StandardTags.ReadVariableTag.class,
                 StandardTags.WriteVariableTag.class,
+                StandardTags.TryBlockTag.class,
                 DebuggerTags.AlwaysHalt.class,
                 // Expressions
                 ObjectAllocationTag.class,
