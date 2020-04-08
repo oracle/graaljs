@@ -157,9 +157,9 @@ public abstract class JSNewNode extends JavaScriptNode {
 
     @Specialization(guards = "isJSAdapter(target)")
     public Object doJSAdapter(VirtualFrame frame, DynamicObject target) {
+        Object[] args = getAbstractFunctionArguments(frame);
         Object newFunction = JSObject.get(JSAdapter.getAdaptee(target), JSAdapter.NEW);
         if (JSFunction.isJSFunction(newFunction)) {
-            Object[] args = getAbstractFunctionArguments(frame);
             return JSFunction.call((DynamicObject) newFunction, target, args);
         } else {
             return Undefined.instance;
@@ -197,9 +197,9 @@ public abstract class JSNewNode extends JavaScriptNode {
         return result;
     }
 
-    @TruffleBoundary
     @Specialization(guards = "isJavaPackage(target)")
-    public Object createClassNotFoundError(DynamicObject target) {
+    public Object createClassNotFoundError(VirtualFrame frame, DynamicObject target) {
+        getAbstractFunctionArguments(frame);
         throw Errors.createTypeErrorClassNotFound(JavaPackage.getPackageName(target));
     }
 
@@ -253,9 +253,14 @@ public abstract class JSNewNode extends JavaScriptNode {
         return env.asHostSymbol(adapterClass);
     }
 
-    @TruffleBoundary
     @Specialization(guards = {"!isJSFunction(target)", "!isJSAdapter(target)", "!isProxy(target)", "!isJavaPackage(target)", "!isForeignObject(target)"})
-    public Object createFunctionTypeError(Object target) {
+    public Object createFunctionTypeError(VirtualFrame frame, Object target) {
+        getAbstractFunctionArguments(frame);
+        return throwFunctionTypeError(target);
+    }
+
+    @TruffleBoundary
+    private Object throwFunctionTypeError(Object target) {
         String targetStr = getTarget().expressionToString();
         Object targetForError = targetStr == null ? target : targetStr;
         if (context.isOptionNashornCompatibilityMode()) {
