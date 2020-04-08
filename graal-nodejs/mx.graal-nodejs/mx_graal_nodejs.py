@@ -68,9 +68,12 @@ def _graal_nodejs_post_gate_runner(args, tasks):
             try:
                 npm(['init', '-y'], cwd=tmpdir)
                 if _is_windows:
-                    npm(['install', 'microtime'], cwd=tmpdir)
+                    # `node-gyp-build`, used by `microtime`, calls `"node"` rather than `node`, which breaks
+                    # `%~dp0` used in our cmd launchers to locate the graal-nodejs suite
+                    extra_args = ['--scripts-prepend-node-path=true']
                 else:
-                    npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir, '--build-from-source', 'microtime'], cwd=tmpdir)
+                    extra_args = ['--nodedir=' + _suite.dir, '--build-from-source']
+                npm(['install'] + extra_args + ['microtime'], cwd=tmpdir)
                 node(['-e', 'console.log(require("microtime").now());'], cwd=tmpdir)
             finally:
                 mx.rmtree(tmpdir, ignore_errors=True)
