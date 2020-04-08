@@ -1698,14 +1698,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
-    "filePath" : "language/expressions/new/ctorExpr-isCtor-after-args-eval-fn-wrapup.js",
-    "status" : "FAIL",
-    "comment" : "new failures update 2020-04-01"
-  }, {
-    "filePath" : "language/expressions/new/ctorExpr-isCtor-after-args-eval.js",
-    "status" : "FAIL",
-    "comment" : "new failures update 2020-04-01"
-  }, {
     "filePath" : "language/statements/class/accessor-name-inst-computed-yield-expr.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
