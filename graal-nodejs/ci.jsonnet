@@ -64,7 +64,7 @@ local common = import '../common.jsonnet';
 
   local testNodeTruffleTip = {
     run+: [
-      ['mx', 'testnode', '${SUITE}', '${PART}'],
+      ['mx', 'testnode', '-Xmx512M', '${SUITE}', '${PART}'],
     ],
     timelimit: '1:15:00',
   },
