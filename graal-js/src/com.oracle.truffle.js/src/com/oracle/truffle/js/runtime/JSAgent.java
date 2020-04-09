@@ -49,7 +49,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.JSAgentWaiterListEntry;
@@ -201,9 +200,9 @@ public abstract class JSAgent implements EcmaAgent {
         return --interopCallStackDepth == 0;
     }
 
+    @TruffleBoundary
     public boolean addWeakRefTargetToSet(Object target) {
         if (weakRefTargets == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             weakRefTargets = EconomicSet.create(Equivalence.IDENTITY);
         }
         return weakRefTargets.add(target);
