@@ -1563,9 +1563,12 @@ public class Parser extends AbstractParser {
                     break;
                 }
                 boolean isStatic = false;
-                if (type == STATIC && lookahead() != LPAREN) {
-                    isStatic = true;
-                    next();
+                if (type == STATIC) {
+                    TokenType nextToken = lookahead();
+                    if (nextToken != LPAREN && nextToken != ASSIGN && nextToken != SEMICOLON && nextToken != RBRACE) {
+                        isStatic = true;
+                        next();
+                    } // else method/field named 'static'
                 }
                 long classElementToken = token;
                 int classElementLine = line;
