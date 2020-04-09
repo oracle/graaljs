@@ -220,6 +220,11 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 public boolean isInternal() {
                     return true;
                 }
+
+                @Override
+                protected boolean isInstrumentable() {
+                    return false;
+                }
             };
             return Truffle.getRuntime().createCallTarget(rootNode);
         } else {
@@ -295,6 +300,16 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             private Object executeImpl(JSRealm realm, Object[] arguments) {
                 Object function = program.run(realm);
                 return JSRuntime.jsObjectToJavaObject(JSFunction.call(JSArguments.create(Undefined.instance, function, arguments)));
+            }
+
+            @Override
+            public boolean isInternal() {
+                return true;
+            }
+
+            @Override
+            protected boolean isInstrumentable() {
+                return false;
             }
         };
     }
