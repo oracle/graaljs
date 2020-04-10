@@ -36,8 +36,9 @@ from argparse import ArgumentParser
 from os.path import exists, join, isdir, pathsep, sep
 
 _suite = mx.suite('graal-nodejs')
-_currentOs = mx.get_os()
-_currentArch = mx.get_arch()
+_current_os = mx.get_os()
+_is_windows = _current_os == 'windows'
+_current_arch = mx.get_arch()
 _config_files = [join(_suite.dir, f) for f in ('configure', 'configure.py')]
 _generated_config_files = [join(_suite.dir, f) for f in ('config.gypi', 'config.status', 'configure.pyc', 'config.mk', 'icu_config.gypi')]
 
@@ -105,7 +106,7 @@ def python_cmd():
             return False
 
     def _get_python_cmd():
-        if _currentOs == 'windows':
+        if _is_windows:
             if sys.version_info[0] >= 3:
                 for _cmd in ['py', '-2'], ['python2']:
                     if _can_exec(_cmd):
@@ -157,7 +158,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         # If we don't do this, the `Makefile` always considers `config.gypi` out of date, triggering a second, unnecessary configure.
         lazy_generator = ['--lazy-generator'] if newest_generated_config_file_ts.isNewerThan(newest_config_file_ts) else []
 
-        if _currentOs == 'windows':
+        if _is_windows:
             processDevkitRoot(env=build_env)
             _setEnvVar('PATH', pathsep.join([build_env['PATH']] + [mx.library(lib_name).get_path(True) for lib_name in ('NASM', 'NINJA')]), build_env)
             extra_flags = ['--ninja', '--dest-cpu=x64', '--without-etw', '--without-snapshot']
@@ -173,7 +174,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
                 ] + debug + shared_library + lazy_generator + extra_flags,
                 cwd=_suite.dir, verbose=True, env=build_env)
 
-        if _currentOs == 'windows':
+        if _is_windows:
             verbose = ['-v'] if mx.get_opts().verbose else []
             # The custom env is not used to resolve the location of the executable
             _mxrun([join(mx.library('NINJA').get_path(True), 'ninja.exe')] + verbose + ['-j%d' % self.parallelism, '-C', self._build_dir], env=build_env)
@@ -189,7 +190,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         post_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=True)
         mx.logv('Newest time-stamp before building: {}\nNewest time-stamp after building: {}\nHas built? {}'.format(pre_ts, post_ts, post_ts.isNewerThan(pre_ts)))
         built = post_ts.isNewerThan(pre_ts)
-        if built and _currentOs == 'darwin':
+        if built and _current_os == 'darwin':
             nodePath = join(self._build_dir, 'node')
             _mxrun(['install_name_tool', '-add_rpath', join(_java_home(), 'jre', 'lib'), '-add_rpath', join(_java_home(), 'lib'), nodePath], verbose=True, env=build_env)
         return built
@@ -199,7 +200,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
 
     def clean(self, forBuild=False):
         if not forBuild:
-            if _currentOs == 'windows':
+            if _is_windows:
                 if exists(self._build_dir):
                     mx.run([join(mx.library('NINJA').extract_path, 'ninja.exe'), '-C', self._build_dir, '-t', 'clean'])
             else:
@@ -331,7 +332,7 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
         macroFiles = [join('tools', 'js2c_macros', 'check_macros.py')]
         # DTrace is disabled explicitly by the --without-dtrace option
         # ETW is enabled by default only on Windows
-        if _currentOs != 'windows':
+        if not _is_windows:
             macroFiles.append(join('tools', 'js2c_macros', 'notrace_macros.py'))
 
         mx.run(python_cmd() + [join('tools', 'expand-js-modules.py'), outputDir] + [join('lib', m) for m in moduleSet] + macroFiles,
@@ -380,11 +381,11 @@ def testnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     return mx.run(python_cmd() + [join('tools', 'test.py')] + progArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=(_suite.dir if cwd is None else cwd))
 
 def setLibraryPath():
-    if _java_compliance() < '9' and mx.get_os() not in ['darwin', 'windows']:
+    if _java_compliance() < '9' and _current_os not in ['darwin', 'windows']:
         # On JDK 8, the server directory containing the JVM library is
         # in an architecture specific directory (except for Darwin and Windows).
-        library_path = join(_jre_dir(), 'lib', mx.get_arch())
-    elif mx.get_os() == 'windows':
+        library_path = join(_jre_dir(), 'lib', _current_arch)
+    elif _current_os == 'windows':
         library_path = join(_jre_dir(), 'bin')
     else:
         library_path = join(_jre_dir(), 'lib')
@@ -395,7 +396,7 @@ def setLibraryPath():
     _setEnvVar('LD_LIBRARY_PATH', library_path)
 
 def processDevkitRoot(env=None):
-    assert _currentOs == 'windows'
+    assert _is_windows
     _env = env or os.environ
     devkit_root = _env.get('DEVKIT_ROOT')
     if devkit_root is not None:
@@ -414,7 +415,7 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
     mode, vmArgs, progArgs = _parseArgs(args)
     setLibraryPath()
 
-    if _currentOs == 'windows':
+    if _is_windows:
         processDevkitRoot()
 
     if mx.suite('vm', fatalIfMissing=False) is not None and mx.suite('substratevm', fatalIfMissing=False) is not None:
@@ -455,7 +456,7 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
 def makeInNodeEnvironment(args):
     argGroups = setupNodeEnvironment(args)
     _setEnvVar('NODE_JVM_OPTIONS', ' '.join(argGroups[1]))
-    if _currentOs == 'windows':
+    if _is_windows:
         _mxrun([join('.', 'vcbuild.bat'),
                 'noprojgen',
                 'nobuild',
@@ -463,7 +464,7 @@ def makeInNodeEnvironment(args):
             ] + argGroups[2], cwd=_suite.dir)
     else:
         makeCmd = mx.gmake_cmd()
-        if _currentOs == 'solaris':
+        if _current_os == 'solaris':
             # we have to use GNU make and cp because the Solaris versions
             # do not support options used by Node.js Makefile and gyp files
             _setEnvVar('MAKE', makeCmd)
@@ -471,7 +472,7 @@ def makeInNodeEnvironment(args):
             prevPATH = os.environ['PATH']
             _setEnvVar('PATH', "%s:%s" % (_suite.dir, prevPATH))
         _mxrun([makeCmd] + argGroups[2], cwd=_suite.dir)
-        if _currentOs == 'solaris':
+        if _current_os == 'solaris':
             _mxrun(['rm', 'cp'])
 
 def prepareNodeCmdLine(args, add_graal_vm_args=True):
