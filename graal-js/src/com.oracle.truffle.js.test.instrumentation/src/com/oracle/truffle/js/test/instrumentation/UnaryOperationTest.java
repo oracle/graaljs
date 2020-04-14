@@ -93,9 +93,8 @@ public class UnaryOperationTest extends FineGrainedAccessTest {
     }
 
     @Test
-    public void toInt() {
-        // 'true' is converted to '1' before the binary operation.
-        assertBasicUnaryOperation("var x = true; var b = ~x;", true, 1, -2, "~");
+    public void bitwiseNot() {
+        assertBasicUnaryOperation("var x = true; var b = ~x;", true, true, -2, "~");
     }
 
     @Test
