@@ -176,4 +176,8 @@ public final class JSNodeUtil {
     public static boolean isTaggedNode(Node node) {
         return node instanceof JSTaggedExecutionNode || (node instanceof WrapperNode && ((WrapperNode) node).getDelegateNode() instanceof JSTaggedExecutionNode);
     }
+
+    public static boolean isInputGeneratingNode(Node node) {
+        return node instanceof JSInputGeneratingNodeWrapper || (node instanceof WrapperNode && ((WrapperNode) node).getDelegateNode() instanceof JSInputGeneratingNodeWrapper);
+    }
 }

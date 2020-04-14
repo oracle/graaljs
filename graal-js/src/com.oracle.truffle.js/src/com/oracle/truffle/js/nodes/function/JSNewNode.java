@@ -61,6 +61,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -134,7 +135,7 @@ public abstract class JSNewNode extends JavaScriptNode {
 
     private boolean materializationNeeded(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(ObjectAllocationTag.class)) {
-            return (!getTarget().hasSourceSection() && !(getTarget() instanceof JSInputGeneratingNodeWrapper));
+            return (!getTarget().hasSourceSection() && !JSNodeUtil.isInputGeneratingNode(getTarget()));
         }
         return false;
     }

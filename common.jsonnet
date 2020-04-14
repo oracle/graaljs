@@ -49,6 +49,7 @@
     packages+: {
       'apache/ab': '==2.3',
       binutils: '==2.23.2',
+      cmake: '==3.6.1',
       gcc: '==8.3.0',
       git: '>=1.8.3',
       maven: '==3.3.9',
