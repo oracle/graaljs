@@ -49,14 +49,18 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Source Text Module Record.
  */
 public final class JSModuleRecord extends ScriptOrModule {
+
     public enum Status {
-        Uninstantiated,
-        Instantiating,
-        Instantiated,
+        Unlinked,
+        Linking,
+        Linked,
         Evaluating,
         Evaluated,
     }
@@ -69,7 +73,7 @@ public final class JSModuleRecord extends ScriptOrModule {
     private Status status;
 
     /** Exception that occurred during evaluation. */
-    private Throwable evaluationError;
+    private Object evaluationError;
     /** Implementation-specific: The result of ModuleExecution if no exception occurred. */
     private Object executionResult;
 
@@ -95,6 +99,12 @@ public final class JSModuleRecord extends ScriptOrModule {
      * in the same strongly connected component.
      */
     private int dfsAncestorIndex;
+
+    /*
+     * Used to store the top-level promise created as a result of top-level await modules
+     * evaluation.
+     */
+    private Object topLevelAwaitModuleLoadingContinuation;
 
     public JSModuleRecord(Object module, JSContext context, JSModuleLoader moduleLoader, Source source) {
         super(context, source);
@@ -145,10 +155,10 @@ public final class JSModuleRecord extends ScriptOrModule {
 
     public Throwable getEvaluationError() {
         assert isEvaluated();
-        return evaluationError;
+        return (Throwable) evaluationError;
     }
 
-    public void setEvaluationError(Throwable evaluationError) {
+    public void setEvaluationError(Object evaluationError) {
         assert isEvaluated();
         this.evaluationError = evaluationError;
     }
@@ -221,9 +231,84 @@ public final class JSModuleRecord extends ScriptOrModule {
     }
 
     public void setUninstantiated() {
-        setStatus(Status.Uninstantiated);
+        setStatus(Status.Unlinked);
         this.environment = null;
         this.dfsIndex = -1;
         this.dfsAncestorIndex = -1;
     }
+
+    // ##### Top-level await
+
+    // [[Async]]
+    private boolean async = false;
+    // [[AsyncEvaluating]]
+    private boolean asyncEvaluating = false;
+    // [[TopLevelCapability]]
+    private PromiseCapabilityRecord topLevelPromiseCapability = null;
+    // [[AsyncParentModules]]
+    private List<JSModuleRecord> asyncParentModules = null;
+    // [[PendingAsyncDependencies]]
+    private int pendingAsyncDependencies = 0;
+
+    public PromiseCapabilityRecord getTopLevelCapability() {
+        return topLevelPromiseCapability;
+    }
+
+    public void setTopLevelCapability(PromiseCapabilityRecord capability) {
+        this.topLevelPromiseCapability = capability;
+    }
+
+    public boolean isAsyncEvaluating() {
+        return asyncEvaluating;
+    }
+
+    public List<JSModuleRecord> getAsyncParentModules() {
+        return asyncParentModules;
+    }
+
+    public void setPendingAsyncDependencies(int value) {
+        pendingAsyncDependencies = value;
+    }
+
+    public void initAsyncParentModules() {
+        assert asyncParentModules == null;
+        asyncParentModules = new ArrayList<>();
+    }
+
+    public void incPendingAsyncDependencies() {
+        pendingAsyncDependencies++;
+    }
+
+    public void decPendingAsyncDependencies() {
+        pendingAsyncDependencies--;
+    }
+
+    public void appendAsyncParentModules(JSModuleRecord moduleRecord) {
+        asyncParentModules.add(moduleRecord);
+    }
+
+    public int getPendingAsyncDependencies() {
+        return pendingAsyncDependencies;
+    }
+
+    public void setAsyncEvaluating(boolean value) {
+        asyncEvaluating = value;
+    }
+
+    public boolean isTopLevelAsync() {
+        return async;
+    }
+
+    public void setTopLevelAsync() {
+        async = true;
+    }
+
+    public void setExecutionContinuation(Object continuation) {
+        this.topLevelAwaitModuleLoadingContinuation = continuation;
+    }
+
+    public Object getExecutionContinuation() {
+        return topLevelAwaitModuleLoadingContinuation;
+    }
+
 }

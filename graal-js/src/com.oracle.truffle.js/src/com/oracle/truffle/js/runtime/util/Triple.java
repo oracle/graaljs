@@ -38,50 +38,62 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.control;
+package com.oracle.truffle.js.runtime.util;
 
-import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
-import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.api.CompilerDirectives;
 
-import java.util.Set;
+import java.util.Objects;
 
-/**
- * The entry point of module functions. Responsible for saving and restoring the module's
- * environment frame and the target of {@link ModuleYieldNode}.
- */
-public final class ModuleBodyNode extends JavaScriptNode {
+public final class Triple<T, U, P> {
 
-    @Child private JavaScriptNode moduleBodyNode;
+    private final T first;
+    private final U second;
+    private final P third;
 
-    private ModuleBodyNode(JavaScriptNode body) {
-        this.moduleBodyNode = body;
+    public Triple(T first, U second, P third) {
+        this.first = first;
+        this.second = second;
+        this.third = third;
     }
 
-    public static JavaScriptNode create(JavaScriptNode body) {
-        return new ModuleBodyNode(body);
+    public T getFirst() {
+        return first;
+    }
+
+    public U getSecond() {
+        return second;
+    }
+
+    public P getThird() {
+        return third;
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        JSModuleRecord moduleRecord = (JSModuleRecord) JSArguments.getUserArgument(frame.getArguments(), 0);
-        MaterializedFrame moduleFrame = moduleRecord.getEnvironment() != null ? moduleRecord.getEnvironment() : frame.materialize();
-        try {
-            return moduleBodyNode.execute(moduleFrame);
-        } catch (YieldException e) {
-            assert e.isYield();
-            moduleRecord.setEnvironment(moduleFrame);
-            return Undefined.instance;
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + Objects.hashCode(first);
+        result = prime * result + Objects.hashCode(second);
+        result = prime * result + Objects.hashCode(third);
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
         }
+        if (!(obj instanceof Triple)) {
+            return false;
+        }
+        Triple<?, ?, ?> other = (Triple<?, ?, ?>) obj;
+        return Objects.equals(this.first, other.first) && Objects.equals(this.second, other.second) && Objects.equals(this.third, other.third);
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(cloneUninitialized(moduleBodyNode, materializedTags));
+    @CompilerDirectives.TruffleBoundary
+    public String toString() {
+        return "(" + first + ", " + second + ", " + third + ")";
     }
 
 }

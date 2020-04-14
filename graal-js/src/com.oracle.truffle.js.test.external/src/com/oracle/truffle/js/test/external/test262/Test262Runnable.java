@@ -205,6 +205,7 @@ public class Test262Runnable extends TestRunnable {
                     "template",
                     "u180e",
                     "well-formed-json-stringify",
+                    "top-level-await",
     }));
     private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "AggregateError",
@@ -214,7 +215,6 @@ public class Test262Runnable extends TestRunnable {
                     "IsHTMLDDA",
                     "Promise.any",
                     "tail-call-optimization",
-                    "top-level-await",
     }));
     private static final Set<String> ES2021_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "FinalizationRegistry",
@@ -229,6 +229,7 @@ public class Test262Runnable extends TestRunnable {
                     "host-gc-required",
                     "logical-assignment-operators",
                     "regexp-match-indices",
+                    "top-level-await",
     }));
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {

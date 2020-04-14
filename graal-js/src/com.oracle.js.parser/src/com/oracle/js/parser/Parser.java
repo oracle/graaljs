@@ -229,6 +229,7 @@ public class Parser extends AbstractParser {
     private static final boolean ES8_FOR_AWAIT_OF = Options.getBooleanProperty("parser.for.await.of", true);
     private static final boolean ES2019_OPTIONAL_CATCH_BINDING = Options.getBooleanProperty("parser.optional.catch.binding", true);
     private static final boolean ES2020_CLASS_FIELDS = Options.getBooleanProperty("parser.class.fields", true);
+    private static final boolean ES2021_TOP_LEVEL_AWAIT = Options.getBooleanProperty("parser.top.level.await", true);
 
     private static final int REPARSE_IS_PROPERTY_ACCESSOR = 1 << 0;
     private static final int REPARSE_IS_METHOD = 1 << 1;
@@ -3116,6 +3117,10 @@ public class Parser extends AbstractParser {
 
         Expression expression = unaryExpression(yield, true);
 
+        if (lc.getCurrentFunction().isModule()) {
+            // Top-level await module: mark the body of the module as async.
+            lc.getCurrentFunction().setFlag(FunctionNode.IS_ASYNC);
+        }
         // Construct and add AWAIT node.
         return new UnaryNode(Token.recast(awaitToken, AWAIT), expression);
     }
@@ -6590,7 +6595,7 @@ public class Parser extends AbstractParser {
                         hoistableDeclaration = true;
                         break;
                     case CLASS:
-                        assignmentExpression = classDeclaration(false, false, true);
+                        assignmentExpression = classDeclaration(false, isES2021() && ES2021_TOP_LEVEL_AWAIT, true);
                         ident = ((ClassNode) assignmentExpression).getIdent();
                         break;
                     default:
@@ -6599,7 +6604,7 @@ public class Parser extends AbstractParser {
                             hoistableDeclaration = true;
                             break;
                         }
-                        assignmentExpression = assignmentExpression(true, false, false);
+                        assignmentExpression = assignmentExpression(true, false, isES2021() && ES2021_TOP_LEVEL_AWAIT);
                         endOfLine();
                         break;
                 }
@@ -6643,7 +6648,7 @@ public class Parser extends AbstractParser {
                 break;
             }
             case CLASS: {
-                ClassNode classDeclaration = classDeclaration(false, false, false);
+                ClassNode classDeclaration = classDeclaration(false, isES2021() && ES2021_TOP_LEVEL_AWAIT, false);
                 module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, classDeclaration.getIdent(), classDeclaration, false));
                 break;
             }
@@ -6825,7 +6830,16 @@ public class Parser extends AbstractParser {
             return false;
         }
         ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
-        return currentFunction != null && currentFunction.isAsync();
+        if (currentFunction == null) {
+            return false;
+        }
+        boolean isAsync = currentFunction.isAsync();
+        if (isAsync) {
+            return true;
+        } else if (ES2021_TOP_LEVEL_AWAIT && isES2021()) {
+            return isModule && currentFunction.isModule();
+        }
+        return isAsync;
     }
 
     private boolean isAwait() {

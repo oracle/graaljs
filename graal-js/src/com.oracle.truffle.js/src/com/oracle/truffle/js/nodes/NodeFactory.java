@@ -179,6 +179,7 @@ import com.oracle.truffle.js.nodes.control.RuntimeErrorNode;
 import com.oracle.truffle.js.nodes.control.StatementNode;
 import com.oracle.truffle.js.nodes.control.SwitchNode;
 import com.oracle.truffle.js.nodes.control.ThrowNode;
+import com.oracle.truffle.js.nodes.control.TopLevelAwaitModuleBodyNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.control.TryFinallyNode;
 import com.oracle.truffle.js.nodes.control.VoidBlockNode;
@@ -1068,6 +1069,10 @@ public class NodeFactory {
 
     public JavaScriptNode createModuleYield() {
         return ModuleYieldNode.create();
+    }
+
+    public JavaScriptNode createTopLevelAsyncModuleBody(JSContext context, JavaScriptNode moduleBody, JSWriteFrameSlotNode asyncResult, JSWriteFrameSlotNode writeAsyncContextNode) {
+        return TopLevelAwaitModuleBodyNode.create(context, moduleBody, asyncResult, writeAsyncContextNode);
     }
 
     public JavaScriptNode createImportMeta(JavaScriptNode moduleNode) {
