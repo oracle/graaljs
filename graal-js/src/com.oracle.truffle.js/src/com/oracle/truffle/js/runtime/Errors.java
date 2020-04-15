@@ -64,6 +64,17 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createAggregateError(Object errors, String message, JSContext context) {
+        return JSException.create(JSErrorType.AggregateError, message,
+                        JSObject.create(context, context.getErrorFactory(JSErrorType.AggregateError, true), errors, message));
+    }
+
+    @TruffleBoundary
+    public static JSException createAggregateError(Object errors, JSContext context) {
+        return createAggregateError(errors, "", context);
+    }
+
+    @TruffleBoundary
     public static JSException createError(String message) {
         return JSException.create(JSErrorType.Error, message);
     }

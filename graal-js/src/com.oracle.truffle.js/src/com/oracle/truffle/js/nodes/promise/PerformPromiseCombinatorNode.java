@@ -106,4 +106,12 @@ public abstract class PerformPromiseCombinatorNode extends JavaScriptBaseNode {
         }
         return nextValue;
     }
+
+    protected static final class BoxedInt {
+        int value;
+
+        BoxedInt(int value) {
+            this.value = value;
+        }
+    }
 }
