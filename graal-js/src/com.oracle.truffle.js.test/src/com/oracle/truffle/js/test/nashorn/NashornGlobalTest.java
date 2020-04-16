@@ -62,7 +62,8 @@ public class NashornGlobalTest {
 
     @Test
     public void testEXEC() {
-        Assert.assertTrue(testIntl("var a = $EXEC('ls'); a.length > 0;"));
+        String cmd = System.getProperty("os.name").startsWith("Windows") ? "help" : "ls";
+        Assert.assertTrue(testIntl("var a = $EXEC('" + cmd + "'); a.length > 0;"));
     }
 
     @Test
