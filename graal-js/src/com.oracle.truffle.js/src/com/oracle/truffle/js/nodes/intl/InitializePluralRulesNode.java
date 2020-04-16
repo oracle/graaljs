@@ -45,12 +45,10 @@ import java.util.MissingResourceException;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 /*
@@ -65,13 +63,7 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
 
     @Child GetStringOptionNode getLocaleMatcherOption;
 
-    @Child GetNumberOptionNode getMinIntDigitsOption;
-    @Child GetNumberOptionNode getMinFracDigitsOption;
-    @Child GetNumberOptionNode getMaxFracDigitsOption;
-    @Child PropertyGetNode getMinSignificantDigitsOption;
-    @Child PropertyGetNode getMaxSignificantDigitsOption;
-    @Child DefaultNumberOptionNode getMnsdDNO;
-    @Child DefaultNumberOptionNode getMxsdDNO;
+    @Child SetNumberFormatDigitOptionsNode setNumberFormatDigitOptions;
 
     @Child GetStringOptionNode getTypeOption;
 
@@ -82,13 +74,7 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER,
                         new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
         this.getTypeOption = GetStringOptionNode.create(context, IntlUtil.TYPE, new String[]{IntlUtil.CARDINAL, IntlUtil.ORDINAL}, IntlUtil.CARDINAL);
-        this.getMinIntDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MINIMUM_INTEGER_DIGITS);
-        this.getMinSignificantDigitsOption = PropertyGetNode.create(IntlUtil.MINIMUM_SIGNIFICANT_DIGITS, false, context);
-        this.getMaxSignificantDigitsOption = PropertyGetNode.create(IntlUtil.MAXIMUM_SIGNIFICANT_DIGITS, false, context);
-        this.getMinFracDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MINIMUM_FRACTION_DIGITS);
-        this.getMaxFracDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MAXIMUM_FRACTION_DIGITS);
-        this.getMnsdDNO = DefaultNumberOptionNode.create();
-        this.getMxsdDNO = DefaultNumberOptionNode.create();
+        this.setNumberFormatDigitOptions = SetNumberFormatDigitOptionsNode.create(context);
     }
 
     public abstract DynamicObject executeInit(DynamicObject collator, Object locales, Object options);
@@ -116,30 +102,11 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
 
             JSNumberFormat.setLocaleAndNumberingSystem(context, state, locales, null);
             JSPluralRules.setupInternalPluralRulesAndNumberFormat(state);
-
-            int mnfdDefault = 0;
-            int mxfdDefault = 3;
-            setPluralRulesDigitOptions(state, options, mnfdDefault, mxfdDefault);
-
+            setNumberFormatDigitOptions.execute(state, options, 0, 3);
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError(e);
         }
         return pluralRulesObj;
     }
 
-    // https://tc39.github.io/ecma402/#sec-setnfdigitoptions
-    private void setPluralRulesDigitOptions(JSNumberFormat.BasicInternalState state, DynamicObject options, int mnfdDefault, int mxfdDefault) {
-        int mnid = getMinIntDigitsOption.executeInt(options, 1, 21, 1);
-        int mnfd = getMinFracDigitsOption.executeInt(options, 0, 20, mnfdDefault);
-        int mxfdActualDefault = Math.max(mnfd, mxfdDefault);
-        int mxfd = getMaxFracDigitsOption.executeInt(options, mnfd, 20, mxfdActualDefault);
-        state.setIntegerAndFractionsDigits(mnid, mnfd, mxfd);
-        Object mnsdValue = getMinSignificantDigitsOption.getValue(options);
-        Object mxsdValue = getMaxSignificantDigitsOption.getValue(options);
-        if (mnsdValue != Undefined.instance || mxsdValue != Undefined.instance) {
-            int mnsd = getMnsdDNO.executeInt(mnsdValue, 1, 21, 1);
-            int mxsd = getMxsdDNO.executeInt(mxsdValue, mnsd, 21, 21);
-            state.setSignificantDigits(mnsd, mxsd);
-        }
-    }
 }
