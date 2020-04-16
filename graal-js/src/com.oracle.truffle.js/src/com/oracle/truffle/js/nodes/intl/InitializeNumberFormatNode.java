@@ -44,12 +44,12 @@ import java.util.MissingResourceException;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 /*
@@ -91,13 +91,13 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
         this.getCurrencyOption = GetStringOptionNode.create(context, IntlUtil.CURRENCY, null, null);
         this.getCurrencyDisplayOption = GetStringOptionNode.create(context, IntlUtil.CURRENCY_DISPLAY, new String[]{IntlUtil.CODE, IntlUtil.SYMBOL, IntlUtil.NAME}, IntlUtil.SYMBOL);
         this.getUseGroupingOption = GetBooleanOptionNode.create(context, IntlUtil.USE_GROUPING, true);
-        this.getMinIntDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MINIMUM_INTEGER_DIGITS, 21);
+        this.getMinIntDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MINIMUM_INTEGER_DIGITS);
         this.getMinSignificantDigitsOption = PropertyGetNode.create(IntlUtil.MINIMUM_SIGNIFICANT_DIGITS, false, context);
         this.getMaxSignificantDigitsOption = PropertyGetNode.create(IntlUtil.MAXIMUM_SIGNIFICANT_DIGITS, false, context);
-        this.getMinFracDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MINIMUM_FRACTION_DIGITS, 21);
-        this.getMaxFracDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MAXIMUM_FRACTION_DIGITS, 20);
-        this.getMnsdDNO = DefaultNumberOptionNode.create(21, 1);
-        this.getMxsdDNO = DefaultNumberOptionNode.create(21, 21);
+        this.getMinFracDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MINIMUM_FRACTION_DIGITS);
+        this.getMaxFracDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MAXIMUM_FRACTION_DIGITS);
+        this.getMnsdDNO = DefaultNumberOptionNode.create();
+        this.getMxsdDNO = DefaultNumberOptionNode.create();
     }
 
     public abstract DynamicObject executeInit(DynamicObject collator, Object locales, Object options);
@@ -169,17 +169,17 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
 
     // https://tc39.github.io/ecma402/#sec-setnfdigitoptions
     private void setNumberFormatDigitOptions(JSNumberFormat.BasicInternalState state, DynamicObject options, int mnfdDefault, int mxfdDefault) {
-        Number mnid = getMinIntDigitsOption.executeValue(options, 1, 1);
-        Number mnfd = getMinFracDigitsOption.executeValue(options, 0, mnfdDefault);
-        int mxfdActualDefault = Math.max(mnfd.intValue(), mxfdDefault);
-        Number mxfd = getMaxFracDigitsOption.executeValue(options, mnfd, mxfdActualDefault);
-        state.setIntegerAndFractionsDigits(mnid.intValue(), mnfd.intValue(), mxfd.intValue());
-        Object mnsd = getMinSignificantDigitsOption.getValue(options);
-        Object mxsd = getMaxSignificantDigitsOption.getValue(options);
-        if (!JSGuards.isUndefined(mnsd) || !JSGuards.isUndefined(mxsd)) {
-            Number mnsdNumber = getMnsdDNO.executeValue(mnsd, 1);
-            Number mxsdNumber = getMxsdDNO.executeValue(mxsd, mnsdNumber.intValue());
-            state.setSignificantDigits(mnsdNumber.intValue(), mxsdNumber.intValue());
+        int mnid = getMinIntDigitsOption.executeInt(options, 1, 21, 1);
+        int mnfd = getMinFracDigitsOption.executeInt(options, 0, 20, mnfdDefault);
+        int mxfdActualDefault = Math.max(mnfd, mxfdDefault);
+        int mxfd = getMaxFracDigitsOption.executeInt(options, mnfd, 20, mxfdActualDefault);
+        state.setIntegerAndFractionsDigits(mnid, mnfd, mxfd);
+        Object mnsdValue = getMinSignificantDigitsOption.getValue(options);
+        Object mxsdValue = getMaxSignificantDigitsOption.getValue(options);
+        if (mnsdValue != Undefined.instance || mxsdValue != Undefined.instance) {
+            int mnsd = getMnsdDNO.executeInt(mnsdValue, 1, 21, 1);
+            int mxsd = getMxsdDNO.executeInt(mxsdValue, mnsd, 21, 21);
+            state.setSignificantDigits(mnsd, mxsd);
         }
     }
 }

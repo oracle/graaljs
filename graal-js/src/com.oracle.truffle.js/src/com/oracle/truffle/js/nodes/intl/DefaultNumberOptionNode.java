@@ -40,9 +40,10 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -52,46 +53,39 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 public abstract class DefaultNumberOptionNode extends JavaScriptBaseNode {
 
     @Child JSToNumberNode toNumberNode;
-    int maximum;
-    Number fallback;
 
-    protected DefaultNumberOptionNode(int maximum, Number fallback) {
-        this.maximum = maximum;
-        this.fallback = fallback;
+    protected DefaultNumberOptionNode() {
     }
 
-    public abstract Number executeValue(Object value, int minimum);
+    public abstract int executeInt(Object value, int minimum, int maximum, int fallback);
 
-    public static DefaultNumberOptionNode create(int maximum, Number fallback) {
-        return DefaultNumberOptionNodeGen.create(maximum, fallback);
+    public static DefaultNumberOptionNode create() {
+        return DefaultNumberOptionNodeGen.create();
     }
 
     @Specialization(guards = "!isUndefined(value)")
-    public Number getOption(Object value, int minimum) {
-        Number numValue = toNumber(value);
-        int intValue = numValue.intValue();
-        if (minimum > intValue || maximum < intValue) {
-            createRangeError(value, minimum);
+    public int getOption(Object value, int minimum, int maximum,
+                    @SuppressWarnings("unused") int fallback,
+                    @Cached("create()") JSToNumberNode toNumberNode,
+                    @Cached("create()") BranchProfile errorBranch) {
+        Number numValue = toNumberNode.executeNumber(value);
+        double doubleValue = JSRuntime.doubleValue(numValue);
+        if (Double.isNaN(doubleValue) || doubleValue < minimum || maximum < doubleValue) {
+            errorBranch.enter();
+            throw createRangeError(doubleValue, minimum, maximum);
         }
-        return intValue;
+        return (int) doubleValue;
     }
 
     @TruffleBoundary
-    private void createRangeError(Object value, int minimum) throws JSException {
-        throw Errors.createRangeError(String.format("invalid value %s found where only values between %d and %d are allowed", JSRuntime.safeToString(value), minimum, maximum));
+    private JSException createRangeError(double value, int minimum, int maximum) throws JSException {
+        return Errors.createRangeErrorFormat("invalid value %f found where only values between %d and %d are allowed", this, value, minimum, maximum);
     }
 
     @Specialization(guards = "isUndefined(value)")
     @SuppressWarnings("unused")
-    public Number getOptionFromUndefined(Object value, int minimum) {
+    public int getOptionFromUndefined(Object value, int minimum, int maximum, int fallback) {
         return fallback;
     }
 
-    protected Number toNumber(Object value) {
-        if (toNumberNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toNumberNode = insert(JSToNumberNode.create());
-        }
-        return toNumberNode.executeNumber(value);
-    }
 }
