@@ -96,13 +96,11 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
             getLocaleMatcherOption.executeValue(options);
             String optType = getTypeOption.executeValue(options);
 
-            state.setInitialized(true);
-
             state.setType(optType);
 
             JSNumberFormat.setLocaleAndNumberingSystem(context, state, locales, null);
             JSPluralRules.setupInternalPluralRulesAndNumberFormat(state);
-            setNumberFormatDigitOptions.execute(state, options, 0, 3);
+            setNumberFormatDigitOptions.execute(state, options, 0, 3, false);
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError(e);
         }

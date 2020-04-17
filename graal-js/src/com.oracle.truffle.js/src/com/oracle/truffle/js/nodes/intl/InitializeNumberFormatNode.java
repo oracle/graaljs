@@ -69,8 +69,15 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
 
     @Child GetStringOptionNode getCurrencyOption;
     @Child GetStringOptionNode getCurrencyDisplayOption;
+    @Child GetStringOptionNode getCurrencySignOption;
 
+    @Child GetStringOptionNode getUnitOption;
+    @Child GetStringOptionNode getUnitDisplayOption;
+
+    @Child GetStringOptionNode getNotationOption;
+    @Child GetStringOptionNode getCompactDisplayOption;
     @Child GetBooleanOptionNode getUseGroupingOption;
+    @Child GetStringOptionNode getSignDisplayOption;
 
     protected InitializeNumberFormatNode(JSContext context) {
         this.context = context;
@@ -79,10 +86,18 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER,
                         new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
         this.getNumberingSystemOption = GetStringOptionNode.create(context, IntlUtil.NUMBERING_SYSTEM, null, null);
-        this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.STYLE, new String[]{IntlUtil.DECIMAL, IntlUtil.PERCENT, IntlUtil.CURRENCY}, IntlUtil.DECIMAL);
+        this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.STYLE, new String[]{IntlUtil.DECIMAL, IntlUtil.PERCENT, IntlUtil.CURRENCY, IntlUtil.UNIT}, IntlUtil.DECIMAL);
         this.getCurrencyOption = GetStringOptionNode.create(context, IntlUtil.CURRENCY, null, null);
-        this.getCurrencyDisplayOption = GetStringOptionNode.create(context, IntlUtil.CURRENCY_DISPLAY, new String[]{IntlUtil.CODE, IntlUtil.SYMBOL, IntlUtil.NAME}, IntlUtil.SYMBOL);
+        this.getCurrencyDisplayOption = GetStringOptionNode.create(context, IntlUtil.CURRENCY_DISPLAY, new String[]{IntlUtil.CODE, IntlUtil.SYMBOL, IntlUtil.NARROW_SYMBOL, IntlUtil.NAME},
+                        IntlUtil.SYMBOL);
+        this.getCurrencySignOption = GetStringOptionNode.create(context, IntlUtil.CURRENCY_SIGN, new String[]{IntlUtil.STANDARD, IntlUtil.ACCOUNTING}, IntlUtil.STANDARD);
+        this.getUnitOption = GetStringOptionNode.create(context, IntlUtil.UNIT, null, null);
+        this.getUnitDisplayOption = GetStringOptionNode.create(context, IntlUtil.UNIT_DISPLAY, new String[]{IntlUtil.SHORT, IntlUtil.NARROW, IntlUtil.LONG}, IntlUtil.SHORT);
+        this.getNotationOption = GetStringOptionNode.create(context, IntlUtil.NOTATION, new String[]{IntlUtil.STANDARD, IntlUtil.SCIENTIFIC, IntlUtil.ENGINEERING, IntlUtil.COMPACT},
+                        IntlUtil.STANDARD);
+        this.getCompactDisplayOption = GetStringOptionNode.create(context, IntlUtil.COMPACT_DISPLAY, new String[]{IntlUtil.SHORT, IntlUtil.LONG}, IntlUtil.SHORT);
         this.getUseGroupingOption = GetBooleanOptionNode.create(context, IntlUtil.USE_GROUPING, true);
+        this.getSignDisplayOption = GetStringOptionNode.create(context, IntlUtil.SIGN_DISPLAY, new String[]{IntlUtil.AUTO, IntlUtil.NEVER, IntlUtil.ALWAYS, IntlUtil.EXCEPT_ZERO}, IntlUtil.AUTO);
         this.setNumberFormatDigitOptions = SetNumberFormatDigitOptionsNode.create(context);
     }
 
@@ -108,49 +123,77 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
                 IntlUtil.validateUnicodeLocaleIdentifierType(numberingSystemOpt);
                 numberingSystemOpt = IntlUtil.normalizeUnicodeLocaleIdentifierType(numberingSystemOpt);
             }
-
-            String optStyle = getStyleOption.executeValue(options);
-
-            String optCurrency = getCurrencyOption.executeValue(options);
-            String optCurrencyDisplay = getCurrencyDisplayOption.executeValue(options);
-
-            state.setInitialized(true);
-
             JSNumberFormat.setLocaleAndNumberingSystem(context, state, locales, numberingSystemOpt);
 
-            state.setStyle(optStyle);
-            String currencyCode = optCurrency;
-            if (currencyCode != null) {
-                IntlUtil.ensureIsWellFormedCurrencyCode(currencyCode);
-            }
-            if (optStyle.equals(IntlUtil.CURRENCY)) {
-                if (currencyCode == null) {
-                    throw Errors.createTypeErrorFormat("Currency can not be undefined when style is \"%s\"", IntlUtil.CURRENCY);
-                } else {
-                    state.setCurrency(IntlUtil.toUpperCase(currencyCode));
-                }
-            }
-            int cDigits = JSNumberFormat.currencyDigits(state.getCurrency());
-            int mnfdDefault = cDigits;
-            int mxfdDefault = cDigits;
-            if (state.getStyle().equals(IntlUtil.CURRENCY)) {
-                state.setCurrencyDisplay(optCurrencyDisplay);
+            setNumberFormatUnitOptions(state, options);
+
+            int mnfdDefault;
+            int mxfdDefault;
+            String style = state.getStyle();
+            if (IntlUtil.CURRENCY.equals(style)) {
+                int cDigits = JSNumberFormat.currencyDigits(state.getCurrency());
+                mnfdDefault = cDigits;
+                mxfdDefault = cDigits;
             } else {
                 mnfdDefault = 0;
-                if (state.getStyle().equals(IntlUtil.PERCENT)) {
-                    mxfdDefault = 0;
-                } else {
-                    mxfdDefault = 3;
-                }
+                mxfdDefault = IntlUtil.PERCENT.equals(style) ? 0 : 3;
             }
-            JSNumberFormat.setupInternalNumberFormat(state);
-            setNumberFormatDigitOptions.execute(state, options, mnfdDefault, mxfdDefault);
 
-            state.setGroupingUsed(getUseGroupingOption.executeValue(options));
+            String notation = getNotationOption.executeValue(options);
+            state.setNotation(notation);
+
+            JSNumberFormat.setupInternalNumberFormat(state);
+            boolean compactNotation = IntlUtil.COMPACT.equals(notation);
+            setNumberFormatDigitOptions.execute(state, options, mnfdDefault, mxfdDefault, compactNotation);
+
+            String compactDisplay = getCompactDisplayOption.executeValue(options);
+            if (compactNotation) {
+                state.setCompactDisplay(compactDisplay);
+            }
+
+            boolean useGrouping = getUseGroupingOption.executeValue(options);
+            state.setGroupingUsed(useGrouping);
+
+            String signDisplay = getSignDisplayOption.executeValue(options);
+            state.setSignDisplay(signDisplay);
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError(e);
         }
         return numberFormatObj;
+    }
+
+    private void setNumberFormatUnitOptions(JSNumberFormat.InternalState state, DynamicObject options) {
+        String style = getStyleOption.executeValue(options);
+        state.setStyle(style);
+
+        String currency = getCurrencyOption.executeValue(options);
+        if (currency != null) {
+            IntlUtil.ensureIsWellFormedCurrencyCode(currency);
+        }
+        String currencyDisplay = getCurrencyDisplayOption.executeValue(options);
+        String currencySign = getCurrencySignOption.executeValue(options);
+
+        String unit = getUnitOption.executeValue(options);
+        if (unit != null) {
+            IntlUtil.ensureIsWellFormedUnitIdentifier(unit);
+        }
+        String unitDisplay = getUnitDisplayOption.executeValue(options);
+
+        if (IntlUtil.CURRENCY.equals(style)) {
+            if (currency == null) {
+                throw Errors.createTypeError("Currency can not be undefined when style is \"currency\".");
+            }
+            currency = IntlUtil.toUpperCase(currency);
+            state.setCurrency(currency);
+            state.setCurrencyDisplay(currencyDisplay);
+            state.setCurrencySign(currencySign);
+        } else if (IntlUtil.UNIT.equals(style)) {
+            if (unit == null) {
+                throw Errors.createTypeError("Unit can not be undefined when style is \"unit\".");
+            }
+            state.setUnit(unit);
+            state.setUnitDisplay(unitDisplay);
+        }
     }
 
 }

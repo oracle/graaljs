@@ -465,6 +465,10 @@ public final class Errors {
         return createRangeErrorFormat("Invalid script subtag: %s", null, script);
     }
 
+    public static JSException createRangeErrorInvalidUnitIdentifier(String unitIdentifier) {
+        return createRangeErrorFormat("Invalid unit identifier: %s", null, unitIdentifier);
+    }
+
     @TruffleBoundary
     public static JSException createTypeErrorMapExpected() {
         return Errors.createTypeError("Map expected");

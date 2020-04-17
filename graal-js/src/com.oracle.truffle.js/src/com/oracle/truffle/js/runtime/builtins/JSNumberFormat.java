@@ -144,9 +144,6 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     // https://tc39.github.io/ecma402/#sec-currencydigits
     @TruffleBoundary
     public static int currencyDigits(String currencyCode) {
-        if (currencyCode == null) {
-            return 2;
-        }
         try {
             Currency currency = Currency.getInstance(currencyCode);
             return (currency != null) ? currency.getDefaultFractionDigits() : 2;
@@ -320,8 +317,6 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
     public static class BasicInternalState {
 
-        protected boolean initialized = false;
-
         protected NumberFormat numberFormat;
 
         protected Locale javaLocale;
@@ -329,11 +324,12 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
         protected String numberingSystem;
 
-        protected int minimumIntegerDigits = 1;
-        protected int minimumFractionDigits = 0;
-        protected int maximumFractionDigits = 3;
-        protected Integer minimumSignificantDigits;
-        protected Integer maximumSignificantDigits;
+        private String roundingType;
+        private int minimumIntegerDigits;
+        private Integer minimumFractionDigits;
+        private Integer maximumFractionDigits;
+        private Integer minimumSignificantDigits;
+        private Integer maximumSignificantDigits;
 
         DynamicObject toResolvedOptionsObject(JSContext context) {
             DynamicObject resolvedOptions = JSUserObject.create(context);
@@ -343,8 +339,12 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
         void fillResolvedOptions(@SuppressWarnings("unused") JSContext context, DynamicObject result) {
             JSObjectUtil.defineDataProperty(result, IntlUtil.MINIMUM_INTEGER_DIGITS, minimumIntegerDigits, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, IntlUtil.MINIMUM_FRACTION_DIGITS, minimumFractionDigits, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, IntlUtil.MAXIMUM_FRACTION_DIGITS, maximumFractionDigits, JSAttributes.getDefault());
+            if (minimumFractionDigits != null) {
+                JSObjectUtil.defineDataProperty(result, IntlUtil.MINIMUM_FRACTION_DIGITS, minimumFractionDigits, JSAttributes.getDefault());
+            }
+            if (maximumFractionDigits != null) {
+                JSObjectUtil.defineDataProperty(result, IntlUtil.MAXIMUM_FRACTION_DIGITS, maximumFractionDigits, JSAttributes.getDefault());
+            }
             if (minimumSignificantDigits != null) {
                 JSObjectUtil.defineDataProperty(result, IntlUtil.MINIMUM_SIGNIFICANT_DIGITS, minimumSignificantDigits, JSAttributes.getDefault());
             }
@@ -354,11 +354,15 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         }
 
         @TruffleBoundary
-        public void setIntegerAndFractionsDigits(int minimumIntegerDigits, int minimumFractionDigits, int maximumFractionDigits) {
+        public void setMinimumIntegerDigits(int minimumIntegerDigits) {
             this.minimumIntegerDigits = minimumIntegerDigits;
+            numberFormat.setMinimumIntegerDigits(minimumIntegerDigits);
+        }
+
+        @TruffleBoundary
+        public void setFractionDigits(int minimumFractionDigits, int maximumFractionDigits) {
             this.minimumFractionDigits = minimumFractionDigits;
             this.maximumFractionDigits = maximumFractionDigits;
-            numberFormat.setMinimumIntegerDigits(minimumIntegerDigits);
             numberFormat.setMinimumFractionDigits(minimumFractionDigits);
             numberFormat.setMaximumFractionDigits(maximumFractionDigits);
         }
@@ -374,95 +378,26 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
             }
         }
 
-        public boolean isInitialized() {
-            return initialized;
+        public void setRoundingType(String roundingType) {
+            this.roundingType = roundingType;
         }
 
-        public NumberFormat getNumberFormat() {
-            return numberFormat;
-        }
-
-        public Locale getJavaLocale() {
-            return javaLocale;
-        }
-
-        public String getLocale() {
-            return locale;
-        }
-
-        public String getNumberingSystem() {
-            return numberingSystem;
-        }
-
-        public int getMinimumIntegerDigits() {
-            return minimumIntegerDigits;
-        }
-
-        public int getMinimumFractionDigits() {
-            return minimumFractionDigits;
-        }
-
-        public int getMaximumFractionDigits() {
-            return maximumFractionDigits;
-        }
-
-        public Integer getMinimumSignificantDigits() {
-            return minimumSignificantDigits;
-        }
-
-        public Integer getMaximumSignificantDigits() {
-            return maximumSignificantDigits;
-        }
-
-        public void setInitialized(boolean initialized) {
-            this.initialized = initialized;
-        }
-
-        public void setNumberFormat(NumberFormat numberFormat) {
-            this.numberFormat = numberFormat;
-        }
-
-        public void setJavaLocale(Locale javaLocale) {
-            this.javaLocale = javaLocale;
-        }
-
-        public void setLocale(String locale) {
-            this.locale = locale;
-        }
-
-        public void setNumberingSystem(String numberingSystem) {
-            this.numberingSystem = numberingSystem;
-        }
-
-        public void setMinimumIntegerDigits(int minimumIntegerDigits) {
-            this.minimumIntegerDigits = minimumIntegerDigits;
-        }
-
-        public void setMinimumFractionDigits(int minimumFractionDigits) {
-            this.minimumFractionDigits = minimumFractionDigits;
-        }
-
-        public void setMaximumFractionDigits(int maximumFractionDigits) {
-            this.maximumFractionDigits = maximumFractionDigits;
-        }
-
-        public void setMinimumSignificantDigits(Integer minimumSignificantDigits) {
-            this.minimumSignificantDigits = minimumSignificantDigits;
-        }
-
-        public void setMaximumSignificantDigits(Integer maximumSignificantDigits) {
-            this.maximumSignificantDigits = maximumSignificantDigits;
-        }
     }
 
     public static class InternalState extends BasicInternalState {
 
-        private String style = IntlUtil.DECIMAL;
+        private String style;
         private String currency;
         private String currencyDisplay;
-        private boolean useGrouping = true;
+        private String currencySign;
+        private String unit;
+        private String unitDisplay;
+        private boolean useGrouping;
+        private String notation;
+        private String compactDisplay;
+        private String signDisplay;
 
-        DynamicObject boundFormatFunction = null;
+        DynamicObject boundFormatFunction;
 
         @Override
         void fillResolvedOptions(JSContext context, DynamicObject result) {
@@ -475,8 +410,22 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
             if (currencyDisplay != null) {
                 JSObjectUtil.defineDataProperty(result, IntlUtil.CURRENCY_DISPLAY, currencyDisplay, JSAttributes.getDefault());
             }
+            if (currencySign != null) {
+                JSObjectUtil.defineDataProperty(result, IntlUtil.CURRENCY_SIGN, currencySign, JSAttributes.getDefault());
+            }
+            if (unit != null) {
+                JSObjectUtil.defineDataProperty(result, IntlUtil.UNIT, unit, JSAttributes.getDefault());
+            }
+            if (unitDisplay != null) {
+                JSObjectUtil.defineDataProperty(result, IntlUtil.UNIT_DISPLAY, unitDisplay, JSAttributes.getDefault());
+            }
             super.fillResolvedOptions(context, result);
             JSObjectUtil.defineDataProperty(result, IntlUtil.USE_GROUPING, useGrouping, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.NOTATION, notation, JSAttributes.getDefault());
+            if (compactDisplay != null) {
+                JSObjectUtil.defineDataProperty(result, IntlUtil.COMPACT_DISPLAY, compactDisplay, JSAttributes.getDefault());
+            }
+            JSObjectUtil.defineDataProperty(result, IntlUtil.SIGN_DISPLAY, signDisplay, JSAttributes.getDefault());
         }
 
         @TruffleBoundary
@@ -493,10 +442,6 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
             return currency;
         }
 
-        public String getCurrencyDisplay() {
-            return currencyDisplay;
-        }
-
         public void setStyle(String style) {
             this.style = style;
         }
@@ -507,6 +452,30 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
         public void setCurrencyDisplay(String currencyDisplay) {
             this.currencyDisplay = currencyDisplay;
+        }
+
+        public void setCurrencySign(String currencySign) {
+            this.currencySign = currencySign;
+        }
+
+        public void setUnit(String unit) {
+            this.unit = unit;
+        }
+
+        public void setUnitDisplay(String unitDisplay) {
+            this.unitDisplay = unitDisplay;
+        }
+
+        public void setNotation(String notation) {
+            this.notation = notation;
+        }
+
+        public void setCompactDisplay(String compactDisplay) {
+            this.compactDisplay = compactDisplay;
+        }
+
+        public void setSignDisplay(String signDisplay) {
+            this.signDisplay = signDisplay;
         }
     }
 
@@ -536,7 +505,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
                     InternalState state = getInternalState((DynamicObject) numberFormatObj);
 
-                    if (state == null || !state.initialized) {
+                    if (state == null) {
                         errorBranch.enter();
                         throw Errors.createTypeErrorMethodCalledOnNonObjectOrWrongType("format");
                     }

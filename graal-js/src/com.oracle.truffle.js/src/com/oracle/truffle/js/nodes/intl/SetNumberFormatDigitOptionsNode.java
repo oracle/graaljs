@@ -53,42 +53,57 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
  */
 public abstract class SetNumberFormatDigitOptionsNode extends JavaScriptBaseNode {
     @Child GetNumberOptionNode getMinIntDigitsOption;
-    @Child GetNumberOptionNode getMinFracDigitsOption;
-    @Child GetNumberOptionNode getMaxFracDigitsOption;
+    @Child PropertyGetNode getMinFracDigitsOption;
+    @Child PropertyGetNode getMaxFracDigitsOption;
     @Child PropertyGetNode getMinSignificantDigitsOption;
     @Child PropertyGetNode getMaxSignificantDigitsOption;
     @Child DefaultNumberOptionNode getMnsdDNO;
     @Child DefaultNumberOptionNode getMxsdDNO;
+    @Child DefaultNumberOptionNode getMnfdDNO;
+    @Child DefaultNumberOptionNode getMxfdDNO;
 
     protected SetNumberFormatDigitOptionsNode(JSContext context) {
         this.getMinIntDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MINIMUM_INTEGER_DIGITS);
-        this.getMinFracDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MINIMUM_FRACTION_DIGITS);
-        this.getMaxFracDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MAXIMUM_FRACTION_DIGITS);
+        this.getMinFracDigitsOption = PropertyGetNode.create(IntlUtil.MINIMUM_FRACTION_DIGITS, context);
+        this.getMaxFracDigitsOption = PropertyGetNode.create(IntlUtil.MAXIMUM_FRACTION_DIGITS, context);
         this.getMinSignificantDigitsOption = PropertyGetNode.create(IntlUtil.MINIMUM_SIGNIFICANT_DIGITS, context);
         this.getMaxSignificantDigitsOption = PropertyGetNode.create(IntlUtil.MAXIMUM_SIGNIFICANT_DIGITS, context);
         this.getMnsdDNO = DefaultNumberOptionNode.create();
         this.getMxsdDNO = DefaultNumberOptionNode.create();
+        this.getMnfdDNO = DefaultNumberOptionNode.create();
+        this.getMxfdDNO = DefaultNumberOptionNode.create();
     }
 
     public static SetNumberFormatDigitOptionsNode create(JSContext context) {
         return SetNumberFormatDigitOptionsNodeGen.create(context);
     }
 
-    public abstract Object execute(JSNumberFormat.BasicInternalState intlObj, Object options, int mnfdDefault, int mxfdDefault);
+    public abstract Object execute(JSNumberFormat.BasicInternalState intlObj, Object options, int mnfdDefault, int mxfdDefault, boolean compactNotation);
 
     @Specialization
-    public Object setNumberFormatDigitOptions(JSNumberFormat.BasicInternalState intlObj, Object options, int mnfdDefault, int mxfdDefault) {
+    public Object setNumberFormatDigitOptions(JSNumberFormat.BasicInternalState intlObj, Object options, int mnfdDefault, int mxfdDefault, boolean compactNotation) {
         int mnid = getMinIntDigitsOption.executeInt(options, 1, 21, 1);
-        int mnfd = getMinFracDigitsOption.executeInt(options, 0, 20, mnfdDefault);
-        int mxfdActualDefault = Math.max(mnfd, mxfdDefault);
-        int mxfd = getMaxFracDigitsOption.executeInt(options, mnfd, 20, mxfdActualDefault);
-        intlObj.setIntegerAndFractionsDigits(mnid, mnfd, mxfd);
+        Object mnfdValue = getMinFracDigitsOption.getValue(options);
+        Object mxfdValue = getMaxFracDigitsOption.getValue(options);
         Object mnsdValue = getMinSignificantDigitsOption.getValue(options);
         Object mxsdValue = getMaxSignificantDigitsOption.getValue(options);
+        intlObj.setMinimumIntegerDigits(mnid);
         if (mnsdValue != Undefined.instance || mxsdValue != Undefined.instance) {
+            intlObj.setRoundingType("significantDigits");
             int mnsd = getMnsdDNO.executeInt(mnsdValue, 1, 21, 1);
             int mxsd = getMxsdDNO.executeInt(mxsdValue, mnsd, 21, 21);
             intlObj.setSignificantDigits(mnsd, mxsd);
+        } else if (mnfdValue != Undefined.instance || mxfdValue != Undefined.instance) {
+            intlObj.setRoundingType("fractionDigits");
+            int mnfd = getMnfdDNO.executeInt(mnfdValue, 0, 20, mnfdDefault);
+            int mxfdActualDefualt = Math.max(mnfd, mxfdDefault);
+            int mxfd = getMxfdDNO.executeInt(mxfdValue, mnfd, 20, mxfdActualDefualt);
+            intlObj.setFractionDigits(mnfd, mxfd);
+        } else if (compactNotation) {
+            intlObj.setRoundingType("compactRounding");
+        } else {
+            intlObj.setRoundingType("fractionDigits");
+            intlObj.setFractionDigits(mnfdDefault, mxfdDefault);
         }
         return Undefined.instance;
     }
