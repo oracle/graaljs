@@ -126,11 +126,6 @@ local common = import '../common.jsonnet';
     graalNodeJs + common.jdk8  + buildTruffleTip                    + testNodeTruffleTip + {environment+: {SUITE: 'es-module',     PART: '-r0,1', MAX_HEAP: '8G'}}   + common.gate + common.windows_vs2010 + {name: 'nodejs-gate-es-module-graal-tip-jdk8-windows-amd64'},
     # We run the `sequential` tests with a smaller heap because `test/sequential/test-child-process-pass-fd.js` starts 80 child processes.
     graalNodeJs + common.jdk8  + buildTruffleTip                    + testNodeTruffleTip + {environment+: {SUITE: 'sequential',    PART: '-r0,1', MAX_HEAP: '512M'}} + common.gate + common.windows_vs2010 + {name: 'nodejs-gate-sequential-graal-tip-jdk8-windows-amd64'},
-    graalNodeJs + common.jdk8  + buildTruffleTip                    + testNodeTruffleTip + {environment+: {SUITE: parallelNoHttp2, PART: '-r0,5', MAX_HEAP: '8G'}}   + common.gate + common.windows_vs2010 + {name: 'nodejs-gate-parallel-1-graal-tip-jdk8-windows-amd64'},
-    graalNodeJs + common.jdk8  + buildTruffleTip                    + testNodeTruffleTip + {environment+: {SUITE: parallelNoHttp2, PART: '-r1,5', MAX_HEAP: '8G'}}   + common.gate + common.windows_vs2010 + {name: 'nodejs-gate-parallel-2-graal-tip-jdk8-windows-amd64'},
-    graalNodeJs + common.jdk8  + buildTruffleTip                    + testNodeTruffleTip + {environment+: {SUITE: parallelNoHttp2, PART: '-r2,5', MAX_HEAP: '8G'}}   + common.gate + common.windows_vs2010 + {name: 'nodejs-gate-parallel-3-graal-tip-jdk8-windows-amd64'},
-    graalNodeJs + common.jdk8  + buildTruffleTip                    + testNodeTruffleTip + {environment+: {SUITE: parallelNoHttp2, PART: '-r3,5', MAX_HEAP: '8G'}}   + common.gate + common.windows_vs2010 + {name: 'nodejs-gate-parallel-4-graal-tip-jdk8-windows-amd64'},
-    graalNodeJs + common.jdk8  + buildTruffleTip                    + testNodeTruffleTip + {environment+: {SUITE: parallelNoHttp2, PART: '-r4,5', MAX_HEAP: '8G'}}   + common.gate + common.windows_vs2010 + {name: 'nodejs-gate-parallel-5-graal-tip-jdk8-windows-amd64'},
 
     // post-merges
     graalNodeJs + common.jdk8  + buildTruffleTip                    + testNodeTruffleTip + {environment+: {SUITE: parallelHttp2,   PART: '-r0,1', MAX_HEAP: '8G'}}   + common.postMerge + common.linux     + {name: 'nodejs-postmerge-parallel-http2-graal-tip-jdk8-linux-amd64'},
