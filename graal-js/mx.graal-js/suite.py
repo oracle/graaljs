@@ -633,8 +633,6 @@ suite = {
         "native-image.properties": "file:mx.graal-js/native-image.properties",
         "./": [
           "file:README.md",
-          "file:../LICENSE",
-          "file:../3rd_party_licenses.txt",
         ],
       },
     },
