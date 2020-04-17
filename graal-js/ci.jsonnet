@@ -104,7 +104,7 @@ local common = import '../common.jsonnet';
     graalJs + common.jdk8 + common.weekly + common.linux + gateCoverage          + {environment+: {GATE_TAGS: 'build,default,tck'}}  + {name: 'js-coverage-jdk8-linux-amd64'},
 
     // jdk 8 - windows
-    graalJs + common.jdk8  + common.gate  + common.windows_vs2010 + gateGraalTip + {environment+: {GATE_TAGS: 'default'}}            + {name: 'js-gate-default-graal-tip-jdk8-windows-amd64'},
+    graalJs + common.jdk8  + common.gate  + common.windows_vs2010 + gateGraalTip + {environment+: {GATE_TAGS: 'Test262-default'}}    + {name: 'js-gate-test262-default-graal-tip-jdk8-windows-amd64'},
 
     // jdk 8 - sparc
     graalJs + common.jdk8  + common.gate  + common.sparc + gateGraalTip          + {environment+: {GATE_TAGS: 'default'}}            + {name: 'js-gate-default-graal-tip-jdk8-solaris-sparcv9'},
@@ -118,7 +118,7 @@ local common = import '../common.jsonnet';
     graalJs + common.jdk11 + common.gate  + common.linux_aarch64 + gateGraalTip  + {environment+: {GATE_TAGS: 'default'}}            + {name: 'js-gate-default-graal-tip-jdk11-linux-aarch64'},
 
     // jdk 11 - windows
-    graalJs + common.jdk11 + common.gate  + common.windows + gateGraalTip        + {environment+: {GATE_TAGS: 'default'}}            + {name: 'js-gate-default-graal-tip-jdk11-windows-amd64'},
+    graalJs + common.jdk11 + common.gate  + common.windows + gateGraalTip        + {environment+: {GATE_TAGS: 'Test262-default'}}    + {name: 'js-gate-test262-default-graal-tip-jdk11-windows-amd64'},
 
     // interop benchmarks
     graalJs + common.jdk8 + common.bench  + common.x52 + benchmarkGraalTip       + interopJmhBenchmarks                              + {name: 'js-interop-jmh-bechmarks-jdk8-x52'},
