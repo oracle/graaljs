@@ -220,7 +220,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             Object targetName = getFunctionNameNode.getValue(thisFnObj);
             if (!(targetName instanceof String)) {
                 if (JSRuntime.isLazyString(targetName)) {
-                    targetName = targetName.toString();
+                    targetName = JSRuntime.toStringIsString(targetName);
                 } else {
                     targetName = "";
                 }
