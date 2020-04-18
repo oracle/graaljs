@@ -96,6 +96,7 @@ import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -453,7 +454,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         protected Object arrayElement(TruffleObject obj, Number index,
                         @Shared("importValue") @Cached("create()") JSForeignToJSTypeNode foreignConvert,
                         @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
-            return JSInteropUtil.readArrayElementOrDefault(obj, index.longValue(), Null.instance, interop, foreignConvert, this);
+            return JSInteropUtil.readArrayElementOrDefault(obj, JSRuntime.longValue(index), Null.instance, interop, foreignConvert, this);
         }
 
         @SuppressWarnings("unused")
@@ -523,7 +524,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                         @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
             Object convertedValue = exportValue.execute(value);
             try {
-                interop.writeArrayElement(obj, index.longValue(), convertedValue);
+                interop.writeArrayElement(obj, JSRuntime.longValue(index), convertedValue);
                 return convertedValue;
             } catch (InvalidArrayIndexException e) {
                 return Null.instance;
@@ -593,7 +594,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         protected boolean arrayElement(TruffleObject obj, Number index,
                         @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
             try {
-                interop.removeArrayElement(obj, index.longValue());
+                interop.removeArrayElement(obj, JSRuntime.longValue(index));
                 return true;
             } catch (InvalidArrayIndexException e) {
                 return false;

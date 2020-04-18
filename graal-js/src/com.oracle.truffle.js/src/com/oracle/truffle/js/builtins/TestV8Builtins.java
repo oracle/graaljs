@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import java.util.Set;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -77,8 +80,6 @@ import com.oracle.truffle.js.runtime.builtins.JSTestV8;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.util.Set;
 
 /**
  * Contains builtins to support special behavior used by TestV8.
@@ -177,11 +178,12 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
             super(context, builtin);
         }
 
+        @TruffleBoundary
         @Specialization
         protected double constructDouble(Object hiObj, Object loObj) {
-            long lHi = ((Number) hiObj).longValue();
-            long lLo = ((Number) loObj).longValue() & 0xFFFF_FFFFL;
-            return Double.longBitsToDouble((lHi << 32L) | lLo);
+            long hi = JSRuntime.toUInt32(hiObj);
+            long lo = JSRuntime.toUInt32(loObj);
+            return Double.longBitsToDouble((hi << 32) | lo);
         }
     }
 

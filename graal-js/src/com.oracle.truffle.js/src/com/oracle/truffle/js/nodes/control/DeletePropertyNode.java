@@ -71,6 +71,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -239,7 +240,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     @Specialization(guards = {"isForeignObject(target)", "isNumber(index)"}, replaces = "arrayElementInt")
     protected boolean arrayElement(Object target, Number index,
                     @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
-        return arrayElementLong(target, index.longValue(), interop);
+        return arrayElementLong(target, JSRuntime.longValue(index), interop);
     }
 
     private boolean arrayElementLong(Object target, long index, InteropLibrary interop) {
