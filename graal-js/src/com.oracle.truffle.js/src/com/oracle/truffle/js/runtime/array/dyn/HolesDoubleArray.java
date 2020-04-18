@@ -46,6 +46,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetHol
 import java.util.List;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -86,7 +87,7 @@ public final class HolesDoubleArray extends AbstractContiguousDoubleArray {
 
     @Override
     public void setInBoundsFast(DynamicObject object, int index, double value, boolean condition) {
-        throw new RuntimeException("should not call this method, use setInBounds(Non)Hole");
+        throw Errors.shouldNotReachHere("should not call this method, use setInBounds(Non)Hole");
     }
 
     public boolean isHoleFast(DynamicObject object, int index, boolean condition) {
