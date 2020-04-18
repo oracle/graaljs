@@ -202,6 +202,7 @@ public final class JSFinalizationRegistry extends JSBuiltinObject implements JSC
         return realm.getFinalizationRegistryPrototype();
     }
 
+    @TruffleBoundary
     public static void appendToCells(DynamicObject finalizationRegistry, Object target, Object holdings, Object unregisterToken) {
         List<FinalizationRecord> cells = getCells(finalizationRegistry);
         ReferenceQueue<Object> queue = getReferenceQueue(finalizationRegistry);
@@ -209,6 +210,7 @@ public final class JSFinalizationRegistry extends JSBuiltinObject implements JSC
         cells.add(new FinalizationRecord(weakTarget, holdings, unregisterToken));
     }
 
+    @TruffleBoundary
     public static boolean removeFromCells(DynamicObject finalizationRegistry, Object unregisterToken) {
         List<FinalizationRecord> cells = getCells(finalizationRegistry);
         boolean removed = false;
@@ -247,6 +249,7 @@ public final class JSFinalizationRegistry extends JSBuiltinObject implements JSC
         return iterator;
     }
 
+    @TruffleBoundary
     private static boolean checkForEmptyCells(DynamicObject finalizationRegistry) {
         assert JSFinalizationRegistry.isJSFinalizationRegistry(finalizationRegistry);
         List<FinalizationRecord> cells = getCells(finalizationRegistry);
@@ -258,6 +261,7 @@ public final class JSFinalizationRegistry extends JSBuiltinObject implements JSC
         return false;
     }
 
+    @TruffleBoundary
     public static FinalizationRecord removeCellEmptyTarget(DynamicObject finalizationRegistry) {
         assert JSFinalizationRegistry.isJSFinalizationRegistry(finalizationRegistry);
         List<FinalizationRecord> cells = getCells(finalizationRegistry);

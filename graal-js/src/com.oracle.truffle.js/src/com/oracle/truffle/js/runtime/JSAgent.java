@@ -208,6 +208,7 @@ public abstract class JSAgent implements EcmaAgent {
         return weakRefTargets.add(target);
     }
 
+    @TruffleBoundary
     public void registerFinalizationRegistry(DynamicObject finalizationRegistry) {
         finalizationRegistryQueue.add(new WeakReference<>(finalizationRegistry));
     }
