@@ -531,7 +531,7 @@ public final class JSGuards {
     }
 
     public static boolean isBigIntNegativeVal(BigInt a) {
-        return a != null && a.signum() == -1;
+        return a.signum() == -1;
     }
 
     public static boolean isDoubleInInt32Range(double value) {

@@ -222,6 +222,7 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
         return value.testBit(n);
     }
 
+    @TruffleBoundary(allowInlining = true)
     public int signum() {
         return value.signum();
     }
