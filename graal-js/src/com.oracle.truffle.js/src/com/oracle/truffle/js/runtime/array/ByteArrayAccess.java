@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.array;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-
 abstract class ByteArrayAccess {
     public abstract int getInt8(byte[] buffer, int offset, int index, int bytesPerElement);
 
@@ -197,71 +194,5 @@ final class BigEndianByteArrayAccess extends NormalByteArrayAccess {
     @Override
     protected int b(int bytePos, int size) {
         return size - 1 - bytePos;
-    }
-}
-
-final class ByteBufferNativeOrderByteArrayAccess extends ByteArrayAccess {
-    @Override
-    public int getInt8(byte[] buffer, int offset, int index, int bytesPerElement) {
-        return ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).get(byteIndex(offset, index, bytesPerElement));
-    }
-
-    @Override
-    public int getInt16(byte[] buffer, int offset, int index, int bytesPerElement) {
-        return ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).getShort(byteIndex(offset, index, bytesPerElement));
-    }
-
-    @Override
-    public int getInt32(byte[] buffer, int offset, int index, int bytesPerElement) {
-        return ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).getInt(byteIndex(offset, index, bytesPerElement));
-    }
-
-    @Override
-    public float getFloat(byte[] buffer, int offset, int index, int bytesPerElement) {
-        return ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).getFloat(byteIndex(offset, index, bytesPerElement));
-    }
-
-    @Override
-    public double getDouble(byte[] buffer, int offset, int index, int bytesPerElement) {
-        return ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).getDouble(byteIndex(offset, index, bytesPerElement));
-    }
-
-    @Override
-    public long getInt64(byte[] buffer, int offset, int index, int bytesPerElement) {
-        return ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).getLong(byteIndex(offset, index, bytesPerElement));
-    }
-
-    @Override
-    public void putInt8(byte[] buffer, int offset, int index, int bytesPerElement, int value) {
-        ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).put(byteIndex(offset, index, bytesPerElement), (byte) value);
-    }
-
-    @Override
-    public void putInt16(byte[] buffer, int offset, int index, int bytesPerElement, int value) {
-        ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).putShort(byteIndex(offset, index, bytesPerElement), (short) value);
-    }
-
-    @Override
-    public void putInt32(byte[] buffer, int offset, int index, int bytesPerElement, int value) {
-        ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).putInt(byteIndex(offset, index, bytesPerElement), value);
-    }
-
-    @Override
-    public void putFloat(byte[] buffer, int offset, int index, int bytesPerElement, float value) {
-        ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).putFloat(byteIndex(offset, index, bytesPerElement), value);
-    }
-
-    @Override
-    public void putDouble(byte[] buffer, int offset, int index, int bytesPerElement, double value) {
-        ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).putDouble(byteIndex(offset, index, bytesPerElement), value);
-    }
-
-    @Override
-    public void putInt64(byte[] buffer, int offset, int index, int bytesPerElement, long value) {
-        ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).putLong(byteIndex(offset, index, bytesPerElement), value);
-    }
-
-    private static int byteIndex(int offset, int index, int bytesPerElement) {
-        return offset + index * bytesPerElement;
     }
 }

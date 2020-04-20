@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -74,6 +75,7 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
  *
  * Property descriptor entries not requested may be omitted for better performance.
  */
+@ImportStatic({JSRuntime.class})
 public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
     private final boolean needValue;
     private final boolean needEnumerability;
@@ -147,7 +149,7 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
                     "allowCaching",
                     "cachedJSClass != null",
                     "cachedJSClass.isInstance(thisObj)",
-                    "cachedPropertyKey.equals(propertyKey)",
+                    "propertyKeyEquals(cachedPropertyKey, propertyKey)",
                     "cachedShape == thisObj.getShape()"}, assumptions = {"cachedShape.getValidAssumption()"}, limit = "3")
     PropertyDescriptor cachedOrdinary(DynamicObject thisObj, Object propertyKey,
                     @Cached("getJSClassIfOrdinary(thisObj)") JSClass cachedJSClass,

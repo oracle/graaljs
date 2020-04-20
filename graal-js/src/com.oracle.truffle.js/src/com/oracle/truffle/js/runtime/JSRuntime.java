@@ -1813,9 +1813,11 @@ public final class JSRuntime {
             return isArrayIndex((long) property);
         } else if (property instanceof Double) {
             return isArrayIndex((double) property);
-        } else {
-            long idx = propertyNameToArrayIndex(property.toString());
+        } else if (isString(property)) {
+            long idx = propertyNameToArrayIndex(toStringIsString(property));
             return isArrayIndex(idx);
+        } else {
+            return false;
         }
     }
 

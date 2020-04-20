@@ -72,13 +72,19 @@ public final class JSHashMap {
         Cursor copy();
     }
 
-    private final HashMap<Object, Node> map = new HashMap<>();
-    private final Node head = new Node(null, null, null, null);
-    private Node tail = head;
+    private final HashMap<Object, Node> map;
+    private final Node head;
+    private Node tail;
 
+    @TruffleBoundary(allowInlining = true)
     public JSHashMap() {
+        this.map = new HashMap<>();
+        Node dummy = new Node(null, null, null, null);
+        this.head = dummy;
+        this.tail = dummy;
     }
 
+    @TruffleBoundary(allowInlining = true)
     public int size() {
         return map.size();
     }
