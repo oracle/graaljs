@@ -89,21 +89,19 @@ public abstract class SetNumberFormatDigitOptionsNode extends JavaScriptBaseNode
         Object mxsdValue = getMaxSignificantDigitsOption.getValue(options);
         intlObj.setMinimumIntegerDigits(mnid);
         if (mnsdValue != Undefined.instance || mxsdValue != Undefined.instance) {
-            intlObj.setRoundingType("significantDigits");
             int mnsd = getMnsdDNO.executeInt(mnsdValue, 1, 21, 1);
             int mxsd = getMxsdDNO.executeInt(mxsdValue, mnsd, 21, 21);
-            intlObj.setSignificantDigits(mnsd, mxsd);
+            intlObj.setMinimumSignificantDigits(mnsd);
+            intlObj.setMaximumSignificantDigits(mxsd);
         } else if (mnfdValue != Undefined.instance || mxfdValue != Undefined.instance) {
-            intlObj.setRoundingType("fractionDigits");
             int mnfd = getMnfdDNO.executeInt(mnfdValue, 0, 20, mnfdDefault);
             int mxfdActualDefualt = Math.max(mnfd, mxfdDefault);
             int mxfd = getMxfdDNO.executeInt(mxfdValue, mnfd, 20, mxfdActualDefualt);
-            intlObj.setFractionDigits(mnfd, mxfd);
-        } else if (compactNotation) {
-            intlObj.setRoundingType("compactRounding");
-        } else {
-            intlObj.setRoundingType("fractionDigits");
-            intlObj.setFractionDigits(mnfdDefault, mxfdDefault);
+            intlObj.setMinimumFractionDigits(mnfd);
+            intlObj.setMaximumFractionDigits(mxfd);
+        } else if (!compactNotation) {
+            intlObj.setMinimumFractionDigits(mnfdDefault);
+            intlObj.setMaximumFractionDigits(mxfdDefault);
         }
         return Undefined.instance;
     }

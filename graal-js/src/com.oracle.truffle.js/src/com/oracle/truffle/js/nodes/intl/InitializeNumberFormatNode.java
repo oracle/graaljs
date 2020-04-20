@@ -109,8 +109,6 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
 
     @Specialization
     public DynamicObject initializeNumberFormat(DynamicObject numberFormatObj, Object localesArg, Object optionsArg) {
-
-        // must be invoked before any code that tries to access ICU library data
         try {
             JSNumberFormat.InternalState state = JSNumberFormat.getInternalState(numberFormatObj);
 
@@ -118,12 +116,12 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
             DynamicObject options = createOptionsNode.execute(optionsArg);
 
             getLocaleMatcherOption.executeValue(options);
-            String numberingSystemOpt = getNumberingSystemOption.executeValue(options);
-            if (numberingSystemOpt != null) {
-                IntlUtil.validateUnicodeLocaleIdentifierType(numberingSystemOpt);
-                numberingSystemOpt = IntlUtil.normalizeUnicodeLocaleIdentifierType(numberingSystemOpt);
+            String numberingSystem = getNumberingSystemOption.executeValue(options);
+            if (numberingSystem != null) {
+                IntlUtil.validateUnicodeLocaleIdentifierType(numberingSystem);
+                numberingSystem = IntlUtil.normalizeUnicodeLocaleIdentifierType(numberingSystem);
             }
-            JSNumberFormat.setLocaleAndNumberingSystem(context, state, locales, numberingSystemOpt);
+            state.resolveLocaleAndNumberingSystem(context, locales, numberingSystem);
 
             setNumberFormatUnitOptions(state, options);
 
@@ -142,7 +140,6 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
             String notation = getNotationOption.executeValue(options);
             state.setNotation(notation);
 
-            JSNumberFormat.setupInternalNumberFormat(state);
             boolean compactNotation = IntlUtil.COMPACT.equals(notation);
             setNumberFormatDigitOptions.execute(state, options, mnfdDefault, mxfdDefault, compactNotation);
 
@@ -156,6 +153,8 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
 
             String signDisplay = getSignDisplayOption.executeValue(options);
             state.setSignDisplay(signDisplay);
+
+            state.initializeNumberFormatter();
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError(e);
         }

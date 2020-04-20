@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import java.text.AttributedCharacterIterator;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -137,13 +138,8 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
         return result;
     }
 
-    @TruffleBoundary
-    public static void setupInternalRelativeTimeFormatter(InternalState state) {
-        state.relativeDateTimeFormatter = createFormatter(state.javaLocale, state.style);
-    }
-
     public static RelativeDateTimeFormatter getRelativeDateTimeFormatterProperty(DynamicObject obj) {
-        return getInternalState(obj).relativeDateTimeFormatter;
+        return getInternalState(obj).getRelativeDateTimeFormatter();
     }
 
     private static void ensureFiniteNumber(double d) {
@@ -157,11 +153,11 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
         ensureFiniteNumber(amount);
         InternalState state = getInternalState(relativeTimeFormatObj);
         RelativeDateTimeUnit icuUnit = singularRelativeTimeUnit("format", unit);
-        return innerFormat(amount, state, state.relativeDateTimeFormatter, icuUnit);
+        return innerFormat(amount, state, state.getRelativeDateTimeFormatter(), icuUnit);
     }
 
     private static String innerFormat(double amount, InternalState state, RelativeDateTimeFormatter relativeDateTimeFormatter, RelativeDateTimeUnit icuUnit) {
-        if (state.numeric.equals("always")) {
+        if (state.getNumeric().equals("always")) {
             return relativeDateTimeFormatter.formatNumeric(amount, icuUnit);
         } else {
             return relativeDateTimeFormatter.format(amount, icuUnit);
@@ -172,7 +168,7 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
     public static DynamicObject formatToParts(JSContext context, DynamicObject relativeTimeFormatObj, double amount, String unit) {
         ensureFiniteNumber(amount);
         InternalState state = getInternalState(relativeTimeFormatObj);
-        RelativeDateTimeFormatter relativeDateTimeFormatter = state.relativeDateTimeFormatter;
+        RelativeDateTimeFormatter relativeDateTimeFormatter = state.getRelativeDateTimeFormatter();
         NumberFormat numberFormat = relativeDateTimeFormatter.getNumberFormat();
         RelativeDateTimeUnit icuUnit = singularRelativeTimeUnit("formatToParts", unit);
         String formattedText = innerFormat(amount, state, relativeDateTimeFormatter, icuUnit);
@@ -189,7 +185,9 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
             }
 
             String esUnit = icuUnit.toString().toLowerCase();
-            resultParts.addAll(JSNumberFormat.innerFormatToParts(context, numberFormat, positiveAmount, esUnit));
+            AttributedCharacterIterator iterator = numberFormat.formatToCharacterIterator(positiveAmount);
+            String formatted = numberFormat.format(positiveAmount);
+            resultParts.addAll(JSNumberFormat.innerFormatToParts(context, iterator, positiveAmount, formatted, esUnit, false));
 
             if (numberIndex + formattedNumber.length() < formattedText.length()) {
                 resultParts.add(IntlUtil.makePart(context, "literal", formattedText.substring(numberIndex + formattedNumber.length(), formattedText.length())));
@@ -204,17 +202,26 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
 
         private RelativeDateTimeFormatter relativeDateTimeFormatter;
 
-        private String style = "long";
-        private String numeric = "always";
+        private String style;
+        private String numeric;
 
         @Override
         DynamicObject toResolvedOptionsObject(JSContext context) {
             DynamicObject result = JSUserObject.create(context);
-            JSObjectUtil.defineDataProperty(result, "locale", locale, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, "style", style, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, "numeric", numeric, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, "numberingSystem", numberingSystem, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.LOCALE, getLocale(), JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.STYLE, style, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.NUMERIC, numeric, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.NUMBERING_SYSTEM, getNumberingSystem(), JSAttributes.getDefault());
             return result;
+        }
+
+        @TruffleBoundary
+        public void initializeRelativeTimeFormatter() {
+            relativeDateTimeFormatter = createFormatter(getJavaLocale(), style);
+        }
+
+        public RelativeDateTimeFormatter getRelativeDateTimeFormatter() {
+            return relativeDateTimeFormatter;
         }
 
         public void setStyle(String style) {
@@ -223,6 +230,10 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
 
         public void setNumeric(String numeric) {
             this.numeric = numeric;
+        }
+
+        public String getNumeric() {
+            return numeric;
         }
     }
 

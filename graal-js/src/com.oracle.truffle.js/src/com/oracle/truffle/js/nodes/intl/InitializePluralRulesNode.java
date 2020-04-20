@@ -47,7 +47,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
@@ -98,9 +97,11 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
 
             state.setType(optType);
 
-            JSNumberFormat.setLocaleAndNumberingSystem(context, state, locales, null);
-            JSPluralRules.setupInternalPluralRulesAndNumberFormat(state);
+            state.resolveLocaleAndNumberingSystem(context, locales, null);
             setNumberFormatDigitOptions.execute(state, options, 0, 3, false);
+
+            state.initializeNumberFormatter();
+            state.initializePluralRules();
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError(e);
         }

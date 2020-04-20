@@ -52,8 +52,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 
 public abstract class DefaultNumberOptionNode extends JavaScriptBaseNode {
 
-    @Child JSToNumberNode toNumberNode;
-
     protected DefaultNumberOptionNode() {
     }
 
