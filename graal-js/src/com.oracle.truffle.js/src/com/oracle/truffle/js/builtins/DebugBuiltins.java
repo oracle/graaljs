@@ -50,7 +50,6 @@ import java.util.Map;
 import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
@@ -788,10 +787,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         }
 
         protected static void fail() {
-            // CompilerAsserts.neverPartOfCompilation() does not work here
-            // SVM would recognize that as reachable around the
-            // `-H:+TruffleCheckNeverPartOfCompilation` check
-            CompilerAsserts.partialEvaluationConstant(System.currentTimeMillis());
+            CompilerDirectives.bailout("Debug.neverPartOfCompilation()");
         }
 
         @Override
