@@ -6,7 +6,7 @@ local common = import 'common.jsonnet';
   // Used to run fewer jobs
   local debug = false,
 
-  local overlay = '5895bea89fba3010ba8e7be17cb778c6fad6a6c0',
+  local overlay = 'e479c1d038a4b606149989babd02d24b87228146',
 
   local no_overlay = 'cb733e564850cd37b685fcef6f3c16b59802b22c',
 
@@ -29,3 +29,4 @@ local common = import 'common.jsonnet';
     common.jdk8 + deployBinary + common.deploy + common.postMerge + common.darwin + {name: 'js-deploybinary-darwin-amd64'},
   ],
 }
+
