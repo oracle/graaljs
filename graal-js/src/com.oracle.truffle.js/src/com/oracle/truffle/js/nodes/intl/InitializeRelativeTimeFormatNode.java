@@ -47,7 +47,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
@@ -83,8 +82,6 @@ public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNod
 
     @Specialization
     public DynamicObject initializeRelativeTimeFormat(DynamicObject relativeTimeFormatObj, Object localesArg, Object optionsArg) {
-
-        // must be invoked before any code that tries to access ICU library data
         try {
 
             JSRelativeTimeFormat.InternalState state = JSRelativeTimeFormat.getInternalState(relativeTimeFormatObj);
@@ -93,23 +90,20 @@ public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNod
             DynamicObject options = createOptionsNode.execute(optionsArg);
 
             getLocaleMatcherOption.executeValue(options);
-            String numberingSystemOpt = getNumberingSystemOption.executeValue(options);
-            if (numberingSystemOpt != null) {
-                IntlUtil.validateUnicodeLocaleIdentifierType(numberingSystemOpt);
-                numberingSystemOpt = IntlUtil.normalizeUnicodeLocaleIdentifierType(numberingSystemOpt);
+            String numberingSystem = getNumberingSystemOption.executeValue(options);
+            if (numberingSystem != null) {
+                IntlUtil.validateUnicodeLocaleIdentifierType(numberingSystem);
+                numberingSystem = IntlUtil.normalizeUnicodeLocaleIdentifierType(numberingSystem);
             }
 
-            String optStyle = getStyleOption.executeValue(options);
-            String optNumeric = getNumericOption.executeValue(options);
+            String style = getStyleOption.executeValue(options);
+            String numeric = getNumericOption.executeValue(options);
 
-            state.setInitialized(true);
+            state.setStyle(style);
+            state.setNumeric(numeric);
 
-            state.setStyle(optStyle);
-            state.setNumeric(optNumeric);
-
-            JSNumberFormat.setLocaleAndNumberingSystem(context, state, locales, numberingSystemOpt);
-            JSRelativeTimeFormat.setupInternalRelativeTimeFormatter(state);
-
+            state.resolveLocaleAndNumberingSystem(context, locales, numberingSystem);
+            state.initializeRelativeTimeFormatter();
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError(e);
         }

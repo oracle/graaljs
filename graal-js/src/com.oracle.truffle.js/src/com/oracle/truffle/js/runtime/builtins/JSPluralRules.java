@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,12 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.text.ParseException;
 import java.util.EnumSet;
 import java.util.LinkedList;
 import java.util.List;
 
-import com.ibm.icu.text.NumberFormat;
+import com.ibm.icu.number.FormattedNumber;
+import com.ibm.icu.number.LocalizedNumberFormatter;
 import com.ibm.icu.text.PluralRules;
 import com.ibm.icu.text.PluralRules.PluralType;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -130,47 +130,45 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
         return result;
     }
 
-    @TruffleBoundary
-    public static void setupInternalPluralRulesAndNumberFormat(InternalState state) {
-        state.pluralRules = PluralRules.forLocale(state.javaLocale, state.type.equals(IntlUtil.ORDINAL) ? PluralType.ORDINAL : PluralType.CARDINAL);
-        state.pluralCategories.addAll(state.pluralRules.getKeywords());
-        state.numberFormat = NumberFormat.getInstance(state.javaLocale);
-    }
-
     public static PluralRules getPluralRulesProperty(DynamicObject obj) {
-        return getInternalState(obj).pluralRules;
+        return getInternalState(obj).getPluralRules();
     }
 
-    public static NumberFormat getNumberFormatProperty(DynamicObject obj) {
-        return getInternalState(obj).numberFormat;
+    public static LocalizedNumberFormatter getNumberFormatter(DynamicObject obj) {
+        return getInternalState(obj).getNumberFormatter();
     }
 
     @TruffleBoundary
     public static String select(DynamicObject pluralRulesObj, Object n) {
         PluralRules pluralRules = getPluralRulesProperty(pluralRulesObj);
-        NumberFormat numberFormat = getNumberFormatProperty(pluralRulesObj);
-        Number x = JSRuntime.toNumber(n);
-        String s = numberFormat.format(x);
-        try {
-            Number toSelectFrom = numberFormat.parse(s);
-            return pluralRules.select(JSRuntime.doubleValue(toSelectFrom));
-        } catch (ParseException pe) {
-            return pluralRules.select(JSRuntime.doubleValue(x));
-        }
+        LocalizedNumberFormatter numberFormatter = getNumberFormatter(pluralRulesObj);
+        Number number = JSRuntime.toNumber(n);
+        FormattedNumber formattedNumber = numberFormatter.format(number);
+        return pluralRules.select(formattedNumber);
     }
 
     public static class InternalState extends JSNumberFormat.BasicInternalState {
 
-        private String type = IntlUtil.CARDINAL;
+        private String type;
         private PluralRules pluralRules;
-        private List<Object> pluralCategories = new LinkedList<>();
+        private final List<Object> pluralCategories = new LinkedList<>();
 
         @Override
         void fillResolvedOptions(JSContext context, DynamicObject result) {
-            JSObjectUtil.defineDataProperty(result, IntlUtil.LOCALE, locale, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.LOCALE, getLocale(), JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, IntlUtil.TYPE, type, JSAttributes.getDefault());
             super.fillResolvedOptions(context, result);
             JSObjectUtil.defineDataProperty(result, "pluralCategories", JSRuntime.createArrayFromList(context, pluralCategories), JSAttributes.getDefault());
+        }
+
+        @TruffleBoundary
+        public void initializePluralRules() {
+            pluralRules = PluralRules.forLocale(getJavaLocale(), IntlUtil.ORDINAL.equals(type) ? PluralType.ORDINAL : PluralType.CARDINAL);
+            pluralCategories.addAll(pluralRules.getKeywords());
+        }
+
+        public PluralRules getPluralRules() {
+            return pluralRules;
         }
 
         public void setType(String type) {

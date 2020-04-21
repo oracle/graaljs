@@ -41,61 +41,30 @@
 package com.oracle.truffle.js.nodes.intl;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class GetNumberOptionNode extends JavaScriptBaseNode {
 
-    private final Number maximum;
     @Child PropertyGetNode propertyGetNode;
+    @Child DefaultNumberOptionNode defaultNumberOptionNode;
 
-    @Child JSToNumberNode toNumberNode = JSToNumberNode.create();
-
-    protected GetNumberOptionNode(JSContext context, String property, Number maximum) {
-        this.maximum = maximum;
-        this.propertyGetNode = PropertyGetNode.create(property, false, context);
+    protected GetNumberOptionNode(JSContext context, String property) {
+        this.propertyGetNode = PropertyGetNode.create(property, context);
+        this.defaultNumberOptionNode = DefaultNumberOptionNode.create();
     }
 
-    public abstract Number executeValue(Object options, Number minimum, Number fallback);
+    public abstract int executeInt(Object options, int minimum, int maximum, int fallback);
 
-    public static GetNumberOptionNode create(JSContext context, String property, Number maximum) {
-        return GetNumberOptionNodeGen.create(context, property, maximum);
+    public static GetNumberOptionNode create(JSContext context, String property) {
+        return GetNumberOptionNodeGen.create(context, property);
     }
 
-    protected Number makeFinalSelection(Number value, Number minimum) {
-        ensureSelectedValueIsValid(value, minimum);
-        return value.intValue();
+    @Specialization
+    public int getOption(Object options, int minimum, int maximum, int fallback) {
+        Object value = propertyGetNode.getValue(options);
+        return defaultNumberOptionNode.executeInt(value, minimum, maximum, fallback);
     }
 
-    @TruffleBoundary
-    private void ensureSelectedValueIsValid(Number value, Number minimum) {
-        if (JSRuntime.isNaN(value) || minimum.doubleValue() > value.doubleValue() || maximum.doubleValue() < value.doubleValue()) {
-            throw Errors.createRangeError(String.format("invalid value %s found where only values between %s and %s are allowed", value, minimum, maximum));
-        }
-    }
-
-    @Specialization(guards = "!isUndefined(options)")
-    public Number getOption(Object options, Number minimum, Number fallback) {
-        Object propertyValue = propertyGetNode.getValue(options);
-        if (propertyValue == Undefined.instance) {
-            return fallback;
-        }
-        return makeFinalSelection(toOptionType(propertyValue), minimum);
-    }
-
-    @Specialization(guards = "isUndefined(options)")
-    @SuppressWarnings("unused")
-    public Number getOptionFromUndefined(Object options, Number minimum, Number fallback) {
-        return fallback;
-    }
-
-    protected Number toOptionType(Object propertyValue) {
-        return toNumberNode.executeNumber(propertyValue);
-    }
 }

@@ -75,6 +75,7 @@ public final class IntlUtil {
 
     public static final String _2_DIGIT = "2-digit";
     public static final String ACCENT = "accent";
+    public static final String ACCOUNTING = "accounting";
     public static final String ALWAYS = "always";
     public static final String AUTO = "auto";
     public static final String BEST_FIT = "best fit";
@@ -88,16 +89,21 @@ public final class IntlUtil {
     public static final String CASE_FIRST = "caseFirst";
     public static final String CODE = "code";
     public static final String COLLATION = "collation";
+    public static final String COMPACT = "compact";
+    public static final String COMPACT_DISPLAY = "compactDisplay";
     public static final String CONJUNCTION = "conjunction";
     public static final String CURRENCY = "currency";
     public static final String CURRENCY_DISPLAY = "currencyDisplay";
+    public static final String CURRENCY_SIGN = "currencySign";
     public static final String DATE_STYLE = "dateStyle";
     public static final String DAY = "day";
     public static final String DEFAULT = "default";
     public static final String DECIMAL = "decimal";
     public static final String DISJUNCTION = "disjunction";
     public static final String ELEMENT = "element";
+    public static final String ENGINEERING = "engineering";
     public static final String ERA = "era";
+    public static final String EXCEPT_ZERO = "exceptZero";
     public static final String FALLBACK = "fallback";
     public static final String FALSE = "false";
     public static final String FORMAT_MATCHER = "formatMatcher";
@@ -131,8 +137,11 @@ public final class IntlUtil {
     public static final String MONTH = "month";
     public static final String NAME = "name";
     public static final String NARROW = "narrow";
+    public static final String NARROW_SYMBOL = "narrowSymbol";
+    public static final String NEVER = "never";
     public static final String NONE = "none";
     public static final String NORMAL = "normal";
+    public static final String NOTATION = "notation";
     public static final String NUMERIC = "numeric";
     public static final String NUMBERING_SYSTEM = "numberingSystem";
     public static final String OR = "or";
@@ -141,6 +150,7 @@ public final class IntlUtil {
     public static final String ORDINAL = "ordinal";
     public static final String PERCENT = "percent";
     public static final String REGION = "region";
+    public static final String SCIENTIFIC = "scientific";
     public static final String SCRIPT = "script";
     public static final String SEARCH = "search";
     public static final String SEP = "sep";
@@ -149,6 +159,7 @@ public final class IntlUtil {
     public static final String SENTENCE = "sentence";
     public static final String SENSITIVITY = "sensitivity";
     public static final String SHORT = "short";
+    public static final String SIGN_DISPLAY = "signDisplay";
     public static final String SORT = "sort";
     public static final String STANDARD = "standard";
     public static final String STANDARD_NARROW = "standard-narrow";
@@ -163,6 +174,7 @@ public final class IntlUtil {
     public static final String TYPE = "type";
     public static final String UND = "und";
     public static final String UNIT = "unit";
+    public static final String UNIT_DISPLAY = "unitDisplay";
     public static final String UNIT_NARROW = "unit-narrow";
     public static final String UNIT_SHORT = "unit-short";
     public static final String UPPER = "upper";
@@ -174,6 +186,53 @@ public final class IntlUtil {
     public static final String WEEKDAY = "weekday";
     public static final String YEAR = "year";
     public static final String YEAR_NAME = "yearName";
+
+    // https://tc39.es/ecma402/#table-sanctioned-simple-unit-identifiers
+    private static final Set<String> SANCTIONED_SIMPLE_UNIT_IDENTIFIERS = new HashSet<>(Arrays.asList(new String[]{
+                    "acre",
+                    "bit",
+                    "byte",
+                    "celsius",
+                    "centimeter",
+                    "day",
+                    "degree",
+                    "fahrenheit",
+                    "fluid-ounce",
+                    "foot",
+                    "gallon",
+                    "gigabit",
+                    "gigabyte",
+                    "gram",
+                    "hectare",
+                    "hour",
+                    "inch",
+                    "kilobit",
+                    "kilobyte",
+                    "kilogram",
+                    "kilometer",
+                    "liter",
+                    "megabit",
+                    "megabyte",
+                    "meter",
+                    "mile",
+                    "mile-scandinavian",
+                    "milliliter",
+                    "millimeter",
+                    "millisecond",
+                    "minute",
+                    "month",
+                    "ounce",
+                    "percent",
+                    "petabyte",
+                    "pound",
+                    "second",
+                    "stone",
+                    "terabit",
+                    "terabyte",
+                    "week",
+                    "yard",
+                    "year"
+    }));
 
     public static Locale selectedLocale(JSContext ctx, String[] locales) {
         // We don't distinguish BestFitMatcher and LookupMatcher i.e.
@@ -486,4 +545,31 @@ public final class IntlUtil {
         }
         return p;
     }
+
+    @TruffleBoundary
+    private static boolean isSanctionedSimpleUnitIdentifier(String unitIdentifier) {
+        return SANCTIONED_SIMPLE_UNIT_IDENTIFIERS.contains(unitIdentifier);
+    }
+
+    @TruffleBoundary
+    private static boolean isWellFormedUnitIdentifier(String unitIdentifier) {
+        if (isSanctionedSimpleUnitIdentifier(unitIdentifier)) {
+            return true;
+        }
+        String per = "-per-";
+        int index = unitIdentifier.indexOf(per);
+        if (index == -1) {
+            return false;
+        }
+        String numerator = unitIdentifier.substring(0, index);
+        String denominator = unitIdentifier.substring(index + per.length());
+        return isSanctionedSimpleUnitIdentifier(numerator) && isSanctionedSimpleUnitIdentifier(denominator);
+    }
+
+    public static void ensureIsWellFormedUnitIdentifier(String unitIdentifier) {
+        if (!isWellFormedUnitIdentifier(unitIdentifier)) {
+            throw Errors.createRangeErrorInvalidUnitIdentifier(unitIdentifier);
+        }
+    }
+
 }

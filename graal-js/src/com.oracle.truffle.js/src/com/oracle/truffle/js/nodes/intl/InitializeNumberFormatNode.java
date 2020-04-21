@@ -44,9 +44,7 @@ import java.util.MissingResourceException;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
@@ -65,20 +63,21 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
     @Child GetStringOptionNode getLocaleMatcherOption;
     @Child GetStringOptionNode getNumberingSystemOption;
 
-    @Child GetNumberOptionNode getMinIntDigitsOption;
-    @Child GetNumberOptionNode getMinFracDigitsOption;
-    @Child GetNumberOptionNode getMaxFracDigitsOption;
-    @Child PropertyGetNode getMinSignificantDigitsOption;
-    @Child PropertyGetNode getMaxSignificantDigitsOption;
-    @Child DefaultNumberOptionNode getMnsdDNO;
-    @Child DefaultNumberOptionNode getMxsdDNO;
+    @Child SetNumberFormatDigitOptionsNode setNumberFormatDigitOptions;
 
     @Child GetStringOptionNode getStyleOption;
 
     @Child GetStringOptionNode getCurrencyOption;
     @Child GetStringOptionNode getCurrencyDisplayOption;
+    @Child GetStringOptionNode getCurrencySignOption;
 
+    @Child GetStringOptionNode getUnitOption;
+    @Child GetStringOptionNode getUnitDisplayOption;
+
+    @Child GetStringOptionNode getNotationOption;
+    @Child GetStringOptionNode getCompactDisplayOption;
     @Child GetBooleanOptionNode getUseGroupingOption;
+    @Child GetStringOptionNode getSignDisplayOption;
 
     protected InitializeNumberFormatNode(JSContext context) {
         this.context = context;
@@ -87,17 +86,19 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER,
                         new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
         this.getNumberingSystemOption = GetStringOptionNode.create(context, IntlUtil.NUMBERING_SYSTEM, null, null);
-        this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.STYLE, new String[]{IntlUtil.DECIMAL, IntlUtil.PERCENT, IntlUtil.CURRENCY}, IntlUtil.DECIMAL);
+        this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.STYLE, new String[]{IntlUtil.DECIMAL, IntlUtil.PERCENT, IntlUtil.CURRENCY, IntlUtil.UNIT}, IntlUtil.DECIMAL);
         this.getCurrencyOption = GetStringOptionNode.create(context, IntlUtil.CURRENCY, null, null);
-        this.getCurrencyDisplayOption = GetStringOptionNode.create(context, IntlUtil.CURRENCY_DISPLAY, new String[]{IntlUtil.CODE, IntlUtil.SYMBOL, IntlUtil.NAME}, IntlUtil.SYMBOL);
+        this.getCurrencyDisplayOption = GetStringOptionNode.create(context, IntlUtil.CURRENCY_DISPLAY, new String[]{IntlUtil.CODE, IntlUtil.SYMBOL, IntlUtil.NARROW_SYMBOL, IntlUtil.NAME},
+                        IntlUtil.SYMBOL);
+        this.getCurrencySignOption = GetStringOptionNode.create(context, IntlUtil.CURRENCY_SIGN, new String[]{IntlUtil.STANDARD, IntlUtil.ACCOUNTING}, IntlUtil.STANDARD);
+        this.getUnitOption = GetStringOptionNode.create(context, IntlUtil.UNIT, null, null);
+        this.getUnitDisplayOption = GetStringOptionNode.create(context, IntlUtil.UNIT_DISPLAY, new String[]{IntlUtil.SHORT, IntlUtil.NARROW, IntlUtil.LONG}, IntlUtil.SHORT);
+        this.getNotationOption = GetStringOptionNode.create(context, IntlUtil.NOTATION, new String[]{IntlUtil.STANDARD, IntlUtil.SCIENTIFIC, IntlUtil.ENGINEERING, IntlUtil.COMPACT},
+                        IntlUtil.STANDARD);
+        this.getCompactDisplayOption = GetStringOptionNode.create(context, IntlUtil.COMPACT_DISPLAY, new String[]{IntlUtil.SHORT, IntlUtil.LONG}, IntlUtil.SHORT);
         this.getUseGroupingOption = GetBooleanOptionNode.create(context, IntlUtil.USE_GROUPING, true);
-        this.getMinIntDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MINIMUM_INTEGER_DIGITS, 21);
-        this.getMinSignificantDigitsOption = PropertyGetNode.create(IntlUtil.MINIMUM_SIGNIFICANT_DIGITS, false, context);
-        this.getMaxSignificantDigitsOption = PropertyGetNode.create(IntlUtil.MAXIMUM_SIGNIFICANT_DIGITS, false, context);
-        this.getMinFracDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MINIMUM_FRACTION_DIGITS, 21);
-        this.getMaxFracDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MAXIMUM_FRACTION_DIGITS, 20);
-        this.getMnsdDNO = DefaultNumberOptionNode.create(21, 1);
-        this.getMxsdDNO = DefaultNumberOptionNode.create(21, 21);
+        this.getSignDisplayOption = GetStringOptionNode.create(context, IntlUtil.SIGN_DISPLAY, new String[]{IntlUtil.AUTO, IntlUtil.NEVER, IntlUtil.ALWAYS, IntlUtil.EXCEPT_ZERO}, IntlUtil.AUTO);
+        this.setNumberFormatDigitOptions = SetNumberFormatDigitOptionsNode.create(context);
     }
 
     public abstract DynamicObject executeInit(DynamicObject collator, Object locales, Object options);
@@ -108,8 +109,6 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
 
     @Specialization
     public DynamicObject initializeNumberFormat(DynamicObject numberFormatObj, Object localesArg, Object optionsArg) {
-
-        // must be invoked before any code that tries to access ICU library data
         try {
             JSNumberFormat.InternalState state = JSNumberFormat.getInternalState(numberFormatObj);
 
@@ -117,69 +116,83 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
             DynamicObject options = createOptionsNode.execute(optionsArg);
 
             getLocaleMatcherOption.executeValue(options);
-            String numberingSystemOpt = getNumberingSystemOption.executeValue(options);
-            if (numberingSystemOpt != null) {
-                IntlUtil.validateUnicodeLocaleIdentifierType(numberingSystemOpt);
-                numberingSystemOpt = IntlUtil.normalizeUnicodeLocaleIdentifierType(numberingSystemOpt);
+            String numberingSystem = getNumberingSystemOption.executeValue(options);
+            if (numberingSystem != null) {
+                IntlUtil.validateUnicodeLocaleIdentifierType(numberingSystem);
+                numberingSystem = IntlUtil.normalizeUnicodeLocaleIdentifierType(numberingSystem);
             }
+            state.resolveLocaleAndNumberingSystem(context, locales, numberingSystem);
 
-            String optStyle = getStyleOption.executeValue(options);
+            setNumberFormatUnitOptions(state, options);
 
-            String optCurrency = getCurrencyOption.executeValue(options);
-            String optCurrencyDisplay = getCurrencyDisplayOption.executeValue(options);
-
-            state.setInitialized(true);
-
-            JSNumberFormat.setLocaleAndNumberingSystem(context, state, locales, numberingSystemOpt);
-
-            state.setStyle(optStyle);
-            String currencyCode = optCurrency;
-            if (currencyCode != null) {
-                IntlUtil.ensureIsWellFormedCurrencyCode(currencyCode);
-            }
-            if (optStyle.equals(IntlUtil.CURRENCY)) {
-                if (currencyCode == null) {
-                    throw Errors.createTypeErrorFormat("Currency can not be undefined when style is \"%s\"", IntlUtil.CURRENCY);
-                } else {
-                    state.setCurrency(IntlUtil.toUpperCase(currencyCode));
-                }
-            }
-            int cDigits = JSNumberFormat.currencyDigits(state.getCurrency());
-            int mnfdDefault = cDigits;
-            int mxfdDefault = cDigits;
-            if (state.getStyle().equals(IntlUtil.CURRENCY)) {
-                state.setCurrencyDisplay(optCurrencyDisplay);
+            int mnfdDefault;
+            int mxfdDefault;
+            String style = state.getStyle();
+            if (IntlUtil.CURRENCY.equals(style)) {
+                int cDigits = JSNumberFormat.currencyDigits(state.getCurrency());
+                mnfdDefault = cDigits;
+                mxfdDefault = cDigits;
             } else {
                 mnfdDefault = 0;
-                if (state.getStyle().equals(IntlUtil.PERCENT)) {
-                    mxfdDefault = 0;
-                } else {
-                    mxfdDefault = 3;
-                }
+                mxfdDefault = IntlUtil.PERCENT.equals(style) ? 0 : 3;
             }
-            JSNumberFormat.setupInternalNumberFormat(state);
-            setNumberFormatDigitOptions(state, options, mnfdDefault, mxfdDefault);
 
-            state.setGroupingUsed(getUseGroupingOption.executeValue(options));
+            String notation = getNotationOption.executeValue(options);
+            state.setNotation(notation);
+
+            boolean compactNotation = IntlUtil.COMPACT.equals(notation);
+            setNumberFormatDigitOptions.execute(state, options, mnfdDefault, mxfdDefault, compactNotation);
+
+            String compactDisplay = getCompactDisplayOption.executeValue(options);
+            if (compactNotation) {
+                state.setCompactDisplay(compactDisplay);
+            }
+
+            boolean useGrouping = getUseGroupingOption.executeValue(options);
+            state.setGroupingUsed(useGrouping);
+
+            String signDisplay = getSignDisplayOption.executeValue(options);
+            state.setSignDisplay(signDisplay);
+
+            state.initializeNumberFormatter();
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError(e);
         }
         return numberFormatObj;
     }
 
-    // https://tc39.github.io/ecma402/#sec-setnfdigitoptions
-    private void setNumberFormatDigitOptions(JSNumberFormat.BasicInternalState state, DynamicObject options, int mnfdDefault, int mxfdDefault) {
-        Number mnid = getMinIntDigitsOption.executeValue(options, 1, 1);
-        Number mnfd = getMinFracDigitsOption.executeValue(options, 0, mnfdDefault);
-        int mxfdActualDefault = Math.max(mnfd.intValue(), mxfdDefault);
-        Number mxfd = getMaxFracDigitsOption.executeValue(options, mnfd, mxfdActualDefault);
-        state.setIntegerAndFractionsDigits(mnid.intValue(), mnfd.intValue(), mxfd.intValue());
-        Object mnsd = getMinSignificantDigitsOption.getValue(options);
-        Object mxsd = getMaxSignificantDigitsOption.getValue(options);
-        if (!JSGuards.isUndefined(mnsd) || !JSGuards.isUndefined(mxsd)) {
-            Number mnsdNumber = getMnsdDNO.executeValue(mnsd, 1);
-            Number mxsdNumber = getMxsdDNO.executeValue(mxsd, mnsdNumber.intValue());
-            state.setSignificantDigits(mnsdNumber.intValue(), mxsdNumber.intValue());
+    private void setNumberFormatUnitOptions(JSNumberFormat.InternalState state, DynamicObject options) {
+        String style = getStyleOption.executeValue(options);
+        state.setStyle(style);
+
+        String currency = getCurrencyOption.executeValue(options);
+        if (currency != null) {
+            IntlUtil.ensureIsWellFormedCurrencyCode(currency);
+        }
+        String currencyDisplay = getCurrencyDisplayOption.executeValue(options);
+        String currencySign = getCurrencySignOption.executeValue(options);
+
+        String unit = getUnitOption.executeValue(options);
+        if (unit != null) {
+            IntlUtil.ensureIsWellFormedUnitIdentifier(unit);
+        }
+        String unitDisplay = getUnitDisplayOption.executeValue(options);
+
+        if (IntlUtil.CURRENCY.equals(style)) {
+            if (currency == null) {
+                throw Errors.createTypeError("Currency can not be undefined when style is \"currency\".");
+            }
+            currency = IntlUtil.toUpperCase(currency);
+            state.setCurrency(currency);
+            state.setCurrencyDisplay(currencyDisplay);
+            state.setCurrencySign(currencySign);
+        } else if (IntlUtil.UNIT.equals(style)) {
+            if (unit == null) {
+                throw Errors.createTypeError("Unit can not be undefined when style is \"unit\".");
+            }
+            state.setUnit(unit);
+            state.setUnitDisplay(unitDisplay);
         }
     }
+
 }

@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.AttributedCharacterIterator;
 import java.util.ArrayList;
 import java.util.Currency;
@@ -53,8 +53,19 @@ import java.util.Set;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
-import com.ibm.icu.text.DecimalFormat;
+import com.ibm.icu.number.IntegerWidth;
+import com.ibm.icu.number.LocalizedNumberFormatter;
+import com.ibm.icu.number.Notation;
+import com.ibm.icu.number.NumberFormatter;
+import com.ibm.icu.number.NumberFormatter.SignDisplay;
+import com.ibm.icu.number.NumberFormatter.UnitWidth;
+import com.ibm.icu.number.Precision;
+import com.ibm.icu.number.Scale;
+import com.ibm.icu.text.FormattedValue;
 import com.ibm.icu.text.NumberFormat;
+import com.ibm.icu.text.NumberingSystem;
+import com.ibm.icu.util.MeasureUnit;
+import com.ibm.icu.util.VersionInfo;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -144,12 +155,9 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     // https://tc39.github.io/ecma402/#sec-currencydigits
     @TruffleBoundary
     public static int currencyDigits(String currencyCode) {
-        if (currencyCode == null) {
-            return 2;
-        }
         try {
-            Currency currency = Currency.getInstance(currencyCode);
-            return (currency != null) ? currency.getDefaultFractionDigits() : 2;
+            int digits = Currency.getInstance(currencyCode).getDefaultFractionDigits();
+            return (digits == -1) ? 2 : digits;
         } catch (IllegalArgumentException e) {
             return 2;
         }
@@ -173,60 +181,239 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         return result;
     }
 
-    @TruffleBoundary
-    public static void setLocaleAndNumberingSystem(JSContext ctx, BasicInternalState state, String[] locales, String numberingSystemOpt) {
-        Locale selectedLocale = IntlUtil.selectedLocale(ctx, locales);
-        Locale strippedLocale = selectedLocale.stripExtensions();
-        if (strippedLocale.toLanguageTag().equals(IntlUtil.UND)) {
-            selectedLocale = ctx.getLocale();
-            strippedLocale = selectedLocale.stripExtensions();
+    private static Notation notationToICUNotation(String notation, String compactDisplay) {
+        Notation icuNotation;
+        switch (notation) {
+            case IntlUtil.STANDARD:
+                icuNotation = Notation.simple();
+                break;
+            case IntlUtil.SCIENTIFIC:
+                icuNotation = Notation.scientific();
+                break;
+            case IntlUtil.ENGINEERING:
+                icuNotation = Notation.engineering();
+                break;
+            case IntlUtil.COMPACT:
+                icuNotation = IntlUtil.LONG.equals(compactDisplay) ? Notation.compactLong() : Notation.compactShort();
+                break;
+            default:
+                throw Errors.shouldNotReachHere(notation);
         }
-        Locale.Builder builder = new Locale.Builder();
-        builder.setLocale(strippedLocale);
+        return icuNotation;
+    }
 
-        String nuType = selectedLocale.getUnicodeLocaleType("nu");
-        if ((nuType != null) && IntlUtil.isValidNumberingSystem(nuType) && (numberingSystemOpt == null || numberingSystemOpt.equals(nuType))) {
-            state.numberingSystem = nuType;
-            builder.setUnicodeLocaleKeyword("nu", nuType);
+    private static UnitWidth currencyDisplayToUnitWidth(String currencyDisplay) {
+        UnitWidth unitWidth;
+        switch (currencyDisplay) {
+            case IntlUtil.CODE:
+                unitWidth = UnitWidth.ISO_CODE;
+                break;
+            case IntlUtil.SYMBOL:
+                unitWidth = UnitWidth.SHORT;
+                break;
+            case IntlUtil.NARROW_SYMBOL:
+                unitWidth = UnitWidth.NARROW;
+                break;
+            case IntlUtil.NAME:
+                unitWidth = UnitWidth.FULL_NAME;
+                break;
+            default:
+                throw Errors.shouldNotReachHere(currencyDisplay);
         }
+        return unitWidth;
+    }
 
-        state.locale = builder.build().toLanguageTag();
-
-        if (numberingSystemOpt != null && IntlUtil.isValidNumberingSystem(numberingSystemOpt)) {
-            state.numberingSystem = numberingSystemOpt;
-            builder.setUnicodeLocaleKeyword("nu", numberingSystemOpt);
+    private static UnitWidth unitDisplayToUnitWidth(String unitDisplay) {
+        UnitWidth unitWidth;
+        switch (unitDisplay) {
+            case IntlUtil.SHORT:
+                unitWidth = UnitWidth.SHORT;
+                break;
+            case IntlUtil.NARROW:
+                unitWidth = UnitWidth.NARROW;
+                break;
+            case IntlUtil.LONG:
+                unitWidth = UnitWidth.FULL_NAME;
+                break;
+            default:
+                throw Errors.shouldNotReachHere(unitDisplay);
         }
+        return unitWidth;
+    }
 
-        state.javaLocale = builder.build();
+    private static MeasureUnit unitToMeasureUnit(String unit) {
+        MeasureUnit measureUnit;
+        switch (unit) {
+            case "acre":
+                measureUnit = MeasureUnit.ACRE;
+                break;
+            case "bit":
+                measureUnit = MeasureUnit.BIT;
+                break;
+            case "byte":
+                measureUnit = MeasureUnit.BYTE;
+                break;
+            case "celsius":
+                measureUnit = MeasureUnit.CELSIUS;
+                break;
+            case "centimeter":
+                measureUnit = MeasureUnit.CENTIMETER;
+                break;
+            case "day":
+                measureUnit = MeasureUnit.DAY;
+                break;
+            case "degree":
+                measureUnit = MeasureUnit.DEGREE;
+                break;
+            case "fahrenheit":
+                measureUnit = MeasureUnit.FAHRENHEIT;
+                break;
+            case "fluid-ounce":
+                measureUnit = MeasureUnit.FLUID_OUNCE;
+                break;
+            case "foot":
+                measureUnit = MeasureUnit.FOOT;
+                break;
+            case "gallon":
+                measureUnit = MeasureUnit.GALLON;
+                break;
+            case "gigabit":
+                measureUnit = MeasureUnit.GIGABIT;
+                break;
+            case "gigabyte":
+                measureUnit = MeasureUnit.GIGABYTE;
+                break;
+            case "gram":
+                measureUnit = MeasureUnit.GRAM;
+                break;
+            case "hectare":
+                measureUnit = MeasureUnit.HECTARE;
+                break;
+            case "hour":
+                measureUnit = MeasureUnit.HOUR;
+                break;
+            case "inch":
+                measureUnit = MeasureUnit.INCH;
+                break;
+            case "kilobit":
+                measureUnit = MeasureUnit.KILOBIT;
+                break;
+            case "kilobyte":
+                measureUnit = MeasureUnit.KILOBYTE;
+                break;
+            case "kilogram":
+                measureUnit = MeasureUnit.KILOGRAM;
+                break;
+            case "kilometer":
+                measureUnit = MeasureUnit.KILOMETER;
+                break;
+            case "liter":
+                measureUnit = MeasureUnit.LITER;
+                break;
+            case "megabit":
+                measureUnit = MeasureUnit.MEGABIT;
+                break;
+            case "megabyte":
+                measureUnit = MeasureUnit.MEGABYTE;
+                break;
+            case "meter":
+                measureUnit = MeasureUnit.METER;
+                break;
+            case "mile":
+                measureUnit = MeasureUnit.MILE;
+                break;
+            case "mile-scandinavian":
+                measureUnit = MeasureUnit.MILE_SCANDINAVIAN;
+                break;
+            case "milliliter":
+                measureUnit = MeasureUnit.MILLILITER;
+                break;
+            case "millimeter":
+                measureUnit = MeasureUnit.MILLIMETER;
+                break;
+            case "millisecond":
+                measureUnit = MeasureUnit.MILLISECOND;
+                break;
+            case "minute":
+                measureUnit = MeasureUnit.MINUTE;
+                break;
+            case "month":
+                measureUnit = MeasureUnit.MONTH;
+                break;
+            case "ounce":
+                measureUnit = MeasureUnit.OUNCE;
+                break;
+            case "percent":
+                measureUnit = MeasureUnit.PERCENT;
+                break;
+            case "petabyte":
+                measureUnit = MeasureUnit.PETABYTE;
+                break;
+            case "pound":
+                measureUnit = MeasureUnit.POUND;
+                break;
+            case "second":
+                measureUnit = MeasureUnit.SECOND;
+                break;
+            case "stone":
+                measureUnit = MeasureUnit.STONE;
+                break;
+            case "terabit":
+                measureUnit = MeasureUnit.TERABIT;
+                break;
+            case "terabyte":
+                measureUnit = MeasureUnit.TERABYTE;
+                break;
+            case "week":
+                measureUnit = MeasureUnit.WEEK;
+                break;
+            case "yard":
+                measureUnit = MeasureUnit.YARD;
+                break;
+            case "year":
+                measureUnit = MeasureUnit.YEAR;
+                break;
+            default:
+                throw Errors.shouldNotReachHere(unit);
+        }
+        return measureUnit;
+    }
 
-        if (state.numberingSystem == null) {
-            state.numberingSystem = IntlUtil.defaultNumberingSystemName(ctx, state.javaLocale);
+    private static SignDisplay signDisplay(String signDisplay, boolean accounting) {
+        switch (signDisplay) {
+            case IntlUtil.AUTO:
+                return accounting ? SignDisplay.ACCOUNTING : SignDisplay.AUTO;
+            case IntlUtil.NEVER:
+                return SignDisplay.NEVER;
+            case IntlUtil.ALWAYS:
+                return accounting ? SignDisplay.ACCOUNTING_ALWAYS : SignDisplay.ALWAYS;
+            case IntlUtil.EXCEPT_ZERO:
+                return accounting ? SignDisplay.ACCOUNTING_EXCEPT_ZERO : SignDisplay.EXCEPT_ZERO;
+            default:
+                throw Errors.shouldNotReachHere(signDisplay);
         }
     }
 
-    @TruffleBoundary
-    public static void setupInternalNumberFormat(InternalState state) {
-        NumberFormat numberFormat;
-        if (state.style.equals(IntlUtil.CURRENCY)) {
-            numberFormat = NumberFormat.getCurrencyInstance(state.javaLocale);
-        } else if (state.style.equals(IntlUtil.PERCENT)) {
-            numberFormat = NumberFormat.getPercentInstance(state.javaLocale);
-        } else {
-            numberFormat = NumberFormat.getInstance(state.javaLocale);
+    private static FormattedValue formattedValue(InternalState state, Number x) {
+        LocalizedNumberFormatter numberFormatter = state.getNumberFormatter();
+        FormattedValue formattedValue = numberFormatter.format(x);
+        if (IntlUtil.EXCEPT_ZERO.equals(state.signDisplay)) {
+            // Workaround for https://unicode-org.atlassian.net/browse/ICU-20709
+            // (do not produce +0 or -0 when the number is rounded to zero during formatting)
+            assert VersionInfo.ICU_VERSION.getMajor() == 66 : "revalidate the workaround after ICU update";
+            String formatted = formattedValue.toString();
+            if (formatted.equals(state.getZeroWithSign()) || formatted.equals(state.getMinusZeroWithSign())) {
+                formattedValue = numberFormatter.sign(SignDisplay.NEVER).format(x);
+            }
         }
-        numberFormat.setRoundingMode(BigDecimal.ROUND_HALF_UP);
-        state.numberFormat = numberFormat;
-    }
-
-    public static NumberFormat getNumberFormatProperty(DynamicObject obj) {
-        return getInternalState(obj).numberFormat;
+        return formattedValue;
     }
 
     @TruffleBoundary
     public static String format(DynamicObject numberFormatObj, Object n) {
-        NumberFormat numberFormat = getNumberFormatProperty(numberFormatObj);
+        InternalState state = getInternalState(numberFormatObj);
         Number x = toInternalNumberRepresentation(JSRuntime.toNumeric(n));
-        return numberFormat.format(x);
+        return formattedValue(state, x).toString();
     }
 
     private static final LazyValue<UnmodifiableEconomicMap<NumberFormat.Field, String>> fieldToTypeMap = new LazyValue<>(JSNumberFormat::initializeFieldToTypeMap);
@@ -234,12 +421,15 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     private static UnmodifiableEconomicMap<NumberFormat.Field, String> initializeFieldToTypeMap() {
         CompilerAsserts.neverPartOfCompilation();
         EconomicMap<NumberFormat.Field, String> map = EconomicMap.create(6);
-        map.put(NumberFormat.Field.INTEGER, "integer");
         map.put(NumberFormat.Field.DECIMAL_SEPARATOR, "decimal");
         map.put(NumberFormat.Field.FRACTION, "fraction");
         map.put(NumberFormat.Field.GROUPING_SEPARATOR, "group");
         map.put(NumberFormat.Field.CURRENCY, "currency");
-        map.put(NumberFormat.Field.PERCENT, "percentSign");
+        map.put(NumberFormat.Field.MEASURE_UNIT, "unit");
+        map.put(NumberFormat.Field.EXPONENT_SYMBOL, "exponentSeparator");
+        map.put(NumberFormat.Field.EXPONENT_SIGN, "exponentMinusSign");
+        map.put(NumberFormat.Field.EXPONENT, "exponentInteger");
+        map.put(NumberFormat.Field.COMPACT, "compact");
         return map;
     }
 
@@ -249,54 +439,54 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
     @TruffleBoundary
     public static DynamicObject formatToParts(JSContext context, DynamicObject numberFormatObj, Object n) {
-
-        NumberFormat numberFormat = getNumberFormatProperty(numberFormatObj);
+        InternalState state = getInternalState(numberFormatObj);
         Number x = toInternalNumberRepresentation(JSRuntime.toNumeric(n));
-
-        List<DynamicObject> resultParts = innerFormatToParts(context, numberFormat, x, null);
+        FormattedValue formattedValue = formattedValue(state, x);
+        AttributedCharacterIterator fit = formattedValue.toCharacterIterator();
+        String formatted = formattedValue.toString();
+        List<DynamicObject> resultParts = innerFormatToParts(context, fit, x.doubleValue(), formatted, null, IntlUtil.PERCENT.equals(state.getStyle()));
         return JSArray.createConstant(context, resultParts.toArray());
     }
 
-    static List<DynamicObject> innerFormatToParts(JSContext context, NumberFormat numberFormat, Number x, String unit) {
+    static List<DynamicObject> innerFormatToParts(JSContext context, AttributedCharacterIterator iterator, double value, String formattedValue, String unit, boolean stylePercent) {
         List<DynamicObject> resultParts = new ArrayList<>();
-        AttributedCharacterIterator fit = numberFormat.formatToCharacterIterator(x);
-        String formatted = numberFormat.format(x);
-        int i = fit.getBeginIndex();
-        while (i < fit.getEndIndex()) {
-            fit.setIndex(i);
-            Map<AttributedCharacterIterator.Attribute, Object> attributes = fit.getAttributes();
+        int i = iterator.getBeginIndex();
+        while (i < iterator.getEndIndex()) {
+            iterator.setIndex(i);
+            Map<AttributedCharacterIterator.Attribute, Object> attributes = iterator.getAttributes();
             Set<AttributedCharacterIterator.Attribute> attKeySet = attributes.keySet();
             if (!attKeySet.isEmpty()) {
                 for (AttributedCharacterIterator.Attribute a : attKeySet) {
                     if (a instanceof NumberFormat.Field) {
-                        String value = formatted.substring(fit.getRunStart(), fit.getRunLimit());
+                        String run = formattedValue.substring(iterator.getRunStart(), iterator.getRunLimit());
                         String type;
                         if (a == NumberFormat.Field.INTEGER) {
-                            double xDouble = x.doubleValue();
-                            if (Double.isNaN(xDouble)) {
+                            if (Double.isNaN(value)) {
                                 type = "nan";
-                            } else if (Double.isInfinite(xDouble)) {
-                                type = "infinite";
+                            } else if (Double.isInfinite(value)) {
+                                type = "infinity";
                             } else {
                                 type = "integer";
                             }
                         } else if (a == NumberFormat.Field.SIGN) {
-                            type = isPlusSign(value) ? "plusSign" : "minusSign";
+                            type = isPlusSign(run) ? "plusSign" : "minusSign";
+                        } else if (a == NumberFormat.Field.PERCENT) {
+                            type = stylePercent ? "percentSign" : "unit";
                         } else {
                             type = fieldToType((NumberFormat.Field) a);
-                            assert type != null;
+                            assert type != null : a;
                         }
-                        resultParts.add(IntlUtil.makePart(context, type, value, unit));
-                        i = fit.getRunLimit();
+                        resultParts.add(IntlUtil.makePart(context, type, run, unit));
+                        i = iterator.getRunLimit();
                         break;
                     } else {
                         throw Errors.shouldNotReachHere();
                     }
                 }
             } else {
-                String value = formatted.substring(fit.getRunStart(), fit.getRunLimit());
-                resultParts.add(IntlUtil.makePart(context, IntlUtil.LITERAL, value, unit));
-                i = fit.getRunLimit();
+                String run = formattedValue.substring(iterator.getRunStart(), iterator.getRunLimit());
+                resultParts.add(IntlUtil.makePart(context, IntlUtil.LITERAL, run, unit));
+                i = iterator.getRunLimit();
             }
         }
         return resultParts;
@@ -319,21 +509,17 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     }
 
     public static class BasicInternalState {
+        private LocalizedNumberFormatter numberFormatter;
 
-        protected boolean initialized = false;
+        private Locale javaLocale;
+        private String locale;
 
-        protected NumberFormat numberFormat;
-
-        protected Locale javaLocale;
-        protected String locale;
-
-        protected String numberingSystem;
-
-        protected int minimumIntegerDigits = 1;
-        protected int minimumFractionDigits = 0;
-        protected int maximumFractionDigits = 3;
-        protected Integer minimumSignificantDigits;
-        protected Integer maximumSignificantDigits;
+        private String numberingSystem;
+        private int minimumIntegerDigits;
+        private Integer minimumFractionDigits;
+        private Integer maximumFractionDigits;
+        private Integer minimumSignificantDigits;
+        private Integer maximumSignificantDigits;
 
         DynamicObject toResolvedOptionsObject(JSContext context) {
             DynamicObject resolvedOptions = JSUserObject.create(context);
@@ -343,8 +529,12 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
         void fillResolvedOptions(@SuppressWarnings("unused") JSContext context, DynamicObject result) {
             JSObjectUtil.defineDataProperty(result, IntlUtil.MINIMUM_INTEGER_DIGITS, minimumIntegerDigits, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, IntlUtil.MINIMUM_FRACTION_DIGITS, minimumFractionDigits, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, IntlUtil.MAXIMUM_FRACTION_DIGITS, maximumFractionDigits, JSAttributes.getDefault());
+            if (minimumFractionDigits != null) {
+                JSObjectUtil.defineDataProperty(result, IntlUtil.MINIMUM_FRACTION_DIGITS, minimumFractionDigits, JSAttributes.getDefault());
+            }
+            if (maximumFractionDigits != null) {
+                JSObjectUtil.defineDataProperty(result, IntlUtil.MAXIMUM_FRACTION_DIGITS, maximumFractionDigits, JSAttributes.getDefault());
+            }
             if (minimumSignificantDigits != null) {
                 JSObjectUtil.defineDataProperty(result, IntlUtil.MINIMUM_SIGNIFICANT_DIGITS, minimumSignificantDigits, JSAttributes.getDefault());
             }
@@ -354,32 +544,58 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         }
 
         @TruffleBoundary
-        public void setIntegerAndFractionsDigits(int minimumIntegerDigits, int minimumFractionDigits, int maximumFractionDigits) {
-            this.minimumIntegerDigits = minimumIntegerDigits;
-            this.minimumFractionDigits = minimumFractionDigits;
-            this.maximumFractionDigits = maximumFractionDigits;
-            numberFormat.setMinimumIntegerDigits(minimumIntegerDigits);
-            numberFormat.setMinimumFractionDigits(minimumFractionDigits);
-            numberFormat.setMaximumFractionDigits(maximumFractionDigits);
-        }
+        public void resolveLocaleAndNumberingSystem(JSContext ctx, String[] locales, String numberingSystemOpt) {
+            Locale selectedLocale = IntlUtil.selectedLocale(ctx, locales);
+            Locale strippedLocale = selectedLocale.stripExtensions();
+            if (strippedLocale.toLanguageTag().equals(IntlUtil.UND)) {
+                selectedLocale = ctx.getLocale();
+                strippedLocale = selectedLocale.stripExtensions();
+            }
+            Locale.Builder builder = new Locale.Builder();
+            builder.setLocale(strippedLocale);
 
-        @TruffleBoundary
-        public void setSignificantDigits(int minimumSignificantDigits, int maximumSignificantDigits) {
-            this.minimumSignificantDigits = minimumSignificantDigits;
-            this.maximumSignificantDigits = maximumSignificantDigits;
-            if (numberFormat instanceof DecimalFormat) {
-                DecimalFormat df = (DecimalFormat) numberFormat;
-                df.setMinimumSignificantDigits(minimumSignificantDigits);
-                df.setMaximumSignificantDigits(maximumSignificantDigits);
+            String nuType = selectedLocale.getUnicodeLocaleType("nu");
+            if ((nuType != null) && IntlUtil.isValidNumberingSystem(nuType) && (numberingSystemOpt == null || numberingSystemOpt.equals(nuType))) {
+                this.numberingSystem = nuType;
+                builder.setUnicodeLocaleKeyword("nu", nuType);
+            }
+
+            this.locale = builder.build().toLanguageTag();
+
+            if (numberingSystemOpt != null && IntlUtil.isValidNumberingSystem(numberingSystemOpt)) {
+                this.numberingSystem = numberingSystemOpt;
+                builder.setUnicodeLocaleKeyword("nu", numberingSystemOpt);
+            }
+
+            this.javaLocale = builder.build();
+
+            if (this.numberingSystem == null) {
+                this.numberingSystem = IntlUtil.defaultNumberingSystemName(ctx, this.javaLocale);
             }
         }
 
-        public boolean isInitialized() {
-            return initialized;
+        @TruffleBoundary
+        public void initializeNumberFormatter() {
+            LocalizedNumberFormatter formatter = NumberFormatter.withLocale(javaLocale).roundingMode(RoundingMode.HALF_UP);
+
+            formatter = formatter.symbols(NumberingSystem.getInstanceByName(numberingSystem));
+            formatter = formatter.integerWidth(IntegerWidth.zeroFillTo(minimumIntegerDigits));
+
+            if (minimumSignificantDigits != null) {
+                formatter = formatter.precision(Precision.minMaxSignificantDigits(minimumSignificantDigits, maximumSignificantDigits));
+            } else if (minimumFractionDigits != null) {
+                formatter = formatter.precision(Precision.minMaxFraction(minimumFractionDigits, maximumFractionDigits));
+            }
+
+            this.numberFormatter = formatter;
         }
 
-        public NumberFormat getNumberFormat() {
-            return numberFormat;
+        public LocalizedNumberFormatter getNumberFormatter() {
+            return numberFormatter;
+        }
+
+        public void setNumberFormatter(LocalizedNumberFormatter numberFormatter) {
+            this.numberFormatter = numberFormatter;
         }
 
         public Locale getJavaLocale() {
@@ -394,80 +610,67 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
             return numberingSystem;
         }
 
-        public int getMinimumIntegerDigits() {
-            return minimumIntegerDigits;
-        }
-
-        public int getMinimumFractionDigits() {
-            return minimumFractionDigits;
-        }
-
-        public int getMaximumFractionDigits() {
-            return maximumFractionDigits;
-        }
-
-        public Integer getMinimumSignificantDigits() {
-            return minimumSignificantDigits;
-        }
-
-        public Integer getMaximumSignificantDigits() {
-            return maximumSignificantDigits;
-        }
-
-        public void setInitialized(boolean initialized) {
-            this.initialized = initialized;
-        }
-
-        public void setNumberFormat(NumberFormat numberFormat) {
-            this.numberFormat = numberFormat;
-        }
-
-        public void setJavaLocale(Locale javaLocale) {
-            this.javaLocale = javaLocale;
-        }
-
-        public void setLocale(String locale) {
-            this.locale = locale;
-        }
-
-        public void setNumberingSystem(String numberingSystem) {
-            this.numberingSystem = numberingSystem;
-        }
-
         public void setMinimumIntegerDigits(int minimumIntegerDigits) {
             this.minimumIntegerDigits = minimumIntegerDigits;
+        }
+
+        public int getMinimumIntegerDigits() {
+            return minimumIntegerDigits;
         }
 
         public void setMinimumFractionDigits(int minimumFractionDigits) {
             this.minimumFractionDigits = minimumFractionDigits;
         }
 
+        public Integer getMinimumFractionDigits() {
+            return minimumFractionDigits;
+        }
+
         public void setMaximumFractionDigits(int maximumFractionDigits) {
             this.maximumFractionDigits = maximumFractionDigits;
         }
 
-        public void setMinimumSignificantDigits(Integer minimumSignificantDigits) {
+        public Integer getMaximumFractionDigits() {
+            return maximumFractionDigits;
+        }
+
+        public void setMinimumSignificantDigits(int minimumSignificantDigits) {
             this.minimumSignificantDigits = minimumSignificantDigits;
         }
 
-        public void setMaximumSignificantDigits(Integer maximumSignificantDigits) {
+        public Integer getMinimumSignificantDigits() {
+            return minimumSignificantDigits;
+        }
+
+        public void setMaximumSignificantDigits(int maximumSignificantDigits) {
             this.maximumSignificantDigits = maximumSignificantDigits;
         }
+
+        public Integer getMaximumSignificantDigits() {
+            return maximumSignificantDigits;
+        }
+
     }
 
     public static class InternalState extends BasicInternalState {
 
-        private String style = IntlUtil.DECIMAL;
+        private String style;
         private String currency;
         private String currencyDisplay;
-        private boolean useGrouping = true;
+        private String currencySign;
+        private String unit;
+        private String unitDisplay;
+        private boolean useGrouping;
+        private String notation;
+        private String compactDisplay;
+        private String signDisplay;
 
-        DynamicObject boundFormatFunction = null;
+        DynamicObject boundFormatFunction;
 
         @Override
         void fillResolvedOptions(JSContext context, DynamicObject result) {
-            JSObjectUtil.defineDataProperty(result, IntlUtil.LOCALE, locale, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, IntlUtil.NUMBERING_SYSTEM, numberingSystem, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.LOCALE, getLocale(), JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.NUMBERING_SYSTEM, getNumberingSystem(), JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, IntlUtil.STYLE, style, JSAttributes.getDefault());
             if (currency != null) {
                 JSObjectUtil.defineDataProperty(result, IntlUtil.CURRENCY, currency, JSAttributes.getDefault());
@@ -475,30 +678,96 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
             if (currencyDisplay != null) {
                 JSObjectUtil.defineDataProperty(result, IntlUtil.CURRENCY_DISPLAY, currencyDisplay, JSAttributes.getDefault());
             }
+            if (currencySign != null) {
+                JSObjectUtil.defineDataProperty(result, IntlUtil.CURRENCY_SIGN, currencySign, JSAttributes.getDefault());
+            }
+            if (unit != null) {
+                JSObjectUtil.defineDataProperty(result, IntlUtil.UNIT, unit, JSAttributes.getDefault());
+            }
+            if (unitDisplay != null) {
+                JSObjectUtil.defineDataProperty(result, IntlUtil.UNIT_DISPLAY, unitDisplay, JSAttributes.getDefault());
+            }
             super.fillResolvedOptions(context, result);
             JSObjectUtil.defineDataProperty(result, IntlUtil.USE_GROUPING, useGrouping, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.NOTATION, notation, JSAttributes.getDefault());
+            if (compactDisplay != null) {
+                JSObjectUtil.defineDataProperty(result, IntlUtil.COMPACT_DISPLAY, compactDisplay, JSAttributes.getDefault());
+            }
+            JSObjectUtil.defineDataProperty(result, IntlUtil.SIGN_DISPLAY, signDisplay, JSAttributes.getDefault());
         }
 
         @TruffleBoundary
-        public void setGroupingUsed(boolean useGrouping) {
-            this.useGrouping = useGrouping;
-            this.numberFormat.setGroupingUsed(useGrouping);
+        @Override
+        public void initializeNumberFormatter() {
+            super.initializeNumberFormatter();
+
+            LocalizedNumberFormatter formatter = getNumberFormatter();
+
+            formatter = formatter.notation(notationToICUNotation(notation, compactDisplay));
+            if (!useGrouping) {
+                formatter = formatter.grouping(NumberFormatter.GroupingStrategy.OFF);
+            }
+
+            if (IntlUtil.CURRENCY.equals(style)) {
+                formatter = formatter.unit(com.ibm.icu.util.Currency.getInstance(currency));
+                formatter = formatter.unitWidth(currencyDisplayToUnitWidth(currencyDisplay));
+            } else if (IntlUtil.PERCENT.equals(style)) {
+                formatter = formatter.unit(MeasureUnit.PERCENT);
+                formatter = formatter.scale(Scale.powerOfTen(2));
+            } else if (IntlUtil.UNIT.equals(style)) {
+                String per = "-per-";
+                int index = unit.indexOf(per);
+                if (index == -1) {
+                    formatter = formatter.unit(unitToMeasureUnit(unit));
+                } else {
+                    String numerator = unit.substring(0, index);
+                    String denominator = unit.substring(index + per.length());
+                    formatter = formatter.unit(unitToMeasureUnit(numerator));
+                    formatter = formatter.perUnit(unitToMeasureUnit(denominator));
+                }
+                formatter = formatter.unitWidth(unitDisplayToUnitWidth(unitDisplay));
+            }
+
+            formatter = formatter.sign(signDisplay(signDisplay, IntlUtil.ACCOUNTING.equals(currencySign)));
+
+            this.setNumberFormatter(formatter);
+        }
+
+        private String zeroWithSign;
+        private String minusZeroWithSign;
+
+        public String getZeroWithSign() {
+            assert IntlUtil.EXCEPT_ZERO.equals(signDisplay);
+            if (zeroWithSign == null) {
+                initZerosWithSign();
+            }
+            return zeroWithSign;
+        }
+
+        public String getMinusZeroWithSign() {
+            assert IntlUtil.EXCEPT_ZERO.equals(signDisplay);
+            if (minusZeroWithSign == null) {
+                initZerosWithSign();
+            }
+            return minusZeroWithSign;
+        }
+
+        private void initZerosWithSign() {
+            boolean accounting = IntlUtil.ACCOUNTING.equals(currencySign);
+            zeroWithSign = getNumberFormatter().sign(accounting ? SignDisplay.ACCOUNTING_ALWAYS : SignDisplay.ALWAYS).format(0).toString();
+            minusZeroWithSign = getNumberFormatter().sign(accounting ? SignDisplay.ACCOUNTING_ALWAYS : SignDisplay.ALWAYS).format(-0.0).toString();
         }
 
         public String getStyle() {
             return style;
         }
 
-        public String getCurrency() {
-            return currency;
-        }
-
-        public String getCurrencyDisplay() {
-            return currencyDisplay;
-        }
-
         public void setStyle(String style) {
             this.style = style;
+        }
+
+        public String getCurrency() {
+            return currency;
         }
 
         public void setCurrency(String currency) {
@@ -507,6 +776,34 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
         public void setCurrencyDisplay(String currencyDisplay) {
             this.currencyDisplay = currencyDisplay;
+        }
+
+        public void setCurrencySign(String currencySign) {
+            this.currencySign = currencySign;
+        }
+
+        public void setUnit(String unit) {
+            this.unit = unit;
+        }
+
+        public void setUnitDisplay(String unitDisplay) {
+            this.unitDisplay = unitDisplay;
+        }
+
+        public void setGroupingUsed(boolean useGrouping) {
+            this.useGrouping = useGrouping;
+        }
+
+        public void setNotation(String notation) {
+            this.notation = notation;
+        }
+
+        public void setCompactDisplay(String compactDisplay) {
+            this.compactDisplay = compactDisplay;
+        }
+
+        public void setSignDisplay(String signDisplay) {
+            this.signDisplay = signDisplay;
         }
     }
 
@@ -536,7 +833,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
                     InternalState state = getInternalState((DynamicObject) numberFormatObj);
 
-                    if (state == null || !state.initialized) {
+                    if (state == null) {
                         errorBranch.enter();
                         throw Errors.createTypeErrorMethodCalledOnNonObjectOrWrongType("format");
                     }
