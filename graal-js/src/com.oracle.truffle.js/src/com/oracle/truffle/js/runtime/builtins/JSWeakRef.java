@@ -69,23 +69,23 @@ public final class JSWeakRef extends JSBuiltinObject implements JSConstructorFac
 
     static {
         Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        WEAKREF_PROPERTY = JSObjectUtil.makeHiddenProperty(WEAKREF_ID, allocator.locationForType(WeakReference.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
+        WEAKREF_PROPERTY = JSObjectUtil.makeHiddenProperty(WEAKREF_ID, allocator.locationForType(TruffleWeakReference.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
     }
 
     private JSWeakRef() {
     }
 
     public static DynamicObject create(JSContext context, Object referent) {
-        DynamicObject obj = JSObject.create(context, context.getWeakRefFactory(), new WeakReference<>(referent));
+        DynamicObject obj = JSObject.create(context, context.getWeakRefFactory(), new TruffleWeakReference<>(referent));
         assert isJSWeakRef(obj);
         // Used for KeepDuringJob(target) in the specification
         context.getJSAgent().addWeakRefTargetToSet(referent);
         return obj;
     }
 
-    public static WeakReference<?> getInternalWeakRef(DynamicObject obj) {
+    public static TruffleWeakReference<?> getInternalWeakRef(DynamicObject obj) {
         assert isJSWeakRef(obj);
-        return (WeakReference<?>) WEAKREF_PROPERTY.get(obj, isJSWeakRef(obj));
+        return (TruffleWeakReference<?>) WEAKREF_PROPERTY.get(obj, isJSWeakRef(obj));
     }
 
     @Override
@@ -135,5 +135,13 @@ public final class JSWeakRef extends JSBuiltinObject implements JSConstructorFac
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getWeakRefPrototype();
+    }
+
+    public static final class TruffleWeakReference<T> extends WeakReference<T> {
+
+        public TruffleWeakReference(T t) {
+            super(t);
+        }
+
     }
 }
