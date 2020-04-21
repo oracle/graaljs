@@ -1642,6 +1642,86 @@
     "status" : "FAIL",
     "comment" : "new failures after 2020-03 update"
   }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/signDisplay-currency-de-DE.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2585"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/signDisplay-currency-en-US.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2585"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/signDisplay-currency-ja-JP.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2585"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/signDisplay-currency-ko-KR.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2585"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/signDisplay-currency-zh-TW.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2585"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/signDisplay-de-DE.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2585"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/signDisplay-en-US.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2585"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/signDisplay-ja-JP.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2585"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/signDisplay-ko-KR.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2585"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/signDisplay-zh-TW.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2585"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/signDisplay-currency-de-DE.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2585"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/signDisplay-currency-en-US.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2585"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/signDisplay-currency-ja-JP.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2585"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/signDisplay-currency-ko-KR.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2585"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/signDisplay-currency-zh-TW.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2585"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/signDisplay-de-DE.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2585"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/signDisplay-en-US.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2585"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/signDisplay-ja-JP.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2585"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/signDisplay-ko-KR.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2585"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/signDisplay-zh-TW.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/2585"
+  }, {
     "filePath" : "language/expressions/arrow-function/scope-param-rest-elem-var-close.js",
     "status" : "FAIL"
   }, {

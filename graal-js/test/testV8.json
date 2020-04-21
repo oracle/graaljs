@@ -82,59 +82,21 @@
     "status" : "FAIL",
     "comment" : "Contains a test for a bug in ICU4C (that is not in ICU4J)"
   }, {
-    "filePath" : "intl/number-format/check-minimum-fraction-digits.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "intl/number-format/check-numbering-system.js",
     "status" : "FAIL",
     "comment" : "Off-spec, should be fixed by a next TestV8 update, see https://bugs.chromium.org/p/v8/issues/detail?id=9887"
   }, {
-    "filePath" : "intl/number-format/format-currency.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "intl/number-format/unified/compact-display.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "intl/number-format/unified/constructor-order.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "intl/number-format/unified/currency-display.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "intl/number-format/unified/currency-sign.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
     "filePath" : "intl/number-format/unified/notation-engineering-formatToParts.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+    "comment" : "Off-spec, should be fixed by a next TestV8 update, see https://bugs.chromium.org/p/v8/issues/detail?id=9876"
   }, {
     "filePath" : "intl/number-format/unified/notation-scientific-formatToParts.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "intl/number-format/unified/notation.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "intl/number-format/unified/percent.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+    "comment" : "Off-spec, should be fixed by a next TestV8 update, see https://bugs.chromium.org/p/v8/issues/detail?id=9876"
   }, {
     "filePath" : "intl/number-format/unified/sign-display.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "intl/number-format/unified/style-unit.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "intl/number-format/unified/unit-display.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+    "comment" : "Off-spec, expects -0 to be formatted as -0 when signDisplay is exceptZero"
   }, {
     "filePath" : "intl/number-format/wont-crash-by-1-or-false.js",
     "status" : "FAIL",
@@ -152,23 +114,11 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
   }, {
-    "filePath" : "intl/regress-8866.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
     "filePath" : "intl/regress-9312.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
-    "filePath" : "intl/regress-9408.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
     "filePath" : "intl/regress-9464.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "intl/regress-9475.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
@@ -177,10 +127,6 @@
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
     "filePath" : "intl/regress-9812.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "intl/regress-992694.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
@@ -1017,10 +963,6 @@
     "filePath" : "mjsunit/ignition/regress-599001-verifyheap.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) high memory usage that might influence other tests"
-  }, {
-    "filePath" : "mjsunit/intl-numberformat-formattoparts.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
     "filePath" : "mjsunit/invalid-lhs.js",
     "status" : "FAIL"
