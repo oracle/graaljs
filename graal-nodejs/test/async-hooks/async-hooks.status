@@ -11,6 +11,8 @@ prefix async-hooks
 test-timers.setInterval: FAIL
 
 [$system==win32]
+# requires a "sleep" executable, which is not available in our CI
+test-graph.pipe: FAIL,PASS
 
 [$system==linux]
 
