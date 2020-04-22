@@ -116,22 +116,18 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
                     throwBranch.enter();
                     IteratorRecord iteratorRecord = getIteratorRecord(frame);
                     DynamicObject iterator = iteratorRecord.getIterator();
-                    Object returnMethod = getReturnNode.executeWithTarget(frame, iterator);
-                    if (returnMethod != Undefined.instance) {
-                        try {
+                    try {
+                        Object returnMethod = getReturnNode.executeWithTarget(frame, iterator);
+                        if (returnMethod != Undefined.instance) {
                             innerResult = getReturnMethodCallNode().executeCall(JSArguments.createZeroArg(iterator, returnMethod));
-                        } catch (Exception ex) {
-                            // re-throw outer exception
-                            throw e;
+                            completion = Completion.forThrow(e);
+                            break await;
                         }
-                        completion = Completion.forThrow(e);
-                        break await;
-                    } else {
-                        throw e;
+                    } catch (Exception ex) {
+                        // re-throw outer exception below
                     }
-                } else {
-                    throw e;
                 }
+                throw e;
             }
             IteratorRecord iteratorRecord = getIteratorRecord(frame);
             if (iteratorRecord.isDone()) {

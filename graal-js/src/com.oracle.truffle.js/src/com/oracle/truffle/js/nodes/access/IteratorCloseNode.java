@@ -91,13 +91,13 @@ public class IteratorCloseNode extends JavaScriptBaseNode {
     }
 
     public final void executeAbrupt(DynamicObject iterator) {
-        Object returnMethod = getReturnNode.executeWithTarget(iterator);
-        if (returnMethod != Undefined.instance) {
-            try {
+        try {
+            Object returnMethod = getReturnNode.executeWithTarget(iterator);
+            if (returnMethod != Undefined.instance) {
                 methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
-            } catch (Exception e) {
-                // re-throw outer exception, see 7.4.6 IteratorClose
             }
+        } catch (Exception e) {
+            // re-throw outer exception, see 7.4.6 IteratorClose
         }
     }
 }

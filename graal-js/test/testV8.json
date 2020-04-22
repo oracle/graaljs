@@ -433,10 +433,6 @@
     "filePath" : "mjsunit/es6/iteration-syntax.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/iterator-close.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
     "filePath" : "mjsunit/es6/math-log2-log10.js",
     "status" : "PASS",
     "statusOverrides" : {
