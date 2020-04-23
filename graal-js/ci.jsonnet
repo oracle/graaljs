@@ -46,7 +46,7 @@ local common = import '../common.jsonnet';
 
   local graalTip = {
     setup+: [
-      ['git', 'clone', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/graalvm/graal.git'], '../../graal'],
+      ['git', 'clone', '--branch', 'release/graal-vm/20.1', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/graalvm/graal.git'], '../../graal'],
       ['mx', 'sversions'],
     ],
     timelimit: '30:00',
