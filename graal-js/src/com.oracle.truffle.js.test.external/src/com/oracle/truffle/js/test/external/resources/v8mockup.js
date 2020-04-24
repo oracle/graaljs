@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
@@ -946,4 +946,40 @@ function v8RegexpHasBytecode(regexp, is_latin1) {
 
 function v8RegexpHasNativeCode(regexp, is_latin1) {
     return v8IgnoreResult;
+}
+
+// new mockups from 2020-04-24
+function v8NewRegExpWithBacktrackLimit(regex, flags, limit) {
+    return new RegExp(regex, flags); //limit missing
+}
+
+function v8WasmTierDownModule() {
+    //TODO
+}
+
+function v8WasmTierUpModule() {
+    //TODO
+}
+
+function v8IsBeingInterpreted() {
+	return v8IgnoreResult;
+}
+
+function v8ArrayBufferMaxByteLength() {
+    return 0x3ffffff;
+}
+
+function v8TypedArrayMaxLength() {
+    return 0x3ffffff;
+}
+
+function v8MinSMI() {
+    return -2147483648;
+}
+
+function v8ReferenceEqual(a, b) {
+    return a === b; //TODO do an actual reference check here
+}
+
+function v8CollectTypeProfile() {
 }

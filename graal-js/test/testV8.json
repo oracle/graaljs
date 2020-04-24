@@ -27,13 +27,9 @@
     "filePath" : "intl/break-iterator/zh-break.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "intl/date-format/check-calendar.js",
+    "filePath" : "intl/date-format/date_style_time_style_hour_cycle.js",
     "status" : "FAIL",
-    "comment" : "Off-spec, should be fixed by a next TestV8 update, see https://bugs.chromium.org/p/v8/issues/detail?id=9887"
-  }, {
-    "filePath" : "intl/date-format/check-numbering-system.js",
-    "status" : "FAIL",
-    "comment" : "Off-spec, should be fixed by a next TestV8 update, see https://bugs.chromium.org/p/v8/issues/detail?id=9887"
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "intl/date-format/en-format-range-to-parts.js",
     "status" : "FAIL",
@@ -47,8 +43,20 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
   }, {
+    "filePath" : "intl/date-format/format_range_hour_cycle.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
+    "filePath" : "intl/date-format/hour_cycle.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
     "filePath" : "intl/date-format/resolved-options.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "intl/date-format/time_style_hour_cycle.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "intl/date-format/timezone-name.js",
     "status" : "FAIL"
@@ -82,18 +90,6 @@
     "status" : "FAIL",
     "comment" : "Contains a test for a bug in ICU4C (that is not in ICU4J)"
   }, {
-    "filePath" : "intl/number-format/check-numbering-system.js",
-    "status" : "FAIL",
-    "comment" : "Off-spec, should be fixed by a next TestV8 update, see https://bugs.chromium.org/p/v8/issues/detail?id=9887"
-  }, {
-    "filePath" : "intl/number-format/unified/notation-engineering-formatToParts.js",
-    "status" : "FAIL",
-    "comment" : "Off-spec, should be fixed by a next TestV8 update, see https://bugs.chromium.org/p/v8/issues/detail?id=9876"
-  }, {
-    "filePath" : "intl/number-format/unified/notation-scientific-formatToParts.js",
-    "status" : "FAIL",
-    "comment" : "Off-spec, should be fixed by a next TestV8 update, see https://bugs.chromium.org/p/v8/issues/detail?id=9876"
-  }, {
     "filePath" : "intl/number-format/unified/sign-display.js",
     "status" : "FAIL",
     "comment" : "Off-spec, expects -0 to be formatted as -0 when signDisplay is exceptZero"
@@ -105,6 +101,22 @@
     "filePath" : "intl/overrides/caching.js",
     "status" : "SKIP",
     "comment" : "suspicious performance test"
+  }, {
+    "filePath" : "intl/regress-10248.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
+    "filePath" : "intl/regress-1030160.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
+    "filePath" : "intl/regress-10437.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
+    "filePath" : "intl/regress-10438.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "intl/regress-527926.js",
     "status" : "FAIL",
@@ -130,9 +142,9 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
-    "filePath" : "intl/relative-time-format/check-numbering-system.js",
+    "filePath" : "intl/regress-9912.js",
     "status" : "FAIL",
-    "comment" : "Off-spec, should be fixed by a next TestV8 update, see https://bugs.chromium.org/p/v8/issues/detail?id=9887"
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "intl/relative-time-format/default-locale-fr-CA.js",
     "status" : "FAIL",
@@ -183,9 +195,6 @@
     "filePath" : "mjsunit/asm/global-imports.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/asm/regress-674089.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/async-hooks/api-methods.js",
     "status" : "FAIL",
@@ -249,6 +258,10 @@
     "filePath" : "mjsunit/bugs/bug-proto.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/call-intrinsic-fuzzing.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
     "filePath" : "mjsunit/code-coverage-ad-hoc.js",
     "status" : "SKIP",
     "comment" : "code coverage support (GR-6539)"
@@ -281,6 +294,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
+    "filePath" : "mjsunit/compiler/regress-1065737.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
     "filePath" : "mjsunit/compiler/regress-445907.js",
     "status" : "SKIP",
     "runInIsolation" : true,
@@ -306,9 +323,17 @@
     "runInIsolation" : true,
     "comment" : "memory intensive test"
   }, {
+    "filePath" : "mjsunit/compiler/typed-array-constructor.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
     "filePath" : "mjsunit/console.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+  }, {
+    "filePath" : "mjsunit/cross-realm-builtin-call.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/cross-realm-filtering.js",
     "status" : "FAIL"
@@ -405,13 +430,14 @@
     "filePath" : "mjsunit/es6/classes-subclass-builtins.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/es6/classes.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
     "filePath" : "mjsunit/es6/computed-property-names-classes.js",
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/computed-property-names-super.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/es6/default-parameters-destructuring.js",
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/default-parameters.js",
@@ -425,10 +451,6 @@
   }, {
     "filePath" : "mjsunit/es6/generator-destructuring.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/es6/global-proto-proxy.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
     "filePath" : "mjsunit/es6/iteration-syntax.js",
     "status" : "FAIL"
@@ -482,6 +504,10 @@
     "status" : "FAIL",
     "comment" : "outdated test; proxy constructor now accepts revoked proxy arguments"
   }, {
+    "filePath" : "mjsunit/es6/reflect-construct.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
     "filePath" : "mjsunit/es6/regress/regress-2322.js",
     "status" : "FAIL"
   }, {
@@ -517,9 +543,25 @@
     "filePath" : "mjsunit/es6/super.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/es6/throw-type-error-function-restrictions.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
+    "filePath" : "mjsunit/es6/typedarray-construct-by-array-like-prototype-element-added.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
+    "filePath" : "mjsunit/es6/typedarray-construct-by-array-like.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
     "filePath" : "mjsunit/es6/typedarray-construct-offset-not-smi.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/es6/typedarray-detached.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/es6/typedarray-every.js",
     "status" : "FAIL"
@@ -582,6 +624,10 @@
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
   }, {
+    "filePath" : "mjsunit/global-load-with-proxy.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
     "filePath" : "mjsunit/global-proxy-globalThis.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
@@ -589,6 +635,10 @@
     "filePath" : "mjsunit/global-proxy-this.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+  }, {
+    "filePath" : "mjsunit/harmony/aggregate-error.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/harmony/async-for-of-non-iterable.js",
     "status" : "FAIL",
@@ -617,6 +667,10 @@
     "filePath" : "mjsunit/harmony/import-from-fetch-errored.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/logical-assignment.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-15-top-level-await.mjs",
     "status" : "FAIL",
@@ -739,6 +793,10 @@
     "status" : "PASS",
     "comment" : "--harmony-private-fields"
   }, {
+    "filePath" : "mjsunit/harmony/private-methods-empty-inner.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
     "filePath" : "mjsunit/harmony/private-methods.js",
     "ecmaVersion" : {
       "minVersion" : 12
@@ -778,6 +836,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
+    "filePath" : "mjsunit/harmony/regexp-named-captures.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
     "filePath" : "mjsunit/harmony/regexp-property-emoji-flag-sequence-generated.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
@@ -814,6 +876,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
+    "filePath" : "mjsunit/harmony/sharedarraybuffer.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
     "filePath" : "mjsunit/harmony/static-private-methods.js",
     "ecmaVersion" : {
       "minVersion" : 12
@@ -821,17 +887,17 @@
     "status" : "PASS",
     "comment" : "--harmony-private-methods"
   }, {
-    "filePath" : "mjsunit/harmony/string-matchAll.js",
+    "filePath" : "mjsunit/harmony/string-replaceAll.js",
     "status" : "FAIL",
-    "comment" : "Off-spec: String.prototype.matchAll is used with a regular expression without 'g' flag."
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
+    "filePath" : "mjsunit/harmony/weakrefs/basics-cleanupsome.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/harmony/weakrefs/basics.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/harmony/weakrefs/cleanup-doesnt-iterate-all-holdings.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
   }, {
     "filePath" : "mjsunit/harmony/weakrefs/cleanup-from-different-realm.js",
     "status" : "FAIL",
@@ -849,6 +915,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
+    "filePath" : "mjsunit/harmony/weakrefs/cleanup.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
     "filePath" : "mjsunit/harmony/weakrefs/cleanupsome-2.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
@@ -857,29 +927,37 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
   }, {
+    "filePath" : "mjsunit/harmony/weakrefs/cleanupsome-optional.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
     "filePath" : "mjsunit/harmony/weakrefs/cleanupsome.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
   }, {
-    "filePath" : "mjsunit/harmony/weakrefs/finalization-group-keeps-holdings-alive.js",
+    "filePath" : "mjsunit/harmony/weakrefs/clearkeptobjects-on-quit.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
-    "filePath" : "mjsunit/harmony/weakrefs/finalizationgroup-and-weakref.js",
+    "filePath" : "mjsunit/harmony/weakrefs/finalizationregistry-independent-lifetime.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
-    "filePath" : "mjsunit/harmony/weakrefs/finalizationgroup-scheduled-for-cleanup-multiple-times.js",
+    "filePath" : "mjsunit/harmony/weakrefs/finalizationregistry-keeps-holdings-alive.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
-    "filePath" : "mjsunit/harmony/weakrefs/iterating-in-cleanup.js",
+    "filePath" : "mjsunit/harmony/weakrefs/finalizationregistry-scheduled-for-cleanup-multiple-times.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/harmony/weakrefs/multiple-dirty-finalization-groups.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
+  }, {
+    "filePath" : "mjsunit/harmony/weakrefs/reentrant-gc-from-cleanup.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/harmony/weakrefs/two-weakrefs.js",
     "status" : "FAIL",
@@ -901,9 +979,9 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
   }, {
-    "filePath" : "mjsunit/harmony/weakrefs/unregister-inside-cleanup1.js",
+    "filePath" : "mjsunit/harmony/weakrefs/unregister-inside-cleanup.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/harmony/weakrefs/unregister-inside-cleanup2.js",
     "status" : "FAIL",
@@ -912,14 +990,6 @@
     "filePath" : "mjsunit/harmony/weakrefs/unregister-inside-cleanup3.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "mjsunit/harmony/weakrefs/unregister-inside-cleanup4.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "mjsunit/harmony/weakrefs/unregister-inside-cleanup5.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
     "filePath" : "mjsunit/harmony/weakrefs/unregister-many.js",
     "status" : "FAIL",
@@ -932,6 +1002,10 @@
     "filePath" : "mjsunit/harmony/weakrefs/weak-cell-basics.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+  }, {
+    "filePath" : "mjsunit/harmony/weakrefs/weak-unregistertoken.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/harmony/weakrefs/weakref-creation-keeps-alive.js",
     "status" : "FAIL",
@@ -1040,6 +1114,10 @@
     "filePath" : "mjsunit/realm-property-access.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/regexp-backtrack-limit.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
     "filePath" : "mjsunit/regexp-modifiers-autogenerated-i18n.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
@@ -1060,10 +1138,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "mjsunit/regexp-override-symbol-match-all.js",
-    "status" : "FAIL",
-    "comment" : "Off-spec: String.prototype.matchAll is used with a regular expression without 'g' flag."
-  }, {
     "filePath" : "mjsunit/regexp-stack-overflow.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
@@ -1076,17 +1150,9 @@
     "status" : "SKIP",
     "comment" : "Tests specificities of V8's RegExp implementation (the use of different tiers)."
   }, {
-    "filePath" : "mjsunit/regress-966460.js",
+    "filePath" : "mjsunit/regress-1065094.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "mjsunit/regress-v8-8445-2.js",
-    "status" : "FAIL",
-    "comment" : "Off-spec: String.prototype.matchAll is used with a regular expression without 'g' flag."
-  }, {
-    "filePath" : "mjsunit/regress-v8-8445.js",
-    "status" : "FAIL",
-    "comment" : "Off-spec: String.prototype.matchAll is used with a regular expression without 'g' flag."
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/regress/cross-script-vars.js",
     "status" : "FAIL"
@@ -1110,12 +1176,25 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
+    "filePath" : "mjsunit/regress/regress-1016703.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-1018871.js",
+    "status" : "SKIP",
+    "comment" : "failing in NOIC mode (GR-22824)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-1033966.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-1034394.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
     "filePath" : "mjsunit/regress/regress-105.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-1119.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/regress/regress-1129.js",
     "status" : "SKIP",
@@ -1159,8 +1238,9 @@
     "filePath" : "mjsunit/regress/regress-2989.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/regress/regress-319722-ArrayBuffer.js",
-    "status" : "FAIL"
+    "filePath" : "mjsunit/regress/regress-319722-TypedArrays.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/regress/regress-336820.js",
     "runInIsolation" : true,
@@ -1261,7 +1341,7 @@
   }, {
     "filePath" : "mjsunit/regress/regress-575364.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/regress-5888.js",
     "status" : "FAIL"
@@ -1369,6 +1449,10 @@
     },
     "comment" : "test with (expected) stack overflows that may influence other tests, disabled on SVM (GR-21828)"
   }, {
+    "filePath" : "mjsunit/regress/regress-7773.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
     "filePath" : "mjsunit/regress/regress-779407.js",
     "runInIsolation" : true,
     "comment" : "memory intensive test"
@@ -1469,6 +1553,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
   }, {
+    "filePath" : "mjsunit/regress/regress-9209.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
     "filePath" : "mjsunit/regress/regress-923723.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -1503,6 +1591,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
+    "filePath" : "mjsunit/regress/regress-966460.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
     "filePath" : "mjsunit/regress/regress-982702.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
@@ -1511,9 +1603,41 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
+    "filePath" : "mjsunit/regress/regress-chromium-1040238.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
     "filePath" : "mjsunit/regress/regress-crbug-100859.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1015945.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1038178.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1041232.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1047368.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1053939-1.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1053939.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1057653.js",
+    "status" : "SKIP",
+    "comment" : "failing because of infinite loop"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-109362.js",
     "status" : "FAIL"
@@ -1521,10 +1645,6 @@
     "filePath" : "mjsunit/regress/regress-crbug-150545.js",
     "status" : "SKIP",
     "comment" : "infinite loops caused by not compiling V8 style"
-  }, {
-    "filePath" : "mjsunit/regress/regress-crbug-160010.js",
-    "runInIsolation" : true,
-    "comment" : "test with (expected) high memory usage that might influence other tests"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-352586.js",
     "runInIsolation" : true,
@@ -1701,6 +1821,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
+    "filePath" : "mjsunit/regress/regress-crbug-806200.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
     "filePath" : "mjsunit/regress/regress-crbug-808192.js",
     "status" : "FAIL",
     "statusOverrides" : {
@@ -1740,10 +1864,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "mjsunit/regress/regress-crbug-899464.js",
-    "status" : "FAIL",
-    "comment" : "Off-spec: String.prototype.matchAll is used with a regular expression without 'g' flag."
-  }, {
     "filePath" : "mjsunit/regress/regress-crbug-902610.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
@@ -1757,10 +1877,6 @@
     "comment" : "Function calls that use spread operator do not have the number of arguments limited by a constant but by the stack-size."
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-909614.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-crbug-913212.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
@@ -1871,17 +1987,97 @@
   }, {
     "filePath" : "mjsunit/regress/regress-wasm-crbug-599413.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/regress-wasm-crbug-618602.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/regress_967104.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
     "filePath" : "mjsunit/regress/wasm/loop-stack-check.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1010272.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-10126-streaming.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-10126.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1014798.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1016515.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1026680.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1027410.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1029642.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-10309.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1032753.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1033948.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1045225.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1045737.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1046472.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1048241.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1051912.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1054466.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1055692.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1065599.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1067621.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
   }, {
@@ -2110,8 +2306,8 @@
     "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-769846.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-775366.js",
     "status" : "SKIP",
@@ -2134,10 +2330,6 @@
     "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-784050.js",
-    "status" : "SKIP",
-    "comment" : "WASM (GR-6494)"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-789952.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
   }, {
@@ -2450,8 +2642,8 @@
     "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-985154.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-crbug-1002388.js",
     "status" : "SKIP",
@@ -2462,6 +2654,10 @@
     "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-crbug-1007608.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-crbug-1057094.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
   }, {
@@ -2521,13 +2717,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "mjsunit/super_hole_check.mjs",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "uses public class fields"
-  }, {
     "filePath" : "mjsunit/switch.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
@@ -2552,6 +2741,18 @@
     "filePath" : "mjsunit/tools/dumpcpp.js",
     "status" : "SKIP",
     "comment" : "UnixCppEntriesProvider"
+  }, {
+    "filePath" : "mjsunit/tools/foozzie.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
+    "filePath" : "mjsunit/tools/foozzie_archs.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
+    "filePath" : "mjsunit/tools/foozzie_webassembly.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/tools/profile.js",
     "status" : "SKIP"
@@ -2715,6 +2916,10 @@
     "filePath" : "mjsunit/wasm/async-compile.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/wasm/atomics-non-shared.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/wasm/atomics-stress.js",
     "status" : "SKIP",
@@ -2952,6 +3157,10 @@
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
   }, {
+    "filePath" : "mjsunit/wasm/futex-interpreter.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
     "filePath" : "mjsunit/wasm/futex.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
@@ -2984,6 +3193,10 @@
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
   }, {
+    "filePath" : "mjsunit/wasm/grow-huge-memory.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
     "filePath" : "mjsunit/wasm/grow-memory-detaching.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
@@ -3011,6 +3224,10 @@
     "filePath" : "mjsunit/wasm/huge-memory.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/wasm/huge-typedarray.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/wasm/import-function.js",
     "status" : "SKIP",
@@ -3084,6 +3301,10 @@
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
   }, {
+    "filePath" : "mjsunit/wasm/liftoff-simd-params.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
     "filePath" : "mjsunit/wasm/liftoff-trap-handler.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
@@ -3128,6 +3349,10 @@
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
   }, {
+    "filePath" : "mjsunit/wasm/multi-value-interpreter.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
     "filePath" : "mjsunit/wasm/multi-value.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
@@ -3143,6 +3368,14 @@
     "filePath" : "mjsunit/wasm/names.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/wasm/nullref-interpreter.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
+    "filePath" : "mjsunit/wasm/nullref.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/wasm/origin-trial-flags.js",
     "status" : "SKIP",
@@ -3203,6 +3436,10 @@
     "filePath" : "mjsunit/wasm/shared-memory.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/wasm/simd-call.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/wasm/stack.js",
     "status" : "SKIP",
@@ -3283,6 +3520,10 @@
     "filePath" : "mjsunit/wasm/test-wasm-module-builder.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/wasm/tier-down-to-liftoff.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/wasm/tier-up-testing-flag.js",
     "status" : "SKIP",
