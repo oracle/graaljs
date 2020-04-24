@@ -161,21 +161,11 @@ public abstract class JSFunctionFactory {
     }
 
     private static final class Intrinsic extends JSFunctionFactory {
-        private final boolean isStrict;
-        private final boolean isConstructor;
-        private final boolean isGenerator;
-        private final boolean isBound;
-        private final boolean isAsync;
         private final InitFunctionNode initFunctionNode;
 
         protected Intrinsic(JSContext context, JSObjectFactory objectFactory, boolean isStrict, boolean isConstructor, boolean isGenerator,
-                        boolean isBound, boolean isAsync) {
+                        boolean isBound, @SuppressWarnings("unused") boolean isAsync) {
             super(context, objectFactory);
-            this.isStrict = isStrict;
-            this.isConstructor = isConstructor;
-            this.isGenerator = isGenerator;
-            this.isBound = isBound;
-            this.isAsync = isAsync;
             this.initFunctionNode = context.adoptNode(InitFunctionNode.create(context, isStrict, isConstructor, isBound, isGenerator, false));
         }
 
