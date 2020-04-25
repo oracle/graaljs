@@ -1176,10 +1176,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
-    "filePath" : "mjsunit/regress/regress-1018871.js",
-    "status" : "SKIP",
-    "comment" : "failing in NOIC mode (GR-22824)"
-  }, {
     "filePath" : "mjsunit/regress/regress-1033966.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
@@ -1598,10 +1594,6 @@
     "filePath" : "mjsunit/regress/regress-9832.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-chromium-1040238.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-100859.js",
     "runInIsolation" : true,

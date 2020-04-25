@@ -111,6 +111,7 @@ import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResultNode;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexResultAccessor;
@@ -1119,15 +1120,27 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return GetPropertyFromJSObjectNodeGen.create(root);
         }
 
-        @Specialization(limit = "2", guards = {"cachedClass == getJSClass(object)"})
+        @Specialization(limit = "2", guards = {"!isGlobal()", "cachedClass == getJSClass(object)"})
         protected Object doJSObjectCached(DynamicObject object, Object receiver, Object defaultValue, PropertyGetNode root,
                         @Cached("getJSClass(object)") JSClass cachedClass) {
             return getPropertyFromJSObjectIntl(cachedClass, object, receiver, defaultValue, root);
         }
 
-        @Specialization(replaces = "doJSObjectCached")
+        @Specialization(replaces = "doJSObjectCached", guards = {"!isGlobal()"})
         protected Object doJSObjectDirect(DynamicObject object, Object receiver, Object defaultValue, PropertyGetNode root) {
             return getPropertyFromJSObjectIntl(JSObject.getJSClass(object), object, receiver, defaultValue, root);
+        }
+
+        @Specialization(guards = {"isGlobal()"})
+        protected Object doRequired(DynamicObject object, Object receiver, Object defaultValue, PropertyGetNode root,
+                        @Cached("create()") JSHasPropertyNode hasPropertyNode,
+                        @Cached("create()") JSClassProfile classProfile) {
+            if (hasPropertyNode.executeBoolean(object, key)) {
+                return getPropertyFromJSObjectIntl(classProfile.profile(JSObject.getJSClass(object)), object, receiver, defaultValue, root);
+            } else {
+                fallbackBranch.enter();
+                return getNoSuchProperty(object, defaultValue, root);
+            }
         }
 
         protected JSClass getJSClass(DynamicObject object) {
