@@ -67,6 +67,7 @@ import com.oracle.truffle.js.nodes.binary.InstanceofNodeGen.IsBoundFunctionCache
 import com.oracle.truffle.js.nodes.binary.InstanceofNodeGen.OrdinaryHasInstanceNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -151,12 +152,42 @@ public abstract class InstanceofNode extends JSBinaryNode {
     }
 
     @Specialization(guards = {"isNullOrUndefined(target)"})
-    protected boolean doInvalidTarget(@SuppressWarnings("unused") Object obj, Object target) {
+    protected boolean doNullOrUndefinedTarget(@SuppressWarnings("unused") Object obj, DynamicObject target) {
         throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
     }
 
-    @Specialization(guards = {"!isJSType(target)"}, limit = "3")
-    protected boolean doForeignTarget(@SuppressWarnings("unused") Object instance, Object target,
+    @Specialization()
+    protected boolean doStringTarget(@SuppressWarnings("unused") Object obj, String target) {
+        throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
+    }
+
+    @Specialization()
+    protected boolean doDoubleTarget(@SuppressWarnings("unused") Object obj, double target) {
+        throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
+    }
+
+    @Specialization()
+    protected boolean doBooleanTarget(@SuppressWarnings("unused") Object obj, boolean target) {
+        throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
+    }
+
+    @Specialization()
+    protected boolean doBigIntTarget(@SuppressWarnings("unused") Object obj, BigInt target) {
+        throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
+    }
+
+    @Specialization()
+    protected boolean doSymbolTarget(@SuppressWarnings("unused") Object obj, Symbol target) {
+        throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
+    }
+
+    @Specialization(guards = {"isForeignObject(target)", "isJSType(instance)"})
+    protected boolean doForeignTargetJSType(@SuppressWarnings("unused") DynamicObject instance, @SuppressWarnings("unused") Object target) {
+        return false;
+    }
+
+    @Specialization(guards = {"isForeignObject(target)", "!isJSType(instance)"}, limit = "3")
+    protected boolean doForeignTargetOther(Object instance, Object target,
                     @CachedLibrary("target") InteropLibrary interop) {
         try {
             return interop.isMetaInstance(target, instance);
