@@ -966,11 +966,11 @@ function v8IsBeingInterpreted() {
 }
 
 function v8ArrayBufferMaxByteLength() {
-    return 0x3ffffff;
+    return 0x3fff_ffff;
 }
 
 function v8TypedArrayMaxLength() {
-    return 0x3ffffff;
+    return 0x3fff_ffff;
 }
 
 function v8MinSMI() {

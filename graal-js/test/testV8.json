@@ -323,10 +323,6 @@
     "runInIsolation" : true,
     "comment" : "memory intensive test"
   }, {
-    "filePath" : "mjsunit/compiler/typed-array-constructor.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
-  }, {
     "filePath" : "mjsunit/console.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
@@ -543,21 +539,9 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
-    "filePath" : "mjsunit/es6/typedarray-construct-by-array-like-prototype-element-added.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
-  }, {
-    "filePath" : "mjsunit/es6/typedarray-construct-by-array-like.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
-  }, {
     "filePath" : "mjsunit/es6/typedarray-construct-offset-not-smi.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/es6/typedarray-detached.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/es6/typedarray-every.js",
     "status" : "FAIL"
@@ -871,10 +855,6 @@
     "filePath" : "mjsunit/harmony/sharedarraybuffer-worker-gc-stress.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "mjsunit/harmony/sharedarraybuffer.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/harmony/static-private-methods.js",
     "ecmaVersion" : {
@@ -1229,10 +1209,6 @@
   }, {
     "filePath" : "mjsunit/regress/regress-2989.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/regress/regress-319722-TypedArrays.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/regress/regress-336820.js",
     "runInIsolation" : true,
