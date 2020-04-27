@@ -12,6 +12,132 @@
     "status" : "FAIL",
     "comment" : "Incorrect test, see https://github.com/tc39/test262/pull/2551#issuecomment-609595231"
   }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-no-operation.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-on-add.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-on-and.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-on-compareExchange.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-on-exchange.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-on-or.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-on-store.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-on-sub.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-on-xor.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-no-operation.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-on-add.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-on-and.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-on-compareExchange.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-on-exchange.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-on-or.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-on-store.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-on-sub.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-on-xor.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Alphabetic.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."

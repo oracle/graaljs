@@ -33,11 +33,12 @@ import mx_graal_nodejs_benchmark
 from mx import BinarySuite, TimeStampFile
 from mx_gate import Task
 from argparse import ArgumentParser
-from os.path import exists, join, isdir
+from os.path import exists, join, isdir, pathsep, sep
 
 _suite = mx.suite('graal-nodejs')
-_currentOs = mx.get_os()
-_currentArch = mx.get_arch()
+_current_os = mx.get_os()
+_is_windows = _current_os == 'windows'
+_current_arch = mx.get_arch()
 _config_files = [join(_suite.dir, f) for f in ('configure', 'configure.py')]
 _generated_config_files = [join(_suite.dir, f) for f in ('config.gypi', 'config.status', 'configure.pyc', 'config.mk', 'icu_config.gypi')]
 
@@ -45,6 +46,7 @@ class GraalNodeJsTags:
     allTests = 'all'
     unitTests = 'unit'
     jniProfilerTests = 'jniprofiler'
+    windows = 'windows'  # we cannot run `node-gyp` in our CI unless we install the "Visual Studio Build Tools" (using the "Visual C++ build tools" workload)
 
 def _graal_nodejs_post_gate_runner(args, tasks):
     _setEnvVar('NODE_INTERNAL_ERROR_CHECK', 'true')
@@ -60,17 +62,17 @@ def _graal_nodejs_post_gate_runner(args, tasks):
             npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
             npm(['--scripts-prepend-node-path=auto', 'test'] + commonArgs, cwd=unitTestDir)
 
-    with Task('TestNpm', tasks, tags=[GraalNodeJsTags.allTests]) as t:
+    with Task('TestNpm', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.windows]) as t:
         if t:
             tmpdir = tempfile.mkdtemp()
             try:
                 npm(['init', '-y'], cwd=tmpdir)
-                npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir, '--build-from-source', 'microtime'], cwd=tmpdir)
+                npm(['install', '--scripts-prepend-node-path=true', 'microtime'], cwd=tmpdir)
                 node(['-e', 'console.log(require("microtime").now());'], cwd=tmpdir)
             finally:
                 mx.rmtree(tmpdir, ignore_errors=True)
 
-    with Task('TestNpx', tasks, tags=[GraalNodeJsTags.allTests]) as t:
+    with Task('TestNpx', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.windows]) as t:
         if t:
             npx(['cowsay', 'GraalVM rules!'])
 
@@ -85,7 +87,7 @@ def _graal_nodejs_post_gate_runner(args, tasks):
             npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
             node(['-profile-native-boundary', 'test.js'] + commonArgs, cwd=unitTestDir)
 
-    with Task('TestNodeInstrument', tasks, tags=[GraalNodeJsTags.allTests]) as t:
+    with Task('TestNodeInstrument', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.windows]) as t:
         if t:
             testnodeInstrument([])
 
@@ -105,7 +107,7 @@ def python_cmd():
             return False
 
     def _get_python_cmd():
-        if _currentOs == 'windows':
+        if _is_windows:
             if sys.version_info[0] >= 3:
                 for _cmd in ['py', '-2'], ['python2']:
                     if _can_exec(_cmd):
@@ -146,7 +148,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         pre_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=False)
 
         build_env = os.environ.copy()
-        _setEnvVar('PATH', '%s%s%s' % (join(_suite.mxDir, 'python2'), os.pathsep, build_env['PATH']), build_env)
+        _setEnvVar('PATH', '%s%s%s' % (join(_suite.mxDir, 'python2'), pathsep, build_env['PATH']), build_env)
 
         debug = ['--debug'] if self._debug_mode else []
         shared_library = ['--enable-shared-library'] if hasattr(self.args, 'sharedlibrary') and self.args.sharedlibrary else []
@@ -157,17 +159,9 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         # If we don't do this, the `Makefile` always considers `config.gypi` out of date, triggering a second, unnecessary configure.
         lazy_generator = ['--lazy-generator'] if newest_generated_config_file_ts.isNewerThan(newest_config_file_ts) else []
 
-        if _currentOs == 'windows':
-            devkit_root = build_env.get('DEVKIT_ROOT')
-            if devkit_root is not None:
-                _setEnvVar('GYP_MSVS_OVERRIDE_PATH', devkit_root, build_env)
-                _setEnvVar('GYP_MSVS_VERSION', build_env.get('DEVKIT_VERSION'), build_env)
-                _setEnvVar('PATH', '%s%s%s' % (join(devkit_root, 'VC', 'bin', 'x64'), os.pathsep, build_env['PATH']), build_env)
-                _setEnvVar('WINDOWSSDKDIR', join(devkit_root, '10'), build_env)
-                _setEnvVar('INCLUDE', r'{devkit}\VC\include;{devkit}\VC\atlmfc\include;{devkit}\10\include\shared;{devkit}\10\include\ucrt;{devkit}\10\include\um;{devkit}\10\include\winrt;{prev}'.format(devkit=devkit_root, prev=build_env['INCLUDE']), build_env)
-                _setEnvVar('LIB', r'{devkit}\VC\lib\x64;{devkit}\VC\atlmfc\lib\x64;{devkit}\10\lib\x64;{prev}'.format(devkit=devkit_root, prev=build_env['LIB']), build_env)
-
-            _setEnvVar('PATH', os.pathsep.join([build_env['PATH']] + [mx.library(lib_name).get_path(True) for lib_name in ('NASM', 'NINJA')]), build_env)
+        if _is_windows:
+            processDevkitRoot(env=build_env)
+            _setEnvVar('PATH', pathsep.join([build_env['PATH']] + [mx.library(lib_name).get_path(True) for lib_name in ('NASM', 'NINJA')]), build_env)
             extra_flags = ['--ninja', '--dest-cpu=x64', '--without-etw', '--without-snapshot']
         else:
             extra_flags = []
@@ -181,7 +175,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
                 ] + debug + shared_library + lazy_generator + extra_flags,
                 cwd=_suite.dir, verbose=True, env=build_env)
 
-        if _currentOs == 'windows':
+        if _is_windows:
             verbose = ['-v'] if mx.get_opts().verbose else []
             # The custom env is not used to resolve the location of the executable
             _mxrun([join(mx.library('NINJA').get_path(True), 'ninja.exe')] + verbose + ['-j%d' % self.parallelism, '-C', self._build_dir], env=build_env)
@@ -192,12 +186,12 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         # put headers for native modules into out/headers
         _setEnvVar('HEADERS_ONLY', '1', build_env)
         out = None if mx.get_opts().verbose else open(os.devnull, 'w')
-        _mxrun(python_cmd() + [join('tools', 'install.py'), 'install', join('out', 'headers'), '/'], out=out, env=build_env)
+        _mxrun(python_cmd() + [join('tools', 'install.py'), 'install', join('out', 'headers'), sep], out=out, env=build_env)
 
         post_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=True)
         mx.logv('Newest time-stamp before building: {}\nNewest time-stamp after building: {}\nHas built? {}'.format(pre_ts, post_ts, post_ts.isNewerThan(pre_ts)))
         built = post_ts.isNewerThan(pre_ts)
-        if built and _currentOs == 'darwin':
+        if built and _current_os == 'darwin':
             nodePath = join(self._build_dir, 'node')
             _mxrun(['install_name_tool', '-add_rpath', join(_java_home(), 'jre', 'lib'), '-add_rpath', join(_java_home(), 'lib'), nodePath], verbose=True, env=build_env)
         return built
@@ -207,7 +201,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
 
     def clean(self, forBuild=False):
         if not forBuild:
-            if _currentOs == 'windows':
+            if _is_windows:
                 if exists(self._build_dir):
                     mx.run([join(mx.library('NINJA').extract_path, 'ninja.exe'), '-C', self._build_dir, '-t', 'clean'])
             else:
@@ -339,7 +333,7 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
         macroFiles = [join('tools', 'js2c_macros', 'check_macros.py')]
         # DTrace is disabled explicitly by the --without-dtrace option
         # ETW is enabled by default only on Windows
-        if _currentOs != 'windows':
+        if not _is_windows:
             macroFiles.append(join('tools', 'js2c_macros', 'notrace_macros.py'))
 
         mx.run(python_cmd() + [join('tools', 'expand-js-modules.py'), outputDir] + [join('lib', m) for m in moduleSet] + macroFiles,
@@ -382,37 +376,49 @@ def testnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     mode, vmArgs, progArgs = setupNodeEnvironment(args)
     if mode == 'Debug':
         progArgs += ['-m', 'debug']
-    _setEnvVar('NODE_JVM_OPTIONS', ' '.join(['-ea', '-esa', '-Xrs', '-Xmx8g'] + vmArgs))
+    extraArgs = ['-Xmx8g'] if not any(vmArg.startswith('-Xmx') for vmArg in vmArgs) else []
+    _setEnvVar('NODE_JVM_OPTIONS', ' '.join(['-ea', '-esa', '-Xrs'] + extraArgs + vmArgs))
     _setEnvVar('NODE_STACK_SIZE', '4000000')
     _setEnvVar('NODE_INTERNAL_ERROR_CHECK', 'true')
     return mx.run(python_cmd() + [join('tools', 'test.py')] + progArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=(_suite.dir if cwd is None else cwd))
 
-def setLibraryPath(additionalPath=None):
-    javaHome = _java_home()
-
-    if _currentOs == 'darwin':
-        libraryPath = join(javaHome, 'jre', 'lib')
-    elif _currentOs == 'solaris':
-        libraryPath = join(javaHome, 'jre', 'lib', 'sparcv9')
-    elif _currentOs == 'linux' and _currentArch == 'sparcv9':
-        libraryPath = join(javaHome, 'jre', 'lib', 'sparcv9')
+def setLibraryPath():
+    if _java_compliance() < '9' and _current_os not in ['darwin', 'windows']:
+        # On JDK 8, the server directory containing the JVM library is
+        # in an architecture specific directory (except for Darwin and Windows).
+        library_path = join(_jre_dir(), 'lib', _current_arch)
+    elif _current_os == 'windows':
+        library_path = join(_jre_dir(), 'bin')
     else:
-        libraryPath = join(javaHome, 'jre', 'lib', 'amd64')
-
-    libraryPath += ':' + join(javaHome, 'lib')
-
-    if additionalPath:
-        libraryPath += ':' + additionalPath
+        library_path = join(_jre_dir(), 'lib')
 
     if 'LD_LIBRARY_PATH' in os.environ:
-        libraryPath += ':' + os.environ['LD_LIBRARY_PATH']
+        library_path += pathsep + os.environ['LD_LIBRARY_PATH']
 
-    _setEnvVar('LD_LIBRARY_PATH', libraryPath)
+    _setEnvVar('LD_LIBRARY_PATH', library_path)
+
+def processDevkitRoot(env=None):
+    assert _is_windows
+    _env = env or os.environ
+    devkit_root = _env.get('DEVKIT_ROOT')
+    if devkit_root is not None:
+        _setEnvVar('GYP_MSVS_OVERRIDE_PATH', devkit_root, _env)
+        _setEnvVar('PATH', '%s%s%s' % (join(devkit_root, 'VC', 'bin', 'x64'), pathsep, _env['PATH']), _env)
+        _setEnvVar('WINDOWSSDKDIR', join(devkit_root, '10'), _env)
+        _setEnvVar('VCINSTALLDIR', r'{devkit}\VC'.format(devkit=devkit_root))
+        _setEnvVar('INCLUDE', r'{devkit}\VC\include;{devkit}\VC\atlmfc\include;{devkit}\10\include\shared;{devkit}\10\include\ucrt;{devkit}\10\include\um;{devkit}\10\include\winrt;{prev}'.format(devkit=devkit_root, prev=_env['INCLUDE']), _env)
+        _setEnvVar('LIB', r'{devkit}\VC\lib\x64;{devkit}\VC\atlmfc\lib\x64;{devkit}\10\lib\x64;{prev}'.format(devkit=devkit_root, prev=_env['LIB']), _env)
+        devkit_version = _env.get('DEVKIT_VERSION')
+        if devkit_version is not None:
+            _setEnvVar('GYP_MSVS_VERSION', devkit_version, _env)
 
 def setupNodeEnvironment(args, add_graal_vm_args=True):
     args = args if args else []
     mode, vmArgs, progArgs = _parseArgs(args)
     setLibraryPath()
+
+    if _is_windows:
+        processDevkitRoot()
 
     if mx.suite('vm', fatalIfMissing=False) is not None and mx.suite('substratevm', fatalIfMissing=False) is not None:
         _prepare_svm_env()
@@ -426,12 +432,12 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
         _setEnvVar('GRAAL_SDK_JAR_PATH', mx.distribution('sdk:GRAAL_SDK').path)
     _setEnvVar('LAUNCHER_COMMON_JAR_PATH', mx.distribution('sdk:LAUNCHER_COMMON').path)
     _setEnvVar('TRUFFLENODE_JAR_PATH', mx.distribution('TRUFFLENODE').path)
-    node_jvm_cp = (os.environ['NODE_JVM_CLASSPATH'] + os.pathsep) if 'NODE_JVM_CLASSPATH' in os.environ else ''
+    node_jvm_cp = (os.environ['NODE_JVM_CLASSPATH'] + pathsep) if 'NODE_JVM_CLASSPATH' in os.environ else ''
     node_cp = node_jvm_cp + mx.classpath(['TRUFFLENODE'] + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:AGENTSCRIPT'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
     _setEnvVar('NODE_JVM_CLASSPATH', node_cp)
 
     prevPATH = os.environ['PATH']
-    _setEnvVar('PATH', "%s:%s" % (join(_suite.mxDir, 'fake_launchers'), prevPATH))
+    _setEnvVar('PATH', "%s%s%s" % (join(_suite.mxDir, 'fake_launchers'), pathsep, prevPATH))
 
     if _has_jvmci() and add_graal_vm_args:
         if mx.suite('graal-enterprise', fatalIfMissing=False):
@@ -452,7 +458,7 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
 def makeInNodeEnvironment(args):
     argGroups = setupNodeEnvironment(args)
     _setEnvVar('NODE_JVM_OPTIONS', ' '.join(argGroups[1]))
-    if _currentOs == 'windows':
+    if _is_windows:
         _mxrun([join('.', 'vcbuild.bat'),
                 'noprojgen',
                 'nobuild',
@@ -460,7 +466,7 @@ def makeInNodeEnvironment(args):
             ] + argGroups[2], cwd=_suite.dir)
     else:
         makeCmd = mx.gmake_cmd()
-        if _currentOs == 'solaris':
+        if _current_os == 'solaris':
             # we have to use GNU make and cp because the Solaris versions
             # do not support options used by Node.js Makefile and gyp files
             _setEnvVar('MAKE', makeCmd)
@@ -468,7 +474,7 @@ def makeInNodeEnvironment(args):
             prevPATH = os.environ['PATH']
             _setEnvVar('PATH', "%s:%s" % (_suite.dir, prevPATH))
         _mxrun([makeCmd] + argGroups[2], cwd=_suite.dir)
-        if _currentOs == 'solaris':
+        if _current_os == 'solaris':
             _mxrun(['rm', 'cp'])
 
 def prepareNodeCmdLine(args, add_graal_vm_args=True):
@@ -506,8 +512,14 @@ def _setEnvVar(name, val, env=None):
 def _java_home():
     return mx.get_jdk().home
 
+def _java_compliance():
+    return mx.get_jdk().javaCompliance
+
 def _has_jvmci():
     return mx.get_jdk().tag == 'jvmci'
+
+def _jre_dir():
+    return join(_java_home(), 'jre') if _java_compliance() < '1.9' else _java_home()
 
 def _parseArgs(args):
     arguments = list(args)
@@ -602,14 +614,14 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
 
 # pylint: disable=line-too-long
 # GraalVM configs to build without the Graal compiler
-mx_sdk_vm.register_vm_config('node1', ['js', 'llp', 'nfi', 'njs', 'poly', 'rgx', 'sdk', 'stage1', 'tfl'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('node', ['bjs', 'bpolyglot', 'js', 'llp', 'nfi', 'njs', 'poly', 'rgx', 'sdk', 'tfl'], _suite, env_file=False)
+mx_sdk_vm.register_vm_config('node1', ['js', 'libpoly', 'llp', 'nfi', 'njs', 'poly', 'rgx', 'sdk', 'stage1', 'tfl'], _suite, env_file=False)
+mx_sdk_vm.register_vm_config('node', ['bjs', 'bpolyglot', 'js', 'libpoly', 'llp', 'nfi', 'njs', 'poly', 'rgx', 'sdk', 'spolyglot', 'tfl'], _suite, env_file=False)
 # GraalVM configs to build with the Graal compiler
-mx_sdk_vm.register_vm_config('node1-ce', ['cmp', 'js', 'llp', 'nfi', 'njs', 'poly', 'rgx', 'sdk', 'stage1', 'tfl'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('node-ce', ['bjs', 'bpolyglot', 'cmp', 'js', 'llp', 'nfi', 'njs', 'poly', 'rgx', 'sdk', 'tfl'], _suite, env_file=False)
+mx_sdk_vm.register_vm_config('node1-ce', ['cmp', 'js', 'libpoly', 'llp', 'nfi', 'njs', 'poly', 'rgx', 'sdk', 'stage1', 'tfl'], _suite, env_file=False)
+mx_sdk_vm.register_vm_config('node-ce', ['bjs', 'bpolyglot', 'cmp', 'js', 'libpoly', 'llp', 'nfi', 'njs', 'poly', 'rgx', 'sdk', 'spolyglot', 'tfl'], _suite, env_file=False)
 # GraalVM configs to build with the Enterprise Graal compiler
-mx_sdk_vm.register_vm_config('node1-ee', ['cmp', 'cmpee', 'js', 'llp', 'nfi', 'njs', 'poly', 'rgx', 'sdk', 'stage1', 'tfl'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('node-ee', ['bjs', 'bpolyglot', 'cmp', 'cmpee', 'js', 'llp', 'nfi', 'njs', 'poly', 'rgx', 'sdk', 'tfl'], _suite, env_file=False)
+mx_sdk_vm.register_vm_config('node1-ee', ['cmp', 'cmpee', 'js', 'libpoly', 'llp', 'nfi', 'njs', 'poly', 'rgx', 'sdk', 'stage1', 'tfl'], _suite, env_file=False)
+mx_sdk_vm.register_vm_config('node-ee', ['bjs', 'bpolyglot', 'cmp', 'cmpee', 'js', 'libpoly', 'llp', 'nfi', 'njs', 'poly', 'rgx', 'sdk', 'spolyglot', 'tfl'], _suite, env_file=False)
 # GraalVM configs to build with Native Image
 mx_sdk_vm.register_vm_config('n-ce', ['bjs', 'bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'js', 'lg', 'libpoly', 'llp', 'nfi', 'ni', 'nic', 'nil', 'njs', 'nju', 'poly', 'polynative', 'rgx', 'sdk', 'sjvmcicompiler', 'snative-image-agent', 'svm', 'tfl', 'tflm'], _suite, env_file=False)
 mx_sdk_vm.register_vm_config('n1-ce', ['cmp', 'js', 'lg', 'libpoly', 'llp', 'nfi', 'ni', 'nic', 'nil', 'njs', 'nju', 'poly', 'polynative', 'rgx', 'sdk', 'stage1', 'svm', 'tfl', 'tflm'], _suite, env_file=False)

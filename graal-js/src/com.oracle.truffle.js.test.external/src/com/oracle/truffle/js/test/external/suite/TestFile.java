@@ -352,7 +352,8 @@ public final class TestFile {
         SVM(cfg -> cfg.isExtLauncher()),
         COMPILE_IMMEDIATELY(cfg -> cfg.isCompile()),
         AMD64(cfg -> System.getProperty("os.arch").equals("amd64") || System.getProperty("os.arch").equals("x86_64")),
-        AARCH64(cfg -> System.getProperty("os.arch").equals("aarch64"));
+        AARCH64(cfg -> System.getProperty("os.arch").equals("aarch64")),
+        WINDOWS(cfg -> System.getProperty("os.name").startsWith("Windows"));
 
         private final Predicate<SuiteConfig> condition;
 

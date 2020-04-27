@@ -2201,7 +2201,7 @@ public final class GraalJSAccess {
         return null;
     }
 
-    private static final Pattern SYNTAX_ERROR_PATTERN = Pattern.compile("(.+):(\\d+):(\\d+) ([^\n]+)\n([^\n]+)(?:\n(?:.|\n)*)?");
+    private static final Pattern SYNTAX_ERROR_PATTERN = Pattern.compile("(.+):(\\d+):(\\d+) ([^\r\n]+)\r?\n([^\r\n]+)(?:\r?\n(?:.|(?:\r?\n))*)?");
     private static final int SYNTAX_ERROR_RESOURCE_NAME_GROUP = 1;
     private static final int SYNTAX_ERROR_LINE_NUMBER_GROUP = 2;
     private static final int SYNTAX_ERROR_COLUMN_NUMBER_GROUP = 3;

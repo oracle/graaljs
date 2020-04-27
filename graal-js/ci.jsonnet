@@ -91,30 +91,36 @@ local common = import '../common.jsonnet';
 
   builds: [
     // jdk 8 - linux
-    graalJs + common.jdk8 + common.gate   + common.linux + gateGraalImport  + {environment+: {GATE_TAGS: 'style,fullbuild'}}    + {name: 'js-gate-style-fullbuild-graal-import-jdk8-linux-amd64'},
-    graalJs + common.jdk8 + common.gate   + common.linux + gateGraalTip     + {environment+: {GATE_TAGS: 'default'}}            + {name: 'js-gate-default-graal-tip-jdk8-linux-amd64'},
-    graalJs + common.jdk8 + common.gate   + common.linux + gateGraalTip     + {environment+: {GATE_TAGS: 'noic'}}               + {name: 'js-gate-noic-graal-tip-jdk8-linux-amd64'},
-    graalJs + common.jdk8 + common.gate   + common.linux + gateGraalTip     + {environment+: {GATE_TAGS: 'directbytebuffer'}}   + {name: 'js-gate-directbytebuffer-graal-tip-jdk8-linux-amd64'},
-    graalJs + common.jdk8 + common.gate   + common.linux + gateGraalTip     + {environment+: {GATE_TAGS: 'cloneuninitialized'}} + {name: 'js-gate-cloneuninitialized-graal-tip-jdk8-linux-amd64'},
-    graalJs + common.jdk8 + common.gate   + common.linux + gateGraalTip     + {environment+: {GATE_TAGS: 'lazytranslation'}}    + {name: 'js-gate-lazytranslation-graal-tip-jdk8-linux-amd64'},
-    graalJs + common.jdk8 + common.gate   + common.linux + gateGraalTip     + {environment+: {GATE_TAGS: 'shareengine'}}        + {name: 'js-gate-shareengine-graal-tip-jdk8-linux-amd64'},
-    graalJs + common.jdk8 + common.gate   + common.linux + gateGraalImport  + {environment+: {GATE_TAGS: 'tck,build'}}          + {name: 'js-gate-tck-build-graal-import-jdk8-linux-amd64'},
+    graalJs + common.jdk8 + common.gate   + common.linux + gateGraalImport       + {environment+: {GATE_TAGS: 'style,fullbuild'}}    + {name: 'js-gate-style-fullbuild-graal-import-jdk8-linux-amd64'},
+    graalJs + common.jdk8 + common.gate   + common.linux + gateGraalTip          + {environment+: {GATE_TAGS: 'default'}}            + {name: 'js-gate-default-graal-tip-jdk8-linux-amd64'},
+    graalJs + common.jdk8 + common.gate   + common.linux + gateGraalTip          + {environment+: {GATE_TAGS: 'noic'}}               + {name: 'js-gate-noic-graal-tip-jdk8-linux-amd64'},
+    graalJs + common.jdk8 + common.gate   + common.linux + gateGraalTip          + {environment+: {GATE_TAGS: 'directbytebuffer'}}   + {name: 'js-gate-directbytebuffer-graal-tip-jdk8-linux-amd64'},
+    graalJs + common.jdk8 + common.gate   + common.linux + gateGraalTip          + {environment+: {GATE_TAGS: 'cloneuninitialized'}} + {name: 'js-gate-cloneuninitialized-graal-tip-jdk8-linux-amd64'},
+    graalJs + common.jdk8 + common.gate   + common.linux + gateGraalTip          + {environment+: {GATE_TAGS: 'lazytranslation'}}    + {name: 'js-gate-lazytranslation-graal-tip-jdk8-linux-amd64'},
+    graalJs + common.jdk8 + common.gate   + common.linux + gateGraalTip          + {environment+: {GATE_TAGS: 'shareengine'}}        + {name: 'js-gate-shareengine-graal-tip-jdk8-linux-amd64'},
+    graalJs + common.jdk8 + common.gate   + common.linux + gateGraalImport       + {environment+: {GATE_TAGS: 'tck,build'}}          + {name: 'js-gate-tck-build-graal-import-jdk8-linux-amd64'},
 
-    // jdk8 - coverage
-    graalJs + common.jdk8 + common.weekly + common.linux + gateCoverage     + {environment+: {GATE_TAGS: 'build,default,tck'}}  + {name: 'js-coverage-jdk8-linux-amd64'},
+    // jdk 8 - coverage
+    graalJs + common.jdk8 + common.weekly + common.linux + gateCoverage          + {environment+: {GATE_TAGS: 'build,default,tck'}}  + {name: 'js-coverage-jdk8-linux-amd64'},
+
+    // jdk 8 - windows
+    graalJs + common.jdk8  + common.gate  + common.windows_vs2010 + gateGraalTip + {environment+: {GATE_TAGS: 'Test262-default'}}    + {name: 'js-gate-test262-default-graal-tip-jdk8-windows-amd64'},
 
     // jdk 8 - sparc
-    graalJs + common.jdk8  + common.gate  + common.sparc + gateGraalTip     + {environment+: {GATE_TAGS: 'default'}}            + {name: 'js-gate-default-graal-tip-jdk8-solaris-sparcv9'},
+    graalJs + common.jdk8  + common.gate  + common.sparc + gateGraalTip          + {environment+: {GATE_TAGS: 'default'}}            + {name: 'js-gate-default-graal-tip-jdk8-solaris-sparcv9'},
 
     // jdk 11 - linux
-    graalJs + common.jdk11 + common.gate  + common.linux + gateGraalImport  + {environment+: {GATE_TAGS: 'style,fullbuild'}}    + {name: 'js-gate-style-fullbuild-graal-import-jdk11-linux-amd64'},
-    graalJs + common.jdk11 + common.gate  + common.linux + gateGraalTip     + {environment+: {GATE_TAGS: 'default'}}            + {name: 'js-gate-default-graal-tip-jdk11-linux-amd64'},
-    graalJs + common.jdk11 + common.gate  + common.linux                    + mavenDeployDryRun                                 + {name: 'js-gate-maven-dry-run-jdk11-linux-amd64'},
+    graalJs + common.jdk11 + common.gate  + common.linux + gateGraalImport       + {environment+: {GATE_TAGS: 'style,fullbuild'}}    + {name: 'js-gate-style-fullbuild-graal-import-jdk11-linux-amd64'},
+    graalJs + common.jdk11 + common.gate  + common.linux + gateGraalTip          + {environment+: {GATE_TAGS: 'default'}}            + {name: 'js-gate-default-graal-tip-jdk11-linux-amd64'},
+    graalJs + common.jdk11 + common.gate  + common.linux                         + mavenDeployDryRun                                 + {name: 'js-gate-maven-dry-run-jdk11-linux-amd64'},
 
     // jdk 11 - linux aarch64
-    graalJs + common.jdk11 + common.gate  + common.linux_aarch64 + gateGraalTip     + {environment+: {GATE_TAGS: 'default'}}            + {name: 'js-gate-default-graal-tip-jdk11-linux-aarch64'},
+    graalJs + common.jdk11 + common.gate  + common.linux_aarch64 + gateGraalTip  + {environment+: {GATE_TAGS: 'default'}}            + {name: 'js-gate-default-graal-tip-jdk11-linux-aarch64'},
+
+    // jdk 11 - windows
+    graalJs + common.jdk11 + common.gate  + common.windows + gateGraalTip        + {environment+: {GATE_TAGS: 'Test262-default'}}    + {name: 'js-gate-test262-default-graal-tip-jdk11-windows-amd64'},
 
     // interop benchmarks
-    graalJs + common.jdk8 + common.bench  + common.x52 + benchmarkGraalTip         + interopJmhBenchmarks                             + {name: 'js-interop-jmh-bechmarks-jdk8-x52'},
+    graalJs + common.jdk8 + common.bench  + common.x52 + benchmarkGraalTip       + interopJmhBenchmarks                              + {name: 'js-interop-jmh-bechmarks-jdk8-x52'},
   ],
 }
