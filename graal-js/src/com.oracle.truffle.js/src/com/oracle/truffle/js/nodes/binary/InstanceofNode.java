@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.binary;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -51,12 +50,10 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
@@ -194,15 +191,6 @@ public abstract class InstanceofNode extends JSBinaryNode {
         } catch (UnsupportedMessageException e) {
             throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
         }
-    }
-
-    @TruffleBoundary
-    private static String functionToString(DynamicObject fnObj) {
-        assert JSFunction.isJSFunction(fnObj);
-        RootCallTarget dct = (RootCallTarget) JSFunction.getCallTarget(fnObj);
-        RootNode rn = dct.getRootNode();
-        SourceSection ssect = rn.getSourceSection();
-        return ((ssect == null || !ssect.isAvailable()) ? "function " + JSFunction.getName(fnObj) + "() { [native code] }" : ssect.getCharacters().toString());
     }
 
     @Override
