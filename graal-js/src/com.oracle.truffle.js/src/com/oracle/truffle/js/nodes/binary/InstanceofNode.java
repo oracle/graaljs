@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.binary;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -51,12 +50,10 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
@@ -67,6 +64,7 @@ import com.oracle.truffle.js.nodes.binary.InstanceofNodeGen.IsBoundFunctionCache
 import com.oracle.truffle.js.nodes.binary.InstanceofNodeGen.OrdinaryHasInstanceNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -151,27 +149,48 @@ public abstract class InstanceofNode extends JSBinaryNode {
     }
 
     @Specialization(guards = {"isNullOrUndefined(target)"})
-    protected boolean doInvalidTarget(@SuppressWarnings("unused") Object obj, Object target) {
+    protected boolean doNullOrUndefinedTarget(@SuppressWarnings("unused") Object obj, DynamicObject target) {
         throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
     }
 
-    @Specialization(guards = {"!isJSType(target)"}, limit = "3")
-    protected boolean doForeignTarget(@SuppressWarnings("unused") Object instance, Object target,
+    @Specialization()
+    protected boolean doStringTarget(@SuppressWarnings("unused") Object obj, String target) {
+        throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
+    }
+
+    @Specialization()
+    protected boolean doDoubleTarget(@SuppressWarnings("unused") Object obj, double target) {
+        throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
+    }
+
+    @Specialization()
+    protected boolean doBooleanTarget(@SuppressWarnings("unused") Object obj, boolean target) {
+        throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
+    }
+
+    @Specialization()
+    protected boolean doBigIntTarget(@SuppressWarnings("unused") Object obj, BigInt target) {
+        throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
+    }
+
+    @Specialization()
+    protected boolean doSymbolTarget(@SuppressWarnings("unused") Object obj, Symbol target) {
+        throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
+    }
+
+    @Specialization(guards = {"isForeignObject(target)", "isJSType(instance)"})
+    protected boolean doForeignTargetJSType(@SuppressWarnings("unused") DynamicObject instance, @SuppressWarnings("unused") Object target) {
+        return false;
+    }
+
+    @Specialization(guards = {"isForeignObject(target)", "!isJSType(instance)"}, limit = "3")
+    protected boolean doForeignTargetOther(Object instance, Object target,
                     @CachedLibrary("target") InteropLibrary interop) {
         try {
             return interop.isMetaInstance(target, instance);
         } catch (UnsupportedMessageException e) {
             throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
         }
-    }
-
-    @TruffleBoundary
-    private static String functionToString(DynamicObject fnObj) {
-        assert JSFunction.isJSFunction(fnObj);
-        RootCallTarget dct = (RootCallTarget) JSFunction.getCallTarget(fnObj);
-        RootNode rn = dct.getRootNode();
-        SourceSection ssect = rn.getSourceSection();
-        return ((ssect == null || !ssect.isAvailable()) ? "function " + JSFunction.getName(fnObj) + "() { [native code] }" : ssect.getCharacters().toString());
     }
 
     @Override
