@@ -24,31 +24,32 @@ Hello JavaScript
 ```
 
 The preferred way to run GraalVM JavaScript is from a [GraalVM](https://www.graalvm.org/downloads/).
-If you prefer running it on a stock JVM, please have a look at the documentation in [`RunOnJDK.md`](docs/user/RunOnJDK.md).
+If you prefer running it on a stock JVM, please have a look at the documentation in [`RunOnJDK.md`](https://github.com/graalvm/graaljs/blob/master/docs/user/RunOnJDK.md).
 
 ## Documentation
 
-Extensive documentation is available in [`docs`](docs), for [`users`](docs/user) and [`contributors`](docs/contributor) of the engine.
+Extensive documentation is available on [graalvm.org](https://www.graalvm.org/): how to [`Run JavaScript`](https://www.graalvm.org/docs/getting-started/#running-javascript) and the more extensive [`JavaScript & Node.js Reference Manual`](https://www.graalvm.org/docs/reference-manual/languages/js/).
+In addition there is documentation in the source code repository in the [`docs`](https://github.com/graalvm/graaljs/tree/master/docs) folder, for [`users`](https://github.com/graalvm/graaljs/tree/master/docs/user) and [`contributors`](https://github.com/graalvm/graaljs/tree/master/docs/contributor) of the engine.
 
-For contributors, a guide how to build GraalVM JavaScript from source code can be found in [`Building.md`](docs/Building.md).
+For contributors, a guide how to build GraalVM JavaScript from source code can be found in [`Building.md`](https://github.com/graalvm/graaljs/tree/master/docs/Building.md).
 
 ## Current Status
 
-GraalVM JavaScript is compatible with the [ECMAScript 2019 specification](http://www.ecma-international.org/ecma-262/10.0/index.html).
-New features, e.g. for the upcoming 2020 edition, are added frequently.
-GraalVM JavaScript already supports most of the features expected to be part of the ECMAScript 2020 specification.
-Starting with GraalVM 20.1.0, ECMAScript 2020 will be the default compatibility level.
+GraalVM JavaScript is compatible with the [ECMAScript 2019 specification](http://www.ecma-international.org/ecma-262/10.0/index.html) and the upcoming `ECMAScript 2020 specification`.
+Starting with GraalVM 20.1.0, ECMAScript 2020 is the default compatibility level.
+New features, e.g. `ECMAScript proposals` scheduled to land in future editions, are added frequently.
 
-In addition, some popular extensions of other engines are supported, see [`JavaScriptCompatibility.md`](docs/user/JavaScriptCompatibility.md).
+In addition, some popular extensions of other engines are supported, see [`JavaScriptCompatibility.md`](https://github.com/graalvm/graaljs/tree/master/docs/user/JavaScriptCompatibility.md).
 
 GraalVM JavaScript can execute Node.js applications.
 It provides high compatibility with existing npm packages, with high likelyhood that your application will run out of the box.
 This includes npm packages with native implementations.
-Note that you will need to re-compile from source with GraalVM JavaScript if you want to run binaries that have been compiled for Node.js based on V8, or any other compatible engine.
+Note that some npm modules will require to be re-compiled from source with GraalVM JavaScript if they ship with binaries that have been compiled for Node.js based on V8.
+Node.js support is only available in full GraalVM releases, but not in the `standalone` GraalVM JavaScript distribution.
 
 ### Compatibility on Operating Systems
 
-The core JavaScript engine is a Java application and is thus in principle compatible with every operating system that provides a compatible JVM, [see `RunOnJDK.md`](docs/user/RunOnJDK.md).
+The core JavaScript engine is a Java application and is thus in principle compatible with every operating system that provides a compatible JVM, [see `RunOnJDK.md`](https://github.com/graalvm/graaljs/tree/master/docs/user/RunOnJDK.md).
 We test and support GraalVM JavaScript currently in full extent on Linux and MacOS.
 For Windows, a preliminary preview version is available.
 
@@ -62,22 +63,6 @@ A reference manual for GraalVM JavaScript is available on the [GraalVM website](
 
 See [graalvm.org/community](https://www.graalvm.org/community/) on how to stay connected with the development community.
 The channel _graaljs_ on [graalvm.slack.com](https://www.graalvm.org/slack-invitation) is a good way to get in touch with us.
-
-## Authors
-
-The main authors of GraalVM JavaScript in order of joining the project are:
-
-Andreas Woess, Christian Wirth, Danilo Ansaloni, Daniele Bonetta, Jan Stola, Jakub Podlesak, Tomas Mysik, Jirka Marsik, Josef Haider
-
-Additionally:
-
-Thomas Würthinger, Christian Humer
-
-Collaborations with:
-
-* [Institut für Systemsoftware at Johannes Kepler University Linz](http://ssw.jku.at)
-
-and others.
 
 ## Licence
 
