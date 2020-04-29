@@ -146,7 +146,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
             JSTargetableNode materializedInput = JSMaterializedInvokeTargetableNode.EchoTargetValueNode.create();
             AwaitNode materialized = new AwaitNode(context, cloneUninitialized(expression, materializedTags), cloneUninitialized(readAsyncContextNode, materializedTags),
                             cloneUninitialized(readAsyncResultNode, materializedTags), materializedInput);
-            transferSourceSection(this, materialized);
+            transferSourceSectionAndTags(this, materialized);
             return materialized;
         }
         return this;
