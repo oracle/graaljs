@@ -75,6 +75,7 @@ import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.ForInIterator;
 import com.oracle.truffle.js.runtime.util.IteratorUtil;
+import java.util.function.Supplier;
 
 /**
  * Returns an Iterator object iterating over the enumerable properties of an object.
@@ -166,7 +167,13 @@ public abstract class EnumerateNode extends JavaScriptNode {
         try {
             if (!interop.isNull(iteratedObject)) {
                 if (interop.hasArrayElements(iteratedObject)) {
-                    long longSize = interop.getArraySize(iteratedObject);
+                    Supplier<Long> longSize = () -> {
+                        try {
+                            return interop.getArraySize(iteratedObject);
+                        } catch (UnsupportedMessageException ex) {
+                            return 0L;
+                        }
+                    };
                     return enumerateForeignArrayLike(context, iteratedObject, longSize, values, interop);
                 } else if (interop.hasMembers(iteratedObject)) {
                     Object keysObj = interop.getMembers(iteratedObject);
@@ -215,14 +222,14 @@ public abstract class EnumerateNode extends JavaScriptNode {
         return null;
     }
 
-    private static DynamicObject enumerateForeignArrayLike(JSContext context, Object iteratedObject, long longSize, boolean values,
+    private static DynamicObject enumerateForeignArrayLike(JSContext context, Object iteratedObject, Supplier<Long> longSize, boolean values,
                     InteropLibrary interop) {
         Iterator<Object> iterator = new Iterator<Object>() {
             private long cursor;
 
             @Override
             public boolean hasNext() {
-                return cursor < longSize;
+                return cursor < longSize.get();
             }
 
             @Override
