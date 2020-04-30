@@ -73,6 +73,7 @@ int wmain(int argc, wchar_t* wargv[]) {
     }
   }
   argv[argc] = nullptr;
+  node::GraalArgumentsPreprocessing(argc, argv);
   // Now that conversion is done, we can finally start.
   return node::Start(argc, argv);
 }
