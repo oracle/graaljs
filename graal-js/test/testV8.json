@@ -428,7 +428,7 @@
   }, {
     "filePath" : "mjsunit/es6/classes.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+    "comment" : "Off spec: anonymous classes do not have 'name' property."
   }, {
     "filePath" : "mjsunit/es6/computed-property-names-classes.js",
     "status" : "FAIL"
@@ -443,7 +443,8 @@
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/function-name.js",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "comment" : "Off-spec: 'name' property defined after 'prototype' and static members."
   }, {
     "filePath" : "mjsunit/es6/generator-destructuring.js",
     "status" : "FAIL"
@@ -537,7 +538,7 @@
   }, {
     "filePath" : "mjsunit/es6/throw-type-error-function-restrictions.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+    "comment" : "Off-spec: thrower does not have 'name' property"
   }, {
     "filePath" : "mjsunit/es6/typedarray-construct-offset-not-smi.js",
     "status" : "FAIL",
@@ -1419,7 +1420,7 @@
   }, {
     "filePath" : "mjsunit/regress/regress-7773.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+    "comment" : "Off spec: anonymous classes do not have 'name' property."
   }, {
     "filePath" : "mjsunit/regress/regress-779407.js",
     "runInIsolation" : true,
