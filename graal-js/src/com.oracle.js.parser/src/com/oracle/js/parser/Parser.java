@@ -1913,8 +1913,8 @@ public class Parser extends AbstractParser {
 
         boolean isAnonymousFunctionDefinition = false;
         if (isAnonymousFunctionDefinition(initializer)) {
-            if (!computed && propertyName instanceof IdentNode) {
-                initializer = setAnonymousFunctionName(initializer, ((IdentNode) propertyName).getName());
+            if (!computed && propertyName instanceof PropertyKey) {
+                initializer = setAnonymousFunctionName(initializer, ((PropertyKey) propertyName).getPropertyName());
             } else {
                 isAnonymousFunctionDefinition = true;
             }
@@ -4005,8 +4005,8 @@ public class Parser extends AbstractParser {
 
             if (!proto) {
                 if (isAnonymousFunctionDefinition(propertyValue)) {
-                    if (!computed && propertyName instanceof IdentNode) {
-                        propertyValue = setAnonymousFunctionName(propertyValue, ((IdentNode) propertyName).getName());
+                    if (!computed && propertyName instanceof PropertyKey) {
+                        propertyValue = setAnonymousFunctionName(propertyValue, ((PropertyKey) propertyName).getPropertyName());
                     } else {
                         isAnonymousFunctionDefinition = true;
                     }
