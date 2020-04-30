@@ -978,7 +978,7 @@ function v8MinSMI() {
 }
 
 function v8ReferenceEqual(a, b) {
-    return a === b; //TODO do an actual reference check here
+    return TestV8.referenceEqual(a, b);
 }
 
 function v8CollectTypeProfile() {

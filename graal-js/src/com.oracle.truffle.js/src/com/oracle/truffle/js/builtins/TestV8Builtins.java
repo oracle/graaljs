@@ -55,6 +55,7 @@ import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ConstructDoubl
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8CreateAsyncFromSyncIteratorNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8DoublePartNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8EnqueueJobNodeGen;
+import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ReferenceEqualNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8RunMicrotasksNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToLengthNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToNameNodeGen;
@@ -105,6 +106,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         doubleHi(1),
         doubleLo(1),
         deoptimize(0),
+        referenceEqual(2),
         toLength(1),
         toStringConv(1),
         toName(1),
@@ -151,6 +153,8 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
                 return TestV8DoublePartNodeGen.create(context, builtin, false, args().fixedArgs(1).createArgumentNodes(context));
             case deoptimize:
                 return DebugContinueInInterpreterNodeGen.create(context, builtin, true, args().createArgumentNodes(context));
+            case referenceEqual:
+                return TestV8ReferenceEqualNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case toStringConv:
                 return TestV8ToStringNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case toName:
@@ -364,6 +368,19 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return TestV8ToLengthNodeGen.create(getContext(), getBuiltin(), cloneUninitialized(getArguments(), materializedTags));
         }
+    }
+
+    public abstract static class TestV8ReferenceEqualNode extends JSBuiltinNode {
+
+        public TestV8ReferenceEqualNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected boolean referenceEqual(Object arg1, Object arg2) {
+            return arg1 == arg2;
+        }
+
     }
 
 }
