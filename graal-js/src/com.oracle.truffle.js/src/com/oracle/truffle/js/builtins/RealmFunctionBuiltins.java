@@ -72,6 +72,7 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
     public enum RealmFunction implements BuiltinEnum<RealmFunction> {
         create(0),
+        createAllowCrossRealmAccess(0),
         global(1),
         dispose(1),
         current(0),
@@ -93,6 +94,7 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, RealmFunction builtinEnum) {
         switch (builtinEnum) {
             case create:
+            case createAllowCrossRealmAccess:
                 return RealmCreateNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
             case global:
                 return RealmGlobalNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
