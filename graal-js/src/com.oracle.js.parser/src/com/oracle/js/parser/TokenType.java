@@ -77,6 +77,7 @@ public enum TokenType {
     BIT_AND        (BINARY,  "&",     8, true),
     AND            (BINARY,  "&&",    5, true),
     ASSIGN_BIT_AND (BINARY,  "&=",    2, false),
+    ASSIGN_AND     (BINARY,  "&&=",   2, false),
     LPAREN         (BRACKET, "(",    17, true),
     RPAREN         (BRACKET, ")",     0, true),
     MUL            (BINARY,  "*",    13, true),
@@ -118,10 +119,12 @@ public enum TokenType {
     BIT_OR         (BINARY,  "|",     6, true),
     ASSIGN_BIT_OR  (BINARY,  "|=",    2, false),
     OR             (BINARY,  "||",    4, true),
+    ASSIGN_OR      (BINARY,  "||=",   2, false),
     RBRACE         (BRACKET, "}"),
     BIT_NOT        (UNARY,   "~",    15, false),
     ELLIPSIS       (UNARY,   "..."),
     NULLISHCOALESC (BINARY,  "??",    4, true),
+    ASSIGN_NULLCOAL(BINARY,  "??=",   2, false),
     OPTIONAL_CHAIN (BRACKET, "?.",   18, true),
 
     // ECMA 7.6.1.1 Keywords, 7.6.1.2 Future Reserved Words.
@@ -334,7 +337,7 @@ public enum TokenType {
     }
 
     /**
-     * Is type one of {@code = *= /= %= += -= <<= >>= >>>= &= ^= |= **=}?
+     * Is type one of {@code = *= /= %= += -= <<= >>= >>>= &= ^= |= **= &&= ||= ??=}?
      */
     public boolean isAssignment() {
         switch (this) {
@@ -352,6 +355,9 @@ public enum TokenType {
             case ASSIGN_SHL:
             case ASSIGN_SHR:
             case ASSIGN_SUB:
+            case ASSIGN_AND:
+            case ASSIGN_OR:
+            case ASSIGN_NULLCOAL:
                 return true;
             default:
                 return false;

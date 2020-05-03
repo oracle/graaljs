@@ -2271,6 +2271,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             case ASSIGN_SHL:
             case ASSIGN_SHR:
             case ASSIGN_SUB:
+            case ASSIGN_AND:
+            case ASSIGN_OR:
+            case ASSIGN_NULLCOAL:
                 return enterBinaryTransformNode(binaryNode);
             case ADD:
             case SUB:
@@ -2379,10 +2382,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 return BinaryOperation.NOT_EQUAL;
             case NE_STRICT:
                 return BinaryOperation.NOT_IDENTICAL;
+            case ASSIGN_AND:
             case AND:
                 return BinaryOperation.LOGICAL_AND;
+            case ASSIGN_OR:
             case OR:
                 return BinaryOperation.LOGICAL_OR;
+            case ASSIGN_NULLCOAL:
             case NULLISHCOALESC:
                 return BinaryOperation.NULLISH_COALESCING;
             case INSTANCEOF:
@@ -2442,6 +2448,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return tagExpression(assignedNode, assignmentExpression);
     }
 
+    private static boolean isLogicalOp(BinaryOperation op) {
+        return op == BinaryOperation.LOGICAL_AND || op == BinaryOperation.LOGICAL_OR || op == BinaryOperation.NULLISH_COALESCING;
+    }
+
     private JavaScriptNode transformAssignmentIdent(IdentNode identNode, JavaScriptNode assignedValue, BinaryOperation binaryOp, boolean returnOldValue, boolean convertLHSToNumeric,
                     boolean initializationAssignment) {
         JavaScriptNode rhs = assignedValue;
@@ -2461,26 +2471,33 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (binaryOp == null) {
             return scopeVar.createWriteNode(rhs);
         } else {
-            // e.g.: lhs *= rhs => lhs = lhs * rhs
-            // If lhs is a side-effecting getter that deletes lhs, we must not throw a
-            // ReferenceError at the lhs assignment since the lhs reference is already resolved.
-            // We also need to ensure that HasBinding is idempotent or evaluated at most once.
-            Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> pair = scopeVar.createCompoundAssignNode();
-            JavaScriptNode readNode = tagExpression(pair.getFirst().get(), identNode);
-            if (convertLHSToNumeric) {
-                readNode = factory.createToNumeric(readNode);
-            }
-            VarRef prevValueTemp = null;
-            if (returnOldValue) {
-                prevValueTemp = environment.createTempVar();
-                readNode = prevValueTemp.createWriteNode(readNode);
-            }
-            JavaScriptNode binOpNode = tagExpression(factory.createBinary(context, binaryOp, readNode, rhs), identNode);
-            JavaScriptNode writeNode = pair.getSecond().apply(binOpNode);
-            if (returnOldValue) {
-                return factory.createDual(context, writeNode, prevValueTemp.createReadNode());
+            if (isLogicalOp(binaryOp)) {
+                assert !convertLHSToNumeric && !returnOldValue;
+                JavaScriptNode readNode = tagExpression(scopeVar.createReadNode(), identNode);
+                JavaScriptNode writeNode = scopeVar.createWriteNode(assignedValue);
+                return factory.createBinary(context, binaryOp, readNode, writeNode);
             } else {
-                return writeNode;
+                // e.g.: lhs *= rhs => lhs = lhs * rhs
+                // If lhs is a side-effecting getter that deletes lhs, we must not throw a
+                // ReferenceError at the lhs assignment since the lhs reference is already resolved.
+                // We also need to ensure that HasBinding is idempotent or evaluated at most once.
+                Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> pair = scopeVar.createCompoundAssignNode();
+                JavaScriptNode readNode = tagExpression(pair.getFirst().get(), identNode);
+                if (convertLHSToNumeric) {
+                    readNode = factory.createToNumeric(readNode);
+                }
+                VarRef prevValueTemp = null;
+                if (returnOldValue) {
+                    prevValueTemp = environment.createTempVar();
+                    readNode = prevValueTemp.createWriteNode(readNode);
+                }
+                JavaScriptNode binOpNode = tagExpression(factory.createBinary(context, binaryOp, readNode, rhs), identNode);
+                JavaScriptNode writeNode = pair.getSecond().apply(binOpNode);
+                if (returnOldValue) {
+                    return factory.createDual(context, writeNode, prevValueTemp.createReadNode());
+                } else {
+                    return writeNode;
+                }
             }
         }
     }
@@ -2515,22 +2532,28 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 target1 = targetTemp.createWriteNode(target);
                 target2 = targetTemp.createReadNode();
             }
-
-            VarRef prevValueTemp = null;
-            JavaScriptNode readNode = tagExpression(createReadProperty(accessNode, target2), accessNode);
-            if (convertToNumeric) {
-                readNode = factory.createToNumeric(readNode);
-            }
-            if (returnOldValue) {
-                prevValueTemp = environment.createTempVar();
-                readNode = prevValueTemp.createWriteNode(readNode);
-            }
-            JavaScriptNode binOpNode = tagExpression(factory.createBinary(context, binaryOp, readNode, assignedValue), accessNode);
-            JavaScriptNode writeNode = createWriteProperty(accessNode, target1, binOpNode);
-            if (returnOldValue) {
-                assignedNode = factory.createDual(context, writeNode, prevValueTemp.createReadNode());
+            if (isLogicalOp(binaryOp)) {
+                assert !convertToNumeric && !returnOldValue;
+                JavaScriptNode readNode = tagExpression(createReadProperty(accessNode, target1), accessNode);
+                JavaScriptNode writeNode = createWriteProperty(accessNode, target2, assignedValue);
+                assignedNode = factory.createBinary(context, binaryOp, readNode, writeNode);
             } else {
-                assignedNode = writeNode;
+                VarRef prevValueTemp = null;
+                JavaScriptNode readNode = tagExpression(createReadProperty(accessNode, target2), accessNode);
+                if (convertToNumeric) {
+                    readNode = factory.createToNumeric(readNode);
+                }
+                if (returnOldValue) {
+                    prevValueTemp = environment.createTempVar();
+                    readNode = prevValueTemp.createWriteNode(readNode);
+                }
+                JavaScriptNode binOpNode = tagExpression(factory.createBinary(context, binaryOp, readNode, assignedValue), accessNode);
+                JavaScriptNode writeNode = createWriteProperty(accessNode, target1, binOpNode);
+                if (returnOldValue) {
+                    assignedNode = factory.createDual(context, writeNode, prevValueTemp.createReadNode());
+                } else {
+                    assignedNode = writeNode;
+                }
             }
         }
         return assignedNode;
@@ -2569,21 +2592,28 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 target2 = targetTemp.createReadNode();
             }
 
-            JavaScriptNode readNode = tagExpression(factory.createReadElementNode(context, target2, readIndex), indexNode);
-            if (convertToNumeric) {
-                readNode = factory.createToNumeric(readNode);
-            }
-            VarRef prevValueTemp = null;
-            if (returnOldValue) {
-                prevValueTemp = environment.createTempVar();
-                readNode = prevValueTemp.createWriteNode(readNode);
-            }
-            JavaScriptNode binOpNode = tagExpression(factory.createBinary(context, binaryOp, readNode, assignedValue), indexNode);
-            JavaScriptNode writeNode = factory.createCompoundWriteElementNode(target1, elem, binOpNode, writeIndex, context, environment.isStrictMode());
-            if (returnOldValue) {
-                assignedNode = factory.createDual(context, writeNode, prevValueTemp.createReadNode());
+            if (isLogicalOp(binaryOp)) {
+                assert !convertToNumeric && !returnOldValue;
+                JavaScriptNode readNode = tagExpression(factory.createReadElementNode(context, target1, keyTemp.createWriteNode(elem)), indexNode);
+                JavaScriptNode writeNode = factory.createCompoundWriteElementNode(target2, readIndex, assignedValue, null, context, environment.isStrictMode());
+                assignedNode = factory.createBinary(context, binaryOp, readNode, writeNode);
             } else {
-                assignedNode = writeNode;
+                JavaScriptNode readNode = tagExpression(factory.createReadElementNode(context, target2, readIndex), indexNode);
+                if (convertToNumeric) {
+                    readNode = factory.createToNumeric(readNode);
+                }
+                VarRef prevValueTemp = null;
+                if (returnOldValue) {
+                    prevValueTemp = environment.createTempVar();
+                    readNode = prevValueTemp.createWriteNode(readNode);
+                }
+                JavaScriptNode binOpNode = tagExpression(factory.createBinary(context, binaryOp, readNode, assignedValue), indexNode);
+                JavaScriptNode writeNode = factory.createCompoundWriteElementNode(target1, elem, binOpNode, writeIndex, context, environment.isStrictMode());
+                if (returnOldValue) {
+                    assignedNode = factory.createDual(context, writeNode, prevValueTemp.createReadNode());
+                } else {
+                    assignedNode = writeNode;
+                }
             }
         }
         return assignedNode;

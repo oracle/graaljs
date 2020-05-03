@@ -881,6 +881,9 @@ public class Parser extends AbstractParser {
             case ASSIGN_SHL:
             case ASSIGN_SHR:
             case ASSIGN_SUB:
+            case ASSIGN_AND:
+            case ASSIGN_OR:
+            case ASSIGN_NULLCOAL:
                 if (lhs instanceof IdentNode) {
                     IdentNode ident = (IdentNode) lhs;
                     if (!checkIdentLValue(ident) || ident.isMetaProperty()) {
