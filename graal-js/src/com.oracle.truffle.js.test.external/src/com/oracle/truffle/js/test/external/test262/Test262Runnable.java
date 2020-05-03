@@ -186,6 +186,7 @@ public class Test262Runnable extends TestRunnable {
                     "import.meta",
                     "json-superset",
                     "let",
+                    "logical-assignment-operators",
                     "new.target",
                     "numeric-separator-literal",
                     "object-rest",
@@ -212,7 +213,6 @@ public class Test262Runnable extends TestRunnable {
                     "Intl.DateTimeFormat-fractionalSecondDigits",
                     "IsHTMLDDA",
                     "Promise.any",
-                    "logical-assignment-operators",
                     "tail-call-optimization",
                     "top-level-await",
     }));
