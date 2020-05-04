@@ -47,6 +47,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -54,6 +55,7 @@ import java.util.stream.IntStream;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyArray;
 import org.junit.Test;
 
 import com.oracle.truffle.js.test.JSTest;
@@ -354,6 +356,64 @@ public class InteropArrayTest {
                             "recreatedArray.push(arrayFromJava[i]);" +
                             "recreatedArray");
             commonCheck(v);
+        }
+    }
+
+    @Test
+    public void testForLetItemOfLazyArray() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Value collect = context.eval(ID, "" + //
+                            "(function (arr) {\n" + //
+                            "  let collect = [];\n" + //
+                            "  for (let item of arr) {\n" + //
+                            "    collect.push(item);\n" + //
+                            "    collect.push(item);\n" + //
+                            "    collect.push(item);\n" + //
+                            "  }\n" + //
+                            "  return collect;\n" + //
+                            "})\n" //
+            );
+
+            final List<Integer> list = Arrays.asList(5, 7, 11, 13, 17, 23);
+
+            Value tripples = collect.execute(new LazyArray(list.iterator()));
+            assertTrue("Array returned", tripples.hasArrayElements());
+            assertEquals(list.size() * 3, tripples.getArraySize());
+        }
+    }
+
+    private static final class LazyArray implements ProxyArray {
+
+        private final Iterator<?> it;
+        private long at;
+
+        LazyArray(Iterator<?> it) {
+            this.it = it;
+            this.at = 0;
+        }
+
+        @Override
+        public Object get(long index) {
+            if (index == at) {
+                at++;
+                return it.next();
+            }
+            return null;
+        }
+
+        @Override
+        public void set(long index, Value value) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public boolean remove(long index) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public long getSize() {
+            return it.hasNext() ? at + 1 : at;
         }
     }
 }

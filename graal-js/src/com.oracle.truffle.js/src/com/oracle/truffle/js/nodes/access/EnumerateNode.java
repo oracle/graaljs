@@ -166,8 +166,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
         try {
             if (!interop.isNull(iteratedObject)) {
                 if (interop.hasArrayElements(iteratedObject)) {
-                    long longSize = interop.getArraySize(iteratedObject);
-                    return enumerateForeignArrayLike(context, iteratedObject, longSize, values, interop);
+                    return enumerateForeignArrayLike(context, iteratedObject, values, interop);
                 } else if (interop.hasMembers(iteratedObject)) {
                     Object keysObj = interop.getMembers(iteratedObject);
                     assert InteropLibrary.getFactory().getUncached().hasArrayElements(keysObj);
@@ -215,14 +214,19 @@ public abstract class EnumerateNode extends JavaScriptNode {
         return null;
     }
 
-    private static DynamicObject enumerateForeignArrayLike(JSContext context, Object iteratedObject, long longSize, boolean values,
+    private static DynamicObject enumerateForeignArrayLike(JSContext context, Object iteratedObject, boolean values,
                     InteropLibrary interop) {
         Iterator<Object> iterator = new Iterator<Object>() {
             private long cursor;
 
             @Override
             public boolean hasNext() {
-                return cursor < longSize;
+                try {
+                    long currentSize = interop.getArraySize(iteratedObject);
+                    return cursor < currentSize;
+                } catch (UnsupportedMessageException ex) {
+                    return false;
+                }
             }
 
             @Override
