@@ -74,7 +74,7 @@ public class NullishCoalescingTest {
     }
 
     private static Value testIntl(String source) {
-        testFail("2019", "Expected ; but found ??", source);
+        testFail("2019", "Expected an operand but found ?", source);
 
         try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2020").build()) {
             return context.eval(JavaScriptLanguage.ID, source);
@@ -88,7 +88,7 @@ public class NullishCoalescingTest {
                 fail();
             } catch (PolyglotException e) {
                 assertTrue(e.isSyntaxError());
-                assertTrue(e.getMessage().contains(expectedFail));
+                assertTrue(e.getMessage(), e.getMessage().contains(expectedFail));
             }
         }
     }
