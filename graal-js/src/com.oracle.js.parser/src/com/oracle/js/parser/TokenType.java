@@ -82,8 +82,8 @@ public enum TokenType {
     RPAREN         (BRACKET, ")",     0, true),
     MUL            (BINARY,  "*",    13, true),
     ASSIGN_MUL     (BINARY,  "*=",    2, false),
-    EXP            (BINARY,  "**",   14, false),
-    ASSIGN_EXP     (BINARY,  "**=",   2, false),
+    EXP            (BINARY,  "**",   14, false, 6),
+    ASSIGN_EXP     (BINARY,  "**=",   2, false, 6),
     ADD            (BINARY,  "+",    12, true),
     INCPREFIX      (UNARY,   "++",   16, true),
     ASSIGN_ADD     (BINARY,  "+=",    2, false),
@@ -123,9 +123,9 @@ public enum TokenType {
     RBRACE         (BRACKET, "}"),
     BIT_NOT        (UNARY,   "~",    15, false),
     ELLIPSIS       (UNARY,   "..."),
-    NULLISHCOALESC (BINARY,  "??",    4, true),
+    NULLISHCOALESC (BINARY,  "??",    4, true, 11),
     ASSIGN_NULLCOAL(BINARY,  "??=",   2, false, 12),
-    OPTIONAL_CHAIN (BRACKET, "?.",   18, true),
+    OPTIONAL_CHAIN (BRACKET, "?.",   18, true, 11),
 
     // ECMA 7.6.1.1 Keywords, 7.6.1.2 Future Reserved Words.
     // All other Java keywords are commented out.
