@@ -59,7 +59,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.js.test.JSTest;
-import java.util.Iterator;
 
 public class ArrayPrototypeInteropTest {
 
@@ -235,27 +234,6 @@ public class ArrayPrototypeInteropTest {
                         result -> assertTrue(result.asBoolean()));
     }
 
-    @Test
-    public void testLazyForEach() {
-        Value collect = context.eval(ID, "" + //
-                        "(function (arr) {\n" + //
-                        "  let collect = [];\n" + //
-                        "  for (let item of arr) {\n" + //
-                        "    collect.push(item);\n" + //
-                        "    collect.push(item);\n" + //
-                        "    collect.push(item);\n" + //
-                        "  }\n" + //
-                        "  return collect;\n" + //
-                        "})\n" //
-        );
-
-        final List<Integer> list = Arrays.asList(5, 7, 11, 13, 17, 23);
-
-        Value tripples = collect.execute(new LazyArray(list.iterator()));
-        assertTrue("Array returned", tripples.hasArrayElements());
-        assertEquals(list.size() * 3, tripples.getArraySize());
-    }
-
     private void testWithArray(String test, List<Integer> before, List<Integer> afterExpected, List<Integer> expectedResult) {
         testWithArray(test, before, afterExpected, actualResult -> assertEquals("result", expectedResult, actualResult.as(LIST_OF_INTEGER)));
     }
@@ -275,40 +253,6 @@ public class ArrayPrototypeInteropTest {
 
     private static final TypeLiteral<List<Integer>> LIST_OF_INTEGER = new TypeLiteral<List<Integer>>() {
     };
-
-    private static final class LazyArray implements ProxyArray {
-        private final Iterator<?> it;
-        private long at;
-
-        LazyArray(Iterator<?> it) {
-            this.it = it;
-            this.at = 0;
-        }
-
-        @Override
-        public Object get(long index) {
-            if (index == at) {
-                at++;
-                return it.next();
-            }
-            return null;
-        }
-
-        @Override
-        public void set(long index, Value value) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public boolean remove(long index) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public long getSize() {
-            return it.hasNext() ? at + 1 : at;
-        }
-    }
 
     private static final class MyProxyArray implements ProxyArray {
         private final List<Object> values;
