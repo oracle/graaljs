@@ -114,7 +114,7 @@ public class ScopeInstrumentTest {
 
     @Test
     public void anonAsyncFindScopes() {
-        asyncFindScopes("Promise.resolve(42).then(async (x) => {});", ":async");
+        asyncFindScopes("Promise.resolve(42).then(async (x) => {});", ":=>");
     }
 
     @Test
