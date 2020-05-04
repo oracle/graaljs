@@ -14,7 +14,7 @@ function fn() { return arguments; }
 var obj = {};
 
 function testReflect(value) {
-    assertFail( ()=>{Reflect.apply(fn, obj, value);}, "is not an Object");
+    assertThrows( ()=>{Reflect.apply(fn, obj, value);}, TypeError, "is not an Object");
 }
 
 testReflect(true);

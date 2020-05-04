@@ -16,9 +16,9 @@ load('assert.js');
 (function missingClassArgumentsEvaluated() {
     var constructor = java.ThisClassDoesNotExist;
 
-    assertFail(function() {
+    assertThrows(function() {
         new constructor(constructor = Object);
-    });
+    }, TypeError);
 
     assertSame(Object, constructor);
 })();

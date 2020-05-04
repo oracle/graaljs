@@ -5,20 +5,23 @@
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
  */
 
-function assertFail(fn, msg) {
+function assertThrows(fn, errorType, msg) {
     try {
         fn();
     } catch (ex) {
+        if (errorType) {
+            if (!(ex instanceof errorType)) {
+                throw new Error('Expected ' + errorType.name + ', actual: ' + ex);
+            }
+        }
         if (msg) {
-            if (ex.message.indexOf(msg) == -1) {
+            if (ex.message.indexOf(msg) === -1) {
                 throw new Error('Expected error message "' + ex.message + '" to contain "' + msg + '"');
             }
-        } else if (!(ex instanceof TypeError)) {
-            throw new Error('Expected TypeError, actual: ' + ex);
         }
         return true;
     }
-    throw TypeError('error expected for method: ' + fn);
+    throw Error('error expected for method: ' + fn);
 }
 
 function assertSame(expected, actual) {
