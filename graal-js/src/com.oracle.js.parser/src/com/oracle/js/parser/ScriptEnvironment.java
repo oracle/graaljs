@@ -160,7 +160,7 @@ public final class ScriptEnvironment {
 
     @SuppressWarnings("hiding")
     public static final class Builder {
-        private int ecmaScriptVersion;
+        private int ecmaScriptVersion = 6;
         private boolean constAsVar;
         private boolean emptyStatements;
         private boolean syntaxExtensions = true;
