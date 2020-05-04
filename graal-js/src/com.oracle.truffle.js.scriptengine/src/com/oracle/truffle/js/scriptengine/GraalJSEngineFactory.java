@@ -71,7 +71,7 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
         List<String> nameList = new ArrayList<>(Arrays.asList("Graal.js", "graal.js", "Graal-js", "graal-js", "Graal.JS", "Graal-JS", "GraalJS", "GraalJSPolyglot", "js", "JS", "JavaScript",
                         "javascript", "ECMAScript", "ecmascript"));
         List<String> mimeTypeList = new ArrayList<>(Arrays.asList("application/javascript", "application/ecmascript", "text/javascript", "text/ecmascript"));
-        List<String> extensionList = new ArrayList<>(Arrays.asList("js"));
+        List<String> extensionList = new ArrayList<>(Arrays.asList("js", "mjs"));
         boolean java8 = System.getProperty("java.specification.version").compareTo("1.9") < 0;
         if (java8) {
             ScriptEngineFactory nashornFactory = getNashornEngineFactory();
