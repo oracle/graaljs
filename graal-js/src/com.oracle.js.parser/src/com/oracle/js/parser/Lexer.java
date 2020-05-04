@@ -1965,7 +1965,7 @@ public class Lexer extends Scanner {
                 // '.' followed by digit.
                 // Scan and add a number.
                 scanNumber();
-            } else if ((type = TokenLookup.lookupOperator(ch0, ch1, ch2, ch3)) != null) {
+            } else if ((type = TokenLookup.lookupOperator(ch0, ch1, ch2, ch3, ecmaScriptVersion)) != null) {
                 // Get the number of characters in the token.
                 final int typeLength = type.getLength();
                 // Skip that many characters.

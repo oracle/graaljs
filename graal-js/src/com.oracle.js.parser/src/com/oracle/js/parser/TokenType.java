@@ -77,12 +77,13 @@ public enum TokenType {
     BIT_AND        (BINARY,  "&",     8, true),
     AND            (BINARY,  "&&",    5, true),
     ASSIGN_BIT_AND (BINARY,  "&=",    2, false),
+    ASSIGN_AND     (BINARY,  "&&=",   2, false, 12),
     LPAREN         (BRACKET, "(",    17, true),
     RPAREN         (BRACKET, ")",     0, true),
     MUL            (BINARY,  "*",    13, true),
     ASSIGN_MUL     (BINARY,  "*=",    2, false),
-    EXP            (BINARY,  "**",   14, false),
-    ASSIGN_EXP     (BINARY,  "**=",   2, false),
+    EXP            (BINARY,  "**",   14, false, 6),
+    ASSIGN_EXP     (BINARY,  "**=",   2, false, 6),
     ADD            (BINARY,  "+",    12, true),
     INCPREFIX      (UNARY,   "++",   16, true),
     ASSIGN_ADD     (BINARY,  "+=",    2, false),
@@ -118,11 +119,13 @@ public enum TokenType {
     BIT_OR         (BINARY,  "|",     6, true),
     ASSIGN_BIT_OR  (BINARY,  "|=",    2, false),
     OR             (BINARY,  "||",    4, true),
+    ASSIGN_OR      (BINARY,  "||=",   2, false, 12),
     RBRACE         (BRACKET, "}"),
     BIT_NOT        (UNARY,   "~",    15, false),
     ELLIPSIS       (UNARY,   "..."),
-    NULLISHCOALESC (BINARY,  "??",    4, true),
-    OPTIONAL_CHAIN (BRACKET, "?.",   18, true),
+    NULLISHCOALESC (BINARY,  "??",    4, true, 11),
+    ASSIGN_NULLCOAL(BINARY,  "??=",   2, false, 12),
+    OPTIONAL_CHAIN (BRACKET, "?.",   18, true, 11),
 
     // ECMA 7.6.1.1 Keywords, 7.6.1.2 Future Reserved Words.
     // All other Java keywords are commented out.
@@ -244,23 +247,27 @@ public enum TokenType {
     /** Left associativity */
     private final boolean isLeftAssociative;
 
+    /** ECMAScript version defining the token. */
+    private final int ecmaScriptVersion;
+
     /** Cache values to avoid cloning. */
     private static final TokenType[] tokenValues;
 
     TokenType(final TokenKind kind, final String name) {
-        next = null;
-        this.kind = kind;
-        this.name = name;
-        precedence = 0;
-        isLeftAssociative = false;
+        this(kind, name, 0, false);
     }
 
     TokenType(final TokenKind kind, final String name, final int precedence, final boolean isLeftAssociative) {
+        this(kind, name, precedence, isLeftAssociative, 5);
+    }
+
+    TokenType(final TokenKind kind, final String name, final int precedence, final boolean isLeftAssociative, final int ecmaScriptVersion) {
         next = null;
         this.kind = kind;
         this.name = name;
         this.precedence = precedence;
         this.isLeftAssociative = isLeftAssociative;
+        this.ecmaScriptVersion = ecmaScriptVersion;
     }
 
     /**
@@ -320,6 +327,10 @@ public enum TokenType {
         return isLeftAssociative;
     }
 
+    public int getECMAScriptVersion() {
+        return ecmaScriptVersion;
+    }
+
     boolean startsWith(final char c) {
         return name != null && name.length() > 0 && name.charAt(0) == c;
     }
@@ -334,7 +345,7 @@ public enum TokenType {
     }
 
     /**
-     * Is type one of {@code = *= /= %= += -= <<= >>= >>>= &= ^= |= **=}?
+     * Is type one of {@code = *= /= %= += -= <<= >>= >>>= &= ^= |= **= &&= ||= ??=}?
      */
     public boolean isAssignment() {
         switch (this) {
@@ -352,6 +363,9 @@ public enum TokenType {
             case ASSIGN_SHL:
             case ASSIGN_SHR:
             case ASSIGN_SUB:
+            case ASSIGN_AND:
+            case ASSIGN_OR:
+            case ASSIGN_NULLCOAL:
                 return true;
             default:
                 return false;

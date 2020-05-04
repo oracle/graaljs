@@ -881,6 +881,9 @@ public class Parser extends AbstractParser {
             case ASSIGN_SHL:
             case ASSIGN_SHR:
             case ASSIGN_SUB:
+            case ASSIGN_AND:
+            case ASSIGN_OR:
+            case ASSIGN_NULLCOAL:
                 if (lhs instanceof IdentNode) {
                     IdentNode ident = (IdentNode) lhs;
                     if (!checkIdentLValue(ident) || ident.isMetaProperty()) {
@@ -4320,10 +4323,6 @@ public class Parser extends AbstractParser {
                     break;
                 }
                 case OPTIONAL_CHAIN: {
-                    if (!isES2020()) {
-                        break loop;
-                    }
-
                     next();
                     optionalChain = true;
 
@@ -5664,7 +5663,7 @@ public class Parser extends AbstractParser {
         Expression lhs = exprLhs;
 
         // While greater precedence.
-        while (checkOperator(in) && precedence >= minPrecedence) {
+        while (type.isOperator(in) && precedence >= minPrecedence) {
             // Capture the operator token.
             final long op = token;
 
@@ -5695,7 +5694,7 @@ public class Parser extends AbstractParser {
                 int nextPrecedence = type.getPrecedence();
 
                 // Subtask greater precedence.
-                while (checkOperator(in) && (nextPrecedence > precedence || (nextPrecedence == precedence && !type.isLeftAssociative()))) {
+                while (type.isOperator(in) && (nextPrecedence > precedence || (nextPrecedence == precedence && !type.isLeftAssociative()))) {
                     rhs = expression(rhs, nextPrecedence, in, yield, await);
                     nextPrecedence = type.getPrecedence();
                 }
@@ -5706,10 +5705,6 @@ public class Parser extends AbstractParser {
         }
 
         return lhs;
-    }
-
-    private boolean checkOperator(final boolean in) {
-        return type.isOperator(in) && (type != TokenType.EXP || isES6()) && (type != TokenType.NULLISHCOALESC || isES2020());
     }
 
     private Expression assignmentExpression(boolean in) {
