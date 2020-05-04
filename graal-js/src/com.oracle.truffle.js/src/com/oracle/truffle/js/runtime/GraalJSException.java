@@ -197,7 +197,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                 asyncStacks = null;
                 break;
             }
-            if (asyncStackTraces && element.getFrame() != null) {
+            if (asyncStackTraces && element.getFrame() != null && element.getTarget().getRootNode().getLanguageInfo() != null) {
                 List<TruffleStackTraceElement> asyncStack = TruffleStackTrace.getAsynchronousStackTrace(element.getTarget(), element.getFrame());
                 if (asyncStack != null && !asyncStack.isEmpty()) {
                     if (asyncStacks == null) {
