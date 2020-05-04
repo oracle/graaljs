@@ -227,6 +227,7 @@ public class Test262Runnable extends TestRunnable {
                     "class-static-fields-public",
                     "class-static-methods-private",
                     "host-gc-required",
+                    "logical-assignment-operators",
                     "regexp-match-indices",
     }));
 

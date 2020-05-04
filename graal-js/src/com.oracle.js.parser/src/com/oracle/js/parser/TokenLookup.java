@@ -180,7 +180,7 @@ public final class TokenLookup {
      *
      * @return the token type for the operator
      */
-    public static TokenType lookupOperator(final char ch0, final char ch1, final char ch2, final char ch3) {
+    public static TokenType lookupOperator(final char ch0, final char ch1, final char ch2, final char ch3, final int ecmaScriptVersion) {
         // Ignore keyword entries.
         if (tableBase < ch0 && ch0 <= tableLimit && !('a' <= ch0 && ch0 <= 'z')) {
             // Convert to index.
@@ -190,38 +190,40 @@ public final class TokenLookup {
 
             // Search bucket list.
             while (tokenType != null) {
-                final String name = tokenType.getName();
+                if (tokenType.getECMAScriptVersion() <= ecmaScriptVersion) {
+                    final String name = tokenType.getName();
 
-                switch (name.length()) {
-                    case 1:
-                        // One character entry.
-                        return tokenType;
-                    case 2:
-                        // Two character entry.
-                        if (name.charAt(1) == ch1) {
-                            // OptionalChainingPunctuator :: ?.[lookahead not in DecimalDigit]
-                            if (tokenType != TokenType.OPTIONAL_CHAIN || ch2 < '0' || '9' < ch2) {
+                    switch (name.length()) {
+                        case 1:
+                            // One character entry.
+                            return tokenType;
+                        case 2:
+                            // Two character entry.
+                            if (name.charAt(1) == ch1) {
+                                // OptionalChainingPunctuator :: ?.[lookahead not in DecimalDigit]
+                                if (tokenType != TokenType.OPTIONAL_CHAIN || ch2 < '0' || '9' < ch2) {
+                                    return tokenType;
+                                }
+                            }
+                            break;
+                        case 3:
+                            // Three character entry.
+                            if (name.charAt(1) == ch1 &&
+                                            name.charAt(2) == ch2) {
                                 return tokenType;
                             }
-                        }
-                        break;
-                    case 3:
-                        // Three character entry.
-                        if (name.charAt(1) == ch1 &&
-                                        name.charAt(2) == ch2) {
-                            return tokenType;
-                        }
-                        break;
-                    case 4:
-                        // Four character entry.
-                        if (name.charAt(1) == ch1 &&
-                                        name.charAt(2) == ch2 &&
-                                        name.charAt(3) == ch3) {
-                            return tokenType;
-                        }
-                        break;
-                    default:
-                        break;
+                            break;
+                        case 4:
+                            // Four character entry.
+                            if (name.charAt(1) == ch1 &&
+                                            name.charAt(2) == ch2 &&
+                                            name.charAt(3) == ch3) {
+                                return tokenType;
+                            }
+                            break;
+                        default:
+                            break;
+                    }
                 }
 
                 // Try next token.

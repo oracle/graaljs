@@ -77,7 +77,7 @@ public enum TokenType {
     BIT_AND        (BINARY,  "&",     8, true),
     AND            (BINARY,  "&&",    5, true),
     ASSIGN_BIT_AND (BINARY,  "&=",    2, false),
-    ASSIGN_AND     (BINARY,  "&&=",   2, false),
+    ASSIGN_AND     (BINARY,  "&&=",   2, false, 12),
     LPAREN         (BRACKET, "(",    17, true),
     RPAREN         (BRACKET, ")",     0, true),
     MUL            (BINARY,  "*",    13, true),
@@ -119,12 +119,12 @@ public enum TokenType {
     BIT_OR         (BINARY,  "|",     6, true),
     ASSIGN_BIT_OR  (BINARY,  "|=",    2, false),
     OR             (BINARY,  "||",    4, true),
-    ASSIGN_OR      (BINARY,  "||=",   2, false),
+    ASSIGN_OR      (BINARY,  "||=",   2, false, 12),
     RBRACE         (BRACKET, "}"),
     BIT_NOT        (UNARY,   "~",    15, false),
     ELLIPSIS       (UNARY,   "..."),
     NULLISHCOALESC (BINARY,  "??",    4, true),
-    ASSIGN_NULLCOAL(BINARY,  "??=",   2, false),
+    ASSIGN_NULLCOAL(BINARY,  "??=",   2, false, 12),
     OPTIONAL_CHAIN (BRACKET, "?.",   18, true),
 
     // ECMA 7.6.1.1 Keywords, 7.6.1.2 Future Reserved Words.
@@ -247,23 +247,27 @@ public enum TokenType {
     /** Left associativity */
     private final boolean isLeftAssociative;
 
+    /** ECMAScript version defining the token. */
+    private final int ecmaScriptVersion;
+
     /** Cache values to avoid cloning. */
     private static final TokenType[] tokenValues;
 
     TokenType(final TokenKind kind, final String name) {
-        next = null;
-        this.kind = kind;
-        this.name = name;
-        precedence = 0;
-        isLeftAssociative = false;
+        this(kind, name, 0, false);
     }
 
     TokenType(final TokenKind kind, final String name, final int precedence, final boolean isLeftAssociative) {
+        this(kind, name, precedence, isLeftAssociative, 5);
+    }
+
+    TokenType(final TokenKind kind, final String name, final int precedence, final boolean isLeftAssociative, final int ecmaScriptVersion) {
         next = null;
         this.kind = kind;
         this.name = name;
         this.precedence = precedence;
         this.isLeftAssociative = isLeftAssociative;
+        this.ecmaScriptVersion = ecmaScriptVersion;
     }
 
     /**
@@ -321,6 +325,10 @@ public enum TokenType {
 
     public boolean isLeftAssociative() {
         return isLeftAssociative;
+    }
+
+    public int getECMAScriptVersion() {
+        return ecmaScriptVersion;
     }
 
     boolean startsWith(final char c) {
