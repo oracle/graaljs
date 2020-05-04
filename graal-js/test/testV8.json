@@ -645,10 +645,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
-    "filePath" : "mjsunit/harmony/logical-assignment.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
-  }, {
     "filePath" : "mjsunit/harmony/modules-import-15-top-level-await.mjs",
     "status" : "FAIL",
     "comment" : "top-level await"
