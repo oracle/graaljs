@@ -4,7 +4,8 @@ This changelog summarizes major changes between GraalVM versions of the GraalVM 
 The main focus is on user-observable behavior of the engine.
 
 ## Version 20.2.0
-* Implemented the [Intl.NumberFormat Unified API Proposal](https://github.com/tc39/proposal-unified-intl-numberformat) proposal.
+* Implemented the [Intl.NumberFormat Unified API](https://github.com/tc39/proposal-unified-intl-numberformat) proposal.
+* Implemented the [Logical Assignment Operators](https://github.com/tc39/proposal-logical-assignment) proposal.
 
 ## Version 20.1.0
 * ECMAScript 2020 mode/features enabled by default.
