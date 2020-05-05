@@ -51,6 +51,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -70,6 +71,7 @@ import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.function.SpecializedNewObjectNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunction.AsyncGeneratorState;
@@ -118,41 +120,68 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
             DynamicObject generatorObject = (DynamicObject) arguments[1];
             Completion completion = (Completion) arguments[2];
 
-            for (;;) {
-                // State must be Executing when called from AsyncGeneratorResumeNext.
-                // State can be Executing or SuspendedYield when resuming from Await.
-                assert generatorObject.get(JSFunction.ASYNC_GENERATOR_STATE_ID) == AsyncGeneratorState.Executing ||
-                                generatorObject.get(JSFunction.ASYNC_GENERATOR_STATE_ID) == AsyncGeneratorState.SuspendedYield;
-                writeYieldValue.executeWrite(generatorFrame, completion);
+            final JSRealm currentRealm = context.getRealm();
+            final JSRealm realm;
+            final boolean enterContext;
+            if (context.neverCreatedChildRealms()) {
+                // fast path: if there are no child realms we are guaranteedly in the right realm
+                assert currentRealm == JSFunction.getRealm(JSFrameUtil.getFunctionObject(generatorFrame));
+                realm = currentRealm;
+                enterContext = false;
+            } else {
+                // must enter function context if realm != currentRealm
+                realm = JSFunction.getRealm(JSFrameUtil.getFunctionObject(generatorFrame));
+                enterContext = realm != currentRealm;
+            }
+            Object prev = null;
+            TruffleContext childContext = null;
 
-                try {
-                    Object result = functionBody.execute(generatorFrame);
-                    setGeneratorState.setValue(generatorObject, AsyncGeneratorState.Completed);
-                    asyncGeneratorResolveNode.performResolve(frame, generatorObject, result, true);
-                } catch (YieldException e) {
-                    if (e.isYield()) {
-                        setGeneratorState.setValue(generatorObject, AsyncGeneratorState.SuspendedYield);
-                        asyncGeneratorResolveNode.performResolve(frame, generatorObject, e.getResult(), false);
+            if (enterContext) {
+                childContext = realm.getTruffleContext();
+                prev = childContext.enter();
+            }
+
+            try {
+                for (;;) {
+                    // State must be Executing when called from AsyncGeneratorResumeNext.
+                    // State can be Executing or SuspendedYield when resuming from Await.
+                    assert generatorObject.get(JSFunction.ASYNC_GENERATOR_STATE_ID) == AsyncGeneratorState.Executing ||
+                                    generatorObject.get(JSFunction.ASYNC_GENERATOR_STATE_ID) == AsyncGeneratorState.SuspendedYield;
+                    writeYieldValue.executeWrite(generatorFrame, completion);
+
+                    try {
+                        Object result = functionBody.execute(generatorFrame);
+                        setGeneratorState.setValue(generatorObject, AsyncGeneratorState.Completed);
+                        asyncGeneratorResolveNode.performResolve(frame, generatorObject, result, true);
+                    } catch (YieldException e) {
+                        if (e.isYield()) {
+                            setGeneratorState.setValue(generatorObject, AsyncGeneratorState.SuspendedYield);
+                            asyncGeneratorResolveNode.performResolve(frame, generatorObject, e.getResult(), false);
+                        } else {
+                            assert e.isAwait();
+                            return Undefined.instance;
+                        }
+                    } catch (Throwable e) {
+                        if (shouldCatch(e)) {
+                            setGeneratorState.setValue(generatorObject, AsyncGeneratorState.Completed);
+                            Object reason = getErrorObjectNode.execute(e);
+                            asyncGeneratorRejectNode.performReject(generatorFrame, generatorObject, reason);
+                        } else {
+                            throw e;
+                        }
+                    }
+                    // AsyncGeneratorResolve/AsyncGeneratorReject => AsyncGeneratorResumeNext
+                    Object nextCompletion = asyncGeneratorResumeNextNode.execute(generatorFrame, generatorObject);
+                    if (nextCompletion instanceof Completion) {
+                        completion = (Completion) nextCompletion;
+                        continue; // tail call from AsyncGeneratorResumeNext
                     } else {
-                        assert e.isAwait();
                         return Undefined.instance;
                     }
-                } catch (Throwable e) {
-                    if (shouldCatch(e)) {
-                        setGeneratorState.setValue(generatorObject, AsyncGeneratorState.Completed);
-                        Object reason = getErrorObjectNode.execute(e);
-                        asyncGeneratorRejectNode.performReject(generatorFrame, generatorObject, reason);
-                    } else {
-                        throw e;
-                    }
                 }
-                // AsyncGeneratorResolve/AsyncGeneratorReject => AsyncGeneratorResumeNext
-                Object nextCompletion = asyncGeneratorResumeNextNode.execute(generatorFrame, generatorObject);
-                if (nextCompletion instanceof Completion) {
-                    completion = (Completion) nextCompletion;
-                    continue; // tail call from AsyncGeneratorResumeNext
-                } else {
-                    return Undefined.instance;
+            } finally {
+                if (enterContext) {
+                    childContext.leave(prev);
                 }
             }
         }

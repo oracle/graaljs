@@ -49,6 +49,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -70,7 +71,9 @@ import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -110,6 +113,28 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
             PromiseCapabilityRecord promiseCapability = (PromiseCapabilityRecord) args[1];
             Completion resumptionValue = (Completion) args[2];
             writeAsyncResult.executeWrite(asyncFrame, resumptionValue);
+
+            final JSRealm currentRealm = context.getRealm();
+            final JSRealm realm;
+            final boolean enterContext;
+            if (context.neverCreatedChildRealms()) {
+                // fast path: if there are no child realms we are guaranteedly in the right realm
+                assert currentRealm == JSFunction.getRealm(JSFrameUtil.getFunctionObject(asyncFrame));
+                realm = currentRealm;
+                enterContext = false;
+            } else {
+                // must enter function context if realm != currentRealm
+                realm = JSFunction.getRealm(JSFrameUtil.getFunctionObject(asyncFrame));
+                enterContext = realm != currentRealm;
+            }
+            Object prev = null;
+            TruffleContext childContext = null;
+
+            if (enterContext) {
+                childContext = realm.getTruffleContext();
+                prev = childContext.enter();
+            }
+
             try {
                 Object result = functionBody.execute(asyncFrame);
                 promiseCapabilityResolve(callResolveNode, promiseCapability, result);
@@ -121,6 +146,10 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
                     promiseCapabilityReject(callRejectNode, promiseCapability, getErrorObjectNode.execute(e));
                 } else {
                     throw e;
+                }
+            } finally {
+                if (enterContext) {
+                    childContext.leave(prev);
                 }
             }
             // The result is undefined for normal completion.
