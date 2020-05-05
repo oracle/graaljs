@@ -118,7 +118,6 @@ test-trace-events-worker-metadata: SKIP
 
 # Unclassified
 test-assert: FAIL
-test-assert-async: FAIL
 test-async-hooks-async-await: FAIL
 test-async-hooks-enable-disable-enable: FAIL
 test-common-gc: FAIL
