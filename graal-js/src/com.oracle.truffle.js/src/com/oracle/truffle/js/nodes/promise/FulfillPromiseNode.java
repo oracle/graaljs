@@ -49,7 +49,6 @@ import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class FulfillPromiseNode extends JavaScriptBaseNode {
-    private final JSContext context;
     @Child private PropertyGetNode getPromiseFulfillReactions;
     @Child private PropertySetNode setPromiseResult;
     @Child private PropertySetNode setPromiseFulfillReactions;
@@ -58,7 +57,6 @@ public class FulfillPromiseNode extends JavaScriptBaseNode {
     @Child private TriggerPromiseReactionsNode triggerPromiseReactions;
 
     protected FulfillPromiseNode(JSContext context) {
-        this.context = context;
         this.getPromiseFulfillReactions = PropertyGetNode.createGetHidden(JSPromise.PROMISE_FULFILL_REACTIONS, context);
         this.setPromiseResult = PropertySetNode.createSetHidden(JSPromise.PROMISE_RESULT, context);
         this.setPromiseFulfillReactions = PropertySetNode.createSetHidden(JSPromise.PROMISE_FULFILL_REACTIONS, context);
@@ -75,10 +73,7 @@ public class FulfillPromiseNode extends JavaScriptBaseNode {
         assert JSPromise.isPending(promise);
         Object reactions = getPromiseFulfillReactions.getValue(promise);
         setPromiseResult.setValue(promise, value);
-        // We preserve reactions for lazy async stack traces.
-        if (!context.isOptionAsyncStackTraces()) {
-            setPromiseFulfillReactions.setValue(promise, Undefined.instance);
-        }
+        setPromiseFulfillReactions.setValue(promise, Undefined.instance);
         setPromiseRejectReactions.setValue(promise, Undefined.instance);
         setPromiseState.setValueInt(promise, JSPromise.FULFILLED);
         return triggerPromiseReactions.execute(reactions, value);

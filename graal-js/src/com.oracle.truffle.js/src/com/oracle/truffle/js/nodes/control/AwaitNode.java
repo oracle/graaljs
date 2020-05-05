@@ -340,7 +340,11 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
 
     public static List<TruffleStackTraceElement> findAsyncStackFrames(DynamicObject promise) {
         assert JSPromise.isJSPromise(promise);
-        Object fulfillReactions = promise.get(JSPromise.PROMISE_FULFILL_REACTIONS);
+        Object fulfillReactions = null;
+        if (JSPromise.isPending(promise)) {
+            // only pending promises have reactions
+            fulfillReactions = promise.get(JSPromise.PROMISE_FULFILL_REACTIONS, null);
+        }
         if (fulfillReactions instanceof SimpleArrayList<?> && ((SimpleArrayList<?>) fulfillReactions).size() == 1) {
             SimpleArrayList<?> fulfillList = (SimpleArrayList<?>) fulfillReactions;
             PromiseReactionRecord reaction = (PromiseReactionRecord) fulfillList.get(0);
@@ -349,6 +353,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
                 DynamicObject handlerFunction = (DynamicObject) handler;
                 Object asyncContext = handlerFunction.get(AwaitNode.ASYNC_CONTEXT);
                 if (asyncContext instanceof MaterializedFrame) {
+                    // async function
                     MaterializedFrame asyncContextFrame = (MaterializedFrame) asyncContext;
                     RootCallTarget asyncTarget = (RootCallTarget) handlerFunction.get(AwaitNode.ASYNC_TARGET);
                     Node callNode = (Node) handlerFunction.get(AwaitNode.ASYNC_CALL_NODE);
@@ -379,6 +384,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
                 }
             }
             if (reaction.getCapability() != null) {
+                // follow the promise chain
                 return findAsyncStackFrames(reaction.getCapability().getPromise());
             }
         }

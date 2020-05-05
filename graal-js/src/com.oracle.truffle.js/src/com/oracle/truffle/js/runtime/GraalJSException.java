@@ -310,7 +310,9 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                         assert JSRuntime.isJSRootNode(rootNode);
                         final Object[] arguments;
                         int promiseIndex = -1;
-                        if (JSRuntime.isJSFunctionRootNode(rootNode)) {
+                        if (element.getFrame() == null) {
+                            break;
+                        } else if (JSRuntime.isJSFunctionRootNode(rootNode)) {
                             arguments = element.getFrame().getArguments();
                         } else if (((JavaScriptRootNode) rootNode).isResumption()) {
                             // first argument is the context frame

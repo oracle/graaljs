@@ -40,12 +40,16 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.runtime.GraalJSException;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -77,17 +81,29 @@ public class RejectPromiseNode extends JavaScriptBaseNode {
 
     public Object execute(DynamicObject promise, Object reason) {
         assert JSPromise.isPending(promise);
+
+        if (!JSConfig.EagerStackTrace && context.isOptionAsyncStackTraces() && JSError.isJSError(reason)) {
+            // Materialize lazy stack trace before clearing promise reactions.
+            materializeLazyStackTrace((DynamicObject) reason);
+        }
+
         Object reactions = getPromiseRejectReactions.getValue(promise);
         setPromiseResult.setValue(promise, reason);
-        // We preserve reactions for lazy async stack traces.
-        if (!context.isOptionAsyncStackTraces()) {
-            setPromiseFulfillReactions.setValue(promise, Undefined.instance);
-        }
+        setPromiseFulfillReactions.setValue(promise, Undefined.instance);
         setPromiseRejectReactions.setValue(promise, Undefined.instance);
         setPromiseState.setValueInt(promise, JSPromise.REJECTED);
         if (unhandledProf.profile(getPromiseIsHandled.getValue(promise) != Boolean.TRUE)) {
             context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_REJECT, reason);
         }
         return triggerPromiseReactions.execute(reactions, reason);
+    }
+
+    @TruffleBoundary
+    private static void materializeLazyStackTrace(DynamicObject error) {
+        assert JSError.isJSError(error);
+        GraalJSException exception = JSError.getException(error);
+        if (exception != null) {
+            exception.getJSStackTrace();
+        }
     }
 }
