@@ -285,6 +285,10 @@ public class JSContext {
         SharedArrayBufferGetByteLength,
         FunctionAsyncIterator,
         IsGraalRuntime,
+        AsyncModuleExecutionFulfilled,
+        AsyncModuleExecutionRejected,
+        TopLevelAwaitResolve,
+        TopLevelAwaitReject,
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;

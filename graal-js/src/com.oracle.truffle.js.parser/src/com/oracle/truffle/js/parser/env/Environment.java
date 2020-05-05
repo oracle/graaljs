@@ -117,13 +117,15 @@ public abstract class Environment {
     }
 
     public VarRef findAsyncContextVar() {
-        assert !function().isGlobal();
+        // top-level-await uses async generators in global scope
+        assert !function().isGlobal() || function().isAsyncGeneratorFunction();
         declareLocalVar(FunctionEnvironment.ASYNC_CONTEXT_SLOT_IDENTIFIER);
         return findInternalSlot(FunctionEnvironment.ASYNC_CONTEXT_SLOT_IDENTIFIER);
     }
 
     public VarRef findAsyncResultVar() {
-        assert !function().isGlobal();
+        // top-level-await uses async generators in global scope
+        assert !function().isGlobal() || function().isAsyncGeneratorFunction();
         declareLocalVar(FunctionEnvironment.ASYNC_RESULT_SLOT_IDENTIFIER);
         return findInternalSlot(FunctionEnvironment.ASYNC_RESULT_SLOT_IDENTIFIER);
     }

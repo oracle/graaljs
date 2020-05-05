@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.js.parser;
 
-import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_MIME_TYPE;
-import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
-
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -60,6 +57,7 @@ import java.util.function.Supplier;
 import com.oracle.js.parser.ir.Expression;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ExportEntry;
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
@@ -75,17 +73,22 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
+import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.EvalNode;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
+import com.oracle.truffle.js.nodes.promise.PerformPromiseThenNode;
 import com.oracle.truffle.js.parser.date.DateParser;
 import com.oracle.truffle.js.parser.env.DebugEnvironment;
 import com.oracle.truffle.js.parser.env.Environment;
@@ -93,22 +96,31 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
+import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord.Status;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
+
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_MIME_TYPE;
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
+import static com.oracle.truffle.js.runtime.JSConfig.ECMAScript2021;
 
 /**
  * This is the main external entry into the GraalJS parser.
@@ -118,6 +130,8 @@ import com.oracle.truffle.js.runtime.util.Pair;
  *
  */
 public final class GraalJSEvaluator implements JSParser {
+
+    private static HiddenKey STORE_MODULE_KEY = new HiddenKey("store-module-key");
 
     /**
      * Evaluate indirect eval.
@@ -264,6 +278,8 @@ public final class GraalJSEvaluator implements JSParser {
 
     private ScriptNode fakeScriptForModule(JSContext context, Source source) {
         RootNode rootNode = new JavaScriptRootNode(context.getLanguage(), JSBuiltin.createSourceSection(), null) {
+            @Child private PerformPromiseThenNode performPromiseThenNode = PerformPromiseThenNode.create(context);
+
             @Override
             public Object execute(VirtualFrame frame) {
                 JSRealm realm = JSFunction.getRealm(JSFrameUtil.getFunctionObject(frame));
@@ -274,11 +290,63 @@ public final class GraalJSEvaluator implements JSParser {
             private Object evalModule(JSRealm realm) {
                 JSModuleRecord moduleRecord = realm.getModuleLoader().loadModule(source);
                 moduleInstantiation(realm, moduleRecord);
-                return moduleEvaluation(realm, moduleRecord);
+                Object promise = moduleEvaluation(realm, moduleRecord);
+                if (context.getEcmaScriptVersion() >= ECMAScript2021 && JSPromise.isJSPromise(promise)) {
+                    DynamicObject onRejected = createTopLevelAwaitReject(context);
+                    DynamicObject onAccepted = createTopLevelAwaitResolve(context);
+                    performPromiseThenNode.execute((DynamicObject) promise, onAccepted, onRejected, null);
+                }
+                return promise;
             }
         };
         JSFunctionData functionData = JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(rootNode), 0, "");
         return ScriptNode.fromFunctionData(context, functionData);
+    }
+
+    private static DynamicObject createTopLevelAwaitReject(JSContext context) {
+        JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.TopLevelAwaitReject, (c) -> createTopLevelAwaitRejectImpl(c));
+        return JSFunction.create(context.getRealm(), functionData);
+    }
+
+    private static JSFunctionData createTopLevelAwaitRejectImpl(JSContext context) {
+        class TopLevelAwaitRejectedRootNode extends JavaScriptRootNode {
+            @Child private JavaScriptNode argumentNode = AccessIndexedArgumentNode.create(0);
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                Object error = argumentNode.execute(frame);
+
+                DynamicObject jsError;
+                if (error instanceof JSException) {
+                    throw (JSException) error;
+                }
+                if (JSError.isJSError(error)) {
+                    jsError = (DynamicObject) error;
+                } else {
+                    jsError = JSError.create(JSErrorType.TypeError, context.getRealm(), "Cannot load ES module!");
+                }
+                throw JSError.getException(jsError);
+            }
+        }
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TopLevelAwaitRejectedRootNode());
+        return JSFunctionData.createCallOnly(context, callTarget, 1, "");
+    }
+
+    private static DynamicObject createTopLevelAwaitResolve(JSContext context) {
+        JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.TopLevelAwaitResolve, (c) -> createTopLevelAwaitResolveImpl(c));
+        return JSFunction.create(context.getRealm(), functionData);
+    }
+
+    private static JSFunctionData createTopLevelAwaitResolveImpl(JSContext context) {
+        class TopLevelAwaitFulfilledRootNode extends JavaScriptRootNode {
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return Undefined.instance;
+            }
+        }
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TopLevelAwaitFulfilledRootNode());
+        return JSFunctionData.createCallOnly(context, callTarget, 1, "");
     }
 
     @Override
@@ -449,7 +517,7 @@ public final class GraalJSEvaluator implements JSParser {
             return moduleRecord.getNamespace();
         }
 
-        assert moduleRecord.getStatus() != Status.Uninstantiated;
+        assert moduleRecord.getStatus() != Status.Unlinked;
         Collection<String> exportedNames = getExportedNames(moduleRecord);
         List<Pair<String, ExportResolution>> unambiguousNames = new ArrayList<>();
         for (String exportedName : exportedNames) {
@@ -470,31 +538,31 @@ public final class GraalJSEvaluator implements JSParser {
     @TruffleBoundary
     @Override
     public void moduleInstantiation(JSRealm realm, JSModuleRecord moduleRecord) {
-        assert moduleRecord.getStatus() != Status.Instantiating && moduleRecord.getStatus() != Status.Evaluating;
+        assert moduleRecord.getStatus() != Status.Linking && moduleRecord.getStatus() != Status.Evaluating;
         Deque<JSModuleRecord> stack = new ArrayDeque<>(4);
 
         try {
             innerModuleInstantiation(realm, moduleRecord, stack, 0);
         } catch (GraalJSException e) {
             for (JSModuleRecord m : stack) {
-                assert m.getStatus() == Status.Instantiating;
+                assert m.getStatus() == Status.Linking;
                 m.setUninstantiated();
             }
-            assert moduleRecord.getStatus() == Status.Uninstantiated;
+            assert moduleRecord.getStatus() == Status.Unlinked;
             throw e;
         }
 
-        assert moduleRecord.getStatus() == Status.Instantiated || moduleRecord.getStatus() == Status.Evaluated;
+        assert moduleRecord.getStatus() == Status.Linked || moduleRecord.getStatus() == Status.Evaluated;
         assert stack.isEmpty();
     }
 
     private int innerModuleInstantiation(JSRealm realm, JSModuleRecord moduleRecord, Deque<JSModuleRecord> stack, int index0) {
         int index = index0;
-        if (moduleRecord.getStatus() == Status.Instantiating || moduleRecord.getStatus() == Status.Instantiated || moduleRecord.getStatus() == Status.Evaluated) {
+        if (moduleRecord.getStatus() == Status.Linking || moduleRecord.getStatus() == Status.Linked || moduleRecord.getStatus() == Status.Evaluated) {
             return index;
         }
-        assert moduleRecord.getStatus() == Status.Uninstantiated;
-        moduleRecord.setStatus(Status.Instantiating);
+        assert moduleRecord.getStatus() == Status.Unlinked;
+        moduleRecord.setStatus(Status.Linking);
         moduleRecord.setDFSIndex(index);
         moduleRecord.setDFSAncestorIndex(index);
         index++;
@@ -504,10 +572,10 @@ public final class GraalJSEvaluator implements JSParser {
         for (String requestedModule : module.getRequestedModules()) {
             JSModuleRecord requiredModule = hostResolveImportedModule(moduleRecord, requestedModule);
             index = innerModuleInstantiation(realm, requiredModule, stack, index);
-            assert requiredModule.getStatus() == Status.Instantiating || requiredModule.getStatus() == Status.Instantiated ||
+            assert requiredModule.getStatus() == Status.Linking || requiredModule.getStatus() == Status.Linked ||
                             requiredModule.getStatus() == Status.Evaluated : requiredModule.getStatus();
-            assert (requiredModule.getStatus() == Status.Instantiating) == stack.contains(requiredModule);
-            if (requiredModule.getStatus() == Status.Instantiating) {
+            assert (requiredModule.getStatus() == Status.Linking) == stack.contains(requiredModule);
+            if (requiredModule.getStatus() == Status.Linking) {
                 moduleRecord.setDFSAncestorIndex(Math.min(moduleRecord.getDFSAncestorIndex(), requiredModule.getDFSAncestorIndex()));
             }
         }
@@ -518,7 +586,7 @@ public final class GraalJSEvaluator implements JSParser {
         if (moduleRecord.getDFSAncestorIndex() == moduleRecord.getDFSIndex()) {
             while (true) {
                 JSModuleRecord requiredModule = stack.pop();
-                requiredModule.setStatus(Status.Instantiated);
+                requiredModule.setStatus(Status.Linked);
                 if (requiredModule.equals(moduleRecord)) {
                     break;
                 }
@@ -528,7 +596,7 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     private void moduleInitializeEnvironment(JSRealm realm, JSModuleRecord moduleRecord) {
-        assert moduleRecord.getStatus() == Status.Instantiating;
+        assert moduleRecord.getStatus() == Status.Linking;
         Module module = (Module) moduleRecord.getModule();
         for (ExportEntry exportEntry : module.getIndirectExportEntries()) {
             ExportResolution resolution = resolveExport(moduleRecord, exportEntry.getExportName());
@@ -539,34 +607,96 @@ public final class GraalJSEvaluator implements JSParser {
 
         // Initialize the environment by executing the module function.
         // It will automatically yield when the module is instantiated.
-        moduleExecution(realm, moduleRecord);
+        moduleExecution(realm, moduleRecord, null);
     }
 
     @TruffleBoundary
     @Override
     public Object moduleEvaluation(JSRealm realm, JSModuleRecord moduleRecord) {
-        assert moduleRecord.getStatus() == Status.Instantiated || moduleRecord.getStatus() == Status.Evaluated;
+        // Evaluate ( ) Concrete Method
+        JSModuleRecord module = moduleRecord;
+        int ecmaScriptVersion = realm.getContext().getEcmaScriptVersion();
         Deque<JSModuleRecord> stack = new ArrayDeque<>(4);
-
-        try {
-            innerModuleEvaluation(realm, moduleRecord, stack, 0);
-        } catch (Throwable e) {
-            if (e instanceof TruffleException && TryCatchNode.shouldCatch(e)) {
-                for (JSModuleRecord m : stack) {
-                    assert m.getStatus() == Status.Evaluating;
-                    m.setStatus(Status.Evaluated);
-                    m.setEvaluationError(e);
-                }
-                assert moduleRecord.getStatus() == Status.Evaluated && moduleRecord.getEvaluationError() == e;
+        if (ecmaScriptVersion >= ECMAScript2021) {
+            assert module.getStatus() == Status.Linked || module.getStatus() == Status.Evaluated;
+            if (module.getStatus() == Status.Evaluated) {
+                module = getAsyncCycleRoot(module);
             }
-            throw e;
+            if (module.getTopLevelCapability() != null) {
+                return module.getTopLevelCapability().getPromise();
+            }
+            PromiseCapabilityRecord capability = NewPromiseCapabilityNode.createDefault(realm);
+            module.setTopLevelCapability(capability);
+            try {
+                innerModuleEvaluation(realm, module, stack, 0);
+                assert module.getStatus() == Status.Evaluated;
+                assert module.getEvaluationError() == null;
+                if (!module.isAsyncEvaluating()) {
+                    JSFunction.call(JSArguments.create(Undefined.instance, capability.getResolve(), Undefined.instance));
+                }
+                assert stack.isEmpty();
+            } catch (Throwable e) {
+                if (e instanceof TruffleException && TryCatchNode.shouldCatch(e)) {
+                    for (JSModuleRecord m : stack) {
+                        assert m.getStatus() == Status.Evaluating;
+                        m.setStatus(Status.Evaluated);
+                        m.setEvaluationError(e);
+                    }
+                    assert module.getStatus() == Status.Evaluated && module.getEvaluationError() == e;
+                    JSFunction.call(JSArguments.create(Undefined.instance, capability.getReject(), e));
+                    throw e;
+                } else {
+                    // Not a JS error: throw
+                    throw e;
+                }
+            }
+            return capability.getPromise();
+        } else {
+            try {
+                innerModuleEvaluation(realm, module, stack, 0);
+            } catch (Throwable e) {
+                if (e instanceof TruffleException && TryCatchNode.shouldCatch(e)) {
+                    for (JSModuleRecord m : stack) {
+                        assert m.getStatus() == Status.Evaluating;
+                        m.setStatus(Status.Evaluated);
+                        m.setEvaluationError(e);
+                    }
+                    assert module.getStatus() == Status.Evaluated && module.getEvaluationError() == e;
+                }
+                throw e;
+            }
+            assert module.getStatus() == Status.Evaluated && module.getEvaluationError() == null;
+
+            assert stack.isEmpty();
+            Object result = module.getExecutionResult();
+            return result == null ? Undefined.instance : result;
         }
-        assert moduleRecord.getStatus() == Status.Evaluated && moduleRecord.getEvaluationError() == null;
-        assert stack.isEmpty();
-        return moduleRecord.getExecutionResult();
+
     }
 
+    @TruffleBoundary
+    private static JSModuleRecord getAsyncCycleRoot(JSModuleRecord moduleRecord) {
+        // GetAsyncCycleRoot ( module )
+        JSModuleRecord module = moduleRecord;
+        assert module.getStatus() == Status.Evaluated;
+
+        if (module.getAsyncParentModules().size() == 0) {
+            return module;
+        }
+        while (module.getDFSIndex() > module.getDFSAncestorIndex()) {
+            assert module.getAsyncParentModules().size() != 0;
+            JSModuleRecord nextCycleModule = module.getAsyncParentModules().remove(0);
+            assert nextCycleModule.getDFSAncestorIndex() <= module.getDFSAncestorIndex();
+            module = nextCycleModule;
+        }
+
+        assert module.getDFSIndex() == module.getDFSAncestorIndex();
+        return module;
+    }
+
+    @TruffleBoundary
     private int innerModuleEvaluation(JSRealm realm, JSModuleRecord moduleRecord, Deque<JSModuleRecord> stack, int index0) {
+        // InnerModuleEvaluation( module, stack, index )
         int index = index0;
         if (moduleRecord.getStatus() == Status.Evaluated) {
             if (moduleRecord.getEvaluationError() == null) {
@@ -578,10 +708,12 @@ public final class GraalJSEvaluator implements JSParser {
         if (moduleRecord.getStatus() == Status.Evaluating) {
             return index;
         }
-        assert moduleRecord.getStatus() == Status.Instantiated;
+        assert moduleRecord.getStatus() == Status.Linked;
         moduleRecord.setStatus(Status.Evaluating);
         moduleRecord.setDFSIndex(index);
         moduleRecord.setDFSAncestorIndex(index);
+        moduleRecord.setPendingAsyncDependencies(0);
+        moduleRecord.initAsyncParentModules();
         index++;
         stack.push(moduleRecord);
 
@@ -595,10 +727,26 @@ public final class GraalJSEvaluator implements JSParser {
             assert (requiredModule.getStatus() == Status.Evaluating) == stack.contains(requiredModule);
             if (requiredModule.getStatus() == Status.Evaluating) {
                 moduleRecord.setDFSAncestorIndex(Math.min(moduleRecord.getDFSAncestorIndex(), requiredModule.getDFSAncestorIndex()));
+            } else {
+                requiredModule = getAsyncCycleRoot(requiredModule);
+                assert requiredModule.getStatus() == Status.Evaluated;
+                if (requiredModule.getEvaluationError() != null) {
+                    throw JSRuntime.rethrow(moduleRecord.getEvaluationError());
+                }
+            }
+            if (requiredModule.isAsyncEvaluating()) {
+                moduleRecord.incPendingAsyncDependencies();
+                requiredModule.appendAsyncParentModules(moduleRecord);
             }
         }
-        Object result = moduleExecution(realm, moduleRecord);
-        moduleRecord.setExecutionResult(result);
+        if (moduleRecord.getPendingAsyncDependencies() > 0) {
+            moduleRecord.setAsyncEvaluating(true);
+        } else if (moduleRecord.isTopLevelAsync()) {
+            moduleAsyncExecution(realm, moduleRecord);
+        } else {
+            Object result = moduleExecution(realm, moduleRecord, null);
+            moduleRecord.setExecutionResult(result);
+        }
 
         assert occursExactlyOnce(moduleRecord, stack);
         assert moduleRecord.getDFSAncestorIndex() <= moduleRecord.getDFSIndex();
@@ -614,8 +762,151 @@ public final class GraalJSEvaluator implements JSParser {
         return index;
     }
 
-    private static Object moduleExecution(JSRealm realm, JSModuleRecord moduleRecord) {
-        return JSFunction.call(JSArguments.create(Undefined.instance, JSFunction.create(realm, moduleRecord.getFunctionData()), moduleRecord));
+    @TruffleBoundary
+    private static void moduleAsyncExecution(JSRealm realm, JSModuleRecord module) {
+        // ExecuteAsyncModule ( module )
+        assert module.getStatus() == Status.Evaluating || module.getStatus() == Status.Evaluated;
+        assert module.isTopLevelAsync();
+        module.setAsyncEvaluating(true);
+        PromiseCapabilityRecord capability = NewPromiseCapabilityNode.createDefault(realm);
+        DynamicObject onFulfilled = createCallAsyncModuleFulfilled(realm.getContext(), module);
+        DynamicObject onRejected = createCallAsyncModuleRejected(realm.getContext(), module);
+        Object then = JSObject.get(capability.getPromise(), "then");
+        JSFunction.call(JSArguments.create(capability.getPromise(), then, onFulfilled, onRejected));
+        moduleExecution(realm, module, capability);
+    }
+
+    @TruffleBoundary
+    private static DynamicObject createCallAsyncModuleFulfilled(JSContext context, JSModuleRecord module) {
+        // AsyncModuleExecutionFulfilled ( module )
+        JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncModuleExecutionFulfilled, (c) -> createCallAsyncModuleFulfilledImpl(c));
+        DynamicObject function = JSFunction.create(context.getRealm(), functionData);
+        function.define(STORE_MODULE_KEY, module);
+        return function;
+    }
+
+    private static JSFunctionData createCallAsyncModuleFulfilledImpl(JSContext context) {
+        // AsyncModuleExecutionFulfilled ( module )
+        class AsyncModuleFulfilledRoot extends JavaScriptRootNode {
+            @Child private JavaScriptNode argumentNode = AccessIndexedArgumentNode.create(0);
+            @Child private PropertyGetNode getModule = PropertyGetNode.createGetHidden(STORE_MODULE_KEY, context);
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                Object dynamicImportResolutionResult = argumentNode.execute(frame);
+                Object module = getModule.getValue(JSArguments.getFunctionObject(frame.getArguments()));
+                return asyncModuleExecutionFulfilled(context.getRealm(), (JSModuleRecord) module, dynamicImportResolutionResult);
+            }
+        }
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new AsyncModuleFulfilledRoot());
+        return JSFunctionData.createCallOnly(context, callTarget, 1, "");
+    }
+
+    @TruffleBoundary
+    private static DynamicObject createCallAsyncModuleRejected(JSContext context, JSModuleRecord module) {
+        // AsyncModuleExecutionRejected ( module )
+        JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncModuleExecutionRejected, (c) -> createCallAsyncModuleRejectedImpl(c));
+        DynamicObject function = JSFunction.create(context.getRealm(), functionData);
+        function.define(STORE_MODULE_KEY, module);
+        return function;
+    }
+
+    private static JSFunctionData createCallAsyncModuleRejectedImpl(JSContext context) {
+        // AsyncModuleExecutionRejected ( module )
+        class AsyncModuleExecutionRejectedRoot extends JavaScriptRootNode {
+            @Child private PropertyGetNode getModule = PropertyGetNode.createGetHidden(STORE_MODULE_KEY, context);
+            @Child private PropertyGetNode getRejectionError = PropertyGetNode.createGetHidden(JSPromise.PROMISE_RESULT, context);
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                JSModuleRecord module = (JSModuleRecord) getModule.getValue(JSArguments.getFunctionObject(frame.getArguments()));
+                Object resolvedPromise = module.getExecutionContinuation();
+                assert JSPromise.isJSPromise(resolvedPromise);
+                assert JSPromise.isRejected((DynamicObject) resolvedPromise);
+                Object reaction = getRejectionError.getValue(resolvedPromise);
+                if (reaction instanceof DynamicObject) {
+                    assert JSError.isJSError(reaction);
+                    return asyncModuleExecutionRejected(context.getRealm(), module, reaction);
+                } else {
+                    assert reaction instanceof Throwable;
+                    return asyncModuleExecutionRejected(context.getRealm(), module, reaction);
+                }
+            }
+        }
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new AsyncModuleExecutionRejectedRoot());
+        return JSFunctionData.createCallOnly(context, callTarget, 1, "");
+    }
+
+    private static Object asyncModuleExecutionFulfilled(JSRealm realm, JSModuleRecord module, Object dynamicImportResolutionResult) {
+        assert module.getStatus() == Status.Evaluated;
+        if (!module.isAsyncEvaluating()) {
+            assert module.getEvaluationError() != null;
+            return Undefined.instance;
+        }
+        assert module.getEvaluationError() == null;
+        module.setAsyncEvaluating(false);
+        for (JSModuleRecord m : module.getAsyncParentModules()) {
+            if (module.getDFSIndex() != module.getDFSAncestorIndex()) {
+                assert m.getDFSAncestorIndex() <= module.getDFSAncestorIndex();
+            }
+            m.decPendingAsyncDependencies();
+            if (m.getPendingAsyncDependencies() == 0 && m.getEvaluationError() == null) {
+                assert m.isAsyncEvaluating();
+                JSModuleRecord cycleRoot = getAsyncCycleRoot(m);
+                if (cycleRoot.getEvaluationError() != null) {
+                    return Undefined.instance;
+                }
+                if (m.isTopLevelAsync()) {
+                    moduleAsyncExecution(realm, m);
+                } else {
+                    try {
+                        moduleExecution(realm, m, null);
+                        asyncModuleExecutionFulfilled(realm, m, dynamicImportResolutionResult);
+                    } catch (Exception e) {
+                        asyncModuleExecutionRejected(realm, m, e);
+                    }
+                }
+            }
+        }
+        if (module.getTopLevelCapability() != null) {
+            assert module.getDFSIndex() == module.getDFSAncestorIndex();
+            JSFunction.call(JSArguments.create(Undefined.instance, module.getTopLevelCapability().getResolve(), dynamicImportResolutionResult));
+        }
+        return Undefined.instance;
+    }
+
+    private static Object asyncModuleExecutionRejected(JSRealm realm, JSModuleRecord module, Object error) {
+        assert error != null : "Cannot reject a module creation with null error";
+        assert module.getStatus() == Status.Evaluated;
+        if (!module.isAsyncEvaluating()) {
+            assert module.getEvaluationError() != null;
+            return Undefined.instance;
+        }
+        assert module.getEvaluationError() == null;
+        module.setEvaluationError(error);
+        module.setAsyncEvaluating(false);
+        for (JSModuleRecord m : module.getAsyncParentModules()) {
+            if (module.getDFSIndex() != module.getDFSAncestorIndex()) {
+                assert m.getDFSAncestorIndex() == module.getDFSAncestorIndex();
+            }
+            asyncModuleExecutionRejected(realm, m, error);
+        }
+        if (module.getTopLevelCapability() != null) {
+            assert module.getDFSIndex() == module.getDFSAncestorIndex();
+            JSFunction.call((DynamicObject) module.getTopLevelCapability().getReject(), Undefined.instance, new Object[]{error});
+        }
+        return Undefined.instance;
+    }
+
+    private static Object moduleExecution(JSRealm realm, JSModuleRecord moduleRecord, PromiseCapabilityRecord capability) {
+        if (!moduleRecord.isTopLevelAsync()) {
+            assert capability == null;
+            return JSFunction.call(JSArguments.create(Undefined.instance, JSFunction.create(realm, moduleRecord.getFunctionData()), moduleRecord));
+        } else {
+            Object asyncFunctionResultPromise = JSFunction.call(JSArguments.create(Undefined.instance, JSFunction.create(realm, moduleRecord.getFunctionData()), moduleRecord, capability));
+            moduleRecord.setExecutionContinuation(asyncFunctionResultPromise);
+            return asyncFunctionResultPromise;
+        }
     }
 
     private static boolean occursExactlyOnce(JSModuleRecord moduleRecord, Collection<JSModuleRecord> stack) {

@@ -646,90 +646,156 @@
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-15-top-level-await.mjs",
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
     "status" : "FAIL",
     "comment" : "top-level await"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-15.mjs",
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
     "status" : "FAIL",
     "comment" : "test expects exact error message"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-16.mjs",
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
     "status" : "FAIL",
     "comment" : "TODO: evaluate"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-rqstd-order-top-level-await-2.mjs",
-    "status" : "FAIL",
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
+    "status" : "PASS",
     "comment" : "top-level await"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-rqstd-order-top-level-await-3.mjs",
-    "status" : "FAIL",
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
+    "status" : "PASS",
     "comment" : "top-level await"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-rqstd-order-top-level-await-4.mjs",
-    "status" : "FAIL",
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
+    "status" : "PASS",
     "comment" : "top-level await"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-rqstd-order-top-level-await-5.mjs",
-    "status" : "FAIL",
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
+    "status" : "PASS",
     "comment" : "top-level await"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-rqstd-order-top-level-await-6.mjs",
-    "status" : "FAIL",
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
+    "status" : "PASS",
     "comment" : "top-level await"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-rqstd-order-top-level-await-7.mjs",
-    "status" : "FAIL",
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
+    "status" : "PASS",
     "comment" : "top-level await"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-rqstd-order-top-level-await-8.mjs",
-    "status" : "FAIL",
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
+    "status" : "PASS",
     "comment" : "top-level await"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-top-level-await-1.mjs",
-    "status" : "FAIL",
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
+    "status" : "PASS",
     "comment" : "top-level await"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-top-level-await-2.mjs",
-    "status" : "FAIL",
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
+    "status" : "PASS",
     "comment" : "top-level await"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-top-level-await-3.mjs",
-    "status" : "FAIL",
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
+    "status" : "PASS",
     "comment" : "top-level await"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-top-level-await-4.mjs",
-    "status" : "FAIL",
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
+    "status" : "PASS",
     "comment" : "top-level await"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-top-level-await-5.mjs",
-    "status" : "FAIL",
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
+    "status" : "PASS",
     "comment" : "top-level await"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-top-level-await-6.mjs",
-    "status" : "FAIL",
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
+    "status" : "PASS",
     "comment" : "top-level await"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-top-level-await-7.mjs",
-    "status" : "FAIL",
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
+    "status" : "PASS",
     "comment" : "top-level await"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-top-level-await-8.mjs",
-    "status" : "FAIL",
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
+    "status" : "PASS",
     "comment" : "top-level await"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-top-level-await-cycle.mjs",
-    "status" : "FAIL",
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
+    "status" : "PASS",
     "comment" : "top-level await"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-top-level-await-exception-1.mjs",
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
     "status" : "FAIL",
     "comment" : "top-level await"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-top-level-await-exception-2.mjs",
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
     "status" : "FAIL",
     "comment" : "top-level await"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-top-level-await-exception-3.mjs",
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
     "status" : "FAIL",
     "comment" : "top-level await"
   }, {

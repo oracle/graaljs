@@ -68,8 +68,11 @@ import com.oracle.truffle.js.runtime.objects.PromiseReactionRecord;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
+import com.oracle.truffle.js.runtime.util.Triple;
 
 import java.util.Set;
+
+import static com.oracle.truffle.js.runtime.JSConfig.ECMAScript2021;
 
 /**
  * Represents the import call expression syntax: {@code import(specifier)}.
@@ -136,7 +139,6 @@ public class ImportCallNode extends JavaScriptNode {
             assert JSPromise.isJSPromise(promise);
             return promise;
         } else {
-            // default implementation
             PromiseCapabilityRecord promiseCapability = newPromiseCapability();
             context.promiseEnqueueJob(realm, createImportModuleDynamicallyJob((ScriptOrModule) referencingScriptOrModule, specifier, promiseCapability));
             return promiseCapability.getPromise();
@@ -171,8 +173,15 @@ public class ImportCallNode extends JavaScriptNode {
      * Returns a promise job that performs both HostImportModuleDynamically and FinishDynamicImport.
      */
     public DynamicObject createImportModuleDynamicallyJob(ScriptOrModule referencingScriptOrModule, String specifier, PromiseCapabilityRecord promiseCapability) {
-        Pair<ScriptOrModule, String> request = new Pair<>(referencingScriptOrModule, specifier);
-        return promiseReactionJobNode.execute(PromiseReactionRecord.create(promiseCapability, createImportModuleDynamicallyHandler(), true), request);
+        if (context.getEcmaScriptVersion() >= ECMAScript2021) {
+            Triple<ScriptOrModule, String, PromiseCapabilityRecord> request = new Triple<>(referencingScriptOrModule, specifier, promiseCapability);
+            PromiseCapabilityRecord startModuleLoadCapability = newPromiseCapability();
+            PromiseReactionRecord startModuleLoad = PromiseReactionRecord.create(startModuleLoadCapability, createImportModuleDynamicallyHandler(), true);
+            return promiseReactionJobNode.execute(startModuleLoad, request);
+        } else {
+            Pair<ScriptOrModule, String> request = new Pair<>(referencingScriptOrModule, specifier);
+            return promiseReactionJobNode.execute(PromiseReactionRecord.create(promiseCapability, createImportModuleDynamicallyHandler(), true), request);
+        }
     }
 
     /**
@@ -186,7 +195,7 @@ public class ImportCallNode extends JavaScriptNode {
 
     private static JSFunctionData createImportModuleDynamicallyHandlerImpl(JSContext context) {
         class ImportModuleDynamicallyRootNode extends JavaScriptRootNode {
-            @Child private JavaScriptNode argumentNode = AccessIndexedArgumentNode.create(0);
+            @Child protected JavaScriptNode argumentNode = AccessIndexedArgumentNode.create(0);
 
             @SuppressWarnings("unchecked")
             @Override
@@ -194,15 +203,13 @@ public class ImportCallNode extends JavaScriptNode {
                 Pair<ScriptOrModule, String> request = (Pair<ScriptOrModule, String>) argumentNode.execute(frame);
                 ScriptOrModule referencingScriptOrModule = request.getFirst();
                 String specifier = request.getSecond();
-
                 JSModuleRecord moduleRecord = context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, specifier);
-                JSRealm realm = context.getRealm();
-                context.getEvaluator().moduleInstantiation(realm, moduleRecord);
-                context.getEvaluator().moduleEvaluation(realm, moduleRecord);
-                return finishDynamicImport(moduleRecord, referencingScriptOrModule, specifier);
+                return finishDynamicImport(context.getRealm(), moduleRecord, referencingScriptOrModule, specifier);
             }
 
-            private Object finishDynamicImport(JSModuleRecord moduleRecord, ScriptOrModule referencingScriptOrModule, String specifier) {
+            protected Object finishDynamicImport(JSRealm realm, JSModuleRecord moduleRecord, ScriptOrModule referencingScriptOrModule, String specifier) {
+                context.getEvaluator().moduleInstantiation(realm, moduleRecord);
+                context.getEvaluator().moduleEvaluation(realm, moduleRecord);
                 // Note: PromiseReactionJob performs the promise rejection and resolution.
                 assert moduleRecord == context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, specifier);
                 // Evaluate has already been invoked on moduleRecord and successfully completed.
@@ -210,7 +217,39 @@ public class ImportCallNode extends JavaScriptNode {
                 return context.getEvaluator().getModuleNamespace(moduleRecord);
             }
         }
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new ImportModuleDynamicallyRootNode());
+
+        class TopLevelAwaitImportModuleDynamicallyRootNode extends ImportModuleDynamicallyRootNode {
+            @Child private PerformPromiseThenNode promiseThenNode = PerformPromiseThenNode.create(context);
+            @Child private JSFunctionCallNode callPromiseReaction = JSFunctionCallNode.createCall();
+
+            @SuppressWarnings("unchecked")
+            @Override
+            public Object execute(VirtualFrame frame) {
+                Triple<ScriptOrModule, String, PromiseCapabilityRecord> request = (Triple<ScriptOrModule, String, PromiseCapabilityRecord>) argumentNode.execute(frame);
+                ScriptOrModule referencingScriptOrModule = request.getFirst();
+                String specifier = request.getSecond();
+                PromiseCapabilityRecord moduleLoadedCapability = request.getThird();
+                JSModuleRecord moduleRecord = context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, specifier);
+                JSRealm realm = context.getRealm();
+                if (moduleRecord.isTopLevelAsync()) {
+                    context.getEvaluator().moduleInstantiation(realm, moduleRecord);
+                    Object moduleLoadedStartPromise = context.getEvaluator().moduleEvaluation(realm, moduleRecord);
+                    assert JSPromise.isJSPromise(moduleLoadedStartPromise);
+                    promiseThenNode.execute((DynamicObject) moduleLoadedStartPromise, moduleLoadedCapability.getResolve(), moduleLoadedCapability.getReject(), moduleLoadedCapability);
+                } else {
+                    try {
+                        Object result = finishDynamicImport(realm, moduleRecord, referencingScriptOrModule, specifier);
+                        callPromiseReaction.executeCall(JSArguments.create(Undefined.instance, moduleLoadedCapability.getResolve(), result));
+                    } catch (Throwable t) {
+                        callPromiseReaction.executeCall(JSArguments.create(Undefined.instance, moduleLoadedCapability.getReject(), t));
+                    }
+                }
+                return Undefined.instance;
+            }
+        }
+
+        JavaScriptRootNode root = context.getEcmaScriptVersion() >= ECMAScript2021 ? new TopLevelAwaitImportModuleDynamicallyRootNode() : new ImportModuleDynamicallyRootNode();
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(root);
         return JSFunctionData.createCallOnly(context, callTarget, 0, "");
     }
 

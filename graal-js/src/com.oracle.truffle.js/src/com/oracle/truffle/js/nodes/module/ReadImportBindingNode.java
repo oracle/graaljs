@@ -82,7 +82,7 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
                     @Cached("resolution.getBindingName()") @SuppressWarnings("unused") String bindingName,
                     @Cached("create(frameDescriptor.findFrameSlot(bindingName))") JSReadFrameSlotNode readFrameSlot) {
         JSModuleRecord module = resolution.getModule();
-        assert module.getStatus().compareTo(Status.Instantiated) >= 0 : module.getStatus();
+        assert module.getStatus().compareTo(Status.Linked) >= 0 : module.getStatus();
         MaterializedFrame environment = JSFrameUtil.castMaterializedFrame(module.getEnvironment());
         Object value = readFrameSlot.execute(environment);
         assert value != Dead.instance();
@@ -93,7 +93,7 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
     @Specialization(replaces = {"doCached"})
     final Object doUncached(ExportResolution resolution) {
         JSModuleRecord module = resolution.getModule();
-        assert module.getStatus().compareTo(Status.Instantiated) >= 0 : module.getStatus();
+        assert module.getStatus().compareTo(Status.Linked) >= 0 : module.getStatus();
         String bindingName = resolution.getBindingName();
         FrameSlot frameSlot = module.getFrameDescriptor().findFrameSlot(bindingName);
         boolean hasTemporalDeadZone = JSFrameUtil.hasTemporalDeadZone(frameSlot);

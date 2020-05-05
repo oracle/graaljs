@@ -3159,11 +3159,11 @@ public final class GraalJSAccess {
     public int moduleGetStatus(Object module) {
         JSModuleRecord record = (JSModuleRecord) module;
         switch (record.getStatus()) {
-            case Uninstantiated:
+            case Unlinked:
                 return 0; // v8::Module::Status::kUninstantiated
-            case Instantiating:
+            case Linking:
                 return 1; // v8::Module::Status::kInstantiating
-            case Instantiated:
+            case Linked:
                 return 2; // v8::Module::Status::kInstantiated
             case Evaluating:
                 return 3; // v8::Module::Status::Evaluating
@@ -3220,7 +3220,7 @@ public final class GraalJSAccess {
             public Object execute(VirtualFrame frame) {
                 JSModuleRecord module = (JSModuleRecord) JSArguments.getUserArgument(frame.getArguments(), 0);
                 if (module.getEnvironment() == null) {
-                    assert module.getStatus() == Status.Instantiating;
+                    assert module.getStatus() == Status.Linking;
                     module.setEnvironment(frame.materialize());
                     return Undefined.instance;
                 } else {

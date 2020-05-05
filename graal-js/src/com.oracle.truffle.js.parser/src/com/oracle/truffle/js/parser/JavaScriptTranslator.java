@@ -119,6 +119,9 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
         JSModuleRecord moduleRecord = new JSModuleRecord(parsed.getModule(), context, moduleLoader, source);
         moduleRecord.setFunctionData(functionRoot.getFunctionData());
         moduleRecord.setFrameDescriptor(functionRoot.getFrameDescriptor());
+        if (functionRoot.getFunctionData().isAsync()) {
+            moduleRecord.setTopLevelAsync();
+        }
         return moduleRecord;
     }
 

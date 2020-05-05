@@ -551,10 +551,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode handleAsyncGeneratorBody(JavaScriptNode body) {
         assert currentFunction().isAsyncGeneratorFunction();
         JSWriteFrameSlotNode writeAsyncContextNode = (JSWriteFrameSlotNode) environment.findAsyncContextVar().createWriteNode(null);
+        JavaScriptNode instrumentedBody = instrumentSuspendNodes(body);
         VarRef yieldVar = environment.findAsyncResultVar();
         JSWriteFrameSlotNode writeYieldValueNode = (JSWriteFrameSlotNode) yieldVar.createWriteNode(null);
+        if (lc.getCurrentFunction().isModule()) {
+            return factory.createTopLevelAsyncModuleBody(context, instrumentedBody, writeYieldValueNode, writeAsyncContextNode);
+        }
         JSReadFrameSlotNode readYieldResultNode = JSConfig.YieldResultInFrame ? (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getYieldResultSlot()).createReadNode() : null;
-        JavaScriptNode instrumentedBody = instrumentSuspendNodes(body);
         return factory.createAsyncGeneratorBody(context, instrumentedBody, writeYieldValueNode, readYieldResultNode, writeAsyncContextNode);
     }
 
