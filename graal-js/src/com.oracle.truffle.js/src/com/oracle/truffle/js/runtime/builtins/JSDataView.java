@@ -43,10 +43,7 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.util.EnumSet;
 import java.util.function.Function;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -54,7 +51,6 @@ import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.DataViewPrototypeBuiltins;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -168,8 +164,6 @@ public final class JSDataView extends JSBuiltinObject implements JSConstructorFa
     private static void putGetter(JSRealm realm, DynamicObject prototype, String name, BuiltinFunctionKey key, Function<DynamicObject, Object> function) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(key, (c) -> {
             return JSFunctionData.createCallOnly(c, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
-                @CompilationFinal private ContextReference<JSRealm> realmRef;
-
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = JSArguments.getThisObject(frame.getArguments());
@@ -179,11 +173,7 @@ public final class JSDataView extends JSBuiltinObject implements JSConstructorFa
                             return function.apply(dataView);
                         }
                     }
-                    if (realmRef == null) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        realmRef = lookupContextReference(JavaScriptLanguage.class);
-                    }
-                    throw Errors.createTypeErrorNotADataView().setRealm(realmRef.get());
+                    throw Errors.createTypeErrorNotADataView();
                 }
             }), 0, "get " + name);
         });
