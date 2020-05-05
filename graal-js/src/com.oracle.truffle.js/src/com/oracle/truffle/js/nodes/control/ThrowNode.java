@@ -51,6 +51,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.ErrorStackTraceLimitNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
@@ -71,6 +72,7 @@ public class ThrowNode extends StatementNode {
     @Child private JavaScriptNode exceptionNode;
     @Child private PropertyGetNode getErrorNode;
     @Child private InteropLibrary interopNode;
+    @Child private ErrorStackTraceLimitNode stackTraceLimitNode;
     private final JSContext context;
 
     private final ConditionProfile isError = ConditionProfile.createBinaryProfile();
@@ -109,7 +111,7 @@ public class ThrowNode extends StatementNode {
         } else {
             tryRethrowInterop(exceptionObject);
         }
-        throw UserScriptException.create(exceptionObject, this);
+        throw UserScriptException.create(exceptionObject, this, stackTraceLimitNode().executeInt(frame));
     }
 
     private void tryRethrowInterop(Object exceptionObject) {
@@ -135,6 +137,15 @@ public class ThrowNode extends StatementNode {
         Object exception = getErrorNode.getValue(errorObj);
         return (GraalJSException) exception;
 
+    }
+
+    private ErrorStackTraceLimitNode stackTraceLimitNode() {
+        ErrorStackTraceLimitNode node = stackTraceLimitNode;
+        if (node == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            stackTraceLimitNode = node = insert(ErrorStackTraceLimitNode.create(context));
+        }
+        return node;
     }
 
     @TruffleBoundary

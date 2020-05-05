@@ -71,14 +71,14 @@ public final class UserScriptException extends GraalJSException {
     }
 
     @TruffleBoundary
-    public static UserScriptException create(Object exceptionObject, Node originatingNode) {
-        int stackTraceLimit = JavaScriptLanguage.getCurrentJSRealm().getContext().getContextOptions().getStackTraceLimit();
+    public static UserScriptException create(Object exceptionObject, Node originatingNode, int stackTraceLimit) {
         return fillInStackTrace(new UserScriptException(exceptionObject, originatingNode, stackTraceLimit), Undefined.instance, false);
     }
 
     @TruffleBoundary
     public static UserScriptException create(Object exceptionObject) {
-        return create(exceptionObject, null);
+        int stackTraceLimit = JavaScriptLanguage.getCurrentJSRealm().getContext().getContextOptions().getStackTraceLimit();
+        return create(exceptionObject, null, stackTraceLimit);
     }
 
     @Override

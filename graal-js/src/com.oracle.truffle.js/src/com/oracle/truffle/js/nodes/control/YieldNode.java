@@ -134,7 +134,7 @@ public class YieldNode extends JavaScriptNode implements ResumableNode, SuspendN
     }
 
     protected final Object throwValue(Object value) {
-        throw UserScriptException.create(value, this);
+        throw UserScriptException.create(value, this, context.getContextOptions().getStackTraceLimit());
     }
 
     protected final Object returnValue(VirtualFrame frame, Object value) {

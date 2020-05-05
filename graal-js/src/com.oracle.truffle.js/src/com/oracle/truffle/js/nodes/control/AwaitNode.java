@@ -251,7 +251,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
         } else {
             assert result.isThrow();
             Object reason = result.getValue();
-            throw UserScriptException.create(reason, this);
+            throw UserScriptException.create(reason, this, context.getContextOptions().getStackTraceLimit());
         }
     }
 
