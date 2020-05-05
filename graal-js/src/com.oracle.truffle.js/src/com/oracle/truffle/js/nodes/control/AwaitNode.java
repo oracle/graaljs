@@ -49,7 +49,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -356,9 +355,11 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
                     TruffleStackTraceElement asyncStackTraceElement = TruffleStackTraceElement.create(callNode, asyncTarget, asyncContextFrame);
                     List<TruffleStackTraceElement> all = new ArrayList<>(4);
                     all.add(asyncStackTraceElement);
-                    List<TruffleStackTraceElement> rest = TruffleStackTrace.getAsynchronousStackTrace(asyncTarget, asyncContextFrame);
-                    if (rest != null) {
-                        all.addAll(rest);
+                    if (asyncTarget.getRootNode() instanceof JavaScriptRootNode) {
+                        List<TruffleStackTraceElement> rest = JavaScriptRootNode.findAsynchronousFrames((JavaScriptRootNode) asyncTarget.getRootNode(), asyncContextFrame);
+                        if (rest != null) {
+                            all.addAll(rest);
+                        }
                     }
                     return all;
                 } else if (JSFunction.getFunctionData(handlerFunction).isBuiltin()) {

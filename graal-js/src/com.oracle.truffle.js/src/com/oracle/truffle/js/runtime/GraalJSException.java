@@ -197,8 +197,8 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                 asyncStacks = null;
                 break;
             }
-            if (asyncStackTraces && element.getFrame() != null && element.getTarget().getRootNode().getLanguageInfo() != null) {
-                List<TruffleStackTraceElement> asyncStack = TruffleStackTrace.getAsynchronousStackTrace(element.getTarget(), element.getFrame());
+            if (asyncStackTraces) {
+                List<TruffleStackTraceElement> asyncStack = getAsynchronousStackTrace(element);
                 if (asyncStack != null && !asyncStack.isEmpty()) {
                     if (asyncStacks == null) {
                         asyncStacks = new ArrayList<>();
@@ -218,6 +218,16 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             }
         }
         return visitor.getStackTrace().toArray(EMPTY_STACK_TRACE);
+    }
+
+    private static List<TruffleStackTraceElement> getAsynchronousStackTrace(TruffleStackTraceElement element) {
+        if (element.getFrame() == null || element.getTarget().getRootNode().getLanguageInfo() == null) {
+            return null;
+        }
+        if (element.getTarget().getRootNode() instanceof JavaScriptRootNode) {
+            return JavaScriptRootNode.findAsynchronousFrames((JavaScriptRootNode) element.getTarget().getRootNode(), element.getFrame());
+        }
+        return TruffleStackTrace.getAsynchronousStackTrace(element.getTarget(), element.getFrame());
     }
 
     public void setJSStackTrace(JSStackTraceElement[] jsStackTrace) {

@@ -40,6 +40,10 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.util.List;
+
+import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
@@ -93,5 +97,9 @@ public abstract class JavaScriptRootNode extends RootNode {
     @Override
     public boolean isCaptureFramesForTrace() {
         return isFunction() || isResumption();
+    }
+
+    public static List<TruffleStackTraceElement> findAsynchronousFrames(JavaScriptRootNode rootNode, Frame frame) {
+        return rootNode.findAsynchronousFrames(frame);
     }
 }
