@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
-import java.util.List;
 import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
@@ -50,23 +49,22 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
-import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.promise.AsyncRootNode;
 import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -81,7 +79,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public final class AsyncFunctionBodyNode extends JavaScriptNode {
 
     @NodeInfo(cost = NodeCost.NONE, language = "JavaScript", description = "The root node of async functions in JavaScript.")
-    public static final class AsyncFunctionRootNode extends JavaScriptRootNode {
+    public static final class AsyncFunctionRootNode extends JavaScriptRootNode implements AsyncRootNode {
 
         private static final int ASYNC_FRAME_ARG_INDEX = 0;
 
@@ -184,24 +182,12 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
         }
 
         @Override
-        protected List<TruffleStackTraceElement> findAsynchronousFrames(Frame frame) {
-            if (!context.isOptionAsyncStackTraces()) {
-                return null;
-            }
-
-            VirtualFrame asyncFrame;
-            Object frameArg = frame.getArguments()[ASYNC_FRAME_ARG_INDEX];
-            if (frameArg instanceof MaterializedFrame) {
-                asyncFrame = (MaterializedFrame) frameArg;
-            } else {
-                asyncFrame = (VirtualFrame) ScopeFrameNode.getNonBlockScopeParentFrame(frame);
-            }
-
-            Object[] initialState = (Object[]) readAsyncContext.execute(asyncFrame);
+        public DynamicObject getAsyncFunctionPromise(Frame asyncFrame) {
+            Object[] initialState = (Object[]) readAsyncContext.execute((VirtualFrame) asyncFrame);
             RootCallTarget resumeTarget = (RootCallTarget) initialState[0];
             assert resumeTarget.getRootNode() == this;
             Object promiseCapability = initialState[1];
-            return AwaitNode.findAsyncStackFrames(((PromiseCapabilityRecord) promiseCapability).getPromise());
+            return ((PromiseCapabilityRecord) promiseCapability).getPromise();
         }
     }
 

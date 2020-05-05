@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.nodes.control;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -56,6 +55,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -68,16 +68,16 @@ import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSMaterializedInvokeTargetableNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.promise.CreateResolvingFunctionNode;
+import com.oracle.truffle.js.nodes.promise.AsyncHandlerRootNode;
+import com.oracle.truffle.js.nodes.promise.AsyncHandlerRootNode.AsyncStackTraceInfo;
+import com.oracle.truffle.js.nodes.promise.AsyncRootNode;
 import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
-import com.oracle.truffle.js.nodes.promise.PerformPromiseAllNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseThenNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -274,22 +274,50 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
         return function;
     }
 
-    private static JSFunctionData createAwaitFulfilledImpl(JSContext context) {
-        class AwaitFulfilledRootNode extends JavaScriptRootNode {
-            @Child private JavaScriptNode valueNode = AccessIndexedArgumentNode.create(0);
-            @Child private PropertyGetNode getAsyncTarget = PropertyGetNode.createGetHidden(ASYNC_TARGET, context);
-            @Child private PropertyGetNode getAsyncContext = PropertyGetNode.createGetHidden(ASYNC_CONTEXT, context);
-            @Child private PropertyGetNode getAsyncGenerator = PropertyGetNode.createGetHidden(ASYNC_GENERATOR, context);
-            @Child private AwaitResumeNode awaitResumeNode = AwaitResumeNode.create(false);
+    static class AwaitSettledRootNode extends JavaScriptRootNode implements AsyncHandlerRootNode {
+        @Child private JavaScriptNode valueNode;
+        @Child private PropertyGetNode getAsyncTarget;
+        @Child private PropertyGetNode getAsyncContext;
+        @Child private PropertyGetNode getAsyncGenerator;
+        @Child private AwaitResumeNode awaitResumeNode;
 
-            @Override
-            public Object execute(VirtualFrame frame) {
-                DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
-                CallTarget asyncTarget = (CallTarget) getAsyncTarget.getValue(functionObject);
-                Object asyncContext = getAsyncContext.getValue(functionObject);
-                Object generator = getAsyncGenerator.getValue(functionObject);
-                Object value = valueNode.execute(frame);
-                return awaitResumeNode.execute(asyncTarget, asyncContext, generator, value);
+        AwaitSettledRootNode(JSContext context, boolean rejected) {
+            this.valueNode = AccessIndexedArgumentNode.create(0);
+            this.getAsyncTarget = PropertyGetNode.createGetHidden(ASYNC_TARGET, context);
+            this.getAsyncContext = PropertyGetNode.createGetHidden(ASYNC_CONTEXT, context);
+            this.getAsyncGenerator = PropertyGetNode.createGetHidden(ASYNC_GENERATOR, context);
+            this.awaitResumeNode = AwaitResumeNode.create(rejected);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+            CallTarget asyncTarget = (CallTarget) getAsyncTarget.getValue(functionObject);
+            Object asyncContext = getAsyncContext.getValue(functionObject);
+            Object generator = getAsyncGenerator.getValue(functionObject);
+            Object value = valueNode.execute(frame);
+            return awaitResumeNode.execute(asyncTarget, asyncContext, generator, value);
+        }
+
+        @Override
+        public AsyncStackTraceInfo getAsyncStackTraceInfo(DynamicObject handlerFunction) {
+            assert JSFunction.isJSFunction(handlerFunction) && ((RootCallTarget) JSFunction.getFunctionData(handlerFunction).getCallTarget()).getRootNode() == this;
+            RootCallTarget asyncTarget = (RootCallTarget) handlerFunction.get(ASYNC_TARGET);
+            if (asyncTarget.getRootNode() instanceof AsyncRootNode) {
+                MaterializedFrame asyncContextFrame = (MaterializedFrame) handlerFunction.get(ASYNC_CONTEXT);
+                Node callNode = (Node) handlerFunction.get(AwaitNode.ASYNC_CALL_NODE);
+                TruffleStackTraceElement asyncStackTraceElement = TruffleStackTraceElement.create(callNode, asyncTarget, asyncContextFrame);
+                DynamicObject asyncPromise = ((AsyncRootNode) asyncTarget.getRootNode()).getAsyncFunctionPromise(asyncContextFrame);
+                return new AsyncStackTraceInfo(asyncPromise, asyncStackTraceElement);
+            }
+            return new AsyncStackTraceInfo();
+        }
+    }
+
+    private static JSFunctionData createAwaitFulfilledImpl(JSContext context) {
+        class AwaitFulfilledRootNode extends AwaitSettledRootNode {
+            AwaitFulfilledRootNode() {
+                super(context, false);
             }
         }
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new AwaitFulfilledRootNode());
@@ -309,21 +337,9 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     }
 
     private static JSFunctionData createAwaitRejectedImpl(JSContext context) {
-        class AwaitRejectedRootNode extends JavaScriptRootNode {
-            @Child private JavaScriptNode reasonNode = AccessIndexedArgumentNode.create(0);
-            @Child private PropertyGetNode getAsyncTargetNode = PropertyGetNode.createGetHidden(ASYNC_TARGET, context);
-            @Child private PropertyGetNode getAsyncContextNode = PropertyGetNode.createGetHidden(ASYNC_CONTEXT, context);
-            @Child private PropertyGetNode getAsyncGeneratorNode = PropertyGetNode.createGetHidden(ASYNC_GENERATOR, context);
-            @Child private AwaitResumeNode awaitResumeNode = AwaitResumeNode.create(true);
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
-                CallTarget asyncTarget = (CallTarget) getAsyncTargetNode.getValue(functionObject);
-                Object asyncContext = getAsyncContextNode.getValue(functionObject);
-                Object generator = getAsyncGeneratorNode.getValue(functionObject);
-                Object reason = reasonNode.execute(frame);
-                return awaitResumeNode.execute(asyncTarget, asyncContext, generator, reason);
+        class AwaitRejectedRootNode extends AwaitSettledRootNode {
+            AwaitRejectedRootNode() {
+                super(context, true);
             }
         }
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new AwaitRejectedRootNode());
@@ -338,56 +354,58 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
         return create(context, expressionCopy, asyncContextCopy, asyncResultCopy);
     }
 
-    public static List<TruffleStackTraceElement> findAsyncStackFrames(DynamicObject promise) {
-        assert JSPromise.isJSPromise(promise);
-        Object fulfillReactions = null;
-        if (JSPromise.isPending(promise)) {
-            // only pending promises have reactions
-            fulfillReactions = promise.get(JSPromise.PROMISE_FULFILL_REACTIONS, null);
-        }
-        if (fulfillReactions instanceof SimpleArrayList<?> && ((SimpleArrayList<?>) fulfillReactions).size() == 1) {
-            SimpleArrayList<?> fulfillList = (SimpleArrayList<?>) fulfillReactions;
-            PromiseReactionRecord reaction = (PromiseReactionRecord) fulfillList.get(0);
-            Object handler = reaction.getHandler();
-            if (JSFunction.isJSFunction(handler)) {
-                DynamicObject handlerFunction = (DynamicObject) handler;
-                Object asyncContext = handlerFunction.get(AwaitNode.ASYNC_CONTEXT);
-                if (asyncContext instanceof MaterializedFrame) {
-                    // async function
-                    MaterializedFrame asyncContextFrame = (MaterializedFrame) asyncContext;
-                    RootCallTarget asyncTarget = (RootCallTarget) handlerFunction.get(AwaitNode.ASYNC_TARGET);
-                    Node callNode = (Node) handlerFunction.get(AwaitNode.ASYNC_CALL_NODE);
-                    TruffleStackTraceElement asyncStackTraceElement = TruffleStackTraceElement.create(callNode, asyncTarget, asyncContextFrame);
-                    List<TruffleStackTraceElement> all = new ArrayList<>(4);
-                    all.add(asyncStackTraceElement);
-                    if (asyncTarget.getRootNode() instanceof JavaScriptRootNode) {
-                        List<TruffleStackTraceElement> rest = JavaScriptRootNode.findAsynchronousFrames((JavaScriptRootNode) asyncTarget.getRootNode(), asyncContextFrame);
-                        if (rest != null) {
-                            all.addAll(rest);
+    public static List<TruffleStackTraceElement> findAsyncStackFramesFromPromise(DynamicObject promise) {
+        List<TruffleStackTraceElement> stackTrace = new ArrayList<>(4);
+        collectAsyncStackFramesFromPromise(promise, stackTrace);
+        return stackTrace;
+    }
+
+    private static void collectAsyncStackFramesFromPromise(DynamicObject startPromise, List<TruffleStackTraceElement> stackTrace) {
+        DynamicObject nextPromise = startPromise;
+        do {
+            DynamicObject currPromise = nextPromise;
+            nextPromise = null;
+
+            Object fulfillReactions = null;
+            if (JSPromise.isPending(currPromise)) {
+                // only pending promises have reactions
+                fulfillReactions = currPromise.get(JSPromise.PROMISE_FULFILL_REACTIONS, null);
+            }
+            if (fulfillReactions instanceof SimpleArrayList<?> && ((SimpleArrayList<?>) fulfillReactions).size() == 1) {
+                SimpleArrayList<?> fulfillList = (SimpleArrayList<?>) fulfillReactions;
+                PromiseReactionRecord reaction = (PromiseReactionRecord) fulfillList.get(0);
+                Object handler = reaction.getHandler();
+                if (JSFunction.isJSFunction(handler)) {
+                    DynamicObject handlerFunction = (DynamicObject) handler;
+                    RootNode rootNode = ((RootCallTarget) JSFunction.getCallTarget(handlerFunction)).getRootNode();
+                    if (rootNode instanceof AsyncHandlerRootNode) {
+                        AsyncStackTraceInfo result = ((AsyncHandlerRootNode) rootNode).getAsyncStackTraceInfo(handlerFunction);
+                        if (result.stackTraceElement != null) {
+                            stackTrace.add(result.stackTraceElement);
                         }
-                    }
-                    return all;
-                } else if (JSFunction.getFunctionData(handlerFunction).isBuiltin()) {
-                    PerformPromiseAllNode.ResolveElementArgs resolveArgs = PerformPromiseAllNode.getResolveElementArgsFromHandler(handlerFunction);
-                    if (resolveArgs != null) {
-                        List<TruffleStackTraceElement> all = new ArrayList<>(4);
-                        int promiseIndex = resolveArgs.index;
-                        JSRealm realm = JSFunction.getRealm(handlerFunction);
-                        all.add(PerformPromiseAllNode.createPromiseAllStackTraceElement(promiseIndex, realm));
-                        all.addAll(findAsyncStackFrames(resolveArgs.capability.getPromise()));
-                        return all;
-                    }
-                    Object thenPromise = CreateResolvingFunctionNode.getPromiseFromHandler(handlerFunction);
-                    if (thenPromise != null) {
-                        return findAsyncStackFrames((DynamicObject) thenPromise);
+                        nextPromise = result.promise;
+                        continue;
                     }
                 }
+                if (reaction.getCapability() != null) {
+                    // follow the promise chain
+                    nextPromise = reaction.getCapability().getPromise();
+                    continue;
+                }
             }
-            if (reaction.getCapability() != null) {
-                // follow the promise chain
-                return findAsyncStackFrames(reaction.getCapability().getPromise());
+        } while (nextPromise != null);
+    }
+
+    public static List<TruffleStackTraceElement> findAsyncStackFramesFromHandler(DynamicObject handlerFunction) {
+        List<TruffleStackTraceElement> stackTrace = new ArrayList<>(4);
+        RootNode rootNode = ((RootCallTarget) JSFunction.getCallTarget(handlerFunction)).getRootNode();
+        if (rootNode instanceof AsyncHandlerRootNode) {
+            AsyncStackTraceInfo result = ((AsyncHandlerRootNode) rootNode).getAsyncStackTraceInfo(handlerFunction);
+            DynamicObject promise = result.promise;
+            if (promise != null) {
+                collectAsyncStackFramesFromPromise(promise, stackTrace);
             }
         }
-        return Collections.emptyList();
+        return stackTrace;
     }
 }

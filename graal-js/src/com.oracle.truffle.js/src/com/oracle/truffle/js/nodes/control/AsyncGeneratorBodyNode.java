@@ -41,8 +41,6 @@
 package com.oracle.truffle.js.nodes.control;
 
 import java.util.ArrayDeque;
-import java.util.Collections;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -52,7 +50,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -67,8 +64,8 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
-import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.function.SpecializedNewObjectNode;
+import com.oracle.truffle.js.nodes.promise.AsyncRootNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -82,7 +79,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public final class AsyncGeneratorBodyNode extends JavaScriptNode {
 
     @NodeInfo(cost = NodeCost.NONE, language = "JavaScript", description = "The root node of async generator functions in JavaScript.")
-    private static final class AsyncGeneratorRootNode extends JavaScriptRootNode {
+    private static final class AsyncGeneratorRootNode extends JavaScriptRootNode implements AsyncRootNode {
 
         private static final int ASYNC_FRAME_ARG_INDEX = 0;
 
@@ -214,29 +211,17 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
         }
 
         @Override
-        protected List<TruffleStackTraceElement> findAsynchronousFrames(Frame frame) {
-            if (!context.isOptionAsyncStackTraces()) {
-                return null;
-            }
-
-            VirtualFrame asyncFrame;
-            Object frameArg = frame.getArguments()[ASYNC_FRAME_ARG_INDEX];
-            if (frameArg instanceof MaterializedFrame) {
-                asyncFrame = (MaterializedFrame) frameArg;
-            } else {
-                asyncFrame = (VirtualFrame) ScopeFrameNode.getNonBlockScopeParentFrame(frame);
-            }
-
-            Object[] initialState = (Object[]) readAsyncContext.execute(asyncFrame);
+        public DynamicObject getAsyncFunctionPromise(Frame asyncFrame) {
+            Object[] initialState = (Object[]) readAsyncContext.execute((VirtualFrame) asyncFrame);
             RootCallTarget resumeTarget = (RootCallTarget) initialState[0];
             assert resumeTarget.getRootNode() == this;
             DynamicObject generatorObject = (DynamicObject) initialState[1];
             Object queue = generatorObject.get(JSFunction.ASYNC_GENERATOR_QUEUE_ID);
             if (queue instanceof ArrayDeque<?> && ((ArrayDeque<?>) queue).size() == 1) {
                 AsyncGeneratorRequest request = (AsyncGeneratorRequest) ((ArrayDeque<?>) queue).peekFirst();
-                return AwaitNode.findAsyncStackFrames(request.getPromiseCapability().getPromise());
+                return request.getPromiseCapability().getPromise();
             } else {
-                return Collections.emptyList();
+                return null;
             }
         }
     }

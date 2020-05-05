@@ -161,7 +161,7 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
     }
 
     private static JSFunctionData createResolveElementFunctionImpl(JSContext context) {
-        class PromiseAllResolveElementRootNode extends JavaScriptRootNode {
+        class PromiseAllResolveElementRootNode extends JavaScriptRootNode implements AsyncHandlerRootNode {
             @Child private JavaScriptNode valueNode = AccessIndexedArgumentNode.create(0);
             @Child private PropertyGetNode getArgs = PropertyGetNode.createGetHidden(RESOLVE_ELEMENT_ARGS_KEY, context);
             @Child private JSFunctionCallNode callResolve = JSFunctionCallNode.createCall();
@@ -183,16 +183,23 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
                 }
                 return Undefined.instance;
             }
+
+            @Override
+            public AsyncStackTraceInfo getAsyncStackTraceInfo(DynamicObject handlerFunction) {
+                assert JSFunction.isJSFunction(handlerFunction) && ((RootCallTarget) JSFunction.getFunctionData(handlerFunction).getCallTarget()).getRootNode() == this;
+                ResolveElementArgs resolveArgs = (ResolveElementArgs) handlerFunction.get(PerformPromiseAllNode.RESOLVE_ELEMENT_ARGS_KEY, null);
+                int promiseIndex = resolveArgs.index;
+                JSRealm realm = JSFunction.getRealm(handlerFunction);
+                TruffleStackTraceElement asyncStackTraceElement = createPromiseAllStackTraceElement(promiseIndex, realm);
+                DynamicObject resultPromise = resolveArgs.capability.getPromise();
+                return new AsyncStackTraceInfo(resultPromise, asyncStackTraceElement);
+            }
         }
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseAllResolveElementRootNode());
         return JSFunctionData.createCallOnly(context, callTarget, 1, "");
     }
 
-    public static ResolveElementArgs getResolveElementArgsFromHandler(DynamicObject handlerFunction) {
-        return (ResolveElementArgs) handlerFunction.get(RESOLVE_ELEMENT_ARGS_KEY, null);
-    }
-
-    public static TruffleStackTraceElement createPromiseAllStackTraceElement(int promiseIndex, JSRealm realm) {
+    static TruffleStackTraceElement createPromiseAllStackTraceElement(int promiseIndex, JSRealm realm) {
         return TruffleStackTraceElement.create(new PromiseAllMarkerRootNode(null, JSBuiltin.createSourceSection()),
                         (RootCallTarget) JSFunction.getFunctionData(realm.getPromiseAllFunctionObject()).getCallTarget(),
                         Truffle.getRuntime().createMaterializedFrame(JSArguments.createOneArg(realm.getPromiseConstructor(), realm.getPromiseAllFunctionObject(), promiseIndex)));

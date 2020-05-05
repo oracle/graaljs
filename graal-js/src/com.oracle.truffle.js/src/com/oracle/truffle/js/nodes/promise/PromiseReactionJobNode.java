@@ -48,6 +48,10 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -58,6 +62,7 @@ import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.control.AwaitNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -99,7 +104,7 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
     }
 
     private static JSFunctionData createPromiseReactionJobImpl(JSContext context) {
-        class PromiseReactionJob extends JavaScriptRootNode {
+        class PromiseReactionJob extends JavaScriptRootNode implements InstrumentableNode {
             @Child private PropertyGetNode getReaction = PropertyGetNode.createGetHidden(REACTION_KEY, context);
             @Child private PropertyGetNode getArgument = PropertyGetNode.createGetHidden(ARGUMENT_KEY, context);
             @Child private JSFunctionCallNode callResolveNode;
@@ -212,9 +217,26 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
                 PromiseReactionRecord reaction = (PromiseReactionRecord) getReaction.getValue(functionObject);
                 PromiseCapabilityRecord promiseCapability = reaction.getCapability();
                 if (promiseCapability != null) {
-                    return AwaitNode.findAsyncStackFrames(promiseCapability.getPromise());
+                    return AwaitNode.findAsyncStackFramesFromPromise(promiseCapability.getPromise());
+                } else if (JSFunction.isJSFunction(reaction.getHandler())) {
+                    return AwaitNode.findAsyncStackFramesFromHandler((DynamicObject) reaction.getHandler());
                 }
                 return null;
+            }
+
+            @Override
+            public boolean hasTag(Class<? extends Tag> tag) {
+                return tag == StandardTags.RootTag.class;
+            }
+
+            @Override
+            public boolean isInstrumentable() {
+                return false;
+            }
+
+            @Override
+            public WrapperNode createWrapper(ProbeNode probe) {
+                throw Errors.shouldNotReachHere();
             }
         }
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseReactionJob());
