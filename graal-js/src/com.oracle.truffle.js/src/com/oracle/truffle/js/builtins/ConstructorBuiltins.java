@@ -1829,7 +1829,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
             int stackTraceLimit = stackTraceLimitNode.executeInt(frame);
             DynamicObject errorFunction = realm.getErrorConstructor(errorType);
-            GraalJSException exception = JSException.createCapture(errorType, message, errorObj, stackTraceLimit, errorFunction);
+            GraalJSException exception = JSException.createCapture(errorType, message, errorObj, realm, stackTraceLimit, errorFunction);
             return initErrorObjectNode.execute(errorObj, exception);
         }
 

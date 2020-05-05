@@ -159,7 +159,7 @@ public final class JSError extends JSBuiltinObject {
             obj = JSObject.createWithPrototype(context, context.getErrorFactory(errorType, true), realm, prototype, message);
             msg = (String) message; // can only be String or undefined
         }
-        setException(realm, obj, JSException.createCapture(errorType, msg, obj), false);
+        setException(realm, obj, JSException.createCapture(errorType, msg, obj, realm), false);
         return obj;
     }
 
