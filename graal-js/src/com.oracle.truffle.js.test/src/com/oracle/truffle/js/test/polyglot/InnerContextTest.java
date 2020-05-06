@@ -124,10 +124,9 @@ public class InnerContextTest {
                             TruffleLanguage.Env innerEnv = TruffleLanguage.getCurrentContext(TestLanguage.class).getEnv();
                             String jsCode = "b + s + i + l + f + d + c + str";
                             com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder(
-                                JavaScriptLanguage.ID, jsCode, "test.js"
-                            ).build();
+                                            JavaScriptLanguage.ID, jsCode, "test.js").build();
                             CallTarget answer = innerEnv.parsePublic(source, "b", "s", "i", "l", "f", "d", "c", "str");
-                            return answer.call((byte) 1, (short) 2, (int) 3, (long) 4, (float) 0.1, (double) 1.5, (char) ':', (String) "test");
+                            return answer.call((byte) 1, (short) 2, 3, 4L, 0.1f, 1.5, ':', "test");
                         } finally {
                             innerContext.leave(prev);
                         }

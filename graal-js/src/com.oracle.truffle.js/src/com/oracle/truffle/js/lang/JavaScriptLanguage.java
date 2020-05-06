@@ -299,7 +299,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                     interopBoundaryEnter(realm);
                     Object function = program.run(realm);
                     Object[] arguments = frame.getArguments();
-                    for (int i = 0; i < arguments.length; i++) {    // sanitize arguments using JSForeignToJSTypeNode
+                    for (int i = 0; i < arguments.length; i++) {
                         arguments[i] = importValueNode.executeWithTarget(arguments[i]);
                     }
                     Object result = JSFunction.call(JSArguments.create(Undefined.instance, function, arguments));
