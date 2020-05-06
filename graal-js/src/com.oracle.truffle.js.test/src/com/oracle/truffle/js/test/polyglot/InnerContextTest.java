@@ -105,6 +105,47 @@ public class InnerContextTest {
     }
 
     @Test
+    public void testInnerWithoutOuterJSContextWithIntrop() throws Exception {
+        try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new TestLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) throws Exception {
+                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        return innerJS();
+                    }
+
+                    @TruffleBoundary
+                    private Object innerJS() {
+                        TruffleLanguage.Env env = TruffleLanguage.getCurrentContext(TestLanguage.class).getEnv();
+                        TruffleContext innerContext = env.newContextBuilder().build();
+                        Object prev = innerContext.enter();
+                        try {
+                            TruffleLanguage.Env innerEnv = TruffleLanguage.getCurrentContext(TestLanguage.class).getEnv();
+                            String jsCode = "b + s + i + l + f + d + c + str";
+                            com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder(
+                                JavaScriptLanguage.ID, jsCode, "test.js"
+                            ).build();
+                            CallTarget answer = innerEnv.parsePublic(source, "b", "s", "i", "l", "f", "d", "c", "str");
+                            return answer.call((byte) 1, (short) 2, (int) 3, (long) 4, (float) 0.1, (double) 1.5, (char) ':', (String) "test");
+                        } finally {
+                            innerContext.leave(prev);
+                        }
+                    }
+                });
+            }
+        })) {
+            try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+                context.eval(Source.create(TestLanguage.ID, ""));
+            }
+            try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+                context.initialize(JavaScriptLanguage.ID);
+                context.eval(Source.create(TestLanguage.ID, ""));
+            }
+        }
+    }
+
+    @Test
     public void innerParseSimpleExpression() throws Exception {
         try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new ProxyParsingLanguage("multiplier"))) {
             try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
