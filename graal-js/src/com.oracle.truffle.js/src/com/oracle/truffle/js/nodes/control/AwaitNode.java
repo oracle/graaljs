@@ -46,8 +46,10 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -58,6 +60,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
@@ -65,6 +68,7 @@ import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
+import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSMaterializedInvokeTargetableNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -107,6 +111,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     protected final JSContext context;
     private final ConditionProfile asyncTypeProf = ConditionProfile.createBinaryProfile();
     private final ConditionProfile resumptionTypeProf = ConditionProfile.createBinaryProfile();
+    private final BranchProfile saveStackBranch = BranchProfile.create();
 
     static final HiddenKey ASYNC_CONTEXT = new HiddenKey("AsyncContext");
     static final HiddenKey ASYNC_TARGET = new HiddenKey("AsyncTarget");
@@ -126,7 +131,8 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
         this.setAsyncContextNode = PropertySetNode.createSetHidden(ASYNC_CONTEXT, context);
         this.setAsyncTargetNode = PropertySetNode.createSetHidden(ASYNC_TARGET, context);
         this.setAsyncGeneratorNode = PropertySetNode.createSetHidden(ASYNC_GENERATOR, context);
-        if (expression != null && expression.hasTag(StandardTags.CallTag.class)) {
+
+        if (context.isOptionAsyncStackTraces() && expression != null && expression.hasTag(StandardTags.CallTag.class)) {
             this.setAsyncCallNode = PropertySetNode.createSetHidden(ASYNC_CALL_NODE, context);
         }
 
@@ -175,9 +181,9 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
 
     protected final Object suspendAwait(VirtualFrame frame, Object value) {
         Object[] initialState = (Object[]) readAsyncContextNode.execute(frame);
-        CallTarget resumeTarget = (CallTarget) initialState[0];
-        Object generatorOrCapability = initialState[1];
-        MaterializedFrame asyncContext = (MaterializedFrame) initialState[2];
+        CallTarget resumeTarget = (CallTarget) initialState[AsyncRootNode.CALL_TARGET_INDEX];
+        Object generatorOrCapability = initialState[AsyncRootNode.GENERATOR_OBJECT_OR_PROMISE_CAPABILITY_INDEX];
+        MaterializedFrame asyncContext = (MaterializedFrame) initialState[AsyncRootNode.ASYNC_FRAME_INDEX];
 
         if (asyncTypeProf.profile(generatorOrCapability instanceof PromiseCapabilityRecord)) {
             Object parentPromise = ((PromiseCapabilityRecord) generatorOrCapability).getPromise();
@@ -189,12 +195,52 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
         DynamicObject onRejected = createAwaitRejectedFunction(resumeTarget, asyncContext, generatorOrCapability);
         PromiseCapabilityRecord throwawayCapability = newThrowawayCapability();
 
+        fillAsyncStackTrace(frame, onFulfilled, onRejected);
         context.notifyPromiseHook(-1 /* parent info */, promise);
+
         if (materializedInputNode != null) {
             materializedInputNode.executeWithTarget(frame, promise);
         }
         performPromiseThenNode.execute(promise, onFulfilled, onRejected, throwawayCapability);
         throw YieldException.AWAIT_NULL; // value is ignored
+    }
+
+    private void fillAsyncStackTrace(VirtualFrame frame, DynamicObject onFulfilled, DynamicObject onRejected) {
+        if (setAsyncCallNode != null) {
+            setAsyncCallNode.setValue(onFulfilled, expression);
+            setAsyncCallNode.setValue(onRejected, expression);
+        }
+        if (context.isOptionAsyncStackTraces()) {
+            Object[] asyncContext = (Object[]) readAsyncContextNode.execute(frame);
+            int asyncStackDepth = 0;
+            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY,
+                            asyncContext[AsyncRootNode.STACK_TRACE_INDEX] == null && (asyncStackDepth = context.getLanguage().getAsyncStackDepth()) > 0)) {
+                saveStackBranch.enter();
+                asyncContext[AsyncRootNode.STACK_TRACE_INDEX] = captureStackTrace(this, asyncStackDepth);
+            }
+        }
+    }
+
+    @TruffleBoundary
+    private static List<TruffleStackTraceElement> captureStackTrace(Node callNode, int asyncStackDepth) {
+        List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStackTrace(UserScriptException.create(Undefined.instance, callNode, asyncStackDepth));
+        List<TruffleStackTraceElement> filteredStackTrace = new ArrayList<>();
+        boolean seenThis = false;
+        for (TruffleStackTraceElement s : stackTrace) {
+            RootNode rootNode = s.getTarget().getRootNode();
+            if (!seenThis) {
+                if (rootNode == callNode.getRootNode()) {
+                    seenThis = true;
+                }
+                continue;
+            }
+            if (rootNode instanceof FunctionRootNode && ((FunctionRootNode) rootNode).getFunctionData().isAsync() && !((FunctionRootNode) rootNode).getFunctionData().isGenerator()) {
+                continue;
+            } else if (rootNode instanceof JavaScriptRootNode && (((JavaScriptRootNode) rootNode).isFunction() || ((JavaScriptRootNode) rootNode).isResumption())) {
+                filteredStackTrace.add(s);
+            }
+        }
+        return filteredStackTrace;
     }
 
     private DynamicObject promiseResolve(Object value) {
@@ -268,9 +314,6 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
         setAsyncTargetNode.setValue(function, resumeTarget);
         setAsyncContextNode.setValue(function, asyncContext);
         setAsyncGeneratorNode.setValue(function, generator);
-        if (setAsyncCallNode != null) {
-            setAsyncCallNode.setValue(function, expression);
-        }
         return function;
     }
 
@@ -330,9 +373,6 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
         setAsyncTargetNode.setValue(function, resumeTarget);
         setAsyncContextNode.setValue(function, asyncContext);
         setAsyncGeneratorNode.setValue(function, generator);
-        if (setAsyncCallNode != null) {
-            setAsyncCallNode.setValue(function, expression);
-        }
         return function;
     }
 

@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.control;
 
 import java.util.ArrayDeque;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -50,6 +51,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -64,6 +66,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.function.SpecializedNewObjectNode;
 import com.oracle.truffle.js.nodes.promise.AsyncRootNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -213,9 +216,9 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
         @Override
         public DynamicObject getAsyncFunctionPromise(Frame asyncFrame) {
             Object[] initialState = (Object[]) readAsyncContext.execute((VirtualFrame) asyncFrame);
-            RootCallTarget resumeTarget = (RootCallTarget) initialState[0];
+            RootCallTarget resumeTarget = (RootCallTarget) initialState[AsyncRootNode.CALL_TARGET_INDEX];
             assert resumeTarget.getRootNode() == this;
-            DynamicObject generatorObject = (DynamicObject) initialState[1];
+            DynamicObject generatorObject = (DynamicObject) initialState[AsyncRootNode.GENERATOR_OBJECT_OR_PROMISE_CAPABILITY_INDEX];
             Object queue = generatorObject.get(JSFunction.ASYNC_GENERATOR_QUEUE_ID);
             if (queue instanceof ArrayDeque<?> && ((ArrayDeque<?>) queue).size() == 1) {
                 AsyncGeneratorRequest request = (AsyncGeneratorRequest) ((ArrayDeque<?>) queue).peekFirst();
@@ -223,6 +226,29 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
             } else {
                 return null;
             }
+        }
+
+        @SuppressWarnings("unchecked")
+        public List<TruffleStackTraceElement> getSavedStackTrace(Frame asyncFrame) {
+            Object[] initialState = (Object[]) readAsyncContext.execute((VirtualFrame) asyncFrame);
+            return (List<TruffleStackTraceElement>) initialState[AsyncRootNode.STACK_TRACE_INDEX];
+        }
+
+        @Override
+        protected List<TruffleStackTraceElement> findAsynchronousFrames(Frame frame) {
+            if (!context.isOptionAsyncStackTraces() || context.getLanguage().getAsyncStackDepth() == 0) {
+                return null;
+            }
+
+            VirtualFrame asyncFrame;
+            Object frameArg = frame.getArguments()[ASYNC_FRAME_ARG_INDEX];
+            if (frameArg instanceof MaterializedFrame) {
+                asyncFrame = (MaterializedFrame) frameArg;
+            } else {
+                asyncFrame = (VirtualFrame) ScopeFrameNode.getNonBlockScopeParentFrame(frame);
+            }
+
+            return getSavedStackTrace(asyncFrame);
         }
     }
 
@@ -297,7 +323,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
         setGeneratorContext.setValue(generatorObject, materializedFrame);
         setGeneratorTarget.setValue(generatorObject, resumeTarget);
         setGeneratorQueue.setValue(generatorObject, new ArrayDeque<AsyncGeneratorRequest>(4));
-        writeAsyncContext.executeWrite(frame, new Object[]{resumeTarget, generatorObject, materializedFrame});
+        writeAsyncContext.executeWrite(frame, AsyncRootNode.createAsyncContext(resumeTarget, generatorObject, materializedFrame));
     }
 
     @Override

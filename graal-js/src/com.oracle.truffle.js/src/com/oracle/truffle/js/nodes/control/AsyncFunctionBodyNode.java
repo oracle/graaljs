@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import java.util.List;
 import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
@@ -49,7 +50,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -62,6 +65,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
+import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.promise.AsyncRootNode;
@@ -184,10 +188,33 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
         @Override
         public DynamicObject getAsyncFunctionPromise(Frame asyncFrame) {
             Object[] initialState = (Object[]) readAsyncContext.execute((VirtualFrame) asyncFrame);
-            RootCallTarget resumeTarget = (RootCallTarget) initialState[0];
+            RootCallTarget resumeTarget = (RootCallTarget) initialState[AsyncRootNode.CALL_TARGET_INDEX];
             assert resumeTarget.getRootNode() == this;
-            Object promiseCapability = initialState[1];
+            Object promiseCapability = initialState[AsyncRootNode.GENERATOR_OBJECT_OR_PROMISE_CAPABILITY_INDEX];
             return ((PromiseCapabilityRecord) promiseCapability).getPromise();
+        }
+
+        @SuppressWarnings("unchecked")
+        public List<TruffleStackTraceElement> getSavedStackTrace(Frame asyncFrame) {
+            Object[] initialState = (Object[]) readAsyncContext.execute((VirtualFrame) asyncFrame);
+            return (List<TruffleStackTraceElement>) initialState[AsyncRootNode.STACK_TRACE_INDEX];
+        }
+
+        @Override
+        protected List<TruffleStackTraceElement> findAsynchronousFrames(Frame frame) {
+            if (!context.isOptionAsyncStackTraces() || context.getLanguage().getAsyncStackDepth() == 0) {
+                return null;
+            }
+
+            VirtualFrame asyncFrame;
+            Object frameArg = frame.getArguments()[ASYNC_FRAME_ARG_INDEX];
+            if (frameArg instanceof MaterializedFrame) {
+                asyncFrame = (MaterializedFrame) frameArg;
+            } else {
+                asyncFrame = (VirtualFrame) ScopeFrameNode.getNonBlockScopeParentFrame(frame);
+            }
+
+            return getSavedStackTrace(asyncFrame);
         }
     }
 
@@ -262,9 +289,10 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
     }
 
     private void asyncFunctionStart(VirtualFrame frame, PromiseCapabilityRecord promiseCapability) {
-        writeAsyncContext.executeWrite(frame, new Object[]{resumptionTarget, promiseCapability, frame.materialize()});
+        MaterializedFrame materializedFrame = frame.materialize();
+        writeAsyncContext.executeWrite(frame, AsyncRootNode.createAsyncContext(resumptionTarget, promiseCapability, materializedFrame));
         Completion unusedInitialResult = null;
-        asyncCallNode.call(frame.materialize(), promiseCapability, unusedInitialResult);
+        asyncCallNode.call(materializedFrame, promiseCapability, unusedInitialResult);
     }
 
     @Override
