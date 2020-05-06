@@ -98,6 +98,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
+import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgent;
@@ -108,7 +109,6 @@ import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSEngine;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSScope;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -285,6 +285,8 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
         return new RootNode(this) {
             @CompilationFinal private ContextReference<JSRealm> contextReference;
+            @Child private ExportValueNode exportValueNode = ExportValueNode.create();
+            @Child private JSForeignToJSTypeNode importValueNode = JSForeignToJSTypeNode.create();
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -293,13 +295,18 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                     contextReference = lookupContextReference(JavaScriptLanguage.class);
                 }
                 JSRealm realm = contextReference.get();
-                return executeImpl(realm, frame.getArguments());
-            }
-
-            @TruffleBoundary
-            private Object executeImpl(JSRealm realm, Object[] arguments) {
-                Object function = program.run(realm);
-                return JSRuntime.jsObjectToJavaObject(JSFunction.call(JSArguments.create(Undefined.instance, function, arguments)));
+                try {
+                    interopBoundaryEnter(realm);
+                    Object function = program.run(realm);
+                    Object[] arguments = frame.getArguments();
+                    for (int i = 0; i < arguments.length; i++) {    // sanitize arguments using JSForeignToJSTypeNode
+                        arguments[i] = importValueNode.executeWithTarget(arguments[i]);
+                    }
+                    Object result = JSFunction.call(JSArguments.create(Undefined.instance, function, arguments));
+                    return exportValueNode.execute(result);
+                } finally {
+                    interopBoundaryExit(realm);
+                }
             }
 
             @Override
