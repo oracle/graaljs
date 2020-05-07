@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.lang;
 
 import com.oracle.truffle.api.TruffleFile;
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.APPLICATION_MIME_TYPE;
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_MIME_TYPE;
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.SCRIPT_SOURCE_NAME_SUFFIX;
 
@@ -53,8 +54,12 @@ public final class JSFileTypeDetector implements TruffleFile.FileTypeDetector {
     @Override
     public String findMimeType(TruffleFile file) throws IOException {
         String fileName = file.getName();
-        if (fileName != null && (fileName.endsWith(SCRIPT_SOURCE_NAME_SUFFIX) || fileName.endsWith(MODULE_SOURCE_NAME_SUFFIX))) {
-            return APPLICATION_MIME_TYPE;
+        if (fileName != null) {
+            if (fileName.endsWith(SCRIPT_SOURCE_NAME_SUFFIX)) {
+                return APPLICATION_MIME_TYPE;
+            } else if (fileName.endsWith(MODULE_SOURCE_NAME_SUFFIX)) {
+                return MODULE_MIME_TYPE;
+            }
         }
         return null;
     }
