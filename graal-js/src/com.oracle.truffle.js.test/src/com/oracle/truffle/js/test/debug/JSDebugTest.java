@@ -52,7 +52,9 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Source;
@@ -64,6 +66,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
+import com.oracle.truffle.api.debug.DebugStackTraceElement;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendAnchor;
@@ -1336,4 +1339,48 @@ public class JSDebugTest {
             expectDone();
         }
     }
+
+    @Test
+    public void testAsynchronousStacks() {
+        final Source source = Source.newBuilder("js", "" +
+                        "async function one(x) {\n" +
+                        "  return await Promise.all([two(x), one_and_a_half(x)]);\n" +
+                        "}\n" +
+                        "async function one_and_a_half(x) {\n" +
+                        "  return await two(x);\n" +
+                        "}\n" +
+                        "async function two(x) {\n" +
+                        "  x = await x;\n" +
+                        "  debugger;\n" +
+                        "}\n" +
+                        "(function start(){\n" +
+                        "  one(Promise.resolve(42)).catch(e => {throw e;});\n" +
+                        "})();\n", "testAsynchronousStacks.js").buildLiteral();
+
+        try (DebuggerSession session = startSession()) {
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, "two", 9, true, "debugger;", "x", "42");
+
+                assertEquals(1, event.getAsynchronousStacks().size());
+                List<DebugStackTraceElement> asynchronousStack = event.getAsynchronousStacks().get(0);
+                assertEquals(Arrays.asList("Promise.all", "one"), asynchronousStack.stream().map(DebugStackTraceElement::getName).collect(Collectors.toList()));
+
+                event.prepareContinue();
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, "two", 9, true, "debugger;", "x", "42");
+
+                assertEquals(1, event.getAsynchronousStacks().size());
+                List<DebugStackTraceElement> asynchronousStack = event.getAsynchronousStacks().get(0);
+                assertEquals(Arrays.asList("one_and_a_half", "Promise.all", "one"), asynchronousStack.stream().map(DebugStackTraceElement::getName).collect(Collectors.toList()));
+
+                event.prepareContinue();
+            });
+
+            expectDone();
+        }
+    }
+
 }
