@@ -58,6 +58,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseAllNode.PromiseAllMarkerRootNode;
+import com.oracle.truffle.js.nodes.promise.PromiseReactionJobNode.PromiseReactionJobRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -221,11 +222,23 @@ public abstract class GraalJSException extends RuntimeException implements Truff
     }
 
     private static List<TruffleStackTraceElement> getAsynchronousStackTrace(TruffleStackTraceElement element) {
-        if (element.getFrame() == null || element.getTarget().getRootNode().getLanguageInfo() == null) {
+        if (element.getFrame() == null) {
+            // getAsynchronousStackTrace requires a frame.
             return null;
         }
-        if (element.getTarget().getRootNode() instanceof JavaScriptRootNode) {
-            return JavaScriptRootNode.findAsynchronousFrames((JavaScriptRootNode) element.getTarget().getRootNode(), element.getFrame());
+        RootNode rootNode = element.getTarget().getRootNode();
+        if (rootNode.getLanguageInfo() == null) {
+            // getAsynchronousStackTrace requires the RootNode to have language info.
+            return null;
+        }
+        if (rootNode instanceof JavaScriptRootNode) {
+            if (rootNode instanceof PromiseReactionJobRootNode) {
+                return JavaScriptRootNode.findAsynchronousFrames((JavaScriptRootNode) rootNode, element.getFrame());
+            } else {
+                // We do not want to include any of the extra stack trace elements available when
+                // getAsynchronousStackDepth() > 0.
+                return null;
+            }
         }
         return TruffleStackTrace.getAsynchronousStackTrace(element.getTarget(), element.getFrame());
     }
