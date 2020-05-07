@@ -61,3 +61,6 @@ engine.eval("(javaObj instanceof Java.type('java.lang.Object'));");
 
 This allows setting all options available in GraalVM JavaScript.
 It does come at the cost of a hard dependency on GraalVM JavaScript, e.g. the `GraalJSScriptEngine` and `Context` classes.
+
+## Supported file extensions
+The GraalVM JavaScript implementation of `javax.script.ScriptEngine` supports the `js` file extension for JavaScript source files, as well as the `mjs` extension for ES modules.
