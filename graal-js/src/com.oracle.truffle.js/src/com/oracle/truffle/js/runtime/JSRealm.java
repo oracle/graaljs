@@ -1162,7 +1162,9 @@ public class JSRealm {
         this.jsonParseFunctionObject = JSObject.get(jsonBuiltin, "parse");
 
         for (JSErrorType type : JSErrorType.errorTypes()) {
-            putGlobalProperty(type.name(), getErrorConstructor(type));
+            if (type != JSErrorType.AggregateError || context.getEcmaScriptVersion() >= JSConfig.ECMAScript2021) {
+                putGlobalProperty(type.name(), getErrorConstructor(type));
+            }
         }
 
         putGlobalProperty(JSArrayBuffer.CLASS_NAME, getArrayBufferConstructor());

@@ -93,6 +93,14 @@ public final class JSException extends GraalJSException {
         return createCapture(type, message, exceptionObj, getStackTraceLimit(), Undefined.instance);
     }
 
+    public static JSException create(JSErrorType type, String message, DynamicObject exceptionObj) {
+        return create(type, message, (Node) null, exceptionObj);
+    }
+
+    public static JSException create(JSErrorType type, String message, Node originatingNode, DynamicObject exceptionObj) {
+        return fillInStackTrace(new JSException(type, message, originatingNode, exceptionObj, getStackTraceLimit()), Undefined.instance, false);
+    }
+
     public static JSException create(JSErrorType type, String message) {
         return create(type, message, (Node) null);
     }
