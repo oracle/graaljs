@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.scriptengine;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -340,14 +341,27 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
     @Override
     public Object eval(Reader reader, ScriptContext ctxt) throws ScriptException {
-        return eval(createSource(reader, ctxt), ctxt);
+        return eval(createSource(read(reader), ctxt), ctxt);
     }
 
-    private static Source createSource(Reader reader, ScriptContext ctxt) throws ScriptException {
+    static String read(Reader reader) throws ScriptException {
+        final StringBuilder builder = new StringBuilder();
+        final char[] buffer = new char[1024];
         try {
-            return Source.newBuilder(ID, reader, getScriptName(ctxt)).build();
-        } catch (IOException e) {
-            throw new ScriptException(e);
+            try {
+                while (true) {
+                    final int count = reader.read(buffer);
+                    if (count == -1) {
+                        break;
+                    }
+                    builder.append(buffer, 0, count);
+                }
+            } finally {
+                reader.close();
+            }
+            return builder.toString();
+        } catch (IOException ioex) {
+            throw new ScriptException(ioex);
         }
     }
 
@@ -356,13 +370,17 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         return eval(createSource(script, ctxt), ctxt);
     }
 
-    private static Source createSource(String script, ScriptContext ctxt) {
-        return Source.newBuilder(ID, script, getScriptName(ctxt)).buildLiteral();
-    }
-
-    private static String getScriptName(final ScriptContext ctxt) {
+    private static Source createSource(String script, ScriptContext ctxt) throws ScriptException {
         final Object val = ctxt.getAttribute(ScriptEngine.FILENAME);
-        return (val != null) ? val.toString() : "<eval>";
+        if (val == null) {
+            return Source.newBuilder(ID, script, "<eval>").buildLiteral();
+        } else {
+            try {
+                return Source.newBuilder(ID, new File(val.toString())).content(script).build();
+            } catch (IOException ioex) {
+                throw new ScriptException(ioex);
+            }
+        }
     }
 
     private Object eval(Source source, ScriptContext scriptContext) throws ScriptException {
@@ -516,7 +534,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         if (closed) {
             throw new IllegalStateException("Context already closed.");
         }
-        Source source = createSource(reader, getContext());
+        Source source = createSource(read(reader), getContext());
         return compile(source);
     }
 
