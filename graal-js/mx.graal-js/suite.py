@@ -356,6 +356,7 @@ suite = {
         "sdk:GRAAL_SDK",
         "mx:JUNIT",
         "GRAALJS",
+        "truffle:TRUFFLE_TCK",
         "com.oracle.truffle.js.snapshot",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
@@ -603,6 +604,7 @@ suite = {
       ],
       "distDependencies" : [
         "GRAALJS",
+        "truffle:TRUFFLE_TCK",
         "TRUFFLE_JS_SNAPSHOT_TOOL",
       ],
       "license": [
