@@ -56,6 +56,7 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseAllNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseAllSettledNode;
+import com.oracle.truffle.js.nodes.promise.PerformPromiseAnyNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseCombinatorNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseRaceNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveNode;
@@ -86,7 +87,8 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         reject(1),
         resolve(1),
 
-        allSettled(1);
+        allSettled(1),
+        any(1);
 
         private final int length;
 
@@ -101,7 +103,9 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Override
         public int getECMAScriptVersion() {
-            if (this == allSettled) {
+            if (this == any) {
+                return JSConfig.ECMAScript2021;
+            } else if (this == allSettled) {
                 return JSConfig.ECMAScript2020;
             }
             return 6;
@@ -115,6 +119,8 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return PromiseCombinatorNodeGen.create(context, builtin, PerformPromiseAllNode.create(context), args().withThis().fixedArgs(1).createArgumentNodes(context));
             case allSettled:
                 return PromiseCombinatorNodeGen.create(context, builtin, PerformPromiseAllSettledNode.create(context), args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case any:
+                return PromiseCombinatorNodeGen.create(context, builtin, PerformPromiseAnyNode.create(context), args().withThis().fixedArgs(1).createArgumentNodes(context));
             case race:
                 return PromiseCombinatorNodeGen.create(context, builtin, PerformPromiseRaceNode.create(context), args().withThis().fixedArgs(1).createArgumentNodes(context));
             case reject:

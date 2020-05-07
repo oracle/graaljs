@@ -7,6 +7,7 @@ The main focus is on user-observable behavior of the engine.
 * Implemented the [Intl.NumberFormat Unified API](https://github.com/tc39/proposal-unified-intl-numberformat) proposal.
 * Implemented the [Logical Assignment Operators](https://github.com/tc39/proposal-logical-assignment) proposal.
 * Implemented the [Top-level Await](https://github.com/tc39/proposal-top-level-await) proposal.
+* Implemented the [Promise.any](https://github.com/tc39/proposal-promise-any) proposal. It is available in ECMAScript 2021 mode (`--js.ecmascript-version=2021`).
 * Implemented support for async stack traces.
 
 ## Version 20.1.0

@@ -83,7 +83,6 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
-import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
@@ -350,7 +349,8 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
 
         Object usingIterator = getIteratorMethodNode.executeWithTarget(object);
         if (isIterableProfile.profile(usingIterator != Undefined.instance)) {
-            SimpleArrayList<Object> values = iterableToList(object, usingIterator, iteratorCallNode, isObjectNode, iteratorStepNode, getIteratorValueNode, getNextMethodNode, this, growProfile);
+            SimpleArrayList<Object> values = GetIteratorNode.iterableToList(object, usingIterator, iteratorCallNode, isObjectNode, iteratorStepNode, getIteratorValueNode, getNextMethodNode, this,
+                            growProfile);
             int len = values.size();
             DynamicObject arrayBuffer = createTypedArrayBuffer(len);
             TypedArray typedArray = factory.createArrayType(getContext().isOptionDirectByteBuffer(), false);
@@ -373,21 +373,6 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
             writeOwnNode.executeWithTargetAndIndexAndValue(obj, k, kValue);
         }
         return obj;
-    }
-
-    private static SimpleArrayList<Object> iterableToList(DynamicObject object, Object usingIterator, JSFunctionCallNode iteratorCallNode, IsJSObjectNode isObjectNode,
-                    IteratorStepNode iteratorStepNode, IteratorValueNode getIteratorValueNode, PropertyGetNode getNextMethodNode, JavaScriptBaseNode origin, BranchProfile growProfile) {
-        SimpleArrayList<Object> values = new SimpleArrayList<>();
-        IteratorRecord iterator = GetIteratorNode.getIterator(object, usingIterator, iteratorCallNode, isObjectNode, getNextMethodNode, origin);
-        while (true) {
-            Object next = iteratorStepNode.execute(iterator);
-            if (next == Boolean.FALSE) {
-                break;
-            }
-            Object nextValue = getIteratorValueNode.execute((DynamicObject) next);
-            values.add(nextValue, growProfile);
-        }
-        return values;
     }
 
     @Specialization(guards = {"isJSFunction(newTarget)", "isForeignObject(object)"}, limit = "3")

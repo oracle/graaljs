@@ -88,6 +88,7 @@ public class Test262Runnable extends TestRunnable {
     private static final Pattern SPLIT_PATTERN = Pattern.compile(",\\s*");
 
     private static final Set<String> SUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
+                    "AggregateError",
                     "Array.prototype.flat",
                     "Array.prototype.flatMap",
                     "Array.prototype.values",
@@ -119,6 +120,7 @@ public class Test262Runnable extends TestRunnable {
                     "Object.fromEntries",
                     "Object.is",
                     "Promise.allSettled",
+                    "Promise.any",
                     "Promise.prototype.finally",
                     "Proxy",
                     "Reflect",
@@ -208,16 +210,16 @@ public class Test262Runnable extends TestRunnable {
                     "top-level-await",
     }));
     private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
-                    "AggregateError",
                     "Intl.DateTimeFormat-dayPeriod",
                     "Intl.DateTimeFormat-formatRange",
                     "Intl.DateTimeFormat-fractionalSecondDigits",
                     "IsHTMLDDA",
-                    "Promise.any",
                     "tail-call-optimization",
     }));
     private static final Set<String> ES2021_FEATURES = new HashSet<>(Arrays.asList(new String[]{
+                    "AggregateError",
                     "FinalizationRegistry",
+                    "Promise.any",
                     "String.prototype.replaceAll",
                     "WeakRef",
                     "class-fields-private",

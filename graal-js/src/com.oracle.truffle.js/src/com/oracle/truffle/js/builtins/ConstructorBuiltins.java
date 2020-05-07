@@ -77,6 +77,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallRequiresNew
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallStringNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallSymbolNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallTypedArrayNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructAggregateErrorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructArrayBufferNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructArrayNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructBigIntNodeGen;
@@ -119,8 +120,10 @@ import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode.ArrayContentType;
 import com.oracle.truffle.js.nodes.access.ErrorStackTraceLimitNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
+import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeFromConstructorNode;
 import com.oracle.truffle.js.nodes.access.InitErrorObjectNode;
+import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.IsRegExpNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
@@ -253,6 +256,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         SyntaxError(1),
         EvalError(1),
         URIError(1),
+        AggregateError(2),
 
         Int8Array(3),
         Uint8Array(3),
@@ -449,6 +453,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     return ConstructErrorNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context));
                 }
                 return ConstructErrorNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context));
+            case AggregateError:
+                if (newTarget) {
+                    return ConstructAggregateErrorNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context));
+                }
+                return ConstructAggregateErrorNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context));
 
             case TypedArray:
                 return CallTypedArrayNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
@@ -1836,6 +1845,59 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
             return realm.getErrorPrototype(errorType);
+        }
+
+    }
+
+    @ImportStatic(JSRuntime.class)
+    public abstract static class ConstructAggregateErrorNode extends ConstructWithNewTargetNode {
+        @Child private ErrorStackTraceLimitNode stackTraceLimitNode;
+        @Child private InitErrorObjectNode initErrorObjectNode;
+
+        public ConstructAggregateErrorNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
+            super(context, builtin, isNewTargetCase);
+            this.stackTraceLimitNode = ErrorStackTraceLimitNode.create(context);
+            this.initErrorObjectNode = InitErrorObjectNode.create(context);
+        }
+
+        GetMethodNode createGetIteratorMethod() {
+            return GetMethodNode.create(getContext(), null, Symbol.SYMBOL_ITERATOR);
+        }
+
+        @Specialization
+        protected DynamicObject constructError(VirtualFrame frame, DynamicObject newTarget, Object errorsObj, Object messageObj,
+                        @Cached("create()") JSToStringNode toStringNode,
+                        @Cached("createGetIteratorMethod()") GetMethodNode getIteratorMethodNode,
+                        @Cached("createCall()") JSFunctionCallNode iteratorCallNode,
+                        @Cached("create()") IsJSObjectNode isObjectNode,
+                        @Cached("create(getContext())") IteratorStepNode iteratorStepNode,
+                        @Cached("create(getContext())") IteratorValueNode getIteratorValueNode,
+                        @Cached("create(NEXT, getContext())") PropertyGetNode getNextMethodNode,
+                        @Cached("create()") BranchProfile growProfile) {
+            Object usingIterator = getIteratorMethodNode.executeWithTarget(errorsObj);
+            SimpleArrayList<Object> errors = GetIteratorNode.iterableToList(errorsObj, usingIterator, iteratorCallNode, isObjectNode, iteratorStepNode, getIteratorValueNode, getNextMethodNode, this,
+                            growProfile);
+            String message = messageObj == Undefined.instance ? null : toStringNode.executeString(messageObj);
+            DynamicObject errorObj;
+            JSContext context = getContext();
+            JSRealm realm = context.getRealm();
+            Object errorsArray = errors.toArray();
+            if (message == null) {
+                errorObj = JSObject.create(context, context.getErrorFactory(JSErrorType.AggregateError, false), errorsArray);
+            } else {
+                errorObj = JSObject.create(context, context.getErrorFactory(JSErrorType.AggregateError, true), errorsArray, message);
+            }
+            swapPrototype(errorObj, newTarget);
+
+            int stackTraceLimit = stackTraceLimitNode.executeInt(frame);
+            DynamicObject errorFunction = realm.getErrorConstructor(JSErrorType.AggregateError);
+            GraalJSException exception = JSException.createCapture(JSErrorType.AggregateError, message, errorObj, realm, stackTraceLimit, errorFunction);
+            return initErrorObjectNode.execute(errorObj, exception);
+        }
+
+        @Override
+        protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getErrorPrototype(JSErrorType.AggregateError);
         }
 
     }

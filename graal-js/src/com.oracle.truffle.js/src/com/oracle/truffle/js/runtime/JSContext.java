@@ -221,6 +221,7 @@ public class JSContext {
         CollatorCaseSensitiveCompare,
         CollatorCompare,
         DateTimeFormatFormat,
+        ErrorGetAggregateErrors,
         NumberFormatFormat,
         ProxyRevokerFunction,
         PromiseResolveFunction,
@@ -231,6 +232,7 @@ public class JSContext {
         PromiseAllResolveElement,
         PromiseAllSettledResolveElement,
         PromiseAllSettledRejectElement,
+        PromiseAnyRejectElement,
         PromiseThenFinally,
         PromiseCatchFinally,
         PromiseValueThunk,
@@ -501,9 +503,17 @@ public class JSContext {
         this.errorObjectFactories = new JSObjectFactory[JSErrorType.errorTypes().length];
         this.errorWithMessageObjectFactories = new JSObjectFactory[JSErrorType.errorTypes().length];
         for (JSErrorType type : JSErrorType.errorTypes()) {
-            errorObjectFactories[type.ordinal()] = builder.create(type, JSError.INSTANCE::makeInitialShape);
-            errorWithMessageObjectFactories[type.ordinal()] = builder.create(type, (c, p) -> JSError.addMessagePropertyToShape(JSError.INSTANCE.makeInitialShape(c, p)));
+            if (type == JSErrorType.AggregateError) {
+                errorObjectFactories[type.ordinal()] = builder.create(JSErrorType.AggregateError,
+                                (c, p) -> JSError.addAggregateErrorsPropertyToShape(JSError.INSTANCE.makeInitialShape(c, p)));
+                errorWithMessageObjectFactories[type.ordinal()] = builder.create(JSErrorType.AggregateError,
+                                (c, p) -> JSError.addMessagePropertyToShape(JSError.addAggregateErrorsPropertyToShape(JSError.INSTANCE.makeInitialShape(c, p))));
+            } else {
+                errorObjectFactories[type.ordinal()] = builder.create(type, JSError.INSTANCE::makeInitialShape);
+                errorWithMessageObjectFactories[type.ordinal()] = builder.create(type, (c, p) -> JSError.addMessagePropertyToShape(JSError.INSTANCE.makeInitialShape(c, p)));
+            }
         }
+
         this.callSiteFactory = builder.create(JSRealm::getCallSitePrototype, JSError::makeInitialCallSiteShape);
         this.nonStrictArgumentsFactory = builder.create(objectPrototypeSupplier, JSArgumentsObject::makeInitialNonStrictArgumentsShape);
         this.strictArgumentsFactory = builder.create(objectPrototypeSupplier, JSArgumentsObject::makeInitialStrictArgumentsShape);

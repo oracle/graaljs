@@ -64,6 +64,18 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createAggregateError(Object errors, String message, JSContext context) {
+        JSRealm realm = context.getRealm();
+        DynamicObject errorObj = JSObject.createWithRealm(context, context.getErrorFactory(JSErrorType.AggregateError, true), realm, errors, message);
+        return JSException.create(JSErrorType.AggregateError, message, errorObj, realm);
+    }
+
+    @TruffleBoundary
+    public static JSException createAggregateError(Object errors, JSContext context) {
+        return createAggregateError(errors, "", context);
+    }
+
+    @TruffleBoundary
     public static JSException createError(String message) {
         return JSException.create(JSErrorType.Error, message);
     }
