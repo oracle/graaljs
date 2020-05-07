@@ -266,7 +266,8 @@ public final class GraalJSEvaluator implements JSParser {
 
     @Override
     public ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog, boolean alwaysReturnValue) {
-        if (MODULE_MIME_TYPE.equals(source.getMimeType()) || source.getName().endsWith(MODULE_SOURCE_NAME_SUFFIX)) {
+        String mimeType = source.getMimeType();
+        if (MODULE_MIME_TYPE.equals(mimeType) || (mimeType == null && source.getName().endsWith(MODULE_SOURCE_NAME_SUFFIX))) {
             return fakeScriptForModule(context, source);
         }
         try {
