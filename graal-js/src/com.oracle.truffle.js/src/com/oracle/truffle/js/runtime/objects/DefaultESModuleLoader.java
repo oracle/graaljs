@@ -122,7 +122,12 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         } else {
             try {
                 TruffleFile moduleFile = realm.getEnv().getPublicTruffleFile(path);
-                canonicalPath = moduleFile.getCanonicalFile().getPath();
+                if (moduleFile.exists()) {
+                    canonicalPath = moduleFile.getCanonicalFile().getPath();
+                } else {
+                    // Source with a non-existing path but with a content.
+                    canonicalPath = path;
+                }
             } catch (IOException | SecurityException e) {
                 throw Errors.createErrorFromException(e);
             }

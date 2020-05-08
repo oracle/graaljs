@@ -41,8 +41,11 @@
 package com.oracle.truffle.js.scriptengine.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 
 import javax.script.Bindings;
@@ -207,6 +210,26 @@ public class TestEngine {
         // ScriptEngine to fail.
         assertEquals("foo", TestUtil.getEngineNashornCompat(manager).eval("'foo'"));
         assertEquals("bar", TestUtil.getEngineNashornCompat(manager).eval("'bar'"));
+    }
+
+    @Test
+    public void moduleWithDependency() throws IOException, ScriptException {
+        ScriptEngine engine = getEngine();
+        engine.getBindings(ScriptContext.ENGINE_SCOPE).put("polyglot.js.allowIO", true);
+
+        File dependency = File.createTempFile("dependency", ".mjs");
+        dependency.deleteOnExit();
+        try (FileWriter writer = new FileWriter(dependency)) {
+            writer.append("export let answer = 42;");
+        }
+
+        String mainModuleName = new File(dependency.getParent(), "main.mjs").getAbsolutePath();
+        String mainModule = "import { answer } from '" + dependency.getName() + "'; answer;";
+        engine.getContext().setAttribute(ScriptEngine.FILENAME, mainModuleName, ScriptContext.ENGINE_SCOPE);
+
+        Object result = engine.eval(mainModule);
+
+        assertSame(42, ((Number) result).intValue());
     }
 
 }
