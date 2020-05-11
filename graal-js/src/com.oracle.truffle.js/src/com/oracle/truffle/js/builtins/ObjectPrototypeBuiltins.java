@@ -329,10 +329,19 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return "[object Undefined]";
         }
 
-        @Specialization(guards = "isForeignObject(thisObj)")
+        @Specialization(guards = "isForeignObject(thisObj)", limit = "1")
         @TruffleBoundary
-        protected String doForeignObject(Object thisObj) {
-            return "[foreign " + thisObj.getClass().getSimpleName() + "]";
+        protected String doForeignObject(Object thisObj,
+                        @CachedLibrary("thisObj") InteropLibrary interop) {
+            if (interop.isNull(thisObj)) {
+                return "[object Null]";
+            } else if (interop.hasArrayElements(thisObj)) {
+                return "[object Array]";
+            } else if (interop.isExecutable(thisObj) || interop.isInstantiable(thisObj)) {
+                return "[object Function]";
+            } else {
+                return "[object Object]";
+            }
         }
 
         @Specialization
