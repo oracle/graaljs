@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,6 @@ import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.test.polyglot.TestLanguage.LanguageContext;
 
 /**
@@ -139,16 +138,6 @@ public class TestLanguage extends TruffleLanguage<LanguageContext> {
     }
 
     @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        if (wrapper) {
-            delegate.languageInstance = this;
-            return delegate.isObjectOfLanguage(object);
-        } else {
-            return false;
-        }
-    }
-
-    @Override
     protected void finalizeContext(LanguageContext context) {
         if (wrapper) {
             delegate.finalizeContext(context);
@@ -174,26 +163,6 @@ public class TestLanguage extends TruffleLanguage<LanguageContext> {
             delegate.disposeThread(context, thread);
         } else {
             super.disposeThread(context, thread);
-        }
-    }
-
-    @Override
-    protected Object findMetaObject(LanguageContext context, Object value) {
-        if (wrapper) {
-            delegate.languageInstance = this;
-            return delegate.findMetaObject(context, value);
-        } else {
-            return value.toString();
-        }
-    }
-
-    @Override
-    protected SourceSection findSourceLocation(LanguageContext context, Object value) {
-        if (wrapper) {
-            delegate.languageInstance = this;
-            return delegate.findSourceLocation(context, value);
-        } else {
-            return super.findSourceLocation(context, value);
         }
     }
 
@@ -265,16 +234,6 @@ public class TestLanguage extends TruffleLanguage<LanguageContext> {
             return delegate.getOptionDescriptors();
         } else {
             return super.getOptionDescriptors();
-        }
-    }
-
-    @Override
-    protected String toString(LanguageContext context, Object value) {
-        if (wrapper) {
-            delegate.languageInstance = this;
-            return delegate.toString(context, value);
-        } else {
-            return value.toString();
         }
     }
 

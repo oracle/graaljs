@@ -170,7 +170,7 @@ public final class JSError extends JSBuiltinObject {
             obj = JSObject.createWithPrototype(context, context.getErrorFactory(errorType, true), realm, prototype, message);
             msg = (String) message; // can only be String or undefined
         }
-        setException(realm, obj, JSException.createCapture(errorType, msg, obj), false);
+        setException(realm, obj, JSException.createCapture(errorType, msg, obj, realm), false);
         return obj;
     }
 
@@ -340,11 +340,7 @@ public final class JSError extends JSBuiltinObject {
     }
 
     private static Object prepareStackWithUserFunction(JSRealm realm, DynamicObject prepareStackTraceFun, DynamicObject errorObj, JSStackTraceElement[] stackTrace) {
-        try {
-            return JSFunction.call(prepareStackTraceFun, errorObj, new Object[]{errorObj, toStructuredStackTrace(realm, stackTrace)});
-        } catch (Exception ex) {
-            return formatStackTrace(stackTrace, errorObj, realm);
-        }
+        return JSFunction.call(prepareStackTraceFun, errorObj, new Object[]{errorObj, toStructuredStackTrace(realm, stackTrace)});
     }
 
     private static DynamicObject toStructuredStackTrace(JSRealm realm, JSStackTraceElement[] stackTrace) {
@@ -399,22 +395,16 @@ public final class JSError extends JSBuiltinObject {
     }
 
     private static void formatStackTraceIntl(JSStackTraceElement[] stackTrace, StringBuilder builder, JSContext context) {
+        boolean nashornCompatibilityMode = context.isOptionNashornCompatibilityMode();
         for (JSStackTraceElement elem : stackTrace) {
             builder.append(JSRuntime.LINE_SEPARATOR);
-            builder.append(context.isOptionNashornCompatibilityMode() ? "\tat " : "    at ");
-            if (context.isOptionV8CompatibilityMode()) {
-                builder.append(elem.toString());
+            builder.append(nashornCompatibilityMode ? "\tat " : "    at ");
+            if (!nashornCompatibilityMode) {
+                builder.append(elem.toString(context));
             } else {
-                String className = context.isOptionNashornCompatibilityMode() ? null : elem.getClassName();
                 String methodName = correctMethodName(elem.getFunctionName(), context);
-                boolean includeMethodName = context.isOptionNashornCompatibilityMode() || (className != null) || !getAnonymousFunctionNameStackTrace(context).equals(methodName);
-                if (includeMethodName) {
-                    if (className != null) {
-                        builder.append(className).append('.');
-                    }
-                    builder.append(methodName);
-                    builder.append(" (");
-                }
+                builder.append(methodName);
+                builder.append(" (");
                 String fileName = elem.getFileName();
                 if (JSFunction.BUILTIN_SOURCE_NAME.equals(fileName)) {
                     builder.append("native");
@@ -422,14 +412,8 @@ public final class JSError extends JSBuiltinObject {
                     builder.append(fileName);
                     builder.append(":");
                     builder.append(elem.getLineNumber());
-                    if (!context.isOptionNashornCompatibilityMode()) {
-                        builder.append(":");
-                        builder.append(elem.getColumnNumber());
-                    }
                 }
-                if (includeMethodName) {
-                    builder.append(")");
-                }
+                builder.append(")");
             }
         }
     }

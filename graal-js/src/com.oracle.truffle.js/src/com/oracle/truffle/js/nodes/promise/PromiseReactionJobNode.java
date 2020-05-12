@@ -40,10 +40,18 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
+import java.util.List;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -51,8 +59,10 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.control.AwaitNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -94,101 +104,147 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
     }
 
     private static JSFunctionData createPromiseReactionJobImpl(JSContext context) {
-        class PromiseReactionJob extends JavaScriptRootNode {
-            @Child private PropertyGetNode getReaction = PropertyGetNode.createGetHidden(REACTION_KEY, context);
-            @Child private PropertyGetNode getArgument = PropertyGetNode.createGetHidden(ARGUMENT_KEY, context);
-            @Child private JSFunctionCallNode callResolveNode;
-            @Child private JSFunctionCallNode callRejectNode;
-            @Child private JSFunctionCallNode callHandlerNode;
-            @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
-            private final ConditionProfile handlerProf = ConditionProfile.createBinaryProfile();
-            private final ValueProfile typeProfile = ValueProfile.createClassProfile();
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseReactionJobRootNode(context));
+        return JSFunctionData.createCallOnly(context, callTarget, 0, "");
+    }
 
-            @Override
-            public Object execute(VirtualFrame frame) {
-                DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
-                PromiseReactionRecord reaction = (PromiseReactionRecord) getReaction.getValue(functionObject);
-                Object argument = getArgument.getValue(functionObject);
+    public static class PromiseReactionJobRootNode extends JavaScriptRootNode implements InstrumentableNode {
+        private final JSContext context;
+        @Child private PropertyGetNode getReaction;
+        @Child private PropertyGetNode getArgument;
+        @Child private JSFunctionCallNode callResolveNode;
+        @Child private JSFunctionCallNode callRejectNode;
+        @Child private JSFunctionCallNode callHandlerNode;
+        @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
+        private final ConditionProfile handlerProf = ConditionProfile.createBinaryProfile();
+        private final ValueProfile typeProfile = ValueProfile.createClassProfile();
 
-                PromiseCapabilityRecord promiseCapability = reaction.getCapability();
-                Object handler = reaction.getHandler();
-                assert promiseCapability != null || handler != Undefined.instance;
+        PromiseReactionJobRootNode(JSContext context) {
+            super(context.getLanguage(), null, null);
+            this.context = context;
+            this.getReaction = PropertyGetNode.createGetHidden(REACTION_KEY, context);
+            this.getArgument = PropertyGetNode.createGetHidden(ARGUMENT_KEY, context);
+        }
 
-                if (promiseCapability != null) {
-                    context.notifyPromiseHook(PromiseHook.TYPE_BEFORE, promiseCapability.getPromise());
-                }
+        @Override
+        public Object execute(VirtualFrame frame) {
+            DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+            PromiseReactionRecord reaction = (PromiseReactionRecord) getReaction.getValue(functionObject);
+            Object argument = getArgument.getValue(functionObject);
 
-                Object handlerResult;
-                boolean fulfill;
-                if (handlerProf.profile(handler == Undefined.instance)) {
-                    handlerResult = argument;
-                    fulfill = reaction.isFulfill();
-                } else {
-                    try {
-                        handlerResult = callHandler().executeCall(JSArguments.createOneArg(Undefined.instance, handler, argument));
-                        // If promiseCapability is undefined, return NormalCompletion(empty).
-                        if (promiseCapability == null) {
-                            return Undefined.instance;
-                        }
-                        fulfill = true;
-                    } catch (Throwable ex) {
-                        if (shouldCatch(ex)) {
-                            handlerResult = getErrorObjectNode.execute(ex);
-                            fulfill = false;
-                        } else {
-                            throw ex;
-                        }
+            PromiseCapabilityRecord promiseCapability = reaction.getCapability();
+            Object handler = reaction.getHandler();
+            assert promiseCapability != null || handler != Undefined.instance;
+
+            if (promiseCapability != null) {
+                context.notifyPromiseHook(PromiseHook.TYPE_BEFORE, promiseCapability.getPromise());
+            }
+
+            Object handlerResult;
+            boolean fulfill;
+            if (handlerProf.profile(handler == Undefined.instance)) {
+                handlerResult = argument;
+                fulfill = reaction.isFulfill();
+            } else {
+                try {
+                    handlerResult = callHandler().executeCall(JSArguments.createOneArg(Undefined.instance, handler, argument));
+                    // If promiseCapability is undefined, return NormalCompletion(empty).
+                    if (promiseCapability == null) {
+                        return Undefined.instance;
+                    }
+                    fulfill = true;
+                } catch (Throwable ex) {
+                    if (shouldCatch(ex)) {
+                        handlerResult = getErrorObjectNode.execute(ex);
+                        fulfill = false;
+                    } else {
+                        throw ex;
                     }
                 }
-                // top-level-await evaluation: throw exception when error is generated but no
-                // capability is found in chain
-                if (context.getEcmaScriptVersion() >= ECMAScript2021 && promiseCapability == null && JSError.isJSError(handlerResult)) {
-                    throw JSError.getException((DynamicObject) handlerResult);
-                }
-                Object status;
-                if (fulfill) {
-                    status = callResolve().executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), handlerResult));
-                } else {
-                    status = callReject().executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), handlerResult));
-                }
-
-                context.notifyPromiseHook(PromiseHook.TYPE_AFTER, promiseCapability.getPromise());
-                return status;
+            }
+            // top-level-await evaluation: throw exception when error is generated but no
+            // capability is found in chain
+            if (context.getEcmaScriptVersion() >= ECMAScript2021 && promiseCapability == null && JSError.isJSError(handlerResult)) {
+                throw JSError.getException((DynamicObject) handlerResult);
+            }
+            Object status;
+            if (fulfill) {
+                status = callResolve().executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), handlerResult));
+            } else {
+                status = callReject().executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), handlerResult));
             }
 
-            private boolean shouldCatch(Throwable exception) {
-                if (getErrorObjectNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
-                }
-                return TryCatchNode.shouldCatch(exception, typeProfile);
-            }
-
-            private JSFunctionCallNode callResolve() {
-                if (callResolveNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    callResolveNode = insert(JSFunctionCallNode.createCall());
-                }
-                return callResolveNode;
-            }
-
-            private JSFunctionCallNode callReject() {
-                if (callRejectNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    callRejectNode = insert(JSFunctionCallNode.createCall());
-                }
-                return callRejectNode;
-            }
-
-            private JSFunctionCallNode callHandler() {
-                if (callHandlerNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    callHandlerNode = insert(JSFunctionCallNode.createCall());
-                }
-                return callHandlerNode;
-            }
+            context.notifyPromiseHook(PromiseHook.TYPE_AFTER, promiseCapability.getPromise());
+            return status;
         }
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseReactionJob());
-        return JSFunctionData.createCallOnly(context, callTarget, 0, "");
+
+        private boolean shouldCatch(Throwable exception) {
+            if (getErrorObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
+            }
+            return TryCatchNode.shouldCatch(exception, typeProfile);
+        }
+
+        private JSFunctionCallNode callResolve() {
+            if (callResolveNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                callResolveNode = insert(JSFunctionCallNode.createCall());
+            }
+            return callResolveNode;
+        }
+
+        private JSFunctionCallNode callReject() {
+            if (callRejectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                callRejectNode = insert(JSFunctionCallNode.createCall());
+            }
+            return callRejectNode;
+        }
+
+        private JSFunctionCallNode callHandler() {
+            if (callHandlerNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                callHandlerNode = insert(JSFunctionCallNode.createCall());
+            }
+            return callHandlerNode;
+        }
+
+        @Override
+        public boolean isCaptureFramesForTrace() {
+            return context.isOptionAsyncStackTraces();
+        }
+
+        @Override
+        protected List<TruffleStackTraceElement> findAsynchronousFrames(Frame frame) {
+            if (!context.isOptionAsyncStackTraces()) {
+                return null;
+            }
+
+            DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+            PromiseReactionRecord reaction = (PromiseReactionRecord) getReaction.getValue(functionObject);
+            PromiseCapabilityRecord promiseCapability = reaction.getCapability();
+            if (promiseCapability != null) {
+                return AwaitNode.findAsyncStackFramesFromPromise(promiseCapability.getPromise());
+            } else if (JSFunction.isJSFunction(reaction.getHandler())) {
+                return AwaitNode.findAsyncStackFramesFromHandler((DynamicObject) reaction.getHandler());
+            }
+            return null;
+        }
+
+        @Override
+        public boolean hasTag(Class<? extends Tag> tag) {
+            return tag == StandardTags.RootTag.class;
+        }
+
+        @Override
+        public boolean isInstrumentable() {
+            return false;
+        }
+
+        @Override
+        public WrapperNode createWrapper(ProbeNode probe) {
+            throw Errors.shouldNotReachHere();
+        }
     }
 }

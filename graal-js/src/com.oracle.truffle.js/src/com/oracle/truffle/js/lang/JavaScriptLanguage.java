@@ -538,6 +538,10 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         return getJSContext().getContextOptions().bindMemberFunctions();
     }
 
+    public int getAsyncStackDepth() {
+        return super.getAsynchronousStackDepth();
+    }
+
     private static void ensureErrorClassesInitialized() {
         if (JSConfig.SubstrateVM) {
             return;

@@ -95,6 +95,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropArray;
+import com.oracle.truffle.js.runtime.truffleinterop.InteropFunction;
 import com.oracle.truffle.js.runtime.truffleinterop.JSMetaType;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
@@ -1064,7 +1065,8 @@ public abstract class JSClass extends ObjectType {
             return JSMetaType.JS_PROXY;
         } else {
             assert JSObject.isJSObject(receiver) && !JSGuards.isJSProxy(receiver);
-            Object metaObject = JSRuntime.getDataProperty(receiver, JSObject.CONSTRUCTOR);
+            DynamicObject proto = JSObject.getPrototype(receiver);
+            Object metaObject = JSRuntime.getDataProperty(proto, JSObject.CONSTRUCTOR);
             if (metaObject != null && metaObject instanceof DynamicObject && isMetaObject((DynamicObject) metaObject)) {
                 return metaObject;
             }
@@ -1100,8 +1102,12 @@ public abstract class JSClass extends ObjectType {
         }
         Object constructorPrototype = JSRuntime.getDataProperty(receiver, JSObject.PROTOTYPE);
         if (JSGuards.isJSObject(constructorPrototype)) {
-            if (JSGuards.isJSObject(instance) && !JSProxy.isProxy(instance)) {
-                DynamicObject proto = JSObject.getPrototype((DynamicObject) instance);
+            Object obj = instance;
+            if (obj instanceof InteropFunction) {
+                obj = ((InteropFunction) obj).getFunction();
+            }
+            if (JSGuards.isJSObject(obj) && !JSProxy.isProxy(obj)) {
+                DynamicObject proto = JSObject.getPrototype((DynamicObject) obj);
                 while (proto != Null.instance) {
                     if (proto == constructorPrototype) {
                         return true;

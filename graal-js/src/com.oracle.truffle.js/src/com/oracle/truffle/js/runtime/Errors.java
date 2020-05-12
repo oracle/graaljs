@@ -65,8 +65,9 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createAggregateError(Object errors, String message, JSContext context) {
-        return JSException.create(JSErrorType.AggregateError, message,
-                        JSObject.create(context, context.getErrorFactory(JSErrorType.AggregateError, true), errors, message));
+        JSRealm realm = context.getRealm();
+        DynamicObject errorObj = JSObject.createWithRealm(context, context.getErrorFactory(JSErrorType.AggregateError, true), realm, errors, message);
+        return JSException.create(JSErrorType.AggregateError, message, errorObj, realm);
     }
 
     @TruffleBoundary

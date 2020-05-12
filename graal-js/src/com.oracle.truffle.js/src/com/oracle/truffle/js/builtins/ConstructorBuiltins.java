@@ -1838,7 +1838,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
             int stackTraceLimit = stackTraceLimitNode.executeInt(frame);
             DynamicObject errorFunction = realm.getErrorConstructor(errorType);
-            GraalJSException exception = JSException.createCapture(errorType, message, errorObj, stackTraceLimit, errorFunction);
+            GraalJSException exception = JSException.createCapture(errorType, message, errorObj, realm, stackTraceLimit, errorFunction);
             return initErrorObjectNode.execute(errorObj, exception);
         }
 
@@ -1891,7 +1891,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
             int stackTraceLimit = stackTraceLimitNode.executeInt(frame);
             DynamicObject errorFunction = realm.getErrorConstructor(JSErrorType.AggregateError);
-            GraalJSException exception = JSException.createCapture(JSErrorType.AggregateError, message, errorObj, stackTraceLimit, errorFunction);
+            GraalJSException exception = JSException.createCapture(JSErrorType.AggregateError, message, errorObj, realm, stackTraceLimit, errorFunction);
             return initErrorObjectNode.execute(errorObj, exception);
         }
 

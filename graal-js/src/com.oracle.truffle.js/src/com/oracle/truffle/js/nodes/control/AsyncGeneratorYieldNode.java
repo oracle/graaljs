@@ -114,7 +114,7 @@ public class AsyncGeneratorYieldNode extends AwaitNode {
                 if (completion.isNormal()) {
                     return completion.getValue();
                 } else if (completion.isThrow()) {
-                    throw UserScriptException.create(completion.getValue(), this);
+                    throw UserScriptException.create(completion.getValue(), this, context.getContextOptions().getStackTraceLimit());
                 } else {
                     assert completion.isReturn();
                     // Let awaited be Await(resumptionValue.[[Value]]).

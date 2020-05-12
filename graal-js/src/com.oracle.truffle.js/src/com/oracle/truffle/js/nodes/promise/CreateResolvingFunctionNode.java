@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -108,7 +109,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
     }
 
     private static JSFunctionData createPromiseResolveFunctionImpl(JSContext context) {
-        class PromiseResolveRootNode extends JavaScriptRootNode {
+        class PromiseResolveRootNode extends JavaScriptRootNode implements AsyncHandlerRootNode {
             @Child private JavaScriptNode resolutionNode = AccessIndexedArgumentNode.create(0);
             @Child private PropertyGetNode getPromiseNode;
             @Child private PropertyGetNode getAlreadyResolvedNode = PropertyGetNode.createGetHidden(ALREADY_RESOLVED_KEY, context);
@@ -216,6 +217,12 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 setThenNode.setValue(function, then);
                 return function;
             }
+
+            @Override
+            public AsyncStackTraceInfo getAsyncStackTraceInfo(DynamicObject handlerFunction) {
+                assert JSFunction.isJSFunction(handlerFunction) && ((RootCallTarget) JSFunction.getFunctionData(handlerFunction).getCallTarget()).getRootNode() == this;
+                return new AsyncStackTraceInfo((DynamicObject) handlerFunction.get(PROMISE_KEY, null), null);
+            }
         }
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseResolveRootNode());
         return JSFunctionData.createCallOnly(context, callTarget, 1, "");
@@ -250,7 +257,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
     }
 
     private static JSFunctionData createPromiseRejectFunctionImpl(JSContext context) {
-        class PromiseRejectRootNode extends JavaScriptRootNode {
+        class PromiseRejectRootNode extends JavaScriptRootNode implements AsyncHandlerRootNode {
             @Child private JavaScriptNode reasonNode;
             @Child private PropertyGetNode getPromiseNode;
             @Child private PropertyGetNode getAlreadyResolvedNode = PropertyGetNode.createGetHidden(ALREADY_RESOLVED_KEY, context);
@@ -280,6 +287,12 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                     getPromiseNode = insert(PropertyGetNode.createGetHidden(PROMISE_KEY, context));
                     rejectPromiseNode = insert(RejectPromiseNode.create(context));
                 }
+            }
+
+            @Override
+            public AsyncStackTraceInfo getAsyncStackTraceInfo(DynamicObject handlerFunction) {
+                assert JSFunction.isJSFunction(handlerFunction) && ((RootCallTarget) JSFunction.getFunctionData(handlerFunction).getCallTarget()).getRootNode() == this;
+                return new AsyncStackTraceInfo((DynamicObject) handlerFunction.get(PROMISE_KEY, null), null);
             }
         }
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseRejectRootNode());

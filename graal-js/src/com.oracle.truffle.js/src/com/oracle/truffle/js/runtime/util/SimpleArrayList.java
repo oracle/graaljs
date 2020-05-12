@@ -41,7 +41,9 @@
 package com.oracle.truffle.js.runtime.util;
 
 import java.util.Arrays;
+import java.util.StringJoiner;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.profiles.BranchProfile;
 
@@ -139,4 +141,13 @@ public class SimpleArrayList<E> {
         elements = Arrays.copyOf(elements, (int) newCapacity);
     }
 
+    @Override
+    public String toString() {
+        CompilerAsserts.neverPartOfCompilation();
+        StringJoiner sj = new StringJoiner(", ", "[", "]");
+        for (Object element : elements) {
+            sj.add(String.valueOf(element));
+        }
+        return sj.toString();
+    }
 }

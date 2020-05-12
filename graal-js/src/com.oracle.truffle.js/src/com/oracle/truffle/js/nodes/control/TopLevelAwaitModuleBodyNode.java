@@ -58,6 +58,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.promise.AsyncRootNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -188,7 +189,7 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
         } else {
             // capability was provided: we are executing the module as an async function.
             ensureAsyncCallTargetInitialized();
-            writeAsyncContextNode.executeWrite(moduleFrame, new Object[]{resumptionTarget, promiseCapability, moduleFrame});
+            writeAsyncContextNode.executeWrite(moduleFrame, AsyncRootNode.createAsyncContext(resumptionTarget, promiseCapability, moduleFrame));
             Completion unusedInitialResult = null;
             asyncCallNode.call(moduleFrame, promiseCapability, unusedInitialResult);
             return promiseCapability.getPromise();

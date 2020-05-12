@@ -75,6 +75,7 @@ public class TestV8Runnable extends TestRunnable {
     private static final String HARMONY_PUBLIC_FIELDS = "--harmony-public-fields";
     private static final String HARMONY_PRIVATE_FIELDS = "--harmony-private-fields";
     private static final String HARMONY_LOGICAL_ASSIGNMENT = "--harmony-logical-assignment";
+    private static final String NO_ASYNC_STACK_TRACES = "--noasync-stack-traces";
 
     private static final String FLAGS_PREFIX = "// Flags: ";
     private static final String FILES_PREFIX = "// Files: ";
@@ -118,6 +119,9 @@ public class TestV8Runnable extends TestRunnable {
 
         if (flags.contains(HARMONY_PUBLIC_FIELDS) || flags.contains(HARMONY_PRIVATE_FIELDS)) {
             extraOptions.put(JSContextOptions.CLASS_FIELDS_NAME, "true");
+        }
+        if (flags.contains(NO_ASYNC_STACK_TRACES)) {
+            extraOptions.put(JSContextOptions.ASYNC_STACK_TRACES_NAME, "false");
         }
 
         // now run it

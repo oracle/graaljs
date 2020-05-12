@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,68 +38,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime;
-
-import java.util.List;
+package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.truffle.api.TruffleStackTraceElement;
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.api.object.DynamicObject;
 
-public abstract class JavaScriptRootNode extends RootNode {
-    private static final FrameDescriptor SHARED_EMPTY_FRAMEDESCRIPTOR = new FrameDescriptor();
-    private final SourceSection sourceSection;
+/**
+ * Implemented by built-in promise handler functions that contribute to async stack traces.
+ */
+public interface AsyncHandlerRootNode {
+    /**
+     * Extract the stack trace element and the promise associated with this handler, both optional.
+     */
+    AsyncStackTraceInfo getAsyncStackTraceInfo(DynamicObject handlerFunction);
 
-    protected JavaScriptRootNode() {
-        this(null, null, null);
-    }
+    final class AsyncStackTraceInfo {
+        public final DynamicObject promise;
+        public final TruffleStackTraceElement stackTraceElement;
 
-    protected JavaScriptRootNode(JavaScriptLanguage lang, SourceSection sourceSection, FrameDescriptor frameDescriptor) {
-        super(lang, substituteNullWithSharedEmptyFrameDescriptor(frameDescriptor));
-        this.sourceSection = sourceSection;
-    }
-
-    private static FrameDescriptor substituteNullWithSharedEmptyFrameDescriptor(FrameDescriptor frameDescriptor) {
-        return frameDescriptor == null ? SHARED_EMPTY_FRAMEDESCRIPTOR : frameDescriptor;
-    }
-
-    @Override
-    public SourceSection getSourceSection() {
-        return sourceSection;
-    }
-
-    @Override
-    public boolean isInternal() {
-        SourceSection sc = getSourceSection();
-        if (sc != null) {
-            return sc.getSource().isInternal();
+        public AsyncStackTraceInfo(DynamicObject promise, TruffleStackTraceElement stackTraceElement) {
+            this.promise = promise;
+            this.stackTraceElement = stackTraceElement;
         }
-        return false;
-    }
 
-    /**
-     * Is this a regular JS function with standard arguments, to be included in stack traces.
-     */
-    public boolean isFunction() {
-        return false;
-    }
-
-    /**
-     * Is this a root node for the resumption of a suspended function.
-     */
-    public boolean isResumption() {
-        return false;
-    }
-
-    @Override
-    public boolean isCaptureFramesForTrace() {
-        return isFunction() || isResumption();
-    }
-
-    public static List<TruffleStackTraceElement> findAsynchronousFrames(JavaScriptRootNode rootNode, Frame frame) {
-        return rootNode.findAsynchronousFrames(frame);
+        public AsyncStackTraceInfo() {
+            this(null, null);
+        }
     }
 }

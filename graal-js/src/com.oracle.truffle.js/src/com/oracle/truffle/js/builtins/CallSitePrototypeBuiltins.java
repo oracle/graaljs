@@ -83,10 +83,13 @@ public final class CallSitePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         getPosition(0),
         getEvalOrigin(0),
         getScriptNameOrSourceURL(0),
+        getPromiseIndex(0),
         isToplevel(0),
         isEval(0),
         isNative(0),
         isConstructor(0),
+        isAsync(0),
+        isPromiseAll(0),
         toString(0);
 
         private final int length;
@@ -117,11 +120,14 @@ public final class CallSitePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             case toString:
             case getEvalOrigin:
             case getScriptNameOrSourceURL:
+            case getPromiseIndex:
                 return CallSiteGetNodeGen.create(context, builtin, builtinEnum, args().withThis().createArgumentNodes(context));
             case isToplevel:
             case isEval:
             case isNative:
             case isConstructor:
+            case isAsync:
+            case isPromiseAll:
                 return CallSiteGetBooleanNodeGen.create(context, builtin, builtinEnum, args().withThis().createArgumentNodes(context));
         }
         return null;
@@ -193,7 +199,7 @@ public final class CallSitePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                     }
                     return JSRuntime.nullToUndefined(stackTraceElement.getThisOrGlobal());
                 case toString:
-                    return stackTraceElement.toString();
+                    return stackTraceElement.toString(getContext());
                 case getTypeName:
                     return JSRuntime.toJSNull(stackTraceElement.getTypeName());
                 case getFunctionName: {
@@ -226,6 +232,13 @@ public final class CallSitePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                         return Undefined.instance;
                     }
                 }
+                case getPromiseIndex: {
+                    if (stackTraceElement.isPromiseAll()) {
+                        return stackTraceElement.getPromiseIndex();
+                    } else {
+                        return Null.instance;
+                    }
+                }
                 default:
                     throw Errors.shouldNotReachHere();
             }
@@ -252,6 +265,10 @@ public final class CallSitePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                     return JSFunction.isJSFunction(stackTraceElement.getFunction()) && JSFunction.isBuiltin((DynamicObject) stackTraceElement.getFunction());
                 case isToplevel:
                     return JSRuntime.isNullOrUndefined(stackTraceElement.getThis()) || JSGlobalObject.isJSGlobalObject(stackTraceElement.getThis()) || stackTraceElement.isEval();
+                case isAsync:
+                    return stackTraceElement.isAsync();
+                case isPromiseAll:
+                    return stackTraceElement.isPromiseAll();
                 default:
                     throw Errors.shouldNotReachHere();
             }

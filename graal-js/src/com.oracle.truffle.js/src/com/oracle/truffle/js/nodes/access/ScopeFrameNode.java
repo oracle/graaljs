@@ -81,6 +81,25 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
         return !slots.isEmpty() && slots.get(0).getIdentifier() == PARENT_SCOPE_IDENTIFIER;
     }
 
+    public static Frame getBlockScopeParentFrame(Frame frame) {
+        List<? extends FrameSlot> slots = frame.getFrameDescriptor().getSlots();
+        if (!slots.isEmpty()) {
+            FrameSlot parentSlot = slots.get(0);
+            if (parentSlot.getIdentifier() == PARENT_SCOPE_IDENTIFIER) {
+                return (Frame) FrameUtil.getObjectSafe(frame, parentSlot);
+            }
+        }
+        return null;
+    }
+
+    public static Frame getNonBlockScopeParentFrame(Frame frame) {
+        Frame parent = frame;
+        while (isBlockScopeFrame(parent)) {
+            parent = getBlockScopeParentFrame(parent);
+        }
+        return parent;
+    }
+
     public abstract Frame executeFrame(Frame frame);
 
     @Override
