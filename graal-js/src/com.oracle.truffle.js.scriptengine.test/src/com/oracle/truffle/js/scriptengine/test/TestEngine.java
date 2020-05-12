@@ -47,6 +47,8 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.StringReader;
+import java.io.StringWriter;
 
 import javax.script.Bindings;
 import javax.script.Compilable;
@@ -57,6 +59,8 @@ import javax.script.ScriptEngineFactory;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -230,6 +234,28 @@ public class TestEngine {
         Object result = engine.eval(mainModule);
 
         assertSame(42, ((Number) result).intValue());
+    }
+
+    @Test
+    public void unicodeOutput() throws ScriptException {
+        String text = "Tu\u010d\u0148\u00e1\u010d\u010d\u00ed \ud83d\udca9!";
+        ScriptEngine engine = getEngine();
+        StringWriter output = new StringWriter();
+        engine.getContext().setWriter(output);
+        engine.eval("print('" + text + "');");
+        assertEquals(text + '\n', output.toString());
+    }
+
+    @Test
+    public void unicodeInput() throws ScriptException {
+        String text = "Tu\u010d\u0148\u00e1\u010d\u010d\u00ed \ud83d\udca9!";
+        ScriptEngine engine = GraalJSScriptEngine.create(
+                        Engine.newBuilder().build(),
+                        Context.newBuilder("js").allowExperimentalOptions(true).option("js.shell", "true"));
+        StringReader input = new StringReader(text);
+        engine.getContext().setReader(input);
+        Object result = engine.eval("readline()");
+        assertEquals(text, result);
     }
 
 }

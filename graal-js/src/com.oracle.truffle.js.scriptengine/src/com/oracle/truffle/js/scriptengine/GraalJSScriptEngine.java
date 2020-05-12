@@ -48,6 +48,11 @@ import java.io.Reader;
 import java.io.Writer;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CharsetEncoder;
 import java.util.Objects;
 import java.util.function.Predicate;
 
@@ -567,11 +572,26 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     private static class DelegatingInputStream extends InputStream implements Proxy {
 
         private Reader reader;
+        private CharsetEncoder encoder = Charset.defaultCharset().newEncoder();
+        private CharBuffer charBuffer = CharBuffer.allocate(2);
+        private ByteBuffer byteBuffer = (ByteBuffer) ByteBuffer.allocate((int) encoder.maxBytesPerChar() * 2).flip();
 
         @Override
         public int read() throws IOException {
             if (reader != null) {
-                return reader.read();
+                while (!byteBuffer.hasRemaining()) {
+                    int c = reader.read();
+                    if (c == -1) {
+                        return -1;
+                    }
+                    byteBuffer.clear();
+                    charBuffer.put((char) c);
+                    charBuffer.flip();
+                    encoder.encode(charBuffer, byteBuffer, false);
+                    charBuffer.compact();
+                    byteBuffer.flip();
+                }
+                return byteBuffer.get();
             }
             return 0;
         }
@@ -585,11 +605,23 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     private static class DelegatingOutputStream extends OutputStream implements Proxy {
 
         private Writer writer;
+        private CharsetDecoder decoder = Charset.defaultCharset().newDecoder();
+        private ByteBuffer byteBuffer = ByteBuffer.allocate((int) Charset.defaultCharset().newEncoder().maxBytesPerChar() * 2);
+        private CharBuffer charBuffer = CharBuffer.allocate(byteBuffer.capacity() * (int) decoder.maxCharsPerByte());
 
         @Override
         public void write(int b) throws IOException {
             if (writer != null) {
-                writer.write(b);
+                byteBuffer.put((byte) b);
+                byteBuffer.flip();
+                decoder.decode(byteBuffer, charBuffer, false);
+                byteBuffer.compact();
+                charBuffer.flip();
+                while (charBuffer.hasRemaining()) {
+                    char c = charBuffer.get();
+                    writer.write(c);
+                }
+                charBuffer.clear();
             }
         }
 

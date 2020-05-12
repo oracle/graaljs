@@ -188,9 +188,6 @@
     "status" : "FAIL",
     "comment" : "Java interop migration"
   }, {
-    "filePath" : "basic/JDK-8015345.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "basic/JDK-8015352.js",
     "runInIsolation" : true
   }, {
