@@ -437,7 +437,7 @@ public class JSRealm {
         this.dateConstructor = ctor.getFunctionObject();
         this.datePrototype = ctor.getPrototype();
         this.initialRegExpPrototypeShape = this.regExpPrototype.getShape();
-        boolean es6 = context.getContextOptions().getEcmaScriptVersion() >= 6;
+        boolean es6 = context.getContextOptions().getEcmaScriptVersion() >= JSConfig.ECMAScript2015;
         if (es6) {
             ctor = JSSymbol.createConstructor(this);
             this.symbolConstructor = ctor.getFunctionObject();
@@ -564,7 +564,7 @@ public class JSRealm {
 
         this.mathObject = JSMath.create(this);
 
-        boolean es8 = context.getContextOptions().getEcmaScriptVersion() >= 8;
+        boolean es8 = context.getContextOptions().getEcmaScriptVersion() >= JSConfig.ECMAScript2017;
         if (es8) {
             ctor = JSFunction.createAsyncFunctionConstructor(this);
             this.asyncFunctionConstructor = ctor.getFunctionObject();
@@ -574,7 +574,7 @@ public class JSRealm {
             this.asyncFunctionPrototype = null;
         }
 
-        boolean es9 = context.getContextOptions().getEcmaScriptVersion() >= 9;
+        boolean es9 = context.getContextOptions().getEcmaScriptVersion() >= JSConfig.ECMAScript2018;
         if (es9) {
             this.asyncIteratorPrototype = JSFunction.createAsyncIteratorPrototype(this);
             this.asyncFromSyncIteratorPrototype = JSFunction.createAsyncFromSyncIteratorPrototype(this);
@@ -590,7 +590,7 @@ public class JSRealm {
             this.asyncGeneratorObjectPrototype = null;
         }
 
-        boolean es12 = context.getContextOptions().getEcmaScriptVersion() >= 12;
+        boolean es12 = context.getContextOptions().getEcmaScriptVersion() >= JSConfig.ECMAScript2021;
         if (es12) {
             ctor = JSWeakRef.createConstructor(this);
             this.weakRefConstructor = ctor.getFunctionObject();

@@ -1154,7 +1154,7 @@ public class JSContext {
 
     public int getEcmaScriptVersion() {
         int version = contextOptions.getEcmaScriptVersion();
-        assert version >= 5 && version <= JSConfig.MaxECMAScriptVersion;
+        assert version >= JSConfig.ECMAScript5 && version <= JSConfig.MaxECMAScriptVersion;
         return version;
     }
 
