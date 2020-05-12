@@ -542,7 +542,6 @@ public abstract class GraalJSException extends RuntimeException implements Truff
 
         private JSStackTraceElement(String fileName, String functionName, SourceSection sourceSection, Object thisObj, Object functionObj, SourceSection targetSourceSection, boolean strict,
                         boolean eval, boolean global, boolean inNashornMode, boolean async, int promiseIndex) {
-            this.promiseIndex = promiseIndex;
             CompilerAsserts.neverPartOfCompilation();
             this.fileName = fileName;
             this.functionName = functionName;
@@ -555,6 +554,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             this.global = global;
             this.inNashornMode = inNashornMode;
             this.async = async;
+            this.promiseIndex = promiseIndex;
         }
 
         // This method is called from nashorn tests via java interop

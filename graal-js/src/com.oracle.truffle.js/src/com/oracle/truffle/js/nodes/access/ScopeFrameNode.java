@@ -86,7 +86,7 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
         if (!slots.isEmpty()) {
             FrameSlot parentSlot = slots.get(0);
             if (parentSlot.getIdentifier() == PARENT_SCOPE_IDENTIFIER) {
-                return (Frame) FrameUtil.getObjectSafe(frame, slots.get(0));
+                return (Frame) FrameUtil.getObjectSafe(frame, parentSlot);
             }
         }
         return null;
