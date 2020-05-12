@@ -76,6 +76,7 @@ public class TestV8Runnable extends TestRunnable {
     private static final String HARMONY_PRIVATE_FIELDS = "--harmony-private-fields";
     private static final String HARMONY_LOGICAL_ASSIGNMENT = "--harmony-logical-assignment";
     private static final String NO_ASYNC_STACK_TRACES = "--noasync-stack-traces";
+    private static final String HARMONY_WEAK_REFS = "--harmony-weak-refs";
 
     private static final String FLAGS_PREFIX = "// Flags: ";
     private static final String FILES_PREFIX = "// Files: ";
@@ -113,7 +114,7 @@ public class TestV8Runnable extends TestRunnable {
         // ecma versions
         TestFile.EcmaVersion ecmaVersion = testFile.getEcmaVersion();
         if (ecmaVersion == null) {
-            boolean es2021Feature = flags.contains(HARMONY_LOGICAL_ASSIGNMENT);
+            boolean es2021Feature = flags.contains(HARMONY_LOGICAL_ASSIGNMENT) || flags.contains(HARMONY_WEAK_REFS);
             ecmaVersion = TestFile.EcmaVersion.forVersions(es2021Feature ? JSConfig.ECMAScript2021 : JSConfig.CurrentECMAScriptVersion);
         }
 
