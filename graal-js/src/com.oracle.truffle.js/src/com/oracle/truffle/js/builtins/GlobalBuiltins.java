@@ -67,6 +67,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
@@ -1303,18 +1304,18 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization
-        protected Object loadString(String path, @SuppressWarnings("unused") Object[] args) {
+        protected Object loadString(String path, Object[] args) {
             JSRealm realm = getContext().getRealm();
-            return loadString(path, realm);
+            return loadFromPath(path, realm, args);
         }
 
-        private Object loadString(String path, JSRealm realm) {
+        protected Object loadFromPath(String path, JSRealm realm, @SuppressWarnings("unused") Object[] args) {
             Source source = sourceFromPath(path, realm);
             return runImpl(realm, source);
         }
 
         @Specialization(guards = "isForeignObject(scriptObj)")
-        protected Object loadTruffleObject(Object scriptObj, @SuppressWarnings("unused") Object[] args,
+        protected Object loadTruffleObject(Object scriptObj, Object[] args,
                         @CachedLibrary(limit = "3") InteropLibrary interop) {
             JSRealm realm = getContext().getRealm();
             TruffleLanguage.Env env = realm.getEnv();
@@ -1331,7 +1332,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 throw cannotLoadScript(scriptObj);
             }
             String stringPath = toString1(unboxed);
-            return loadString(stringPath, realm);
+            return loadFromPath(stringPath, realm, args);
         }
 
         @Specialization(guards = "isJSObject(scriptObj)")
@@ -1380,10 +1381,26 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @Override
         @TruffleBoundary(transferToInterpreterOnException = false)
         protected Object evalImpl(JSRealm realm, String fileName, String source, Object[] args) {
-            JSRealm newRealm = realm.createChildRealm();
-            DynamicObject argObj = JSArgumentsObject.createStrict(getContext(), newRealm, args);
-            JSRuntime.createDataProperty(newRealm.getGlobalObject(), JSFunction.ARGUMENTS, argObj);
-            return loadStringImpl(getContext(), fileName, source).run(newRealm);
+            JSRealm childRealm = realm.createChildRealm();
+            DynamicObject argObj = JSArgumentsObject.createStrict(getContext(), childRealm, args);
+            JSRuntime.createDataProperty(childRealm.getGlobalObject(), JSFunction.ARGUMENTS, argObj);
+            return loadStringImpl(getContext(), fileName, source).run(childRealm);
+        }
+
+        @Override
+        @TruffleBoundary
+        protected Object loadFromPath(String path, JSRealm realm, Object[] args) {
+            JSRealm childRealm = realm.createChildRealm();
+            TruffleContext childContext = childRealm.getTruffleContext();
+            Object prev = childContext.enter();
+            try {
+                DynamicObject argObj = JSArgumentsObject.createStrict(getContext(), childRealm, args);
+                JSRuntime.createDataProperty(childRealm.getGlobalObject(), JSFunction.ARGUMENTS, argObj);
+                Source source = sourceFromPath(path, childRealm);
+                return runImpl(childRealm, source);
+            } finally {
+                childContext.leave(prev);
+            }
         }
     }
 
