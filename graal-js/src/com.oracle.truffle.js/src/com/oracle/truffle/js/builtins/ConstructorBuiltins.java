@@ -1124,7 +1124,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"!isJSObject(target)"})
         protected DynamicObject constructWeakRefNonObject(@SuppressWarnings("unused") DynamicObject newTarget, @SuppressWarnings("unused") Object target) {
-            throw Errors.createTypeError("Cannot create WeakRef on non-object");
+            throw Errors.createTypeError("WeakRef: target must be an object");
         }
 
         @Override
@@ -1145,7 +1145,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"!isCallable(cleanupCallback)"})
         protected DynamicObject constructFinalizationRegistryNonObject(@SuppressWarnings("unused") DynamicObject newTarget, @SuppressWarnings("unused") Object cleanupCallback) {
-            throw Errors.createTypeError("Cannot create FinalizationRegistry on non callable");
+            throw Errors.createTypeError("FinalizationRegistry: cleanup must be callable");
         }
 
         @Override
