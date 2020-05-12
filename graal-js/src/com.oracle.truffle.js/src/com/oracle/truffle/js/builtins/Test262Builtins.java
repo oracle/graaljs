@@ -201,7 +201,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
 
         @Specialization
         @TruffleBoundary
-        protected Object createRealm() {
+        protected Object gc() {
             System.gc();
             return Undefined.instance;
         }
