@@ -199,7 +199,7 @@ function v8HasFixedUint8ClampedElements(ob) {
 }
 
 function gc() {
-    return undefined;
+    TestV8.gc();
 }
 
 function v8IsMinusZero(a) {

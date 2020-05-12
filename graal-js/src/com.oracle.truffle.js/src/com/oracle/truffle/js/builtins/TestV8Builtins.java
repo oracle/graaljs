@@ -55,6 +55,7 @@ import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ConstructDoubl
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8CreateAsyncFromSyncIteratorNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8DoublePartNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8EnqueueJobNodeGen;
+import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8GCNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ReferenceEqualNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8RunMicrotasksNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToLengthNodeGen;
@@ -106,6 +107,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         doubleHi(1),
         doubleLo(1),
         deoptimize(0),
+        gc(0),
         referenceEqual(2),
         toLength(1),
         toStringConv(1),
@@ -153,6 +155,8 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
                 return TestV8DoublePartNodeGen.create(context, builtin, false, args().fixedArgs(1).createArgumentNodes(context));
             case deoptimize:
                 return DebugContinueInInterpreterNodeGen.create(context, builtin, true, args().createArgumentNodes(context));
+            case gc:
+                return TestV8GCNodeGen.create(context, builtin, args().createArgumentNodes(context));
             case referenceEqual:
                 return TestV8ReferenceEqualNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case toStringConv:
@@ -380,7 +384,20 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         protected boolean referenceEqual(Object arg1, Object arg2) {
             return arg1 == arg2;
         }
+    }
 
+    public abstract static class TestV8GCNode extends JSBuiltinNode {
+
+        public TestV8GCNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        @TruffleBoundary
+        protected Object gc() {
+            System.gc();
+            return Undefined.instance;
+        }
     }
 
 }
