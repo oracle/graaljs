@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -58,6 +60,7 @@ import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8EnqueueJobNode
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8GCNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ReferenceEqualNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8RunMicrotasksNodeGen;
+import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8SetTimeoutNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToLengthNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToNameNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToNumberNodeGen;
@@ -74,6 +77,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -100,6 +104,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         createAsyncFromSyncIterator(1),
         runMicrotasks(0),
         enqueueJob(1),
+        setTimeout(1),
         stringCompare(2),
         typedArrayDetachBuffer(1),
 
@@ -142,6 +147,8 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
                 return TestV8RunMicrotasksNodeGen.create(context, builtin, args().createArgumentNodes(context));
             case enqueueJob:
                 return TestV8EnqueueJobNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case setTimeout:
+                return TestV8SetTimeoutNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case stringCompare:
                 return DebugStringCompareNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case typedArrayDetachBuffer:
@@ -396,6 +403,28 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         @TruffleBoundary
         protected Object gc() {
             System.gc();
+            return Undefined.instance;
+        }
+    }
+
+    public abstract static class TestV8SetTimeoutNode extends JSBuiltinNode {
+
+        public TestV8SetTimeoutNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        @TruffleBoundary
+        @SuppressWarnings("unchecked")
+        protected Object setTimeout(Object callback) {
+            assert JSRuntime.isCallable(callback);
+            JSRealm realm = getContext().getRealm();
+            List<Object> embedderData = (List<Object>) realm.getEmbedderData();
+            if (embedderData == null) {
+                embedderData = new ArrayList<>();
+                realm.setEmbedderData(embedderData);
+            }
+            embedderData.add(callback);
             return Undefined.instance;
         }
     }
