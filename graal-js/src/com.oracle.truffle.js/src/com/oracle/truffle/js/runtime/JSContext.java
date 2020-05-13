@@ -696,7 +696,7 @@ public class JSContext {
 
     public final void processAllPendingPromiseJobs(JSRealm realm) {
         if (!language.getPromiseJobsQueueEmptyAssumption().isValid()) {
-            realm.getAgent().processAllPromises();
+            realm.getAgent().processAllPromises(false);
         }
     }
 

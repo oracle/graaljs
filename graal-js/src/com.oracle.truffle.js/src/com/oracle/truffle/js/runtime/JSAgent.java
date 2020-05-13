@@ -151,7 +151,7 @@ public abstract class JSAgent implements EcmaAgent {
     }
 
     @TruffleBoundary
-    public final void processAllPromises() {
+    public final void processAllPromises(boolean processWeakRefs) {
         try {
             while (!promiseJobsQueue.isEmpty()) {
                 DynamicObject nextJob = promiseJobsQueue.pollLast();
@@ -169,10 +169,12 @@ public abstract class JSAgent implements EcmaAgent {
             // Ensure that there are no leftovers when the processing
             // is terminated by an exception (like ExitException).
             promiseJobsQueue.clear();
-            if (weakRefTargets != null) {
-                weakRefTargets.clear();
+            if (processWeakRefs) {
+                if (weakRefTargets != null) {
+                    weakRefTargets.clear();
+                }
+                cleanupFinalizers();
             }
-            cleanupFinalizers();
         }
     }
 

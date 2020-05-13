@@ -2602,7 +2602,7 @@ public final class GraalJSAccess {
     public void isolateRunMicrotasks() {
         pollWeakCallbackQueue(false);
         try {
-            agent.processAllPromises();
+            agent.processAllPromises(false);
         } catch (Exception ex) {
             ex.printStackTrace();
             System.exit(1);

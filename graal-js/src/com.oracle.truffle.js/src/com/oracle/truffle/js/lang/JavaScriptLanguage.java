@@ -522,7 +522,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         JSAgent agent = realm.getAgent();
         if (agent.interopBoundaryExit()) {
             if (!promiseJobsQueueEmptyAssumption.isValid()) {
-                agent.processAllPromises();
+                agent.processAllPromises(true);
             }
             if (realm.getContext().getContextOptions().isTestV8Mode()) {
                 processTimeoutCallbacks(realm);
@@ -540,7 +540,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             for (Object callback : callbackList) {
                 JSRuntime.call(callback, Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);
             }
-            agent.processAllPromises();
+            agent.processAllPromises(true);
         }
     }
 
