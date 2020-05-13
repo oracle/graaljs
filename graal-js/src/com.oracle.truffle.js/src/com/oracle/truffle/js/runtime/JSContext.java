@@ -378,7 +378,6 @@ public class JSContext {
     private final JSObjectFactory generatorObjectFactory;
     private final JSObjectFactory asyncGeneratorObjectFactory;
     private final JSObjectFactory asyncFromSyncIteratorFactory;
-    private final JSObjectFactory finalizationRegistryCleanupIteratorFactory;
 
     private final JSObjectFactory collatorFactory;
     private final JSObjectFactory numberFormatFactory;
@@ -519,7 +518,6 @@ public class JSContext {
         this.strictArgumentsFactory = builder.create(objectPrototypeSupplier, JSArgumentsObject::makeInitialStrictArgumentsShape);
         this.enumerateIteratorFactory = builder.create(JSRealm::getEnumerateIteratorPrototype, JSFunction::makeInitialEnumerateIteratorShape);
         this.forInIteratorFactory = builder.create(JSRealm::getForInIteratorPrototype, JSFunction::makeInitialForInIteratorShape);
-        this.finalizationRegistryCleanupIteratorFactory = builder.create(JSRealm::getFinalizationRegistryCleanupIteratorPrototype, JSFinalizationRegistry::makeInitialCleanupIteratorShape);
 
         this.generatorObjectFactory = builder.create(JSRealm::getGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
         this.asyncGeneratorObjectFactory = builder.create(JSRealm::getAsyncGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
@@ -801,10 +799,6 @@ public class JSContext {
 
     public final JSObjectFactory getForInIteratorFactory() {
         return forInIteratorFactory;
-    }
-
-    public final JSObjectFactory getFinalizationRegistryCleanupIteratorFactory() {
-        return finalizationRegistryCleanupIteratorFactory;
     }
 
     public final JSObjectFactory getMapFactory() {

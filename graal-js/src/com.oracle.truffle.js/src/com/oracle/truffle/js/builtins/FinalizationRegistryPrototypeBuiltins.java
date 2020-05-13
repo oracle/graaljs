@@ -191,15 +191,11 @@ public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsConta
 
         @Specialization(guards = "isJSFinalizationRegistry(thisObj)")
         protected DynamicObject cleanupSome(DynamicObject thisObj, Object callback) {
-            if (JSFinalizationRegistry.isCleanupJobActive(thisObj)) {
-                errorBranch.enter();
-                throw Errors.createTypeError("finalization job aleady active");
-            }
             if (callback != Undefined.instance && !isCallableNode.executeBoolean(callback)) {
                 errorBranch.enter();
                 throw Errors.createTypeError("FinalizationRegistry: cleanup must be callable");
             }
-            JSFinalizationRegistry.cleanupFinalizationRegistry(getContext(), thisObj, callback);
+            JSFinalizationRegistry.cleanupFinalizationRegistry(thisObj, callback);
             return Undefined.instance;
         }
 

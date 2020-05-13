@@ -275,7 +275,6 @@ public class JSRealm {
     private final DynamicObject regExpStringIteratorPrototype;
     private final DynamicObject enumerateIteratorPrototype;
     private final DynamicObject forInIteratorPrototype;
-    private final DynamicObject finalizationRegistryCleanupIteratorPrototype;
 
     private final DynamicObject generatorFunctionConstructor;
     private final DynamicObject generatorFunctionPrototype;
@@ -599,15 +598,11 @@ public class JSRealm {
             ctor = JSFinalizationRegistry.createConstructor(this);
             this.finalizationRegistryConstructor = ctor.getFunctionObject();
             this.finalizationRegistryPrototype = ctor.getPrototype();
-
-            this.finalizationRegistryCleanupIteratorPrototype = JSFinalizationRegistry.createCleanupIteratorPrototype(this);
-
         } else {
             this.weakRefConstructor = null;
             this.weakRefPrototype = null;
             this.finalizationRegistryConstructor = null;
             this.finalizationRegistryPrototype = null;
-            this.finalizationRegistryCleanupIteratorPrototype = null;
         }
 
         boolean nashornCompat = context.isOptionNashornCompatibilityMode();
@@ -983,10 +978,6 @@ public class JSRealm {
 
     public final DynamicObject getForInIteratorPrototype() {
         return forInIteratorPrototype;
-    }
-
-    public final DynamicObject getFinalizationRegistryCleanupIteratorPrototype() {
-        return finalizationRegistryCleanupIteratorPrototype;
     }
 
     public final DynamicObject getGeneratorObjectPrototype() {
