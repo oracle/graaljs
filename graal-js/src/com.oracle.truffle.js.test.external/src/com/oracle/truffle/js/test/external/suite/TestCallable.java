@@ -105,11 +105,6 @@ public class TestCallable extends AbstractTestCallable {
                 context.eval(JavaScriptLanguage.ID, source.getCharacters());
             }
             return context.eval(getTestSource());
-        } catch (Exception e) {
-            throw e;
-        } finally {
-            // resultOut = out.toString();
-            // resultErr = err.toString();
         }
     }
 
