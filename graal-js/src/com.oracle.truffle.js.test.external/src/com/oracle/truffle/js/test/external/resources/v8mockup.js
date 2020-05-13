@@ -912,7 +912,8 @@ var testRunner = (function() {
         waitUntilDone() {
             _done = false;
             _waitUntilDone();
-        }
+        },
+        quit: quit
     };
 })();
 
