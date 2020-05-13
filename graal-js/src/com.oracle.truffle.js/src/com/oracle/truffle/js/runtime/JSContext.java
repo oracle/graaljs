@@ -700,6 +700,11 @@ public class JSContext {
         }
     }
 
+    public boolean addWeakRefTargetToSet(Object target) {
+        invalidatePromiseQueueNotUsedAssumption();
+        return getJSAgent().addWeakRefTargetToSet(target);
+    }
+
     public TimeProfiler getTimeProfiler() {
         return timeProfiler;
     }
