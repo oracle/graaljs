@@ -55,10 +55,10 @@ import java.util.StringJoiner;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.ExitException;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.external.suite.TestCallable;
@@ -182,7 +182,7 @@ public class TestV8Runnable extends TestRunnable {
             tc.call();
             return TestFile.Result.PASSED;
         } catch (Throwable e) {
-            if (e instanceof ExitException && ((ExitException) e).getStatus() == 0) {
+            if (e instanceof PolyglotException && ((PolyglotException) e).isExit() && ((PolyglotException) e).getExitStatus() == 0) {
                 return TestFile.Result.PASSED;
             } else {
                 if (!negative && !shouldThrow) {
