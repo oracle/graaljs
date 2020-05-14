@@ -703,6 +703,11 @@ public class JSContext {
         return getJSAgent().addWeakRefTargetToSet(target);
     }
 
+    public void registerFinalizationRegistry(DynamicObject finalizationRegistry) {
+        invalidatePromiseQueueNotUsedAssumption();
+        getJSAgent().registerFinalizationRegistry(finalizationRegistry);
+    }
+
     public TimeProfiler getTimeProfiler() {
         return timeProfiler;
     }

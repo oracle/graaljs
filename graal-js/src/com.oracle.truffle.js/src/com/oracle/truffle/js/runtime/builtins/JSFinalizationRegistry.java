@@ -94,7 +94,7 @@ public final class JSFinalizationRegistry extends JSBuiltinObject implements JSC
     public static DynamicObject create(JSContext context, TruffleObject cleanupCallback) {
         DynamicObject obj = JSObject.create(context, context.getFinalizationRegistryFactory(), cleanupCallback, new ArrayList<>(), new ReferenceQueue<>());
         assert isJSFinalizationRegistry(obj);
-        context.getRealm().getAgent().registerFinalizationRegistry(obj);
+        context.registerFinalizationRegistry(obj);
         return obj;
     }
 
