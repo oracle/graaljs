@@ -57,7 +57,6 @@ import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ConstructDoubl
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8CreateAsyncFromSyncIteratorNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8DoublePartNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8EnqueueJobNodeGen;
-import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8GCNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ReferenceEqualNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8RunMicrotasksNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8SetTimeoutNodeGen;
@@ -66,6 +65,7 @@ import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToNameNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToNumberNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToPrimitiveNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToStringNodeGen;
+import com.oracle.truffle.js.builtins.helper.GCNodeGen;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
@@ -163,7 +163,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
             case deoptimize:
                 return DebugContinueInInterpreterNodeGen.create(context, builtin, true, args().createArgumentNodes(context));
             case gc:
-                return TestV8GCNodeGen.create(context, builtin, args().createArgumentNodes(context));
+                return GCNodeGen.create(context, builtin, args().createArgumentNodes(context));
             case referenceEqual:
                 return TestV8ReferenceEqualNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case toStringConv:
@@ -390,20 +390,6 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         @Specialization
         protected boolean referenceEqual(Object arg1, Object arg2) {
             return arg1 == arg2;
-        }
-    }
-
-    public abstract static class TestV8GCNode extends JSBuiltinNode {
-
-        public TestV8GCNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        @TruffleBoundary
-        protected Object gc() {
-            System.gc();
-            return Undefined.instance;
         }
     }
 
