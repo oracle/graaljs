@@ -105,7 +105,7 @@ public final class WeakRefPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         protected DynamicObject deref(DynamicObject thisObj) {
             Object referent = JSWeakRef.getInternalWeakRef(thisObj).get();
             if (referent != null) {
-                getContext().getJSAgent().addWeakRefTargetToSet(referent);
+                getContext().addWeakRefTargetToSet(referent);
                 return (DynamicObject) referent;
             }
             return Undefined.instance;

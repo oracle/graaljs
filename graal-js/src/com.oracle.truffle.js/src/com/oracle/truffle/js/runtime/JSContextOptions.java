@@ -633,14 +633,14 @@ public final class JSContextOptions {
     }
 
     public boolean isSharedArrayBuffer() {
-        if (getEcmaScriptVersion() < 8) {
+        if (getEcmaScriptVersion() < JSConfig.ECMAScript2017) {
             return false;
         }
         return sharedArrayBuffer;
     }
 
     public boolean isAtomics() {
-        if (getEcmaScriptVersion() < 8) {
+        if (getEcmaScriptVersion() < JSConfig.ECMAScript2017) {
             return false;
         }
         return ATOMICS.getValue(optionValues);

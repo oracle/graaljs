@@ -53,9 +53,9 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -105,6 +105,11 @@ public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsConta
         public FinalizationRegistryOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
+
+        protected void invalidUnregisterToken(Object token) {
+            errorBranch.enter();
+            throw Errors.createTypeErrorFormat("unregisterToken ('%s') must be an object", JSRuntime.safeToString(token));
+        }
     }
 
     /**
@@ -123,17 +128,16 @@ public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsConta
         protected DynamicObject register(DynamicObject thisObj, Object target, Object holdings, Object unregisterTokenArg) {
             if (!isObjectNode.executeBoolean(target)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("register expects target argument of type Object");
+                throw Errors.createTypeError("FinalizationRegistry.prototype.register: target must be an object");
             }
             if (sameValueNode.executeBoolean(target, holdings)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("register expects target and holding not to be identical");
+                throw Errors.createTypeError("FinalizationRegistry.prototype.register: target and holdings must not be same");
             }
             Object unregisterToken = unregisterTokenArg;
             if (!isObjectNode.executeBoolean(unregisterToken)) {
                 if (unregisterToken != Undefined.instance) {
-                    errorBranch.enter();
-                    throw Errors.createTypeError("register expects unregisterToken argument to be an object or empty");
+                    invalidUnregisterToken(unregisterToken);
                 }
                 unregisterToken = Undefined.instance;
             }
@@ -161,9 +165,8 @@ public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsConta
 
         @Specialization(guards = "isJSFinalizationRegistry(thisObj)")
         protected boolean unregister(DynamicObject thisObj, Object unregisterToken) {
-            if (unregisterToken == Undefined.instance || unregisterToken == Null.instance || !isObjectNode.executeBoolean(unregisterToken)) {
-                errorBranch.enter();
-                throw Errors.createTypeError("unregister expects unregisterToken argument to be an object");
+            if (!isObjectNode.executeBoolean(unregisterToken)) {
+                invalidUnregisterToken(unregisterToken);
             }
             return JSFinalizationRegistry.removeFromCells(thisObj, unregisterToken);
         }
@@ -188,15 +191,11 @@ public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsConta
 
         @Specialization(guards = "isJSFinalizationRegistry(thisObj)")
         protected DynamicObject cleanupSome(DynamicObject thisObj, Object callback) {
-            if (JSFinalizationRegistry.isCleanupJobActive(thisObj)) {
-                errorBranch.enter();
-                throw Errors.createTypeError("finalization job aleady active");
-            }
             if (callback != Undefined.instance && !isCallableNode.executeBoolean(callback)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("cleanupSome expects callback to be callable");
+                throw Errors.createTypeError("FinalizationRegistry: cleanup must be callable");
             }
-            JSFinalizationRegistry.cleanupFinalizationRegistry(getContext(), thisObj, callback);
+            JSFinalizationRegistry.cleanupFinalizationRegistry(thisObj, callback);
             return Undefined.instance;
         }
 

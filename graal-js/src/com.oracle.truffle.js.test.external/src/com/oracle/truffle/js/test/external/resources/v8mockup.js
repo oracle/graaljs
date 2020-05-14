@@ -199,7 +199,7 @@ function v8HasFixedUint8ClampedElements(ob) {
 }
 
 function gc() {
-    return undefined;
+    TestV8.gc();
 }
 
 function v8IsMinusZero(a) {
@@ -894,27 +894,15 @@ function v8EnableCodeLoggingForTesting() {
 function v8TurbofanStaticAssert() {
 }
 
-function setTimeout(fn) {
-    // d8 invokes the callback when the promise job queue is empty,
-    // graal.js does not have this type of callbacks => mimicking that
-    // by inserting the callback far into the promise job queue
-    var lateJob = function (n) {
-        if (n === 0) {
-            return fn;
-        } else {
-            return function () {
-                TestV8.enqueueJob(lateJob(n - 1));
-            };
-        }
-    };
-    return lateJob(10)();
+function setTimeout(callback) {
+    TestV8.setTimeout(callback);
 }
 
 var testRunner = (function() {
     var _done;
     var _waitUntilDone = function() {
         if (!_done) {
-            TestV8.enqueueJob(_waitUntilDone);
+            setTimeout(_waitUntilDone);
         }
     };
     return {
@@ -924,7 +912,8 @@ var testRunner = (function() {
         waitUntilDone() {
             _done = false;
             _waitUntilDone();
-        }
+        },
+        quit: quit
     };
 })();
 

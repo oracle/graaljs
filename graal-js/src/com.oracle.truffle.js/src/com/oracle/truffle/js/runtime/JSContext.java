@@ -378,7 +378,6 @@ public class JSContext {
     private final JSObjectFactory generatorObjectFactory;
     private final JSObjectFactory asyncGeneratorObjectFactory;
     private final JSObjectFactory asyncFromSyncIteratorFactory;
-    private final JSObjectFactory finalizationRegistryCleanupIteratorFactory;
 
     private final JSObjectFactory collatorFactory;
     private final JSObjectFactory numberFormatFactory;
@@ -519,7 +518,6 @@ public class JSContext {
         this.strictArgumentsFactory = builder.create(objectPrototypeSupplier, JSArgumentsObject::makeInitialStrictArgumentsShape);
         this.enumerateIteratorFactory = builder.create(JSRealm::getEnumerateIteratorPrototype, JSFunction::makeInitialEnumerateIteratorShape);
         this.forInIteratorFactory = builder.create(JSRealm::getForInIteratorPrototype, JSFunction::makeInitialForInIteratorShape);
-        this.finalizationRegistryCleanupIteratorFactory = builder.create(JSRealm::getFinalizationRegistryCleanupIteratorPrototype, JSFinalizationRegistry::makeInitialCleanupIteratorShape);
 
         this.generatorObjectFactory = builder.create(JSRealm::getGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
         this.asyncGeneratorObjectFactory = builder.create(JSRealm::getAsyncGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
@@ -696,8 +694,18 @@ public class JSContext {
 
     public final void processAllPendingPromiseJobs(JSRealm realm) {
         if (!language.getPromiseJobsQueueEmptyAssumption().isValid()) {
-            realm.getAgent().processAllPromises();
+            realm.getAgent().processAllPromises(false);
         }
+    }
+
+    public boolean addWeakRefTargetToSet(Object target) {
+        invalidatePromiseQueueNotUsedAssumption();
+        return getJSAgent().addWeakRefTargetToSet(target);
+    }
+
+    public void registerFinalizationRegistry(DynamicObject finalizationRegistry) {
+        invalidatePromiseQueueNotUsedAssumption();
+        getJSAgent().registerFinalizationRegistry(finalizationRegistry);
     }
 
     public TimeProfiler getTimeProfiler() {
@@ -796,10 +804,6 @@ public class JSContext {
 
     public final JSObjectFactory getForInIteratorFactory() {
         return forInIteratorFactory;
-    }
-
-    public final JSObjectFactory getFinalizationRegistryCleanupIteratorFactory() {
-        return finalizationRegistryCleanupIteratorFactory;
     }
 
     public final JSObjectFactory getMapFactory() {
@@ -1154,7 +1158,7 @@ public class JSContext {
 
     public int getEcmaScriptVersion() {
         int version = contextOptions.getEcmaScriptVersion();
-        assert version >= 5 && version <= JSConfig.MaxECMAScriptVersion;
+        assert version >= JSConfig.ECMAScript5 && version <= JSConfig.MaxECMAScriptVersion;
         return version;
     }
 

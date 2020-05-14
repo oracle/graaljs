@@ -56,7 +56,7 @@ import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262AgentSleepNo
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262AgentStartNodeGen;
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262CreateRealmNodeGen;
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262EvalScriptNodeGen;
-import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262GcNodeGen;
+import com.oracle.truffle.js.builtins.helper.GCNodeGen;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -120,7 +120,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
             case evalScript:
                 return Test262EvalScriptNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case gc:
-                return Test262GcNodeGen.create(context, builtin, args().createArgumentNodes(context));
+                return GCNodeGen.create(context, builtin, args().createArgumentNodes(context));
 
             default:
                 switch (builtinEnum) {
@@ -187,23 +187,6 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
         @TruffleBoundary
         private JSRealm createChildRealm() {
             return getContext().getRealm().createChildRealm();
-        }
-    }
-
-    /**
-     * A function that wraps the host's garbage collection invocation mechanism.
-     */
-    public abstract static class Test262GcNode extends JSBuiltinNode {
-
-        public Test262GcNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        @TruffleBoundary
-        protected Object createRealm() {
-            System.gc();
-            return Undefined.instance;
         }
     }
 

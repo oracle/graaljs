@@ -109,6 +109,7 @@ import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSEngine;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSScope;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -521,8 +522,25 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         JSAgent agent = realm.getAgent();
         if (agent.interopBoundaryExit()) {
             if (!promiseJobsQueueEmptyAssumption.isValid()) {
-                agent.processAllPromises();
+                agent.processAllPromises(true);
             }
+            if (realm.getContext().getContextOptions().isTestV8Mode()) {
+                processTimeoutCallbacks(realm);
+            }
+        }
+    }
+
+    @TruffleBoundary
+    @SuppressWarnings("unchecked")
+    private static void processTimeoutCallbacks(JSRealm realm) {
+        JSAgent agent = realm.getAgent();
+        List<Object> callbackList;
+        while ((callbackList = (List<Object>) realm.getEmbedderData()) != null && !callbackList.isEmpty()) {
+            realm.setEmbedderData(null);
+            for (Object callback : callbackList) {
+                JSRuntime.call(callback, Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+            }
+            agent.processAllPromises(true);
         }
     }
 
