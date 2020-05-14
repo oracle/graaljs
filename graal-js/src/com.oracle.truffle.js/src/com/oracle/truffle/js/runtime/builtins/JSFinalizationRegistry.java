@@ -216,9 +216,19 @@ public final class JSFinalizationRegistry extends JSBuiltinObject implements JSC
      * 4.1.3 Execution and 4.1.4.1 HostCleanupFinalizationRegistry.
      */
     public static void hostCleanupFinalizationRegistry(DynamicObject finalizationRegistry) {
+        // if something can be polled, clean up the FinalizationRegistry
         ReferenceQueue<Object> queue = getReferenceQueue(finalizationRegistry);
-        while (queue.poll() != null) {
-            // if something can be polled, clean up the FinalizationRegistry
+        boolean queueNotEmpty = (queue.poll() != null);
+        // Cleared WeakReferences may not appear in ReferenceQueue immediatelly
+        // but V8 tests expect the invocation of the callbacks as soon as possible
+        // => do not wait for enqueuing in TestV8 mode.
+        boolean performCleanup = queueNotEmpty || JSObject.getJSContext(finalizationRegistry).getContextOptions().isTestV8Mode();
+        if (performCleanup) {
+            // empty the ReferenceQueue
+            Object o;
+            do {
+                o = queue.poll();
+            } while (o != null);
             cleanupFinalizationRegistry(finalizationRegistry, Undefined.instance);
         }
     }
