@@ -74,6 +74,7 @@ public class TestV8Runnable extends TestRunnable {
     private static final String HARMONY_SHAREDARRAYBUFFER = "--harmony-sharedarraybuffer";
     private static final String HARMONY_PUBLIC_FIELDS = "--harmony-public-fields";
     private static final String HARMONY_PRIVATE_FIELDS = "--harmony-private-fields";
+    private static final String HARMONY_PRIVATE_METHODS = "--harmony-private-methods";
     private static final String HARMONY_LOGICAL_ASSIGNMENT = "--harmony-logical-assignment";
     private static final String NO_ASYNC_STACK_TRACES = "--noasync-stack-traces";
     private static final String HARMONY_WEAK_REFS = "--harmony-weak-refs";
@@ -121,7 +122,7 @@ public class TestV8Runnable extends TestRunnable {
             ecmaVersion = TestFile.EcmaVersion.forVersions(es2021Feature ? JSConfig.ECMAScript2021 : JSConfig.CurrentECMAScriptVersion);
         }
 
-        if (flags.contains(HARMONY_PUBLIC_FIELDS) || flags.contains(HARMONY_PRIVATE_FIELDS)) {
+        if (flags.contains(HARMONY_PUBLIC_FIELDS) || flags.contains(HARMONY_PRIVATE_FIELDS) || flags.contains(HARMONY_PRIVATE_METHODS)) {
             extraOptions.put(JSContextOptions.CLASS_FIELDS_NAME, "true");
         }
         if (flags.contains(NO_ASYNC_STACK_TRACES)) {
