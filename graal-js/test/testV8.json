@@ -630,7 +630,8 @@
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-15-top-level-await.mjs",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "comment" : "test expects exact error message"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-15.mjs",
     "status" : "FAIL",
@@ -639,12 +640,6 @@
     "filePath" : "mjsunit/harmony/modules-import-16.mjs",
     "status" : "FAIL",
     "comment" : "TODO: evaluate"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-top-level-await-exception-1.mjs",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-top-level-await-exception-2.mjs",
-    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-top-level-await-exception-3.mjs",
     "status" : "FAIL"
@@ -739,8 +734,11 @@
     "comment" : "test with (expected) high memory usage that might influence other tests"
   }, {
     "filePath" : "mjsunit/harmony/regress/regress-952722.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
+    "status" : "PASS",
+    "comment" : "Uses private fields"
   }, {
     "filePath" : "mjsunit/harmony/sharedarraybuffer-worker-gc-stress.js",
     "status" : "FAIL",
@@ -1328,8 +1326,11 @@
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/regress/regress-982702.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
+    "status" : "PASS",
+    "comment" : "Uses private fields"
   }, {
     "filePath" : "mjsunit/regress/regress-9832.js",
     "status" : "FAIL",
