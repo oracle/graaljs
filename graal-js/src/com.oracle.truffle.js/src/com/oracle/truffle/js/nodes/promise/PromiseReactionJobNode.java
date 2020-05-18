@@ -68,7 +68,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.PromiseHook;
-import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
@@ -154,6 +153,11 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
                     }
                     fulfill = true;
                 } catch (Throwable ex) {
+                    if (promiseCapability == null && context.getEcmaScriptVersion() >= ECMAScript2021) {
+                        // top-level-await evaluation: throw exception when error is generated but
+                        // no capability is found in chain
+                        throw ex;
+                    }
                     if (shouldCatch(ex)) {
                         handlerResult = getErrorObjectNode.execute(ex);
                         fulfill = false;
@@ -161,11 +165,6 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
                         throw ex;
                     }
                 }
-            }
-            // top-level-await evaluation: throw exception when error is generated but no
-            // capability is found in chain
-            if (context.getEcmaScriptVersion() >= ECMAScript2021 && promiseCapability == null && JSError.isJSError(handlerResult)) {
-                throw JSError.getException((DynamicObject) handlerResult);
             }
             Object status;
             if (fulfill) {
