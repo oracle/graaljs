@@ -127,7 +127,6 @@ public final class JSMap extends JSBuiltinObject implements JSConstructorFactory
             return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + SIZE);
         });
         DynamicObject sizeGetter = JSFunction.create(realm, getterData);
-        JSObject.preventExtensions(sizeGetter);
         return sizeGetter;
     }
 
