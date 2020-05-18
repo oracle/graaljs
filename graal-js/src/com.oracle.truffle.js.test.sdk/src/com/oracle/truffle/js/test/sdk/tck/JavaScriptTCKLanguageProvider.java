@@ -349,8 +349,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
     @Override
     public Collection<? extends Source> createInvalidSyntaxScripts(final Context context) {
         final List<Source> res = new ArrayList<>();
-        // issue: GR-5786
-        // res.add(createSource("resources/invalidSyntax01.js"));
+        res.add(createSource("resources/invalidSyntax01.js"));
         return Collections.unmodifiableList(res);
     }
 
