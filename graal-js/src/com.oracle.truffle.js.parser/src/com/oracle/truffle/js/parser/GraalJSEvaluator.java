@@ -62,7 +62,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -103,6 +102,7 @@ import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -318,9 +318,6 @@ public final class GraalJSEvaluator implements JSParser {
                 Object error = argumentNode.execute(frame);
 
                 DynamicObject jsError;
-                if (error instanceof JSException) {
-                    throw (JSException) error;
-                }
                 if (JSError.isJSError(error)) {
                     jsError = (DynamicObject) error;
                 } else {
@@ -637,14 +634,13 @@ public final class GraalJSEvaluator implements JSParser {
                 }
                 assert stack.isEmpty();
             } catch (Throwable e) {
-                if (e instanceof TruffleException && TryCatchNode.shouldCatch(e)) {
+                if (TryCatchNode.shouldCatch(e)) {
                     for (JSModuleRecord m : stack) {
                         assert m.getStatus() == Status.Evaluating;
                         m.setStatus(Status.Evaluated);
                         m.setEvaluationError(e);
                     }
                     assert module.getStatus() == Status.Evaluated && module.getEvaluationError() == e;
-                    JSFunction.call(JSArguments.create(Undefined.instance, capability.getReject(), e));
                     throw e;
                 } else {
                     // Not a JS error: throw
@@ -656,7 +652,7 @@ public final class GraalJSEvaluator implements JSParser {
             try {
                 innerModuleEvaluation(realm, module, stack, 0);
             } catch (Throwable e) {
-                if (e instanceof TruffleException && TryCatchNode.shouldCatch(e)) {
+                if (TryCatchNode.shouldCatch(e)) {
                     for (JSModuleRecord m : stack) {
                         assert m.getStatus() == Status.Evaluating;
                         m.setStatus(Status.Evaluated);
@@ -825,13 +821,7 @@ public final class GraalJSEvaluator implements JSParser {
                 assert JSPromise.isJSPromise(resolvedPromise);
                 assert JSPromise.isRejected((DynamicObject) resolvedPromise);
                 Object reaction = getRejectionError.getValue(resolvedPromise);
-                if (reaction instanceof DynamicObject) {
-                    assert JSError.isJSError(reaction);
-                    return asyncModuleExecutionRejected(context.getRealm(), module, reaction);
-                } else {
-                    assert reaction instanceof Throwable;
-                    return asyncModuleExecutionRejected(context.getRealm(), module, reaction);
-                }
+                return asyncModuleExecutionRejected(context.getRealm(), module, reaction);
             }
         }
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new AsyncModuleExecutionRejectedRoot());
@@ -884,7 +874,13 @@ public final class GraalJSEvaluator implements JSParser {
             return Undefined.instance;
         }
         assert module.getEvaluationError() == null;
-        module.setEvaluationError(error);
+        Throwable evaluationError;
+        if (JSError.isJSError(error)) {
+            evaluationError = JSError.getException((DynamicObject) error);
+        } else {
+            evaluationError = UserScriptException.create(error);
+        }
+        module.setEvaluationError(evaluationError);
         module.setAsyncEvaluating(false);
         for (JSModuleRecord m : module.getAsyncParentModules()) {
             if (module.getDFSIndex() != module.getDFSAncestorIndex()) {
