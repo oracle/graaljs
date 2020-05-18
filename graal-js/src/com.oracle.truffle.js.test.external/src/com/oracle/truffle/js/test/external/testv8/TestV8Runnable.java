@@ -80,6 +80,7 @@ public class TestV8Runnable extends TestRunnable {
     private static final String[] ES2021_FLAGS = new String[]{
                     "--harmony-logical-assignment",
                     "--harmony-promise-any",
+                    "--harmony-regexp-match-indices",
                     "--harmony-string-replaceall",
                     "--harmony-weak-refs",
                     "--harmony-weak-refs-with-cleanup-some"
