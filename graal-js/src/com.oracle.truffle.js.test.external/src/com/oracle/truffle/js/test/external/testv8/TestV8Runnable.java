@@ -82,6 +82,7 @@ public class TestV8Runnable extends TestRunnable {
                     "--harmony-promise-any",
                     "--harmony-regexp-match-indices",
                     "--harmony-string-replaceall",
+                    "--harmony-top-level-await",
                     "--harmony-weak-refs",
                     "--harmony-weak-refs-with-cleanup-some"
     };
