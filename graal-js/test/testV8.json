@@ -481,10 +481,6 @@
     "status" : "FAIL",
     "comment" : "outdated test; proxy constructor now accepts revoked proxy arguments"
   }, {
-    "filePath" : "mjsunit/es6/reflect-construct.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
-  }, {
     "filePath" : "mjsunit/es6/regress/regress-2322.js",
     "status" : "FAIL"
   }, {
@@ -603,7 +599,7 @@
   }, {
     "filePath" : "mjsunit/harmony/aggregate-error.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+    "comment" : "Off spec: expects ToString(message) before IterableToList(errors). There is a PR suggesting to change the specification in this direction: https://github.com/tc39/proposal-promise-any/pull/59"
   }, {
     "filePath" : "mjsunit/harmony/async-for-of-non-iterable.js",
     "status" : "FAIL",
@@ -634,209 +630,59 @@
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-15-top-level-await.mjs",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "FAIL",
-    "comment" : "top-level await"
+    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-15.mjs",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
     "status" : "FAIL",
     "comment" : "test expects exact error message"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-16.mjs",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
     "status" : "FAIL",
     "comment" : "TODO: evaluate"
   }, {
-    "filePath" : "mjsunit/harmony/modules-import-rqstd-order-top-level-await-2.mjs",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "top-level await"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-rqstd-order-top-level-await-3.mjs",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "top-level await"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-rqstd-order-top-level-await-4.mjs",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "top-level await"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-rqstd-order-top-level-await-5.mjs",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "top-level await"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-rqstd-order-top-level-await-6.mjs",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "top-level await"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-rqstd-order-top-level-await-7.mjs",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "top-level await"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-rqstd-order-top-level-await-8.mjs",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "top-level await"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-top-level-await-1.mjs",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "top-level await"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-top-level-await-2.mjs",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "top-level await"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-top-level-await-3.mjs",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "top-level await"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-top-level-await-4.mjs",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "top-level await"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-top-level-await-5.mjs",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "top-level await"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-top-level-await-6.mjs",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "top-level await"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-top-level-await-7.mjs",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "top-level await"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-top-level-await-8.mjs",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "top-level await"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-top-level-await-cycle.mjs",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "top-level await"
-  }, {
     "filePath" : "mjsunit/harmony/modules-import-top-level-await-exception-1.mjs",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "FAIL",
-    "comment" : "top-level await"
+    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-top-level-await-exception-2.mjs",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "FAIL",
-    "comment" : "top-level await"
+    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-top-level-await-exception-3.mjs",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "FAIL",
-    "comment" : "top-level await"
-  }, {
-    "filePath" : "mjsunit/harmony/private-accessors.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "--harmony-private-methods"
+    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/harmony/private-fields-ic.js",
     "ecmaVersion" : {
       "minVersion" : 12
     },
-    "status" : "PASS"
+    "status" : "PASS",
+    "comment" : "Uses private fields"
   }, {
     "filePath" : "mjsunit/harmony/private-fields-special-object.js",
     "ecmaVersion" : {
       "minVersion" : 12
     },
-    "status" : "PASS"
+    "status" : "PASS",
+    "comment" : "Uses private fields"
   }, {
     "filePath" : "mjsunit/harmony/private-fields-static.js",
     "ecmaVersion" : {
       "minVersion" : 12
     },
     "status" : "PASS",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
+    "comment" : "Uses private fields"
   }, {
     "filePath" : "mjsunit/harmony/private-fields.js",
     "ecmaVersion" : {
       "minVersion" : 12
     },
     "status" : "PASS",
-    "comment" : "--harmony-private-fields"
-  }, {
-    "filePath" : "mjsunit/harmony/private-methods-empty-inner.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
-  }, {
-    "filePath" : "mjsunit/harmony/private-methods.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "--harmony-private-methods"
+    "comment" : "Uses private fields"
   }, {
     "filePath" : "mjsunit/harmony/private-name-scopes.js",
     "ecmaVersion" : {
       "minVersion" : 12
     },
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+    "comment" : "Uses private fields"
   }, {
     "filePath" : "mjsunit/harmony/private-symbols.js",
     "status" : "FAIL",
@@ -851,17 +697,14 @@
       "minVersion" : 12
     },
     "status" : "PASS",
-    "comment" : "--harmony-public-fields"
+    "comment" : "Uses public fields"
   }, {
     "filePath" : "mjsunit/harmony/public-static-class-fields.js",
     "ecmaVersion" : {
       "minVersion" : 12
     },
-    "status" : "PASS"
-  }, {
-    "filePath" : "mjsunit/harmony/regexp-match-indices.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+    "status" : "PASS",
+    "comment" : "Uses public fields"
   }, {
     "filePath" : "mjsunit/harmony/regexp-named-captures.js",
     "status" : "FAIL",
@@ -902,17 +745,6 @@
     "filePath" : "mjsunit/harmony/sharedarraybuffer-worker-gc-stress.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "mjsunit/harmony/static-private-methods.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "--harmony-private-methods"
-  }, {
-    "filePath" : "mjsunit/harmony/string-replaceAll.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/harmony/weakrefs/cleanup-on-detached-realm.js",
     "status" : "FAIL",
@@ -1434,7 +1266,8 @@
     "ecmaVersion" : {
       "minVersion" : 12
     },
-    "status" : "PASS"
+    "status" : "PASS",
+    "comment" : "Uses public fields"
   }, {
     "filePath" : "mjsunit/regress/regress-9022.js",
     "status" : "FAIL",
@@ -2564,7 +2397,8 @@
     "ecmaVersion" : {
       "minVersion" : 12
     },
-    "status" : "PASS"
+    "status" : "PASS",
+    "comment" : "Uses class fields"
   }, {
     "filePath" : "mjsunit/serialize-embedded-error.js",
     "status" : "FAIL"

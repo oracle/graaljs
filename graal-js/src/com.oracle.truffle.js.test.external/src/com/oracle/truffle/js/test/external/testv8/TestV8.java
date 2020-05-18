@@ -170,8 +170,9 @@ public class TestV8 extends TestSuite {
     public static void main(String[] args) throws Exception {
         SuiteConfig.Builder configBuilder = new SuiteConfig.Builder(SUITE_NAME, SUITE_DESCRIPTION, DEFAULT_LOC, DEFAULT_CONFIG_LOC, TESTS_REL_LOC, HARNESS_REL_LOC);
 
-        // increase default per-test timeout
+        // increase default timeouts
         configBuilder.setTimeoutTest(120);
+        configBuilder.setTimeoutOverall(20 * 60);
 
         TimeZone pstZone = TimeZone.getTimeZone("PST"); // =Californian Time (PST)
         TimeZone.setDefault(pstZone);
