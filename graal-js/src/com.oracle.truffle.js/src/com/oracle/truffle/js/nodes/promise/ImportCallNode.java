@@ -58,6 +58,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -210,6 +211,9 @@ public class ImportCallNode extends JavaScriptNode {
             protected Object finishDynamicImport(JSRealm realm, JSModuleRecord moduleRecord, ScriptOrModule referencingScriptOrModule, String specifier) {
                 context.getEvaluator().moduleInstantiation(realm, moduleRecord);
                 context.getEvaluator().moduleEvaluation(realm, moduleRecord);
+                if (moduleRecord.getEvaluationError() != null) {
+                    throw JSRuntime.rethrow(moduleRecord.getEvaluationError());
+                }
                 // Note: PromiseReactionJob performs the promise rejection and resolution.
                 assert moduleRecord == context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, specifier);
                 // Evaluate has already been invoked on moduleRecord and successfully completed.
@@ -221,6 +225,7 @@ public class ImportCallNode extends JavaScriptNode {
         class TopLevelAwaitImportModuleDynamicallyRootNode extends ImportModuleDynamicallyRootNode {
             @Child private PerformPromiseThenNode promiseThenNode = PerformPromiseThenNode.create(context);
             @Child private JSFunctionCallNode callPromiseReaction = JSFunctionCallNode.createCall();
+            @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
             @SuppressWarnings("unchecked")
             @Override
@@ -229,22 +234,35 @@ public class ImportCallNode extends JavaScriptNode {
                 ScriptOrModule referencingScriptOrModule = request.getFirst();
                 String specifier = request.getSecond();
                 PromiseCapabilityRecord moduleLoadedCapability = request.getThird();
-                JSModuleRecord moduleRecord = context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, specifier);
-                JSRealm realm = context.getRealm();
-                if (moduleRecord.isTopLevelAsync()) {
-                    context.getEvaluator().moduleInstantiation(realm, moduleRecord);
-                    Object moduleLoadedStartPromise = context.getEvaluator().moduleEvaluation(realm, moduleRecord);
-                    assert JSPromise.isJSPromise(moduleLoadedStartPromise);
-                    promiseThenNode.execute((DynamicObject) moduleLoadedStartPromise, moduleLoadedCapability.getResolve(), moduleLoadedCapability.getReject(), moduleLoadedCapability);
-                } else {
-                    try {
+                try {
+                    JSModuleRecord moduleRecord = context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, specifier);
+                    JSRealm realm = context.getRealm();
+                    if (moduleRecord.isTopLevelAsync()) {
+                        context.getEvaluator().moduleInstantiation(realm, moduleRecord);
+                        Object moduleLoadedStartPromise = context.getEvaluator().moduleEvaluation(realm, moduleRecord);
+                        assert JSPromise.isJSPromise(moduleLoadedStartPromise);
+                        promiseThenNode.execute((DynamicObject) moduleLoadedStartPromise, moduleLoadedCapability.getResolve(), moduleLoadedCapability.getReject(), moduleLoadedCapability);
+                    } else {
                         Object result = finishDynamicImport(realm, moduleRecord, referencingScriptOrModule, specifier);
                         callPromiseReaction.executeCall(JSArguments.create(Undefined.instance, moduleLoadedCapability.getResolve(), result));
-                    } catch (Throwable t) {
-                        callPromiseReaction.executeCall(JSArguments.create(Undefined.instance, moduleLoadedCapability.getReject(), t));
+                    }
+                } catch (Throwable t) {
+                    if (shouldCatch(t)) {
+                        Object errorObject = getErrorObjectNode.execute(t);
+                        callPromiseReaction.executeCall(JSArguments.create(Undefined.instance, moduleLoadedCapability.getReject(), errorObject));
+                    } else {
+                        throw t;
                     }
                 }
                 return Undefined.instance;
+            }
+
+            private boolean shouldCatch(Throwable exception) {
+                if (getErrorObjectNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
+                }
+                return TryCatchNode.shouldCatch(exception);
             }
         }
 

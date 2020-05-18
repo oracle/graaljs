@@ -73,7 +73,7 @@ public final class JSModuleRecord extends ScriptOrModule {
     private Status status;
 
     /** Exception that occurred during evaluation. */
-    private Object evaluationError;
+    private Throwable evaluationError;
     /** Implementation-specific: The result of ModuleExecution if no exception occurred. */
     private Object executionResult;
 
@@ -155,10 +155,10 @@ public final class JSModuleRecord extends ScriptOrModule {
 
     public Throwable getEvaluationError() {
         assert isEvaluated();
-        return (Throwable) evaluationError;
+        return evaluationError;
     }
 
-    public void setEvaluationError(Object evaluationError) {
+    public void setEvaluationError(Throwable evaluationError) {
         assert isEvaluated();
         this.evaluationError = evaluationError;
     }
