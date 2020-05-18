@@ -221,6 +221,7 @@ public class ImportCallNode extends JavaScriptNode {
         class TopLevelAwaitImportModuleDynamicallyRootNode extends ImportModuleDynamicallyRootNode {
             @Child private PerformPromiseThenNode promiseThenNode = PerformPromiseThenNode.create(context);
             @Child private JSFunctionCallNode callPromiseReaction = JSFunctionCallNode.createCall();
+            @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
             @SuppressWarnings("unchecked")
             @Override
@@ -229,22 +230,35 @@ public class ImportCallNode extends JavaScriptNode {
                 ScriptOrModule referencingScriptOrModule = request.getFirst();
                 String specifier = request.getSecond();
                 PromiseCapabilityRecord moduleLoadedCapability = request.getThird();
-                JSModuleRecord moduleRecord = context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, specifier);
-                JSRealm realm = context.getRealm();
-                if (moduleRecord.isTopLevelAsync()) {
-                    context.getEvaluator().moduleInstantiation(realm, moduleRecord);
-                    Object moduleLoadedStartPromise = context.getEvaluator().moduleEvaluation(realm, moduleRecord);
-                    assert JSPromise.isJSPromise(moduleLoadedStartPromise);
-                    promiseThenNode.execute((DynamicObject) moduleLoadedStartPromise, moduleLoadedCapability.getResolve(), moduleLoadedCapability.getReject(), moduleLoadedCapability);
-                } else {
-                    try {
+                try {
+                    JSModuleRecord moduleRecord = context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, specifier);
+                    JSRealm realm = context.getRealm();
+                    if (moduleRecord.isTopLevelAsync()) {
+                        context.getEvaluator().moduleInstantiation(realm, moduleRecord);
+                        Object moduleLoadedStartPromise = context.getEvaluator().moduleEvaluation(realm, moduleRecord);
+                        assert JSPromise.isJSPromise(moduleLoadedStartPromise);
+                        promiseThenNode.execute((DynamicObject) moduleLoadedStartPromise, moduleLoadedCapability.getResolve(), moduleLoadedCapability.getReject(), moduleLoadedCapability);
+                    } else {
                         Object result = finishDynamicImport(realm, moduleRecord, referencingScriptOrModule, specifier);
                         callPromiseReaction.executeCall(JSArguments.create(Undefined.instance, moduleLoadedCapability.getResolve(), result));
-                    } catch (Throwable t) {
-                        callPromiseReaction.executeCall(JSArguments.create(Undefined.instance, moduleLoadedCapability.getReject(), t));
+                    }
+                } catch (Throwable t) {
+                    if (shouldCatch(t)) {
+                        Object errorObject = getErrorObjectNode.execute(t);
+                        callPromiseReaction.executeCall(JSArguments.create(Undefined.instance, moduleLoadedCapability.getReject(), errorObject));
+                    } else {
+                        throw t;
                     }
                 }
                 return Undefined.instance;
+            }
+
+            private boolean shouldCatch(Throwable exception) {
+                if (getErrorObjectNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
+                }
+                return TryCatchNode.shouldCatch(exception);
             }
         }
 
