@@ -75,11 +75,15 @@ public class TestV8Runnable extends TestRunnable {
     private static final String HARMONY_PUBLIC_FIELDS = "--harmony-public-fields";
     private static final String HARMONY_PRIVATE_FIELDS = "--harmony-private-fields";
     private static final String HARMONY_PRIVATE_METHODS = "--harmony-private-methods";
-    private static final String HARMONY_LOGICAL_ASSIGNMENT = "--harmony-logical-assignment";
     private static final String NO_ASYNC_STACK_TRACES = "--noasync-stack-traces";
-    private static final String HARMONY_WEAK_REFS = "--harmony-weak-refs";
-    private static final String HARMONY_WEAK_REFS_WITH_CLEANUP_SOME = "--harmony-weak-refs-with-cleanup-some";
-    private static final String HARMONY_PROMISE_ANY = "--harmony-promise-any";
+
+    private static final String[] ES2021_FLAGS = new String[]{
+                    "--harmony-logical-assignment",
+                    "--harmony-promise-any",
+                    "--harmony-string-replaceall",
+                    "--harmony-weak-refs",
+                    "--harmony-weak-refs-with-cleanup-some"
+    };
 
     private static final String FLAGS_PREFIX = "// Flags: ";
     private static final String FILES_PREFIX = "// Files: ";
@@ -117,9 +121,14 @@ public class TestV8Runnable extends TestRunnable {
         // ecma versions
         TestFile.EcmaVersion ecmaVersion = testFile.getEcmaVersion();
         if (ecmaVersion == null) {
-            boolean es2021Feature = flags.contains(HARMONY_LOGICAL_ASSIGNMENT) || flags.contains(HARMONY_WEAK_REFS) || flags.contains(HARMONY_WEAK_REFS_WITH_CLEANUP_SOME) ||
-                            flags.contains(HARMONY_PROMISE_ANY);
-            ecmaVersion = TestFile.EcmaVersion.forVersions(es2021Feature ? JSConfig.ECMAScript2021 : JSConfig.CurrentECMAScriptVersion);
+            boolean needsES2021 = false;
+            for (String es2021Flag : ES2021_FLAGS) {
+                if (flags.contains(es2021Flag)) {
+                    needsES2021 = true;
+                    break;
+                }
+            }
+            ecmaVersion = TestFile.EcmaVersion.forVersions(needsES2021 ? JSConfig.ECMAScript2021 : JSConfig.CurrentECMAScriptVersion);
         }
 
         if (flags.contains(HARMONY_PUBLIC_FIELDS) || flags.contains(HARMONY_PRIVATE_FIELDS) || flags.contains(HARMONY_PRIVATE_METHODS)) {
