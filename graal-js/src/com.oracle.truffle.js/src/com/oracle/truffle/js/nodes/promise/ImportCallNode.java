@@ -58,6 +58,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -210,6 +211,9 @@ public class ImportCallNode extends JavaScriptNode {
             protected Object finishDynamicImport(JSRealm realm, JSModuleRecord moduleRecord, ScriptOrModule referencingScriptOrModule, String specifier) {
                 context.getEvaluator().moduleInstantiation(realm, moduleRecord);
                 context.getEvaluator().moduleEvaluation(realm, moduleRecord);
+                if (moduleRecord.getEvaluationError() != null) {
+                    throw JSRuntime.rethrow(moduleRecord.getEvaluationError());
+                }
                 // Note: PromiseReactionJob performs the promise rejection and resolution.
                 assert moduleRecord == context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, specifier);
                 // Evaluate has already been invoked on moduleRecord and successfully completed.
