@@ -45,12 +45,15 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.UserScriptException;
 
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.FileSystemException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class DefaultESModuleLoader implements JSModuleLoader {
 
@@ -96,6 +99,21 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             }
             String canonicalPath = moduleFile.getPath();
             return loadModuleFromUrl(specifier, moduleFile, canonicalPath);
+        } catch (FileSystemException fsex) {
+            String fileName = fsex.getFile();
+            if (Objects.equals(fsex.getMessage(), fileName)) {
+                String message = "Error reading: " + fileName;
+                if (realm.getContext().isOptionV8CompatibilityMode()) {
+                    // d8 throws string. We don't want to follow this bad practice outside V8
+                    // compatibility mode.
+                    throw UserScriptException.create(message);
+                } else {
+                    throw Errors.createError(message);
+                }
+            } else {
+                // Use the original message when it doesn't seem useless
+                throw Errors.createErrorFromException(fsex);
+            }
         } catch (IOException | SecurityException e) {
             throw Errors.createErrorFromException(e);
         }
