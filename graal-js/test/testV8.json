@@ -748,6 +748,13 @@
     "status" : "FAIL",
     "comment" : "Uses Realm.detachGlobal()"
   }, {
+    "filePath" : "mjsunit/harmony/weakrefs/cleanup.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "FAIL"
+    },
+    "comment" : "Unstable on native-image (GR-23663)"
+  }, {
     "filePath" : "mjsunit/harmony/weakrefs/cleanupsome-optional.js",
     "status" : "FAIL",
     "comment" : "Check of V8-specific behaviour: cleanupSome is not available unless --harmony-weak-refs-with-cleanup-some is used"
@@ -755,6 +762,27 @@
     "filePath" : "mjsunit/harmony/weakrefs/finalizationregistry-independent-lifetime.js",
     "status" : "FAIL",
     "comment" : "Expects GC of a registry but the registry is kept alive by a closure (passes when rewritten slightly to avoid the problem with the closure)."
+  }, {
+    "filePath" : "mjsunit/harmony/weakrefs/finalizationregistry-keeps-holdings-alive.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "FAIL"
+    },
+    "comment" : "Unstable on native-image (GR-23663)"
+  }, {
+    "filePath" : "mjsunit/harmony/weakrefs/two-weakrefs.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "FAIL"
+    },
+    "comment" : "Unstable on native-image (GR-23663)"
+  }, {
+    "filePath" : "mjsunit/harmony/weakrefs/weak-cell-basics.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "FAIL"
+    },
+    "comment" : "Unstable on native-image (GR-23663)"
   }, {
     "filePath" : "mjsunit/html-comments.js",
     "status" : "FAIL",
