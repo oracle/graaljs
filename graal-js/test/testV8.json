@@ -625,14 +625,6 @@
     "status" : "SKIP",
     "comment" : "non-standard do-expressions"
   }, {
-    "filePath" : "mjsunit/harmony/import-from-fetch-errored.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-15-top-level-await.mjs",
-    "status" : "FAIL",
-    "comment" : "test expects exact error message"
-  }, {
     "filePath" : "mjsunit/harmony/modules-import-15.mjs",
     "status" : "FAIL",
     "comment" : "test expects exact error message"
@@ -1158,10 +1150,6 @@
     },
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests, disabled on SVM (GR-21828)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-740694.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
   }, {
     "filePath" : "mjsunit/regress/regress-748069.js",
     "runInIsolation" : true,
