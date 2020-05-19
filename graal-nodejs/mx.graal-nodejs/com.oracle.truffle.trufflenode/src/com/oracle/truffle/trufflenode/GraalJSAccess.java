@@ -86,6 +86,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.file.InvalidPathException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
@@ -1892,8 +1893,16 @@ public final class GraalJSAccess {
             // sources of built-in modules
             source = Source.newBuilder(JavaScriptLanguage.ID, body, sourceName).build();
         } else {
-            TruffleFile truffleFile = realm.getEnv().getPublicTruffleFile(sourceName);
-            source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(body).name(sourceName).build();
+            try {
+                TruffleFile truffleFile = realm.getEnv().getPublicTruffleFile(sourceName);
+                source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(body).name(sourceName).build();
+            } catch (InvalidPathException e) {
+                if (VERBOSE) {
+                    System.err.println("INVALID PATH: " + sourceName);
+                }
+                // `sourcename` is not required to be a valid path on the current OS
+                source = Source.newBuilder(JavaScriptLanguage.ID, body, sourceName).build();
+            }
             hostDefinedOptionsMap.put(source, hostDefinedOptions);
         }
 
