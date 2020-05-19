@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
@@ -2850,5 +2851,13 @@ public final class JSRuntime {
 
     public static boolean isTypedArrayBigIntFactory(TypedArrayFactory factory) {
         return factory == TypedArrayFactory.BigInt64Array || factory == TypedArrayFactory.BigUint64Array;
+    }
+
+    public static GraalJSException getException(Object errorObject) {
+        if (JSError.isJSError(errorObject)) {
+            return JSError.getException((DynamicObject) errorObject);
+        } else {
+            return UserScriptException.create(errorObject);
+        }
     }
 }
