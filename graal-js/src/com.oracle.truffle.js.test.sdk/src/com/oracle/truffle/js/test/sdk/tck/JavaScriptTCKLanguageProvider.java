@@ -209,6 +209,8 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         ops.add(createBinaryOperator(context, "in", TypeDescriptor.BOOLEAN,
                         ANY,
                         TypeDescriptor.union(TypeDescriptor.OBJECT, TypeDescriptor.ARRAY)));
+        // instanceof
+        ops.add(createBinaryOperator(context, "instanceof", TypeDescriptor.BOOLEAN, ANY, TypeDescriptor.META_OBJECT));
 
         // +
         ops.add(createPrefixOperator(context, "+", TypeDescriptor.NUMBER, ANY));
@@ -349,8 +351,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
     @Override
     public Collection<? extends Source> createInvalidSyntaxScripts(final Context context) {
         final List<Source> res = new ArrayList<>();
-        // issue: GR-5786
-        // res.add(createSource("resources/invalidSyntax01.js"));
+        res.add(createSource("resources/invalidSyntax01.js"));
         return Collections.unmodifiableList(res);
     }
 
