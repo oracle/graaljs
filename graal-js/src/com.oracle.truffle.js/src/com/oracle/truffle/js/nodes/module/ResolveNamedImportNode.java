@@ -90,7 +90,8 @@ public class ResolveNamedImportNode extends StatementNode {
         ExportResolution resolution = resolutionProfile.profile(evaluator.resolveExport(importedModule, importName));
         // If resolution is null or resolution is "ambiguous", throw SyntaxError.
         if (resolution.isNull() || resolution.isAmbiguous()) {
-            throw Errors.createSyntaxError("Could not resolve import entry", this);
+            String message = "The requested module '%s' does not provide an export named '%s'";
+            throw Errors.createSyntaxErrorFormat(message, this, moduleRequest, importName);
         }
         Object resolutionOrNamespace;
         if (resolution.isNamespace()) {
