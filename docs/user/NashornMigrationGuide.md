@@ -7,9 +7,10 @@ This document serves as migration guide for code previously targeted to the Nash
 See the [JavaInterop.md](JavaInterop.md) for an overview of supported Java interoperability features.
 
 Both Nashorn and GraalVM JavaScript support a similar set of syntax and semantics for Java interoperability.
+One notable difference is that GraalVM JavaScript takes a _secure by default_ approach, meaning some features need to be explicitly enabled that were available by default on Nashorn.
 The most important differences relevant for migration are listed here.
 
-Nashorn features available by default:
+Nashorn features available by default (dependent on [security settings](#Secure-by-default)):
 * `Java.type`, `Java.typeName`
 * `Java.from`, `Java.to`
 * `Java.extend`, `Java.super`
@@ -20,6 +21,7 @@ GraalVM JavaScript provides a Nashorn compatibility mode.
 Some of the functionality necessary for Nashorn compatibility is only available when the `js.nashorn-compat` option is enabled.
 This is the case for Nashorn-specific extensions that GraalVM JavaScript does not want to expose by default.
 Note that you have to enable [experimental options](Options.md#stable-and-experimental-options) to use this flag.
+Further note that setting this flag defeats the [secure by default](#Secure-by-default) approach of GraalVM JavaScript in some cases, e.g. when operating on a legacy `ScriptEngine`.
 
 The `js.nashorn-compat` option can be set using a command line option:
 ```
@@ -56,6 +58,23 @@ They're also enabled by default in Nashorn compatibility mode (`js.nashorn-compa
 
 ## Intentional design differences
 GraalVM JavaScript differs from Nashorn in some aspects that were intentional design decisions.
+
+### Secure by default
+GraalVM JavaScript takes a _secure by default_ approach.
+Unless explicitly permitted by the embedder, JavaScript code cannot access Java classes or access the file system, among other restrictions.
+Several features of GraalVM JavaScript, including Nashorn compatibility features, are only available when the relevant security settings are permissive enough.
+Make sure you [understand the security implications](https://www.graalvm.org/docs/security-guide/) to your application and the host system of any change that lifts the secure default limits!
+
+For a full list of available settings, see the [JavaDoc of `Context.Builder`](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/Context.Builder.html).
+Those flags can be defined when building the context with GraalVM's polyglot API.
+Flags frequently required to enable features of GraalVM JavaScript are:
+* `allowHostAccess()`: Configures which public constructors, methods or fields of public classes are accessible by guest applications. Use `HostAccess.EXPLICIT` or a custom HostAccess policy to selectively enable access. Set to `HostAccess.ALL` to allow unrestricted access.
+* `allowHostClassLookup()`: Sets a filter that specifies the Java host classes that can be looked up by the guest application. Set to the Predicate `className -> true` to allow lookup of all classes.
+* `allowIO()`: Allows the guest language to perform unrestricted IO operations on host system, required e.g. to `load()` from the file system. Set to `true` to enable IO.
+
+If you run code on the legacy `ScriptEngine`, see [Setting options via `Bindings`](https://github.com/graalvm/graaljs/blob/master/docs/user/ScriptEngine.md#setting-options-via-bindings) how to set them there.
+
+Finally, note that the `nashorn-compat` mode enables the relevant flags when executing code on the `ScriptEngine` (but not on `Context`), to provide better compatibilty with Nashorn in that setup.
 
 ### Launcher name `js`
 When shipped with GraalVM, GraalVM JavaScript comes with a binary launcher named `js`.
