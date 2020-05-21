@@ -40,7 +40,8 @@
  */
 
 var assert = require('assert');
-var spawnSync = require('child_process').spawnSync;
+var child_process = require('child_process');
+var spawnSync = child_process.spawnSync;
 
 function checkTheAnswerToLifeTheUniverseAndEverything(answer) {
     assert.strictEqual(answer.stderr.toString(), '');
@@ -65,6 +66,30 @@ describe('Spawn', function () {
     it('should accept --stack-trace-limit option in NODE_OPTIONS', function () {
         var result = spawnSync(process.execPath, ['-p', 'Error.stackTraceLimit'], {env: { NODE_OPTIONS: '--stack-trace-limit=42' }});
         checkTheAnswerToLifeTheUniverseAndEverything(result);
+    });
+    it('should survive duplicates in envPairs', function (done) {
+        // Copy the current content of process.env
+        var envPairs = [];
+        for (var key in process.env) {
+            envPairs.push(key + '=' + process.env[key]);
+        }
+
+        // Add duplicates
+        envPairs.push('MY_VAR=1');
+        envPairs.push('MY_VAR=2');
+
+        // Spawn a new process with these envPairs and try to list keys of process.env
+        var myProcess = new child_process.ChildProcess();
+        myProcess.on('exit', function (code) {
+            assert.strictEqual(code, 0);
+            done();
+        });
+        myProcess.spawn({
+            file: process.execPath,
+            args: ['node', '-e', 'Object.keys(process.env)'],
+            stdio: 'inherit',
+            envPairs: envPairs
+        });
     });
     if (typeof java === 'object') {
         it('should finish gracefully when a native method is called from a wrong thread', function () {
