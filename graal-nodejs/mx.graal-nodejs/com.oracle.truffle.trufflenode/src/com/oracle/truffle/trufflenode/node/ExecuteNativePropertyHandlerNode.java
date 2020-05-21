@@ -42,7 +42,9 @@ package com.oracle.truffle.trufflenode.node;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -368,14 +370,27 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
                 JSObject.set(ownKeys, length, key);
             }
         }
-        // ES6 9.5.12 9
+        // ES6 9.5.12 9 + ES9 9.5.11 9
+        Set<Object> keySet = new HashSet<>();
+        int duplicates = 0;
         long length = JSAbstractArray.arrayGetLength(ownKeys);
         for (long i = 0; i < length; i++) {
             Object key = JSObject.get(ownKeys, i);
+            boolean set = (duplicates != 0);
             if (!(key instanceof String || key instanceof Symbol)) {
                 key = JSRuntime.toString(key);
-                JSObject.set(ownKeys, i, key);
+                set = true;
             }
+            if (!keySet.add(key)) {
+                duplicates++;
+                set = false;
+            }
+            if (set) {
+                JSObject.set(ownKeys, i - duplicates, key);
+            }
+        }
+        if (duplicates != 0) {
+            JSAbstractArray.arraySetLength(ownKeys, length - duplicates);
         }
     }
 
