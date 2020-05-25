@@ -1888,19 +1888,22 @@ public final class GraalJSAccess {
 
         String suffix = code.toString();
 
-        Source source;
+        Source source = null;
         if (hostDefinedOptions == null) {
             // sources of built-in modules
             source = Source.newBuilder(JavaScriptLanguage.ID, body, sourceName).build();
         } else {
-            try {
-                TruffleFile truffleFile = realm.getEnv().getPublicTruffleFile(sourceName);
-                source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(body).name(sourceName).build();
-            } catch (InvalidPathException e) {
-                if (VERBOSE) {
-                    System.err.println("INVALID PATH: " + sourceName);
+            if (!sourceName.isEmpty()) {
+                try {
+                    TruffleFile truffleFile = realm.getEnv().getPublicTruffleFile(sourceName);
+                    source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(body).name(sourceName).build();
+                } catch (InvalidPathException e) {
+                    if (VERBOSE) {
+                        System.err.println("INVALID PATH: " + sourceName);
+                    }
                 }
-                // `sourcename` is not required to be a valid path on the current OS
+            }
+            if (source == null) {
                 source = Source.newBuilder(JavaScriptLanguage.ID, body, sourceName).build();
             }
             hostDefinedOptionsMap.put(source, hostDefinedOptions);

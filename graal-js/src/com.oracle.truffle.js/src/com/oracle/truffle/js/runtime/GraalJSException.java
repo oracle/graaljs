@@ -425,7 +425,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                 targetSourceSection = target == null ? null : target.getSourceSection();
             }
         }
-        boolean global = isGlobalObject(thisObj, JSFunction.getRealm(functionObj));
+        boolean global = (JSRuntime.isNullOrUndefined(thisObj) && !JSFunction.isStrict(functionObj)) || isGlobalObject(thisObj, JSFunction.getRealm(functionObj));
 
         return new JSStackTraceElement(fileName, functionName, callNodeSourceSection, thisObj, functionObj, targetSourceSection, inStrictMode, eval, global, inNashornMode, async, promiseIndex);
     }
@@ -753,8 +753,13 @@ public abstract class GraalJSException extends RuntimeException implements Truff
 
         @TruffleBoundary
         public Object getThisOrGlobal() {
-            if (thisObj == Undefined.instance && JSFunction.isJSFunction(functionObj) && !JSFunction.isStrict((DynamicObject) functionObj)) {
-                return JSFunction.getRealm((DynamicObject) functionObj).getGlobalObject();
+            if (global) {
+                if (JSRuntime.isNullOrUndefined(thisObj)) {
+                    return JSFunction.getRealm((DynamicObject) functionObj).getGlobalObject();
+                } else {
+                    assert thisObj == JSFunction.getRealm((DynamicObject) functionObj).getGlobalObject();
+                    return thisObj;
+                }
             }
             return (thisObj == JSFunction.CONSTRUCT) ? Undefined.instance : thisObj;
         }
