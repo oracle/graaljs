@@ -516,7 +516,7 @@ public class CommonJSRequireTest {
             cx.eval("js", "require('./module.mjs');");
             assert false : "Should throw";
         } catch (PolyglotException e) {
-            Assert.assertEquals("TypeError: Cannot load CommonJS module: './module.mjs'", e.getMessage());
+            Assert.assertEquals("Error: Invalid CommonJS root folder: ", e.getMessage());
         }
     }
 
