@@ -203,6 +203,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createSyntaxErrorFormat(String message, Node originatingNode, Object... args) {
+        return JSException.create(JSErrorType.SyntaxError, String.format(message, args), originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createSyntaxError(String message, SourceSection sourceLocation, boolean isIncompleteSource) {
         return JSException.create(JSErrorType.SyntaxError, message, sourceLocation, isIncompleteSource);
     }

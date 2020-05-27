@@ -95,15 +95,12 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.UserScriptException;
-import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
@@ -316,14 +313,7 @@ public final class GraalJSEvaluator implements JSParser {
             @Override
             public Object execute(VirtualFrame frame) {
                 Object error = argumentNode.execute(frame);
-
-                DynamicObject jsError;
-                if (JSError.isJSError(error)) {
-                    jsError = (DynamicObject) error;
-                } else {
-                    jsError = JSError.create(JSErrorType.TypeError, context.getRealm(), "Cannot load ES module!");
-                }
-                throw JSError.getException(jsError);
+                throw JSRuntime.getException(error);
             }
         }
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TopLevelAwaitRejectedRootNode());
@@ -874,13 +864,7 @@ public final class GraalJSEvaluator implements JSParser {
             return Undefined.instance;
         }
         assert module.getEvaluationError() == null;
-        Throwable evaluationError;
-        if (JSError.isJSError(error)) {
-            evaluationError = JSError.getException((DynamicObject) error);
-        } else {
-            evaluationError = UserScriptException.create(error);
-        }
-        module.setEvaluationError(evaluationError);
+        module.setEvaluationError(JSRuntime.getException(error));
         module.setAsyncEvaluating(false);
         for (JSModuleRecord m : module.getAsyncParentModules()) {
             if (module.getDFSIndex() != module.getDFSAncestorIndex()) {
