@@ -1,17 +1,15 @@
+local jdks = (import "common.json").jdks;
+
 {
-  local labsjdk8 = {name: 'oraclejdk', version: '8u251+08-jvmci-20.2-b02', platformspecific: true},
-
-  local labsjdk_ce_11 = {name : 'labsjdk', version : 'ce-11.0.7+10-jvmci-20.2-b02', platformspecific: true},
-
   jdk8: {
     downloads+: {
-      JAVA_HOME: labsjdk8,
+      JAVA_HOME: jdks.oraclejdk8,
     },
   },
 
   jdk11: {
     downloads+: {
-      JAVA_HOME: labsjdk_ce_11,
+      JAVA_HOME: jdks["labsjdk-ce-11"],
     },
   },
 

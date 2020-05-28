@@ -31,7 +31,7 @@ from os.path import join, exists, getmtime
 
 import mx_graal_js_benchmark
 import mx, mx_sdk
-from mx_gate import Task, add_gate_runner
+from mx_gate import Tags, Task, add_gate_runner, prepend_gate_runner
 from mx_unittest import unittest
 
 _suite = mx.suite('graal-js')
@@ -40,6 +40,11 @@ class GraalJsDefaultTags:
     default = 'default'
     tck = 'tck'
     all = 'all'
+
+def _graal_js_pre_gate_runner(args, tasks):
+    with Task('CI Setup Check', tasks, tags=[Tags.style]) as t:
+        if t:
+            mx.command_function('verify-ci')([])
 
 def _graal_js_gate_runner(args, tasks):
     with Task('CheckCopyrights', tasks, tags=['style']) as t:
@@ -86,6 +91,7 @@ def _graal_js_gate_runner(args, tasks):
             import mx_truffle
             mx_truffle._tck([])
 
+prepend_gate_runner(_suite, _graal_js_pre_gate_runner)
 add_gate_runner(_suite, _graal_js_gate_runner)
 
 class ArchiveProject(mx.ArchivableProject):
@@ -313,6 +319,10 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     boot_jars=['graal-js:GRAALJS_SCRIPTENGINE'],
 ))
 
+def verify_ci(args):
+    """Verify CI configuration"""
+    mx.verify_ci(args, mx.suite('regex'), _suite, 'common.json')
+
 mx.update_commands(_suite, {
     'deploy-binary-if-master' : [deploy_binary_if_master, ''],
     'js' : [js, '[JS args|VM options]'],
@@ -320,4 +330,5 @@ mx.update_commands(_suite, {
     'test262': [test262, ''],
     'testnashorn': [testnashorn, ''],
     'testv8': [testv8, ''],
+    'verify-ci': [verify_ci, ''],
 })
