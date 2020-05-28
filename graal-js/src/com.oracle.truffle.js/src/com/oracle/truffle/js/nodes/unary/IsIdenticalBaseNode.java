@@ -45,11 +45,12 @@ import java.util.Set;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 
-public abstract class IsIdenticalBaseNode extends JSUnaryNode {
+public abstract class IsIdenticalBaseNode extends JSUnaryNode implements RepeatableNode {
 
     protected final boolean leftConstant;
 
