@@ -3072,31 +3072,42 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             ensureHasSourceSection(curNode, defaultCase);
         }
 
+        boolean defaultCascade = false;
+        boolean lastCase = true;
         for (int i = cases.size() - 1; i >= 0; i--) {
             CaseNode caseNode = cases.get(i);
-            if (caseNode.getTest() != null) { // default case is already last in the cascade
+            if (caseNode.getTest() == null) {
+                // start of the cascade with the default case
+                // (the default case is the last case in the cascade)
+                defaultCascade = true;
+            } else {
                 JavaScriptNode readSwitchVarNode = switchVar.createReadNode();
                 JavaScriptNode test = createSwitchCaseExpr(isSwitchTypeofString, caseNode, readSwitchVarNode);
-                if (caseNode.getStatements().isEmpty()) {
-                    if (curNode instanceof com.oracle.truffle.js.nodes.control.IfNode) {
-                        // if (condition) => if (test || condition)
-                        com.oracle.truffle.js.nodes.control.IfNode prevIfNode = (com.oracle.truffle.js.nodes.control.IfNode) curNode;
-                        curNode = factory.copyIfWithCondition(prevIfNode, factory.createLogicalOr(test, prevIfNode.getCondition()));
-                    } else {
+                if (caseNode.getStatements().isEmpty() && !lastCase) {
+                    // fall through to the previous case
+                    if (defaultCascade) {
                         // fall through to default case, execute test only for potential side effect
                         if (isPotentiallySideEffecting(test)) {
                             test = factory.createIf(test, null, null);
                             ensureHasSourceSection(test, caseNode);
                             curNode = curNode == null ? discardResult(test) : createBlock(test, curNode);
                         }
+                    } else {
+                        assert curNode instanceof com.oracle.truffle.js.nodes.control.IfNode;
+                        // if (condition) => if (test || condition)
+                        com.oracle.truffle.js.nodes.control.IfNode prevIfNode = (com.oracle.truffle.js.nodes.control.IfNode) curNode;
+                        curNode = factory.copyIfWithCondition(prevIfNode, factory.createLogicalOr(test, prevIfNode.getCondition()));
                     }
                 } else {
+                    // start of a cascade (without the default case)
                     JavaScriptNode pass = dropTerminalDirectBreakStatement(transformStatements(caseNode.getStatements(), false));
                     ensureHasSourceSection(pass, caseNode);
                     curNode = factory.createIf(test, pass, curNode);
+                    defaultCascade = false;
                 }
                 ensureHasSourceSection(curNode, caseNode.getTest());
             }
+            lastCase = false;
         }
         return curNode == null ? factory.createEmpty() : curNode;
     }
