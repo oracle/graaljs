@@ -27,6 +27,7 @@ Reason:
 Solution:
 * Use proper warmup in your benchmark, and disregard the first few iterations where the application still warms up.
 * Use the `--jvm` option for slower startup, but higher peak performance.
+* Double-check you have no flags set that might lower your performance, e.g. `-ea`/`-esa`.
 * Try to minify the problem to the root cause, and [file an issue](https://github.com/graalvm/graaljs/issues) so the GraalVM team can have a look.
 
 ## Errors
