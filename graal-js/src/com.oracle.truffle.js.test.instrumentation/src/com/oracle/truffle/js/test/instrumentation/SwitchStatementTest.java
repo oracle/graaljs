@@ -206,14 +206,5 @@ public class SwitchStatementTest extends FineGrainedAccessTest {
                         ControlFlowRootTag.class,
                         ControlFlowBranchTag.class
         }, new Class[]{/* no input events */});
-
-        // first 'case' a == 1 is false
-        enter(ControlFlowRootTag.class, (e, r) -> {
-            enter(ControlFlowBranchTag.class).exit(assertReturnValue(false));
-        }).exit();
-        // second 'case' a == 2 is false
-        enter(ControlFlowRootTag.class, (e, r) -> {
-            enter(ControlFlowBranchTag.class).exit(assertReturnValue(false));
-        }).exit();
     }
 }
