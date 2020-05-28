@@ -6,7 +6,6 @@
   jdk8: {
     downloads+: {
       JAVA_HOME: labsjdk8,
-      JDT: {name: 'ecj', version: '4.14.0', platformspecific: false},
     },
   },
 
@@ -106,5 +105,44 @@
     packages+: {
       msvc : '==10.0',
     },
+  },
+
+  local gateCmd = ['mx', '--strict-compliance', 'gate', '-B=--force-deprecation-as-warning', '--strict-mode', '--tags', '${TAGS}'],
+
+  eclipse : {
+    downloads+: {
+      ECLIPSE: {name: 'eclipse', version: '4.14.0', platformspecific: true},
+      JDT: {name: 'ecj', version: '4.14.0', platformspecific: false},
+    },
+    environment+: {
+      ECLIPSE_EXE: '$ECLIPSE/eclipse',
+    },
+  },
+
+  build : {
+    run+: [
+      ['mx', 'build', '--force-javac'],
+    ],
+  },
+
+  buildCompiler : {
+    run+: [
+      ['mx', '--dynamicimports', '/compiler', 'build', '--force-javac'],
+    ],
+  },
+
+  gateTags : self.build + {
+    run+: [
+      gateCmd,
+    ],
+    timelimit: '30:00',
+  },
+
+  gateStyleFullBuild : self.eclipse + {
+    run+: [
+      ['set-export', 'TAGS', 'style,fullbuild'],
+      gateCmd,
+    ],
+    timelimit: '30:00',
   },
 }
