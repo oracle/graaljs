@@ -62,6 +62,7 @@ def _graal_js_gate_runner(args, tasks):
         'cloneuninitialized': ['-Dpolyglot.js.test-clone-uninitialized=true', 'gate'],
         'lazytranslation': ['-Dpolyglot.js.lazy-translation=true', 'gate'],
         'shareengine': ['gate', 'shareengine'],
+        'latestesversion': ['gate', 'minesversion=2021'],
     }
 
     gateTestCommands = {
@@ -72,6 +73,9 @@ def _graal_js_gate_runner(args, tasks):
 
     for testCommandName in gateTestCommands:
         for testConfigName in gateTestConfigs:
+            # TestNashorn is not sensitive to ES version
+            if testCommandName == 'TestNashorn' and testConfigName == 'latestesversion':
+                continue
             testName = '%s-%s' % (testCommandName, testConfigName)
             with Task(testName, tasks, tags=[testName, testConfigName, GraalJsDefaultTags.all]) as t:
                 if t:
