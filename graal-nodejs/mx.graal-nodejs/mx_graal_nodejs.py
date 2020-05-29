@@ -173,27 +173,27 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
                 '--without-node-snapshot',
                 '--java-home', _java_home()
                 ] + debug + shared_library + lazy_generator + extra_flags,
-                cwd=_suite.dir, verbose=True, env=build_env)
+                cwd=_suite.dir, print_cmd=True, env=build_env)
 
+        quiet_build = mx.is_continuous_integration() and not mx.get_opts().verbose
         if _is_windows:
             verbose = ['-v'] if mx.get_opts().verbose else []
             # The custom env is not used to resolve the location of the executable
-            _mxrun([join(mx.library('NINJA').get_path(True), 'ninja.exe')] + verbose + ['-j%d' % self.parallelism, '-C', self._build_dir], env=build_env)
+            _mxrun([join(mx.library('NINJA').get_path(True), 'ninja.exe')] + verbose + ['-j%d' % self.parallelism, '-C', self._build_dir], print_cmd=True, quiet_if_successful=quiet_build, env=build_env)
         else:
             verbose = 'V={}'.format('1' if mx.get_opts().verbose else '')
-            _mxrun([mx.gmake_cmd(), '-j%d' % self.parallelism, verbose], cwd=_suite.dir, verbose=True, env=build_env)
+            _mxrun([mx.gmake_cmd(), '-j%d' % self.parallelism, verbose], cwd=_suite.dir, print_cmd=True, quiet_if_successful=quiet_build, env=build_env)
 
         # put headers for native modules into out/headers
         _setEnvVar('HEADERS_ONLY', '1', build_env)
-        out = None if mx.get_opts().verbose else open(os.devnull, 'w')
-        _mxrun(python_cmd() + [join('tools', 'install.py'), 'install', join('out', 'headers'), sep], out=out, env=build_env)
+        _mxrun(python_cmd() + [join('tools', 'install.py'), 'install', join('out', 'headers'), sep], quiet_if_successful=not mx.get_opts().verbose, env=build_env)
 
         post_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=True)
         mx.logv('Newest time-stamp before building: {}\nNewest time-stamp after building: {}\nHas built? {}'.format(pre_ts, post_ts, post_ts.isNewerThan(pre_ts)))
         built = post_ts.isNewerThan(pre_ts)
         if built and _current_os == 'darwin':
             nodePath = join(self._build_dir, 'node')
-            _mxrun(['install_name_tool', '-add_rpath', join(_java_home(), 'jre', 'lib'), '-add_rpath', join(_java_home(), 'lib'), nodePath], verbose=True, env=build_env)
+            _mxrun(['install_name_tool', '-add_rpath', join(_java_home(), 'jre', 'lib'), '-add_rpath', join(_java_home(), 'lib'), nodePath], print_cmd=True, env=build_env)
         return built
 
     def needsBuild(self, newestInput):
@@ -496,11 +496,14 @@ def parse_js_args(args):
 
     return vmArgs, progArgs
 
-def _mxrun(args, cwd=_suite.dir, verbose=False, out=None, env=None):
-    if verbose:
+def _mxrun(args, cwd=_suite.dir, print_cmd=False, quiet_if_successful=False, env=None):
+    out = mx.OutputCapture() if quiet_if_successful else None
+    if print_cmd:
         mx.log('Running \'{}\''.format(' '.join(args)))
-    status = mx.run(args, nonZeroIsFatal=False, cwd=cwd, out=out, env=env)
+    status = mx.run(args, nonZeroIsFatal=False, cwd=cwd, out=out, err=out, env=env)
     if status:
+        if quiet_if_successful:
+            mx.log(out.data)
         mx.abort(status)
 
 def _setEnvVar(name, val, env=None):
