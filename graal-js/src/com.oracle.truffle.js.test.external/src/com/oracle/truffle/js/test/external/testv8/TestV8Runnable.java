@@ -121,6 +121,7 @@ public class TestV8Runnable extends TestRunnable {
         }
 
         // ecma versions
+        int minESVersion = suite.getConfig().getMinESVersion();
         TestFile.EcmaVersion ecmaVersion = testFile.getEcmaVersion();
         if (ecmaVersion == null) {
             boolean needsES2021 = false;
@@ -130,7 +131,9 @@ public class TestV8Runnable extends TestRunnable {
                     break;
                 }
             }
-            ecmaVersion = TestFile.EcmaVersion.forVersions(needsES2021 ? JSConfig.ECMAScript2021 : JSConfig.CurrentECMAScriptVersion);
+            ecmaVersion = TestFile.EcmaVersion.forVersions(needsES2021 ? JSConfig.ECMAScript2021 : minESVersion);
+        } else {
+            ecmaVersion = ecmaVersion.filterByMinVersion(minESVersion);
         }
 
         if (flags.contains(HARMONY_PUBLIC_FIELDS) || flags.contains(HARMONY_PRIVATE_FIELDS) || flags.contains(HARMONY_PRIVATE_METHODS)) {

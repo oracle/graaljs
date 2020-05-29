@@ -43,6 +43,8 @@ package com.oracle.truffle.js.test.external.suite;
 import java.nio.file.Paths;
 import java.util.Map;
 
+import com.oracle.truffle.js.runtime.JSConfig;
+
 public class SuiteConfig {
 
     // config: main
@@ -68,6 +70,7 @@ public class SuiteConfig {
     private final boolean textOutput;
     private final boolean regenerateConfig;
     private final boolean shareEngine;
+    private final int minESVersion;
     private final int timeoutTest; // individual timeouts not supported by all engines
     private final int timeoutOverall;
     private final String containsFilter;
@@ -82,7 +85,7 @@ public class SuiteConfig {
                     String suiteLoc, String suiteTestsLoc, String suiteHarnessLoc, String suiteConfigLoc,
                     boolean useThreads, boolean verbose, boolean verboseFail, boolean runOnGate, boolean gateResume, boolean printCommand, boolean printScript, boolean saveOutput, boolean compile,
                     boolean htmlOutput, boolean textOutput, boolean regenerateConfig, int timeoutTest, int timeoutOverall, String containsFilter, String regexFilter,
-                    String endsWithFilter, boolean printFullOutput, String outputFilter, String extLauncher, boolean shareEngine) {
+                    String endsWithFilter, boolean printFullOutput, String outputFilter, String extLauncher, boolean shareEngine, int minESVersion) {
         this.suiteName = suiteName;
         this.suiteDescription = suiteDescription;
         this.suiteLoc = suiteLoc;
@@ -110,6 +113,7 @@ public class SuiteConfig {
         this.outputFilter = outputFilter;
         this.extLauncher = extLauncher;
         this.shareEngine = shareEngine;
+        this.minESVersion = minESVersion;
     }
 
     public String getSuiteName() {
@@ -186,6 +190,10 @@ public class SuiteConfig {
 
     public boolean isShareEngine() {
         return shareEngine;
+    }
+
+    public int getMinESVersion() {
+        return minESVersion;
     }
 
     /**
@@ -274,6 +282,7 @@ public class SuiteConfig {
         private String endsWithFilter;
         private boolean printFullOutput;
         private String outputFilter;
+        private int minESVersion = JSConfig.CurrentECMAScriptVersion;
 
         private String extLauncher;
 
@@ -391,10 +400,14 @@ public class SuiteConfig {
             this.shareEngine = shareEngine;
         }
 
+        public void setMinESVersion(int minESVersion) {
+            this.minESVersion = minESVersion;
+        }
+
         public SuiteConfig build() {
             return new SuiteConfig(suiteName, suiteDescription, suiteLoc, suiteTestsLoc, suiteHarnessLoc, suiteConfigLoc, useThreads, verbose, verboseFail, runOnGate, gateResume, printCommand,
                             printScript, saveOutput, compile, htmlOutput, textOutput, regenerateConfig, timeoutTest, timeoutOverall, containsFilter, regexFilter,
-                            endsWithFilter, printFullOutput, outputFilter, extLauncher, shareEngine);
+                            endsWithFilter, printFullOutput, outputFilter, extLauncher, shareEngine, minESVersion);
         }
     }
 }
