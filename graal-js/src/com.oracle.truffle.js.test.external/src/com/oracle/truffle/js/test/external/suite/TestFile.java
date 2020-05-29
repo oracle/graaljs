@@ -304,6 +304,27 @@ public final class TestFile {
                             '}';
         }
 
+        public EcmaVersion filterByMinVersion(int minimalVersion) {
+            int count = 0;
+            for (int version : allVersions) {
+                if (minimalVersion <= version) {
+                    count++;
+                }
+            }
+            if (count == allVersions.length) {
+                return this;
+            } else {
+                int[] filtered = new int[count];
+                int idx = 0;
+                for (int version : allVersions) {
+                    if (minimalVersion <= version) {
+                        filtered[idx++] = version;
+                    }
+                }
+                return EcmaVersion.forVersions(filtered);
+            }
+        }
+
         // ~ Factories
 
         public static EcmaVersion forVersions(int... versions) {

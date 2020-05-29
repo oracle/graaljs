@@ -78,6 +78,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -1005,6 +1006,7 @@ public abstract class TestSuite {
                     System.out.println(" externallauncher=X     run tests by invoking a given native image of JSLauncher");
                     System.out.println(" compile                run with TruffleCompileImmediately");
                     System.out.println(" shareengine            use shared Engine for all tests");
+                    System.out.println(" minesversion           minimal ECMAScript version used for test execution");
                     System.exit(-2);
                     break;
                 case "nothreads":
@@ -1082,6 +1084,13 @@ public abstract class TestSuite {
                     break;
                 case "shareengine":
                     builder.setShareEngine(true);
+                    break;
+                case "minesversion":
+                    int minESVersion = Integer.parseInt(value);
+                    if (minESVersion > JSConfig.ECMAScriptNumberYearDelta) {
+                        minESVersion -= JSConfig.ECMAScriptNumberYearDelta;
+                    }
+                    builder.setMinESVersion(minESVersion);
                     break;
                 default:
                     System.out.println("unrecognized argument: " + key + "\nCall \"" + builder.getSuiteName() + " help\" for more information.");

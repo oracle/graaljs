@@ -271,7 +271,8 @@ public class Test262Runnable extends TestRunnable {
         Source[] harnessSources = ((Test262) suite).getHarnessSources(runStrict, asyncTest, getIncludes(scriptCodeList));
 
         boolean supported = true;
-        int featureVersion = JSConfig.CurrentECMAScriptVersion;
+        int minESVersion = suite.getConfig().getMinESVersion();
+        int featureVersion = minESVersion;
         for (String feature : features) {
             if (SUPPORTED_FEATURES.contains(feature)) {
                 assert !UNSUPPORTED_FEATURES.contains(feature) : feature;
@@ -287,6 +288,8 @@ public class Test262Runnable extends TestRunnable {
         TestFile.EcmaVersion ecmaVersion = testFile.getEcmaVersion();
         if (ecmaVersion == null) {
             ecmaVersion = TestFile.EcmaVersion.forVersions(featureVersion);
+        } else {
+            ecmaVersion = ecmaVersion.filterByMinVersion(minESVersion);
         }
         String prefix = runStrict ? "\"use strict\";" : "";
         Source testSource = null;
