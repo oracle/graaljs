@@ -98,6 +98,7 @@ local common = import '../common.jsonnet';
     graalJs + common.jdk8 + common.gate   + common.linux + gateGraalTip          + {environment+: {GATE_TAGS: 'cloneuninitialized'}} + {name: 'js-gate-cloneuninitialized-graal-tip-jdk8-linux-amd64'},
     graalJs + common.jdk8 + common.gate   + common.linux + gateGraalTip          + {environment+: {GATE_TAGS: 'lazytranslation'}}    + {name: 'js-gate-lazytranslation-graal-tip-jdk8-linux-amd64'},
     graalJs + common.jdk8 + common.gate   + common.linux + gateGraalTip          + {environment+: {GATE_TAGS: 'shareengine'}}        + {name: 'js-gate-shareengine-graal-tip-jdk8-linux-amd64'},
+    graalJs + common.jdk8 + common.gate   + common.linux + gateGraalTip          + {environment+: {GATE_TAGS: 'latestesversion'}}    + {name: 'js-gate-latestesversion-graal-tip-jdk8-linux-amd64'},
     graalJs + common.jdk8 + common.gate   + common.linux + gateGraalImport       + {environment+: {GATE_TAGS: 'tck,build'}}          + {name: 'js-gate-tck-build-graal-import-jdk8-linux-amd64'},
 
     // jdk 8 - coverage
