@@ -249,7 +249,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
         }
         // Load module using `package.json`
         TruffleFile mainPackageFolder = getFullPath(referencingModule);
-        List<TruffleFile> nodeModulesPaths = getNodeModulesPaths(env, mainPackageFolder);
+        List<TruffleFile> nodeModulesPaths = getNodeModulesPaths(mainPackageFolder);
 
         for (TruffleFile modulePath : nodeModulesPaths) {
             TruffleFile moduleFolder = joinPaths(env, modulePath, packageSpecifier);
@@ -274,6 +274,11 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
                     }
                 }
             }
+        }
+        // A custom Truffle FS might still try to map a package specifier to some file.
+        TruffleFile maybeFile = env.getPublicTruffleFile(packageSpecifier);
+        if (maybeFile.exists()) {
+            return maybeFile;
         }
         throw fail(packageSpecifier);
     }

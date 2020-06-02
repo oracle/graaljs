@@ -174,7 +174,7 @@ final class CommonJSResolution {
          *
          * @formatter:on
          */
-        List<TruffleFile> nodeModulesPaths = getNodeModulesPaths(env, startFolder);
+        List<TruffleFile> nodeModulesPaths = getNodeModulesPaths(startFolder);
         for (TruffleFile s : nodeModulesPaths) {
             TruffleFile module = loadAsFileOrDirectory(cx, env, joinPaths(env, s, moduleIdentifier));
             if (module != null) {
@@ -237,15 +237,14 @@ final class CommonJSResolution {
         return null;
     }
 
-    public static List<TruffleFile> getNodeModulesPaths(TruffleLanguage.Env env, TruffleFile path) {
+    public static List<TruffleFile> getNodeModulesPaths(TruffleFile path) {
         List<TruffleFile> list = new ArrayList<>();
         List<TruffleFile> paths = getAllParentPaths(path);
         for (TruffleFile p : paths) {
             if (p.endsWith(NODE_MODULES)) {
                 list.add(p);
             } else {
-                String pathSeparator = env.getFileNameSeparator();
-                TruffleFile truffleFile = env.getPublicTruffleFile(p.toString() + pathSeparator + NODE_MODULES);
+                TruffleFile truffleFile = p.resolve(NODE_MODULES);
                 list.add(truffleFile);
             }
         }
