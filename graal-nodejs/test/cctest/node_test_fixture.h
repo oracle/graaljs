@@ -71,6 +71,7 @@ class NodeTestFixture : public ::testing::Test {
 
   static void SetUpTestCase() {
     if (!node_initialized) {
+      uv_os_unsetenv("NODE_OPTIONS");
       node_initialized = true;
       int argc = 1;
       const char* argv0 = "cctest";
@@ -81,9 +82,13 @@ class NodeTestFixture : public ::testing::Test {
 
     tracing_agent = std::make_unique<node::tracing::Agent>();
     node::tracing::TraceEventHelper::SetAgent(tracing_agent.get());
+    node::tracing::TracingController* tracing_controller =
+            tracing_agent->GetTracingController();
     CHECK_EQ(0, uv_loop_init(&current_loop));
-    platform.reset(static_cast<node::NodePlatform*>(
-          node::InitializeV8Platform(4)));
+    static constexpr int kV8ThreadPoolSize = 4;
+    platform.reset(
+        new node::NodePlatform(kV8ThreadPoolSize, tracing_controller));
+    v8::V8::InitializePlatform(platform.get());
     v8::V8::Initialize();
   }
 
@@ -99,16 +104,16 @@ class NodeTestFixture : public ::testing::Test {
   void SetUp() override {
     allocator = ArrayBufferUniquePtr(node::CreateArrayBufferAllocator(),
                                      &node::FreeArrayBufferAllocator);
-    isolate_ = NewIsolate(allocator.get(), &current_loop);
+    isolate_ = NewIsolate(allocator.get(), &current_loop, platform.get());
     CHECK_NE(isolate_, nullptr);
     isolate_->Enter();
   }
 
   void TearDown() override {
-    isolate_->Exit();
-    isolate_->Dispose();
     platform->DrainTasks(isolate_);
+    isolate_->Exit();
     platform->UnregisterIsolate(isolate_);
+    isolate_->Dispose();
     isolate_ = nullptr;
   }
 };

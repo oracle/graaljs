@@ -1,6 +1,9 @@
 'use strict';
 
-const { Object } = primordials;
+const {
+  ObjectDefineProperty,
+  Symbol,
+} = primordials;
 
 const {
   KeyObject: KeyObjectHandle,
@@ -48,7 +51,7 @@ class KeyObject {
 
     this[kKeyType] = type;
 
-    Object.defineProperty(this, kHandle, {
+    ObjectDefineProperty(this, kHandle, {
       value: handle,
       enumerable: false,
       configurable: false,

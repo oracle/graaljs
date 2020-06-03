@@ -34,22 +34,24 @@ CallbackScope::~CallbackScope() {
   delete private_;
 }
 
-InternalCallbackScope::InternalCallbackScope(AsyncWrap* async_wrap)
+InternalCallbackScope::InternalCallbackScope(AsyncWrap* async_wrap, int flags)
     : InternalCallbackScope(async_wrap->env(),
-                            async_wrap->object(),
+                            async_wrap->GetResource(),
                             { async_wrap->get_async_id(),
-                              async_wrap->get_trigger_async_id() }) {}
+                              async_wrap->get_trigger_async_id() },
+                            flags) {}
 
 InternalCallbackScope::InternalCallbackScope(Environment* env,
                                              Local<Object> object,
                                              const async_context& asyncContext,
-                                             ResourceExpectation expect)
+                                             int flags)
   : env_(env),
     async_context_(asyncContext),
     object_(object),
-    callback_scope_(env) {
-  CHECK_IMPLIES(expect == kRequireResource, !object.IsEmpty());
+    skip_hooks_(flags & kSkipAsyncHooks),
+    skip_task_queues_(flags & kSkipTaskQueues) {
   CHECK_NOT_NULL(env);
+  env->PushAsyncCallbackScope();
 
   if (!env->can_call_into_js()) {
     failed_ = true;
@@ -60,19 +62,21 @@ InternalCallbackScope::InternalCallbackScope(Environment* env,
   // If you hit this assertion, you forgot to enter the v8::Context first.
   CHECK_EQ(Environment::GetCurrent(env->isolate()), env);
 
-  if (asyncContext.async_id != 0) {
+  env->async_hooks()->push_async_context(
+    async_context_.async_id, async_context_.trigger_async_id, object);
+
+  pushed_ids_ = true;
+
+  if (asyncContext.async_id != 0 && !skip_hooks_) {
     // No need to check a return value because the application will exit if
     // an exception occurs.
     AsyncWrap::EmitBefore(env, asyncContext.async_id);
   }
-
-  env->async_hooks()->push_async_ids(async_context_.async_id,
-                               async_context_.trigger_async_id);
-  pushed_ids_ = true;
 }
 
 InternalCallbackScope::~InternalCallbackScope() {
   Close();
+  env_->PopAsyncCallbackScope();
 }
 
 void InternalCallbackScope::Close() {
@@ -84,22 +88,25 @@ void InternalCallbackScope::Close() {
     env_->async_hooks()->clear_async_id_stack();
   }
 
-  if (pushed_ids_)
-    env_->async_hooks()->pop_async_id(async_context_.async_id);
-
-  if (failed_) return;
-
-  if (async_context_.async_id != 0) {
+  if (!failed_ && async_context_.async_id != 0 && !skip_hooks_) {
     AsyncWrap::EmitAfter(env_, async_context_.async_id);
   }
 
-  if (env_->async_callback_scope_depth() > 1) {
+  if (pushed_ids_)
+    env_->async_hooks()->pop_async_context(async_context_.async_id);
+
+  if (failed_) return;
+
+  if (env_->async_callback_scope_depth() > 1 || skip_task_queues_) {
     return;
   }
 
   TickInfo* tick_info = env_->tick_info();
 
   if (!env_->can_call_into_js()) return;
+
+  auto weakref_cleanup = OnScopeLeave([&]() { env_->RunWeakRefCleanup(); });
+
   if (!tick_info->has_tick_scheduled()) {
     MicrotasksScope::PerformCheckpoint(env_->isolate());
   }
@@ -132,6 +139,7 @@ void InternalCallbackScope::Close() {
 }
 
 MaybeLocal<Value> InternalMakeCallback(Environment* env,
+                                       Local<Object> resource,
                                        Local<Object> recv,
                                        const Local<Function> callback,
                                        int argc,
@@ -143,14 +151,14 @@ MaybeLocal<Value> InternalMakeCallback(Environment* env,
     CHECK(!argv[i].IsEmpty());
 #endif
 
-  InternalCallbackScope scope(env, recv, asyncContext);
+  InternalCallbackScope scope(env, resource, asyncContext);
   if (scope.Failed()) {
     return MaybeLocal<Value>();
   }
 
   Local<Function> domain_cb = env->domain_callback();
   MaybeLocal<Value> ret;
-  if (asyncContext.async_id != 0 || domain_cb.IsEmpty() || recv.IsEmpty()) {
+  if (asyncContext.async_id != 0 || domain_cb.IsEmpty()) {
     ret = callback->Call(env->context(), recv, argc, argv);
   } else {
     std::vector<Local<Value>> args(1 + argc);
@@ -217,7 +225,7 @@ MaybeLocal<Value> MakeCallback(Isolate* isolate,
   CHECK_NOT_NULL(env);
   Context::Scope context_scope(env->context());
   MaybeLocal<Value> ret =
-      InternalMakeCallback(env, recv, callback, argc, argv, asyncContext);
+      InternalMakeCallback(env, recv, recv, callback, argc, argv, asyncContext);
   if (ret.IsEmpty() && env->async_callback_scope_depth() == 0) {
     // This is only for legacy compatibility and we may want to look into
     // removing/adjusting it.

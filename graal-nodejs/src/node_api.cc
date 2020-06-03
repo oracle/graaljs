@@ -24,6 +24,14 @@ struct node_napi_env__ : public napi_env__ {
   bool can_call_into_js() const override {
     return node_env()->can_call_into_js();
   }
+
+  v8::Maybe<bool> mark_arraybuffer_as_untransferable(
+      v8::Local<v8::ArrayBuffer> ab) const override {
+    return ab->SetPrivate(
+        context(),
+        node_env()->arraybuffer_untransferable_private_symbol(),
+        v8::True(isolate));
+  }
 };
 
 typedef node_napi_env__* node_napi_env;
@@ -219,8 +227,8 @@ class ThreadSafeFunction : public node::AsyncResource {
       if (max_queue_size > 0) {
         cond = std::make_unique<node::ConditionVariable>();
       }
-      if ((max_queue_size == 0 || cond) &&
-          uv_idle_init(loop, &idle) == 0) {
+      if (max_queue_size == 0 || cond) {
+        CHECK_EQ(0, uv_idle_init(loop, &idle));
         return napi_ok;
       }
 
@@ -260,7 +268,6 @@ class ThreadSafeFunction : public node::AsyncResource {
   void DispatchOne() {
     void* data = nullptr;
     bool popped_value = false;
-    bool idle_stop_failed = false;
 
     {
       node::Mutex::ScopedLock lock(this->mutex);
@@ -286,43 +293,24 @@ class ThreadSafeFunction : public node::AsyncResource {
             }
             CloseHandlesAndMaybeDelete();
           } else {
-            if (uv_idle_stop(&idle) != 0) {
-              idle_stop_failed = true;
-            }
+            CHECK_EQ(0, uv_idle_stop(&idle));
           }
         }
       }
     }
 
-    if (popped_value || idle_stop_failed) {
+    if (popped_value) {
       v8::HandleScope scope(env->isolate);
       CallbackScope cb_scope(this);
-
-      if (idle_stop_failed) {
-        CHECK(napi_throw_error(env,
-                               "ERR_NAPI_TSFN_STOP_IDLE_LOOP",
-                               "Failed to stop the idle loop") == napi_ok);
-      } else {
-        napi_value js_callback = nullptr;
-        if (!ref.IsEmpty()) {
-          v8::Local<v8::Function> js_cb =
-            v8::Local<v8::Function>::New(env->isolate, ref);
-          js_callback = v8impl::JsValueFromV8LocalValue(js_cb);
-        }
-        env->CallIntoModuleThrow([&](napi_env env) {
-          call_js_cb(env, js_callback, context, data);
-        });
+      napi_value js_callback = nullptr;
+      if (!ref.IsEmpty()) {
+        v8::Local<v8::Function> js_cb =
+          v8::Local<v8::Function>::New(env->isolate, ref);
+        js_callback = v8impl::JsValueFromV8LocalValue(js_cb);
       }
-    }
-  }
-
-  void MaybeStartIdle() {
-    if (uv_idle_start(&idle, IdleCb) != 0) {
-      v8::HandleScope scope(env->isolate);
-      CallbackScope cb_scope(this);
-      CHECK(napi_throw_error(env,
-                             "ERR_NAPI_TSFN_START_IDLE_LOOP",
-                             "Failed to start the idle loop") == napi_ok);
+      env->CallIntoModuleThrow([&](napi_env env) {
+        call_js_cb(env, js_callback, context, data);
+      });
     }
   }
 
@@ -404,7 +392,7 @@ class ThreadSafeFunction : public node::AsyncResource {
   static void AsyncCb(uv_async_t* async) {
     ThreadSafeFunction* ts_fn =
         node::ContainerOf(&ThreadSafeFunction::async, async);
-    ts_fn->MaybeStartIdle();
+    CHECK_EQ(0, uv_idle_start(&ts_fn->idle, IdleCb));
   }
 
   static void Cleanup(void* data) {
@@ -463,8 +451,7 @@ void napi_module_register_by_symbol(v8::Local<v8::Object> exports,
     return;
   }
 
-  // Create a new napi_env for this module or reference one if a pre-existing
-  // one is found.
+  // Create a new napi_env for this specific module.
   napi_env env = v8impl::NewEnv(context);
 
   napi_value _exports;
@@ -730,7 +717,8 @@ napi_status napi_create_external_buffer(napi_env env,
 
   // The finalizer object will delete itself after invoking the callback.
   v8impl::Finalizer* finalizer = v8impl::Finalizer::New(
-    env, finalize_cb, nullptr, finalize_hint);
+      env, finalize_cb, nullptr, finalize_hint,
+      v8impl::Finalizer::kKeepEnvReference);
 
   auto maybe = node::Buffer::New(isolate,
                                 static_cast<char*>(data),

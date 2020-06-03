@@ -26,6 +26,7 @@ const { internalBinding } = require('internal/test/binding');
 const JSStream = internalBinding('js_stream').JSStream;
 const util = require('util');
 const vm = require('vm');
+const v8 = require('v8');
 const { previewEntries } = internalBinding('util');
 const { inspect } = util;
 const { MessageChannel } = require('worker_threads');
@@ -126,7 +127,7 @@ assert.strictEqual(util.inspect({ 'a': { 'b': { 'c': 2 } } }, false, 1),
                    '{ a: { b: [Object] } }');
 assert.strictEqual(util.inspect({ 'a': { 'b': ['c'] } }, false, 1),
                    '{ a: { b: [Array] } }');
-assert.strictEqual(util.inspect(new Uint8Array(0)), 'Uint8Array []');
+assert.strictEqual(util.inspect(new Uint8Array(0)), 'Uint8Array(0) []');
 assert(inspect(new Uint8Array(0), { showHidden: true }).includes('[buffer]'));
 assert.strictEqual(
   util.inspect(
@@ -263,7 +264,7 @@ assert(!/Object/.test(
   array[1] = 97;
   assert.strictEqual(
     util.inspect(array, { showHidden: true }),
-    `${constructor.name} [\n` +
+    `${constructor.name}(${length}) [\n` +
       '  65,\n' +
       '  97,\n' +
       `  [BYTES_PER_ELEMENT]: ${constructor.BYTES_PER_ELEMENT},\n` +
@@ -273,7 +274,7 @@ assert(!/Object/.test(
       `  [buffer]: ArrayBuffer { byteLength: ${byteLength} }\n]`);
   assert.strictEqual(
     util.inspect(array, false),
-    `${constructor.name} [ 65, 97 ]`
+    `${constructor.name}(${length}) [ 65, 97 ]`
   );
 });
 
@@ -297,7 +298,7 @@ assert(!/Object/.test(
   array[1] = 97;
   assert.strictEqual(
     util.inspect(array, true),
-    `${constructor.name} [\n` +
+    `${constructor.name}(${length}) [\n` +
       '  65,\n' +
       '  97,\n' +
       `  [BYTES_PER_ELEMENT]: ${constructor.BYTES_PER_ELEMENT},\n` +
@@ -307,9 +308,15 @@ assert(!/Object/.test(
       `  [buffer]: ArrayBuffer { byteLength: ${byteLength} }\n]`);
   assert.strictEqual(
     util.inspect(array, false),
-    `${constructor.name} [ 65, 97 ]`
+    `${constructor.name}(${length}) [ 65, 97 ]`
   );
 });
+
+{
+  const brokenLength = new Float32Array(2);
+  Object.defineProperty(brokenLength, 'length', { value: -1 });
+  assert.strictEqual(inspect(brokenLength), 'Float32Array(2) [ 0n, 0n ]');
+}
 
 assert.strictEqual(
   util.inspect(Object.create({}, {
@@ -391,8 +398,24 @@ assert.strictEqual(
 {
   class CustomArray extends Array {}
   CustomArray.prototype[5] = 'foo';
+  CustomArray.prototype[49] = 'bar';
+  CustomArray.prototype.foo = true;
   const arr = new CustomArray(50);
-  assert.strictEqual(util.inspect(arr), 'CustomArray [ <50 empty items> ]');
+  arr[49] = 'I win';
+  assert.strictEqual(
+    util.inspect(arr),
+    "CustomArray(50) [ <49 empty items>, 'I win' ]"
+  );
+  assert.strictEqual(
+    util.inspect(arr, { showHidden: true }),
+    'CustomArray(50) [\n' +
+    '  <49 empty items>,\n' +
+    "  'I win',\n" +
+    '  [length]: 50,\n' +
+    "  '5': 'foo',\n" +
+    '  foo: true\n' +
+    ']'
+  );
 }
 
 // Array with extra properties.
@@ -673,6 +696,28 @@ assert.strictEqual(util.inspect(-5e-324), '-5e-324');
   Error.stackTraceLimit = tmp;
 }
 
+// Prevent enumerable error properties from being printed.
+{
+  let err = new Error();
+  err.message = 'foobar';
+  let out = util.inspect(err).split('\n');
+  assert.strictEqual(out[0], 'Error: foobar');
+  assert(out[out.length - 1].startsWith('    at '));
+  // Reset the error, the stack is otherwise not recreated.
+  err = new Error();
+  err.message = 'foobar';
+  err.name = 'Unique';
+  Object.defineProperty(err, 'stack', { value: err.stack, enumerable: true });
+  out = util.inspect(err).split('\n');
+  assert.strictEqual(out[0], 'Unique: foobar');
+  assert(out[out.length - 1].startsWith('    at '));
+  err.name = 'Baz';
+  out = util.inspect(err).split('\n');
+  assert.strictEqual(out[0], 'Unique: foobar');
+  assert.strictEqual(out[out.length - 2], "  name: 'Baz'");
+  assert.strictEqual(out[out.length - 1], '}');
+}
+
 // Doesn't capture stack trace.
 {
   function BadCustomError(msg) {
@@ -883,6 +928,10 @@ util.inspect({ hasOwnProperty: null });
     assert.strictEqual(opts.budget, undefined);
     assert.strictEqual(opts.indentationLvl, undefined);
     assert.strictEqual(opts.showHidden, false);
+    assert.deepStrictEqual(
+      new Set(Object.keys(util.inspect.defaultOptions).concat(['stylize'])),
+      new Set(Object.keys(opts))
+    );
     opts.showHidden = true;
     return { [util.inspect.custom]: common.mustCall((depth, opts2) => {
       assert.deepStrictEqual(clone, opts2);
@@ -909,10 +958,11 @@ util.inspect({ hasOwnProperty: null });
 }
 
 {
-  const subject = { [util.inspect.custom]: common.mustCall((depth) => {
+  const subject = { [util.inspect.custom]: common.mustCall((depth, opts) => {
     assert.strictEqual(depth, null);
+    assert.strictEqual(opts.compact, true);
   }) };
-  util.inspect(subject, { depth: null });
+  util.inspect(subject, { depth: null, compact: true });
 }
 
 {
@@ -1270,7 +1320,7 @@ if (typeof Symbol !== 'undefined') {
   assert.strictEqual(util.inspect(x),
                      'ObjectSubclass { foo: 42 }');
   assert.strictEqual(util.inspect(new ArraySubclass(1, 2, 3)),
-                     'ArraySubclass [ 1, 2, 3 ]');
+                     'ArraySubclass(3) [ 1, 2, 3 ]');
   assert.strictEqual(util.inspect(new SetSubclass([1, 2, 3])),
                      'SetSubclass [Set] { 1, 2, 3 }');
   assert.strictEqual(util.inspect(new MapSubclass([['foo', 42]])),
@@ -1366,7 +1416,7 @@ if (typeof Symbol !== 'undefined') {
   assert(util.inspect(x).endsWith('1 more item\n]'));
   assert(!util.inspect(x, { maxArrayLength: 101 }).includes('1 more item'));
   assert.strictEqual(util.inspect(x, { maxArrayLength: 0 }),
-                     'Uint8Array [ ... 101 more items ]');
+                     'Uint8Array(101) [ ... 101 more items ]');
   assert(!util.inspect(x, { maxArrayLength: null }).includes('1 more item'));
   assert(util.inspect(x, { maxArrayLength: Infinity }).endsWith(' 0, 0\n]'));
 }
@@ -1420,23 +1470,23 @@ if (typeof Symbol !== 'undefined') {
     JSON.stringify(oldOptions)
   );
 
-  common.expectsError(() => {
+  assert.throws(() => {
     util.inspect.defaultOptions = null;
   }, {
     code: 'ERR_INVALID_ARG_TYPE',
-    type: TypeError,
-    message: 'The "options" argument must be of type Object. ' +
-             'Received type object'
+    name: 'TypeError',
+    message: 'The "options" argument must be of type object. ' +
+             'Received null'
   }
   );
 
-  common.expectsError(() => {
+  assert.throws(() => {
     util.inspect.defaultOptions = 'bad';
   }, {
     code: 'ERR_INVALID_ARG_TYPE',
-    type: TypeError,
-    message: 'The "options" argument must be of type Object. ' +
-             'Received type string'
+    name: 'TypeError',
+    message: 'The "options" argument must be of type object. ' +
+             "Received type string ('bad')"
   }
   );
 }
@@ -1651,7 +1701,7 @@ util.inspect(process);
     '      ],',
     '      [length]: 1',
     '    ]',
-    '  } => Uint8Array [',
+    '  } => Uint8Array(0) [',
     '    [BYTES_PER_ELEMENT]: 1,',
     '    [length]: 0,',
     '    [byteLength]: 0,',
@@ -1666,9 +1716,10 @@ util.inspect(process);
     '      1,',
     '      2,',
     '      [length]: 2',
-    '    ]',
+    '    ],',
+    "    [Symbol(Symbol.toStringTag)]: 'Set Iterator'",
     '  } => [Map Iterator] {',
-    '    Uint8Array [',
+    '    Uint8Array(0) [',
     '      [BYTES_PER_ELEMENT]: 1,',
     '      [length]: 0,',
     '      [byteLength]: 0,',
@@ -1678,7 +1729,8 @@ util.inspect(process);
     '        foo: true',
     '      }',
     '    ],',
-    '    [Circular]',
+    '    [Circular],',
+    "    [Symbol(Symbol.toStringTag)]: 'Map Iterator'",
     '  },',
     '  [size]: 2',
     '}'
@@ -1699,22 +1751,26 @@ util.inspect(process);
     '      ],',
     '      [length]: 1',
     '    ]',
-    '  } => Uint8Array [',
+    '  } => Uint8Array(0) [',
     '    [BYTES_PER_ELEMENT]: 1,',
     '    [length]: 0,',
     '    [byteLength]: 0,',
     '    [byteOffset]: 0,',
     '    [buffer]: ArrayBuffer { byteLength: 0, foo: true }',
     '  ],',
-    '  [Set Iterator] { [ 1, 2, [length]: 2 ] } => [Map Iterator] {',
-    '    Uint8Array [',
+    '  [Set Iterator] {',
+    '    [ 1, 2, [length]: 2 ],',
+    "    [Symbol(Symbol.toStringTag)]: 'Set Iterator'",
+    '  } => [Map Iterator] {',
+    '    Uint8Array(0) [',
     '      [BYTES_PER_ELEMENT]: 1,',
     '      [length]: 0,',
     '      [byteLength]: 0,',
     '      [byteOffset]: 0,',
     '      [buffer]: ArrayBuffer { byteLength: 0, foo: true }',
     '    ],',
-    '    [Circular]',
+    '    [Circular],',
+    "    [Symbol(Symbol.toStringTag)]: 'Map Iterator'",
     '  },',
     '  [size]: 2',
     '}'
@@ -1735,7 +1791,7 @@ util.inspect(process);
     '            [length]: 2 ],',
     '          [size]: 1 },',
     '        [length]: 2 ],',
-    '      [length]: 1 ] } => Uint8Array [',
+    '      [length]: 1 ] } => Uint8Array(0) [',
     '    [BYTES_PER_ELEMENT]: 1,',
     '    [length]: 0,',
     '    [byteLength]: 0,',
@@ -1746,8 +1802,10 @@ util.inspect(process);
     '  [Set Iterator] {',
     '    [ 1,',
     '      2,',
-    '      [length]: 2 ] } => [Map Iterator] {',
-    '    Uint8Array [',
+    '      [length]: 2 ],',
+    '    [Symbol(Symbol.toStringTag)]:',
+    "     'Set Iterator' } => [Map Iterator] {",
+    '    Uint8Array(0) [',
     '      [BYTES_PER_ELEMENT]: 1,',
     '      [length]: 0,',
     '      [byteLength]: 0,',
@@ -1755,7 +1813,9 @@ util.inspect(process);
     '      [buffer]: ArrayBuffer {',
     '        byteLength: 0,',
     '        foo: true } ],',
-    '    [Circular] },',
+    '    [Circular],',
+    '    [Symbol(Symbol.toStringTag)]:',
+    "     'Map Iterator' },",
     '  [size]: 2 }'
   ].join('\n');
 
@@ -1925,7 +1985,7 @@ assert.strictEqual(util.inspect('"\'${a}'), "'\"\\'${a}'");
   [new Set([1, 2]).entries(), '[Set Entries] { [ 1, 1 ], [ 2, 2 ] }'],
   [new Map([[1, 2]]).keys(), '[Map Iterator] { 1 }'],
   [new Date(2000), '1970-01-01T00:00:02.000Z'],
-  [new Uint8Array(2), 'Uint8Array [ 0, 0 ]'],
+  [new Uint8Array(2), 'Uint8Array(2) [ 0, 0 ]'],
   [new Promise((resolve) => setTimeout(resolve, 10)), 'Promise { <pending> }'],
   [new WeakSet(), 'WeakSet { <items unknown> }'],
   [new WeakMap(), 'WeakMap { <items unknown> }'],
@@ -1951,23 +2011,23 @@ assert.strictEqual(util.inspect('"\'${a}'), "'\"\\'${a}'");
 
 // Verify that having no prototype still produces nice results.
 [
-  [[1, 3, 4], '[Array: null prototype] [ 1, 3, 4 ]'],
+  [[1, 3, 4], '[Array(3): null prototype] [ 1, 3, 4 ]'],
   [new Set([1, 2]), '[Set: null prototype] { 1, 2 }'],
   [new Map([[1, 2]]), '[Map: null prototype] { 1 => 2 }'],
   [new Promise((resolve) => setTimeout(resolve, 10)),
    '[Promise: null prototype] { <pending> }'],
   [new WeakSet(), '[WeakSet: null prototype] { <items unknown> }'],
   [new WeakMap(), '[WeakMap: null prototype] { <items unknown> }'],
-  [new Uint8Array(2), '[Uint8Array: null prototype] [ 0, 0 ]'],
-  [new Uint16Array(2), '[Uint16Array: null prototype] [ 0, 0 ]'],
-  [new Uint32Array(2), '[Uint32Array: null prototype] [ 0, 0 ]'],
-  [new Int8Array(2), '[Int8Array: null prototype] [ 0, 0 ]'],
-  [new Int16Array(2), '[Int16Array: null prototype] [ 0, 0 ]'],
-  [new Int32Array(2), '[Int32Array: null prototype] [ 0, 0 ]'],
-  [new Float32Array(2), '[Float32Array: null prototype] [ 0, 0 ]'],
-  [new Float64Array(2), '[Float64Array: null prototype] [ 0, 0 ]'],
-  [new BigInt64Array(2), '[BigInt64Array: null prototype] [ 0n, 0n ]'],
-  [new BigUint64Array(2), '[BigUint64Array: null prototype] [ 0n, 0n ]'],
+  [new Uint8Array(2), '[Uint8Array(2): null prototype] [ 0, 0 ]'],
+  [new Uint16Array(2), '[Uint16Array(2): null prototype] [ 0, 0 ]'],
+  [new Uint32Array(2), '[Uint32Array(2): null prototype] [ 0, 0 ]'],
+  [new Int8Array(2), '[Int8Array(2): null prototype] [ 0, 0 ]'],
+  [new Int16Array(2), '[Int16Array(2): null prototype] [ 0, 0 ]'],
+  [new Int32Array(2), '[Int32Array(2): null prototype] [ 0, 0 ]'],
+  [new Float32Array(2), '[Float32Array(2): null prototype] [ 0, 0 ]'],
+  [new Float64Array(2), '[Float64Array(2): null prototype] [ 0, 0 ]'],
+  [new BigInt64Array(2), '[BigInt64Array(2): null prototype] [ 0n, 0n ]'],
+  [new BigUint64Array(2), '[BigUint64Array(2): null prototype] [ 0n, 0n ]'],
   [new ArrayBuffer(16), '[ArrayBuffer: null prototype] {\n' +
      '  [Uint8Contents]: <00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00>,\n' +
      '  byteLength: undefined\n}'],
@@ -2005,8 +2065,10 @@ assert.strictEqual(util.inspect('"\'${a}'), "'\"\\'${a}'");
   class Foo extends base {}
   const value = new Foo(...input);
   const symbol = value[Symbol.toStringTag];
-  const expected = `Foo ${symbol ? `[${symbol}] ` : ''}${rawExpected}`;
-  const expectedWithoutProto = `[${base.name}: null prototype] ${rawExpected}`;
+  const size = base.name.includes('Array') ? `(${input[0]})` : '';
+  const expected = `Foo${size} ${symbol ? `[${symbol}] ` : ''}${rawExpected}`;
+  const expectedWithoutProto =
+    `[${base.name}${size}: null prototype] ${rawExpected}`;
   assert.strictEqual(util.inspect(value), expected);
   value.foo = 'bar';
   assert.notStrictEqual(util.inspect(value), expected);
@@ -2029,8 +2091,9 @@ assert.strictEqual(util.inspect('"\'${a}'), "'\"\\'${a}'");
 assert.strictEqual(inspect(1n), '1n');
 assert.strictEqual(inspect(Object(-1n)), '[BigInt: -1n]');
 assert.strictEqual(inspect(Object(13n)), '[BigInt: 13n]');
-assert.strictEqual(inspect(new BigInt64Array([0n])), 'BigInt64Array [ 0n ]');
-assert.strictEqual(inspect(new BigUint64Array([0n])), 'BigUint64Array [ 0n ]');
+assert.strictEqual(inspect(new BigInt64Array([0n])), 'BigInt64Array(1) [ 0n ]');
+assert.strictEqual(
+  inspect(new BigUint64Array([0n])), 'BigUint64Array(1) [ 0n ]');
 
 // Verify non-enumerable keys get escaped.
 {
@@ -2067,6 +2130,34 @@ assert.strictEqual(inspect(new BigUint64Array([0n])), 'BigUint64Array [ 0n ]');
     `\u001b[${string[0]}m'Oh no!'\u001b[${string[1]}m }`
   );
   rejection.catch(() => {});
+
+  // Verify that aliases do not show up as key while checking `inspect.colors`.
+  const colors = Object.keys(inspect.colors);
+  const aliases = Object.getOwnPropertyNames(inspect.colors)
+                  .filter((c) => !colors.includes(c));
+  assert(!colors.includes('grey'));
+  assert(colors.includes('gray'));
+  // Verify that all aliases are correctly mapped.
+  for (const alias of aliases) {
+    assert(Array.isArray(inspect.colors[alias]));
+  }
+  // Check consistent naming.
+  [
+    'black',
+    'red',
+    'green',
+    'yellow',
+    'blue',
+    'magenta',
+    'cyan',
+    'white'
+  ].forEach((color, i) => {
+    assert.deepStrictEqual(inspect.colors[color], [30 + i, 39]);
+    assert.deepStrictEqual(inspect.colors[`${color}Bright`], [90 + i, 39]);
+    const bgColor = `bg${color[0].toUpperCase()}${color.slice(1)}`;
+    assert.deepStrictEqual(inspect.colors[bgColor], [40 + i, 49]);
+    assert.deepStrictEqual(inspect.colors[`${bgColor}Bright`], [100 + i, 49]);
+  });
 }
 
 assert.strictEqual(
@@ -2121,7 +2212,7 @@ assert.strictEqual(
   Object.setPrototypeOf(obj, value);
   assert.strictEqual(
     util.inspect(obj),
-    'Object <[Array: null prototype] []> { a: true }'
+    'Object <[Array(0): null prototype] []> { a: true }'
   );
 
   function StorageObject() {}
@@ -2167,6 +2258,19 @@ assert.strictEqual(
     configurable: true
   });
   assert.strictEqual(util.inspect(obj), '[Set: null prototype] { 1, 2 }');
+  Object.defineProperty(obj, Symbol.iterator, {
+    value: true,
+    configurable: true
+  });
+  Object.defineProperty(obj, 'size', {
+    value: NaN,
+    configurable: true,
+    enumerable: true
+  });
+  assert.strictEqual(
+    util.inspect(obj),
+    '[Set: null prototype] { 1, 2, size: NaN }'
+  );
 }
 
 // Check the getter option.
@@ -2333,6 +2437,26 @@ assert.strictEqual(
     '  1, 1,         1, 1,',
     '  1, 1, 123456789',
     ']'
+  ].join('\n');
+
+  assert.strictEqual(out, expected);
+
+  // Unicode support. あ has a length of one and a width of two.
+  obj = [
+    '123', '123', '123', '123', 'あああ',
+    '123', '123', '123', '123', 'あああ'
+  ];
+
+  out = util.inspect(obj, { compact: 3 });
+
+  expected = [
+    '[',
+    "  '123',    '123',",
+    "  '123',    '123',",
+    "  'あああ', '123',",
+    "  '123',    '123',",
+    "  '123',    'あああ'",
+    ']',
   ].join('\n');
 
   assert.strictEqual(out, expected);
@@ -2551,4 +2675,114 @@ assert.strictEqual(
     if (err.code !== 'ERR_TRACE_EVENTS_UNAVAILABLE')
       throw err;
   }
+}
+
+// Inspect prototype properties.
+{
+  class Foo extends Map {
+    prop = false;
+    prop2 = true;
+    get abc() {
+      return true;
+    }
+    get def() {
+      return false;
+    }
+    set def(v) {}
+    get xyz() {
+      return 'Should be ignored';
+    }
+    func(a) {}
+    [util.inspect.custom]() {
+      return this;
+    }
+  }
+
+  class Bar extends Foo {
+    abc = true;
+    prop = true;
+    get xyz() {
+      return 'YES!';
+    }
+    [util.inspect.custom]() {
+      return this;
+    }
+  }
+
+  const bar = new Bar();
+
+  assert.strictEqual(
+    inspect(bar),
+    'Bar [Map] { prop: true, prop2: true, abc: true }'
+  );
+  assert.strictEqual(
+    inspect(bar, { showHidden: true, getters: true, colors: false }),
+    'Bar [Map] {\n' +
+    '  [size]: 0,\n' +
+    '  prop: true,\n' +
+    '  prop2: true,\n' +
+    '  abc: true,\n' +
+    "  [xyz]: [Getter: 'YES!'],\n" +
+    '  [def]: [Getter/Setter: false]\n' +
+    '}'
+  );
+  assert.strictEqual(
+    inspect(bar, { showHidden: true, getters: false, colors: true }),
+    'Bar [Map] {\n' +
+    '  [size]: \x1B[33m0\x1B[39m,\n' +
+    '  prop: \x1B[33mtrue\x1B[39m,\n' +
+    '  prop2: \x1B[33mtrue\x1B[39m,\n' +
+    '  abc: \x1B[33mtrue\x1B[39m,\n' +
+    '  \x1B[2m[xyz]: \x1B[36m[Getter]\x1B[39m\x1B[22m,\n' +
+    '  \x1B[2m[def]: \x1B[36m[Getter/Setter]\x1B[39m\x1B[22m\n' +
+    '}'
+  );
+
+  const obj = Object.create({ abc: true, def: 5, toString() {} });
+  assert.strictEqual(
+    inspect(obj, { showHidden: true, colors: true }),
+    '{ \x1B[2mabc: \x1B[33mtrue\x1B[39m\x1B[22m, ' +
+      '\x1B[2mdef: \x1B[33m5\x1B[39m\x1B[22m }'
+  );
+}
+
+// Test changing util.inspect.colors colors and aliases.
+{
+  const colors = util.inspect.colors;
+
+  const originalValue = colors.gray;
+
+  // "grey" is reference-equal alias of "gray".
+  assert.strictEqual(colors.grey, colors.gray);
+
+  // Assigninging one should assign the other. This tests that the alias setter
+  // function keeps things reference-equal.
+  colors.gray = [0, 0];
+  assert.deepStrictEqual(colors.gray, [0, 0]);
+  assert.strictEqual(colors.grey, colors.gray);
+
+  colors.grey = [1, 1];
+  assert.deepStrictEqual(colors.grey, [1, 1]);
+  assert.strictEqual(colors.grey, colors.gray);
+
+  // Restore original value to avoid side effects in other tests.
+  colors.gray = originalValue;
+  assert.deepStrictEqual(colors.gray, originalValue);
+  assert.strictEqual(colors.grey, colors.gray);
+}
+
+// https://github.com/nodejs/node/issues/31889
+{
+  v8.setFlagsFromString('--allow-natives-syntax');
+  const undetectable = vm.runInThisContext('%GetUndetectable()');
+  v8.setFlagsFromString('--no-allow-natives-syntax');
+  assert.strictEqual(inspect(undetectable), '{}');
+}
+
+{
+  const x = 'a'.repeat(1e6);
+  assert.strictEqual(
+    util.inspect(x, { maxStringLength: 4 }),
+    "'aaaa'... 999996 more characters"
+  );
 }

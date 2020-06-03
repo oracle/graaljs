@@ -21,7 +21,12 @@
 
 'use strict';
 
-const { Object } = primordials;
+const {
+  Array,
+  ArrayIsArray,
+  ObjectDefineProperty,
+  ObjectFreeze,
+} = primordials;
 
 const {
   ERR_TLS_CERT_ALTNAME_INVALID,
@@ -51,8 +56,7 @@ const _tls_wrap = require('_tls_wrap');
 exports.CLIENT_RENEG_LIMIT = 3;
 exports.CLIENT_RENEG_WINDOW = 600;
 
-exports.DEFAULT_CIPHERS =
-    internalBinding('constants').crypto.defaultCipherList;
+exports.DEFAULT_CIPHERS = getOptionValue('--tls-cipher-list');
 
 exports.DEFAULT_ECDH_CURVE = 'auto';
 
@@ -82,10 +86,10 @@ exports.getCiphers = internalUtil.cachedResult(
 let rootCertificates;
 
 function cacheRootCertificates() {
-  rootCertificates = Object.freeze(getRootCertificates());
+  rootCertificates = ObjectFreeze(getRootCertificates());
 }
 
-Object.defineProperty(exports, 'rootCertificates', {
+ObjectDefineProperty(exports, 'rootCertificates', {
   configurable: false,
   enumerable: true,
   get: () => {
@@ -121,7 +125,7 @@ function convertProtocols(protocols) {
 
 exports.convertALPNProtocols = function convertALPNProtocols(protocols, out) {
   // If protocols is Array - translate it into buffer
-  if (Array.isArray(protocols)) {
+  if (ArrayIsArray(protocols)) {
     out.ALPNProtocols = convertProtocols(protocols);
   } else if (isArrayBufferView(protocols)) {
     // Copy new buffer not to be modified by user.
@@ -267,7 +271,7 @@ exports.checkServerIdentity = function checkServerIdentity(hostname, cert) {
       // Match against Common Name only if no supported identifiers exist.
       const cn = subject.CN;
 
-      if (Array.isArray(cn))
+      if (ArrayIsArray(cn))
         valid = cn.some(wildcard);
       else if (cn)
         valid = wildcard(cn);

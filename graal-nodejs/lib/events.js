@@ -22,20 +22,25 @@
 'use strict';
 
 const {
-  Math: {
-    min: MathMin
-  },
-  Object: {
-    defineProperty: ObjectDefineProperty,
-    getPrototypeOf: ObjectGetPrototypeOf,
-    create: ObjectCreate,
-    keys: ObjectKeys,
-  },
-  Reflect: {
-    apply: ReflectApply,
-    ownKeys: ReflectOwnKeys,
-  }
+  Array,
+  Boolean,
+  Error,
+  MathMin,
+  NumberIsNaN,
+  ObjectCreate,
+  ObjectDefineProperty,
+  ObjectGetPrototypeOf,
+  ObjectSetPrototypeOf,
+  Promise,
+  PromiseReject,
+  PromiseResolve,
+  ReflectApply,
+  ReflectOwnKeys,
+  Symbol,
+  SymbolFor,
+  SymbolAsyncIterator
 } = primordials;
+const kRejection = SymbolFor('nodejs.rejection');
 
 let spliceOne;
 
@@ -53,16 +58,45 @@ const {
   inspect
 } = require('internal/util/inspect');
 
-function EventEmitter() {
-  EventEmitter.init.call(this);
+const kCapture = Symbol('kCapture');
+const kErrorMonitor = Symbol('events.errorMonitor');
+
+function EventEmitter(opts) {
+  EventEmitter.init.call(this, opts);
 }
 module.exports = EventEmitter;
 module.exports.once = once;
+module.exports.on = on;
 
 // Backwards-compat with node 0.10.x
 EventEmitter.EventEmitter = EventEmitter;
 
 EventEmitter.usingDomains = false;
+
+EventEmitter.captureRejectionSymbol = kRejection;
+ObjectDefineProperty(EventEmitter, 'captureRejections', {
+  get() {
+    return EventEmitter.prototype[kCapture];
+  },
+  set(value) {
+    if (typeof value !== 'boolean') {
+      throw new ERR_INVALID_ARG_TYPE('EventEmitter.captureRejections',
+                                     'boolean', value);
+    }
+
+    EventEmitter.prototype[kCapture] = value;
+  },
+  enumerable: true
+});
+
+EventEmitter.errorMonitor = kErrorMonitor;
+
+// The default for captureRejections is false
+ObjectDefineProperty(EventEmitter.prototype, kCapture, {
+  value: false,
+  writable: true,
+  enumerable: false
+});
 
 EventEmitter.prototype._events = undefined;
 EventEmitter.prototype._eventsCount = 0;
@@ -84,7 +118,7 @@ ObjectDefineProperty(EventEmitter, 'defaultMaxListeners', {
     return defaultMaxListeners;
   },
   set: function(arg) {
-    if (typeof arg !== 'number' || arg < 0 || Number.isNaN(arg)) {
+    if (typeof arg !== 'number' || arg < 0 || NumberIsNaN(arg)) {
       throw new ERR_OUT_OF_RANGE('defaultMaxListeners',
                                  'a non-negative number',
                                  arg);
@@ -93,7 +127,7 @@ ObjectDefineProperty(EventEmitter, 'defaultMaxListeners', {
   }
 });
 
-EventEmitter.init = function() {
+EventEmitter.init = function(opts) {
 
   if (this._events === undefined ||
       this._events === ObjectGetPrototypeOf(this)._events) {
@@ -102,12 +136,68 @@ EventEmitter.init = function() {
   }
 
   this._maxListeners = this._maxListeners || undefined;
+
+
+  if (opts && opts.captureRejections) {
+    if (typeof opts.captureRejections !== 'boolean') {
+      throw new ERR_INVALID_ARG_TYPE('options.captureRejections',
+                                     'boolean', opts.captureRejections);
+    }
+    this[kCapture] = Boolean(opts.captureRejections);
+  } else {
+    // Assigning the kCapture property directly saves an expensive
+    // prototype lookup in a very sensitive hot path.
+    this[kCapture] = EventEmitter.prototype[kCapture];
+  }
 };
+
+function addCatch(that, promise, type, args) {
+  if (!that[kCapture]) {
+    return;
+  }
+
+  // Handle Promises/A+ spec, then could be a getter
+  // that throws on second use.
+  try {
+    const then = promise.then;
+
+    if (typeof then === 'function') {
+      then.call(promise, undefined, function(err) {
+        // The callback is called with nextTick to avoid a follow-up
+        // rejection from this promise.
+        process.nextTick(emitUnhandledRejectionOrErr, that, err, type, args);
+      });
+    }
+  } catch (err) {
+    that.emit('error', err);
+  }
+}
+
+function emitUnhandledRejectionOrErr(ee, err, type, args) {
+  if (typeof ee[kRejection] === 'function') {
+    ee[kRejection](err, type, ...args);
+  } else {
+    // We have to disable the capture rejections mechanism, otherwise
+    // we might end up in an infinite loop.
+    const prev = ee[kCapture];
+
+    // If the error handler throws, it is not catcheable and it
+    // will end up in 'uncaughtException'. We restore the previous
+    // value of kCapture in case the uncaughtException is present
+    // and the exception is handled.
+    try {
+      ee[kCapture] = false;
+      ee.emit('error', err);
+    } finally {
+      ee[kCapture] = prev;
+    }
+  }
+}
 
 // Obviously not all Emitters should be limited to 10. This function allows
 // that to be increased. Set to zero for unlimited.
 EventEmitter.prototype.setMaxListeners = function setMaxListeners(n) {
-  if (typeof n !== 'number' || n < 0 || Number.isNaN(n)) {
+  if (typeof n !== 'number' || n < 0 || NumberIsNaN(n)) {
     throw new ERR_OUT_OF_RANGE('n', 'a non-negative number', n);
   }
   this._maxListeners = n;
@@ -174,9 +264,11 @@ EventEmitter.prototype.emit = function emit(type, ...args) {
   let doError = (type === 'error');
 
   const events = this._events;
-  if (events !== undefined)
+  if (events !== undefined) {
+    if (doError && events[kErrorMonitor] !== undefined)
+      this.emit(kErrorMonitor, ...args);
     doError = (doError && events.error === undefined);
-  else if (!doError)
+  } else if (!doError)
     return false;
 
   // If there is no 'error' event listener then throw.
@@ -220,12 +312,29 @@ EventEmitter.prototype.emit = function emit(type, ...args) {
     return false;
 
   if (typeof handler === 'function') {
-    ReflectApply(handler, this, args);
+    const result = ReflectApply(handler, this, args);
+
+    // We check if result is undefined first because that
+    // is the most common case so we do not pay any perf
+    // penalty
+    if (result !== undefined && result !== null) {
+      addCatch(this, result, type, args);
+    }
   } else {
     const len = handler.length;
     const listeners = arrayClone(handler, len);
-    for (let i = 0; i < len; ++i)
-      ReflectApply(listeners[i], this, args);
+    for (let i = 0; i < len; ++i) {
+      const result = ReflectApply(listeners[i], this, args);
+
+      // We check if result is undefined first because that
+      // is the most common case so we do not pay any perf
+      // penalty.
+      // This code is duplicated because extracting it away
+      // would make it non-inlineable.
+      if (result !== undefined && result !== null) {
+        addCatch(this, result, type, args);
+      }
+    }
   }
 
   return true;
@@ -416,7 +525,7 @@ EventEmitter.prototype.removeAllListeners =
 
       // Emit removeListener for all listeners on all events
       if (arguments.length === 0) {
-        for (const key of ObjectKeys(events)) {
+        for (const key of ReflectOwnKeys(events)) {
           if (key === 'removeListener') continue;
           this.removeAllListeners(key);
         }
@@ -547,4 +656,103 @@ function once(emitter, name) {
 
     emitter.once(name, eventListener);
   });
+}
+
+const AsyncIteratorPrototype = ObjectGetPrototypeOf(
+  ObjectGetPrototypeOf(async function* () {}).prototype);
+
+function createIterResult(value, done) {
+  return { value, done };
+}
+
+function on(emitter, event) {
+  const unconsumedEvents = [];
+  const unconsumedPromises = [];
+  let error = null;
+  let finished = false;
+
+  const iterator = ObjectSetPrototypeOf({
+    next() {
+      // First, we consume all unread events
+      const value = unconsumedEvents.shift();
+      if (value) {
+        return PromiseResolve(createIterResult(value, false));
+      }
+
+      // Then we error, if an error happened
+      // This happens one time if at all, because after 'error'
+      // we stop listening
+      if (error) {
+        const p = PromiseReject(error);
+        // Only the first element errors
+        error = null;
+        return p;
+      }
+
+      // If the iterator is finished, resolve to done
+      if (finished) {
+        return PromiseResolve(createIterResult(undefined, true));
+      }
+
+      // Wait until an event happens
+      return new Promise(function(resolve, reject) {
+        unconsumedPromises.push({ resolve, reject });
+      });
+    },
+
+    return() {
+      emitter.removeListener(event, eventHandler);
+      emitter.removeListener('error', errorHandler);
+      finished = true;
+
+      for (const promise of unconsumedPromises) {
+        promise.resolve(createIterResult(undefined, true));
+      }
+
+      return PromiseResolve(createIterResult(undefined, true));
+    },
+
+    throw(err) {
+      if (!err || !(err instanceof Error)) {
+        throw new ERR_INVALID_ARG_TYPE('EventEmitter.AsyncIterator',
+                                       'Error', err);
+      }
+      error = err;
+      emitter.removeListener(event, eventHandler);
+      emitter.removeListener('error', errorHandler);
+    },
+
+    [SymbolAsyncIterator]() {
+      return this;
+    }
+  }, AsyncIteratorPrototype);
+
+  emitter.on(event, eventHandler);
+  emitter.on('error', errorHandler);
+
+  return iterator;
+
+  function eventHandler(...args) {
+    const promise = unconsumedPromises.shift();
+    if (promise) {
+      promise.resolve(createIterResult(args, false));
+    } else {
+      unconsumedEvents.push(args);
+    }
+  }
+
+  function errorHandler(err) {
+    finished = true;
+
+    const toError = unconsumedPromises.shift();
+
+    if (toError) {
+      toError.reject(err);
+    } else {
+      // The next time we call next()
+      error = err;
+    }
+
+    iterator.return();
+  }
 }

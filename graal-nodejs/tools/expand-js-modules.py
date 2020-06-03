@@ -82,12 +82,8 @@ def ProcessModules(sources, outdir):
         else:
             modules.append(s)
 
-    (consts, macros) = js2c.ReadMacros(macro_files)
-
     for m in modules:
         contents = js2c.ReadFile(m)
-        contents = js2c.ExpandConstants(contents, consts)
-        contents = js2c.ExpandMacros(contents, macros)
         contents = WrapModule(m, contents)
 
         outpath = os.path.join(outdir, m)

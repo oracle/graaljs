@@ -23,8 +23,8 @@ Package linking is a two-step process.
 
 First, `npm link` in a package folder will create a symlink in the global folder
 `{prefix}/lib/node_modules/<package>` that links to the package where the `npm
-link` command was executed. (see [`npm-config`](npm-config) for the value of `prefix`). It
-will also link any bins in the package to `{prefix}/bin/{name}`.
+link` command was executed. It will also link any bins in the package to `{prefix}/bin/{name}`.
+Note that `npm link` uses the global prefix (see `npm prefix -g` for its value).
 
 Next, in some other location, `npm link package-name` will create a
 symbolic link from globally-installed `package-name` to `node_modules/`
@@ -86,7 +86,7 @@ npm link @myorg/privatepackage
 
 * [npm developers](/using-npm/developers)
 * [package.json](/configuring-npm/package-json)
-* [npm- nstall](/cli-commands/npm-install)
+* [npm- nstall](/cli-commands/install)
 * [npm folders](/configuring-npm/folders)
-* [npm config](/cli-commands/npm-config)
+* [npm config](/cli-commands/config)
 * [npmrc](/configuring-npm/npmrc)

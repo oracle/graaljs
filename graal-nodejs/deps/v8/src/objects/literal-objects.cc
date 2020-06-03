@@ -363,7 +363,7 @@ class ObjectDescriptor {
 
   void Finalize(Isolate* isolate) {
     if (HasDictionaryProperties()) {
-      properties_dictionary_template_->SetNextEnumerationIndex(
+      properties_dictionary_template_->set_next_enumeration_index(
           next_enumeration_index_);
       computed_properties_ = FixedArray::ShrinkOrEmpty(
           isolate, computed_properties_, current_computed_index_);
@@ -528,8 +528,7 @@ Handle<ClassBoilerplate> ClassBoilerplate::BuildClassBoilerplate(
 
   // Add name accessor to the class object if necessary.
   bool install_class_name_accessor = false;
-  if (!expr->has_name_static_property() &&
-      expr->constructor()->has_shared_name()) {
+  if (!expr->has_name_static_property()) {
     if (static_desc.HasDictionaryProperties()) {
       // Install class name accessor if necessary during class literal
       // instantiation.

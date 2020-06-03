@@ -81,6 +81,14 @@ void MemoryTracker::TrackFieldWithSize(const char* edge_name,
   if (size > 0) AddNode(GetNodeName(node_name, edge_name), size, edge_name);
 }
 
+void MemoryTracker::TrackInlineFieldWithSize(const char* edge_name,
+                                             size_t size,
+                                             const char* node_name) {
+  if (size > 0) AddNode(GetNodeName(node_name, edge_name), size, edge_name);
+  CHECK(CurrentNode());
+  CurrentNode()->size_ -= size;
+}
+
 void MemoryTracker::TrackField(const char* edge_name,
                                const MemoryRetainer& value,
                                const char* node_name) {
@@ -99,13 +107,21 @@ void MemoryTracker::TrackField(const char* edge_name,
   }
 }
 
-template <typename T>
+template <typename T, typename D>
 void MemoryTracker::TrackField(const char* edge_name,
-                               const std::unique_ptr<T>& value,
+                               const std::unique_ptr<T, D>& value,
                                const char* node_name) {
   if (value.get() == nullptr) {
     return;
   }
+  TrackField(edge_name, value.get(), node_name);
+}
+
+template <typename T, bool kIsWeak>
+void MemoryTracker::TrackField(const char* edge_name,
+                               const BaseObjectPtrImpl<T, kIsWeak>& value,
+                               const char* node_name) {
+  if (value.get() == nullptr) return;
   TrackField(edge_name, value.get(), node_name);
 }
 
@@ -222,6 +238,12 @@ void MemoryTracker::TrackField(const char* name,
                                const uv_async_t& value,
                                const char* node_name) {
   TrackFieldWithSize(name, sizeof(value), "uv_async_t");
+}
+
+void MemoryTracker::TrackInlineField(const char* name,
+                                     const uv_async_t& value,
+                                     const char* node_name) {
+  TrackInlineFieldWithSize(name, sizeof(value), "uv_async_t");
 }
 
 template <class NativeT, class V8T>

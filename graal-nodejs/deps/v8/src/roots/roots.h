@@ -97,7 +97,6 @@ class Symbol;
   V(Map, global_dictionary_map, GlobalDictionaryMap)                           \
   V(Map, many_closures_cell_map, ManyClosuresCellMap)                          \
   V(Map, module_info_map, ModuleInfoMap)                                       \
-  V(Map, mutable_heap_number_map, MutableHeapNumberMap)                        \
   V(Map, name_dictionary_map, NameDictionaryMap)                               \
   V(Map, no_closures_cell_map, NoClosuresCellMap)                              \
   V(Map, number_dictionary_map, NumberDictionaryMap)                           \
@@ -199,6 +198,9 @@ class Symbol;
     TrampolineTrivialCodeDataContainer)                                        \
   V(CodeDataContainer, trampoline_promise_rejection_code_data_container,       \
     TrampolinePromiseRejectionCodeDataContainer)                               \
+  /* Canonical scope infos */                                                  \
+  V(ScopeInfo, global_this_binding_scope_info, GlobalThisBindingScopeInfo)     \
+  V(ScopeInfo, empty_function_scope_info, EmptyFunctionScopeInfo)              \
   /* Hash seed */                                                              \
   V(ByteArray, hash_seed, HashSeed)
 
@@ -253,8 +255,6 @@ class Symbol;
   /* Feedback vectors that we need for code coverage or type profile */    \
   V(Object, feedback_vectors_for_profiling_tools,                          \
     FeedbackVectorsForProfilingTools)                                      \
-  V(WeakArrayList, noscript_shared_function_infos,                         \
-    NoScriptSharedFunctionInfos)                                           \
   V(FixedArray, serialized_objects, SerializedObjects)                     \
   V(FixedArray, serialized_global_proxy_sizes, SerializedGlobalProxySizes) \
   V(TemplateList, message_listeners, MessageListeners)                     \
@@ -270,8 +270,6 @@ class Symbol;
 
 // Entries in this list are limited to Smis and are not visited during GC.
 #define SMI_ROOT_LIST(V)                                                       \
-  V(Smi, stack_limit, StackLimit)                                              \
-  V(Smi, real_stack_limit, RealStackLimit)                                     \
   V(Smi, last_script_id, LastScriptId)                                         \
   V(Smi, last_debugging_id, LastDebuggingId)                                   \
   /* To distinguish the function templates, so that we can find them in the */ \

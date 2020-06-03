@@ -85,6 +85,7 @@ module.exports = {
     'comma-style': 'error',
     'computed-property-spacing': 'error',
     'constructor-super': 'error',
+    'default-case-last': 'error',
     'dot-location': ['error', 'property'],
     'dot-notation': 'error',
     'eol-last': 'error',
@@ -244,6 +245,10 @@ module.exports = {
         selector: "CallExpression[callee.property.name='strictEqual'][arguments.0.type='Literal']:not([arguments.1.type='Literal']):not([arguments.1.type='ObjectExpression']):not([arguments.1.type='ArrayExpression']):not([arguments.1.type='UnaryExpression'])",
         message: 'The first argument should be the `actual`, not the `expected` value.',
       },
+      {
+        selector: "CallExpression[callee.name='isNaN']",
+        message: 'Use Number.isNaN() instead of the global isNaN() function.',
+      },
     ],
     /* eslint-enable max-len */
     'no-return-await': 'error',
@@ -269,6 +274,7 @@ module.exports = {
       functions: false,
       variables: false,
     }],
+    'no-useless-backreference': 'error',
     'no-useless-call': 'error',
     'no-useless-catch': 'error',
     'no-useless-concat': 'error',
@@ -324,5 +330,6 @@ module.exports = {
     TextEncoder: 'readable',
     TextDecoder: 'readable',
     queueMicrotask: 'readable',
+    globalThis: 'readable',
   },
 };

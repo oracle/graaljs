@@ -167,7 +167,7 @@ consts_misc = [
     { 'name': 'bit_field3_number_of_own_descriptors_shift',
         'value': 'Map::NumberOfOwnDescriptorsBits::kShift' },
     { 'name': 'class_Map__instance_descriptors_offset',
-       'value': 'Map::kInstanceDescriptorsOffset' },
+        'value': 'Map::kInstanceDescriptorsOffset' },
 
     { 'name': 'off_fp_context_or_frame_type',
         'value': 'CommonFrameConstants::kContextOrFrameTypeOffset'},
@@ -230,15 +230,6 @@ consts_misc = [
 
     { 'name': 'class_SharedFunctionInfo__function_data__Object',
         'value': 'SharedFunctionInfo::kFunctionDataOffset' },
-
-    { 'name': 'class_ConsString__first_offset__int',
-        'value': 'ConsString::kFirstOffset' },
-    { 'name': 'class_ConsString__second_offset__int',
-        'value': 'ConsString::kSecondOffset' },
-    { 'name': 'class_SlicedString__offset_offset__int',
-        'value': 'SlicedString::kOffsetOffset' },
-    { 'name': 'class_ThinString__actual_offset__int',
-        'value': 'ThinString::kActualOffset' },
 ];
 
 #
@@ -260,6 +251,8 @@ extras_accessors = [
     'JSArrayBuffer, byte_length, size_t, kByteLengthOffset',
     'JSArrayBufferView, byte_length, size_t, kByteLengthOffset',
     'JSArrayBufferView, byte_offset, size_t, kByteOffsetOffset',
+    'JSDate, value, Object, kValueOffset',
+    'JSRegExp, source, Object, kSourceOffset',
     'JSTypedArray, external_pointer, uintptr_t, kExternalPointerOffset',
     'JSTypedArray, length, Object, kLengthOffset',
     'Map, instance_size_in_words, char, kInstanceSizeInWordsOffset',
@@ -284,6 +277,12 @@ extras_accessors = [
     'Code, instruction_start, uintptr_t, kHeaderSize',
     'Code, instruction_size, int, kInstructionSizeOffset',
     'String, length, int32_t, kLengthOffset',
+    'DescriptorArray, header_size, uintptr_t, kHeaderSize',
+    'ConsString, first, String, kFirstOffset',
+    'ConsString, second, String, kSecondOffset',
+    'SlicedString, offset, SMI, kOffsetOffset',
+    'ThinString, actual, String, kActualOffset',
+    'Symbol, name, Object, kNameOffset',
 ];
 
 #
@@ -294,7 +293,8 @@ extras_accessors = [
 expected_classes = [
     'ConsString', 'FixedArray', 'HeapNumber', 'JSArray', 'JSFunction',
     'JSObject', 'JSRegExp', 'JSPrimitiveWrapper', 'Map', 'Oddball', 'Script',
-    'SeqOneByteString', 'SharedFunctionInfo', 'ScopeInfo', 'JSPromise'
+    'SeqOneByteString', 'SharedFunctionInfo', 'ScopeInfo', 'JSPromise',
+    'DescriptorArray'
 ];
 
 

@@ -334,10 +334,14 @@ class Parser : public AsyncWrap, public StreamListener {
 
     argv[A_UPGRADE] = Boolean::New(env()->isolate(), parser_.upgrade);
 
-    AsyncCallbackScope callback_scope(env());
-
-    MaybeLocal<Value> head_response =
-        MakeCallback(cb.As<Function>(), arraysize(argv), argv);
+    MaybeLocal<Value> head_response;
+    {
+      InternalCallbackScope callback_scope(
+          this, InternalCallbackScope::kSkipTaskQueues);
+      head_response = cb.As<Function>()->Call(
+          env()->context(), object(), arraysize(argv), argv);
+      if (head_response.IsEmpty()) callback_scope.MarkAsFailed();
+    }
 
     int64_t val;
 
@@ -405,9 +409,13 @@ class Parser : public AsyncWrap, public StreamListener {
     if (!cb->IsFunction())
       return 0;
 
-    AsyncCallbackScope callback_scope(env());
-
-    MaybeLocal<Value> r = MakeCallback(cb.As<Function>(), 0, nullptr);
+    MaybeLocal<Value> r;
+    {
+      InternalCallbackScope callback_scope(
+          this, InternalCallbackScope::kSkipTaskQueues);
+      r = cb.As<Function>()->Call(env()->context(), object(), 0, nullptr);
+      if (r.IsEmpty()) callback_scope.MarkAsFailed();
+    }
 
     if (r.IsEmpty()) {
       got_exception_ = true;
@@ -614,7 +622,7 @@ class Parser : public AsyncWrap, public StreamListener {
     // Once we’re done here, either indicate that the HTTP parser buffer
     // is free for re-use, or free() the data if it didn’t come from there
     // in the first place.
-    OnScopeLeave on_scope_leave([&]() {
+    auto on_scope_leave = OnScopeLeave([&]() {
       if (buf.base == env()->http_parser_buffer())
         env()->set_http_parser_buffer_in_use(false);
       else
@@ -932,7 +940,7 @@ void InitializeHttpParser(Local<Object> target,
                           void* priv) {
   Environment* env = Environment::GetCurrent(context);
   Local<FunctionTemplate> t = env->NewFunctionTemplate(Parser::New);
-  t->InstanceTemplate()->SetInternalFieldCount(1);
+  t->InstanceTemplate()->SetInternalFieldCount(Parser::kInternalFieldCount);
   t->SetClassName(FIXED_ONE_BYTE_STRING(env->isolate(), "HTTPParser"));
 
   t->Set(FIXED_ONE_BYTE_STRING(env->isolate(), "REQUEST"),

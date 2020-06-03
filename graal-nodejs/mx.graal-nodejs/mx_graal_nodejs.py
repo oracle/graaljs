@@ -171,6 +171,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
                 '--without-dtrace',
                 '--without-snapshot',
                 '--without-node-snapshot',
+                '--without-node-code-cache',
                 '--java-home', _java_home()
                 ] + debug + shared_library + lazy_generator + extra_flags,
                 cwd=_suite.dir, print_cmd=True, env=build_env)

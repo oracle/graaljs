@@ -1,6 +1,10 @@
 'use strict';
 
-const { Object } = primordials;
+const {
+  Map,
+  ObjectKeys,
+  ObjectValues,
+} = primordials;
 
 const assert = require('internal/assert');
 const { fork } = require('child_process');
@@ -10,13 +14,12 @@ const RoundRobinHandle = require('internal/cluster/round_robin_handle');
 const SharedHandle = require('internal/cluster/shared_handle');
 const Worker = require('internal/cluster/worker');
 const { internal, sendHelper } = require('internal/cluster/utils');
-const { ERR_SOCKET_BAD_PORT } = require('internal/errors').codes;
 const cluster = new EventEmitter();
 const intercom = new EventEmitter();
 const SCHED_NONE = 1;
 const SCHED_RR = 2;
-const { isLegalPort } = require('internal/net');
 const [ minPort, maxPort ] = [ 1024, 65535 ];
+const { validatePort } = require('internal/validators');
 
 module.exports = cluster;
 
@@ -63,7 +66,7 @@ cluster.setupMaster = function(options) {
   // process has its own memory mappings.)
   if (settings.execArgv.some((s) => s.startsWith('--prof')) &&
       !settings.execArgv.some((s) => s.startsWith('--logfile='))) {
-    settings.execArgv = settings.execArgv.concat(['--logfile=v8-%p.log']);
+    settings.execArgv = [...settings.execArgv, '--logfile=v8-%p.log'];
   }
 
   cluster.settings = settings;
@@ -82,7 +85,7 @@ cluster.setupMaster = function(options) {
     if (message.cmd !== 'NODE_DEBUG_ENABLED')
       return;
 
-    for (const worker of Object.values(cluster.workers)) {
+    for (const worker of ObjectValues(cluster.workers)) {
       if (worker.state === 'online' || worker.state === 'listening') {
         process._debugProcess(worker.process.pid);
       } else {
@@ -100,7 +103,7 @@ function setupSettingsNT(settings) {
 
 function createWorkerProcess(id, env) {
   const workerEnv = { ...process.env, ...env, NODE_UNIQUE_ID: `${id}` };
-  const execArgv = cluster.settings.execArgv.slice();
+  const execArgv = [...cluster.settings.execArgv];
   const debugArgRegex = /--inspect(?:-brk|-port)?|--debug-port/;
   const nodeOptions = process.env.NODE_OPTIONS ?
     process.env.NODE_OPTIONS : '';
@@ -114,9 +117,7 @@ function createWorkerProcess(id, env) {
       else
         inspectPort = cluster.settings.inspectPort;
 
-      if (!isLegalPort(inspectPort)) {
-        throw new ERR_SOCKET_BAD_PORT(inspectPort);
-      }
+      validatePort(inspectPort);
     } else {
       inspectPort = process.debugPort + debugPortOffset;
       if (inspectPort > maxPort)
@@ -130,6 +131,7 @@ function createWorkerProcess(id, env) {
   return fork(cluster.settings.exec, cluster.settings.args, {
     cwd: cluster.settings.cwd,
     env: workerEnv,
+    serialization: cluster.settings.serialization,
     silent: cluster.settings.silent,
     windowsHide: cluster.settings.windowsHide,
     execArgv: execArgv,
@@ -143,7 +145,7 @@ function removeWorker(worker) {
   assert(worker);
   delete cluster.workers[worker.id];
 
-  if (Object.keys(cluster.workers).length === 0) {
+  if (ObjectKeys(cluster.workers).length === 0) {
     assert(handles.size === 0, 'Resource leak detected.');
     intercom.emit('disconnect');
   }
@@ -221,12 +223,12 @@ function emitForkNT(worker) {
 }
 
 cluster.disconnect = function(cb) {
-  const workers = Object.keys(cluster.workers);
+  const workers = ObjectKeys(cluster.workers);
 
   if (workers.length === 0) {
     process.nextTick(() => intercom.emit('disconnect'));
   } else {
-    for (const worker of Object.values(cluster.workers)) {
+    for (const worker of ObjectValues(cluster.workers)) {
       if (worker.isConnected()) {
         worker.disconnect();
       }
@@ -295,12 +297,7 @@ function queryServer(worker, message) {
       constructor = SharedHandle;
     }
 
-    handle = new constructor(key,
-                             address,
-                             message.port,
-                             message.addressType,
-                             message.fd,
-                             message.flags);
+    handle = new constructor(key, address, message);
     handles.set(key, handle);
   }
 

@@ -331,8 +331,8 @@ TEST(Utf8AdvanceUntilOverChunkBoundaries) {
   for (size_t i = 1; i < len; i++) {
     // Copy source string into buffer, splitting it at i.
     // Then add three chunks, 0..i-1, i..strlen-1, empty.
-    strncpy(buffer, unicode_utf8, i);
-    strncpy(buffer + i + 1, unicode_utf8 + i, len - i);
+    memcpy(buffer, unicode_utf8, i);
+    memcpy(buffer + i + 1, unicode_utf8 + i, len - i);
     buffer[i] = '\0';
     buffer[len + 1] = '\n';
     buffer[len + 2] = '\0';
@@ -360,8 +360,8 @@ TEST(Utf8ChunkBoundaries) {
   for (size_t i = 1; i < len; i++) {
     // Copy source string into buffer, splitting it at i.
     // Then add three chunks, 0..i-1, i..strlen-1, empty.
-    strncpy(buffer, unicode_utf8, i);
-    strncpy(buffer + i + 1, unicode_utf8 + i, len - i);
+    memcpy(buffer, unicode_utf8, i);
+    memcpy(buffer + i + 1, unicode_utf8 + i, len - i);
     buffer[i] = '\0';
     buffer[len + 1] = '\0';
     buffer[len + 2] = '\0';
@@ -774,6 +774,43 @@ TEST(RelocatingCharacterStream) {
   CHECK_NE(raw, *two_byte_string);
   CHECK_EQ('c', two_byte_string_stream->Advance());
   CHECK_EQ('d', two_byte_string_stream->Advance());
+}
+
+TEST(RelocatingUnbufferedCharacterStream) {
+  ManualGCScope manual_gc_scope;
+  CcTest::InitializeVM();
+  i::Isolate* i_isolate = CcTest::i_isolate();
+  v8::HandleScope scope(CcTest::isolate());
+
+  const char16_t* string = u"abc\u2603";
+  int length = static_cast<int>(std::char_traits<char16_t>::length(string));
+  std::unique_ptr<i::uc16[]> uc16_buffer(new i::uc16[length]);
+  for (int i = 0; i < length; i++) {
+    uc16_buffer[i] = string[i];
+  }
+  i::Vector<const i::uc16> two_byte_vector(uc16_buffer.get(), length);
+  i::Handle<i::String> two_byte_string =
+      i_isolate->factory()
+          ->NewStringFromTwoByte(two_byte_vector, i::AllocationType::kYoung)
+          .ToHandleChecked();
+  std::unique_ptr<i::Utf16CharacterStream> two_byte_string_stream(
+      i::ScannerStream::For(i_isolate, two_byte_string, 0, length));
+
+  // Seek to offset 2 so that the buffer_pos_ is not zero initially.
+  two_byte_string_stream->Seek(2);
+  CHECK_EQ('c', two_byte_string_stream->Advance());
+  CHECK_EQ(size_t{3}, two_byte_string_stream->pos());
+
+  i::String raw = *two_byte_string;
+  i_isolate->heap()->CollectGarbage(i::NEW_SPACE,
+                                    i::GarbageCollectionReason::kUnknown);
+  // GC moved the string and buffer was updated to the correct location.
+  CHECK_NE(raw, *two_byte_string);
+
+  // Check that we correctly moved based on buffer_pos_, not based on a position
+  // of zero.
+  CHECK_EQ(u'\u2603', two_byte_string_stream->Advance());
+  CHECK_EQ(size_t{4}, two_byte_string_stream->pos());
 }
 
 TEST(CloneCharacterStreams) {

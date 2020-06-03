@@ -297,7 +297,7 @@ v8:
 	tools/make-v8.sh $(V8_ARCH).$(BUILDTYPE_LOWER) $(V8_BUILD_OPTIONS)
 
 .PHONY: jstest
-jstest: build-addons build-js-native-api-tests build-node-api-tests ## Runs addon tests and JS tests
+jstest: build-addons build-abort-tests build-js-native-api-tests build-node-api-tests ## Runs addon tests and JS tests
 	$(PYTHON) tools/test.py $(PARALLEL_ARGS) --mode=$(BUILDTYPE_LOWER) \
 		--skip-tests=$(CI_SKIP_TESTS) \
 		$(CI_JS_SUITES) \
@@ -321,6 +321,7 @@ test: all ## Runs default tests, linters, and builds docs.
 	$(MAKE) -s tooltest
 	$(MAKE) -s test-doc
 	$(MAKE) -s build-addons
+	$(MAKE) -s build-abort-tests
 	$(MAKE) -s build-js-native-api-tests
 	$(MAKE) -s build-node-api-tests
 	$(MAKE) -s cctest
@@ -329,6 +330,7 @@ test: all ## Runs default tests, linters, and builds docs.
 .PHONY: test-only
 test-only: all  ## For a quick test, does not run linter or build docs.
 	$(MAKE) build-addons
+	$(MAKE) build-abort-tests
 	$(MAKE) build-js-native-api-tests
 	$(MAKE) build-node-api-tests
 	$(MAKE) cctest
@@ -338,6 +340,7 @@ test-only: all  ## For a quick test, does not run linter or build docs.
 # Used by `make coverage-test`
 test-cov: all
 	$(MAKE) build-addons
+	$(MAKE) build-abort-tests
 	$(MAKE) build-js-native-api-tests
 	$(MAKE) build-node-api-tests
 	$(MAKE) cctest
@@ -457,6 +460,31 @@ test/node-api/.buildstamp: $(ADDONS_PREREQS) \
 # TODO(bnoordhuis) Force rebuild after gyp or node-gyp update.
 build-node-api-tests: | $(NODE_EXE) test/node-api/.buildstamp
 
+ABORT_BINDING_GYPS := \
+	$(filter-out test/abort/??_*/binding.gyp, \
+		$(wildcard test/abort/*/binding.gyp))
+
+ABORT_BINDING_SOURCES := \
+	$(filter-out test/abort/??_*/*.c, $(wildcard test/abort/*/*.c)) \
+	$(filter-out test/abort/??_*/*.cc, $(wildcard test/abort/*/*.cc)) \
+	$(filter-out test/abort/??_*/*.h, $(wildcard test/abort/*/*.h))
+
+# Implicitly depends on $(NODE_EXE), see the build-node-api-tests rule for rationale.
+test/abort/.buildstamp: $(ADDONS_PREREQS) \
+	$(ABORT_BINDING_GYPS) $(ABORT_BINDING_SOURCES) \
+	src/node_api.h src/node_api_types.h src/js_native_api.h \
+	src/js_native_api_types.h src/js_native_api_v8.h src/js_native_api_v8_internals.h
+	@$(call run_build_addons,"$$PWD/test/abort",$@)
+
+.PHONY: build-abort-tests
+# .buildstamp needs $(NODE_EXE) but cannot depend on it
+# directly because it calls make recursively.  The parent make cannot know
+# if the subprocess touched anything so it pessimistically assumes that
+# .buildstamp is out of date and need a rebuild.
+# Just goes to show that recursive make really is harmful...
+# TODO(bnoordhuis) Force rebuild after gyp or node-gyp update.
+build-abort-tests: | $(NODE_EXE) test/abort/.buildstamp
+
 BENCHMARK_NAPI_BINDING_GYPS := $(wildcard benchmark/napi/*/binding.gyp)
 
 BENCHMARK_NAPI_BINDING_SOURCES := \
@@ -477,11 +505,13 @@ clear-stalled:
 		echo $${PS_OUT} | xargs kill -9; \
 	fi
 
-test-build: | all build-addons build-js-native-api-tests build-node-api-tests
+test-build: | all build-addons build-abort-tests build-js-native-api-tests build-node-api-tests
 
 test-build-js-native-api: all build-js-native-api-tests
 
 test-build-node-api: all build-node-api-tests
+
+test-build-abort: all build-abort-tests
 
 .PHONY: test-all
 test-all: test-build ## Run default tests with both Debug and Release builds.
@@ -495,7 +525,7 @@ test-all-suites: | clear-stalled test-build bench-addons-build doc-only ## Run a
 	$(PYTHON) tools/test.py $(PARALLEL_ARGS) --mode=$(BUILDTYPE_LOWER) test/*
 
 # CI_* variables should be kept synchronized with the ones in vcbuild.bat
-CI_NATIVE_SUITES ?= addons js-native-api node-api
+CI_NATIVE_SUITES ?= addons js-native-api node-api abort
 CI_JS_SUITES ?= default
 ifeq ($(node_use_openssl), false)
 	CI_DOC := doctool
@@ -507,7 +537,7 @@ endif
 # Build and test addons without building anything else
 # Related CI job: node-test-commit-arm-fanned
 test-ci-native: LOGLEVEL := info
-test-ci-native: | test/addons/.buildstamp test/js-native-api/.buildstamp test/node-api/.buildstamp
+test-ci-native: | test/addons/.buildstamp test/js-native-api/.buildstamp test/node-api/.buildstamp test/abort/.buildstamp
 	$(PYTHON) tools/test.py $(PARALLEL_ARGS) -p tap --logfile test.tap \
 		--mode=$(BUILDTYPE_LOWER) --flaky-tests=$(FLAKY_TESTS) \
 		$(TEST_CI_ARGS) $(CI_NATIVE_SUITES)
@@ -529,7 +559,7 @@ test-ci-js: | clear-stalled
 .PHONY: test-ci
 # Related CI jobs: most CI tests, excluding node-test-commit-arm-fanned
 test-ci: LOGLEVEL := info
-test-ci: | clear-stalled build-addons build-js-native-api-tests build-node-api-tests doc-only
+test-ci: | clear-stalled build-addons build-abort-tests build-js-native-api-tests build-node-api-tests doc-only
 	out/Release/cctest --gtest_output=xml:out/junit/cctest.xml
 	$(PYTHON) tools/test.py $(PARALLEL_ARGS) -p tap --logfile test.tap \
 		--mode=$(BUILDTYPE_LOWER) --flaky-tests=$(FLAKY_TESTS) \
@@ -604,6 +634,7 @@ test-doc: doc-only lint ## Builds, lints, and verifies the docs.
 	else \
 		$(PYTHON) tools/test.py $(PARALLEL_ARGS) doctool; \
 	fi
+	$(NODE) tools/doc/checkLinks.js .
 
 test-known-issues: all
 	$(PYTHON) tools/test.py $(PARALLEL_ARGS) known_issues
@@ -633,8 +664,17 @@ test-node-api-clean:
 	$(RM) -r test/node-api/*/build
 	$(RM) test/node-api/.buildstamp
 
+.PHONY: test-abort
+test-abort: test-build-abort
+	$(PYTHON) tools/test.py $(PARALLEL_ARGS) --mode=$(BUILDTYPE_LOWER) test-abort
+
+.PHONY: test-abort-clean
+test-abort-clean:
+	$(RM) -r test/abort/*/build
+	$(RM) test/abort/.buildstamp
+
 .PHONY: test-addons
-test-addons: test-build test-js-native-api test-node-api
+test-addons: test-build test-js-native-api test-node-api test-abort
 	$(PYTHON) tools/test.py $(PARALLEL_ARGS) --mode=$(BUILDTYPE_LOWER) addons
 
 .PHONY: test-addons-clean
@@ -644,6 +684,7 @@ test-addons-clean:
 	$(RM) test/addons/.buildstamp test/addons/.docbuildstamp
 	$(MAKE) test-js-native-api-clean
 	$(MAKE) test-node-api-clean
+	$(MAKE) test-abort-clean
 
 test-async-hooks:
 	$(PYTHON) tools/test.py $(PARALLEL_ARGS) --mode=$(BUILDTYPE_LOWER) async-hooks
@@ -652,6 +693,7 @@ test-with-async-hooks:
 	$(MAKE) build-addons
 	$(MAKE) build-js-native-api-tests
 	$(MAKE) build-node-api-tests
+	$(MAKE) build-abort-tests
 	$(MAKE) cctest
 	NODE_TEST_WITH_ASYNC_HOOKS=1 $(PYTHON) tools/test.py $(PARALLEL_ARGS) --mode=$(BUILDTYPE_LOWER) \
 		$(CI_JS_SUITES) \
@@ -743,15 +785,22 @@ out/doc/api/assets/%: doc/api_assets/% out/doc/api/assets
 run-npm-ci = $(PWD)/$(NPM) ci
 
 LINK_DATA = out/doc/apilinks.json
+VERSIONS_DATA = out/previous-doc-versions.json
 gen-api = tools/doc/generate.js --node-version=$(FULLVERSION) \
-		--apilinks=$(LINK_DATA) $< --output-directory=out/doc/api
+		--apilinks=$(LINK_DATA) $< --output-directory=out/doc/api \
+		--versions-file=$(VERSIONS_DATA)
 gen-apilink = tools/doc/apilinks.js $(LINK_DATA) $(wildcard lib/*.js)
 
 $(LINK_DATA): $(wildcard lib/*.js) tools/doc/apilinks.js
 	$(call available-node, $(gen-apilink))
 
+# Regenerate previous versions data if the current version changes
+$(VERSIONS_DATA): CHANGELOG.md src/node_version.h tools/doc/versions.js
+	$(call available-node, tools/doc/versions.js $@)
+
 out/doc/api/%.json out/doc/api/%.html: doc/api/%.md tools/doc/generate.js \
-	tools/doc/markdown.js tools/doc/html.js tools/doc/json.js tools/doc/apilinks.js | $(LINK_DATA)
+	tools/doc/markdown.js tools/doc/html.js tools/doc/json.js \
+	tools/doc/apilinks.js $(VERSIONS_DATA) | $(LINK_DATA)
 	$(call available-node, $(gen-api))
 
 out/doc/api/all.html: $(apidocs_html) tools/doc/allhtml.js \
@@ -768,6 +817,7 @@ docopen: $(apidocs_html)
 .PHONY: docclean
 docclean:
 	$(RM) -r out/doc
+	$(RM) "$(VERSIONS_DATA)"
 
 RAWVER=$(shell $(PYTHON) tools/getnodeversion.py)
 VERSION=v$(RAWVER)
@@ -847,6 +897,7 @@ endif
 endif
 endif
 endif
+endif
 ifeq ($(DESTCPU),x64)
 ARCH=x64
 else
@@ -869,7 +920,6 @@ ifeq ($(DESTCPU),s390x)
 ARCH=s390x
 else
 ARCH=x86
-endif
 endif
 endif
 endif
@@ -929,12 +979,12 @@ endif
 .PHONY: release-only
 release-only: check-xz
 	@if [ "$(DISTTYPE)" = "release" ] && `grep -q REPLACEME doc/api/*.md`; then \
-		echo 'Please update REPLACEME in Added: tags in doc/api/*.md (See doc/releases.md)' ; \
+		echo 'Please update REPLACEME in Added: tags in doc/api/*.md (See doc/guides/releases.md)' ; \
 		exit 1 ; \
 	fi
 	@if [ "$(DISTTYPE)" = "release" ] && \
 		`grep -q DEP...X doc/api/deprecations.md`; then \
-		echo 'Please update DEP...X in doc/api/deprecations.md (See doc/releases.md)' ; \
+		echo 'Please update DEP...X in doc/api/deprecations.md (See doc/guides/releases.md)' ; \
 		exit 1 ; \
 	fi
 	@if [ "$(shell git status --porcelain | egrep -v '^\?\? ')" = "" ]; then \
@@ -1008,6 +1058,7 @@ $(PKG): release-only
 		--resources $(MACOSOUTDIR)/installer/productbuild/Resources \
 		--package-path $(MACOSOUTDIR)/pkgs ./$(PKG)
 	SIGN="$(PRODUCTSIGN_CERT)" PKG="$(PKG)" bash tools/osx-productsign.sh
+	bash tools/osx-notarize.sh $(FULLVERSION)
 
 .PHONY: pkg
 # Builds the macOS installer for releases.
@@ -1037,7 +1088,6 @@ $(TARBALL): release-only $(NODE_EXE) doc
 	$(RM) -r $(TARNAME)/deps/v8/samples
 	$(RM) -r $(TARNAME)/deps/v8/tools/profviz
 	$(RM) -r $(TARNAME)/deps/v8/tools/run-tests.py
-	$(RM) -r $(TARNAME)/deps/zlib/contrib # too big, unused
 	$(RM) -r $(TARNAME)/doc/images # too big
 	$(RM) -r $(TARNAME)/test*.tap
 	$(RM) -r $(TARNAME)/tools/cpplint.py
@@ -1048,6 +1098,7 @@ $(TARBALL): release-only $(NODE_EXE) doc
 	$(RM) -r $(TARNAME)/tools/osx-pkg.pmdoc
 	find $(TARNAME)/deps/v8/test/* -type d ! -regex '.*/test/torque$$' | xargs $(RM) -r
 	find $(TARNAME)/deps/v8/test -type f ! -regex '.*/test/torque/.*' | xargs $(RM)
+	find $(TARNAME)/deps/zlib/contrib/* -type d ! -regex '.*/contrib/optimizations$$' | xargs $(RM) -r
 	find $(TARNAME)/ -name ".eslint*" -maxdepth 2 | xargs $(RM)
 	find $(TARNAME)/ -type l | xargs $(RM) # annoying on windows
 	tar -cf $(TARNAME).tar $(TARNAME)
@@ -1170,6 +1221,7 @@ bench-addons-clean:
 
 .PHONY: lint-md-rollup
 lint-md-rollup:
+	$(RM) tools/.*mdlintstamp
 	cd tools/node-lint-md-cli-rollup && npm install
 	cd tools/node-lint-md-cli-rollup && npm run build-node
 
@@ -1182,27 +1234,22 @@ lint-md-clean:
 lint-md-build:
 	$(warning "Deprecated no-op target 'lint-md-build'")
 
-LINT_MD_DOC_FILES = $(shell find doc -type f -name '*.md')
-run-lint-doc-md = tools/lint-md.js -q -f $(LINT_MD_DOC_FILES)
-# Lint all changed markdown files under doc/
-tools/.docmdlintstamp: $(LINT_MD_DOC_FILES)
-	@echo "Running Markdown linter on docs..."
-	@$(call available-node,$(run-lint-doc-md))
-	@touch $@
+ifeq ("$(wildcard tools/.mdlintstamp)","")
+LINT_MD_NEWER =
+else
+LINT_MD_NEWER = -newer tools/.mdlintstamp
+endif
 
-LINT_MD_TARGETS = src lib benchmark test tools/doc tools/icu
-LINT_MD_ROOT_DOCS := $(wildcard *.md)
-LINT_MD_MISC_FILES := $(shell find $(LINT_MD_TARGETS) -type f \
-	! -path '*node_modules*' ! -path 'test/fixtures/*' -name '*.md') \
-	$(LINT_MD_ROOT_DOCS)
-run-lint-misc-md = tools/lint-md.js -q -f $(LINT_MD_MISC_FILES)
-# Lint other changed markdown files maintained by us
-tools/.miscmdlintstamp: $(LINT_MD_MISC_FILES)
-	@echo "Running Markdown linter on misc docs..."
-	@$(call available-node,$(run-lint-misc-md))
+LINT_MD_TARGETS = doc src lib benchmark test tools/doc tools/icu $(wildcard *.md)
+LINT_MD_FILES = $(shell find $(LINT_MD_TARGETS) -type f \
+	! -path '*node_modules*' ! -path 'test/fixtures/*' -name '*.md' \
+	$(LINT_MD_NEWER))
+run-lint-md = tools/lint-md.js -q -f --no-stdout $(LINT_MD_FILES)
+# Lint all changed markdown files maintained by us
+tools/.mdlintstamp: $(LINT_MD_FILES)
+	@echo "Running Markdown linter..."
+	@$(call available-node,$(run-lint-md))
 	@touch $@
-
-tools/.mdlintstamp: tools/.miscmdlintstamp tools/.docmdlintstamp
 
 .PHONY: lint-md
 # Lints the markdown documents maintained by us in the codebase.

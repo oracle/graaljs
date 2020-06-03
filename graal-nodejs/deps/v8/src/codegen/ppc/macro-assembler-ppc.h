@@ -350,12 +350,16 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
   // garbage collection, since that might move the code and invalidate the
   // return address (unless this is somehow accounted for by the called
   // function).
-  void CallCFunction(ExternalReference function, int num_arguments);
-  void CallCFunction(Register function, int num_arguments);
+  void CallCFunction(ExternalReference function, int num_arguments,
+                     bool has_function_descriptor = kHasFunctionDescriptor);
+  void CallCFunction(Register function, int num_arguments,
+                     bool has_function_descriptor = kHasFunctionDescriptor);
   void CallCFunction(ExternalReference function, int num_reg_arguments,
-                     int num_double_arguments);
+                     int num_double_arguments,
+                     bool has_function_descriptor = kHasFunctionDescriptor);
   void CallCFunction(Register function, int num_reg_arguments,
-                     int num_double_arguments);
+                     int num_double_arguments,
+                     bool has_function_descriptor = kHasFunctionDescriptor);
 
   // Call a runtime routine. This expects {centry} to contain a fitting CEntry
   // builtin for the target runtime function and uses an indirect call.
@@ -400,6 +404,7 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
             CRegister cr = cr7);
   void Jump(Handle<Code> code, RelocInfo::Mode rmode, Condition cond = al,
             CRegister cr = cr7);
+  void Jump(const ExternalReference& reference) override;
   void Jump(intptr_t target, RelocInfo::Mode rmode, Condition cond = al,
             CRegister cr = cr7);
   void Call(Register target);
@@ -641,7 +646,8 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
   int CalculateStackPassedWords(int num_reg_arguments,
                                 int num_double_arguments);
   void CallCFunctionHelper(Register function, int num_reg_arguments,
-                           int num_double_arguments);
+                           int num_double_arguments,
+                           bool has_function_descriptor);
   void CallRecordWriteStub(Register object, Register address,
                            RememberedSetAction remembered_set_action,
                            SaveFPRegsMode fp_mode, Handle<Code> code_target,

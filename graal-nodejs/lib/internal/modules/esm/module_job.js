@@ -1,15 +1,15 @@
 'use strict';
 
 const {
-  Object,
+  ObjectSetPrototypeOf,
+  PromiseAll,
   SafeSet,
-  SafePromise
+  SafePromise,
 } = primordials;
 
 const { ModuleWrap } = internalBinding('module_wrap');
 
 const { decorateErrorStack } = require('internal/util');
-const { getOptionValue } = require('internal/options');
 const assert = require('internal/assert');
 const resolvedPromise = SafePromise.resolve();
 
@@ -22,9 +22,10 @@ let hasPausedEntry = false;
 class ModuleJob {
   // `loader` is the Loader instance used for loading dependencies.
   // `moduleProvider` is a function
-  constructor(loader, url, moduleProvider, isMain) {
+  constructor(loader, url, moduleProvider, isMain, inspectBrk) {
     this.loader = loader;
     this.isMain = isMain;
+    this.inspectBrk = inspectBrk;
 
     // This is a Promise<{ module, reflect }>, whose fields will be copied
     // onto `this` by `link()` below once it has been resolved.
@@ -79,11 +80,11 @@ class ModuleJob {
       }
       jobsInGraph.add(moduleJob);
       const dependencyJobs = await moduleJob.linked;
-      return Promise.all(dependencyJobs.map(addJobsToDependencyGraph));
+      return PromiseAll(dependencyJobs.map(addJobsToDependencyGraph));
     };
     await addJobsToDependencyGraph(this);
     try {
-      if (!hasPausedEntry && this.isMain && getOptionValue('--inspect-brk')) {
+      if (!hasPausedEntry && this.inspectBrk) {
         hasPausedEntry = true;
         const initWrapper = internalBinding('inspector').callAndPauseOnStart;
         initWrapper(this.module.instantiate, this.module);
@@ -109,5 +110,5 @@ class ModuleJob {
     return { module, result: module.evaluate(timeout, breakOnSigint) };
   }
 }
-Object.setPrototypeOf(ModuleJob.prototype, null);
+ObjectSetPrototypeOf(ModuleJob.prototype, null);
 module.exports = ModuleJob;

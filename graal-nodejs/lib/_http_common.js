@@ -21,7 +21,10 @@
 
 'use strict';
 
-const { Math } = primordials;
+const {
+  MathMin,
+  Symbol,
+} = primordials;
 const { setImmediate } = require('timers');
 
 const { getOptionValue } = require('internal/options');
@@ -100,7 +103,7 @@ function parserOnHeadersComplete(versionMajor, versionMinor, headers, method,
 
   // If parser.maxHeaderPairs <= 0 assume that there's no limit.
   if (parser.maxHeaderPairs > 0)
-    n = Math.min(n, parser.maxHeaderPairs);
+    n = MathMin(n, parser.maxHeaderPairs);
 
   incoming._addHeaderLines(headers, n);
 
