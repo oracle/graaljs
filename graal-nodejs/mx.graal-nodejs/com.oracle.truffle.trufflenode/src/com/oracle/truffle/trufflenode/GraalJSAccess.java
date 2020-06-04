@@ -1873,6 +1873,11 @@ public final class GraalJSAccess {
         code.append(parameterList);
         code.append(") {");
 
+        // hashbang would result in SyntaxError => comment it out
+        if (body.startsWith("#!")) {
+            code.append("//");
+        }
+
         String prefix = code.toString();
 
         code = new StringBuilder();
