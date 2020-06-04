@@ -994,6 +994,9 @@ public final class GraalJSAccess {
                 for (Object key : ownKeys) {
                     Object keyToStore = key;
                     if (key instanceof String) {
+                        if (skipStrings) {
+                            continue;
+                        }
                         boolean index = JSRuntime.isArrayIndex((String) key);
                         if (index) {
                             if (skipIndices) {
@@ -1001,10 +1004,6 @@ public final class GraalJSAccess {
                             }
                             if (keepNumbers) {
                                 keyToStore = JSRuntime.stringToNumber((String) key);
-                            }
-                        } else {
-                            if (skipStrings) {
-                                continue;
                             }
                         }
                     } else {
