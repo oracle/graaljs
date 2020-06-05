@@ -58,8 +58,6 @@ const conditionalOpts = [
     filter: (opt) => opt.includes('-fips') },
   { include: common.hasIntl,
     filter: (opt) => opt === '--icu-data-dir' },
-  { include: process.features.inspector,
-    filter: (opt) => opt.startsWith('--inspect') || opt === '--debug-port' },
 ];
 documented.forEach((opt) => {
   conditionalOpts.forEach(({ include, filter }) => {
