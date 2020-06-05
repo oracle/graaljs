@@ -60,7 +60,10 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.FileAttribute;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -104,9 +107,76 @@ public class ImportWithCustomFsTest {
         Assert.assertFalse(fs.uriSpecifiers.contains(expectedSpecifier));
     }
 
+    @Test
+    public void testBareModuleSpecifier() throws IOException {
+        final String expectedSpecifier = "foobar";
+        final String moduleBody = "export const foo = 43;";
+        final String testSrc = "import {foo} from 'foobar'; foo;";
+        TestFS fs = new TestFS(expectedSpecifier, moduleBody);
+        Value v = assertFsLoads(fs, testSrc);
+        Assert.assertEquals(43, v.asInt());
+        Assert.assertTrue(fs.stringSpecifiers.contains(expectedSpecifier));
+        Assert.assertFalse(fs.uriSpecifiers.contains(expectedSpecifier));
+    }
+
+    @Test
+    public void testBareModuleCommonJsEmulation() throws IOException {
+        final String expectedSpecifier = "foobar";
+        final String moduleBody = "export const foo = 43;";
+        final String testSrc = "import {foo} from 'foobar'; foo;";
+        CommonJsTracingTestFs fs = new CommonJsTracingTestFs(expectedSpecifier, moduleBody);
+
+        final Map<String, String> options = new HashMap<>();
+        options.put("js.commonjs-require", "true");
+        options.put("js.commonjs-require-cwd", "/some/user/folder");
+
+        Context cx = JSTest.newContextBuilder().allowPolyglotAccess(PolyglotAccess.ALL).allowIO(true).fileSystem(fs).allowExperimentalOptions(true).options(options).build();
+        Value v = cx.eval(Source.newBuilder(ID, testSrc, "test.mjs").build());
+        Assert.assertEquals(43, v.asInt());
+        Assert.assertTrue(fs.stringSpecifiers.contains(expectedSpecifier));
+        Assert.assertFalse(fs.uriSpecifiers.contains(expectedSpecifier));
+        Assert.assertTrue(fs.paths.contains("foobar"));
+    }
+
     private static Value assertFsLoads(TestFS fs, String testSrc) throws IOException {
         Context cx = JSTest.newContextBuilder().allowPolyglotAccess(PolyglotAccess.ALL).allowIO(true).fileSystem(fs).build();
         return cx.eval(Source.newBuilder(ID, testSrc, "test.mjs").build());
+    }
+
+    private static class CommonJsTracingTestFs extends TestFS {
+
+        private final List<String> paths;
+
+        CommonJsTracingTestFs(String expectedPath, String moduleBody) {
+            super(expectedPath, moduleBody);
+            this.paths = new LinkedList<>();
+        }
+
+        @Override
+        public Path parsePath(URI uri) {
+            paths.add(uri.toString());
+            return super.parsePath(uri);
+        }
+
+        @Override
+        public String getSeparator() {
+            return "/";
+        }
+
+        @Override
+        public Path parsePath(String path) {
+            paths.add(path);
+            return super.parsePath(path);
+        }
+
+        @Override
+        public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) {
+            Map<String, Object> attr = new HashMap<>();
+            // for testing purposes, we consider all files non-regular. In this way, we force the
+            // module loader to try all possible file names before throwing module not found
+            attr.put("isRegularFile", false);
+            return attr;
+        }
     }
 
     private static class TestFS implements FileSystem {
@@ -114,8 +184,9 @@ public class ImportWithCustomFsTest {
         private final Path dummyPath;
         private final String moduleBody;
         private final String expectedPath;
-        private final Set<String> uriSpecifiers;
-        private final Set<String> stringSpecifiers;
+
+        protected final Set<String> uriSpecifiers;
+        protected final Set<String> stringSpecifiers;
 
         TestFS(String expectedPath, String moduleBody) {
             this.expectedPath = expectedPath;
