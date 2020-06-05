@@ -15,5 +15,8 @@ test-esm-cjs-load-error-note         : FAIL
 # Invalid host defined options for a dynamic import in eval
 test-esm-dynamic-import              : FAIL
 
+# Module doesn't see const variable created in global scope by a custom loader
+test-esm-loader-side-effect          : FAIL
+
 # WebAssembly is not supported
 test-esm-wasm                        : FAIL
