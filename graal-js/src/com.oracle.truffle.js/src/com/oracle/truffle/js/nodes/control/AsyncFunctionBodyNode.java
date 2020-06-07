@@ -327,7 +327,7 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
                 return create(getContext(),
                                 cloneUninitialized(asyncFunctionRoot.functionBody, materializedTags),
                                 cloneUninitialized(writeAsyncContext, materializedTags),
-                                cloneUninitialized(readAsyncContext, materializedTags),
+                                cloneUninitialized(asyncFunctionRoot.readAsyncContext, materializedTags),
                                 cloneUninitialized(asyncFunctionRoot.writeAsyncResult, materializedTags));
             }
         });
