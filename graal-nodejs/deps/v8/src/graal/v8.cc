@@ -2230,6 +2230,10 @@ namespace v8 {
         return GraalModule::Compile(source->source_string, name, source->host_defined_options);
     }
 
+    Local<UnboundModuleScript> Module::GetUnboundModuleScript() {
+        return reinterpret_cast<GraalModule*> (this)->GetUnboundModuleScript();
+    }
+
     uint32_t ScriptCompiler::CachedDataVersionTag() {
         TRACE
         return 0;

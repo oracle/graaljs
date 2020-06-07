@@ -3267,6 +3267,13 @@ public final class GraalJSAccess {
         frame.setObject(frameSlot, exportValue);
     }
 
+    private static final ByteBuffer DUMMY_UNBOUND_MODULE_PARSE_RESULT = ByteBuffer.allocate(0);
+
+    public Object moduleGetUnboundModuleScript(Object module) {
+        JSModuleRecord moduleRecord = (JSModuleRecord) module;
+        return new UnboundScript(moduleRecord.getSource(), DUMMY_UNBOUND_MODULE_PARSE_RESULT);
+    }
+
     public String scriptOrModuleGetResourceName(Object scriptOrModule) {
         ScriptOrModule record = (ScriptOrModule) scriptOrModule;
         return record.getSource().getName();

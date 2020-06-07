@@ -804,6 +804,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::module_get_namespace, "moduleGetNamespace", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::module_get_identity_hash, "moduleGetIdentityHash", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::module_get_exception, "moduleGetException", "(Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::module_get_unbound_module_script, "moduleGetUnboundModuleScript", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::module_create_synthetic_module, "moduleCreateSyntheticModule", "(Ljava/lang/String;[Ljava/lang/Object;J)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::module_set_synthetic_module_export, "moduleSetSyntheticModuleExport", "(Ljava/lang/Object;Ljava/lang/String;Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::script_or_module_get_resource_name, "scriptOrModuleGetResourceName", "(Ljava/lang/Object;)Ljava/lang/String;")
