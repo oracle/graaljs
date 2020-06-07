@@ -2225,6 +2225,13 @@ namespace v8 {
 
     MaybeLocal<Module> ScriptCompiler::CompileModule(Isolate* isolate, Source* source,
             CompileOptions options, NoCacheReason no_cache_reason) {
+        if (options == ScriptCompiler::kConsumeCodeCache) {
+            String::Utf8Value text(isolate, source->source_string);
+            CachedData* data = source->cached_data;
+            if (data->length != text.length() || memcmp(data->data, (const uint8_t*) *text, text.length())) {
+                data->rejected = true;
+            }
+        }
         Local<Value> resource_name = source->resource_name;
         Local<String> name = resource_name.IsEmpty() ? resource_name.As<String>() : resource_name->ToString(isolate);
         return GraalModule::Compile(source->source_string, name, source->host_defined_options);
