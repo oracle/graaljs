@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,51 +41,22 @@
 package com.oracle.truffle.trufflenode.serialization;
 
 /**
- * A tag that determines the type of the serialized value.
+ * Error-related serialization tags.
  */
-public enum SerializationTag {
-    TRUE('T'), // kTrue
-    FALSE('F'), // kFalse
-    UNDEFINED('_'), // kUndefined
-    NULL('0'), // kNull
-    INT32('I'), // kInt32
-    UINT32('U'), // kUint32
-    DOUBLE('N'), // kDouble
-    BIG_INT('Z'), // kBigInt
-    UTF8_STRING('S'), // kUtf8String
-    ONE_BYTE_STRING('"'), // kOneByteString
-    TWO_BYTE_STRING('c'), // kTwoByteString
-    PADDING('\0'), // kPadding
-    DATE('D'), // kDate
-    TRUE_OBJECT('y'), // kTrueObject
-    FALSE_OBJECT('x'), // kFalseObject
-    NUMBER_OBJECT('n'), // kNumberObject
-    BIG_INT_OBJECT('z'), // kBigIntObject
-    STRING_OBJECT('s'), // kStringObject
-    REGEXP('R'), // kRegExp
-    ARRAY_BUFFER('B'), // kArrayBuffer
-    SHARED_ARRAY_BUFFER('u'), // kSharedArrayBuffer
-    ARRAY_BUFFER_TRANSFER('t'), // kArrayBufferTransfer
-    ARRAY_BUFFER_VIEW('V'), // kArrayBufferView
-    BEGIN_JS_MAP(';'), // kBeginJSMap
-    END_JS_MAP(':'), // kEndJSMap
-    BEGIN_JS_SET('\''), // kBeginJSSet
-    END_JS_SET(','), // kEndJSSet
-    BEGIN_JS_OBJECT('o'), // kBeginJSObject
-    END_JS_OBJECT('{'), // kEndJSObject
-    BEGIN_SPARSE_JS_ARRAY('a'), // kBeginSparseJSArray
-    END_SPARSE_JS_ARRAY('@'), // kEndSparseJSArray
-    BEGIN_DENSE_JS_ARRAY('A'), // kBeginDenseJSArray
-    END_DENSE_JS_ARRAY('$'), // kEndDenseJSArray
-    THE_HOLE('-'), // kTheHole
-    OBJECT_REFERENCE('^'), // kObjectReference
-    HOST_OBJECT('\\'), // kHostObject
-    ERROR('r'), // kError
-    SHARED_JAVA_OBJECT('J'); // Custom, for shared interop Java objects
+public enum ErrorTag {
+    EVAL_ERROR('E'), // kEvalErrorPrototype
+    RANGE_ERROR('R'), // kRangeErrorPrototype
+    REFERENCE_ERROR('F'), // kReferenceErrorPrototype
+    SYNTAX_ERROR('S'), // kSyntaxErrorPrototype
+    TYPE_ERROR('T'), // kTypeErrorPrototype
+    URI_ERROR('U'), // kUriErrorPrototype
+    MESSAGE('m'), // kMessage
+    STACK('s'), // kStack
+    END('.'); // kEnd
 
     private final byte tag;
 
-    SerializationTag(char tag) {
+    ErrorTag(char tag) {
         this.tag = (byte) tag;
     }
 
@@ -93,13 +64,12 @@ public enum SerializationTag {
         return tag;
     }
 
-    public static SerializationTag fromTag(byte tag) {
-        for (SerializationTag t : values()) {
+    public static ErrorTag fromTag(byte tag) {
+        for (ErrorTag t : values()) {
             if (t.tag == tag) {
                 return t;
             }
         }
         return null;
     }
-
 }

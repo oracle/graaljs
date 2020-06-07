@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,8 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSErrorType;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
@@ -55,6 +57,7 @@ import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
+import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
@@ -65,6 +68,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
@@ -141,6 +145,10 @@ public class Serializer {
     }
 
     private void writeTag(ArrayBufferViewTag tag) {
+        writeByte(tag.getTag());
+    }
+
+    private void writeTag(ErrorTag tag) {
         writeByte(tag.getTag());
     }
 
@@ -224,6 +232,8 @@ public class Serializer {
             writeJSArrayBufferView((DynamicObject) object);
         } else if (JSDataView.isJSDataView(object)) {
             writeJSDataView((DynamicObject) object);
+        } else if (JSError.isJSError(object)) {
+            writeJSError((DynamicObject) object);
         } else if (JSProxy.isProxy(object)) {
             boolean callable = JSRuntime.isCallableProxy((DynamicObject) object);
             String message = (callable ? "[object Function]" : "[object Object]") + " could not be cloned.";
@@ -511,6 +521,62 @@ public class Serializer {
                 }
             }
             writeByte(b);
+        }
+    }
+
+    private void writeJSError(DynamicObject error) {
+        writeTag(SerializationTag.ERROR);
+        writeErrorTypeTag(error);
+
+        PropertyDescriptor desc = JSObject.getOwnProperty(error, JSError.MESSAGE);
+        if (desc != null && desc.isDataDescriptor()) {
+            writeTag(ErrorTag.MESSAGE);
+            String message = JSRuntime.toString(desc.getValue());
+            writeString(message);
+        }
+
+        Object stack = JSObject.get(error, JSError.STACK_NAME);
+        if (JSRuntime.isString(stack)) {
+            writeTag(ErrorTag.STACK);
+            writeString(JSRuntime.toStringIsString(stack));
+        }
+
+        writeTag(ErrorTag.END);
+    }
+
+    private void writeErrorTypeTag(DynamicObject error) {
+        Throwable exception = JSError.getException(error);
+        JSErrorType errorType = JSErrorType.Error;
+        if (exception instanceof JSException) {
+            errorType = ((JSException) exception).getErrorType();
+        }
+        ErrorTag tag;
+        switch (errorType) {
+            case EvalError:
+                tag = ErrorTag.EVAL_ERROR;
+                break;
+            case RangeError:
+                tag = ErrorTag.RANGE_ERROR;
+                break;
+            case ReferenceError:
+                tag = ErrorTag.REFERENCE_ERROR;
+                break;
+            case SyntaxError:
+                tag = ErrorTag.SYNTAX_ERROR;
+                break;
+            case TypeError:
+                tag = ErrorTag.TYPE_ERROR;
+                break;
+            case URIError:
+                tag = ErrorTag.URI_ERROR;
+                break;
+            default:
+                tag = null;
+                assert errorType == JSErrorType.Error;
+                break;
+        }
+        if (tag != null) {
+            writeTag(tag);
         }
     }
 
