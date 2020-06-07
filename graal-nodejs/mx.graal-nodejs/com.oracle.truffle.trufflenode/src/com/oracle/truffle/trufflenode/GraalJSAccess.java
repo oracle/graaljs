@@ -3260,6 +3260,9 @@ public final class GraalJSAccess {
         JSModuleRecord moduleRecord = (JSModuleRecord) module;
         FrameDescriptor frameDescriptor = moduleRecord.getFrameDescriptor();
         FrameSlot frameSlot = frameDescriptor.findFrameSlot(exportName);
+        if (frameSlot == null) {
+            throw Errors.createReferenceError("Export '" + exportName + "' is not defined in module");
+        }
         MaterializedFrame frame = moduleRecord.getEnvironment();
         frame.setObject(frameSlot, exportValue);
     }
