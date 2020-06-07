@@ -2618,7 +2618,7 @@ public final class GraalJSAccess {
     public void isolateRunMicrotasks() {
         pollWeakCallbackQueue(false);
         try {
-            agent.processAllPromises(false);
+            agent.processAllPromises(true);
         } catch (Exception ex) {
             ex.printStackTrace();
             System.exit(1);
