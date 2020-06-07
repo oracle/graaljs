@@ -2887,6 +2887,10 @@ namespace v8 {
         return new ScriptCompiler::CachedData((const uint8_t*) copy, text.length());
     }
 
+    ScriptCompiler::CachedData* ScriptCompiler::CreateCodeCache(Local<UnboundModuleScript> unbound_module_script) {
+        return CreateCodeCache(reinterpret_cast<UnboundScript*> (*unbound_module_script));
+    }
+
     bool ArrayBuffer::IsDetachable() const {
         return true;
     }
