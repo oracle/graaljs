@@ -734,6 +734,15 @@ namespace v8 {
         TRACE
     }
 
+    size_t ResourceConstraints::max_young_generation_size_in_bytes() const {
+        TRACE
+        return 0;
+    }
+
+    void ResourceConstraints::set_max_young_generation_size_in_bytes(size_t limit) {
+        TRACE
+    }
+
     ScriptCompiler::CachedData::~CachedData() {
         if (buffer_policy == BufferOwned) {
             delete[] data;
@@ -3279,6 +3288,27 @@ namespace v8 {
         TRACE
     }
 
+    void Isolate::AddNearHeapLimitCallback(NearHeapLimitCallback callback, void* data) {
+        TRACE
+    }
+
+    void Isolate::RequestInterrupt(InterruptCallback callback, void* data) {
+        TRACE
+    }
+
+    void Isolate::ClearKeptObjects() {
+        TRACE
+    }
+
+    void Isolate::SetHostCleanupFinalizationGroupCallback(HostCleanupFinalizationGroupCallback callback) {
+        TRACE
+    }
+
+    Maybe<bool> FinalizationGroup::Cleanup(Local<FinalizationGroup> finalization_group) {
+        TRACE
+        return Just(true);
+    }
+
     void Object::CheckCast(v8::Value* obj) {}
     void Promise::CheckCast(v8::Value* obj) {}
     void Function::CheckCast(v8::Value* obj) {}
@@ -3308,5 +3338,6 @@ namespace v8 {
     void Symbol::CheckCast(v8::Value* that) {}
     void Private::CheckCast(v8::Data* that) {}
     void Map::CheckCast(v8::Value* that) {}
+    void Set::CheckCast(v8::Value* that) {}
 
 }
