@@ -2217,6 +2217,12 @@ namespace v8 {
         reinterpret_cast<GraalModule*> (this)->SetSyntheticModuleExport(export_name, export_value);
     }
 
+    Maybe<bool> Module::SetSyntheticModuleExport(Isolate* isolate, Local<String> export_name, Local<Value> export_value) {
+        reinterpret_cast<GraalModule*> (this)->SetSyntheticModuleExport(export_name, export_value);
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+        return graal_isolate->GetJNIEnv()->ExceptionCheck() ? Nothing<bool>() : Just<bool>(true);
+    }
+
     MaybeLocal<Module> ScriptCompiler::CompileModule(Isolate* isolate, Source* source,
             CompileOptions options, NoCacheReason no_cache_reason) {
         Local<Value> resource_name = source->resource_name;
