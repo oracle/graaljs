@@ -1566,7 +1566,7 @@ public final class GraalJSAccess {
         FunctionTemplate functionTemplate = (FunctionTemplate) templateObj;
         functionTemplate.setClassName((String) name);
         ObjectTemplate instanceTemplate = functionTemplate.getInstanceTemplate();
-        instanceTemplate.addValue(new Value(Symbol.SYMBOL_TO_STRING_TAG, name, JSAttributes.configurableEnumerableWritable()));
+        instanceTemplate.addValue(new Value(Symbol.SYMBOL_TO_STRING_TAG, name, JSAttributes.configurableNotEnumerableNotWritable()));
     }
 
     public Object functionTemplateInstanceTemplate(Object templateObj) {
