@@ -537,6 +537,23 @@ public class JSDebugTest {
     }
 
     @Test
+    public void testEvalModifyVar() throws Throwable {
+        final Source testDebugger = createTestDebuggerStmt();
+
+        try (DebuggerSession session = startSession()) {
+            startEval(testDebugger);
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, "testDebuggerStmt", 4, true, "debugger;", "n", "1");
+                DebugValue value = event.getTopStackFrame().eval("--n");
+                assertEquals(0, value.asInt());
+                event.prepareContinue();
+            });
+            expectDone();
+        }
+    }
+
+    @Test
     public void testEnclosingScopeAccess() throws Throwable {
         final Source source = createTestEnclosingScopeAccess();
 
