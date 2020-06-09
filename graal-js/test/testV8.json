@@ -1179,6 +1179,13 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests, disabled on SVM (GR-21828)"
   }, {
+    "filePath" : "mjsunit/regress/regress-740784.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "comment" : "Test takes substantially longer on SVM, causing transient timeouts (GR-21828)"
+  }, {
     "filePath" : "mjsunit/regress/regress-748069.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) high memory usage that might influence other tests"
