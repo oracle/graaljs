@@ -44,7 +44,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map.Entry;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -175,7 +174,6 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         JSContextOptions.describeOptions(options);
         OPTION_DESCRIPTORS = OptionDescriptors.create(options);
         ensureErrorClassesInitialized();
-        checkUnknownOptions();
     }
 
     public JavaScriptLanguage() {
@@ -575,23 +573,6 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             Class.forName(TryCatchNode.GetErrorObjectNode.class.getName());
         } catch (Exception ex) {
             ex.printStackTrace();
-        }
-    }
-
-    private static final String TRUFFLE_JS_OPTION_PREFIX = "truffle.js.";
-    private static final String PARSER_OPTION_PREFIX = "parser.";
-
-    private static void checkUnknownOptions() {
-        for (Entry<Object, Object> entry : System.getProperties().entrySet()) {
-            String strKey = entry.getKey().toString();
-            if (strKey.startsWith(TRUFFLE_JS_OPTION_PREFIX)) {
-                String key = strKey.substring(TRUFFLE_JS_OPTION_PREFIX.length());
-
-                if (key.startsWith(PARSER_OPTION_PREFIX)) {
-                    continue;
-                }
-                System.err.println("WARNING unknown option: " + TRUFFLE_JS_OPTION_PREFIX + key);
-            }
         }
     }
 }
