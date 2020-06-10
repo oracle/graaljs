@@ -998,6 +998,9 @@ namespace v8 {
 
     void* V8::ClearWeak(internal::Address* global_handle) {
         GraalHandleContent* handle = reinterpret_cast<GraalHandleContent*> (global_handle);
+        if (!handle->IsWeak()) {
+            return nullptr;
+        }
         GraalIsolate* graal_isolate = handle->Isolate();
         handle->ClearWeak();
         jlong reference = (jlong) handle;
