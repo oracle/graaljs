@@ -177,7 +177,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     }
 
     protected static final class InstanceofCheckNode extends ReceiverCheckNode {
-        private final Class<?> type;
+        protected final Class<?> type;
         @Child private JSToObjectNode toObject;
 
         protected InstanceofCheckNode(Class<?> type, JSContext context) {

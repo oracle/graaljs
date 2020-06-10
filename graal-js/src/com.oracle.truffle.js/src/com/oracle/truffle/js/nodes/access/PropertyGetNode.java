@@ -1393,12 +1393,36 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     }
 
     public static final class StringLengthPropertyGetNode extends LinkedPropertyGetNode {
-        private final ValueProfile charSequenceClassProfile = ValueProfile.createClassProfile();
 
         public StringLengthPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
-            assert JSProperty.isData(property);
-            assert isStringLengthProperty(property);
+            assert JSProperty.isData(property) && isStringLengthProperty(property);
+            assert receiverCheck instanceof InstanceofCheckNode;
+        }
+
+        @Override
+        protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
+            return getValueInt(thisObj, receiver, root, guard);
+        }
+
+        @Override
+        protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            CharSequence charSequence = (CharSequence) ((InstanceofCheckNode) receiverCheck).type.cast(thisObj);
+            return JSRuntime.length(charSequence);
+        }
+
+        @Override
+        protected double getValueDouble(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return getValueInt(thisObj, receiver, root, guard);
+        }
+    }
+
+    public static final class StringObjectLengthPropertyGetNode extends LinkedPropertyGetNode {
+        private final ValueProfile charSequenceClassProfile = ValueProfile.createClassProfile();
+
+        public StringObjectLengthPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
+            super(receiverCheck);
+            assert JSProperty.isData(property) && isStringLengthProperty(property);
         }
 
         @Override
@@ -1569,6 +1593,10 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             }
 
             receiverCheck = new InstanceofCheckNode(thisObj.getClass(), context);
+
+            if (isStringLengthProperty(property)) {
+                return new StringLengthPropertyGetNode(property, receiverCheck);
+            }
         } else {
             receiverCheck = createPrimitiveReceiverCheck(thisObj, depth);
         }
@@ -1602,7 +1630,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             } else if (isClassPrototypeProperty(property)) {
                 return new ClassPrototypePropertyGetNode(dataProperty, receiverCheck, context);
             } else if (isStringLengthProperty(property)) {
-                return new StringLengthPropertyGetNode(dataProperty, receiverCheck);
+                return new StringObjectLengthPropertyGetNode(dataProperty, receiverCheck);
             } else if (isLazyRegexResultIndexProperty(property)) {
                 return new LazyRegexResultIndexPropertyGetNode(dataProperty, receiverCheck);
             } else if (isLazyNamedCaptureGroupProperty(property)) {

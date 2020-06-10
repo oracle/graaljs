@@ -106,7 +106,6 @@ import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
-import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToRegExpNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
@@ -462,7 +461,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private JSFunctionCallNode callNode;
         @Child private PropertyGetNode getSymbolNode;
         @Child private GetMethodNode getMethodNode;
-        @Child private JSToObjectNode toObjectNode;
         protected final ConditionProfile isSpecialProfile = ConditionProfile.createBinaryProfile();
         protected final ConditionProfile callSpecialProfile = ConditionProfile.createBinaryProfile();
 
@@ -516,11 +514,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getMethodNode = insert(GetMethodNode.create(getContext(), null, key));
             }
-            if (toObjectNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toObjectNode = insert(JSToObjectNode.createToObject(getContext()));
-            }
-            return getMethodNode.executeWithTarget(toObjectNode.execute(target));
+            return getMethodNode.executeWithTarget(target);
         }
     }
 
