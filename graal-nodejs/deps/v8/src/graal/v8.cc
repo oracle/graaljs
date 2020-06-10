@@ -3002,7 +3002,18 @@ namespace v8 {
             Local<Object> context_extensions[],
             CompileOptions options,
             NoCacheReason no_cache_reason) {
+        return CompileFunctionInContext(context, source, arguments_count, arguments, context_extension_count, context_extensions, options, no_cache_reason, nullptr);
+    }
 
+    MaybeLocal<Function> ScriptCompiler::CompileFunctionInContext(
+            Local<Context> context, Source* source,
+            size_t arguments_count,
+            Local<String> arguments[],
+            size_t context_extension_count,
+            Local<Object> context_extensions[],
+            CompileOptions options,
+            NoCacheReason no_cache_reason,
+            Local<ScriptOrModule>* script_or_module_out) {
         Isolate* isolate = context->GetIsolate();
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
         JNIEnv* env = graal_isolate->GetJNIEnv();
@@ -3030,29 +3041,22 @@ namespace v8 {
         Local<PrimitiveArray> host_options = source->host_defined_options;
         jobject java_options = host_options.IsEmpty() ? NULL : reinterpret_cast<GraalPrimitiveArray*> (*host_options)->GetJavaObject();
 
-        JNI_CALL(jobject, java_function, graal_isolate, GraalAccessMethod::script_compiler_compile_function_in_context, Object, java_context, java_source_name, java_body, java_arguments, java_context_extensions, java_options);
+        JNI_CALL(jobject, java_array, graal_isolate, GraalAccessMethod::script_compiler_compile_function_in_context, Object, java_context, java_source_name, java_body, java_arguments, java_context_extensions, java_options);
 
-        if (java_function == nullptr) {
+        if (java_array == nullptr) {
             return MaybeLocal<Function>();
-        } else {
-            GraalFunction* graal_function = new GraalFunction(graal_isolate, java_function);
-            Local<Function> v8_function = reinterpret_cast<Function*> (graal_function);
-            return v8_function;
         }
-    }
 
-    MaybeLocal<Function> ScriptCompiler::CompileFunctionInContext(
-            Local<Context> context, Source* source,
-            size_t arguments_count,
-            Local<String> arguments[],
-            size_t context_extension_count,
-            Local<Object> context_extensions[],
-            CompileOptions options,
-            NoCacheReason no_cache_reason,
-            Local<ScriptOrModule>* script_or_module_out) {
-        TRACE
-        *script_or_module_out = reinterpret_cast<ScriptOrModule*>(*Undefined(context->GetIsolate())); // PENDING
-        return CompileFunctionInContext(context, source, arguments_count, arguments, context_extension_count, context_extensions, options, no_cache_reason);
+        if (script_or_module_out != nullptr) {
+            jobject java_script = graal_isolate->GetJNIEnv()->GetObjectArrayElement((jobjectArray) java_array, 1);
+            GraalScriptOrModule* graal_script = new GraalScriptOrModule(graal_isolate, java_script);
+            *script_or_module_out = reinterpret_cast<ScriptOrModule*>(graal_script);
+        }
+
+        jobject java_function = graal_isolate->GetJNIEnv()->GetObjectArrayElement((jobjectArray) java_array, 0);
+        GraalFunction* graal_function = new GraalFunction(graal_isolate, java_function);
+        Local<Function> v8_function = reinterpret_cast<Function*> (graal_function);
+        return v8_function;
     }
 
     ScriptCompiler::CachedData* ScriptCompiler::CreateCodeCacheForFunction(Local<Function> function) {

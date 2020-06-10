@@ -1913,14 +1913,22 @@ public final class GraalJSAccess {
             hostDefinedOptionsMap.put(source, hostDefinedOptions);
         }
 
+        Object function;
         if (snapshot == null) {
             ScriptNode scriptNode = nodeEvaluator.parseScript(jsContext, source, prefix, suffix);
             DynamicObject fn = (DynamicObject) scriptNode.run(realm);
-            return anyExtension ? JSFunction.call(fn, Undefined.instance, extensions) : fn;
+            function = anyExtension ? JSFunction.call(fn, Undefined.instance, extensions) : fn;
         } else {
             ScriptNode scriptNode = parseScriptFromSnapshot(jsContext, source, prefix, suffix, snapshot);
-            return scriptNode.run(realm);
+            function = scriptNode.run(realm);
         }
+        assert JSFunction.isJSFunction(function);
+
+        NodeScriptOrModule scriptOrModule = new NodeScriptOrModule(jsContext, source);
+        // function should keep scriptOrModule alive
+        ((DynamicObject) function).define(NodeScriptOrModule.SCRIPT_OR_MODULE, scriptOrModule);
+
+        return new Object[]{function, scriptOrModule};
     }
 
     public Object scriptCompile(Object context, Object sourceCode, Object fileName, Object hostDefinedOptions) {
@@ -2380,12 +2388,30 @@ public final class GraalJSAccess {
     private final Set<WeakCallback> weakCallbacks = new HashSet<>();
 
     @SuppressWarnings("unchecked")
-    private WeakCallback updateWeakCallback(DynamicObject object, long reference, long data, long callbackPointer, int type, HiddenKey key) {
-        Map<Long, WeakCallback> map = (Map<Long, WeakCallback>) object.get(key);
-        if (map == null) {
-            map = new HashMap<>();
-            object.define(key, map);
+    private WeakCallback updateWeakCallback(Object object, long reference, long data, long callbackPointer, int type) {
+        Map<Long, WeakCallback> map;
+        if (object instanceof NodeScriptOrModule) {
+            map = ((NodeScriptOrModule) object).getWeakCallbackMap();
+        } else {
+            DynamicObject target;
+            HiddenKey key;
+            if (object instanceof JSRealm) {
+                target = ((JSRealm) object).getGlobalObject();
+                key = HIDDEN_WEAK_CALLBACK_CONTEXT;
+            } else if (object instanceof DynamicObject) {
+                target = (DynamicObject) object;
+                key = HIDDEN_WEAK_CALLBACK;
+            } else {
+                System.err.println("Weak references not supported for " + object);
+                return null;
+            }
+            map = (Map<Long, WeakCallback>) target.get(key);
+            if (map == null) {
+                map = new HashMap<>();
+                target.define(key, map);
+            }
         }
+
         WeakCallback weakCallback = map.get(reference);
         if (weakCallback == null) {
             weakCallback = new WeakCallback(object, data, callbackPointer, type, weakCallbackQueue);
@@ -2434,17 +2460,7 @@ public final class GraalJSAccess {
             return;
         }
 
-        DynamicObject target;
-        HiddenKey key;
-        if (object instanceof JSRealm) {
-            target = ((JSRealm) object).getGlobalObject();
-            key = HIDDEN_WEAK_CALLBACK_CONTEXT;
-        } else {
-            target = (DynamicObject) object;
-            key = HIDDEN_WEAK_CALLBACK;
-        }
-
-        updateWeakCallback(target, reference, data, callbackPointer, type, key);
+        updateWeakCallback(object, reference, data, callbackPointer, type);
         pollWeakCallbackQueue(false);
     }
 
@@ -2457,17 +2473,7 @@ public final class GraalJSAccess {
             return 0;
         }
 
-        DynamicObject target;
-        HiddenKey key;
-        if (object instanceof JSRealm) {
-            target = ((JSRealm) object).getGlobalObject();
-            key = HIDDEN_WEAK_CALLBACK_CONTEXT;
-        } else {
-            target = (DynamicObject) object;
-            key = HIDDEN_WEAK_CALLBACK;
-        }
-
-        WeakCallback callback = updateWeakCallback(target, reference, 0, 0, 0, key);
+        WeakCallback callback = updateWeakCallback(object, reference, 0, 0, 0);
         return callback.data;
     }
 
@@ -3550,6 +3556,28 @@ public final class GraalJSAccess {
 
     public JavaMessagePortData getCurrentMessagePortData() {
         return currentMessagePortData;
+    }
+
+    /**
+     * {@code ScriptOrModule} of a function produced by
+     * {@code ScriptCompiler::CompileFunctionInContext()}. It supports native weak references.
+     */
+    static class NodeScriptOrModule extends ScriptOrModule {
+        static final HiddenKey SCRIPT_OR_MODULE = new HiddenKey("scriptOrModule");
+
+        private Map<Long, WeakCallback> weakCallbackMap;
+
+        NodeScriptOrModule(JSContext context, Source source) {
+            super(context, source);
+        }
+
+        Map<Long, WeakCallback> getWeakCallbackMap() {
+            if (weakCallbackMap == null) {
+                weakCallbackMap = new HashMap<>();
+            }
+            return weakCallbackMap;
+        }
+
     }
 
 }
