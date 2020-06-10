@@ -278,6 +278,7 @@ void Worker::Run() {
           Isolate::DisallowJavascriptExecutionScope::THROW_ON_FAILURE);
 
       {
+        HandleScope handle_scope(isolate_);
         Context::Scope context_scope(env_->context());
         {
           Mutex::ScopedLock lock(mutex_);

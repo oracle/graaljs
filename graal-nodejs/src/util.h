@@ -867,11 +867,7 @@ class PersistentToLocal {
   static inline v8::Local<TypeName> Default(
       v8::Isolate* isolate,
       const v8::PersistentBase<TypeName>& persistent) {
-    if (persistent.IsWeak()) {
-      return PersistentToLocal::Weak(isolate, persistent);
-    } else {
-      return PersistentToLocal::Strong(persistent);
-    }
+    return v8::Local<TypeName>::New(isolate, persistent);
   }
 
   // Unchecked conversion from a non-weak Persistent<T> to Local<T>,
@@ -882,8 +878,7 @@ class PersistentToLocal {
   template <class TypeName>
   static inline v8::Local<TypeName> Strong(
       const v8::PersistentBase<TypeName>& persistent) {
-    return *reinterpret_cast<v8::Local<TypeName>*>(
-        const_cast<v8::PersistentBase<TypeName>*>(&persistent));
+    return v8::Local<TypeName>::New(v8::Isolate::GetCurrent(), persistent);
   }
 
   template <class TypeName>
