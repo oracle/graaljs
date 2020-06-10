@@ -10356,10 +10356,10 @@ void PersistentBase<T>::MarkIndependent() {
 
 template <class T>
 void PersistentBase<T>::MarkActive() {
-  typedef internal::Internals I;
-  if (this->IsEmpty()) return;
-  I::UpdateNodeFlag(reinterpret_cast<internal::Address*>(this->val_), true,
-                    I::kNodeIsActiveShift);
+//  typedef internal::Internals I;
+//  if (this->IsEmpty()) return;
+//  I::UpdateNodeFlag(reinterpret_cast<internal::Address*>(this->val_), true,
+//                    I::kNodeIsActiveShift);
 }
 
 
