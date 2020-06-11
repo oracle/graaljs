@@ -56,6 +56,7 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -305,23 +306,9 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
 
     @Override
     public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
-        DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), new JSBuiltinObject() {
-            @Override
-            public String safeToString(DynamicObject object, int depth, JSContext context) {
-                return CLASS_NAME;
-            }
-
-            @Override
-            public String getClassName(DynamicObject object) {
-                return CLASS_NAME;
-            }
-
-            @Override
-            public String toString() {
-                return CLASS_NAME;
-            }
-        });
+        DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(realm.getContext(), prototype, ctor);
+        JSObjectUtil.putDataProperty(realm.getContext(), prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
     }
 
