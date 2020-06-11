@@ -185,51 +185,47 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     public CallTarget parse(ParsingRequest parsingRequest) {
         Source source = parsingRequest.getSource();
         List<String> argumentNames = parsingRequest.getArgumentNames();
-        if (argumentNames == null || argumentNames.isEmpty()) {
-            final JSContext context = getJSContext();
-            final ScriptNode program = parseScript(context, source, "", "", false);
+        final JSContext context = getJSContext();
+        final ScriptNode program = parseScript(context, source, "", "", argumentNames);
 
-            if (context.isOptionParseOnly()) {
-                return createEmptyScript(context).getCallTarget();
+        if (context.isOptionParseOnly()) {
+            return createEmptyScript(context).getCallTarget();
+        }
+
+        RootNode rootNode = new RootNode(this) {
+            @Child private DirectCallNode directCallNode = DirectCallNode.create(program.getCallTarget());
+            @Child private ExportValueNode exportValueNode = ExportValueNode.create();
+            @CompilationFinal private ContextReference<JSRealm> contextReference;
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                if (contextReference == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    contextReference = lookupContextReference(JavaScriptLanguage.class);
+                }
+                JSRealm realm = contextReference.get();
+                assert realm.getContext() == context : "unexpected JSContext";
+                try {
+                    interopBoundaryEnter(realm);
+                    Object[] arguments = program.argumentsToRunWithArguments(realm, frame.getArguments());
+                    Object result = directCallNode.call(arguments);
+                    return exportValueNode.execute(result);
+                } finally {
+                    interopBoundaryExit(realm);
+                }
             }
 
-            RootNode rootNode = new RootNode(this) {
-                @Child private DirectCallNode directCallNode = DirectCallNode.create(program.getCallTarget());
-                @Child private ExportValueNode exportValueNode = ExportValueNode.create();
-                @CompilationFinal private ContextReference<JSRealm> contextReference;
+            @Override
+            public boolean isInternal() {
+                return true;
+            }
 
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    if (contextReference == null) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        contextReference = lookupContextReference(JavaScriptLanguage.class);
-                    }
-                    JSRealm realm = contextReference.get();
-                    assert realm.getContext() == context : "unexpected JSContext";
-                    try {
-                        interopBoundaryEnter(realm);
-                        Object result = directCallNode.call(program.argumentsToRun(realm));
-                        return exportValueNode.execute(result);
-                    } finally {
-                        interopBoundaryExit(realm);
-                    }
-                }
-
-                @Override
-                public boolean isInternal() {
-                    return true;
-                }
-
-                @Override
-                protected boolean isInstrumentable() {
-                    return false;
-                }
-            };
-            return Truffle.getRuntime().createCallTarget(rootNode);
-        } else {
-            RootNode rootNode = parseWithArgumentNames(source, argumentNames);
-            return Truffle.getRuntime().createCallTarget(rootNode);
-        }
+            @Override
+            protected boolean isInstrumentable() {
+                return false;
+            }
+        };
+        return Truffle.getRuntime().createCallTarget(rootNode);        
     }
 
     @TruffleBoundary
@@ -280,7 +276,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         }
         prolog.append(") {\n");
 
-        ScriptNode program = parseScript(getJSContext(), source, prolog.toString(), "})", true);
+        ScriptNode program = parseScript(getJSContext(), source, prolog.toString(), "})", argumentNames);
 
         return new RootNode(this) {
             @CompilationFinal private ContextReference<JSRealm> contextReference;
@@ -321,11 +317,11 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     }
 
     @TruffleBoundary
-    protected static ScriptNode parseScript(JSContext context, Source code, String prolog, String epilog, boolean alwaysReturnValue) {
+    protected static ScriptNode parseScript(JSContext context, Source code, String prolog, String epilog, List<String> argumentNames) {
         boolean profileTime = context.getContextOptions().isProfileTime();
         long startTime = profileTime ? System.nanoTime() : 0L;
         try {
-            return context.getEvaluator().parseScript(context, code, prolog, epilog, alwaysReturnValue);
+            return context.getEvaluator().parseScript(context, code, prolog, epilog, argumentNames.toArray(new String[0]));
         } finally {
             if (profileTime) {
                 context.getTimeProfiler().printElapsed(startTime, "parsing " + code.getName());
