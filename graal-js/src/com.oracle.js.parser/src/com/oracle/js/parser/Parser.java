@@ -476,8 +476,8 @@ public class Parser extends AbstractParser {
 
     /**
      * Parse code assuming a set of given arguments for the returned {@code FunctionNode}.
-     * 
-     * @param argumentNames names of arguments assumed by the parsed function node. 
+     *
+     * @param argumentNames names of arguments assumed by the parsed function node.
      */
     public FunctionNode parseWithArguments(String[] argumentNames) {
         return parse(PROGRAM_NAME, 0, source.getLength(), 0, null, argumentNames);
