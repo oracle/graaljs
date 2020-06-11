@@ -148,7 +148,7 @@ public class InnerContextTest {
     public void innerParseSimpleExpression() throws Exception {
         try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new ProxyParsingLanguage("multiplier"))) {
             try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
-                Value mul = context.eval(Source.create(TestLanguage.ID, "return 6 * multiplier"));
+                Value mul = context.eval(Source.create(TestLanguage.ID, "6 * multiplier"));
                 Value fourtyTwo = mul.execute(7);
                 assertEquals(42, fourtyTwo.asInt());
             }
