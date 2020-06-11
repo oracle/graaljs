@@ -95,7 +95,8 @@ public class InnerContextTest {
             }
         })) {
             try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
-                context.eval(Source.create(TestLanguage.ID, ""));
+                Value result = context.eval(Source.create(TestLanguage.ID, ""));
+                assertEquals(result.asInt(), 42);
             }
             try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
                 context.initialize(JavaScriptLanguage.ID);
@@ -135,13 +136,36 @@ public class InnerContextTest {
             }
         })) {
             try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
-                context.eval(Source.create(TestLanguage.ID, ""));
+                String result = context.eval(Source.create(TestLanguage.ID, "")).as(String.class);
+                // (1 + 2 + 3 + 4 + 0.1 + 1.5) + ':' + 'test'
+                assertEquals("11.600000001490116:test", result);
             }
             try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
                 context.initialize(JavaScriptLanguage.ID);
                 context.eval(Source.create(TestLanguage.ID, ""));
             }
         }
+    }
+
+    @Test
+    public void innerParseConsistencyWithAndWithoutArguments() throws Exception {
+        String noParameters = null;
+        String withParameters = null;
+        try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new ProxyParsingLanguage())) {
+            try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+                Value constEval = context.eval(Source.create(TestLanguage.ID, "'hello world'"));
+                Value helloWorld = constEval.execute();
+                noParameters = helloWorld.as(String.class);
+            }
+        }
+        try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new ProxyParsingLanguage("unused-parameter"))) {
+            try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+                Value constEval = context.eval(Source.create(TestLanguage.ID, "'hello world'"));
+                Value helloWorld = constEval.execute("unsued parameter value");
+                withParameters = helloWorld.as(String.class);
+            }
+        }
+        assertEquals(noParameters, withParameters);
     }
 
     @Test
