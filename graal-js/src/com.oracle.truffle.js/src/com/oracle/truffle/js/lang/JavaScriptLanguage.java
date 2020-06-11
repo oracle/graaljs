@@ -195,6 +195,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         RootNode rootNode = new RootNode(this) {
             @Child private DirectCallNode directCallNode = DirectCallNode.create(program.getCallTarget());
             @Child private ExportValueNode exportValueNode = ExportValueNode.create();
+            @Child private JSForeignToJSTypeNode importValueNode = JSForeignToJSTypeNode.create();
             @CompilationFinal private ContextReference<JSRealm> contextReference;
 
             @Override
@@ -207,7 +208,11 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 assert realm.getContext() == context : "unexpected JSContext";
                 try {
                     interopBoundaryEnter(realm);
-                    Object[] arguments = program.argumentsToRunWithArguments(realm, frame.getArguments());
+                    Object[] arguments = frame.getArguments();
+                    for (int i = 0; i < arguments.length; i++) {
+                        arguments[i] = importValueNode.executeWithTarget(arguments[i]);
+                    }
+                    arguments = program.argumentsToRunWithArguments(realm, arguments);
                     Object result = directCallNode.call(arguments);
                     return exportValueNode.execute(result);
                 } finally {
