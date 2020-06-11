@@ -1038,12 +1038,15 @@ public class Parser extends AbstractParser {
 
         final Scope topScope = (parseFlags & PARSE_EVAL) != 0 ? createEvalScope(parseFlags, parentScope) : Scope.createGlobal();
         final IdentNode ident = null;
+        final List<IdentNode> parameters = createFunctionNodeParameters(argumentNames);    
         final ParserContextFunctionNode script = createParserContextFunctionNode(
                         ident,
                         functionToken,
                         FunctionNode.IS_SCRIPT,
                         functionLine,
-                        Collections.<IdentNode> emptyList(), 0, topScope);
+                        parameters, 
+                        parameters.size(), 
+                        topScope);
         script.setInternalName(scriptName);
 
         lc.push(script);
@@ -1064,6 +1067,18 @@ public class Parser extends AbstractParser {
         expect(EOF);
 
         return createFunctionNode(script, functionToken, ident, functionLine, programBody);
+    }
+
+    private static List<IdentNode> createFunctionNodeParameters(String[] argumentNames) {
+        if (argumentNames == null) {
+            return Collections.emptyList();
+        }
+        ArrayList<IdentNode> list = new ArrayList<>();
+        for (int i=0; i < argumentNames.length; i++) {
+            // Create an artificial IdentNode that is not in the source.
+            list.add(new IdentNode(0, 0, argumentNames[i]));
+        }
+        return list;
     }
 
     private Scope createEvalScope(final int parseFlags, Scope parentScope) {
