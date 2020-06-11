@@ -69,7 +69,7 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
         return translateScript(factory, context, source, isParentStrict, prologue, epilogue, null);
     }
 
-    public static ScriptNode translateScript(NodeFactory factory, JSContext context, Source source, boolean isParentStrict, String prologue, 
+    public static ScriptNode translateScript(NodeFactory factory, JSContext context, Source source, boolean isParentStrict, String prologue,
                     String epilogue, String[] argumentNames) {
         return translateScript(factory, context, null, source, isParentStrict, false, false, null, prologue, epilogue, argumentNames);
     }

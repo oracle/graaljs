@@ -230,7 +230,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 return false;
             }
         };
-        return Truffle.getRuntime().createCallTarget(rootNode);        
+        return Truffle.getRuntime().createCallTarget(rootNode);
     }
 
     @TruffleBoundary

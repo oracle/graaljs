@@ -78,7 +78,7 @@ public final class GraalJSParserHelper {
     public static FunctionNode parseScript(JSContext context, com.oracle.truffle.api.source.Source truffleSource, JSParserOptions parserOptions) {
         return parseScript(context, truffleSource, parserOptions, false, false, null, "", "");
     }
-    
+
     public static FunctionNode parseScript(JSContext context, com.oracle.truffle.api.source.Source truffleSource, JSParserOptions parserOptions, boolean eval, boolean evalInFunction,
                     Scope evalScope, String prologue, String epilogue) {
         return parseSource(context, truffleSource, parserOptions, false, eval, evalInFunction, evalScope, prologue, epilogue, null);
