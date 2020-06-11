@@ -124,6 +124,8 @@ public final class GraalJSParserHelper {
             parsed = parser.parseModule(":module");
         } else if (eval) {
             parsed = parser.parseEval(evalInFunction, evalScope);
+        } else if (argumentNames != null) {
+            parsed = parser.parseWithArguments(argumentNames);
         } else {
             parsed = parser.parse();
         }

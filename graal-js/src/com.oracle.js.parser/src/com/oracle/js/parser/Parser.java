@@ -341,7 +341,7 @@ public class Parser extends AbstractParser {
      * @return function node resulting from successful parse
      */
     public FunctionNode parse() {
-        return parse(PROGRAM_NAME, 0, source.getLength(), 0, null);
+        return parse(PROGRAM_NAME, 0, source.getLength(), 0, null, null);
     }
 
     /**
@@ -404,17 +404,18 @@ public class Parser extends AbstractParser {
      *            the code being reparsed. This allows us to recognize special forms of functions
      *            such as property getters and setters or instances of ES6 method shorthand in
      *            object literals.
+     * @param argumentNames optional names of arguments assumed by the parsed function node.
      *
      * @return function node resulting from successful parse
      */
-    public FunctionNode parse(final String scriptName, final int startPos, final int len, final int reparseFlags, Scope parentScope) {
+    public FunctionNode parse(final String scriptName, final int startPos, final int len, final int reparseFlags, Scope parentScope, String[] argumentNames) {
         long startTime = PROFILE_PARSING ? System.nanoTime() : 0L;
         try {
             prepareLexer(startPos, len);
 
             scanFirstToken();
 
-            return program(scriptName, reparseFlags, parentScope);
+            return program(scriptName, reparseFlags, parentScope, argumentNames);
         } catch (final Exception e) {
             handleParseException(e);
 
@@ -470,7 +471,16 @@ public class Parser extends AbstractParser {
      * @param parentScope optional caller context scope (direct eval)
      */
     public FunctionNode parseEval(boolean functionContext, Scope parentScope) {
-        return parse(PROGRAM_NAME, 0, source.getLength(), PARSE_EVAL | (functionContext ? PARSE_FUNCTION_CONTEXT_EVAL : 0), parentScope);
+        return parse(PROGRAM_NAME, 0, source.getLength(), PARSE_EVAL | (functionContext ? PARSE_FUNCTION_CONTEXT_EVAL : 0), parentScope, null);
+    }
+
+    /**
+     * Parse code assuming a set of given arguments for the returned {@code FunctionNode}.
+     * 
+     * @param argumentNames names of arguments assumed by the parsed function node. 
+     */
+    public FunctionNode parseWithArguments(String[] argumentNames) {
+        return parse(PROGRAM_NAME, 0, source.getLength(), 0, null, argumentNames);
     }
 
     /**
@@ -1020,7 +1030,7 @@ public class Parser extends AbstractParser {
      *      SourceElements?
      * </pre>
      */
-    private FunctionNode program(final String scriptName, final int parseFlags, final Scope parentScope) {
+    private FunctionNode program(final String scriptName, final int parseFlags, final Scope parentScope, final String[] argumentNames) {
         // Make a pseudo-token for the script holding its start and length.
         int functionStart = Math.min(Token.descPosition(Token.withDelimiter(token)), finish);
         final long functionToken = Token.toDesc(FUNCTION, functionStart, source.getLength() - functionStart);
