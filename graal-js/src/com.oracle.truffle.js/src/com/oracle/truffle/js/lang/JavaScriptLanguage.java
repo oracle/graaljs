@@ -268,59 +268,6 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         return true;
     }
 
-    private RootNode parseWithArgumentNames(Source source, List<String> argumentNames) {
-        StringBuilder prolog = new StringBuilder();
-        prolog.append("'use strict';");
-        prolog.append("(function");
-        prolog.append(" (");
-        for (int i = 0; i < argumentNames.size(); i++) {
-            if (i != 0) {
-                prolog.append(", ");
-            }
-            prolog.append(argumentNames.get(i));
-        }
-        prolog.append(") {\n");
-
-        ScriptNode program = parseScript(getJSContext(), source, prolog.toString(), "})", argumentNames);
-
-        return new RootNode(this) {
-            @CompilationFinal private ContextReference<JSRealm> contextReference;
-            @Child private ExportValueNode exportValueNode = ExportValueNode.create();
-            @Child private JSForeignToJSTypeNode importValueNode = JSForeignToJSTypeNode.create();
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                if (contextReference == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    contextReference = lookupContextReference(JavaScriptLanguage.class);
-                }
-                JSRealm realm = contextReference.get();
-                try {
-                    interopBoundaryEnter(realm);
-                    Object function = program.run(realm);
-                    Object[] arguments = frame.getArguments();
-                    for (int i = 0; i < arguments.length; i++) {
-                        arguments[i] = importValueNode.executeWithTarget(arguments[i]);
-                    }
-                    Object result = JSFunction.call(JSArguments.create(Undefined.instance, function, arguments));
-                    return exportValueNode.execute(result);
-                } finally {
-                    interopBoundaryExit(realm);
-                }
-            }
-
-            @Override
-            public boolean isInternal() {
-                return true;
-            }
-
-            @Override
-            protected boolean isInstrumentable() {
-                return false;
-            }
-        };
-    }
-
     @TruffleBoundary
     protected static ScriptNode parseScript(JSContext context, Source code, String prolog, String epilog, List<String> argumentNames) {
         boolean profileTime = context.getContextOptions().isProfileTime();
