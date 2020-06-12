@@ -176,7 +176,7 @@ UV_DESTRUCTOR(static void cleanup(void)) {
   if (threads != default_threads)
     uv__free(threads);
 
-  uv_mutex_destroy(&mutex);
+  uv_mutex_destroy(&mutex, true);
   uv_cond_destroy(&cond);
 
   threads = NULL;

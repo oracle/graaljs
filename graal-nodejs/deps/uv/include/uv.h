@@ -23,6 +23,11 @@
 
 #ifndef UV_H
 #define UV_H
+
+#ifndef __cplusplus
+#include <stdbool.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -1651,7 +1656,7 @@ UV_EXTERN const char* uv_dlerror(const uv_lib_t* lib);
 
 UV_EXTERN int uv_mutex_init(uv_mutex_t* handle);
 UV_EXTERN int uv_mutex_init_recursive(uv_mutex_t* handle);
-UV_EXTERN void uv_mutex_destroy(uv_mutex_t* handle);
+UV_EXTERN void uv_mutex_destroy(uv_mutex_t* handle, bool abort_on_error);
 UV_EXTERN void uv_mutex_lock(uv_mutex_t* handle);
 UV_EXTERN int uv_mutex_trylock(uv_mutex_t* handle);
 UV_EXTERN void uv_mutex_unlock(uv_mutex_t* handle);

@@ -18,7 +18,7 @@ using Mutex = MutexBase<LibuvMutexTraits>;
 template <typename Traits>
 class MutexBase {
  public:
-  inline MutexBase();
+  inline MutexBase(bool abort_on_error = true);
   inline ~MutexBase();
   inline void Lock();
   inline void Unlock();
@@ -60,6 +60,7 @@ class MutexBase {
  private:
   template <typename> friend class ConditionVariableBase;
   mutable typename Traits::MutexT mutex_;
+  bool abort_on_error_;
 };
 
 template <typename Traits>
@@ -108,8 +109,8 @@ struct LibuvMutexTraits {
     uv_cond_wait(cond, mutex);
   }
 
-  static inline void mutex_destroy(MutexT* mutex) {
-    uv_mutex_destroy(mutex);
+  static inline void mutex_destroy(MutexT* mutex, bool abort_on_error) {
+    uv_mutex_destroy(mutex, abort_on_error);
   }
 
   static inline void mutex_lock(MutexT* mutex) {
@@ -147,13 +148,13 @@ void ConditionVariableBase<Traits>::Wait(const ScopedLock& scoped_lock) {
 }
 
 template <typename Traits>
-MutexBase<Traits>::MutexBase() {
+MutexBase<Traits>::MutexBase(bool abort_on_error) : abort_on_error_(abort_on_error) {
   CHECK_EQ(0, Traits::mutex_init(&mutex_));
 }
 
 template <typename Traits>
 MutexBase<Traits>::~MutexBase() {
-  Traits::mutex_destroy(&mutex_);
+  Traits::mutex_destroy(&mutex_, abort_on_error_);
 }
 
 template <typename Traits>

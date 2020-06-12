@@ -95,7 +95,7 @@ int uv_loop_init(uv_loop_t* loop) {
   return 0;
 
 fail_async_init:
-  uv_mutex_destroy(&loop->wq_mutex);
+  uv_mutex_destroy(&loop->wq_mutex, true);
 
 fail_mutex_init:
   uv_rwlock_destroy(&loop->cloexec_lock);
@@ -162,7 +162,7 @@ void uv__loop_close(uv_loop_t* loop) {
   assert(QUEUE_EMPTY(&loop->wq) && "thread pool work queue not empty!");
   assert(!uv__has_active_reqs(loop));
   uv_mutex_unlock(&loop->wq_mutex);
-  uv_mutex_destroy(&loop->wq_mutex);
+  uv_mutex_destroy(&loop->wq_mutex, true);
 
   /*
    * Note that all thread pool stuff is finished at this point and

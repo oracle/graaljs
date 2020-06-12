@@ -22,7 +22,7 @@ using v8::Value;
 namespace node {
 
 namespace per_process {
-Mutex cli_options_mutex;
+Mutex cli_options_mutex(false); // It might be destroyed in spite of holding lock (e.g. --help)
 std::shared_ptr<PerProcessOptions> cli_options{new PerProcessOptions()};
 }  // namespace per_process
 

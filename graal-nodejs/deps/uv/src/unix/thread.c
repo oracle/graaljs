@@ -79,7 +79,7 @@ int uv_barrier_init(uv_barrier_t* barrier, unsigned int count) {
   return 0;
 
 error:
-  uv_mutex_destroy(&b->mutex);
+  uv_mutex_destroy(&b->mutex, true);
 error2:
   uv__free(b);
   return rc;
@@ -128,7 +128,7 @@ void uv_barrier_destroy(uv_barrier_t* barrier) {
     abort();
 
   uv_mutex_unlock(&b->mutex);
-  uv_mutex_destroy(&b->mutex);
+  uv_mutex_destroy(&b->mutex, true);
   uv_cond_destroy(&b->cond);
 
   uv__free(barrier->b);
@@ -320,9 +320,12 @@ int uv_mutex_init_recursive(uv_mutex_t* mutex) {
 }
 
 
-void uv_mutex_destroy(uv_mutex_t* mutex) {
-  if (pthread_mutex_destroy(mutex))
-    abort();
+void uv_mutex_destroy(uv_mutex_t* mutex, bool abort_on_error) {
+  if (pthread_mutex_destroy(mutex)) {
+    if (abort_on_error) {
+      abort();
+    }
+  }
 }
 
 
@@ -536,7 +539,7 @@ static int uv__custom_sem_init(uv_sem_t* sem_, unsigned int value) {
   }
 
   if ((err = uv_cond_init(&sem->cond)) != 0) {
-    uv_mutex_destroy(&sem->mutex);
+    uv_mutex_destroy(&sem->mutex, true);
     uv__free(sem);
     return err;
   }
@@ -552,7 +555,7 @@ static void uv__custom_sem_destroy(uv_sem_t* sem_) {
 
   sem = *(uv_semaphore_t**)sem_;
   uv_cond_destroy(&sem->cond);
-  uv_mutex_destroy(&sem->mutex);
+  uv_mutex_destroy(&sem->mutex, true);
   uv__free(sem);
 }
 
