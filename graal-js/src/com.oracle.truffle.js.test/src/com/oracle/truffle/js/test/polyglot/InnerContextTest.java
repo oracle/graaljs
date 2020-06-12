@@ -161,7 +161,7 @@ public class InnerContextTest {
         try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new ProxyParsingLanguage("unused-parameter"))) {
             try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
                 Value constEval = context.eval(Source.create(TestLanguage.ID, "'hello world'"));
-                Value helloWorld = constEval.execute("unsued parameter value");
+                Value helloWorld = constEval.execute("unused parameter value");
                 withParameters = helloWorld.as(String.class);
             }
         }
