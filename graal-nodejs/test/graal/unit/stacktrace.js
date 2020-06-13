@@ -97,14 +97,14 @@ describe('StackFrame', function () {
             var isEval = module.StackTrace_FrameIsEval(thrower);
             assert.strictEqual(isEval, false);
         });
-        it('should be inside eval', function () { //never returns true for any frame, on Node.js
-            var isEval = eval("function test() { return module.StackTrace_FrameIsEval(); }; test();");
+        it('should be inside eval', function () {
+            var isEval = module.StackTrace_FrameIsEval(function() { eval("throw new Error();"); });
             assert.strictEqual(isEval, true);
         });
     });
     describe.skipOnGraal('GetScriptId', function () {
         it('should return an integer', function () {
-            var id = module.StackTrace_FrameGetScriptId();
+            var id = module.StackTrace_FrameGetScriptId(thrower);
             assert.strictEqual(typeof id, "number");
             assert.strictEqual(id > 0, true);
         });
