@@ -572,7 +572,7 @@ public class Serializer {
                 break;
             default:
                 tag = null;
-                assert errorType == JSErrorType.Error;
+                assert (errorType == JSErrorType.Error) || (errorType == JSErrorType.AggregateError);
                 break;
         }
         if (tag != null) {
