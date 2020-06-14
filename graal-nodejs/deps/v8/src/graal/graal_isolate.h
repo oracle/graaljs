@@ -307,6 +307,7 @@ enum GraalAccessMethod {
     module_get_namespace,
     module_get_identity_hash,
     module_get_exception,
+    module_get_unbound_module_script,
     module_create_synthetic_module,
     module_set_synthetic_module_export,
     script_or_module_get_resource_name,

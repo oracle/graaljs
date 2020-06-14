@@ -1,9 +1,14 @@
 'use strict';
 
-const { Reflect } = primordials;
+const {
+  NumberIsSafeInteger,
+  ReflectApply,
+  Symbol,
+} = primordials;
 
 const {
   ERR_ASYNC_CALLBACK,
+  ERR_ASYNC_TYPE,
   ERR_INVALID_ASYNC_ID
 } = require('internal/errors').codes;
 const { validateString } = require('internal/validators');
@@ -21,6 +26,7 @@ const {
   getHookArrays,
   enableHooks,
   disableHooks,
+  executionAsyncResource,
   // Internal Embedder API
   newAsyncId,
   getDefaultTriggerAsyncId,
@@ -28,7 +34,9 @@ const {
   emitBefore,
   emitAfter,
   emitDestroy,
+  enabledHooksExist,
   initHooksExist,
+  destroyHooksExist,
 } = internal_async_hooks;
 
 // Get symbols
@@ -145,7 +153,7 @@ class AsyncResource {
 
     // Unlike emitInitScript, AsyncResource doesn't supports null as the
     // triggerAsyncId.
-    if (!Number.isSafeInteger(triggerAsyncId) || triggerAsyncId < -1) {
+    if (!NumberIsSafeInteger(triggerAsyncId) || triggerAsyncId < -1) {
       throw new ERR_INVALID_ASYNC_ID('triggerAsyncId', triggerAsyncId);
     }
 
@@ -154,10 +162,14 @@ class AsyncResource {
     this[trigger_async_id_symbol] = triggerAsyncId;
 
     if (initHooksExist()) {
+      if (enabledHooksExist() && type.length === 0) {
+        throw new ERR_ASYNC_TYPE(type);
+      }
+
       emitInit(asyncId, type, triggerAsyncId, this);
     }
 
-    if (!requireManualDestroy) {
+    if (!requireManualDestroy && destroyHooksExist()) {
       // This prop name (destroyed) has to be synchronized with C++
       const destroyed = { destroyed: false };
       this[destroyedSymbol] = destroyed;
@@ -167,11 +179,14 @@ class AsyncResource {
 
   runInAsyncScope(fn, thisArg, ...args) {
     const asyncId = this[async_id_symbol];
-    emitBefore(asyncId, this[trigger_async_id_symbol]);
+    emitBefore(asyncId, this[trigger_async_id_symbol], this);
+
     try {
-      if (thisArg === undefined)
-        return fn(...args);
-      return Reflect.apply(fn, thisArg, args);
+      const ret = thisArg === undefined ?
+        fn(...args) :
+        ReflectApply(fn, thisArg, args);
+
+      return ret;
     } finally {
       if (hasAsyncIdStack())
         emitAfter(asyncId);
@@ -195,14 +210,89 @@ class AsyncResource {
   }
 }
 
+const storageList = [];
+const storageHook = createHook({
+  init(asyncId, type, triggerAsyncId, resource) {
+    const currentResource = executionAsyncResource();
+    // Value of currentResource is always a non null object
+    for (let i = 0; i < storageList.length; ++i) {
+      storageList[i]._propagate(resource, currentResource);
+    }
+  }
+});
+
+class AsyncLocalStorage {
+  constructor() {
+    this.kResourceStore = Symbol('kResourceStore');
+    this.enabled = false;
+  }
+
+  disable() {
+    if (this.enabled) {
+      this.enabled = false;
+      // If this.enabled, the instance must be in storageList
+      storageList.splice(storageList.indexOf(this), 1);
+      if (storageList.length === 0) {
+        storageHook.disable();
+      }
+    }
+  }
+
+  // Propagate the context from a parent resource to a child one
+  _propagate(resource, triggerResource) {
+    const store = triggerResource[this.kResourceStore];
+    if (this.enabled) {
+      resource[this.kResourceStore] = store;
+    }
+  }
+
+  enterWith(store) {
+    if (!this.enabled) {
+      this.enabled = true;
+      storageList.push(this);
+      storageHook.enable();
+    }
+    const resource = executionAsyncResource();
+    resource[this.kResourceStore] = store;
+  }
+
+  run(store, callback, ...args) {
+    const resource = new AsyncResource('AsyncLocalStorage');
+    return resource.runInAsyncScope(() => {
+      this.enterWith(store);
+      return callback(...args);
+    });
+  }
+
+  exit(callback, ...args) {
+    if (!this.enabled) {
+      return callback(...args);
+    }
+    this.enabled = false;
+    try {
+      return callback(...args);
+    } finally {
+      this.enabled = true;
+    }
+  }
+
+  getStore() {
+    const resource = executionAsyncResource();
+    if (this.enabled) {
+      return resource[this.kResourceStore];
+    }
+  }
+}
 
 // Placing all exports down here because the exported classes won't export
 // otherwise.
 module.exports = {
   // Public API
+  AsyncLocalStorage,
   createHook,
   executionAsyncId,
   triggerAsyncId,
+  executionAsyncResource,
   // Embedder API
   AsyncResource,
 };

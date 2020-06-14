@@ -21,11 +21,15 @@
 
 'use strict';
 
-const { Object } = primordials;
+const {
+  ObjectCreate,
+  ObjectDefineProperties,
+  ObjectDefineProperty,
+} = primordials;
 
 const cares = internalBinding('cares_wrap');
 const { toASCII } = require('internal/idna');
-const { isIP, isLegalPort } = require('internal/net');
+const { isIP } = require('internal/net');
 const { customPromisifyArgs } = require('internal/util');
 const errors = require('internal/errors');
 const {
@@ -41,9 +45,11 @@ const {
   ERR_INVALID_CALLBACK,
   ERR_INVALID_OPT_VALUE,
   ERR_MISSING_ARGS,
-  ERR_SOCKET_BAD_PORT
 } = errors.codes;
-const { validateString } = require('internal/validators');
+const {
+  validatePort,
+  validateString,
+} = require('internal/validators');
 
 const {
   GetAddrInfoReqWrap,
@@ -59,11 +65,7 @@ function onlookup(err, addresses) {
   if (err) {
     return this.callback(dnsException(err, 'getaddrinfo', this.hostname));
   }
-  if (this.family) {
-    this.callback(null, addresses[0], this.family);
-  } else {
-    this.callback(null, addresses[0], isIP(addresses[0]));
-  }
+  this.callback(null, addresses[0], this.family || isIP(addresses[0]));
 }
 
 
@@ -152,8 +154,8 @@ function lookup(hostname, options, callback) {
   return req;
 }
 
-Object.defineProperty(lookup, customPromisifyArgs,
-                      { value: ['address', 'family'], enumerable: false });
+ObjectDefineProperty(lookup, customPromisifyArgs,
+                     { value: ['address', 'family'], enumerable: false });
 
 
 function onlookupservice(err, hostname, service) {
@@ -171,8 +173,7 @@ function lookupService(address, port, callback) {
   if (isIP(address) === 0)
     throw new ERR_INVALID_OPT_VALUE('address', address);
 
-  if (!isLegalPort(port))
-    throw new ERR_SOCKET_BAD_PORT(port);
+  validatePort(port);
 
   if (typeof callback !== 'function')
     throw new ERR_INVALID_CALLBACK(callback);
@@ -190,8 +191,8 @@ function lookupService(address, port, callback) {
   return req;
 }
 
-Object.defineProperty(lookupService, customPromisifyArgs,
-                      { value: ['hostname', 'service'], enumerable: false });
+ObjectDefineProperty(lookupService, customPromisifyArgs,
+                     { value: ['hostname', 'service'], enumerable: false });
 
 
 function onresolve(err, result, ttls) {
@@ -227,11 +228,11 @@ function resolver(bindingName) {
     if (err) throw dnsException(err, bindingName, name);
     return req;
   }
-  Object.defineProperty(query, 'name', { value: bindingName });
+  ObjectDefineProperty(query, 'name', { value: bindingName });
   return query;
 }
 
-const resolveMap = Object.create(null);
+const resolveMap = ObjectCreate(null);
 Resolver.prototype.resolveAny = resolveMap.ANY = resolver('queryAny');
 Resolver.prototype.resolve4 = resolveMap.A = resolver('queryA');
 Resolver.prototype.resolve6 = resolveMap.AAAA = resolver('queryAaaa');
@@ -285,6 +286,7 @@ module.exports = {
 
   // uv_getaddrinfo flags
   ADDRCONFIG: cares.AI_ADDRCONFIG,
+  ALL: cares.AI_ALL,
   V4MAPPED: cares.AI_V4MAPPED,
 
   // ERROR CODES
@@ -316,7 +318,7 @@ module.exports = {
 
 bindDefaultResolver(module.exports, getDefaultResolver());
 
-Object.defineProperties(module.exports, {
+ObjectDefineProperties(module.exports, {
   promises: {
     configurable: true,
     enumerable: true,

@@ -1,6 +1,20 @@
 'use strict';
 
-const { Object, Reflect } = primordials;
+const {
+  Array,
+  Number,
+  ObjectCreate,
+  ObjectDefineProperties,
+  ObjectDefineProperty,
+  ObjectGetOwnPropertySymbols,
+  ObjectGetPrototypeOf,
+  ObjectKeys,
+  ReflectGetOwnPropertyDescriptor,
+  ReflectOwnKeys,
+  Symbol,
+  SymbolIterator,
+  SymbolToStringTag,
+} = primordials;
 
 const { inspect } = require('internal/util/inspect');
 const {
@@ -74,8 +88,8 @@ const searchParams = Symbol('query');
 const kFormat = Symbol('format');
 
 // https://tc39.github.io/ecma262/#sec-%iteratorprototype%-object
-const IteratorPrototype = Object.getPrototypeOf(
-  Object.getPrototypeOf([][Symbol.iterator]())
+const IteratorPrototype = ObjectGetPrototypeOf(
+  ObjectGetPrototypeOf([][SymbolIterator]())
 );
 
 const unpairedSurrogateRe =
@@ -127,8 +141,8 @@ class URLSearchParams {
     if (init === null || init === undefined) {
       this[searchParams] = [];
     } else if (typeof init === 'object' || typeof init === 'function') {
-      const method = init[Symbol.iterator];
-      if (method === this[Symbol.iterator]) {
+      const method = init[SymbolIterator];
+      if (method === this[SymbolIterator]) {
         // While the spec does not have this branch, we can use it as a
         // shortcut to avoid having to go through the costly generic iterator.
         const childParams = init[searchParams];
@@ -144,7 +158,7 @@ class URLSearchParams {
         for (const pair of init) {
           if ((typeof pair !== 'object' && typeof pair !== 'function') ||
               pair === null ||
-              typeof pair[Symbol.iterator] !== 'function') {
+              typeof pair[SymbolIterator] !== 'function') {
             throw new ERR_INVALID_TUPLE('Each query pair', '[name, value]');
           }
           const convertedPair = [];
@@ -164,10 +178,10 @@ class URLSearchParams {
         // Record<USVString, USVString>
         // Need to use reflection APIs for full spec compliance.
         this[searchParams] = [];
-        const keys = Reflect.ownKeys(init);
+        const keys = ReflectOwnKeys(init);
         for (let i = 0; i < keys.length; i++) {
           const key = keys[i];
-          const desc = Reflect.getOwnPropertyDescriptor(init, key);
+          const desc = ReflectGetOwnPropertyDescriptor(init, key);
           if (desc !== undefined && desc.enumerable) {
             const typedKey = toUSVString(key);
             const typedValue = toUSVString(init[key]);
@@ -338,7 +352,7 @@ class URL {
 
   [inspect.custom](depth, opts) {
     if (this == null ||
-        Object.getPrototypeOf(this[context]) !== URLContext.prototype) {
+        ObjectGetPrototypeOf(this[context]) !== URLContext.prototype) {
       throw new ERR_INVALID_THIS('URL');
     }
 
@@ -347,7 +361,7 @@ class URL {
 
     const ctor = getConstructorOf(this);
 
-    const obj = Object.create({
+    const obj = ObjectCreate({
       constructor: ctor === null ? URL : ctor
     });
 
@@ -374,7 +388,7 @@ class URL {
   }
 }
 
-Object.defineProperties(URL.prototype, {
+ObjectDefineProperties(URL.prototype, {
   [kFormat]: {
     enumerable: false,
     configurable: false,
@@ -418,7 +432,7 @@ Object.defineProperties(URL.prototype, {
       return ret;
     }
   },
-  [Symbol.toStringTag]: {
+  [SymbolToStringTag]: {
     configurable: true,
     value: 'URL'
   },
@@ -846,7 +860,7 @@ function serializeParams(array) {
 // Mainly to mitigate func-name-matching ESLint rule
 function defineIDLClass(proto, classStr, obj) {
   // https://heycam.github.io/webidl/#dfn-class-string
-  Object.defineProperty(proto, Symbol.toStringTag, {
+  ObjectDefineProperty(proto, SymbolToStringTag, {
     writable: false,
     enumerable: false,
     configurable: true,
@@ -854,16 +868,16 @@ function defineIDLClass(proto, classStr, obj) {
   });
 
   // https://heycam.github.io/webidl/#es-operations
-  for (const key of Object.keys(obj)) {
-    Object.defineProperty(proto, key, {
+  for (const key of ObjectKeys(obj)) {
+    ObjectDefineProperty(proto, key, {
       writable: true,
       enumerable: true,
       configurable: true,
       value: obj[key]
     });
   }
-  for (const key of Object.getOwnPropertySymbols(obj)) {
-    Object.defineProperty(proto, key, {
+  for (const key of ObjectGetOwnPropertySymbols(obj)) {
+    ObjectDefineProperty(proto, key, {
       writable: true,
       enumerable: false,
       configurable: true,
@@ -1137,7 +1151,7 @@ defineIDLClass(URLSearchParams.prototype, 'URLSearchParams', {
 });
 
 // https://heycam.github.io/webidl/#es-iterable-entries
-Object.defineProperty(URLSearchParams.prototype, Symbol.iterator, {
+ObjectDefineProperty(URLSearchParams.prototype, SymbolIterator, {
   writable: true,
   configurable: true,
   value: URLSearchParams.prototype.entries
@@ -1145,7 +1159,7 @@ Object.defineProperty(URLSearchParams.prototype, Symbol.iterator, {
 
 // https://heycam.github.io/webidl/#dfn-default-iterator-object
 function createSearchParamsIterator(target, kind) {
-  const iterator = Object.create(URLSearchParamsIteratorPrototype);
+  const iterator = ObjectCreate(URLSearchParamsIteratorPrototype);
   iterator[context] = {
     target,
     kind,
@@ -1155,12 +1169,12 @@ function createSearchParamsIterator(target, kind) {
 }
 
 // https://heycam.github.io/webidl/#dfn-iterator-prototype-object
-const URLSearchParamsIteratorPrototype = Object.create(IteratorPrototype);
+const URLSearchParamsIteratorPrototype = ObjectCreate(IteratorPrototype);
 
 defineIDLClass(URLSearchParamsIteratorPrototype, 'URLSearchParams Iterator', {
   next() {
     if (!this ||
-        Object.getPrototypeOf(this) !== URLSearchParamsIteratorPrototype) {
+        ObjectGetPrototypeOf(this) !== URLSearchParamsIteratorPrototype) {
       throw new ERR_INVALID_THIS('URLSearchParamsIterator');
     }
 
@@ -1231,7 +1245,7 @@ defineIDLClass(URLSearchParamsIteratorPrototype, 'URLSearchParams Iterator', {
     } else {
       outputStr = ` ${outputStrs.join(', ')}`;
     }
-    return `${this[Symbol.toStringTag]} {${outputStr} }`;
+    return `${this[SymbolToStringTag]} {${outputStr} }`;
   }
 });
 
@@ -1334,8 +1348,7 @@ function getPathFromURLPosix(url) {
 function fileURLToPath(path) {
   if (typeof path === 'string')
     path = new URL(path);
-  else if (path == null || !path[searchParams] ||
-           !path[searchParams][searchParams])
+  else if (!isURLInstance(path))
     throw new ERR_INVALID_ARG_TYPE('path', ['string', 'URL'], path);
   if (path.protocol !== 'file:')
     throw new ERR_INVALID_URL_SCHEME('file');
@@ -1382,9 +1395,13 @@ function pathToFileURL(filepath) {
   return outURL;
 }
 
+function isURLInstance(fileURLOrPath) {
+  return fileURLOrPath != null && fileURLOrPath[searchParams] &&
+    fileURLOrPath[searchParams][searchParams];
+}
+
 function toPathIfFileURL(fileURLOrPath) {
-  if (fileURLOrPath == null || !fileURLOrPath[searchParams] ||
-      !fileURLOrPath[searchParams][searchParams])
+  if (!isURLInstance(fileURLOrPath))
     return fileURLOrPath;
   return fileURLToPath(fileURLOrPath);
 }
@@ -1402,7 +1419,7 @@ function constructUrl(flags, protocol, username, password,
   ctx.fragment = fragment;
   ctx.host = host;
 
-  const url = Object.create(URL.prototype);
+  const url = ObjectCreate(URL.prototype);
   url[context] = ctx;
   const params = new URLSearchParams();
   url[searchParams] = params;
@@ -1417,6 +1434,7 @@ module.exports = {
   fileURLToPath,
   pathToFileURL,
   toPathIfFileURL,
+  isURLInstance,
   URL,
   URLSearchParams,
   domainToASCII,

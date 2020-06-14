@@ -21,7 +21,10 @@
 
 'use strict';
 
-const { Object } = primordials;
+const {
+  ObjectDefineProperties,
+  SymbolToPrimitive,
+} = primordials;
 
 const { safeGetenv } = internalBinding('credentials');
 const constants = internalBinding('constants').os;
@@ -43,8 +46,7 @@ const {
   getHostname: _getHostname,
   getInterfaceAddresses: _getInterfaceAddresses,
   getLoadAvg,
-  getOSRelease: _getOSRelease,
-  getOSType: _getOSType,
+  getOSInformation: _getOSInformation,
   getPriority: _getPriority,
   getTotalMem,
   getUserInfo,
@@ -64,19 +66,27 @@ function getCheckedFunction(fn) {
   });
 }
 
+const [
+  type,
+  version,
+  release
+] = _getOSInformation();
+
 const getHomeDirectory = getCheckedFunction(_getHomeDirectory);
 const getHostname = getCheckedFunction(_getHostname);
 const getInterfaceAddresses = getCheckedFunction(_getInterfaceAddresses);
-const getOSRelease = getCheckedFunction(_getOSRelease);
-const getOSType = getCheckedFunction(_getOSType);
+const getOSRelease = () => release;
+const getOSType = () => type;
+const getOSVersion = () => version;
 
-getFreeMem[Symbol.toPrimitive] = () => getFreeMem();
-getHostname[Symbol.toPrimitive] = () => getHostname();
-getHomeDirectory[Symbol.toPrimitive] = () => getHomeDirectory();
-getOSRelease[Symbol.toPrimitive] = () => getOSRelease();
-getOSType[Symbol.toPrimitive] = () => getOSType();
-getTotalMem[Symbol.toPrimitive] = () => getTotalMem();
-getUptime[Symbol.toPrimitive] = () => getUptime();
+getFreeMem[SymbolToPrimitive] = () => getFreeMem();
+getHostname[SymbolToPrimitive] = () => getHostname();
+getHomeDirectory[SymbolToPrimitive] = () => getHomeDirectory();
+getOSRelease[SymbolToPrimitive] = () => getOSRelease();
+getOSType[SymbolToPrimitive] = () => getOSType();
+getOSVersion[SymbolToPrimitive] = () => getOSVersion();
+getTotalMem[SymbolToPrimitive] = () => getTotalMem();
+getUptime[SymbolToPrimitive] = () => getUptime();
 
 const kEndianness = isBigEndian ? 'BE' : 'LE';
 
@@ -114,12 +124,12 @@ function cpus() {
 function arch() {
   return process.arch;
 }
-arch[Symbol.toPrimitive] = () => process.arch;
+arch[SymbolToPrimitive] = () => process.arch;
 
 function platform() {
   return process.platform;
 }
-platform[Symbol.toPrimitive] = () => process.platform;
+platform[SymbolToPrimitive] = () => process.platform;
 
 function tmpdir() {
   var path;
@@ -140,12 +150,12 @@ function tmpdir() {
 
   return path;
 }
-tmpdir[Symbol.toPrimitive] = () => tmpdir();
+tmpdir[SymbolToPrimitive] = () => tmpdir();
 
 function endianness() {
   return kEndianness;
 }
-endianness[Symbol.toPrimitive] = () => kEndianness;
+endianness[SymbolToPrimitive] = () => kEndianness;
 
 // Returns the number of ones in the binary representation of the decimal
 // number.
@@ -280,6 +290,7 @@ module.exports = {
   tmpdir,
   totalmem: getTotalMem,
   type: getOSType,
+  version: getOSVersion,
   userInfo,
   uptime: getUptime,
 
@@ -287,7 +298,7 @@ module.exports = {
   tmpDir: deprecate(tmpdir, tmpDirDeprecationMsg, 'DEP0022')
 };
 
-Object.defineProperties(module.exports, {
+ObjectDefineProperties(module.exports, {
   constants: {
     configurable: false,
     enumerable: true,

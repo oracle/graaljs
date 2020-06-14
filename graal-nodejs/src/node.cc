@@ -23,10 +23,11 @@
 
 // ========== local headers ==========
 
-#include "debug_utils.h"
+#include "debug_utils-inl.h"
 #include "env-inl.h"
 #include "memory_tracker-inl.h"
 #include "node_binding.h"
+#include "node_errors.h"
 #include "node_internals.h"
 #include "node_main_instance.h"
 #include "node_metadata.h"
@@ -34,6 +35,7 @@
 #include "node_options-inl.h"
 #include "node_perf.h"
 #include "node_process.h"
+#include "node_report.h"
 #include "node_revert.h"
 #include "node_v8_platform-inl.h"
 #include "node_version.h"
@@ -64,13 +66,7 @@
 #include "inspector/worker_inspector.h"  // ParentInspectorHandle
 #endif
 
-#ifdef NODE_ENABLE_LARGE_CODE_PAGES
 #include "large_pages/node_large_page.h"
-#endif
-
-#ifdef NODE_REPORT
-#include "node_report.h"
-#endif
 
 // ========== global C headers ==========
 
@@ -79,6 +75,7 @@
 
 #if defined(NODE_HAVE_I18N_SUPPORT)
 #include <unicode/uvernum.h>
+#include <unicode/utypes.h>
 #endif
 
 
@@ -112,10 +109,7 @@
 namespace node {
 
 using native_module::NativeModuleEnv;
-using options_parser::kAllowedInEnvironment;
-using options_parser::kDisallowedInEnvironment;
 
-using v8::Boolean;
 using v8::EscapableHandleScope;
 using v8::Function;
 using v8::FunctionCallbackInfo;
@@ -232,6 +226,8 @@ int Environment::InitializeInspector(
 void Environment::InitializeDiagnostics() {
   isolate_->GetHeapProfiler()->AddBuildEmbedderGraphCallback(
       Environment::BuildEmbedderGraph, this);
+  if (options_->trace_uncaught)
+    isolate_->SetCaptureStackTraceForUncaughtExceptions(true);
 
 #if defined HAVE_DTRACE || defined HAVE_ETW
   InitDTrace(this);
@@ -287,33 +283,51 @@ MaybeLocal<Value> Environment::BootstrapNode() {
   global->Set(context(), FIXED_ONE_BYTE_STRING(isolate_, "global"), global)
       .Check();
 
-  // process, require, internalBinding, isMainThread,
-  // ownsProcessState, primordials
+  // process, require, internalBinding, primordials
   std::vector<Local<String>> node_params = {
       process_string(),
       require_string(),
       internal_binding_string(),
-      FIXED_ONE_BYTE_STRING(isolate_, "isMainThread"),
-      FIXED_ONE_BYTE_STRING(isolate_, "ownsProcessState"),
       primordials_string()};
   std::vector<Local<Value>> node_args = {
       process_object(),
       native_module_require(),
       internal_binding_loader(),
-      Boolean::New(isolate_, is_main_thread()),
-      Boolean::New(isolate_, owns_process_state()),
       primordials()};
 
   MaybeLocal<Value> result = ExecuteBootstrapper(
       this, "internal/bootstrap/node", &node_params, &node_args);
 
+  if (result.IsEmpty()) {
+    return scope.EscapeMaybe(result);
+  }
+
+  auto thread_switch_id =
+      is_main_thread() ? "internal/bootstrap/switches/is_main_thread"
+                       : "internal/bootstrap/switches/is_not_main_thread";
+  result =
+      ExecuteBootstrapper(this, thread_switch_id, &node_params, &node_args);
+
+  if (result.IsEmpty()) {
+    return scope.EscapeMaybe(result);
+  }
+
+  auto process_state_switch_id =
+      owns_process_state()
+          ? "internal/bootstrap/switches/does_own_process_state"
+          : "internal/bootstrap/switches/does_not_own_process_state";
+  result = ExecuteBootstrapper(
+      this, process_state_switch_id, &node_params, &node_args);
+
+  if (result.IsEmpty()) {
+    return scope.EscapeMaybe(result);
+  }
+
+  Local<String> env_string = FIXED_ONE_BYTE_STRING(isolate_, "env");
   Local<Object> env_var_proxy;
   if (!CreateEnvVarProxy(context(), isolate_, as_callback_data())
            .ToLocal(&env_var_proxy) ||
-      process_object()
-          ->Set(
-              context(), FIXED_ONE_BYTE_STRING(isolate_, "env"), env_var_proxy)
-          .IsNothing()) {
+      process_object()->Set(context(), env_string, env_var_proxy).IsNothing()) {
     return MaybeLocal<Value>();
   }
 
@@ -372,13 +386,14 @@ MaybeLocal<Value> StartExecution(Environment* env, const char* main_script_id) {
           ->GetFunction(env->context())
           .ToLocalChecked()};
 
-  Local<Value> result;
-  if (!ExecuteBootstrapper(env, main_script_id, &parameters, &arguments)
-           .ToLocal(&result) ||
-      !task_queue::RunNextTicksNative(env)) {
-    return MaybeLocal<Value>();
-  }
-  return scope.Escape(result);
+  InternalCallbackScope callback_scope(
+    env,
+    Object::New(env->isolate()),
+    { 1, 0 },
+    InternalCallbackScope::kSkipAsyncHooks);
+
+  return scope.EscapeMaybe(
+      ExecuteBootstrapper(env, main_script_id, &parameters, &arguments));
 }
 
 MaybeLocal<Value> StartMainThreadExecution(Environment* env) {
@@ -402,9 +417,6 @@ MaybeLocal<Value> StartMainThreadExecution(Environment* env) {
     return StartExecution(env, "internal/main/print_help");
   }
 
-  if (per_process::cli_options->print_bash_completion) {
-    return StartExecution(env, "internal/main/print_bash_completion");
-  }
 
   if (env->options()->prof_process) {
     return StartExecution(env, "internal/main/prof_process");
@@ -526,7 +538,7 @@ inline void PlatformInit() {
     while (s.flags == -1 && errno == EINTR);  // NOLINT
     CHECK_NE(s.flags, -1);
 
-    if (!isatty(fd)) continue;
+    if (uv_guess_handle(fd) != UV_TTY) continue;
     s.isatty = true;
 
     do
@@ -634,7 +646,7 @@ void ResetStdio() {
 int ProcessGlobalArgs(std::vector<std::string>* args,
                       std::vector<std::string>* exec_args,
                       std::vector<std::string>* errors,
-                      bool is_env) {
+                      OptionEnvvarSettings settings) {
   // Parse a few arguments which are specific to Node.
   std::vector<std::string> v8_args;
 
@@ -644,7 +656,7 @@ int ProcessGlobalArgs(std::vector<std::string>* args,
       exec_args,
       &v8_args,
       per_process::cli_options.get(),
-      is_env ? kAllowedInEnvironment : kDisallowedInEnvironment,
+      settings,
       errors);
 
   if (!errors->empty()) return 9;
@@ -656,6 +668,13 @@ int ProcessGlobalArgs(std::vector<std::string>* args,
       errors->emplace_back(std::move(revert_error));
       return 12;
     }
+  }
+
+  if (per_process::cli_options->disable_proto != "delete" &&
+      per_process::cli_options->disable_proto != "throw" &&
+      per_process::cli_options->disable_proto != "") {
+    errors->emplace_back("invalid mode passed to --disable-proto");
+    return 12;
   }
 
   auto env_opts = per_process::cli_options->per_isolate->per_env;
@@ -743,11 +762,9 @@ int InitializeNodeWithArgs(std::vector<std::string>* argv,
   // Make inherited handles noninheritable.
   uv_disable_stdio_inheritance();
 
-#ifdef NODE_REPORT
   // Cache the original command line to be
   // used in diagnostic reports.
   per_process::cli_options->cmdline = *argv;
-#endif  //  NODE_REPORT
 
 #if defined(NODE_V8_OPTIONS)
   // Should come before the call to V8::SetFlagsFromCommandLine()
@@ -756,87 +773,32 @@ int InitializeNodeWithArgs(std::vector<std::string>* argv,
   V8::SetFlagsFromString(NODE_V8_OPTIONS, sizeof(NODE_V8_OPTIONS) - 1);
 #endif
 
-  std::shared_ptr<EnvironmentOptions> default_env_options =
-      per_process::cli_options->per_isolate->per_env;
-  {
-    std::string text;
-    default_env_options->pending_deprecation =
-        credentials::SafeGetenv("NODE_PENDING_DEPRECATION", &text) &&
-        text[0] == '1';
-  }
-
-  // Allow for environment set preserving symlinks.
-  {
-    std::string text;
-    default_env_options->preserve_symlinks =
-        credentials::SafeGetenv("NODE_PRESERVE_SYMLINKS", &text) &&
-        text[0] == '1';
-  }
-
-  {
-    std::string text;
-    default_env_options->preserve_symlinks_main =
-        credentials::SafeGetenv("NODE_PRESERVE_SYMLINKS_MAIN", &text) &&
-        text[0] == '1';
-  }
-
-  if (default_env_options->redirect_warnings.empty()) {
-    credentials::SafeGetenv("NODE_REDIRECT_WARNINGS",
-                            &default_env_options->redirect_warnings);
-  }
+  HandleEnvOptions(per_process::cli_options->per_isolate->per_env);
 
 #if !defined(NODE_WITHOUT_NODE_OPTIONS)
   std::string node_options;
 
   if (credentials::SafeGetenv("NODE_OPTIONS", &node_options)) {
-    std::vector<std::string> env_argv;
+    std::vector<std::string> env_argv =
+        ParseNodeOptionsEnvVar(node_options, errors);
+
+    if (!errors->empty()) return 9;
+
     // [0] is expected to be the program name, fill it in from the real argv.
-    env_argv.push_back(argv->at(0));
+    env_argv.insert(env_argv.begin(), argv->at(0));
 
-    bool is_in_string = false;
-    bool will_start_new_arg = true;
-    for (std::string::size_type index = 0;
-         index < node_options.size();
-         ++index) {
-      char c = node_options.at(index);
-
-      // Backslashes escape the following character
-      if (c == '\\' && is_in_string) {
-        if (index + 1 == node_options.size()) {
-          errors->push_back("invalid value for NODE_OPTIONS "
-                            "(invalid escape)\n");
-          return 9;
-        } else {
-          c = node_options.at(++index);
-        }
-      } else if (c == ' ' && !is_in_string) {
-        will_start_new_arg = true;
-        continue;
-      } else if (c == '"') {
-        is_in_string = !is_in_string;
-        continue;
-      }
-
-      if (will_start_new_arg) {
-        env_argv.push_back(std::string(1, c));
-        will_start_new_arg = false;
-      } else {
-        env_argv.back() += c;
-      }
-    }
-
-    if (is_in_string) {
-      errors->push_back("invalid value for NODE_OPTIONS "
-                        "(unterminated string)\n");
-      return 9;
-    }
-
-    const int exit_code = ProcessGlobalArgs(&env_argv, nullptr, errors, true);
+    const int exit_code = ProcessGlobalArgs(&env_argv,
+                                            nullptr,
+                                            errors,
+                                            kAllowedInEnvironment);
     if (exit_code != 0) return exit_code;
   }
 #endif
 
-  const int exit_code = ProcessGlobalArgs(argv, exec_argv, errors, false);
+  const int exit_code = ProcessGlobalArgs(argv,
+                                          exec_argv,
+                                          errors,
+                                          kDisallowedInEnvironment);
   if (exit_code != 0) return exit_code;
 
   // Set the process.title immediately after processing argv if --title is set.
@@ -848,6 +810,25 @@ int InitializeNodeWithArgs(std::vector<std::string>* argv,
   if (per_process::cli_options->icu_data_dir.empty())
     credentials::SafeGetenv("NODE_ICU_DATA",
                             &per_process::cli_options->icu_data_dir);
+
+#ifdef NODE_ICU_DEFAULT_DATA_DIR
+  // If neither the CLI option nor the environment variable was specified,
+  // fall back to the configured default
+  if (per_process::cli_options->icu_data_dir.empty()) {
+    // Check whether the NODE_ICU_DEFAULT_DATA_DIR contains the right data
+    // file and can be read.
+    static const char full_path[] =
+        NODE_ICU_DEFAULT_DATA_DIR "/" U_ICUDATA_NAME ".dat";
+
+    FILE* f = fopen(full_path, "rb");
+
+    if (f != nullptr) {
+      fclose(f);
+      per_process::cli_options->icu_data_dir = NODE_ICU_DEFAULT_DATA_DIR;
+    }
+  }
+#endif  // NODE_ICU_DEFAULT_DATA_DIR
+
   // Initialize ICU.
   // If icu_data_dir is empty here, it will load the 'minimal' data.
   if (!i18n::InitializeICUDirectory(per_process::cli_options->icu_data_dir)) {
@@ -889,6 +870,12 @@ void Init(int* argc,
     exit(0);
   }
 
+  if (per_process::cli_options->print_bash_completion) {
+    std::string completion = options_parser::GetBashCompletion();
+    printf("%s\n", completion.c_str());
+    exit(0);
+  }
+
   if (per_process::cli_options->print_v8_help) {
     V8::SetFlagsFromString("--help", 6);  // Doesn't return.
     UNREACHABLE();
@@ -907,18 +894,14 @@ void Init(int* argc,
 }
 
 InitializationResult InitializeOncePerProcess(int argc, char** argv) {
+  // Initialized the enabled list for Debug() calls with system
+  // environment variables.
+  per_process::enabled_debug_list.Parse(nullptr);
+
   atexit(ResetStdio);
   PlatformInit();
 
   CHECK_GT(argc, 0);
-
-#ifdef NODE_ENABLE_LARGE_CODE_PAGES
-  if (node::IsLargePagesEnabled()) {
-    if (node::MapStaticCodeToLargePages() != 0) {
-      fprintf(stderr, "Reverting to default page size\n");
-    }
-  }
-#endif
 
   // Hack around with the argv pointer. Used for process.title = "blah".
   argv = uv_setup_args(argc, argv);
@@ -939,11 +922,25 @@ InitializationResult InitializeOncePerProcess(int argc, char** argv) {
     }
   }
 
+  if (per_process::cli_options->use_largepages == "on" ||
+      per_process::cli_options->use_largepages == "silent") {
+    int result = node::MapStaticCodeToLargePages();
+    if (per_process::cli_options->use_largepages == "on" && result != 0) {
+      fprintf(stderr, "%s\n", node::LargePagesError(result));
+    }
+  }
+
   if (per_process::cli_options->print_version) {
     printf("%s\n", NODE_VERSION);
     result.exit_code = 0;
     result.early_return = true;
     return result;
+  }
+
+  if (per_process::cli_options->print_bash_completion) {
+    std::string completion = options_parser::GetBashCompletion();
+    printf("%s\n", completion.c_str());
+    exit(0);
   }
 
   if (per_process::cli_options->print_v8_help) {
@@ -967,7 +964,8 @@ InitializationResult InitializeOncePerProcess(int argc, char** argv) {
   V8::SetEntropySource(crypto::EntropySource);
 #endif  // HAVE_OPENSSL
 
-  InitializeV8Platform(per_process::cli_options->v8_thread_pool_size);
+  per_process::v8_platform.Initialize(
+      per_process::cli_options->v8_thread_pool_size);
   V8::Initialize();
   performance::performance_v8_start = PERFORMANCE_NOW();
   per_process::v8_initialized = true;

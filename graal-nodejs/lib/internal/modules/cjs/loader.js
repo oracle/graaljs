@@ -22,12 +22,25 @@
 'use strict';
 
 const {
-  JSON,
-  Object,
-  ObjectPrototype,
-  Reflect,
+  ArrayIsArray,
+  Error,
+  JSONParse,
+  Map,
+  Number,
+  ObjectCreate,
+  ObjectDefineProperty,
+  ObjectFreeze,
+  ObjectIs,
+  ObjectKeys,
+  ObjectPrototypeHasOwnProperty,
+  ReflectSet,
+  RegExpPrototypeTest,
   SafeMap,
-  StringPrototype,
+  String,
+  StringPrototypeIndexOf,
+  StringPrototypeMatch,
+  StringPrototypeSlice,
+  StringPrototypeStartsWith,
 } = primordials;
 
 const { NativeModule } = require('internal/bootstrap/loaders');
@@ -51,29 +64,37 @@ const {
   makeRequireFunction,
   normalizeReferrerURL,
   stripBOM,
-  stripShebang,
   loadNativeModule
 } = require('internal/modules/cjs/helpers');
 const { getOptionValue } = require('internal/options');
 const enableSourceMaps = getOptionValue('--enable-source-maps');
 const preserveSymlinks = getOptionValue('--preserve-symlinks');
 const preserveSymlinksMain = getOptionValue('--preserve-symlinks-main');
-const experimentalModules = getOptionValue('--experimental-modules');
 const manifest = getOptionValue('--experimental-policy') ?
   require('internal/process/policy').manifest :
   null;
 const { compileFunction } = internalBinding('contextify');
 
+// Whether any user-provided CJS modules had been loaded (executed).
+// Used for internal assertions.
+let hasLoadedAnyUserCJSModule = false;
+
 const {
   ERR_INVALID_ARG_VALUE,
   ERR_INVALID_OPT_VALUE,
+  ERR_INVALID_PACKAGE_CONFIG,
+  ERR_INVALID_PACKAGE_TARGET,
+  ERR_INVALID_MODULE_SPECIFIER,
+  ERR_PACKAGE_PATH_NOT_EXPORTED,
   ERR_REQUIRE_ESM
 } = require('internal/errors').codes;
 const { validateString } = require('internal/validators');
 const pendingDeprecation = getOptionValue('--pending-deprecation');
-const experimentalExports = getOptionValue('--experimental-exports');
 
-module.exports = Module;
+module.exports = {
+  wrapSafe, Module, toRealPath, readPackageScope,
+  get hasLoadedAnyUserCJSModule() { return hasLoadedAnyUserCJSModule; }
+};
 
 let asyncESM, ModuleJob, ModuleWrap, kInstantiated;
 
@@ -85,7 +106,7 @@ const {
 
 const isWindows = process.platform === 'win32';
 
-const relativeResolveCache = Object.create(null);
+const relativeResolveCache = ObjectCreate(null);
 
 let requireDepth = 0;
 let statCache = null;
@@ -101,7 +122,10 @@ function enrichCJSError(err) {
     after a comment block and/or after a variable definition.
   */
   if (err.message.startsWith('Unexpected token \'export\'') ||
-    (/^\s*import(?=[ {'"*])\s*(?![ (])/).test(lineWithErr)) {
+    (RegExpPrototypeTest(/^\s*import(?=[ {'"*])\s*(?![ (])/, lineWithErr))) {
+    // Emit the warning synchronously because we are in the middle of handling
+    // a SyntaxError that will throw and likely terminate the process before an
+    // asynchronous warning would be emitted.
     process.emitWarning(
       'To load an ES module, set "type": "module" in the package.json or use ' +
       'the .mjs extension.',
@@ -147,12 +171,12 @@ for (const [id, mod] of NativeModule.map) {
   }
 }
 
-Object.freeze(builtinModules);
+ObjectFreeze(builtinModules);
 Module.builtinModules = builtinModules;
 
-Module._cache = Object.create(null);
-Module._pathCache = Object.create(null);
-Module._extensions = Object.create(null);
+Module._cache = ObjectCreate(null);
+Module._pathCache = ObjectCreate(null);
+Module._extensions = ObjectCreate(null);
 let modulePaths = [];
 Module.globalPaths = [];
 
@@ -171,16 +195,16 @@ const wrapper = [
 let wrapperProxy = new Proxy(wrapper, {
   set(target, property, value, receiver) {
     patched = true;
-    return Reflect.set(target, property, value, receiver);
+    return ReflectSet(target, property, value, receiver);
   },
 
   defineProperty(target, property, descriptor) {
     patched = true;
-    return Object.defineProperty(target, property, descriptor);
+    return ObjectDefineProperty(target, property, descriptor);
   }
 });
 
-Object.defineProperty(Module, 'wrap', {
+ObjectDefineProperty(Module, 'wrap', {
   get() {
     return wrap;
   },
@@ -191,7 +215,7 @@ Object.defineProperty(Module, 'wrap', {
   }
 });
 
-Object.defineProperty(Module, 'wrapper', {
+ObjectDefineProperty(Module, 'wrapper', {
   get() {
     return wrapperProxy;
   },
@@ -236,8 +260,9 @@ function readPackage(requestPath) {
   }
 
   try {
-    const parsed = JSON.parse(json);
+    const parsed = JSONParse(json);
     const filtered = {
+      name: parsed.name,
       main: parsed.main,
       exports: parsed.exports,
       type: parsed.type
@@ -327,10 +352,11 @@ const realpathCache = new Map();
 // absolute realpath.
 function tryFile(requestPath, isMain) {
   const rc = stat(requestPath);
+  if (rc !== 0) return;
   if (preserveSymlinks && !isMain) {
-    return rc === 0 && path.resolve(requestPath);
+    return path.resolve(requestPath);
   }
-  return rc === 0 && toRealPath(requestPath);
+  return toRealPath(requestPath);
 }
 
 function toRealPath(requestPath) {
@@ -367,99 +393,217 @@ function findLongestRegisteredExtension(filename) {
   return '.js';
 }
 
+function trySelf(parentPath, request) {
+  const { data: pkg, path: basePath } = readPackageScope(parentPath) || {};
+  if (!pkg || pkg.exports === undefined) return false;
+  if (typeof pkg.name !== 'string') return false;
+
+  let expansion;
+  if (request === pkg.name) {
+    expansion = '';
+  } else if (StringPrototypeStartsWith(request, `${pkg.name}/`)) {
+    expansion = StringPrototypeSlice(request, pkg.name.length);
+  } else {
+    return false;
+  }
+
+  const fromExports = applyExports(basePath, expansion);
+  if (fromExports) {
+    return tryFile(fromExports, false);
+  }
+  assert(fromExports !== false);
+}
+
+function isConditionalDotExportSugar(exports, basePath) {
+  if (typeof exports === 'string')
+    return true;
+  if (ArrayIsArray(exports))
+    return true;
+  if (typeof exports !== 'object')
+    return false;
+  let isConditional = false;
+  let firstCheck = true;
+  for (const key of ObjectKeys(exports)) {
+    const curIsConditional = key[0] !== '.';
+    if (firstCheck) {
+      firstCheck = false;
+      isConditional = curIsConditional;
+    } else if (isConditional !== curIsConditional) {
+      throw new ERR_INVALID_PACKAGE_CONFIG(basePath, '"exports" cannot ' +
+          'contain some keys starting with \'.\' and some not. The exports ' +
+          'object must either be an object of package subpath keys or an ' +
+          'object of main entry condition name keys only.');
+    }
+  }
+  return isConditional;
+}
+
+function applyExports(basePath, expansion) {
+  const mappingKey = `.${expansion}`;
+
+  let pkgExports = readPackageExports(basePath);
+  if (pkgExports === undefined || pkgExports === null)
+    return false;
+
+  if (isConditionalDotExportSugar(pkgExports, basePath))
+    pkgExports = { '.': pkgExports };
+
+  if (typeof pkgExports === 'object') {
+    if (ObjectPrototypeHasOwnProperty(pkgExports, mappingKey)) {
+      const mapping = pkgExports[mappingKey];
+      return resolveExportsTarget(pathToFileURL(basePath + '/'), mapping, '',
+                                  mappingKey);
+    }
+
+    let dirMatch = '';
+    for (const candidateKey of ObjectKeys(pkgExports)) {
+      if (candidateKey[candidateKey.length - 1] !== '/') continue;
+      if (candidateKey.length > dirMatch.length &&
+          StringPrototypeStartsWith(mappingKey, candidateKey)) {
+        dirMatch = candidateKey;
+      }
+    }
+
+    if (dirMatch !== '') {
+      const mapping = pkgExports[dirMatch];
+      const subpath = StringPrototypeSlice(mappingKey, dirMatch.length);
+      const resolved = resolveExportsTarget(pathToFileURL(basePath + '/'),
+                                            mapping, subpath, mappingKey);
+      // Extension searching for folder exports only
+      const rc = stat(resolved);
+      if (rc === 0) return resolved;
+      if (!(RegExpPrototypeTest(trailingSlashRegex, resolved))) {
+        const exts = ObjectKeys(Module._extensions);
+        const filename = tryExtensions(resolved, exts, false);
+        if (filename) return filename;
+      }
+      if (rc === 1) {
+        const exts = ObjectKeys(Module._extensions);
+        const filename = tryPackage(resolved, exts, false,
+                                    basePath + expansion);
+        if (filename) return filename;
+      }
+      // Undefined means not found
+      return;
+    }
+  }
+
+  throw new ERR_PACKAGE_PATH_NOT_EXPORTED(basePath, mappingKey);
+}
+
 // This only applies to requests of a specific form:
 // 1. name/.*
 // 2. @scope/name/.*
 const EXPORTS_PATTERN = /^((?:@[^/\\%]+\/)?[^./\\%][^/\\%]*)(\/.*)?$/;
-function resolveExports(nmPath, request, absoluteRequest) {
+function resolveExports(nmPath, request) {
   // The implementation's behavior is meant to mirror resolution in ESM.
-  if (experimentalExports && !absoluteRequest) {
-    const [, name, expansion = ''] =
-      StringPrototype.match(request, EXPORTS_PATTERN) || [];
-    if (!name) {
-      return path.resolve(nmPath, request);
-    }
-
-    const basePath = path.resolve(nmPath, name);
-    const pkgExports = readPackageExports(basePath);
-    const mappingKey = `.${expansion}`;
-
-    if (typeof pkgExports === 'object' && pkgExports !== null) {
-      if (ObjectPrototype.hasOwnProperty(pkgExports, mappingKey)) {
-        const mapping = pkgExports[mappingKey];
-        return resolveExportsTarget(pathToFileURL(basePath + '/'), mapping, '',
-                                    basePath, mappingKey);
-      }
-
-      let dirMatch = '';
-      for (const candidateKey of Object.keys(pkgExports)) {
-        if (candidateKey[candidateKey.length - 1] !== '/') continue;
-        if (candidateKey.length > dirMatch.length &&
-            StringPrototype.startsWith(mappingKey, candidateKey)) {
-          dirMatch = candidateKey;
-        }
-      }
-
-      if (dirMatch !== '') {
-        const mapping = pkgExports[dirMatch];
-        const subpath = StringPrototype.slice(mappingKey, dirMatch.length);
-        return resolveExportsTarget(pathToFileURL(basePath + '/'), mapping,
-                                    subpath, basePath, mappingKey);
-      }
-    }
-    if (mappingKey === '.' && typeof pkgExports === 'string') {
-      return resolveExportsTarget(pathToFileURL(basePath + '/'), pkgExports,
-                                  '', basePath, mappingKey);
-    }
-    if (pkgExports != null) {
-      // eslint-disable-next-line no-restricted-syntax
-      const e = new Error(`Package exports for '${basePath}' do not define ` +
-          `a '${mappingKey}' subpath`);
-      e.code = 'MODULE_NOT_FOUND';
-      throw e;
-    }
+  const [, name, expansion = ''] =
+    StringPrototypeMatch(request, EXPORTS_PATTERN) || [];
+  if (!name) {
+    return false;
   }
 
-  return path.resolve(nmPath, request);
+  const basePath = path.resolve(nmPath, name);
+  const fromExports = applyExports(basePath, expansion);
+  if (fromExports) {
+    return tryFile(fromExports, false);
+  }
+  return fromExports;
 }
 
-function resolveExportsTarget(pkgPath, target, subpath, basePath, mappingKey) {
+function isArrayIndex(p) {
+  assert(typeof p === 'string');
+  const n = Number(p);
+  if (String(n) !== p)
+    return false;
+  if (ObjectIs(n, +0))
+    return true;
+  if (!Number.isInteger(n))
+    return false;
+  return n >= 0 && n < (2 ** 32) - 1;
+}
+
+function resolveExportsTarget(baseUrl, target, subpath, mappingKey) {
   if (typeof target === 'string') {
-    if (target.startsWith('./') &&
-        (subpath.length === 0 || target.endsWith('/'))) {
-      const resolvedTarget = new URL(target, pkgPath);
-      const pkgPathPath = pkgPath.pathname;
-      const resolvedTargetPath = resolvedTarget.pathname;
-      if (StringPrototype.startsWith(resolvedTargetPath, pkgPathPath) &&
-          StringPrototype.indexOf(resolvedTargetPath, '/node_modules/',
-                                  pkgPathPath.length - 1) === -1) {
-        const resolved = new URL(subpath, resolvedTarget);
-        const resolvedPath = resolved.pathname;
-        if (StringPrototype.startsWith(resolvedPath, resolvedTargetPath) &&
-            StringPrototype.indexOf(resolvedPath, '/node_modules/',
-                                    pkgPathPath.length - 1) === -1) {
-          return fileURLToPath(resolved);
-        }
-      }
+    let resolvedTarget, resolvedTargetPath;
+    const pkgPathPath = baseUrl.pathname;
+    if (StringPrototypeStartsWith(target, './')) {
+      resolvedTarget = new URL(target, baseUrl);
+      resolvedTargetPath = resolvedTarget.pathname;
+      if (!StringPrototypeStartsWith(resolvedTargetPath, pkgPathPath) ||
+          StringPrototypeIndexOf(resolvedTargetPath, '/node_modules/',
+                                 pkgPathPath.length - 1) !== -1)
+        resolvedTarget = undefined;
     }
-  } else if (Array.isArray(target)) {
+    if (subpath.length > 0 && target[target.length - 1] !== '/')
+      resolvedTarget = undefined;
+    if (resolvedTarget === undefined)
+      throw new ERR_INVALID_PACKAGE_TARGET(StringPrototypeSlice(baseUrl.pathname
+        , 0, -1), mappingKey, subpath, target);
+    const resolved = new URL(subpath, resolvedTarget);
+    const resolvedPath = resolved.pathname;
+    if (StringPrototypeStartsWith(resolvedPath, resolvedTargetPath) &&
+        StringPrototypeIndexOf(resolvedPath, '/node_modules/',
+                               pkgPathPath.length - 1) === -1) {
+      return fileURLToPath(resolved);
+    }
+    throw new ERR_INVALID_MODULE_SPECIFIER(StringPrototypeSlice(baseUrl.pathname
+      , 0, -1), mappingKey);
+  } else if (ArrayIsArray(target)) {
+    if (target.length === 0)
+      throw new ERR_PACKAGE_PATH_NOT_EXPORTED(
+        StringPrototypeSlice(baseUrl.pathname, 0, -1), mappingKey + subpath);
+    let lastException;
     for (const targetValue of target) {
-      if (typeof targetValue !== 'string') continue;
       try {
-        return resolveExportsTarget(pkgPath, targetValue, subpath, basePath,
-                                    mappingKey);
+        return resolveExportsTarget(baseUrl, targetValue, subpath, mappingKey);
       } catch (e) {
-        if (e.code !== 'MODULE_NOT_FOUND') throw e;
+        lastException = e;
+        if (e.code !== 'ERR_PACKAGE_PATH_NOT_EXPORTED' &&
+            e.code !== 'ERR_INVALID_PACKAGE_TARGET')
+          throw e;
       }
     }
+    // Throw last fallback error
+    assert(lastException !== undefined);
+    throw lastException;
+  } else if (typeof target === 'object' && target !== null) {
+    const keys = ObjectKeys(target);
+    if (keys.some(isArrayIndex)) {
+      throw new ERR_INVALID_PACKAGE_CONFIG(baseUrl, '"exports" cannot ' +
+          'contain numeric property keys.');
+    }
+    for (const p of keys) {
+      switch (p) {
+        case 'node':
+        case 'require':
+          try {
+            return resolveExportsTarget(baseUrl, target[p], subpath,
+                                        mappingKey);
+          } catch (e) {
+            if (e.code !== 'ERR_PACKAGE_PATH_NOT_EXPORTED') throw e;
+          }
+          break;
+        case 'default':
+          try {
+            return resolveExportsTarget(baseUrl, target.default, subpath,
+                                        mappingKey);
+          } catch (e) {
+            if (e.code !== 'ERR_PACKAGE_PATH_NOT_EXPORTED') throw e;
+          }
+      }
+    }
+    throw new ERR_PACKAGE_PATH_NOT_EXPORTED(
+      StringPrototypeSlice(baseUrl.pathname, 0, -1), mappingKey + subpath);
+  } else if (target === null) {
+    throw new ERR_PACKAGE_PATH_NOT_EXPORTED(
+      StringPrototypeSlice(baseUrl.pathname, 0, -1), mappingKey + subpath);
   }
-  // eslint-disable-next-line no-restricted-syntax
-  const e = new Error(`Package exports for '${basePath}' do not define a ` +
-      `valid '${mappingKey}' target${subpath ? 'for ' + subpath : ''}`);
-  e.code = 'MODULE_NOT_FOUND';
-  throw e;
+  throw new ERR_INVALID_PACKAGE_TARGET(
+    StringPrototypeSlice(baseUrl.pathname, 0, -1), mappingKey, subpath, target);
 }
 
+const trailingSlashRegex = /(?:^|\/)\.?\.$/;
 Module._findPath = function(request, paths, isMain) {
   const absoluteRequest = path.isAbsolute(request);
   if (absoluteRequest) {
@@ -478,7 +622,7 @@ Module._findPath = function(request, paths, isMain) {
   let trailingSlash = request.length > 0 &&
     request.charCodeAt(request.length - 1) === CHAR_FORWARD_SLASH;
   if (!trailingSlash) {
-    trailingSlash = /(?:^|\/)\.?\.$/.test(request);
+    trailingSlash = RegExpPrototypeTest(trailingSlashRegex, request);
   }
 
   // For each path
@@ -486,7 +630,18 @@ Module._findPath = function(request, paths, isMain) {
     // Don't search further if path doesn't exist
     const curPath = paths[i];
     if (curPath && stat(curPath) < 1) continue;
-    const basePath = resolveExports(curPath, request, absoluteRequest);
+
+    if (!absoluteRequest) {
+      const exportsResolved = resolveExports(curPath, request);
+      // Undefined means not found, false means no exports
+      if (exportsResolved === undefined)
+        break;
+      if (exportsResolved) {
+        return exportsResolved;
+      }
+    }
+
+    const basePath = path.resolve(curPath, request);
     let filename;
 
     const rc = stat(basePath);
@@ -516,7 +671,7 @@ Module._findPath = function(request, paths, isMain) {
       if (!filename) {
         // Try it with each of the extensions
         if (exts === undefined)
-          exts = Object.keys(Module._extensions);
+          exts = ObjectKeys(Module._extensions);
         filename = tryExtensions(basePath, exts, isMain);
       }
     }
@@ -524,7 +679,7 @@ Module._findPath = function(request, paths, isMain) {
     if (!filename && rc === 1) {  // Directory.
       // try it with each of the extensions at "index"
       if (exts === undefined)
-        exts = Object.keys(Module._extensions);
+        exts = ObjectKeys(Module._extensions);
       filename = tryPackage(basePath, exts, isMain, request);
     }
 
@@ -533,6 +688,7 @@ Module._findPath = function(request, paths, isMain) {
       return filename;
     }
   }
+
   return false;
 };
 
@@ -640,11 +796,11 @@ Module._resolveLookupPaths = function(request, parent) {
     return paths.length > 0 ? paths : null;
   }
 
-  // With --eval, parent.id is not set and parent.filename is null.
+  // In REPL, parent.filename is null.
   if (!parent || !parent.id || !parent.filename) {
     // Make require('./path/to/foo') work - normally the path is taken
-    // from realpath(__filename) but with eval there is no filename
-    const mainPaths = ['.'].concat(Module._nodeModulePaths('.'), modulePaths);
+    // from realpath(__filename) but in REPL there is no filename
+    const mainPaths = ['.'];
 
     debug('looking for %j in %j', request, mainPaths);
     return mainPaths;
@@ -691,7 +847,7 @@ Module._load = function(request, parent, isMain) {
     return cachedModule.exports;
   }
 
-  const mod = loadNativeModule(filename, request, experimentalModules);
+  const mod = loadNativeModule(filename, request);
   if (mod && mod.canBeRequiredByUsers) return mod.exports;
 
   // Don't call updateChildren(), Module constructor already does.
@@ -728,6 +884,13 @@ Module._load = function(request, parent, isMain) {
       delete Module._cache[filename];
       if (parent !== undefined) {
         delete relativeResolveCache[relResolveCacheIdentifier];
+        const children = parent && parent.children;
+        if (ArrayIsArray(children)) {
+          const index = children.indexOf(module);
+          if (index !== -1) {
+            children.splice(index, 1);
+          }
+        }
       }
     }
   }
@@ -743,7 +906,7 @@ Module._resolveFilename = function(request, parent, isMain, options) {
   let paths;
 
   if (typeof options === 'object' && options !== null) {
-    if (Array.isArray(options.paths)) {
+    if (ArrayIsArray(options.paths)) {
       const isRelative = request.startsWith('./') ||
           request.startsWith('../') ||
           ((isWindows && request.startsWith('.\\')) ||
@@ -776,26 +939,34 @@ Module._resolveFilename = function(request, parent, isMain, options) {
     paths = Module._resolveLookupPaths(request, parent);
   }
 
-  // Look up the filename first, since that's the cache key.
-  const filename = Module._findPath(request, paths, isMain);
-  if (!filename) {
-    const requireStack = [];
-    for (let cursor = parent;
-      cursor;
-      cursor = cursor.parent) {
-      requireStack.push(cursor.filename || cursor.id);
+  if (parent && parent.filename) {
+    const filename = trySelf(parent.filename, request);
+    if (filename) {
+      const cacheKey = request + '\x00' +
+          (paths.length === 1 ? paths[0] : paths.join('\x00'));
+      Module._pathCache[cacheKey] = filename;
+      return filename;
     }
-    let message = `Cannot find module '${request}'`;
-    if (requireStack.length > 0) {
-      message = message + '\nRequire stack:\n- ' + requireStack.join('\n- ');
-    }
-    // eslint-disable-next-line no-restricted-syntax
-    const err = new Error(message);
-    err.code = 'MODULE_NOT_FOUND';
-    err.requireStack = requireStack;
-    throw err;
   }
-  return filename;
+
+  // Look up the filename first, since that's the cache key.
+  const filename = Module._findPath(request, paths, isMain, false);
+  if (filename) return filename;
+  const requireStack = [];
+  for (let cursor = parent;
+    cursor;
+    cursor = cursor.parent) {
+    requireStack.push(cursor.filename || cursor.id);
+  }
+  let message = `Cannot find module '${request}'`;
+  if (requireStack.length > 0) {
+    message = message + '\nRequire stack:\n- ' + requireStack.join('\n- ');
+  }
+  // eslint-disable-next-line no-restricted-syntax
+  const err = new Error(message);
+  err.code = 'MODULE_NOT_FOUND';
+  err.requireStack = requireStack;
+  throw err;
 };
 
 
@@ -808,29 +979,36 @@ Module.prototype.load = function(filename) {
   this.paths = Module._nodeModulePaths(path.dirname(filename));
 
   const extension = findLongestRegisteredExtension(filename);
+  // allow .mjs to be overridden
+  if (filename.endsWith('.mjs') && !Module._extensions['.mjs']) {
+    throw new ERR_REQUIRE_ESM(filename);
+  }
   Module._extensions[extension](this, filename);
   this.loaded = true;
 
-  if (experimentalModules) {
-    const ESMLoader = asyncESM.ESMLoader;
-    const url = `${pathToFileURL(filename)}`;
-    const module = ESMLoader.moduleMap.get(url);
-    // Create module entry at load time to snapshot exports correctly
-    const exports = this.exports;
-    // Called from cjs translator
-    if (module !== undefined && module.module !== undefined) {
-      if (module.module.getStatus() >= kInstantiated)
-        module.module.setExport('default', exports);
-    } else { // preemptively cache
-      ESMLoader.moduleMap.set(
-        url,
-        new ModuleJob(ESMLoader, url, () =>
-          new ModuleWrap(function() {
-            this.setExport('default', exports);
-          }, ['default'], url)
-        )
-      );
-    }
+  const ESMLoader = asyncESM.ESMLoader;
+  const url = `${pathToFileURL(filename)}`;
+  const module = ESMLoader.moduleMap.get(url);
+  // Create module entry at load time to snapshot exports correctly
+  const exports = this.exports;
+  // Called from cjs translator
+  if (module !== undefined && module.module !== undefined) {
+    if (module.module.getStatus() >= kInstantiated)
+      module.module.setExport('default', exports);
+  } else {
+    // Preemptively cache
+    // We use a function to defer promise creation for async hooks.
+    ESMLoader.moduleMap.set(
+      url,
+      // Module job creation will start promises.
+      // We make it a function to lazily trigger those promises
+      // for async hooks compatibility.
+      () => new ModuleJob(ESMLoader, url, () =>
+        new ModuleWrap(url, undefined, ['default'], function() {
+          this.setExport('default', exports);
+        })
+      , false /* isMain */, false /* inspectBrk */)
+    );
   }
 };
 
@@ -857,6 +1035,56 @@ Module.prototype.require = function(id) {
 let resolvedArgv;
 let hasPausedEntry = false;
 
+function wrapSafe(filename, content, cjsModuleInstance) {
+  if (patched) {
+    const wrapper = Module.wrap(content);
+    return vm.runInThisContext(wrapper, {
+      filename,
+      lineOffset: 0,
+      displayErrors: true,
+      importModuleDynamically: async (specifier) => {
+        const loader = asyncESM.ESMLoader;
+        return loader.import(specifier, normalizeReferrerURL(filename));
+      },
+    });
+  }
+
+  let compiled;
+  try {
+    compiled = compileFunction(
+      content,
+      filename,
+      0,
+      0,
+      undefined,
+      false,
+      undefined,
+      [],
+      [
+        'exports',
+        'require',
+        'module',
+        '__filename',
+        '__dirname',
+      ]
+    );
+  } catch (err) {
+    if (process.mainModule === cjsModuleInstance)
+      enrichCJSError(err);
+    throw err;
+  }
+
+  const { callbackMap } = internalBinding('module_wrap');
+  callbackMap.set(compiled.cacheKey, {
+    importModuleDynamically: async (specifier) => {
+      const loader = asyncESM.ESMLoader;
+      return loader.import(specifier, normalizeReferrerURL(filename));
+    }
+  });
+
+  return compiled.function;
+}
+
 // Run the file contents in the correct scope or sandbox. Expose
 // the correct helper variables (require, module, exports) to
 // the file.
@@ -870,73 +1098,28 @@ Module.prototype._compile = function(content, filename) {
     manifest.assertIntegrity(moduleURL, content);
   }
 
-  content = stripShebang(content);
   maybeCacheSourceMap(filename, content, this);
+  const compiledWrapper = wrapSafe(filename, content, this);
 
-  let compiledWrapper;
-  if (patched) {
-    const wrapper = Module.wrap(content);
-    compiledWrapper = vm.runInThisContext(wrapper, {
-      filename,
-      lineOffset: 0,
-      displayErrors: true,
-      importModuleDynamically: experimentalModules ? async (specifier) => {
-        const loader = await asyncESM.loaderPromise;
-        return loader.import(specifier, normalizeReferrerURL(filename));
-      } : undefined,
-    });
-  } else {
-    let compiled;
-    try {
-      compiled = compileFunction(
-        content,
-        filename,
-        0,
-        0,
-        undefined,
-        false,
-        undefined,
-        [],
-        [
-          'exports',
-          'require',
-          'module',
-          '__filename',
-          '__dirname',
-        ]
-      );
-    } catch (err) {
-      if (experimentalModules) {
-        enrichCJSError(err);
-      }
-      throw err;
-    }
-
-    if (experimentalModules) {
-      const { callbackMap } = internalBinding('module_wrap');
-      callbackMap.set(compiled.cacheKey, {
-        importModuleDynamically: async (specifier) => {
-          const loader = await asyncESM.loaderPromise;
-          return loader.import(specifier, normalizeReferrerURL(filename));
-        }
-      });
-    }
-    compiledWrapper = compiled.function;
-  }
-
-  let inspectorWrapper = null;
+  var inspectorWrapper = null;
   if (getOptionValue('--inspect-brk') && process._eval == null) {
     if (!resolvedArgv) {
       // We enter the repl if we're not given a filename argument.
       if (process.argv[1]) {
-        resolvedArgv = Module._resolveFilename(process.argv[1], null, false);
+        try {
+          resolvedArgv = Module._resolveFilename(process.argv[1], null, false);
+        } catch {
+          // We only expect this codepath to be reached in the case of a
+          // preloaded module (it will fail earlier with the main entry)
+          assert(ArrayIsArray(getOptionValue('--require')));
+        }
       } else {
         resolvedArgv = 'repl';
       }
     }
 
     // Set breakpoint on module start
-    if (!hasPausedEntry && filename === resolvedArgv) {
+    if (resolvedArgv && !hasPausedEntry && filename === resolvedArgv) {
       hasPausedEntry = true;
       inspectorWrapper = internalBinding('inspector').callAndPauseOnStart;
     }
@@ -955,40 +1138,24 @@ Module.prototype._compile = function(content, filename) {
     result = compiledWrapper.call(thisValue, exports, require, module,
                                   filename, dirname);
   }
+  hasLoadedAnyUserCJSModule = true;
   if (requireDepth === 0) statCache = null;
   return result;
 };
 
 // Native extension for .js
-let warnRequireESM = true;
 Module._extensions['.js'] = function(module, filename) {
   if (filename.endsWith('.js')) {
     const pkg = readPackageScope(filename);
+    // Function require shouldn't be used in ES modules.
     if (pkg && pkg.data && pkg.data.type === 'module') {
-      if (warnRequireESM) {
-        const parentPath = module.parent && module.parent.filename;
-        const basename = parentPath &&
-            path.basename(filename) === path.basename(parentPath) ?
-          filename : path.basename(filename);
-        process.emitWarning(
-          'require() of ES modules is not supported.\nrequire() of ' +
-          `${filename} ${parentPath ? `from ${module.parent.filename} ` : ''}` +
-          'is an ES module file as it is a .js file whose nearest parent ' +
-          'package.json contains "type": "module" which defines all .js ' +
-          'files in that package scope as ES modules.\nInstead rename ' +
-          `${basename} to end in .cjs, change the requiring code to use ` +
-          'import(), or remove "type": "module" from ' +
-          `${path.resolve(pkg.path, 'package.json')}.`
-        );
-        warnRequireESM = false;
-      }
-      if (experimentalModules) {
-        throw new ERR_REQUIRE_ESM(filename);
-      }
+      const parentPath = module.parent && module.parent.filename;
+      const packageJsonPath = path.resolve(pkg.path, 'package.json');
+      throw new ERR_REQUIRE_ESM(filename, parentPath, packageJsonPath);
     }
   }
   const content = fs.readFileSync(filename, 'utf8');
-  module._compile(stripBOM(content), filename);
+  module._compile(content, filename);
 };
 
 
@@ -1002,7 +1169,7 @@ Module._extensions['.json'] = function(module, filename) {
   }
 
   try {
-    module.exports = JSON.parse(stripBOM(content));
+    module.exports = JSONParse(stripBOM(content));
   } catch (err) {
     err.message = filename + ': ' + err.message;
     throw err;
@@ -1019,28 +1186,6 @@ Module._extensions['.node'] = function(module, filename) {
   }
   // Be aware this doesn't use `content`
   return process.dlopen(module, path.toNamespacedPath(filename));
-};
-
-Module._extensions['.mjs'] = function(module, filename) {
-  throw new ERR_REQUIRE_ESM(filename);
-};
-
-// Bootstrap main module.
-Module.runMain = function() {
-  // Load the main module--the command line argument.
-  if (experimentalModules) {
-    asyncESM.loaderPromise.then((loader) => {
-      return loader.import(pathToFileURL(process.argv[1]).href);
-    })
-    .catch((e) => {
-      internalBinding('errors').triggerUncaughtException(
-        e,
-        true /* fromPromise */
-      );
-    });
-    return;
-  }
-  Module._load(process.argv[1], null, true);
 };
 
 function createRequireFromPath(filename) {
@@ -1115,7 +1260,7 @@ Module._initPaths = function() {
 };
 
 Module._preloadModules = function(requests) {
-  if (!Array.isArray(requests))
+  if (!ArrayIsArray(requests))
     return;
 
   // Preloaded modules have a dummy parent module which is deemed to exist
@@ -1145,8 +1290,6 @@ Module.syncBuiltinESMExports = function syncBuiltinESMExports() {
 Module.Module = Module;
 
 // We have to load the esm things after module.exports!
-if (experimentalModules) {
-  asyncESM = require('internal/process/esm_loader');
-  ModuleJob = require('internal/modules/esm/module_job');
-  ({ ModuleWrap, kInstantiated } = internalBinding('module_wrap'));
-}
+asyncESM = require('internal/process/esm_loader');
+ModuleJob = require('internal/modules/esm/module_job');
+({ ModuleWrap, kInstantiated } = internalBinding('module_wrap'));

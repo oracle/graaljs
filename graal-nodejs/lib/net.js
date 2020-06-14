@@ -22,10 +22,14 @@
 'use strict';
 
 const {
-  Object: {
-    defineProperty: ObjectDefineProperty,
-    setPrototypeOf: ObjectSetPrototypeOf
-  }
+  ArrayIsArray,
+  Boolean,
+  Error,
+  Number,
+  NumberIsNaN,
+  ObjectDefineProperty,
+  ObjectSetPrototypeOf,
+  Symbol,
 } = primordials;
 
 const EventEmitter = require('events');
@@ -37,7 +41,6 @@ const {
   isIP,
   isIPv4,
   isIPv6,
-  isLegalPort,
   normalizedArgsSymbol,
   makeSyncWrite
 } = require('internal/net');
@@ -88,7 +91,6 @@ const {
     ERR_INVALID_OPT_VALUE,
     ERR_SERVER_ALREADY_LISTEN,
     ERR_SERVER_NOT_RUNNING,
-    ERR_SOCKET_BAD_PORT,
     ERR_SOCKET_CLOSED
   },
   errnoException,
@@ -96,7 +98,11 @@ const {
   uvExceptionWithHostPort
 } = require('internal/errors');
 const { isUint8Array } = require('internal/util/types');
-const { validateInt32, validateString } = require('internal/validators');
+const {
+  validateInt32,
+  validatePort,
+  validateString
+} = require('internal/validators');
 const kLastWriteQueueSize = Symbol('lastWriteQueueSize');
 const {
   DTRACE_NET_SERVER_CONNECTION,
@@ -253,7 +259,7 @@ function initSocketHandle(self) {
 
 const kBytesRead = Symbol('kBytesRead');
 const kBytesWritten = Symbol('kBytesWritten');
-
+const kSetNoDelay = Symbol('kSetNoDelay');
 
 function Socket(options) {
   if (!(this instanceof Socket)) return new Socket(options);
@@ -267,6 +273,7 @@ function Socket(options) {
   this[kHandle] = null;
   this._parent = null;
   this._host = null;
+  this[kSetNoDelay] = false;
   this[kLastWriteQueueSize] = 0;
   this[kTimeout] = null;
   this[kBuffer] = null;
@@ -483,8 +490,11 @@ Socket.prototype.setNoDelay = function(enable) {
   }
 
   // Backwards compatibility: assume true when `enable` is omitted
-  if (this._handle.setNoDelay)
-    this._handle.setNoDelay(enable === undefined ? true : !!enable);
+  const newValue = enable === undefined ? true : !!enable;
+  if (this._handle.setNoDelay && newValue !== this[kSetNoDelay]) {
+    this[kSetNoDelay] = newValue;
+    this._handle.setNoDelay(newValue);
+  }
 
   return this;
 };
@@ -621,9 +631,9 @@ function onReadableStreamEnd() {
     this.write = writeAfterFIN;
     if (this.writable)
       this.end();
-  }
-
-  if (!this.destroyed && !this.writable && !this.writableLength)
+    else if (!this.writableLength)
+      this.destroy();
+  } else if (!this.destroyed && !this.writable && !this.writableLength)
     this.destroy();
 }
 
@@ -811,7 +821,7 @@ protoGetter('bytesWritten', function bytesWritten() {
       bytes += Buffer.byteLength(el.chunk, el.encoding);
   });
 
-  if (Array.isArray(data)) {
+  if (ArrayIsArray(data)) {
     // Was a writev, iterate over chunks to get total length
     for (let i = 0; i < data.length; i++) {
       const chunk = data[i];
@@ -922,7 +932,7 @@ Socket.prototype.connect = function(...args) {
   // already been normalized (so we don't normalize more than once). This has
   // been solved before in https://github.com/nodejs/node/pull/12342, but was
   // reverted as it had unintended side effects.
-  if (Array.isArray(args[0]) && args[0][normalizedArgsSymbol]) {
+  if (ArrayIsArray(args[0]) && args[0][normalizedArgsSymbol]) {
     normalized = args[0];
   } else {
     normalized = normalizeArgs(args);
@@ -934,7 +944,6 @@ Socket.prototype.connect = function(...args) {
     this.write = Socket.prototype.write;
 
   if (this.destroyed) {
-    this._undestroy();
     this._handle = null;
     this._peername = null;
     this._sockname = null;
@@ -990,9 +999,7 @@ function lookupAndConnect(self, options) {
       throw new ERR_INVALID_ARG_TYPE('options.port',
                                      ['number', 'string'], port);
     }
-    if (!isLegalPort(port)) {
-      throw new ERR_SOCKET_BAD_PORT(port);
-    }
+    validatePort(port);
   }
   port |= 0;
 
@@ -1222,7 +1229,7 @@ function createServerHandle(address, port, addressType, fd, flags) {
     handle = new Pipe(PipeConstants.SERVER);
     if (process.platform === 'win32') {
       const instances = parseInt(process.env.NODE_PENDING_PIPE_INSTANCES);
-      if (!Number.isNaN(instances)) {
+      if (!NumberIsNaN(instances)) {
         handle.setPendingInstances(instances);
       }
     }
@@ -1429,9 +1436,7 @@ Server.prototype.listen = function(...args) {
   // or if options.port is normalized as 0 before
   let backlog;
   if (typeof options.port === 'number' || typeof options.port === 'string') {
-    if (!isLegalPort(options.port)) {
-      throw new ERR_SOCKET_BAD_PORT(options.port);
-    }
+    validatePort(options.port, 'options.port');
     backlog = options.backlog || backlogFromArgs;
     // start TCP server listening on host:port
     if (options.host) {
@@ -1649,6 +1654,19 @@ function emitCloseNT(self) {
   debug('SERVER: emit close');
   self.emit('close');
 }
+
+
+Server.prototype[EventEmitter.captureRejectionSymbol] = function(
+  err, event, sock) {
+
+  switch (event) {
+    case 'connection':
+      sock.destroy(err);
+      break;
+    default:
+      this.emit('error', err);
+  }
+};
 
 
 // Legacy alias on the C++ wrapper object. This is not public API, so we may

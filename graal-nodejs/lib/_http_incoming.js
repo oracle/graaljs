@@ -21,7 +21,9 @@
 
 'use strict';
 
-const { Object } = primordials;
+const {
+  ObjectSetPrototypeOf,
+} = primordials;
 
 const Stream = require('stream');
 
@@ -37,7 +39,15 @@ function readStop(socket) {
 
 /* Abstract base class for ServerRequest and ClientResponse. */
 function IncomingMessage(socket) {
-  Stream.Readable.call(this);
+  let streamOptions;
+
+  if (socket) {
+    streamOptions = {
+      highWaterMark: socket.readableHighWaterMark
+    };
+  }
+
+  Stream.Readable.call(this, streamOptions);
 
   this._readableState.readingMore = true;
 
@@ -73,8 +83,8 @@ function IncomingMessage(socket) {
   // read by the user, so there's no point continuing to handle it.
   this._dumped = false;
 }
-Object.setPrototypeOf(IncomingMessage.prototype, Stream.Readable.prototype);
-Object.setPrototypeOf(IncomingMessage, Stream.Readable);
+ObjectSetPrototypeOf(IncomingMessage.prototype, Stream.Readable.prototype);
+ObjectSetPrototypeOf(IncomingMessage, Stream.Readable);
 
 IncomingMessage.prototype.setTimeout = function setTimeout(msecs, callback) {
   if (callback)

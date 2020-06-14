@@ -2,7 +2,20 @@
 
 /* eslint-disable no-use-before-define */
 
-const { Math, Object, Reflect } = primordials;
+const {
+  ArrayFrom,
+  ArrayIsArray,
+  Map,
+  MathMin,
+  ObjectAssign,
+  ObjectCreate,
+  ObjectDefineProperty,
+  ObjectPrototypeHasOwnProperty,
+  Promise,
+  ReflectGetPrototypeOf,
+  Set,
+  Symbol,
+} = primordials;
 
 const {
   assertCrypto,
@@ -81,7 +94,11 @@ const {
   },
   hideStackFrames
 } = require('internal/errors');
-const { validateNumber, validateString } = require('internal/validators');
+const { validateNumber,
+        validateString,
+        validateUint32,
+        isUint32,
+} = require('internal/validators');
 const fsPromisesInternal = require('internal/fs/promises');
 const { utcDate } = require('internal/http');
 const { onServerStream,
@@ -124,8 +141,6 @@ const { kTimeout } = require('internal/timers');
 const { isArrayBufferView } = require('internal/util/types');
 const { format } = require('internal/util/inspect');
 
-const hasOwnProperty = Object.prototype.hasOwnProperty;
-
 const { FileHandle } = internalBinding('fs');
 const binding = internalBinding('http2');
 const {
@@ -149,7 +164,7 @@ function debugStream(id, sessionType, message, ...args) {
 }
 
 function debugStreamObj(stream, message, ...args) {
-  debugStream(stream[kID], stream[kSession][kType], ...args);
+  debugStream(stream[kID], stream[kSession][kType], message, ...args);
 }
 
 function debugSession(sessionType, message, ...args) {
@@ -207,6 +222,8 @@ const {
   kBitfield,
   kSessionPriorityListenerCount,
   kSessionFrameErrorListenerCount,
+  kSessionMaxInvalidFrames,
+  kSessionMaxRejectedStreams,
   kSessionUint8FieldCount,
   kSessionHasRemoteSettingsListeners,
   kSessionRemoteSettingsIsUpToDate,
@@ -244,6 +261,7 @@ const {
   NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE,
   NGHTTP2_SETTINGS_MAX_FRAME_SIZE,
   NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE,
+  NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL,
 
   HTTP2_METHOD_GET,
   HTTP2_METHOD_HEAD,
@@ -835,7 +853,7 @@ const proxySocketHandler = {
     const socket = session[kSocket];
     if (socket === undefined)
       throw new ERR_HTTP2_SOCKET_UNBOUND();
-    return Reflect.getPrototypeOf(socket);
+    return ReflectGetPrototypeOf(socket);
   },
   set(session, prop, value) {
     switch (prop) {
@@ -888,6 +906,7 @@ function pingCallback(cb) {
 // 4. maxConcurrentStreams must be a number in the range 0 <= n <= kMaxStreams
 // 5. maxHeaderListSize must be a number in the range 0 <= n <= kMaxInt
 // 6. enablePush must be a boolean
+// 7. enableConnectProtocol must be a boolean
 // All settings are optional and may be left undefined
 const validateSettings = hideStackFrames((settings) => {
   if (settings === undefined) return;
@@ -910,6 +929,11 @@ const validateSettings = hideStackFrames((settings) => {
       typeof settings.enablePush !== 'boolean') {
     throw new ERR_HTTP2_INVALID_SETTING_VALUE('enablePush',
                                               settings.enablePush);
+  }
+  if (settings.enableConnectProtocol !== undefined &&
+      typeof settings.enableConnectProtocol !== 'boolean') {
+    throw new ERR_HTTP2_INVALID_SETTING_VALUE('enableConnectProtocol',
+                                              settings.enableConnectProtocol);
   }
 });
 
@@ -959,13 +983,25 @@ function setupHandle(socket, type, options) {
     this[kEncrypted] = false;
   }
 
+  if (isUint32(options.maxSessionInvalidFrames)) {
+    const uint32 = new Uint32Array(
+      this[kNativeFields].buffer, kSessionMaxInvalidFrames, 1);
+    uint32[0] = options.maxSessionInvalidFrames;
+  }
+
+  if (isUint32(options.maxSessionRejectedStreams)) {
+    const uint32 = new Uint32Array(
+      this[kNativeFields].buffer, kSessionMaxRejectedStreams, 1);
+    uint32[0] = options.maxSessionRejectedStreams;
+  }
+
   const settings = typeof options.settings === 'object' ?
     options.settings : {};
 
   this.settings(settings);
 
   if (type === NGHTTP2_SESSION_SERVER &&
-      Array.isArray(options.origins)) {
+      ArrayIsArray(options.origins)) {
     this.origin(...options.origins);
   }
 
@@ -1079,7 +1115,7 @@ class Http2Session extends EventEmitter {
       socket.disableRenegotiation();
 
     const setupFn = setupHandle.bind(this, socket, type, options);
-    if (socket.connecting) {
+    if (socket.connecting || socket.secureConnecting) {
       const connectEvent =
         socket instanceof tls.TLSSocket ? 'secureConnect' : 'connect';
       socket.once(connectEvent, () => {
@@ -1122,7 +1158,7 @@ class Http2Session extends EventEmitter {
   get originSet() {
     if (!this.encrypted || this.destroyed)
       return undefined;
-    return Array.from(initOriginSet(this));
+    return ArrayFrom(initOriginSet(this));
   }
 
   // True if the Http2Session is still waiting for the socket to connect
@@ -1385,6 +1421,17 @@ class Http2Session extends EventEmitter {
     this[kMaybeDestroy]();
   }
 
+  [EventEmitter.captureRejectionSymbol](err, event, ...args) {
+    switch (event) {
+      case 'stream':
+        const [stream] = args;
+        stream.destroy(err);
+        break;
+      default:
+        this.destroy(err);
+    }
+  }
+
   // Destroy the session if:
   // * error is not undefined/null
   // * session is closed and there are no more pending or open streams
@@ -1567,7 +1614,7 @@ class ClientHttp2Session extends Http2Session {
     assertIsObject(headers, 'headers');
     assertIsObject(options, 'options');
 
-    headers = Object.assign(Object.create(null), headers);
+    headers = ObjectAssign(ObjectCreate(null), headers);
     options = { ...options };
 
     if (headers[HTTP2_HEADER_METHOD] === undefined)
@@ -2014,7 +2061,7 @@ class Http2Stream extends Duplex {
       throw new ERR_HTTP2_TRAILERS_NOT_READY();
 
     assertIsObject(headers, 'headers');
-    headers = Object.assign(Object.create(null), headers);
+    headers = ObjectAssign(ObjectCreate(null), headers);
 
     debugStreamObj(this, 'sending trailers');
 
@@ -2137,21 +2184,24 @@ class Http2Stream extends Duplex {
         // By using setImmediate we allow pushStreams to make it through
         // before the stream is officially closed. This prevents a bug
         // in most browsers where those pushStreams would be rejected.
-        setImmediate(this.close.bind(this));
+        setImmediate(callStreamClose, this);
       }
     }
   }
 }
 
+function callStreamClose(stream) {
+  stream.close();
+}
+
 function processHeaders(oldHeaders) {
   assertIsObject(oldHeaders, 'headers');
-  const headers = Object.create(null);
+  const headers = ObjectCreate(null);
 
   if (oldHeaders !== null && oldHeaders !== undefined) {
-    const hop = hasOwnProperty.bind(oldHeaders);
     // This loop is here for performance reason. Do not change.
     for (const key in oldHeaders) {
-      if (hop(key)) {
+      if (ObjectPrototypeHasOwnProperty(oldHeaders, key)) {
         headers[key] = oldHeaders[key];
       }
     }
@@ -2331,8 +2381,8 @@ function doSendFileFD(session, options, fd, headers, streamOptions, err, stat) {
   if (stat.isFile()) {
     statOptions.length =
       statOptions.length < 0 ? stat.size - (+statOptions.offset) :
-        Math.min(stat.size - (+statOptions.offset),
-                 statOptions.length);
+        MathMin(stat.size - (+statOptions.offset),
+                statOptions.length);
 
     headers[HTTP2_HEADER_CONTENT_LENGTH] = statOptions.length;
   }
@@ -2409,7 +2459,7 @@ class ServerHttp2Stream extends Http2Stream {
     options.endStream = !!options.endStream;
 
     assertIsObject(headers, 'headers');
-    headers = Object.assign(Object.create(null), headers);
+    headers = ObjectAssign(ObjectCreate(null), headers);
 
     if (headers[HTTP2_HEADER_METHOD] === undefined)
       headers[HTTP2_HEADER_METHOD] = HTTP2_METHOD_GET;
@@ -2641,7 +2691,7 @@ class ServerHttp2Stream extends Http2Stream {
       throw new ERR_HTTP2_HEADERS_AFTER_RESPOND();
 
     assertIsObject(headers, 'headers');
-    headers = Object.assign(Object.create(null), headers);
+    headers = ObjectAssign(ObjectCreate(null), headers);
 
     debugStreamObj(this, 'sending additional headers');
 
@@ -2691,8 +2741,8 @@ const setTimeout = {
   writable: true,
   value: setStreamTimeout
 };
-Object.defineProperty(Http2Stream.prototype, 'setTimeout', setTimeout);
-Object.defineProperty(Http2Session.prototype, 'setTimeout', setTimeout);
+ObjectDefineProperty(Http2Stream.prototype, 'setTimeout', setTimeout);
+ObjectDefineProperty(Http2Session.prototype, 'setTimeout', setTimeout);
 
 
 // When the socket emits an error, destroy the associated Http2Session and
@@ -2790,6 +2840,16 @@ function initializeOptions(options) {
   assertIsObject(options.settings, 'options.settings');
   options.settings = { ...options.settings };
 
+  if (options.maxSessionInvalidFrames !== undefined)
+    validateUint32(options.maxSessionInvalidFrames, 'maxSessionInvalidFrames');
+
+  if (options.maxSessionRejectedStreams !== undefined) {
+    validateUint32(
+      options.maxSessionRejectedStreams,
+      'maxSessionRejectedStreams'
+    );
+  }
+
   // Used only with allowHTTP1
   options.Http1IncomingMessage = options.Http1IncomingMessage ||
     http.IncomingMessage;
@@ -2862,6 +2922,40 @@ class Http2Server extends NETServer {
     return this;
   }
 }
+
+Http2Server.prototype[EventEmitter.captureRejectionSymbol] = function(
+  err, event, ...args) {
+
+  switch (event) {
+    case 'stream':
+      // TODO(mcollina): we might want to match this with what we do on
+      // the compat side.
+      const [stream] = args;
+      if (stream.sentHeaders) {
+        stream.destroy(err);
+      } else {
+        stream.respond({ [HTTP2_HEADER_STATUS]: 500 });
+        stream.end();
+      }
+      break;
+    case 'request':
+      const [, res] = args;
+      if (!res.headersSent && !res.finished) {
+        // Don't leak headers.
+        for (const name of res.getHeaderNames()) {
+          res.removeHeader(name);
+        }
+        res.statusCode = 500;
+        res.end(http.STATUS_CODES[500]);
+      } else {
+        res.destroy();
+      }
+      break;
+    default:
+      net.Server.prototype[EventEmitter.captureRejectionSymbol]
+        .call(this, err, event, ...args);
+  }
+};
 
 function setupCompat(ev) {
   if (ev === 'request') {
@@ -2945,7 +3039,7 @@ function connect(authority, options, listener) {
 }
 
 // Support util.promisify
-Object.defineProperty(connect, promisify.custom, {
+ObjectDefineProperty(connect, promisify.custom, {
   value: (authority, options) => {
     return new Promise((resolve) => {
       const server = connect(authority, options, () => resolve(server));
@@ -3007,6 +3101,8 @@ function getUnpackedSettings(buf, options = {}) {
       case NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE:
         settings.maxHeaderListSize = value;
         break;
+      case NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL:
+        settings.enableConnectProtocol = value !== 0;
     }
     offset += 4;
   }

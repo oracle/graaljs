@@ -21,7 +21,11 @@
 
 'use strict';
 
-const { Object, SafeSet } = primordials;
+const {
+  ObjectCreate,
+  ObjectKeys,
+  SafeSet,
+} = primordials;
 
 const { toASCII } = require('internal/idna');
 const { encodeStr, hexTable } = require('internal/querystring');
@@ -162,8 +166,7 @@ Url.prototype.parse = function parse(url, parseQueryString, slashesDenoteHost) {
   let end = -1;
   let rest = '';
   let lastPos = 0;
-  let i = 0;
-  for (let inWs = false, split = false; i < url.length; ++i) {
+  for (let i = 0, inWs = false, split = false; i < url.length; ++i) {
     const code = url.charCodeAt(i);
 
     // Find first and last non-whitespace characters for trimming
@@ -248,7 +251,7 @@ Url.prototype.parse = function parse(url, parseQueryString, slashesDenoteHost) {
         }
       } else if (parseQueryString) {
         this.search = null;
-        this.query = Object.create(null);
+        this.query = ObjectCreate(null);
       }
       return this;
     }
@@ -295,7 +298,7 @@ Url.prototype.parse = function parse(url, parseQueryString, slashesDenoteHost) {
     let hostEnd = -1;
     let atSign = -1;
     let nonHost = -1;
-    for (i = 0; i < rest.length; ++i) {
+    for (let i = 0; i < rest.length; ++i) {
       switch (rest.charCodeAt(i)) {
         case CHAR_TAB:
         case CHAR_LINE_FEED:
@@ -411,7 +414,7 @@ Url.prototype.parse = function parse(url, parseQueryString, slashesDenoteHost) {
 
   let questionIdx = -1;
   let hashIdx = -1;
-  for (i = 0; i < rest.length; ++i) {
+  for (let i = 0; i < rest.length; ++i) {
     const code = rest.charCodeAt(i);
     if (code === CHAR_HASH) {
       this.hash = rest.slice(i);
@@ -437,7 +440,7 @@ Url.prototype.parse = function parse(url, parseQueryString, slashesDenoteHost) {
   } else if (parseQueryString) {
     // No query string, but parseQueryString still requested
     this.search = null;
-    this.query = Object.create(null);
+    this.query = ObjectCreate(null);
   }
 
   const useQuestionIdx =
@@ -677,7 +680,7 @@ Url.prototype.resolveObject = function resolveObject(relative) {
   }
 
   const result = new Url();
-  const tkeys = Object.keys(this);
+  const tkeys = ObjectKeys(this);
   for (let tk = 0; tk < tkeys.length; tk++) {
     const tkey = tkeys[tk];
     result[tkey] = this[tkey];
@@ -696,7 +699,7 @@ Url.prototype.resolveObject = function resolveObject(relative) {
   // Hrefs like //foo/bar always cut to the protocol.
   if (relative.slashes && !relative.protocol) {
     // Take everything except the protocol from relative
-    const rkeys = Object.keys(relative);
+    const rkeys = ObjectKeys(relative);
     for (let rk = 0; rk < rkeys.length; rk++) {
       const rkey = rkeys[rk];
       if (rkey !== 'protocol')
@@ -723,7 +726,7 @@ Url.prototype.resolveObject = function resolveObject(relative) {
     // because that's known to be hostless.
     // anything else is assumed to be absolute.
     if (!slashedProtocol.has(relative.protocol)) {
-      const keys = Object.keys(relative);
+      const keys = ObjectKeys(relative);
       for (let v = 0; v < keys.length; v++) {
         const k = keys[v];
         result[k] = relative[k];

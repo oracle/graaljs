@@ -33,6 +33,11 @@ const dirclosedError = {
   code: 'ERR_DIR_CLOSED'
 };
 
+const invalidCallbackObj = {
+  code: 'ERR_INVALID_CALLBACK',
+  name: 'TypeError'
+};
+
 // Check the opendir Sync version
 {
   const dir = fs.opendirSync(testDir);
@@ -95,18 +100,18 @@ fs.opendir(__filename, common.mustCall(function(e) {
 }));
 
 [false, 1, [], {}, null, undefined].forEach((i) => {
-  common.expectsError(
+  assert.throws(
     () => fs.opendir(i, common.mustNotCall()),
     {
       code: 'ERR_INVALID_ARG_TYPE',
-      type: TypeError
+      name: 'TypeError'
     }
   );
-  common.expectsError(
+  assert.throws(
     () => fs.opendirSync(i),
     {
       code: 'ERR_INVALID_ARG_TYPE',
-      type: TypeError
+      name: 'TypeError'
     }
   );
 });
@@ -186,3 +191,42 @@ async function doAsyncIterThrowTest() {
   await assert.rejects(async () => dir.read(), dirclosedError);
 }
 doAsyncIterThrowTest().then(common.mustCall());
+
+// Check error thrown on invalid values of bufferSize
+for (const bufferSize of [-1, 0, 0.5, 1.5, Infinity, NaN]) {
+  assert.throws(
+    () => fs.opendirSync(testDir, { bufferSize }),
+    {
+      code: 'ERR_OUT_OF_RANGE'
+    });
+}
+for (const bufferSize of ['', '1', null]) {
+  assert.throws(
+    () => fs.opendirSync(testDir, { bufferSize }),
+    {
+      code: 'ERR_INVALID_ARG_TYPE'
+    });
+}
+
+// Check that passing a positive integer as bufferSize works
+{
+  const dir = fs.opendirSync(testDir, { bufferSize: 1024 });
+  assertDirent(dir.readSync());
+  dir.close();
+}
+
+// Check that when passing a string instead of function - throw an exception
+async function doAsyncIterInvalidCallbackTest() {
+  const dir = await fs.promises.opendir(testDir);
+  assert.throws(() => dir.close('not function'), invalidCallbackObj);
+}
+doAsyncIterInvalidCallbackTest().then(common.mustCall());
+
+// Check if directory already closed - throw an exception
+async function doAsyncIterDirClosedTest() {
+  const dir = await fs.promises.opendir(testDir);
+  await dir.close();
+
+  assert.throws(() => dir.close(), dirclosedError);
+}
+doAsyncIterDirClosedTest().then(common.mustCall());

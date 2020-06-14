@@ -1,10 +1,15 @@
 'use strict';
 
-const { Object, SafeWeakMap } = primordials;
+const {
+  Map,
+  ObjectDefineProperty,
+  SafeWeakMap,
+} = primordials;
 
 const { getOptionValue } = require('internal/options');
 const { Buffer } = require('buffer');
 const { ERR_MANIFEST_ASSERT_INTEGRITY } = require('internal/errors').codes;
+const assert = require('internal/assert');
 
 function prepareMainThreadExecution(expandArgv1 = false) {
   // Patch the process object with legacy properties and normalizations
@@ -32,8 +37,8 @@ function prepareMainThreadExecution(expandArgv1 = false) {
 
   setupDebugEnv();
 
-  // Only main thread receives signals.
-  setupSignalHandlers();
+  // Print stack trace on `SIGINT` if option `--trace-sigint` presents.
+  setupStacktracePrinterOnSigint();
 
   // Process initial diagnostic reporting configuration, if present.
   initializeReport();
@@ -57,8 +62,12 @@ function prepareMainThreadExecution(expandArgv1 = false) {
   initializeClusterIPC();
 
   initializeDeprecations();
+  initializeWASI();
   initializeCJSLoader();
   initializeESMLoader();
+
+  const CJSLoader = require('internal/modules/cjs/loader');
+  assert(!CJSLoader.hasLoadedAnyUserCJSModule);
   loadPreloadModules();
   initializeFrozenIntrinsics();
 }
@@ -70,7 +79,7 @@ function patchProcessObject(expandArgv1) {
 
   patchProcessObjectNative(process);
 
-  Object.defineProperty(process, 'argv0', {
+  ObjectDefineProperty(process, 'argv0', {
     enumerable: true,
     configurable: false,
     value: process.argv[0]
@@ -110,7 +119,7 @@ function patchProcessObject(expandArgv1) {
 function addReadOnlyProcessAlias(name, option, enumerable = true) {
   const value = getOptionValue(option);
   if (value) {
-    Object.defineProperty(process, name, {
+    ObjectDefineProperty(process, name, {
       writable: false,
       configurable: true,
       enumerable,
@@ -150,17 +159,22 @@ function setupCoverageHooks(dir) {
   return coverageDirectory;
 }
 
-function initializeReport() {
-  if (!getOptionValue('--experimental-report')) {
+function setupStacktracePrinterOnSigint() {
+  if (!getOptionValue('--trace-sigint')) {
     return;
   }
+  const { SigintWatchdog } = require('internal/watchdog');
+
+  const watchdog = new SigintWatchdog();
+  watchdog.start();
+}
+
+function initializeReport() {
   const { report } = require('internal/process/report');
-  const { emitExperimentalWarning } = require('internal/util');
-  Object.defineProperty(process, 'report', {
+  ObjectDefineProperty(process, 'report', {
     enumerable: false,
     configurable: true,
     get() {
-      emitExperimentalWarning('report');
       return report;
     }
   });
@@ -173,25 +187,8 @@ function setupDebugEnv() {
   }
 }
 
-function setupSignalHandlers() {
-  const {
-    createSignalHandlers
-  } = require('internal/process/main_thread_only');
-  const {
-    startListeningIfSignal,
-    stopListeningIfSignal
-  } = createSignalHandlers();
-  process.on('newListener', startListeningIfSignal);
-  process.on('removeListener', stopListeningIfSignal);
-}
-
-// This has to be called after both initializeReport() and
-// setupSignalHandlers() are called
+// This has to be called after initializeReport() is called
 function initializeReportSignalHandlers() {
-  if (!getOptionValue('--experimental-report')) {
-    return;
-  }
-
   const { addSignalHandler } = require('internal/process/report');
 
   addSignalHandler();
@@ -276,7 +273,7 @@ function initializeDeprecations() {
   // process.features.
   const { noBrowserGlobals } = internalBinding('config');
   if (noBrowserGlobals) {
-    Object.defineProperty(process, '_noBrowserGlobals', {
+    ObjectDefineProperty(process, '_noBrowserGlobals', {
       writable: false,
       enumerable: true,
       configurable: true,
@@ -298,7 +295,7 @@ function initializeDeprecations() {
   // deprecation path for these in ES Modules.
   // See https://github.com/nodejs/node/pull/26334.
   let _process = process;
-  Object.defineProperty(global, 'process', {
+  ObjectDefineProperty(global, 'process', {
     get() {
       return _process;
     },
@@ -310,7 +307,7 @@ function initializeDeprecations() {
   });
 
   let _Buffer = Buffer;
-  Object.defineProperty(global, 'Buffer', {
+  ObjectDefineProperty(global, 'Buffer', {
     get() {
       return _Buffer;
     },
@@ -332,7 +329,11 @@ function setupChildProcessIpcChannel() {
     // Make sure it's not accidentally inherited by child processes.
     delete process.env.NODE_CHANNEL_FD;
 
-    require('child_process')._forkChild(fd);
+    const serializationMode =
+      process.env.NODE_CHANNEL_SERIALIZATION_MODE || 'json';
+    delete process.env.NODE_CHANNEL_SERIALIZATION_MODE;
+
+    require('child_process')._forkChild(fd, serializationMode);
     assert(process.send);
   }
 }
@@ -395,41 +396,34 @@ function initializePolicy() {
   }
 }
 
+function initializeWASI() {
+  const { NativeModule } = require('internal/bootstrap/loaders');
+  const mod = NativeModule.map.get('wasi');
+  mod.canBeRequiredByUsers =
+    getOptionValue('--experimental-wasi-unstable-preview1');
+}
+
 function initializeCJSLoader() {
-  require('internal/modules/cjs/loader')._initPaths();
+  const CJSLoader = require('internal/modules/cjs/loader');
+  CJSLoader.Module._initPaths();
+  // TODO(joyeecheung): deprecate this in favor of a proper hook?
+  CJSLoader.Module.runMain =
+    require('internal/modules/run_main').executeUserEntryPoint;
 }
 
 function initializeESMLoader() {
   // Create this WeakMap in js-land because V8 has no C++ API for WeakMap.
   internalBinding('module_wrap').callbackMap = new SafeWeakMap();
 
-  const experimentalModules = getOptionValue('--experimental-modules');
-  const experimentalVMModules = getOptionValue('--experimental-vm-modules');
-  if (experimentalModules || experimentalVMModules) {
-    if (experimentalModules) {
-      process.emitWarning(
-        'The ESM module loader is experimental.',
-        'ExperimentalWarning', undefined);
-    }
-
-    const {
-      setImportModuleDynamicallyCallback,
-      setInitializeImportMetaObjectCallback
-    } = internalBinding('module_wrap');
-    const esm = require('internal/process/esm_loader');
-    // Setup per-isolate callbacks that locate data or callbacks that we keep
-    // track of for different ESM modules.
-    setInitializeImportMetaObjectCallback(esm.initializeImportMetaObject);
-    setImportModuleDynamicallyCallback(esm.importModuleDynamicallyCallback);
-    const userLoader = getOptionValue('--experimental-loader');
-    // If --experimental-loader is specified, create a loader with user hooks.
-    // Otherwise create the default loader.
-    if (userLoader) {
-      const { emitExperimentalWarning } = require('internal/util');
-      emitExperimentalWarning('--experimental-loader');
-    }
-    esm.initializeLoader(process.cwd(), userLoader);
-  }
+  const {
+    setImportModuleDynamicallyCallback,
+    setInitializeImportMetaObjectCallback
+  } = internalBinding('module_wrap');
+  const esm = require('internal/process/esm_loader');
+  // Setup per-isolate callbacks that locate data or callbacks that we keep
+  // track of for different ESM modules.
+  setInitializeImportMetaObjectCallback(esm.initializeImportMetaObject);
+  setImportModuleDynamicallyCallback(esm.importModuleDynamicallyCallback);
 }
 
 function initializeFrozenIntrinsics() {
@@ -445,7 +439,9 @@ function loadPreloadModules() {
   const preloadModules = getOptionValue('--require');
   if (preloadModules && preloadModules.length > 0) {
     const {
-      _preloadModules
+      Module: {
+        _preloadModules
+      },
     } = require('internal/modules/cjs/loader');
     _preloadModules(preloadModules);
   }
@@ -464,5 +460,6 @@ module.exports = {
   setupTraceCategoryState,
   setupInspectorHooks,
   initializeReport,
-  initializeCJSLoader
+  initializeCJSLoader,
+  initializeWASI
 };

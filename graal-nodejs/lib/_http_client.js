@@ -21,7 +21,15 @@
 
 'use strict';
 
-const { Object } = primordials;
+const {
+  ArrayIsArray,
+  Boolean,
+  Error,
+  NumberIsFinite,
+  ObjectAssign,
+  ObjectKeys,
+  ObjectSetPrototypeOf,
+} = primordials;
 
 const net = require('net');
 const url = require('url');
@@ -108,7 +116,7 @@ function ClientRequest(input, options, cb) {
     cb = options;
     options = input || {};
   } else {
-    options = Object.assign(input || {}, options);
+    options = ObjectAssign(input || {}, options);
   }
 
   let agent = options.agent;
@@ -161,7 +169,7 @@ function ClientRequest(input, options, cb) {
   let method = options.method;
   const methodIsString = (typeof method === 'string');
   if (method !== null && method !== undefined && !methodIsString) {
-    throw new ERR_INVALID_ARG_TYPE('method', 'string', method);
+    throw new ERR_INVALID_ARG_TYPE('options.method', 'string', method);
   }
 
   if (methodIsString && method) {
@@ -177,7 +185,7 @@ function ClientRequest(input, options, cb) {
   if (insecureHTTPParser !== undefined &&
       typeof insecureHTTPParser !== 'boolean') {
     throw new ERR_INVALID_ARG_TYPE(
-      'insecureHTTPParser', 'boolean', insecureHTTPParser);
+      'options.insecureHTTPParser', 'boolean', insecureHTTPParser);
   }
   this.insecureHTTPParser = insecureHTTPParser;
 
@@ -204,6 +212,7 @@ function ClientRequest(input, options, cb) {
   this.upgradeOrConnect = false;
   this.parser = null;
   this.maxHeadersCount = null;
+  this.reusedSocket = false;
 
   let called = false;
 
@@ -212,7 +221,7 @@ function ClientRequest(input, options, cb) {
     // but only if the Agent will actually reuse the connection!
     // If it's not a keepAlive agent, and the maxSockets==Infinity, then
     // there's never a case where this socket will actually be reused
-    if (!this.agent.keepAlive && !Number.isFinite(this.agent.maxSockets)) {
+    if (!this.agent.keepAlive && !NumberIsFinite(this.agent.maxSockets)) {
       this._last = true;
       this.shouldKeepAlive = false;
     } else {
@@ -221,10 +230,12 @@ function ClientRequest(input, options, cb) {
     }
   }
 
-  const headersArray = Array.isArray(options.headers);
+  const headersArray = ArrayIsArray(options.headers);
   if (!headersArray) {
     if (options.headers) {
-      const keys = Object.keys(options.headers);
+      const keys = ObjectKeys(options.headers);
+      // Retain for(;;) loop for performance reasons
+      // Refs: https://github.com/nodejs/node/pull/30958
       for (let i = 0; i < keys.length; i++) {
         const key = keys[i];
         this.setHeader(key, options.headers[key]);
@@ -303,8 +314,8 @@ function ClientRequest(input, options, cb) {
 
   this._deferToConnect(null, null, () => this._flush());
 }
-Object.setPrototypeOf(ClientRequest.prototype, OutgoingMessage.prototype);
-Object.setPrototypeOf(ClientRequest, OutgoingMessage);
+ObjectSetPrototypeOf(ClientRequest.prototype, OutgoingMessage.prototype);
+ObjectSetPrototypeOf(ClientRequest, OutgoingMessage);
 
 ClientRequest.prototype._finish = function _finish() {
   DTRACE_HTTP_CLIENT_REQUEST(this, this.connection);
@@ -321,7 +332,7 @@ ClientRequest.prototype._implicitHeader = function _implicitHeader() {
 
 ClientRequest.prototype.abort = function abort() {
   if (!this.aborted) {
-    process.nextTick(emitAbortNT.bind(this));
+    process.nextTick(emitAbortNT, this);
   }
   this.aborted = true;
 
@@ -339,8 +350,8 @@ ClientRequest.prototype.abort = function abort() {
 };
 
 
-function emitAbortNT() {
-  this.emit('abort');
+function emitAbortNT(req) {
+  req.emit('abort');
 }
 
 function ondrain() {
@@ -428,13 +439,6 @@ function socketErrorListener(err) {
   socket.removeListener('data', socketOnData);
   socket.removeListener('end', socketOnEnd);
   socket.destroy();
-}
-
-function freeSocketErrorListener(err) {
-  const socket = this;
-  debug('SOCKET ERROR on FREE socket:', err.message, err.stack);
-  socket.destroy();
-  socket.emit('agentRemove');
 }
 
 function socketOnEnd() {
@@ -609,8 +613,13 @@ function responseKeepAlive(req) {
   }
   socket.removeListener('close', socketCloseListener);
   socket.removeListener('error', socketErrorListener);
-  socket.once('error', freeSocketErrorListener);
-  // There are cases where _handle === null. Avoid those. Passing null to
+  socket.removeListener('data', socketOnData);
+  socket.removeListener('end', socketOnEnd);
+
+  // TODO(ronag): Between here and emitFreeNT the socket
+  // has no 'error' handler.
+
+  // There are cases where _handle === null. Avoid those. Passing undefined to
   // nextTick() will call getDefaultTriggerAsyncId() to retrieve the id.
   const asyncId = socket._handle ? socket._handle.getAsyncId() : undefined;
   // Mark this socket as available, AFTER user-added end
@@ -679,7 +688,6 @@ function tickOnSocket(req, socket) {
   }
 
   parser.onIncoming = parserOnIncomingClient;
-  socket.removeListener('error', freeSocketErrorListener);
   socket.on('error', socketErrorListener);
   socket.on('data', socketOnData);
   socket.on('end', socketOnEnd);
@@ -719,6 +727,8 @@ function listenSocketTimeout(req) {
 }
 
 ClientRequest.prototype.onSocket = function onSocket(socket) {
+  // TODO(ronag): Between here and onSocketNT the socket
+  // has no 'error' handler.
   process.nextTick(onSocketNT, this, socket);
 };
 

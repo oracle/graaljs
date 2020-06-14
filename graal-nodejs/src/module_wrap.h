@@ -65,8 +65,6 @@ class ModuleWrap : public BaseObject {
   static void GetStaticDependencySpecifiers(
       const v8::FunctionCallbackInfo<v8::Value>& args);
 
-  static void Resolve(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void GetPackageType(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void SetImportModuleDynamicallyCallback(
       const v8::FunctionCallbackInfo<v8::Value>& args);
   static void SetInitializeImportMetaObjectCallback(
@@ -75,6 +73,7 @@ class ModuleWrap : public BaseObject {
       v8::Local<v8::Context> context, v8::Local<v8::Module> module);
   static void SetSyntheticExport(
       const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void CreateCachedData(const v8::FunctionCallbackInfo<v8::Value>& args);
 
   static v8::MaybeLocal<v8::Module> ResolveCallback(
       v8::Local<v8::Context> context,

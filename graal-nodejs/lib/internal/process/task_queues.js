@@ -1,6 +1,9 @@
 'use strict';
 
-const { FunctionPrototype } = primordials;
+const {
+  Array,
+  FunctionPrototypeBind,
+} = primordials;
 
 const {
   // For easy access to the nextTick state in the C++ land,
@@ -68,7 +71,7 @@ function processTicksAndRejections() {
   do {
     while (tock = queue.shift()) {
       const asyncId = tock[async_id_symbol];
-      emitBefore(asyncId, tock[trigger_async_id_symbol]);
+      emitBefore(asyncId, tock[trigger_async_id_symbol], tock);
 
       try {
         const callback = tock.callback;
@@ -166,7 +169,7 @@ function queueMicrotask(callback) {
   const asyncResource = createMicrotaskResource();
   asyncResource.callback = callback;
 
-  enqueueMicrotask(FunctionPrototype.bind(runMicrotask, asyncResource));
+  enqueueMicrotask(FunctionPrototypeBind(runMicrotask, asyncResource));
 }
 
 module.exports = {

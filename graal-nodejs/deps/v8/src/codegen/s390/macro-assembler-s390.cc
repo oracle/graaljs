@@ -193,6 +193,13 @@ void TurboAssembler::Jump(Handle<Code> code, RelocInfo::Mode rmode,
   jump(code, RelocInfo::RELATIVE_CODE_TARGET, cond);
 }
 
+void TurboAssembler::Jump(const ExternalReference& reference) {
+  UseScratchRegisterScope temps(this);
+  Register scratch = temps.Acquire();
+  Move(scratch, reference);
+  Jump(scratch);
+}
+
 void TurboAssembler::Call(Register target) {
   // Branch to target via indirect branch
   basr(r14, target);
@@ -576,8 +583,9 @@ void MacroAssembler::RecordWrite(Register object, Register address,
     Check(eq, AbortReason::kWrongAddressOrValuePassedToRecordWrite);
   }
 
-  if (remembered_set_action == OMIT_REMEMBERED_SET &&
-      !FLAG_incremental_marking) {
+  if ((remembered_set_action == OMIT_REMEMBERED_SET &&
+       !FLAG_incremental_marking) ||
+      FLAG_disable_write_barriers) {
     return;
   }
   // First, check if a write barrier is even needed. The tests below
@@ -1328,8 +1336,8 @@ void MacroAssembler::CheckDebugHook(Register fun, Register new_target,
   ExternalReference debug_hook_active =
       ExternalReference::debug_hook_on_function_call_address(isolate());
   Move(r6, debug_hook_active);
-  tm(MemOperand(r6), Operand::Zero());
-  bne(&skip_hook);
+  tm(MemOperand(r6), Operand(0xFF));
+  beq(&skip_hook);
 
   {
     // Load receiver to pass it later to DebugOnFunctionCall hook.

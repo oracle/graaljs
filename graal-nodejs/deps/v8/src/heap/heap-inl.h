@@ -67,7 +67,7 @@ void Heap::update_external_memory(int64_t delta) {
   isolate()->isolate_data()->external_memory_ += delta;
 }
 
-void Heap::update_external_memory_concurrently_freed(intptr_t freed) {
+void Heap::update_external_memory_concurrently_freed(uintptr_t freed) {
   external_memory_concurrently_freed_ += freed;
 }
 
@@ -109,10 +109,6 @@ void Heap::SetRootScriptList(Object value) {
 
 void Heap::SetRootStringTable(StringTable value) {
   roots_table()[RootIndex::kStringTable] = value.ptr();
-}
-
-void Heap::SetRootNoScriptSharedFunctionInfos(Object value) {
-  roots_table()[RootIndex::kNoScriptSharedFunctionInfos] = value.ptr();
 }
 
 void Heap::SetMessageListeners(TemplateList value) {
@@ -159,6 +155,7 @@ size_t Heap::NewSpaceAllocationCounter() {
 }
 
 AllocationResult Heap::AllocateRaw(int size_in_bytes, AllocationType type,
+                                   AllocationOrigin origin,
                                    AllocationAlignment alignment) {
   DCHECK(AllowHandleAllocation::IsAllowed());
   DCHECK(AllowHeapAllocation::IsAllowed());
@@ -179,6 +176,9 @@ AllocationResult Heap::AllocateRaw(int size_in_bytes, AllocationType type,
   HeapObject object;
   AllocationResult allocation;
 
+  if (FLAG_single_generation && type == AllocationType::kYoung)
+    type = AllocationType::kOld;
+
   if (AllocationType::kYoung == type) {
     if (large_object) {
       if (FLAG_young_generation_large_objects) {
@@ -191,13 +191,13 @@ AllocationResult Heap::AllocateRaw(int size_in_bytes, AllocationType type,
         allocation = lo_space_->AllocateRaw(size_in_bytes);
       }
     } else {
-      allocation = new_space_->AllocateRaw(size_in_bytes, alignment);
+      allocation = new_space_->AllocateRaw(size_in_bytes, alignment, origin);
     }
   } else if (AllocationType::kOld == type) {
     if (large_object) {
       allocation = lo_space_->AllocateRaw(size_in_bytes);
     } else {
-      allocation = old_space_->AllocateRaw(size_in_bytes, alignment);
+      allocation = old_space_->AllocateRaw(size_in_bytes, alignment, origin);
     }
   } else if (AllocationType::kCode == type) {
     if (size_in_bytes <= code_space()->AreaSize() && !large_object) {
@@ -213,7 +213,9 @@ AllocationResult Heap::AllocateRaw(int size_in_bytes, AllocationType type,
 #endif
     DCHECK(!large_object);
     DCHECK(CanAllocateInReadOnlySpace());
-    allocation = read_only_space_->AllocateRaw(size_in_bytes, alignment);
+    DCHECK_EQ(AllocationOrigin::kRuntime, origin);
+    allocation =
+        read_only_space_->AllocateRaw(size_in_bytes, alignment, origin);
   } else {
     UNREACHABLE();
   }

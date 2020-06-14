@@ -1,6 +1,14 @@
 'use strict';
 
-const { Object } = primordials;
+const {
+  ObjectCreate,
+  ObjectGetPrototypeOf,
+  ObjectSetPrototypeOf,
+  Promise,
+  PromiseReject,
+  PromiseResolve,
+  Symbol,
+} = primordials;
 
 const finished = require('internal/streams/end-of-stream');
 
@@ -49,10 +57,10 @@ function wrapForNext(lastPromise, iter) {
   };
 }
 
-const AsyncIteratorPrototype = Object.getPrototypeOf(
-  Object.getPrototypeOf(async function* () {}).prototype);
+const AsyncIteratorPrototype = ObjectGetPrototypeOf(
+  ObjectGetPrototypeOf(async function* () {}).prototype);
 
-const ReadableStreamAsyncIteratorPrototype = Object.setPrototypeOf({
+const ReadableStreamAsyncIteratorPrototype = ObjectSetPrototypeOf({
   get stream() {
     return this[kStream];
   },
@@ -62,11 +70,11 @@ const ReadableStreamAsyncIteratorPrototype = Object.setPrototypeOf({
     // reject straight away.
     const error = this[kError];
     if (error !== null) {
-      return Promise.reject(error);
+      return PromiseReject(error);
     }
 
     if (this[kEnded]) {
-      return Promise.resolve(createIterResult(undefined, true));
+      return PromiseResolve(createIterResult(undefined, true));
     }
 
     if (this[kStream].destroyed) {
@@ -98,7 +106,7 @@ const ReadableStreamAsyncIteratorPrototype = Object.setPrototypeOf({
       // without triggering the next() queue.
       const data = this[kStream].read();
       if (data !== null) {
-        return Promise.resolve(createIterResult(data, false));
+        return PromiseResolve(createIterResult(data, false));
       }
 
       promise = new Promise(this[kHandlePromise]);
@@ -135,7 +143,7 @@ const ReadableStreamAsyncIteratorPrototype = Object.setPrototypeOf({
 }, AsyncIteratorPrototype);
 
 const createReadableStreamAsyncIterator = (stream) => {
-  const iterator = Object.create(ReadableStreamAsyncIteratorPrototype, {
+  const iterator = ObjectCreate(ReadableStreamAsyncIteratorPrototype, {
     [kStream]: { value: stream, writable: true },
     [kLastResolve]: { value: null, writable: true },
     [kLastReject]: { value: null, writable: true },

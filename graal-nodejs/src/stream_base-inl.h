@@ -3,10 +3,9 @@
 
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
-#include "stream_base.h"
-
+#include "async_wrap-inl.h"
 #include "node.h"
-#include "env-inl.h"
+#include "stream_base.h"
 #include "v8.h"
 
 namespace node {
@@ -23,18 +22,22 @@ using v8::String;
 using v8::Value;
 
 inline void StreamReq::AttachToObject(v8::Local<v8::Object> req_wrap_obj) {
-  CHECK_EQ(req_wrap_obj->GetAlignedPointerFromInternalField(kStreamReqField),
+  CHECK_EQ(req_wrap_obj->GetAlignedPointerFromInternalField(
+               StreamReq::kStreamReqField),
            nullptr);
-  req_wrap_obj->SetAlignedPointerInInternalField(kStreamReqField, this);
+  req_wrap_obj->SetAlignedPointerInInternalField(
+      StreamReq::kStreamReqField, this);
 }
 
 inline StreamReq* StreamReq::FromObject(v8::Local<v8::Object> req_wrap_obj) {
   return static_cast<StreamReq*>(
-      req_wrap_obj->GetAlignedPointerFromInternalField(kStreamReqField));
+      req_wrap_obj->GetAlignedPointerFromInternalField(
+          StreamReq::kStreamReqField));
 }
 
 inline void StreamReq::Dispose() {
-  object()->SetAlignedPointerInInternalField(kStreamReqField, nullptr);
+  object()->SetAlignedPointerInInternalField(
+      StreamReq::kStreamReqField, nullptr);
   delete this;
 }
 
@@ -162,7 +165,7 @@ inline int StreamBase::Shutdown(v8::Local<v8::Object> req_wrap_obj) {
   ShutdownWrap* req_wrap = CreateShutdownWrap(req_wrap_obj);
   int err = DoShutdown(req_wrap);
 
-  if (err != 0) {
+  if (err != 0 && req_wrap != nullptr) {
     req_wrap->Dispose();
   }
 
@@ -261,15 +264,17 @@ inline WriteWrap* StreamBase::CreateWriteWrap(
 }
 
 inline void StreamBase::AttachToObject(v8::Local<v8::Object> obj) {
-  obj->SetAlignedPointerInInternalField(kStreamBaseField, this);
+  obj->SetAlignedPointerInInternalField(
+      StreamBase::kStreamBaseField, this);
 }
 
 inline StreamBase* StreamBase::FromObject(v8::Local<v8::Object> obj) {
-  if (obj->GetAlignedPointerFromInternalField(0) == nullptr)
+  if (obj->GetAlignedPointerFromInternalField(StreamBase::kSlot) == nullptr)
     return nullptr;
 
   return static_cast<StreamBase*>(
-      obj->GetAlignedPointerFromInternalField(kStreamBaseField));
+      obj->GetAlignedPointerFromInternalField(
+          StreamBase::kStreamBaseField));
 }
 
 
@@ -304,7 +309,7 @@ inline void StreamReq::Done(int status, const char* error_str) {
 inline void StreamReq::ResetObject(v8::Local<v8::Object> obj) {
   DCHECK_GT(obj->InternalFieldCount(), StreamReq::kStreamReqField);
 
-  obj->SetAlignedPointerInInternalField(0, nullptr);  // BaseObject field.
+  obj->SetAlignedPointerInInternalField(StreamReq::kSlot, nullptr);
   obj->SetAlignedPointerInInternalField(StreamReq::kStreamReqField, nullptr);
 }
 

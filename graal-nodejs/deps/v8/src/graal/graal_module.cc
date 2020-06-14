@@ -44,6 +44,7 @@
 #include "graal_module.h"
 #include "graal_primitive_array.h"
 #include "graal_string.h"
+#include "graal_unbound_script.h"
 
 GraalModule::GraalModule(GraalIsolate* isolate, jobject java_module) : GraalHandleContent(isolate, java_module) {
 }
@@ -155,4 +156,11 @@ void GraalModule::SetSyntheticModuleExport(v8::Local<v8::String> export_name, v8
     jobject java_name = graal_name->GetJavaObject();
     jobject java_value = graal_value->GetJavaObject();
     JNI_CALL_VOID(graal_isolate, GraalAccessMethod::module_set_synthetic_module_export, GetJavaObject(), java_name, java_value);
+}
+
+v8::Local<v8::UnboundModuleScript> GraalModule::GetUnboundModuleScript() {
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_script, graal_isolate, GraalAccessMethod::module_get_unbound_module_script, Object, GetJavaObject());
+    GraalUnboundScript* graal_script = new GraalUnboundScript(graal_isolate, java_script);
+    return reinterpret_cast<v8::UnboundModuleScript*> (graal_script);
 }

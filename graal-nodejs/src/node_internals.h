@@ -98,10 +98,11 @@ void RegisterSignalHandler(int signal,
                            bool reset_handler = false);
 #endif
 
+std::string GetProcessTitle(const char* default_title);
 std::string GetHumanReadableProcessName();
-void GetHumanReadableProcessName(char (*name)[1024]);
 
 void InitializeContextRuntime(v8::Local<v8::Context>);
+bool InitializePrimordials(v8::Local<v8::Context> context);
 
 namespace task_queue {
 void PromiseRejectCallback(v8::PromiseRejectMessage message);
@@ -112,20 +113,24 @@ class NodeArrayBufferAllocator : public ArrayBufferAllocator {
   inline uint32_t* zero_fill_field() { return &zero_fill_field_; }
 
   void* Allocate(size_t size) override;  // Defined in src/node.cc
-  void* AllocateUninitialized(size_t size) override
-    { return node::UncheckedMalloc(size); }
-  void Free(void* data, size_t) override { free(data); }
-  virtual void* Reallocate(void* data, size_t old_size, size_t size) {
-    return static_cast<void*>(
-        UncheckedRealloc<char>(static_cast<char*>(data), size));
+  void* AllocateUninitialized(size_t size) override;
+  void Free(void* data, size_t size) override;
+  virtual void* Reallocate(void* data, size_t old_size, size_t size);
+  virtual void RegisterPointer(void* data, size_t size) {
+    total_mem_usage_.fetch_add(size, std::memory_order_relaxed);
   }
-  virtual void RegisterPointer(void* data, size_t size) {}
-  virtual void UnregisterPointer(void* data, size_t size) {}
+  virtual void UnregisterPointer(void* data, size_t size) {
+    total_mem_usage_.fetch_sub(size, std::memory_order_relaxed);
+  }
 
   NodeArrayBufferAllocator* GetImpl() final { return this; }
+  inline uint64_t total_mem_usage() const {
+    return total_mem_usage_.load(std::memory_order_relaxed);
+  }
 
  private:
   uint32_t zero_fill_field_ = 1;  // Boolean but exposed as uint32 to JS land.
+  std::atomic<size_t> total_mem_usage_ {0};
 };
 
 class DebuggingArrayBufferAllocator final : public NodeArrayBufferAllocator {
@@ -160,7 +165,7 @@ v8::MaybeLocal<v8::Object> New(Environment* env,
                                char* data,
                                size_t length,
                                bool uses_malloc);
-// Creates a Buffer instance over an existing Uint8Array.
+// Creates a Buffer instance over an existing ArrayBuffer.
 v8::MaybeLocal<v8::Uint8Array> New(Environment* env,
                                    v8::Local<v8::ArrayBuffer> ab,
                                    size_t byte_offset,
@@ -197,6 +202,7 @@ static v8::MaybeLocal<v8::Object> New(Environment* env,
 
 v8::MaybeLocal<v8::Value> InternalMakeCallback(
     Environment* env,
+    v8::Local<v8::Object> resource,
     v8::Local<v8::Object> recv,
     const v8::Local<v8::Function> callback,
     int argc,
@@ -205,14 +211,22 @@ v8::MaybeLocal<v8::Value> InternalMakeCallback(
 
 class InternalCallbackScope {
  public:
-  // Tell the constructor whether its `object` parameter may be empty or not.
-  enum ResourceExpectation { kRequireResource, kAllowEmptyResource };
+  enum Flags {
+    kNoFlags = 0,
+    // Indicates whether 'before' and 'after' hooks should be skipped.
+    kSkipAsyncHooks = 1,
+    // Indicates whether nextTick and microtask queues should be skipped.
+    // This should only be used when there is no call into JS in this scope.
+    // (The HTTP parser also uses it for some weird backwards
+    // compatibility issues, but it shouldn't.)
+    kSkipTaskQueues = 2
+  };
   InternalCallbackScope(Environment* env,
                         v8::Local<v8::Object> object,
                         const async_context& asyncContext,
-                        ResourceExpectation expect = kRequireResource);
+                        int flags = kNoFlags);
   // Utility that can be used by AsyncWrap classes.
-  explicit InternalCallbackScope(AsyncWrap* async_wrap);
+  explicit InternalCallbackScope(AsyncWrap* async_wrap, int flags = 0);
   ~InternalCallbackScope();
   void Close();
 
@@ -223,7 +237,8 @@ class InternalCallbackScope {
   Environment* env_;
   async_context async_context_;
   v8::Local<v8::Object> object_;
-  AsyncCallbackScope callback_scope_;
+  bool skip_hooks_;
+  bool skip_task_queues_;
   bool failed_ = false;
   bool pushed_ids_ = false;
   bool closed_ = false;
@@ -255,6 +270,8 @@ class ThreadPoolWork {
 
   virtual void DoThreadPoolWork() = 0;
   virtual void AfterThreadPoolWork(int status) = 0;
+
+  Environment* env() const { return env_; }
 
  private:
   Environment* env_;
@@ -302,8 +319,8 @@ struct InitializationResult {
 };
 InitializationResult InitializeOncePerProcess(int argc, char** argv);
 void TearDownOncePerProcess();
-enum class IsolateSettingCategories { kErrorHandlers, kMisc };
-void SetIsolateUpForNode(v8::Isolate* isolate, IsolateSettingCategories cat);
+void SetIsolateErrorHandlers(v8::Isolate* isolate, const IsolateSettings& s);
+void SetIsolateMiscHandlers(v8::Isolate* isolate, const IsolateSettings& s);
 void SetIsolateCreateParamsForNode(v8::Isolate::CreateParams* params);
 
 #if HAVE_INSPECTOR
@@ -369,6 +386,16 @@ class TraceEventScope {
   const char* name_;
   void* id_;
 };
+
+namespace heap {
+
+void DeleteHeapSnapshot(const v8::HeapSnapshot* snapshot);
+using HeapSnapshotPointer =
+  DeleteFnPtr<const v8::HeapSnapshot, DeleteHeapSnapshot>;
+
+BaseObjectPtr<AsyncWrap> CreateHeapSnapshotStream(
+    Environment* env, HeapSnapshotPointer&& snapshot);
+}  // namespace heap
 
 }  // namespace node
 

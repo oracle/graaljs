@@ -124,12 +124,6 @@ EXPORT_TO_JS(FrameGetScriptId) {
 
 EXPORT_TO_JS(FrameIsEval) {
     Local<StackTrace> trace = createStackTrace(args);
-
-    //for (int i=0;i<trace->GetFrameCount();i++) {
-    //    Local<StackFrame> frm = trace->GetFrame(i);
-    //    printf("frame %d is eval %d\n",i,frm->IsEval());
-    //}
-
     Local<StackFrame> frame = trace->GetFrame(args.GetIsolate(), 0);
     args.GetReturnValue().Set(frame->IsEval());
 }

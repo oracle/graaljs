@@ -42,7 +42,25 @@
 
 'use strict';
 
-const { Math, Object, ObjectPrototype } = primordials;
+const {
+  Error,
+  MathMax,
+  NumberIsNaN,
+  ObjectAssign,
+  ObjectCreate,
+  ObjectDefineProperty,
+  ObjectGetOwnPropertyDescriptor,
+  ObjectGetOwnPropertyNames,
+  ObjectGetPrototypeOf,
+  ObjectKeys,
+  ObjectSetPrototypeOf,
+  Promise,
+  PromiseRace,
+  RegExp,
+  Set,
+  Symbol,
+  WeakSet,
+} = primordials;
 
 const {
   builtinLibs,
@@ -59,13 +77,16 @@ const {
   deprecate
 } = require('internal/util');
 const { inspect } = require('internal/util/inspect');
-const Stream = require('stream');
 const vm = require('vm');
 const path = require('path');
 const fs = require('fs');
 const { Interface } = require('readline');
+const {
+  commonPrefix
+} = require('internal/readline/utils');
 const { Console } = require('console');
-const CJSModule = require('internal/modules/cjs/loader');
+const cjsLoader = require('internal/modules/cjs/loader');
+const { Module: CJSModule } = cjsLoader;
 const domain = require('domain');
 const debug = require('internal/util/debuglog').debuglog('repl');
 const {
@@ -84,7 +105,9 @@ const experimentalREPLAwait = require('internal/options').getOptionValue(
 );
 const {
   isRecoverableError,
-  kStandaloneREPL
+  kStandaloneREPL,
+  setupPreview,
+  setupReverseSearch,
 } = require('internal/repl/utils');
 const {
   getOwnNonIndexProperties,
@@ -103,8 +126,10 @@ const history = require('internal/repl/history');
 // Lazy-loaded.
 let processTopLevelAwait;
 
+const globalBuiltins =
+  new Set(vm.runInNewContext('Object.getOwnPropertyNames(globalThis)'));
+
 const parentModule = module;
-const replMap = new WeakMap();
 const domainSet = new WeakSet();
 
 const kBufferedCommandSymbol = Symbol('bufferedCommand');
@@ -189,6 +214,10 @@ function REPLServer(prompt,
     }
   }
 
+  // TODO(devsnek): Add a test case for custom eval functions.
+  const preview = options.terminal &&
+    (options.preview !== undefined ? !!options.preview : !eval_);
+
   this.inputStream = options.input;
   this.outputStream = options.output;
   this.useColors = !!options.useColors;
@@ -234,7 +263,7 @@ function REPLServer(prompt,
   domainSet.add(this._domain);
 
   let rli = this;
-  Object.defineProperty(this, 'rli', {
+  ObjectDefineProperty(this, 'rli', {
     get: deprecate(() => rli,
                    'REPLServer.rli is deprecated', 'DEP0124'),
     set: deprecate((val) => rli = val,
@@ -264,11 +293,13 @@ function REPLServer(prompt,
     if (!paused) return;
     paused = false;
     let entry;
+    const tmpCompletionEnabled = self.isCompletionEnabled;
     while (entry = pausedBuffer.shift()) {
-      const [type, payload] = entry;
+      const [type, payload, isCompletionEnabled] = entry;
       switch (type) {
         case 'key': {
           const [d, key] = payload;
+          self.isCompletionEnabled = isCompletionEnabled;
           self._ttyWrite(d, key);
           break;
         }
@@ -280,14 +311,11 @@ function REPLServer(prompt,
         break;
       }
     }
+    self.isCompletionEnabled = tmpCompletionEnabled;
   }
 
   function defaultEval(code, context, file, cb) {
-    const { getOptionValue } = require('internal/options');
-    const experimentalModules = getOptionValue('--experimental-modules');
-    const asyncESM = experimentalModules ?
-      require('internal/process/esm_loader') :
-      null;
+    const asyncESM = require('internal/process/esm_loader');
 
     let result, script, wrappedErr;
     let err = null;
@@ -295,12 +323,12 @@ function REPLServer(prompt,
     let awaitPromise = false;
     const input = code;
 
-    if (/^\s*{/.test(code) && /}\s*$/.test(code)) {
-      // It's confusing for `{ a : 1 }` to be interpreted as a block
-      // statement rather than an object literal.  So, we first try
-      // to wrap it in parentheses, so that it will be interpreted as
-      // an expression.  Note that if the above condition changes,
-      // lib/internal/repl/utils.js needs to be changed to match.
+    // It's confusing for `{ a : 1 }` to be interpreted as a block
+    // statement rather than an object literal.  So, we first try
+    // to wrap it in parentheses, so that it will be interpreted as
+    // an expression.  Note that if the above condition changes,
+    // lib/internal/repl/utils.js needs to be changed to match.
+    if (/^\s*{/.test(code) && !/;\s*$/.test(code)) {
       code = `(${code.trim()})\n`;
       wrappedCmd = true;
     }
@@ -322,10 +350,12 @@ function REPLServer(prompt,
     if (code === '\n')
       return cb(null);
 
-    let pwd;
+    let parentURL;
     try {
       const { pathToFileURL } = require('url');
-      pwd = pathToFileURL(process.cwd()).href;
+      // Adding `/repl` prevents dynamic imports from loading relative
+      // to the parent of `process.cwd()`.
+      parentURL = pathToFileURL(path.join(process.cwd(), 'repl')).href;
     } catch {
     }
     while (true) {
@@ -339,11 +369,9 @@ function REPLServer(prompt,
         script = vm.createScript(code, {
           filename: file,
           displayErrors: true,
-          importModuleDynamically: experimentalModules ?
-            async (specifier) => {
-              return (await asyncESM.loaderPromise).import(specifier, pwd);
-            } :
-            undefined
+          importModuleDynamically: async (specifier) => {
+            return asyncESM.ESMLoader.import(specifier, parentURL);
+          }
         });
       } catch (e) {
         debug('parse error %j', code, e);
@@ -444,7 +472,7 @@ function REPLServer(prompt,
             };
             prioritizedSigintQueue.add(sigintListener);
           });
-          promise = Promise.race([promise, interrupt]);
+          promise = PromiseRace([promise, interrupt]);
         }
 
         promise.then((result) => {
@@ -535,26 +563,42 @@ function REPLServer(prompt,
       self.lastError = e;
     }
 
-    const top = replMap.get(self);
     if (options[kStandaloneREPL] &&
         process.listenerCount('uncaughtException') !== 0) {
       process.nextTick(() => {
         process.emit('uncaughtException', e);
-        top.clearBufferedCommand();
-        top.lines.level = [];
-        top.displayPrompt();
+        self.clearBufferedCommand();
+        self.lines.level = [];
+        self.displayPrompt();
       });
     } else {
       if (errStack === '') {
-        errStack = `Thrown: ${self.writer(e)}\n`;
-      } else {
-        const ln = errStack.endsWith('\n') ? '' : '\n';
-        errStack = `Thrown:\n${errStack}${ln}`;
+        errStack = self.writer(e);
       }
-      top.outputStream.write(errStack);
-      top.clearBufferedCommand();
-      top.lines.level = [];
-      top.displayPrompt();
+      const lines = errStack.split(/(?<=\n)/);
+      let matched = false;
+
+      errStack = '';
+      for (const line of lines) {
+        if (!matched && /^\[?([A-Z][a-z0-9_]*)*Error/.test(line)) {
+          errStack += writer.options.breakLength >= line.length ?
+            `Uncaught ${line}` :
+            `Uncaught:\n${line}`;
+          matched = true;
+        } else {
+          errStack += line;
+        }
+      }
+      if (!matched) {
+        const ln = lines.length === 1 ? ' ' : ':\n';
+        errStack = `Uncaught${ln}${errStack}`;
+      }
+      // Normalize line endings.
+      errStack += errStack.endsWith('\n') ? '' : '\n';
+      self.outputStream.write(errStack);
+      self.clearBufferedCommand();
+      self.lines.level = [];
+      self.displayPrompt();
     }
   });
 
@@ -562,7 +606,7 @@ function REPLServer(prompt,
   self.lines.level = [];
 
   self.clearBufferedCommand();
-  Object.defineProperty(this, 'bufferedCommand', {
+  ObjectDefineProperty(this, 'bufferedCommand', {
     get: deprecate(() => self[kBufferedCommandSymbol],
                    'REPLServer.bufferedCommand is deprecated',
                    'DEP0074'),
@@ -590,7 +634,7 @@ function REPLServer(prompt,
     prompt
   });
 
-  this.commands = Object.create(null);
+  this.commands = ObjectCreate(null);
   defineDefaultCommands(this);
 
   // Figure out which "writer" function to use
@@ -601,7 +645,7 @@ function REPLServer(prompt,
     writer.options.colors = self.useColors;
 
     if (options[kStandaloneREPL]) {
-      Object.defineProperty(inspect, 'replDefaults', {
+      ObjectDefineProperty(inspect, 'replDefaults', {
         get() {
           return writer.options;
         },
@@ -609,7 +653,7 @@ function REPLServer(prompt,
           if (options === null || typeof options !== 'object') {
             throw new ERR_INVALID_ARG_TYPE('options', 'Object', options);
           }
-          return Object.assign(writer.options, options);
+          return ObjectAssign(writer.options, options);
         },
         enumerable: true,
         configurable: true
@@ -699,7 +743,7 @@ function REPLServer(prompt,
     // display next prompt and return.
     if (trimmedCmd) {
       if (trimmedCmd.charAt(0) === '.' && trimmedCmd.charAt(1) !== '.' &&
-          Number.isNaN(parseFloat(trimmedCmd))) {
+          NumberIsNaN(parseFloat(trimmedCmd))) {
         const matches = trimmedCmd.match(/^\.([^\s]+)\s*(.*)$/);
         const keyword = matches && matches[1];
         const rest = matches && matches[2];
@@ -780,12 +824,24 @@ function REPLServer(prompt,
     }
   });
 
+  const { reverseSearch } = setupReverseSearch(this);
+
+  const {
+    clearPreview,
+    showPreview
+  } = setupPreview(
+    this,
+    kContextId,
+    kBufferedCommandSymbol,
+    preview
+  );
+
   // Wrap readline tty to enable editor mode and pausing.
   const ttyWrite = self._ttyWrite.bind(self);
   self._ttyWrite = (d, key) => {
     key = key || {};
     if (paused && !(self.breakEvalOnSigint && key.ctrl && key.name === 'c')) {
-      pausedBuffer.push(['key', [d, key]]);
+      pausedBuffer.push(['key', [d, key], self.isCompletionEnabled]);
       return;
     }
     if (!self.editorMode || !self.terminal) {
@@ -794,13 +850,19 @@ function REPLServer(prompt,
           self.cursor === 0 && self.line.length === 0) {
         self.clearLine();
       }
-      ttyWrite(d, key);
+      clearPreview();
+      if (!reverseSearch(d, key)) {
+        ttyWrite(d, key);
+        showPreview();
+      }
       return;
     }
 
     // Editor mode
     if (key.ctrl && !key.shift) {
       switch (key.name) {
+        // TODO(BridgeAR): There should not be a special mode necessary for full
+        // multiline support.
         case 'd': // End editor mode
           _turnOffEditorMode(self);
           sawCtrlD = true;
@@ -830,8 +892,8 @@ function REPLServer(prompt,
 
   self.displayPrompt();
 }
-Object.setPrototypeOf(REPLServer.prototype, Interface.prototype);
-Object.setPrototypeOf(REPLServer, Interface);
+ObjectSetPrototypeOf(REPLServer.prototype, Interface.prototype);
+ObjectSetPrototypeOf(REPLServer, Interface);
 
 exports.REPLServer = REPLServer;
 
@@ -853,7 +915,6 @@ exports.start = function(prompt,
                               ignoreUndefined,
                               replMode);
   if (!exports.repl) exports.repl = repl;
-  replMap.set(repl, repl);
   return repl;
 };
 
@@ -894,16 +955,16 @@ REPLServer.prototype.createContext = function() {
     }, () => {
       context = vm.createContext();
     });
-    for (const name of Object.getOwnPropertyNames(global)) {
-      // Only set properties on the context that do not exist as primordial.
-      if (!(name in primordials)) {
-        Object.defineProperty(context, name,
-                              Object.getOwnPropertyDescriptor(global, name));
+    for (const name of ObjectGetOwnPropertyNames(global)) {
+      // Only set properties that do not already exist as a global builtin.
+      if (!globalBuiltins.has(name)) {
+        ObjectDefineProperty(context, name,
+                             ObjectGetOwnPropertyDescriptor(global, name));
       }
     }
     context.global = context;
     const _console = new Console(this.outputStream);
-    Object.defineProperty(context, 'console', {
+    ObjectDefineProperty(context, 'console', {
       configurable: true,
       writable: true,
       value: _console
@@ -911,14 +972,14 @@ REPLServer.prototype.createContext = function() {
   }
 
   const module = new CJSModule('<repl>');
-  module.paths = CJSModule._resolveLookupPaths('<repl>', parentModule) || [];
+  module.paths = CJSModule._resolveLookupPaths('<repl>', parentModule);
 
-  Object.defineProperty(context, 'module', {
+  ObjectDefineProperty(context, 'module', {
     configurable: true,
     writable: true,
     value: module
   });
-  Object.defineProperty(context, 'require', {
+  ObjectDefineProperty(context, 'require', {
     configurable: true,
     writable: true,
     value: makeRequireFunction(module)
@@ -936,7 +997,7 @@ REPLServer.prototype.resetContext = function() {
   this.lines = [];
   this.lines.level = [];
 
-  Object.defineProperty(this.context, '_', {
+  ObjectDefineProperty(this.context, '_', {
     configurable: true,
     get: () => this.last,
     set: (value) => {
@@ -948,7 +1009,7 @@ REPLServer.prototype.resetContext = function() {
     }
   });
 
-  Object.defineProperty(this.context, '_error', {
+  ObjectDefineProperty(this.context, '_error', {
     configurable: true,
     get: () => this.lastError,
     set: (value) => {
@@ -989,23 +1050,6 @@ REPLServer.prototype.turnOffEditorMode = deprecate(
   function() { _turnOffEditorMode(this); },
   'REPLServer.turnOffEditorMode() is deprecated',
   'DEP0078');
-
-// A stream to push an array into a REPL
-// used in REPLServer.complete
-function ArrayStream() {
-  Stream.call(this);
-
-  this.run = function(data) {
-    for (let n = 0; n < data.length; n++)
-      this.emit('data', `${data[n]}\n`);
-  };
-}
-Object.setPrototypeOf(ArrayStream.prototype, Stream.prototype);
-Object.setPrototypeOf(ArrayStream, Stream);
-ArrayStream.prototype.readable = true;
-ArrayStream.prototype.writable = true;
-ArrayStream.prototype.resume = function() {};
-ArrayStream.prototype.write = function() {};
 
 const requireRE = /\brequire\s*\(['"](([\w@./-]+\/)?(?:[\w@./-]*))/;
 const fsAutoCompleteRE = /fs(?:\.promises)?\.\s*[a-z][a-zA-Z]+\(\s*["'](.*)/;
@@ -1055,6 +1099,9 @@ REPLServer.prototype.complete = function() {
   this.completer.apply(this, arguments);
 };
 
+// TODO: Native module names should be auto-resolved.
+// That improves the auto completion.
+
 // Provide a list of completions for the given leading text. This is
 // given to the readline interface for handling tab completion.
 //
@@ -1066,39 +1113,18 @@ REPLServer.prototype.complete = function() {
 // Warning: This eval's code like "foo.bar.baz", so it will run property
 // getter code.
 function complete(line, callback) {
-  // There may be local variables to evaluate, try a nested REPL
-  if (this[kBufferedCommandSymbol] !== undefined &&
-      this[kBufferedCommandSymbol].length) {
-    // Get a new array of inputted lines
-    const tmp = this.lines.slice();
-    // Kill off all function declarations to push all local variables into
-    // global scope
-    for (let n = 0; n < this.lines.level.length; n++) {
-      const kill = this.lines.level[n];
-      if (kill.isFunction)
-        tmp[kill.line] = '';
-    }
-    const flat = new ArrayStream();         // Make a new "input" stream.
-    const magic = new REPLServer('', flat); // Make a nested REPL.
-    replMap.set(magic, replMap.get(this));
-    flat.run(tmp);                        // `eval` the flattened code.
-    // All this is only profitable if the nested REPL does not have a
-    // bufferedCommand.
-    if (!magic[kBufferedCommandSymbol]) {
-      magic._domain.on('error', (err) => { throw err; });
-      return magic.complete(line, callback);
-    }
-  }
-
   // List of completion lists, one for each inheritance "level"
   let completionGroups = [];
   let completeOn, group;
+
+  // Ignore right whitespace. It could change the outcome.
+  line = line.trimLeft();
 
   // REPL commands (e.g. ".break").
   let filter;
   let match = line.match(/^\s*\.(\w*)$/);
   if (match) {
-    completionGroups.push(Object.keys(this.commands));
+    completionGroups.push(ObjectKeys(this.commands));
     completeOn = match[1];
     if (match[1].length) {
       filter = match[1];
@@ -1107,7 +1133,7 @@ function complete(line, callback) {
     completionGroupsLoaded();
   } else if (match = line.match(requireRE)) {
     // require('...<Tab>')
-    const exts = Object.keys(this.context.require.extensions);
+    const exts = ObjectKeys(this.context.require.extensions);
     const indexRe = new RegExp('^index(?:' + exts.map(regexpEscape).join('|') +
                              ')$');
     const versionedFileNamesRe = /-\d+\.\d+/;
@@ -1115,7 +1141,7 @@ function complete(line, callback) {
     completeOn = match[1];
     const subdir = match[2] || '';
     filter = match[1];
-    let dir, files, name, base, ext, abs, subfiles, isDirectory;
+    let dir, files, subfiles, isDirectory;
     group = [];
     let paths = [];
 
@@ -1137,14 +1163,14 @@ function complete(line, callback) {
         continue;
       }
       for (let f = 0; f < files.length; f++) {
-        name = files[f];
-        ext = path.extname(name);
-        base = name.slice(0, -ext.length);
+        const name = files[f];
+        const ext = path.extname(name);
+        const base = name.slice(0, -ext.length);
         if (versionedFileNamesRe.test(base) || name === '.npm') {
           // Exclude versioned names that 'npm' installs.
           continue;
         }
-        abs = path.resolve(dir, name);
+        const abs = path.resolve(dir, name);
         try {
           isDirectory = fs.statSync(abs).isDirectory();
         } catch {
@@ -1212,103 +1238,87 @@ function complete(line, callback) {
   //   foo.<|>        # completions for 'foo' with filter ''
   } else if (line.length === 0 || /\w|\.|\$/.test(line[line.length - 1])) {
     match = simpleExpressionRE.exec(line);
-    if (line.length === 0 || match) {
-      let expr;
-      completeOn = (match ? match[0] : '');
-      if (line.length === 0) {
-        filter = '';
-        expr = '';
-      } else if (line[line.length - 1] === '.') {
-        filter = '';
-        expr = match[0].slice(0, match[0].length - 1);
-      } else {
-        const bits = match[0].split('.');
-        filter = bits.pop();
-        expr = bits.join('.');
-      }
-
-      // Resolve expr and get its completions.
-      const memberGroups = [];
-      if (!expr) {
-        // If context is instance of vm.ScriptContext
-        // Get global vars synchronously
-        if (this.useGlobal || vm.isContext(this.context)) {
-          completionGroups.push(getGlobalLexicalScopeNames(this[kContextId]));
-          let contextProto = this.context;
-          while (contextProto = Object.getPrototypeOf(contextProto)) {
-            completionGroups.push(
-              filteredOwnPropertyNames.call(this, contextProto));
-          }
-          completionGroups.push(
-            filteredOwnPropertyNames.call(this, this.context));
-          if (filter !== '') addCommonWords(completionGroups);
-          completionGroupsLoaded();
-        } else {
-          this.eval('.scope', this.context, 'repl', function ev(err, globals) {
-            if (err || !Array.isArray(globals)) {
-              if (filter !== '') addCommonWords(completionGroups);
-            } else if (Array.isArray(globals[0])) {
-              // Add grouped globals
-              for (let n = 0; n < globals.length; n++)
-                completionGroups.push(globals[n]);
-            } else {
-              completionGroups.push(globals);
-              if (filter !== '') addCommonWords(completionGroups);
-            }
-            completionGroupsLoaded();
-          });
-        }
-      } else {
-        const evalExpr = `try { ${expr} } catch {}`;
-        this.eval(evalExpr, this.context, 'repl', (e, obj) => {
-          if (obj != null) {
-            if (typeof obj === 'object' || typeof obj === 'function') {
-              try {
-                memberGroups.push(filteredOwnPropertyNames.call(this, obj));
-              } catch {
-                // Probably a Proxy object without `getOwnPropertyNames` trap.
-                // We simply ignore it here, as we don't want to break the
-                // autocompletion. Fixes the bug
-                // https://github.com/nodejs/node/issues/2119
-              }
-            }
-            // Works for non-objects
-            try {
-              let sentinel = 5;
-              let p;
-              if (typeof obj === 'object' || typeof obj === 'function') {
-                p = Object.getPrototypeOf(obj);
-              } else {
-                p = obj.constructor ? obj.constructor.prototype : null;
-              }
-              while (p !== null) {
-                memberGroups.push(filteredOwnPropertyNames.call(this, p));
-                p = Object.getPrototypeOf(p);
-                // Circular refs possible? Let's guard against that.
-                sentinel--;
-                if (sentinel <= 0) {
-                  break;
-                }
-              }
-            } catch {}
-          }
-
-          if (memberGroups.length) {
-            for (let i = 0; i < memberGroups.length; i++) {
-              completionGroups.push(
-                memberGroups[i].map((member) => `${expr}.${member}`));
-            }
-            if (filter) {
-              filter = `${expr}.${filter}`;
-            }
-          }
-
-          completionGroupsLoaded();
-        });
-      }
-    } else {
+    if (line.length !== 0 && !match) {
       completionGroupsLoaded();
+      return;
     }
+    let expr;
+    completeOn = (match ? match[0] : '');
+    if (line.length === 0) {
+      filter = '';
+      expr = '';
+    } else if (line[line.length - 1] === '.') {
+      filter = '';
+      expr = match[0].slice(0, match[0].length - 1);
+    } else {
+      const bits = match[0].split('.');
+      filter = bits.pop();
+      expr = bits.join('.');
+    }
+
+    // Resolve expr and get its completions.
+    const memberGroups = [];
+    if (!expr) {
+      // Get global vars synchronously
+      completionGroups.push(getGlobalLexicalScopeNames(this[kContextId]));
+      let contextProto = this.context;
+      while (contextProto = ObjectGetPrototypeOf(contextProto)) {
+        completionGroups.push(filteredOwnPropertyNames(contextProto));
+      }
+      const contextOwnNames = filteredOwnPropertyNames(this.context);
+      if (!this.useGlobal) {
+        // When the context is not `global`, builtins are not own
+        // properties of it.
+        contextOwnNames.push(...globalBuiltins);
+      }
+      completionGroups.push(contextOwnNames);
+      if (filter !== '') addCommonWords(completionGroups);
+      completionGroupsLoaded();
+      return;
+    }
+
+    const evalExpr = `try { ${expr} } catch {}`;
+    this.eval(evalExpr, this.context, 'repl', (e, obj) => {
+      if (obj != null) {
+        if (typeof obj === 'object' || typeof obj === 'function') {
+          try {
+            memberGroups.push(filteredOwnPropertyNames(obj));
+          } catch {
+            // Probably a Proxy object without `getOwnPropertyNames` trap.
+            // We simply ignore it here, as we don't want to break the
+            // autocompletion. Fixes the bug
+            // https://github.com/nodejs/node/issues/2119
+          }
+        }
+        // Works for non-objects
+        try {
+          let p;
+          if (typeof obj === 'object' || typeof obj === 'function') {
+            p = ObjectGetPrototypeOf(obj);
+          } else {
+            p = obj.constructor ? obj.constructor.prototype : null;
+          }
+          // Circular refs possible? Let's guard against that.
+          let sentinel = 5;
+          while (p !== null && sentinel-- !== 0) {
+            memberGroups.push(filteredOwnPropertyNames(p));
+            p = ObjectGetPrototypeOf(p);
+          }
+        } catch {}
+      }
+
+      if (memberGroups.length) {
+        for (let i = 0; i < memberGroups.length; i++) {
+          completionGroups.push(
+            memberGroups[i].map((member) => `${expr}.${member}`));
+        }
+        if (filter) {
+          filter = `${expr}.${filter}`;
+        }
+      }
+
+      completionGroupsLoaded();
+    });
   } else {
     completionGroupsLoaded();
   }
@@ -1329,74 +1339,53 @@ function complete(line, callback) {
       completionGroups = newCompletionGroups;
     }
 
-    let completions;
-
-    if (completionGroups.length) {
-      const uniq = {};  // Unique completions across all groups
-      completions = [];
-      // Completion group 0 is the "closest"
-      // (least far up the inheritance chain)
-      // so we put its completions last: to be closest in the REPL.
-      for (let i = 0; i < completionGroups.length; i++) {
-        group = completionGroups[i];
-        group.sort();
-        for (let j = group.length - 1; j >= 0; j--) {
-          const c = group[j];
-          if (!ObjectPrototype.hasOwnProperty(uniq, c)) {
-            completions.unshift(c);
-            uniq[c] = true;
-          }
+    const completions = [];
+    // Unique completions across all groups.
+    const uniqueSet = new Set(['']);
+    // Completion group 0 is the "closest" (least far up the inheritance
+    // chain) so we put its completions last: to be closest in the REPL.
+    for (const group of completionGroups) {
+      group.sort((a, b) => (b > a ? 1 : -1));
+      const setSize = uniqueSet.size;
+      for (const entry of group) {
+        if (!uniqueSet.has(entry)) {
+          completions.unshift(entry);
+          uniqueSet.add(entry);
         }
-        completions.unshift(''); // Separator btwn groups
       }
-      while (completions.length && completions[0] === '') {
-        completions.shift();
-      }
-    }
-
-    callback(null, [completions || [], completeOn]);
-  }
-}
-
-function longestCommonPrefix(arr = []) {
-  const cnt = arr.length;
-  if (cnt === 0) return '';
-  if (cnt === 1) return arr[0];
-
-  const first = arr[0];
-  // complexity: O(m * n)
-  for (let m = 0; m < first.length; m++) {
-    const c = first[m];
-    for (let n = 1; n < cnt; n++) {
-      const entry = arr[n];
-      if (m >= entry.length || c !== entry[m]) {
-        return first.substring(0, m);
+      // Add a separator between groups.
+      if (uniqueSet.size !== setSize) {
+        completions.unshift('');
       }
     }
+
+    // Remove obsolete group entry, if present.
+    if (completions[0] === '') {
+      completions.shift();
+    }
+
+    callback(null, [completions, completeOn]);
   }
-  return first;
 }
 
 REPLServer.prototype.completeOnEditorMode = (callback) => (err, results) => {
   if (err) return callback(err);
 
   const [completions, completeOn = ''] = results;
-  const prefixLength = completeOn.length;
+  let result = completions.filter((v) => v);
 
-  if (prefixLength === 0) return callback(null, [[], completeOn]);
+  if (completeOn && result.length !== 0) {
+    result = [commonPrefix(result)];
+  }
 
-  const isNotEmpty = (v) => v.length > 0;
-  const trimCompleteOnPrefix = (v) => v.substring(prefixLength);
-  const data = completions.filter(isNotEmpty).map(trimCompleteOnPrefix);
-
-  callback(null, [[`${completeOn}${longestCommonPrefix(data)}`], completeOn]);
+  callback(null, [result, completeOn]);
 };
 
 REPLServer.prototype.defineCommand = function(keyword, cmd) {
   if (typeof cmd === 'function') {
     cmd = { action: cmd };
   } else if (typeof cmd.action !== 'function') {
-    throw new ERR_INVALID_ARG_TYPE('action', 'Function', cmd.action);
+    throw new ERR_INVALID_ARG_TYPE('cmd.action', 'Function', cmd.action);
   }
   this.commands[keyword] = cmd;
 };
@@ -1406,6 +1395,9 @@ REPLServer.prototype.memory = deprecate(
   'REPLServer.memory() is deprecated',
   'DEP0082');
 
+// TODO(BridgeAR): This should be replaced with acorn to build an AST. The
+// language became more complex and using a simple approach like this is not
+// sufficient anymore.
 function _memory(cmd) {
   const self = this;
   self.lines = self.lines || [];
@@ -1413,7 +1405,6 @@ function _memory(cmd) {
 
   // Save the line so I can do magic later
   if (cmd) {
-    // TODO should I tab the level?
     const len = self.lines.level.length ? self.lines.level.length - 1 : 0;
     self.lines.push('  '.repeat(len) + cmd);
   } else {
@@ -1421,61 +1412,54 @@ function _memory(cmd) {
     self.lines.push('');
   }
 
+  if (!cmd) {
+    self.lines.level = [];
+    return;
+  }
+
   // I need to know "depth."
   // Because I can not tell the difference between a } that
   // closes an object literal and a } that closes a function
-  if (cmd) {
-    // Going down is { and (   e.g. function() {
-    // going up is } and )
-    let dw = cmd.match(/[{(]/g);
-    let up = cmd.match(/[})]/g);
-    up = up ? up.length : 0;
-    dw = dw ? dw.length : 0;
-    let depth = dw - up;
 
-    if (depth) {
-      (function workIt() {
-        if (depth > 0) {
-          // Going... down.
-          // Push the line#, depth count, and if the line is a function.
-          // Since JS only has functional scope I only need to remove
-          // "function() {" lines, clearly this will not work for
-          // "function()
-          // {" but nothing should break, only tab completion for local
-          // scope will not work for this function.
-          self.lines.level.push({
-            line: self.lines.length - 1,
-            depth: depth,
-            isFunction: /\bfunction\b/.test(cmd)
-          });
-        } else if (depth < 0) {
-          // Going... up.
-          const curr = self.lines.level.pop();
-          if (curr) {
-            const tmp = curr.depth + depth;
-            if (tmp < 0) {
-              // More to go, recurse
-              depth += curr.depth;
-              workIt();
-            } else if (tmp > 0) {
-              // Remove and push back
-              curr.depth += depth;
-              self.lines.level.push(curr);
-            }
+  // Going down is { and (   e.g. function() {
+  // going up is } and )
+  let dw = cmd.match(/[{(]/g);
+  let up = cmd.match(/[})]/g);
+  up = up ? up.length : 0;
+  dw = dw ? dw.length : 0;
+  let depth = dw - up;
+
+  if (depth) {
+    (function workIt() {
+      if (depth > 0) {
+        // Going... down.
+        // Push the line#, depth count, and if the line is a function.
+        // Since JS only has functional scope I only need to remove
+        // "function() {" lines, clearly this will not work for
+        // "function()
+        // {" but nothing should break, only tab completion for local
+        // scope will not work for this function.
+        self.lines.level.push({
+          line: self.lines.length - 1,
+          depth: depth
+        });
+      } else if (depth < 0) {
+        // Going... up.
+        const curr = self.lines.level.pop();
+        if (curr) {
+          const tmp = curr.depth + depth;
+          if (tmp < 0) {
+            // More to go, recurse
+            depth += curr.depth;
+            workIt();
+          } else if (tmp > 0) {
+            // Remove and push back
+            curr.depth += depth;
+            self.lines.level.push(curr);
           }
         }
-      }());
-    }
-
-    // It is possible to determine a syntax error at this point.
-    // if the REPL still has a bufferedCommand and
-    // self.lines.level.length === 0
-    // TODO? keep a log of level so that any syntax breaking lines can
-    // be cleared on .break and in the case of a syntax error?
-    // TODO? if a log was kept, then I could clear the bufferedCommand and
-    // eval these lines and throw the syntax error
-  } else {
-    self.lines.level = [];
+      }
+    }());
   }
 }
 
@@ -1538,9 +1522,9 @@ function defineDefaultCommands(repl) {
   repl.defineCommand('help', {
     help: 'Print this help message',
     action: function() {
-      const names = Object.keys(this.commands).sort();
+      const names = ObjectKeys(this.commands).sort();
       const longestNameLength = names.reduce(
-        (max, name) => Math.max(max, name.length),
+        (max, name) => MathMax(max, name.length),
         0
       );
       for (let n = 0; n < names.length; n++) {
@@ -1610,6 +1594,6 @@ function regexpEscape(s) {
 function Recoverable(err) {
   this.err = err;
 }
-Object.setPrototypeOf(Recoverable.prototype, SyntaxError.prototype);
-Object.setPrototypeOf(Recoverable, SyntaxError);
+ObjectSetPrototypeOf(Recoverable.prototype, SyntaxError.prototype);
+ObjectSetPrototypeOf(Recoverable, SyntaxError);
 exports.Recoverable = Recoverable;

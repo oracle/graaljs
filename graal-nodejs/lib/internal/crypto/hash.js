@@ -1,6 +1,9 @@
 'use strict';
 
-const { Object } = primordials;
+const {
+  ObjectSetPrototypeOf,
+  Symbol,
+} = primordials;
 
 const {
   Hash: _Hash,
@@ -36,7 +39,8 @@ const kFinalized = Symbol('kFinalized');
 function Hash(algorithm, options) {
   if (!(this instanceof Hash))
     return new Hash(algorithm, options);
-  validateString(algorithm, 'algorithm');
+  if (!(algorithm instanceof _Hash))
+    validateString(algorithm, 'algorithm');
   const xofLen = typeof options === 'object' && options !== null ?
     options.outputLength : undefined;
   if (xofLen !== undefined)
@@ -48,8 +52,16 @@ function Hash(algorithm, options) {
   LazyTransform.call(this, options);
 }
 
-Object.setPrototypeOf(Hash.prototype, LazyTransform.prototype);
-Object.setPrototypeOf(Hash, LazyTransform);
+ObjectSetPrototypeOf(Hash.prototype, LazyTransform.prototype);
+ObjectSetPrototypeOf(Hash, LazyTransform);
+
+Hash.prototype.copy = function copy(options) {
+  const state = this[kState];
+  if (state[kFinalized])
+    throw new ERR_CRYPTO_HASH_FINALIZED();
+
+  return new Hash(this[kHandle], options);
+};
 
 Hash.prototype._transform = function _transform(chunk, encoding, callback) {
   this[kHandle].update(chunk, encoding);
@@ -107,8 +119,8 @@ function Hmac(hmac, key, options) {
   LazyTransform.call(this, options);
 }
 
-Object.setPrototypeOf(Hmac.prototype, LazyTransform.prototype);
-Object.setPrototypeOf(Hmac, LazyTransform);
+ObjectSetPrototypeOf(Hmac.prototype, LazyTransform.prototype);
+ObjectSetPrototypeOf(Hmac, LazyTransform);
 
 Hmac.prototype.update = Hash.prototype.update;
 

@@ -16,11 +16,11 @@ if /i "%1"=="/?" goto help
 cd %~dp0
 
 @rem CI_* variables should be kept synchronized with the ones in Makefile
-set CI_NATIVE_SUITES=addons js-native-api node-api
+set CI_NATIVE_SUITES=addons js-native-api node-api abort
 set CI_JS_SUITES=default
 set CI_DOC=doctool
 @rem Same as the test-ci target in Makefile
-set "common_test_suites=%CI_JS_SUITES% %CI_NATIVE_SUITES% %CI_DOC%&set build_addons=1&set build_js_native_api_tests=1&set build_node_api_tests=1"
+set "common_test_suites=%CI_JS_SUITES% %CI_NATIVE_SUITES% %CI_DOC%&set build_addons=1&set build_js_native_api_tests=1&set build_node_api_tests=1&set build_aborts_tests=1"
 
 @rem Process arguments.
 set config=Release
@@ -49,7 +49,6 @@ set noetw_msi_arg=
 set i18n_arg=
 set download_arg=
 set build_release=
-set enable_vtune_arg=
 set configure_flags=
 set build_addons=
 set dll=
@@ -70,6 +69,7 @@ set doc=
 set extra_msbuild_args=
 set _java_home=
 set exit_code=0
+set build_aborts_tests=
 
 :next-arg
 if "%1"=="" goto args-done
@@ -98,6 +98,8 @@ if /i "%1"=="test-ci-js"    set test_args=%test_args% %test_ci_args% -J -p tap -
 if /i "%1"=="build-addons"   set build_addons=1&goto arg-ok
 if /i "%1"=="build-js-native-api-tests"   set build_js_native_api_tests=1&goto arg-ok
 if /i "%1"=="build-node-api-tests"   set build_node_api_tests=1&goto arg-ok
+if /i "%1"=="build-abort-tests"   set build_abort_tests=1&goto arg-ok
+if /i "%1"=="test-abort"   set test_args=%test_args% abort&set build_abort_tests=1&goto arg-ok
 if /i "%1"=="test-addons"   set test_args=%test_args% addons&set build_addons=1&goto arg-ok
 if /i "%1"=="test-js-native-api"   set test_args=%test_args% js-native-api&set build_js_native_api_tests=1&goto arg-ok
 if /i "%1"=="test-node-api"   set test_args=%test_args% node-api&set build_node_api_tests=1&goto arg-ok
@@ -136,7 +138,6 @@ if /i "%1"=="intl-none"     set i18n_arg=none&goto arg-ok
 if /i "%1"=="without-intl"  set i18n_arg=none&goto arg-ok
 if /i "%1"=="download-all"  set download_arg="--download=all"&goto arg-ok
 if /i "%1"=="ignore-flaky"  set test_args=%test_args% --flaky-tests=dontcare&goto arg-ok
-if /i "%1"=="enable-vtune"  set enable_vtune_arg=1&goto arg-ok
 if /i "%1"=="dll"           set dll=1&goto arg-ok
 if /i "%1"=="static"           set enable_static=1&goto arg-ok
 if /i "%1"=="no-NODE-OPTIONS"	set no_NODE_OPTIONS=1&goto arg-ok
@@ -199,7 +200,6 @@ if defined noetw            set configure_flags=%configure_flags% --without-etw&
 if defined ltcg             set configure_flags=%configure_flags% --with-ltcg
 if defined release_urlbase  set configure_flags=%configure_flags% --release-urlbase=%release_urlbase%
 if defined download_arg     set configure_flags=%configure_flags% %download_arg%
-if defined enable_vtune_arg set configure_flags=%configure_flags% --enable-vtune-profiling
 if defined dll              set configure_flags=%configure_flags% --shared
 if defined enable_static    set configure_flags=%configure_flags% --enable-static
 if defined no_NODE_OPTIONS  set configure_flags=%configure_flags% --without-node-options
@@ -326,7 +326,7 @@ goto msbuild-found
 :msbuild-not-found
 echo Failed to find a suitable Visual Studio installation.
 echo Try to run in a "Developer Command Prompt" or consult
-echo https://github.com/nodejs/node/blob/master/BUILDING.md#windows-1
+echo https://github.com/nodejs/node/blob/master/BUILDING.md#windows
 goto exit
 
 :msbuild-found
@@ -593,10 +593,10 @@ endlocal
 goto build-node-api-tests
 
 :build-node-api-tests
-if not defined build_node_api_tests goto run-tests
+if not defined build_node_api_tests goto build-abort-tests
 if not exist "%node_exe%" (
   echo Failed to find node.exe
-  goto run-tests
+  goto build-abort-tests
 )
 echo Building node-api
 :: clear
@@ -607,6 +607,25 @@ for /d %%F in (test\node-api\??_*) do (
 setlocal
 set npm_config_nodedir=%~dp0
 "%node_exe%" "%~dp0tools\build-addons.js" "%~dp0deps\npm\node_modules\node-gyp\bin\node-gyp.js" "%~dp0test\node-api"
+if errorlevel 1 exit /b 1
+endlocal
+goto build-abort-tests
+
+:build-abort-tests
+if not defined build_abort_tests goto run-tests
+if not exist "%node_exe%" (
+  echo Failed to find node.exe
+  goto run-tests
+)
+echo Building abort
+:: clear
+for /d %%F in (test\abort\??_*) do (
+  rd /s /q %%F
+)
+:: building abort
+setlocal
+set npm_config_nodedir=%~dp0
+"%node_exe%" "%~dp0tools\build-addons.js" "%~dp0deps\npm\node_modules\node-gyp\bin\node-gyp.js" "%~dp0test\abort"
 if errorlevel 1 exit /b 1
 endlocal
 goto run-tests
@@ -711,23 +730,24 @@ if %VCBUILD_PYTHON_VERSION%==3 (
   echo Python 3 is not yet fully supported, to avoid issues Python 2 should be installed.
 )
 del .used_configure_flags
+set exit_code=1
 goto exit
 
 :help
-echo vcbuild.bat [debug/release] [msi] [doc] [test/test-all/test-addons/test-js-native-api/test-node-api/test-benchmark/test-internet/test-pummel/test-simple/test-message/test-tick-processor/test-known-issues/test-node-inspect/test-check-deopts/test-npm/test-async-hooks/test-v8/test-v8-intl/test-v8-benchmarks/test-v8-all] [ignore-flaky] [static/dll] [noprojgen] [projgen] [small-icu/full-icu/without-intl] [nobuild] [nosnapshot] [noetw] [ltcg] [licensetf] [sign] [ia32/x86/x64/arm64] [vs2017] [download-all] [enable-vtune] [lint/lint-ci/lint-js/lint-js-ci/lint-md] [lint-md-build] [package] [build-release] [upload] [no-NODE-OPTIONS] [link-module path-to-module] [debug-http2] [debug-nghttp2] [clean] [cctest] [no-cctest] [openssl-no-asm]
+echo vcbuild.bat [debug/release] [msi] [doc] [test/test-all/test-addons/test-js-native-api/test-node-api/test-benchmark/test-internet/test-pummel/test-simple/test-message/test-tick-processor/test-known-issues/test-node-inspect/test-check-deopts/test-npm/test-async-hooks/test-v8/test-v8-intl/test-v8-benchmarks/test-v8-all] [ignore-flaky] [static/dll] [noprojgen] [projgen] [small-icu/full-icu/without-intl] [nobuild] [nosnapshot] [noetw] [ltcg] [licensetf] [sign] [ia32/x86/x64/arm64] [vs2017/vs2019] [download-all] [lint/lint-ci/lint-js/lint-js-ci/lint-md] [lint-md-build] [package] [build-release] [upload] [no-NODE-OPTIONS] [link-module path-to-module] [debug-http2] [debug-nghttp2] [clean] [cctest] [no-cctest] [openssl-no-asm]
 echo Examples:
 echo   vcbuild.bat                          : builds release build
 echo   vcbuild.bat debug                    : builds debug build
 echo   vcbuild.bat release msi              : builds release build and MSI installer package
 echo   vcbuild.bat test                     : builds debug build and runs tests
 echo   vcbuild.bat build-release            : builds the release distribution as used by nodejs.org
-echo   vcbuild.bat enable-vtune             : builds nodejs with Intel VTune profiling support to profile JavaScript
 echo   vcbuild.bat link-module my_module.js : bundles my_module as built-in module
 echo   vcbuild.bat lint                     : runs the C++, documentation and JavaScript linter
 echo   vcbuild.bat no-cctest                : skip building cctest.exe
 goto exit
 
 :exit
+if %errorlevel% neq 0 exit /b %errorlevel%
 exit /b %exit_code%
 
 

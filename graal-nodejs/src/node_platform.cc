@@ -2,15 +2,14 @@
 #include "node_internals.h"
 
 #include "env-inl.h"
-#include "debug_utils.h"
-#include <algorithm>
-#include <cmath>
-#include <memory>
+#include "debug_utils-inl.h"
+#include <algorithm>  // find_if(), find(), move()
+#include <cmath>  // llround()
+#include <memory>  // unique_ptr(), shared_ptr(), make_shared()
 
 namespace node {
 
 using v8::Isolate;
-using v8::Local;
 using v8::Object;
 using v8::Platform;
 using v8::Task;
@@ -223,7 +222,7 @@ int WorkerThreadsTaskRunner::NumberOfWorkerThreads() const {
 
 PerIsolatePlatformData::PerIsolatePlatformData(
     Isolate* isolate, uv_loop_t* loop)
-  : loop_(loop) {
+  : isolate_(isolate), loop_(loop) {
   flush_tasks_ = new uv_async_t();
   CHECK_EQ(0, uv_async_init(loop, flush_tasks_, FlushTasks));
   flush_tasks_->data = static_cast<void*>(this);
@@ -240,14 +239,22 @@ void PerIsolatePlatformData::PostIdleTask(std::unique_ptr<v8::IdleTask> task) {
 }
 
 void PerIsolatePlatformData::PostTask(std::unique_ptr<Task> task) {
-  CHECK_NOT_NULL(flush_tasks_);
+  if (flush_tasks_ == nullptr) {
+    // V8 may post tasks during Isolate disposal. In that case, the only
+    // sensible path forward is to discard the task.
+    return;
+  }
   foreground_tasks_.Push(std::move(task));
   uv_async_send(flush_tasks_);
 }
 
 void PerIsolatePlatformData::PostDelayedTask(
     std::unique_ptr<Task> task, double delay_in_seconds) {
-  CHECK_NOT_NULL(flush_tasks_);
+  if (flush_tasks_ == nullptr) {
+    // V8 may post tasks during Isolate disposal. In that case, the only
+    // sensible path forward is to discard the task.
+    return;
+  }
   std::unique_ptr<DelayedTask> delayed(new DelayedTask());
   delayed->task = std::move(task);
   delayed->platform_data = shared_from_this();
@@ -365,12 +372,12 @@ int NodePlatform::NumberOfWorkerThreads() {
 }
 
 void PerIsolatePlatformData::RunForegroundTask(std::unique_ptr<Task> task) {
-  Isolate* isolate = Isolate::GetCurrent();
-  DebugSealHandleScope scope(isolate);
-  Environment* env = Environment::GetCurrent(isolate);
+  DebugSealHandleScope scope(isolate_);
+  Environment* env = Environment::GetCurrent(isolate_);
   if (env != nullptr) {
-    InternalCallbackScope cb_scope(env, Local<Object>(), { 0, 0 },
-                                   InternalCallbackScope::kAllowEmptyResource);
+    v8::HandleScope scope(isolate_);
+    InternalCallbackScope cb_scope(env, Object::New(isolate_), { 0, 0 },
+                                   InternalCallbackScope::kNoFlags);
     task->Run();
   } else {
     task->Run();
@@ -388,8 +395,8 @@ void PerIsolatePlatformData::DeleteFromScheduledTasks(DelayedTask* task) {
 }
 
 void PerIsolatePlatformData::RunForegroundTask(uv_timer_t* handle) {
-  DelayedTask* delayed = static_cast<DelayedTask*>(handle->data);
-  RunForegroundTask(std::move(delayed->task));
+  DelayedTask* delayed = ContainerOf(&DelayedTask::timer, handle);
+  delayed->platform_data->RunForegroundTask(std::move(delayed->task));
   delayed->platform_data->DeleteFromScheduledTasks(delayed);
 }
 
@@ -483,6 +490,14 @@ double NodePlatform::CurrentClockTimeMillis() {
 TracingController* NodePlatform::GetTracingController() {
   CHECK_NOT_NULL(tracing_controller_);
   return tracing_controller_;
+}
+
+Platform::StackTracePrinter NodePlatform::GetStackTracePrinter() {
+  return []() {
+    fprintf(stderr, "\n");
+    DumpBacktrace(stderr);
+    fflush(stderr);
+  };
 }
 
 template <class T>
