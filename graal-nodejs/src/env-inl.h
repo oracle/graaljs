@@ -64,11 +64,15 @@ inline MultiIsolatePlatform* IsolateData::platform() const {
   return platform_;
 }
 
+inline v8::Local<v8::String> IsolateData::async_wrap_provider(int index) const {
+  return async_wrap_providers_[index].Get(isolate_);
+}
+
 inline AsyncHooks::AsyncHooks()
     : async_ids_stack_(env()->isolate(), 16 * 2),
       fields_(env()->isolate(), kFieldsCount),
       async_id_fields_(env()->isolate(), kUidFieldsCount) {
-  v8::HandleScope handle_scope(env()->isolate());
+  clear_async_id_stack();
 
   // Always perform async_hooks checks, not just when async_hooks is enabled.
   // TODO(AndreasMadsen): Consider removing this for LTS releases.
@@ -86,20 +90,6 @@ inline AsyncHooks::AsyncHooks()
   // kAsyncIdCounter should start at 1 because that'll be the id the execution
   // context during bootstrap (code that runs before entering uv_run()).
   async_id_fields_[AsyncHooks::kAsyncIdCounter] = 1;
-
-  // Create all the provider strings that will be passed to JS. Place them in
-  // an array so the array index matches the PROVIDER id offset. This way the
-  // strings can be retrieved quickly.
-#define V(Provider)                                                           \
-  providers_[AsyncWrap::PROVIDER_ ## Provider].Set(                           \
-      env()->isolate(),                                                       \
-      v8::String::NewFromOneByte(                                             \
-        env()->isolate(),                                                     \
-        reinterpret_cast<const uint8_t*>(#Provider),                          \
-        v8::NewStringType::kInternalized,                                     \
-        sizeof(#Provider) - 1).ToLocalChecked());
-  NODE_ASYNC_PROVIDER_TYPES(V)
-#undef V
 }
 inline AliasedUint32Array& AsyncHooks::fields() {
   return fields_;
@@ -113,8 +103,12 @@ inline AliasedFloat64Array& AsyncHooks::async_ids_stack() {
   return async_ids_stack_;
 }
 
+inline v8::Local<v8::Array> AsyncHooks::execution_async_resources() {
+  return PersistentToLocal::Strong(execution_async_resources_);
+}
+
 inline v8::Local<v8::String> AsyncHooks::provider_string(int idx) {
-  return providers_[idx].Get(env()->isolate());
+  return env()->isolate_data()->async_wrap_provider(idx);
 }
 
 inline void AsyncHooks::no_force_checks() {
@@ -125,9 +119,12 @@ inline Environment* AsyncHooks::env() {
   return Environment::ForAsyncHooks(this);
 }
 
-// Remember to keep this code aligned with pushAsyncIds() in JS.
-inline void AsyncHooks::push_async_ids(double async_id,
-                                       double trigger_async_id) {
+// Remember to keep this code aligned with pushAsyncContext() in JS.
+inline void AsyncHooks::push_async_context(double async_id,
+                                           double trigger_async_id,
+                                           v8::Local<v8::Value> resource) {
+  v8::HandleScope handle_scope(env()->isolate());
+
   // Since async_hooks is experimental, do only perform the check
   // when async_hooks is enabled.
   if (fields_[kCheck] > 0) {
@@ -143,10 +140,13 @@ inline void AsyncHooks::push_async_ids(double async_id,
   fields_[kStackLength] += 1;
   async_id_fields_[kExecutionAsyncId] = async_id;
   async_id_fields_[kTriggerAsyncId] = trigger_async_id;
+
+  auto resources = execution_async_resources();
+  USE(resources->Set(env()->context(), offset, resource));
 }
 
-// Remember to keep this code aligned with popAsyncIds() in JS.
-inline bool AsyncHooks::pop_async_id(double async_id) {
+// Remember to keep this code aligned with popAsyncContext() in JS.
+inline bool AsyncHooks::pop_async_context(double async_id) {
   // In case of an exception then this may have already been reset, if the
   // stack was multiple MakeCallback()'s deep.
   if (fields_[kStackLength] == 0) return false;
@@ -175,11 +175,18 @@ inline bool AsyncHooks::pop_async_id(double async_id) {
   async_id_fields_[kTriggerAsyncId] = async_ids_stack_[2 * offset + 1];
   fields_[kStackLength] = offset;
 
+  auto resources = execution_async_resources();
+  USE(resources->Delete(env()->context(), offset));
+
   return fields_[kStackLength] > 0;
 }
 
 // Keep in sync with clearAsyncIdStack in lib/internal/async_hooks.js.
 inline void AsyncHooks::clear_async_id_stack() {
+  auto isolate = env()->isolate();
+  v8::HandleScope handle_scope(isolate);
+  execution_async_resources_.Reset(isolate, v8::Array::New(isolate));
+
   async_id_fields_[kExecutionAsyncId] = 0;
   async_id_fields_[kTriggerAsyncId] = 0;
   fields_[kStackLength] = 0;
@@ -206,17 +213,8 @@ inline AsyncHooks::DefaultTriggerAsyncIdScope ::~DefaultTriggerAsyncIdScope() {
     old_default_trigger_async_id_;
 }
 
-
 Environment* Environment::ForAsyncHooks(AsyncHooks* hooks) {
   return ContainerOf(&Environment::async_hooks_, hooks);
-}
-
-inline AsyncCallbackScope::AsyncCallbackScope(Environment* env) : env_(env) {
-  env_->PushAsyncCallbackScope();
-}
-
-inline AsyncCallbackScope::~AsyncCallbackScope() {
-  env_->PopAsyncCallbackScope();
 }
 
 inline size_t Environment::async_callback_scope_depth() const {
@@ -248,14 +246,6 @@ inline uint32_t ImmediateInfo::ref_count() const {
 
 inline bool ImmediateInfo::has_outstanding() const {
   return fields_[kHasOutstanding] == 1;
-}
-
-inline void ImmediateInfo::count_inc(uint32_t increment) {
-  fields_[kCount] += increment;
-}
-
-inline void ImmediateInfo::count_dec(uint32_t decrement) {
-  fields_[kCount] -= decrement;
 }
 
 inline void ImmediateInfo::ref_count_inc(uint32_t increment) {
@@ -606,20 +596,6 @@ inline void Environment::set_http2_state(
   http2_state_ = std::move(buffer);
 }
 
-bool Environment::debug_enabled(DebugCategory category) const {
-  DCHECK_GE(static_cast<int>(category), 0);
-  DCHECK_LT(static_cast<int>(category),
-           static_cast<int>(DebugCategory::CATEGORY_COUNT));
-  return debug_enabled_[static_cast<int>(category)];
-}
-
-void Environment::set_debug_enabled(DebugCategory category, bool enabled) {
-  DCHECK_GE(static_cast<int>(category), 0);
-  DCHECK_LT(static_cast<int>(category),
-           static_cast<int>(DebugCategory::CATEGORY_COUNT));
-  debug_enabled_[static_cast<int>(category)] = enabled;
-}
-
 inline AliasedFloat64Array* Environment::fs_stats_field_array() {
   return &fs_stats_field_array_;
 }
@@ -740,7 +716,8 @@ inline uint64_t Environment::heap_prof_interval() const {
 
 #endif  // HAVE_INSPECTOR
 
-inline std::shared_ptr<HostPort> Environment::inspector_host_port() {
+inline
+std::shared_ptr<ExclusiveAccess<HostPort>> Environment::inspector_host_port() {
   return inspector_host_port_;
 }
 
@@ -753,28 +730,56 @@ inline void IsolateData::set_options(
   options_ = std::move(options);
 }
 
-template <typename Fn>
-void Environment::CreateImmediate(Fn&& cb,
-                                  v8::Local<v8::Object> keep_alive,
-                                  bool ref) {
-  auto callback = std::make_unique<NativeImmediateCallbackImpl<Fn>>(
-      std::move(cb),
-      v8::Global<v8::Object>(isolate(), keep_alive),
-      ref);
-  NativeImmediateCallback* prev_tail = native_immediate_callbacks_tail_;
+std::unique_ptr<Environment::NativeImmediateCallback>
+Environment::NativeImmediateQueue::Shift() {
+  std::unique_ptr<Environment::NativeImmediateCallback> ret = std::move(head_);
+  if (ret) {
+    head_ = ret->get_next();
+    if (!head_)
+      tail_ = nullptr;  // The queue is now empty.
+  }
+  size_--;
+  return ret;
+}
 
-  native_immediate_callbacks_tail_ = callback.get();
+void Environment::NativeImmediateQueue::Push(
+    std::unique_ptr<Environment::NativeImmediateCallback> cb) {
+  NativeImmediateCallback* prev_tail = tail_;
+
+  size_++;
+  tail_ = cb.get();
   if (prev_tail != nullptr)
-    prev_tail->set_next(std::move(callback));
+    prev_tail->set_next(std::move(cb));
   else
-    native_immediate_callbacks_head_ = std::move(callback);
+    head_ = std::move(cb);
+}
 
-  immediate_info()->count_inc(1);
+void Environment::NativeImmediateQueue::ConcatMove(
+    NativeImmediateQueue&& other) {
+  size_ += other.size_;
+  if (tail_ != nullptr)
+    tail_->set_next(std::move(other.head_));
+  else
+    head_ = std::move(other.head_);
+  tail_ = other.tail_;
+  other.tail_ = nullptr;
+  other.size_ = 0;
+}
+
+size_t Environment::NativeImmediateQueue::size() const {
+  return size_.load();
 }
 
 template <typename Fn>
-void Environment::SetImmediate(Fn&& cb, v8::Local<v8::Object> keep_alive) {
-  CreateImmediate(std::move(cb), keep_alive, true);
+void Environment::CreateImmediate(Fn&& cb, bool ref) {
+  auto callback = std::make_unique<NativeImmediateCallbackImpl<Fn>>(
+      std::move(cb), ref);
+  native_immediates_.Push(std::move(callback));
+}
+
+template <typename Fn>
+void Environment::SetImmediate(Fn&& cb) {
+  CreateImmediate(std::move(cb), true);
 
   if (immediate_info()->ref_count() == 0)
     ToggleImmediateRef(true);
@@ -782,8 +787,31 @@ void Environment::SetImmediate(Fn&& cb, v8::Local<v8::Object> keep_alive) {
 }
 
 template <typename Fn>
-void Environment::SetUnrefImmediate(Fn&& cb, v8::Local<v8::Object> keep_alive) {
-  CreateImmediate(std::move(cb), keep_alive, false);
+void Environment::SetUnrefImmediate(Fn&& cb) {
+  CreateImmediate(std::move(cb), false);
+}
+
+template <typename Fn>
+void Environment::SetImmediateThreadsafe(Fn&& cb) {
+  auto callback = std::make_unique<NativeImmediateCallbackImpl<Fn>>(
+      std::move(cb), false);
+  {
+    Mutex::ScopedLock lock(native_immediates_threadsafe_mutex_);
+    native_immediates_threadsafe_.Push(std::move(callback));
+  }
+  uv_async_send(&task_queues_async_);
+}
+
+template <typename Fn>
+void Environment::RequestInterrupt(Fn&& cb) {
+  auto callback = std::make_unique<NativeImmediateCallbackImpl<Fn>>(
+      std::move(cb), false);
+  {
+    Mutex::ScopedLock lock(native_immediates_threadsafe_mutex_);
+    native_immediates_interrupts_.Push(std::move(callback));
+  }
+  uv_async_send(&task_queues_async_);
+  RequestInterruptFromV8();
 }
 
 Environment::NativeImmediateCallback::NativeImmediateCallback(bool refed)
@@ -805,10 +833,9 @@ void Environment::NativeImmediateCallback::set_next(
 
 template <typename Fn>
 Environment::NativeImmediateCallbackImpl<Fn>::NativeImmediateCallbackImpl(
-    Fn&& callback, v8::Global<v8::Object>&& keep_alive, bool refed)
+    Fn&& callback, bool refed)
   : NativeImmediateCallback(refed),
-    callback_(std::move(callback)),
-    keep_alive_(std::move(keep_alive)) {}
+    callback_(std::move(callback)) {}
 
 template <typename Fn>
 void Environment::NativeImmediateCallbackImpl<Fn>::Call(Environment* env) {
@@ -872,11 +899,42 @@ inline void Environment::remove_sub_worker_context(worker::Worker* context) {
   sub_worker_contexts_.erase(context);
 }
 
-inline bool Environment::is_stopping() const {
-  return thread_stopper_.is_stopped();
+template <typename Fn>
+inline void Environment::ForEachWorker(Fn&& iterator) {
+  for (worker::Worker* w : sub_worker_contexts_) iterator(w);
 }
 
-inline performance::performance_state* Environment::performance_state() {
+inline void Environment::add_refs(int64_t diff) {
+  task_queues_async_refs_ += diff;
+  CHECK_GE(task_queues_async_refs_, 0);
+  if (task_queues_async_refs_ == 0)
+    uv_unref(reinterpret_cast<uv_handle_t*>(&task_queues_async_));
+  else
+    uv_ref(reinterpret_cast<uv_handle_t*>(&task_queues_async_));
+}
+
+inline bool Environment::is_stopping() const {
+  return is_stopping_.load();
+}
+
+inline void Environment::set_stopping(bool value) {
+  is_stopping_.store(value);
+}
+
+inline std::list<node_module>* Environment::extra_linked_bindings() {
+  return &extra_linked_bindings_;
+}
+
+inline node_module* Environment::extra_linked_bindings_head() {
+  return extra_linked_bindings_.size() > 0 ?
+      &extra_linked_bindings_.front() : nullptr;
+}
+
+inline const Mutex& Environment::extra_linked_bindings_mutex() const {
+  return extra_linked_bindings_mutex_;
+}
+
+inline performance::PerformanceState* Environment::performance_state() {
   return performance_state_.get();
 }
 
@@ -961,7 +1019,10 @@ inline AllocatedBuffer::~AllocatedBuffer() {
 
 inline void AllocatedBuffer::clear() {
   uv_buf_t buf = release();
-  env_->Free(buf.base, buf.len);
+  if (buf.base != nullptr) {
+    CHECK_NOT_NULL(env_);
+    env_->Free(buf.base, buf.len);
+  }
 }
 
 // It's a bit awkward to define this Buffer::New() overload here, but it
@@ -1102,6 +1163,21 @@ inline void Environment::SetProtoMethodNoSideEffect(
   t->SetClassName(name_string);  // NODE_SET_PROTOTYPE_METHOD() compatibility.
 }
 
+inline void Environment::SetInstanceMethod(v8::Local<v8::FunctionTemplate> that,
+                                           const char* name,
+                                           v8::FunctionCallback callback) {
+  v8::Local<v8::Signature> signature = v8::Signature::New(isolate(), that);
+  v8::Local<v8::FunctionTemplate> t =
+      NewFunctionTemplate(callback, signature, v8::ConstructorBehavior::kThrow,
+                          v8::SideEffectType::kHasSideEffect);
+  // kInternalized strings are created in the old space.
+  const v8::NewStringType type = v8::NewStringType::kInternalized;
+  v8::Local<v8::String> name_string =
+      v8::String::NewFromUtf8(isolate(), name, type).ToLocalChecked();
+  that->InstanceTemplate()->Set(name_string, t);
+  t->SetClassName(name_string);
+}
+
 void Environment::AddCleanupHook(void (*fn)(void*), void* arg) {
   auto insertion_info = cleanup_hooks_.emplace(CleanupHookCallback {
     fn, arg, cleanup_hook_counter_++
@@ -1113,6 +1189,12 @@ void Environment::AddCleanupHook(void (*fn)(void*), void* arg) {
 void Environment::RemoveCleanupHook(void (*fn)(void*), void* arg) {
   CleanupHookCallback search { fn, arg, 0 };
   cleanup_hooks_.erase(search);
+}
+
+inline void Environment::RegisterFinalizationGroupForCleanup(
+    v8::Local<v8::FinalizationGroup> group) {
+  cleanup_finalization_groups_.emplace_back(isolate(), group);
+  uv_async_send(&task_queues_async_);
 }
 
 size_t CleanupHookCallback::Hash::operator()(
@@ -1141,12 +1223,12 @@ void Environment::ForEachBaseObject(T&& iterator) {
   }
 }
 
-bool AsyncRequest::is_stopped() const {
-  return stopped_.load();
+void Environment::modify_base_object_count(int64_t delta) {
+  base_object_count_ += delta;
 }
 
-void AsyncRequest::set_stopped(bool flag) {
-  stopped_.store(flag);
+int64_t Environment::base_object_count() const {
+  return base_object_count_;
 }
 
 #define VP(PropertyName, StringValue) V(v8::Private, PropertyName)
@@ -1154,9 +1236,8 @@ void AsyncRequest::set_stopped(bool flag) {
 #define VS(PropertyName, StringValue) V(v8::String, PropertyName)
 #define V(TypeName, PropertyName)                                             \
   inline                                                                      \
-  v8::Local<TypeName> IsolateData::PropertyName(v8::Isolate* isolate) const { \
-    /* Strings are immutable so casting away const-ness here is okay. */      \
-    return const_cast<IsolateData*>(this)->PropertyName ## _.Get(isolate);    \
+  v8::Local<TypeName> IsolateData::PropertyName() const {                     \
+    return PropertyName ## _ .Get(isolate_);                                  \
   }
   PER_ISOLATE_PRIVATE_SYMBOL_PROPERTIES(VP)
   PER_ISOLATE_SYMBOL_PROPERTIES(VY)
@@ -1171,7 +1252,7 @@ void AsyncRequest::set_stopped(bool flag) {
 #define VS(PropertyName, StringValue) V(v8::String, PropertyName)
 #define V(TypeName, PropertyName)                                             \
   inline v8::Local<TypeName> Environment::PropertyName() const {              \
-    return isolate_data()->PropertyName(isolate());                           \
+    return isolate_data()->PropertyName();                                    \
   }
   PER_ISOLATE_PRIVATE_SYMBOL_PROPERTIES(VP)
   PER_ISOLATE_SYMBOL_PROPERTIES(VY)

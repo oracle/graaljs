@@ -1,11 +1,11 @@
 'use strict';
 
-const { FunctionPrototype, Object } = primordials;
-
 const {
-  ERR_ASYNC_TYPE,
-  ERR_INVALID_ASYNC_ID
-} = require('internal/errors').codes;
+  Error,
+  FunctionPrototypeBind,
+  ObjectDefineProperty,
+  Symbol,
+} = primordials;
 
 const async_wrap = internalBinding('async_wrap');
 /* async_hook_fields is a Uint32Array wrapping the uint32_t array of
@@ -28,18 +28,26 @@ const async_wrap = internalBinding('async_wrap');
  *    3. executionAsyncId of the current resource.
  *
  * async_ids_stack is a Float64Array that contains part of the async ID
- * stack. Each pushAsyncIds() call adds two doubles to it, and each
- * popAsyncIds() call removes two doubles from it.
+ * stack. Each pushAsyncContext() call adds two doubles to it, and each
+ * popAsyncContext() call removes two doubles from it.
  * It has a fixed size, so if that is exceeded, calls to the native
- * side are used instead in pushAsyncIds() and popAsyncIds().
+ * side are used instead in pushAsyncContext() and popAsyncContext().
  */
-const { async_hook_fields, async_id_fields, owner_symbol } = async_wrap;
+const {
+  async_hook_fields,
+  async_id_fields,
+  execution_async_resources,
+  owner_symbol
+} = async_wrap;
 // Store the pair executionAsyncId and triggerAsyncId in a std::stack on
 // Environment::AsyncHooks::async_ids_stack_ tracks the resource responsible for
 // the current execution stack. This is unwound as each resource exits. In the
 // case of a fatal exception this stack is emptied after calling each hook's
 // after() callback.
-const { pushAsyncIds: pushAsyncIds_, popAsyncIds: popAsyncIds_ } = async_wrap;
+const {
+  pushAsyncContext: pushAsyncContext_,
+  popAsyncContext: popAsyncContext_
+} = async_wrap;
 // For performance reasons, only track Promises when a hook is enabled.
 const { enablePromiseHook, disablePromiseHook } = async_wrap;
 // Properties in active_hooks are used to keep track of the set of hooks being
@@ -92,6 +100,15 @@ const emitDestroyNative = emitHookFactory(destroy_symbol, 'emitDestroyNative');
 const emitPromiseResolveNative =
     emitHookFactory(promise_resolve_symbol, 'emitPromiseResolveNative');
 
+const topLevelResource = {};
+
+function executionAsyncResource() {
+  const index = async_hook_fields[kStackLength] - 1;
+  if (index === -1) return topLevelResource;
+  const resource = execution_async_resources[index];
+  return resource;
+}
+
 // Used to fatally abort the process if a callback throws.
 function fatalError(e) {
   if (typeof e.stack === 'string') {
@@ -110,15 +127,6 @@ function fatalError(e) {
   process.exit(1);
 }
 
-
-function validateAsyncId(asyncId, type) {
-  // Skip validation when async_hooks is disabled
-  if (async_hook_fields[kCheck] <= 0) return;
-
-  if (!Number.isSafeInteger(asyncId) || asyncId < -1) {
-    fatalError(new ERR_INVALID_ASYNC_ID(type, asyncId));
-  }
-}
 
 // Emit From Native //
 
@@ -184,10 +192,10 @@ function emitHook(symbol, asyncId) {
 }
 
 function emitHookFactory(symbol, name) {
-  const fn = FunctionPrototype.bind(emitHook, undefined, symbol);
+  const fn = FunctionPrototypeBind(emitHook, undefined, symbol);
 
   // Set the name property of the function as it looks good in the stack trace.
-  Object.defineProperty(fn, 'name', {
+  ObjectDefineProperty(fn, 'name', {
     value: name
   });
   return fn;
@@ -296,7 +304,7 @@ function clearDefaultTriggerAsyncId() {
 function defaultTriggerAsyncIdScope(triggerAsyncId, block, ...args) {
   if (triggerAsyncId === undefined)
     return block(...args);
-  // CHECK(Number.isSafeInteger(triggerAsyncId))
+  // CHECK(NumberIsSafeInteger(triggerAsyncId))
   // CHECK(triggerAsyncId > 0)
   const oldDefaultTriggerAsyncId = async_id_fields[kDefaultTriggerAsyncId];
   async_id_fields[kDefaultTriggerAsyncId] = triggerAsyncId;
@@ -308,36 +316,33 @@ function defaultTriggerAsyncIdScope(triggerAsyncId, block, ...args) {
   }
 }
 
+function hasHooks(key) {
+  return async_hook_fields[key] > 0;
+}
+
+function enabledHooksExist() {
+  return hasHooks(kCheck);
+}
 
 function initHooksExist() {
-  return async_hook_fields[kInit] > 0;
+  return hasHooks(kInit);
 }
 
 function afterHooksExist() {
-  return async_hook_fields[kAfter] > 0;
+  return hasHooks(kAfter);
 }
 
 function destroyHooksExist() {
-  return async_hook_fields[kDestroy] > 0;
+  return hasHooks(kDestroy);
 }
 
 
 function emitInitScript(asyncId, type, triggerAsyncId, resource) {
-  validateAsyncId(asyncId, 'asyncId');
-  if (triggerAsyncId !== null)
-    validateAsyncId(triggerAsyncId, 'triggerAsyncId');
-  if (async_hook_fields[kCheck] > 0 &&
-      (typeof type !== 'string' || type.length <= 0)) {
-    throw new ERR_ASYNC_TYPE(type);
-  }
-
   // Short circuit all checks for the common case. Which is that no hooks have
   // been set. Do this to remove performance impact for embedders (and core).
-  if (async_hook_fields[kInit] === 0)
+  if (!hasHooks(kInit))
     return;
 
-  // This can run after the early return check b/c running this function
-  // manually means that the embedder must have used getDefaultTriggerAsyncId().
   if (triggerAsyncId === null) {
     triggerAsyncId = getDefaultTriggerAsyncId();
   }
@@ -346,35 +351,25 @@ function emitInitScript(asyncId, type, triggerAsyncId, resource) {
 }
 
 
-function emitBeforeScript(asyncId, triggerAsyncId) {
-  // Validate the ids. An id of -1 means it was never set and is visible on the
-  // call graph. An id < -1 should never happen in any circumstance. Throw
-  // on user calls because async state should still be recoverable.
-  validateAsyncId(asyncId, 'asyncId');
-  validateAsyncId(triggerAsyncId, 'triggerAsyncId');
+function emitBeforeScript(asyncId, triggerAsyncId, resource) {
+  pushAsyncContext(asyncId, triggerAsyncId, resource);
 
-  pushAsyncIds(asyncId, triggerAsyncId);
-
-  if (async_hook_fields[kBefore] > 0)
+  if (hasHooks(kBefore))
     emitBeforeNative(asyncId);
 }
 
 
 function emitAfterScript(asyncId) {
-  validateAsyncId(asyncId, 'asyncId');
-
-  if (async_hook_fields[kAfter] > 0)
+  if (hasHooks(kAfter))
     emitAfterNative(asyncId);
 
-  popAsyncIds(asyncId);
+  popAsyncContext(asyncId);
 }
 
 
 function emitDestroyScript(asyncId) {
-  validateAsyncId(asyncId, 'asyncId');
-
   // Return early if there are no destroy callbacks, or invalid asyncId.
-  if (async_hook_fields[kDestroy] === 0 || asyncId <= 0)
+  if (!hasHooks(kDestroy) || asyncId <= 0)
     return;
   async_wrap.queueDestroyAsyncId(asyncId);
 }
@@ -386,21 +381,23 @@ function clearAsyncIdStack() {
   async_id_fields[kExecutionAsyncId] = 0;
   async_id_fields[kTriggerAsyncId] = 0;
   async_hook_fields[kStackLength] = 0;
+  execution_async_resources.splice(0, execution_async_resources.length);
 }
 
 
 function hasAsyncIdStack() {
-  return async_hook_fields[kStackLength] > 0;
+  return hasHooks(kStackLength);
 }
 
 
 // This is the equivalent of the native push_async_ids() call.
-function pushAsyncIds(asyncId, triggerAsyncId) {
+function pushAsyncContext(asyncId, triggerAsyncId, resource) {
   const offset = async_hook_fields[kStackLength];
   if (offset * 2 >= async_wrap.async_ids_stack.length)
-    return pushAsyncIds_(asyncId, triggerAsyncId);
+    return pushAsyncContext_(asyncId, triggerAsyncId, resource);
   async_wrap.async_ids_stack[offset * 2] = async_id_fields[kExecutionAsyncId];
   async_wrap.async_ids_stack[offset * 2 + 1] = async_id_fields[kTriggerAsyncId];
+  execution_async_resources[offset] = resource;
   async_hook_fields[kStackLength]++;
   async_id_fields[kExecutionAsyncId] = asyncId;
   async_id_fields[kTriggerAsyncId] = triggerAsyncId;
@@ -408,19 +405,19 @@ function pushAsyncIds(asyncId, triggerAsyncId) {
 
 
 // This is the equivalent of the native pop_async_ids() call.
-function popAsyncIds(asyncId) {
+function popAsyncContext(asyncId) {
   const stackLength = async_hook_fields[kStackLength];
   if (stackLength === 0) return false;
 
-  if (async_hook_fields[kCheck] > 0 &&
-      async_id_fields[kExecutionAsyncId] !== asyncId) {
+  if (enabledHooksExist() && async_id_fields[kExecutionAsyncId] !== asyncId) {
     // Do the same thing as the native code (i.e. crash hard).
-    return popAsyncIds_(asyncId);
+    return popAsyncContext_(asyncId);
   }
 
   const offset = stackLength - 1;
   async_id_fields[kExecutionAsyncId] = async_wrap.async_ids_stack[2 * offset];
   async_id_fields[kTriggerAsyncId] = async_wrap.async_ids_stack[2 * offset + 1];
+  execution_async_resources.pop();
   async_hook_fields[kStackLength] = offset;
   return offset > 0;
 }
@@ -453,11 +450,13 @@ module.exports = {
   clearDefaultTriggerAsyncId,
   clearAsyncIdStack,
   hasAsyncIdStack,
+  executionAsyncResource,
   // Internal Embedder API
   newAsyncId,
   getOrSetAsyncId,
   getDefaultTriggerAsyncId,
   defaultTriggerAsyncIdScope,
+  enabledHooksExist,
   initHooksExist,
   afterHooksExist,
   destroyHooksExist,

@@ -3,22 +3,14 @@
 
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
+#include <cstdlib>
 #include "node_options.h"
 #include "util.h"
-#include <cstdlib>
 
 namespace node {
 
 PerIsolateOptions* PerProcessOptions::get_per_isolate_options() {
   return per_isolate.get();
-}
-
-DebugOptions* EnvironmentOptions::get_debug_options() {
-  return &debug_options_;
-}
-
-const DebugOptions& EnvironmentOptions::debug_options() const {
-  return debug_options_;
 }
 
 EnvironmentOptions* PerIsolateOptions::get_per_env_options() {
@@ -323,6 +315,10 @@ void OptionsParser<Options>::Parse(
     if (equals_index != std::string::npos)
       original_name += '=';
 
+    auto missing_argument = [&]() {
+      errors->push_back(RequiresArgumentErr(original_name));
+    };
+
     // Normalize by replacing `_` with `-` in options.
     for (std::string::size_type i = 2; i < name.size(); ++i) {
       if (name[i] == '_')
@@ -389,18 +385,20 @@ void OptionsParser<Options>::Parse(
       if (equals_index != std::string::npos) {
         value = arg.substr(equals_index + 1);
         if (value.empty()) {
-        missing_argument:
-          errors->push_back(RequiresArgumentErr(original_name));
+          missing_argument();
           break;
         }
       } else {
-        if (args.empty())
-          goto missing_argument;
+        if (args.empty()) {
+          missing_argument();
+          break;
+        }
 
         value = args.pop_first();
 
         if (!value.empty() && value[0] == '-') {
-          goto missing_argument;
+          missing_argument();
+          break;
         } else {
           if (!value.empty() && value[0] == '\\' && value[1] == '-')
             value = value.substr(1);  // Treat \- as escaping an -.

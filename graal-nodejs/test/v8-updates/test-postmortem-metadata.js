@@ -48,7 +48,8 @@ const missing = getExpectedSymbols().filter((symbol) => {
   return !symbols.includes(symbol);
 });
 
-assert.strictEqual(missing.length, 0, `Missing constants: ${missing}`);
+assert.strictEqual(missing.length, 0,
+                   `Missing constants: \n${missing.join('\n')}`);
 
 // This is only a function so that the long list of expected symbols can be
 // pushed to the bottom of the file for improved readability.
@@ -58,12 +59,13 @@ function getExpectedSymbols() {
     // should only consist of postmortem constants, and some of them can be
     // relatively long.
     /* eslint-disable max-len */
+    'v8dbg_class_DescriptorArray__header_size__uintptr_t',
     'v8dbg_bit_field3_is_dictionary_map_shift',
     'v8dbg_bit_field3_number_of_own_descriptors_shift',
     'v8dbg_class_Code__instruction_size__int',
     'v8dbg_class_Code__instruction_start__uintptr_t',
-    'v8dbg_class_ConsString__first_offset__int',
-    'v8dbg_class_ConsString__second_offset__int',
+    'v8dbg_class_ConsString__first__String',
+    'v8dbg_class_ConsString__second__String',
     'v8dbg_class_FixedArray__data__uintptr_t',
     'v8dbg_class_FixedArrayBase__length__SMI',
     'v8dbg_class_JSTypedArray__base_pointer__Object',
@@ -104,10 +106,10 @@ function getExpectedSymbols() {
     'v8dbg_class_SharedFunctionInfo__name_or_scope_info__Object',
     'v8dbg_class_SharedFunctionInfo__script_or_debug_info__Object',
     'v8dbg_class_UncompiledData__start_position__int32_t',
-    'v8dbg_class_SlicedString__offset_offset__int',
+    'v8dbg_class_SlicedString__offset__SMI',
     'v8dbg_class_SlicedString__parent__String',
     'v8dbg_class_String__length__int32_t',
-    'v8dbg_class_ThinString__actual_offset__int',
+    'v8dbg_class_ThinString__actual__String',
     'v8dbg_context_idx_scope_info',
     'v8dbg_context_idx_prev',
     'v8dbg_context_min_slots',

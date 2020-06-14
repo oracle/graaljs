@@ -6,7 +6,7 @@ const bench = common.createBenchmark(main, {
 });
 
 function main({ n }) {
-  var j = 0;
+  let j = 0;
   function cb1(arg1) {
     j++;
     if (j === n)
@@ -32,7 +32,7 @@ function main({ n }) {
   }
 
   bench.start();
-  for (var i = 0; i < n; i++) {
+  for (let i = 0; i < n; i++) {
     if (i % 4 === 0)
       setTimeout(cb4, 1, 3.14, 1024, true, false);
     else if (i % 3 === 0)

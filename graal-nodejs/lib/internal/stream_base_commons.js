@@ -1,5 +1,10 @@
 'use strict';
 
+const {
+  Array,
+  Symbol,
+} = primordials;
+
 const { Buffer } = require('buffer');
 const { FastBuffer } = require('internal/buffer');
 const {
@@ -208,6 +213,16 @@ function onStreamRead(arrayBuffer) {
     if (stream[kMaybeDestroy])
       stream.on('end', stream[kMaybeDestroy]);
 
+    // TODO(ronag): Without this `readStop`, `onStreamRead`
+    // will be called once more (i.e. after Readable.ended)
+    // on Windows causing a ECONNRESET, failing the
+    // test-https-truncate test.
+    if (handle.readStop) {
+      const err = handle.readStop();
+      if (err)
+        return stream.destroy(errnoException(err, 'read'));
+    }
+
     // Push a null to signal the end of data.
     // Do it before `maybeDestroy` for correct order of events:
     // `end` -> `close`
@@ -218,7 +233,7 @@ function onStreamRead(arrayBuffer) {
 
 function setStreamTimeout(msecs, callback) {
   if (this.destroyed)
-    return;
+    return this;
 
   this.timeout = msecs;
 

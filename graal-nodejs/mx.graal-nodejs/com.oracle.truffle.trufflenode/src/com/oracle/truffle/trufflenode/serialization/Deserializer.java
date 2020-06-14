@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
@@ -54,6 +55,7 @@ import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
+import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
@@ -177,6 +179,8 @@ public class Deserializer {
                 return readObjectReference();
             case HOST_OBJECT:
                 return readHostObject();
+            case ERROR:
+                return readJSError(context);
             case SHARED_JAVA_OBJECT:
                 return readSharedJavaObject(context);
             default:
@@ -198,6 +202,10 @@ public class Deserializer {
 
     private ArrayBufferViewTag readArrayBufferViewTag() {
         return ArrayBufferViewTag.fromTag(buffer.get());
+    }
+
+    private ErrorTag readErrorTag() {
+        return ErrorTag.fromTag(buffer.get());
     }
 
     private int readInt() {
@@ -457,6 +465,53 @@ public class Deserializer {
             throw Errors.createError("invalid object reference");
         }
         return object;
+    }
+
+    private Object readJSError(JSContext context) {
+        JSErrorType errorType = JSErrorType.Error;
+        Object message = Undefined.instance;
+        Object stack = Undefined.instance;
+        boolean done = false;
+        while (!done) {
+            ErrorTag tag = readErrorTag();
+            if (tag == null) {
+                break;
+            }
+            switch (tag) {
+                case EVAL_ERROR:
+                    errorType = JSErrorType.EvalError;
+                    break;
+                case RANGE_ERROR:
+                    errorType = JSErrorType.RangeError;
+                    break;
+                case REFERENCE_ERROR:
+                    errorType = JSErrorType.ReferenceError;
+                    break;
+                case SYNTAX_ERROR:
+                    errorType = JSErrorType.SyntaxError;
+                    break;
+                case TYPE_ERROR:
+                    errorType = JSErrorType.TypeError;
+                    break;
+                case URI_ERROR:
+                    errorType = JSErrorType.URIError;
+                    break;
+                case MESSAGE:
+                    message = readString();
+                    break;
+                case STACK:
+                    stack = readString();
+                    break;
+                default:
+                    assert (tag == ErrorTag.END);
+                    done = true;
+                    break;
+            }
+        }
+        DynamicObject error = JSError.create(errorType, context.getRealm(), message);
+        assignId(error);
+        JSObject.set(error, JSError.STACK_NAME, stack);
+        return error;
     }
 
     private Object readHostObject() {

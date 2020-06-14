@@ -192,6 +192,10 @@ public final class Options {
                     polyglotOptions.put("js.shared-array-buffer", "true");
                     continue;
                 }
+                if ("harmony-weak-refs".equals(normalizedKey)) {
+                    polyglotOptions.put("js.ecmascript-version", "2021");
+                    continue;
+                }
                 // Convert -h to --help
                 if ("-h".equals(arg)) {
                     unprocessedArguments.add("--help");

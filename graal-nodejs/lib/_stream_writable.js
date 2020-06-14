@@ -25,12 +25,21 @@
 
 'use strict';
 
-const { Object } = primordials;
+const {
+  Array,
+  FunctionPrototype,
+  ObjectDefineProperty,
+  ObjectDefineProperties,
+  ObjectSetPrototypeOf,
+  Symbol,
+  SymbolHasInstance,
+} = primordials;
 
 module.exports = Writable;
 Writable.WritableState = WritableState;
 
 const internalUtil = require('internal/util');
+const EE = require('events');
 const Stream = require('stream');
 const { Buffer } = require('buffer');
 const destroyImpl = require('internal/streams/destroy');
@@ -51,8 +60,8 @@ const {
 
 const { errorOrDestroy } = destroyImpl;
 
-Object.setPrototypeOf(Writable.prototype, Stream.prototype);
-Object.setPrototypeOf(Writable, Stream);
+ObjectSetPrototypeOf(Writable.prototype, Stream.prototype);
+ObjectSetPrototypeOf(Writable, Stream);
 
 function nop() {}
 
@@ -181,7 +190,7 @@ WritableState.prototype.getBuffer = function getBuffer() {
   return out;
 };
 
-Object.defineProperty(WritableState.prototype, 'buffer', {
+ObjectDefineProperty(WritableState.prototype, 'buffer', {
   get: internalUtil.deprecate(function writableStateBufferGetter() {
     return this.getBuffer();
   }, '_writableState.buffer is deprecated. Use _writableState.getBuffer ' +
@@ -191,9 +200,9 @@ Object.defineProperty(WritableState.prototype, 'buffer', {
 // Test _writableState for inheritance to account for Duplex streams,
 // whose prototype chain only points to Readable.
 var realHasInstance;
-if (typeof Symbol === 'function' && Symbol.hasInstance) {
-  realHasInstance = Function.prototype[Symbol.hasInstance];
-  Object.defineProperty(Writable, Symbol.hasInstance, {
+if (typeof Symbol === 'function' && SymbolHasInstance) {
+  realHasInstance = FunctionPrototype[SymbolHasInstance];
+  ObjectDefineProperty(Writable, SymbolHasInstance, {
     value: function(object) {
       if (realHasInstance.call(this, object))
         return true;
@@ -244,7 +253,7 @@ function Writable(options) {
       this._final = options.final;
   }
 
-  Stream.call(this);
+  Stream.call(this, options);
 }
 
 // Otherwise people can pipe Writable streams, which is just wrong.
@@ -306,7 +315,7 @@ Writable.prototype.write = function(chunk, encoding, cb) {
     writeAfterEnd(this, cb);
   else if (isBuf || validChunk(this, state, chunk, cb)) {
     state.pendingcb++;
-    ret = writeOrBuffer(this, state, isBuf, chunk, encoding, cb);
+    ret = writeOrBuffer(this, state, chunk, encoding, cb);
   }
 
   return ret;
@@ -340,56 +349,16 @@ Writable.prototype.setDefaultEncoding = function setDefaultEncoding(encoding) {
   return this;
 };
 
-Object.defineProperty(Writable.prototype, 'writableBuffer', {
-  // Making it explicit this property is not enumerable
-  // because otherwise some prototype manipulation in
-  // userland will fail
-  enumerable: false,
-  get: function() {
-    return this._writableState && this._writableState.getBuffer();
-  }
-});
-
-function decodeChunk(state, chunk, encoding) {
-  if (!state.objectMode &&
-      state.decodeStrings !== false &&
-      typeof chunk === 'string') {
-    chunk = Buffer.from(chunk, encoding);
-  }
-  return chunk;
-}
-
-Object.defineProperty(Writable.prototype, 'writableEnded', {
-  // Making it explicit this property is not enumerable
-  // because otherwise some prototype manipulation in
-  // userland will fail
-  enumerable: false,
-  get: function() {
-    return this._writableState ? this._writableState.ending : false;
-  }
-});
-
-Object.defineProperty(Writable.prototype, 'writableHighWaterMark', {
-  // Making it explicit this property is not enumerable
-  // because otherwise some prototype manipulation in
-  // userland will fail
-  enumerable: false,
-  get: function() {
-    return this._writableState && this._writableState.highWaterMark;
-  }
-});
-
 // If we're already writing something, then just put this
 // in the queue, and wait our turn.  Otherwise, call _write
 // If we return false, then we need a drain event, so set that flag.
-function writeOrBuffer(stream, state, isBuf, chunk, encoding, cb) {
-  if (!isBuf) {
-    var newChunk = decodeChunk(state, chunk, encoding);
-    if (chunk !== newChunk) {
-      isBuf = true;
-      encoding = 'buffer';
-      chunk = newChunk;
-    }
+function writeOrBuffer(stream, state, chunk, encoding, cb) {
+  if (!state.objectMode &&
+      state.decodeStrings !== false &&
+      encoding !== 'buffer' &&
+      typeof chunk === 'string') {
+    chunk = Buffer.from(chunk, encoding);
+    encoding = 'buffer';
   }
   const len = state.objectMode ? 1 : chunk.length;
 
@@ -405,7 +374,6 @@ function writeOrBuffer(stream, state, isBuf, chunk, encoding, cb) {
     state.lastBufferedRequest = {
       chunk,
       encoding,
-      isBuf,
       callback: cb,
       next: null
     };
@@ -541,7 +509,7 @@ function clearBuffer(stream, state) {
     var allBuffers = true;
     while (entry) {
       buffer[count] = entry;
-      if (!entry.isBuf)
+      if (entry.encoding !== 'buffer')
         allBuffers = false;
       entry = entry.next;
       count += 1;
@@ -629,16 +597,6 @@ Writable.prototype.end = function(chunk, encoding, cb) {
   return this;
 };
 
-Object.defineProperty(Writable.prototype, 'writableLength', {
-  // Making it explicit this property is not enumerable
-  // because otherwise some prototype manipulation in
-  // userland will fail
-  enumerable: false,
-  get() {
-    return this._writableState.length;
-  }
-});
-
 function needFinish(state) {
   return (state.ending &&
           state.length === 0 &&
@@ -720,44 +678,60 @@ function onCorkedFinish(corkReq, state, err) {
   state.corkedRequestsFree.next = corkReq;
 }
 
-Object.defineProperty(Writable.prototype, 'destroyed', {
-  // Making it explicit this property is not enumerable
-  // because otherwise some prototype manipulation in
-  // userland will fail
-  enumerable: false,
-  get() {
-    if (this._writableState === undefined) {
-      return false;
+ObjectDefineProperties(Writable.prototype, {
+
+  destroyed: {
+    get() {
+      return this._writableState ? this._writableState.destroyed : false;
+    },
+    set(value) {
+      // Backward compatibility, the user is explicitly managing destroyed
+      if (this._writableState) {
+        this._writableState.destroyed = value;
+      }
     }
-    return this._writableState.destroyed;
   },
-  set(value) {
-    // We ignore the value if the stream
-    // has not been initialized yet
-    if (!this._writableState) {
-      return;
+
+  writableFinished: {
+    get() {
+      return this._writableState ? this._writableState.finished : false;
     }
+  },
 
-    // Backward compatibility, the user is explicitly
-    // managing destroyed
-    this._writableState.destroyed = value;
-  }
-});
+  writableObjectMode: {
+    get() {
+      return this._writableState ? this._writableState.objectMode : false;
+    }
+  },
 
-Object.defineProperty(Writable.prototype, 'writableObjectMode', {
-  enumerable: false,
-  get() {
-    return this._writableState ? this._writableState.objectMode : false;
-  }
-});
+  writableBuffer: {
+    get() {
+      return this._writableState && this._writableState.getBuffer();
+    }
+  },
 
-Object.defineProperty(Writable.prototype, 'writableFinished', {
-  // Making it explicit this property is not enumerable
-  // because otherwise some prototype manipulation in
-  // userland will fail
-  enumerable: false,
-  get() {
-    return this._writableState ? this._writableState.finished : false;
+  writableEnded: {
+    get() {
+      return this._writableState ? this._writableState.ending : false;
+    }
+  },
+
+  writableHighWaterMark: {
+    get() {
+      return this._writableState && this._writableState.highWaterMark;
+    }
+  },
+
+  writableCorked: {
+    get() {
+      return this._writableState ? this._writableState.corked : 0;
+    }
+  },
+
+  writableLength: {
+    get() {
+      return this._writableState && this._writableState.length;
+    }
   }
 });
 
@@ -765,4 +739,8 @@ Writable.prototype.destroy = destroyImpl.destroy;
 Writable.prototype._undestroy = destroyImpl.undestroy;
 Writable.prototype._destroy = function(err, cb) {
   cb(err);
+};
+
+Writable.prototype[EE.captureRejectionSymbol] = function(err) {
+  this.destroy(err);
 };

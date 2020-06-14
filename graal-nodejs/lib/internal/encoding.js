@@ -3,7 +3,14 @@
 // An implementation of the WHATWG Encoding Standard
 // https://encoding.spec.whatwg.org
 
-const { Object } = primordials;
+const {
+  Map,
+  ObjectCreate,
+  ObjectDefineProperties,
+  ObjectGetOwnPropertyDescriptors,
+  Symbol,
+  SymbolToStringTag,
+} = primordials;
 
 const {
   ERR_ENCODING_INVALID_ENCODED_DATA,
@@ -24,7 +31,7 @@ const {
 } = require('internal/util');
 
 const {
-  isArrayBuffer,
+  isAnyArrayBuffer,
   isArrayBufferView,
   isUint8Array
 } = require('internal/util/types');
@@ -339,7 +346,7 @@ class TextEncoder {
     if (typeof depth === 'number' && depth < 0)
       return this;
     const ctor = getConstructorOf(this);
-    const obj = Object.create({
+    const obj = ObjectCreate({
       constructor: ctor === null ? TextEncoder : ctor
     });
     obj.encoding = this.encoding;
@@ -348,12 +355,12 @@ class TextEncoder {
   }
 }
 
-Object.defineProperties(
+ObjectDefineProperties(
   TextEncoder.prototype, {
     'encode': { enumerable: true },
     'encodeInto': { enumerable: true },
     'encoding': { enumerable: true },
-    [Symbol.toStringTag]: {
+    [SymbolToStringTag]: {
       configurable: true,
       value: 'TextEncoder'
     } });
@@ -397,7 +404,7 @@ function makeTextDecoderICU() {
 
     decode(input = empty, options = {}) {
       validateDecoder(this);
-      if (isArrayBuffer(input)) {
+      if (isAnyArrayBuffer(input)) {
         input = lazyBuffer().from(input);
       } else if (!isArrayBufferView(input)) {
         throw new ERR_INVALID_ARG_TYPE('input',
@@ -462,7 +469,7 @@ function makeTextDecoderJS() {
 
     decode(input = empty, options = {}) {
       validateDecoder(this);
-      if (isArrayBuffer(input)) {
+      if (isAnyArrayBuffer(input)) {
         input = lazyBuffer().from(input);
       } else if (isArrayBufferView(input)) {
         input = lazyBuffer().from(input.buffer, input.byteOffset,
@@ -508,9 +515,9 @@ function makeTextDecoderJS() {
 
 // Mix in some shared properties.
 {
-  Object.defineProperties(
+  ObjectDefineProperties(
     TextDecoder.prototype,
-    Object.getOwnPropertyDescriptors({
+    ObjectGetOwnPropertyDescriptors({
       get encoding() {
         validateDecoder(this);
         return this[kEncoding];
@@ -532,7 +539,7 @@ function makeTextDecoderJS() {
         if (typeof depth === 'number' && depth < 0)
           return this;
         const ctor = getConstructorOf(this);
-        const obj = Object.create({
+        const obj = ObjectCreate({
           constructor: ctor === null ? TextDecoder : ctor
         });
         obj.encoding = this.encoding;
@@ -546,10 +553,10 @@ function makeTextDecoderJS() {
         return require('internal/util/inspect').inspect(obj, opts);
       }
     }));
-  Object.defineProperties(TextDecoder.prototype, {
+  ObjectDefineProperties(TextDecoder.prototype, {
     decode: { enumerable: true },
     [inspect]: { enumerable: false },
-    [Symbol.toStringTag]: {
+    [SymbolToStringTag]: {
       configurable: true,
       value: 'TextDecoder'
     }

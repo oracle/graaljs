@@ -729,6 +729,15 @@ namespace v8 {
         TRACE
     }
 
+    size_t ResourceConstraints::max_young_generation_size_in_bytes() const {
+        TRACE
+        return 0;
+    }
+
+    void ResourceConstraints::set_max_young_generation_size_in_bytes(size_t limit) {
+        TRACE
+    }
+
     ScriptCompiler::CachedData::~CachedData() {
         if (buffer_policy == BufferOwned) {
             delete[] data;
@@ -984,6 +993,9 @@ namespace v8 {
 
     void* V8::ClearWeak(internal::Address* global_handle) {
         GraalHandleContent* handle = reinterpret_cast<GraalHandleContent*> (global_handle);
+        if (!handle->IsWeak()) {
+            return nullptr;
+        }
         GraalIsolate* graal_isolate = handle->Isolate();
         handle->ClearWeak();
         jlong reference = (jlong) handle;
@@ -2208,11 +2220,28 @@ namespace v8 {
         reinterpret_cast<GraalModule*> (this)->SetSyntheticModuleExport(export_name, export_value);
     }
 
+    Maybe<bool> Module::SetSyntheticModuleExport(Isolate* isolate, Local<String> export_name, Local<Value> export_value) {
+        reinterpret_cast<GraalModule*> (this)->SetSyntheticModuleExport(export_name, export_value);
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+        return graal_isolate->GetJNIEnv()->ExceptionCheck() ? Nothing<bool>() : Just<bool>(true);
+    }
+
     MaybeLocal<Module> ScriptCompiler::CompileModule(Isolate* isolate, Source* source,
             CompileOptions options, NoCacheReason no_cache_reason) {
+        if (options == ScriptCompiler::kConsumeCodeCache) {
+            String::Utf8Value text(isolate, source->source_string);
+            CachedData* data = source->cached_data;
+            if (data->length != text.length() || memcmp(data->data, (const uint8_t*) *text, text.length())) {
+                data->rejected = true;
+            }
+        }
         Local<Value> resource_name = source->resource_name;
         Local<String> name = resource_name.IsEmpty() ? resource_name.As<String>() : resource_name->ToString(isolate);
         return GraalModule::Compile(source->source_string, name, source->host_defined_options);
+    }
+
+    Local<UnboundModuleScript> Module::GetUnboundModuleScript() {
+        return reinterpret_cast<GraalModule*> (this)->GetUnboundModuleScript();
     }
 
     uint32_t ScriptCompiler::CachedDataVersionTag() {
@@ -2868,6 +2897,10 @@ namespace v8 {
         return new ScriptCompiler::CachedData((const uint8_t*) copy, text.length());
     }
 
+    ScriptCompiler::CachedData* ScriptCompiler::CreateCodeCache(Local<UnboundModuleScript> unbound_module_script) {
+        return CreateCodeCache(reinterpret_cast<UnboundScript*> (*unbound_module_script));
+    }
+
     bool ArrayBuffer::IsDetachable() const {
         return true;
     }
@@ -2960,7 +2993,18 @@ namespace v8 {
             Local<Object> context_extensions[],
             CompileOptions options,
             NoCacheReason no_cache_reason) {
+        return CompileFunctionInContext(context, source, arguments_count, arguments, context_extension_count, context_extensions, options, no_cache_reason, nullptr);
+    }
 
+    MaybeLocal<Function> ScriptCompiler::CompileFunctionInContext(
+            Local<Context> context, Source* source,
+            size_t arguments_count,
+            Local<String> arguments[],
+            size_t context_extension_count,
+            Local<Object> context_extensions[],
+            CompileOptions options,
+            NoCacheReason no_cache_reason,
+            Local<ScriptOrModule>* script_or_module_out) {
         Isolate* isolate = context->GetIsolate();
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
         JNIEnv* env = graal_isolate->GetJNIEnv();
@@ -2988,29 +3032,22 @@ namespace v8 {
         Local<PrimitiveArray> host_options = source->host_defined_options;
         jobject java_options = host_options.IsEmpty() ? NULL : reinterpret_cast<GraalPrimitiveArray*> (*host_options)->GetJavaObject();
 
-        JNI_CALL(jobject, java_function, graal_isolate, GraalAccessMethod::script_compiler_compile_function_in_context, Object, java_context, java_source_name, java_body, java_arguments, java_context_extensions, java_options);
+        JNI_CALL(jobject, java_array, graal_isolate, GraalAccessMethod::script_compiler_compile_function_in_context, Object, java_context, java_source_name, java_body, java_arguments, java_context_extensions, java_options);
 
-        if (java_function == nullptr) {
+        if (java_array == nullptr) {
             return MaybeLocal<Function>();
-        } else {
-            GraalFunction* graal_function = new GraalFunction(graal_isolate, java_function);
-            Local<Function> v8_function = reinterpret_cast<Function*> (graal_function);
-            return v8_function;
         }
-    }
 
-    MaybeLocal<Function> ScriptCompiler::CompileFunctionInContext(
-            Local<Context> context, Source* source,
-            size_t arguments_count,
-            Local<String> arguments[],
-            size_t context_extension_count,
-            Local<Object> context_extensions[],
-            CompileOptions options,
-            NoCacheReason no_cache_reason,
-            Local<ScriptOrModule>* script_or_module_out) {
-        TRACE
-        *script_or_module_out = reinterpret_cast<ScriptOrModule*>(*Undefined(context->GetIsolate())); // PENDING
-        return CompileFunctionInContext(context, source, arguments_count, arguments, context_extension_count, context_extensions, options, no_cache_reason);
+        if (script_or_module_out != nullptr) {
+            jobject java_script = graal_isolate->GetJNIEnv()->GetObjectArrayElement((jobjectArray) java_array, 1);
+            GraalScriptOrModule* graal_script = new GraalScriptOrModule(graal_isolate, java_script);
+            *script_or_module_out = reinterpret_cast<ScriptOrModule*>(graal_script);
+        }
+
+        jobject java_function = graal_isolate->GetJNIEnv()->GetObjectArrayElement((jobjectArray) java_array, 0);
+        GraalFunction* graal_function = new GraalFunction(graal_isolate, java_function);
+        Local<Function> v8_function = reinterpret_cast<Function*> (graal_function);
+        return v8_function;
     }
 
     ScriptCompiler::CachedData* ScriptCompiler::CreateCodeCacheForFunction(Local<Function> function) {
@@ -3238,6 +3275,36 @@ namespace v8 {
         isolate->RunMicrotasks();
     }
 
+    String::ExternalStringResourceBase* String::GetExternalStringResourceBaseSlow(String::Encoding* encoding_out) const {
+        TRACE
+        return nullptr;
+    }
+
+    void EmbedderHeapTracer::TracePrologue(TraceFlags flags) {
+        TRACE
+    }
+
+    void Isolate::AddNearHeapLimitCallback(NearHeapLimitCallback callback, void* data) {
+        TRACE
+    }
+
+    void Isolate::RequestInterrupt(InterruptCallback callback, void* data) {
+        TRACE
+    }
+
+    void Isolate::ClearKeptObjects() {
+        TRACE
+    }
+
+    void Isolate::SetHostCleanupFinalizationGroupCallback(HostCleanupFinalizationGroupCallback callback) {
+        TRACE
+    }
+
+    Maybe<bool> FinalizationGroup::Cleanup(Local<FinalizationGroup> finalization_group) {
+        TRACE
+        return Just(true);
+    }
+
     void Object::CheckCast(v8::Value* obj) {}
     void Promise::CheckCast(v8::Value* obj) {}
     void Function::CheckCast(v8::Value* obj) {}
@@ -3267,5 +3334,6 @@ namespace v8 {
     void Symbol::CheckCast(v8::Value* that) {}
     void Private::CheckCast(v8::Data* that) {}
     void Map::CheckCast(v8::Value* that) {}
+    void Set::CheckCast(v8::Value* that) {}
 
 }

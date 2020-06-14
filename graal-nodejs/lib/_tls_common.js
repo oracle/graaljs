@@ -21,7 +21,10 @@
 
 'use strict';
 
-const { Object } = primordials;
+const {
+  ArrayIsArray,
+  ObjectCreate,
+} = primordials;
 
 const { parseCertString } = require('internal/tls');
 const { isArrayBufferView } = require('internal/util/types');
@@ -97,15 +100,12 @@ exports.createSecureContext = function createSecureContext(options) {
 
   const c = new SecureContext(options.secureProtocol, secureOptions,
                               options.minVersion, options.maxVersion);
-  let i;
-  let val;
 
   // Add CA before the cert to be able to load cert's issuer in C++ code.
   const { ca } = options;
   if (ca) {
-    if (Array.isArray(ca)) {
-      for (i = 0; i < ca.length; ++i) {
-        val = ca[i];
+    if (ArrayIsArray(ca)) {
+      for (const val of ca) {
         validateKeyOrCertOption('ca', val);
         c.context.addCACert(val);
       }
@@ -119,9 +119,8 @@ exports.createSecureContext = function createSecureContext(options) {
 
   const { cert } = options;
   if (cert) {
-    if (Array.isArray(cert)) {
-      for (i = 0; i < cert.length; ++i) {
-        val = cert[i];
+    if (ArrayIsArray(cert)) {
+      for (const val of cert) {
         validateKeyOrCertOption('cert', val);
         c.context.setCert(val);
       }
@@ -138,9 +137,8 @@ exports.createSecureContext = function createSecureContext(options) {
   const key = options.key;
   const passphrase = options.passphrase;
   if (key) {
-    if (Array.isArray(key)) {
-      for (i = 0; i < key.length; ++i) {
-        val = key[i];
+    if (ArrayIsArray(key)) {
+      for (const val of key) {
         // eslint-disable-next-line eqeqeq
         const pem = (val != undefined && val.pem !== undefined ? val.pem : val);
         validateKeyOrCertOption('key', pem);
@@ -238,9 +236,9 @@ exports.createSecureContext = function createSecureContext(options) {
   }
 
   if (options.crl) {
-    if (Array.isArray(options.crl)) {
-      for (i = 0; i < options.crl.length; i++) {
-        c.context.addCRL(options.crl[i]);
+    if (ArrayIsArray(options.crl)) {
+      for (const crl of options.crl) {
+        c.context.addCRL(crl);
       }
     } else {
       c.context.addCRL(options.crl);
@@ -255,9 +253,8 @@ exports.createSecureContext = function createSecureContext(options) {
     if (!toBuf)
       toBuf = require('internal/crypto/util').toBuf;
 
-    if (Array.isArray(options.pfx)) {
-      for (i = 0; i < options.pfx.length; i++) {
-        const pfx = options.pfx[i];
+    if (ArrayIsArray(options.pfx)) {
+      for (const pfx of options.pfx) {
         const raw = pfx.buf ? pfx.buf : pfx;
         const buf = toBuf(raw);
         const passphrase = pfx.passphrase || options.passphrase;
@@ -314,7 +311,7 @@ exports.translatePeerCertificate = function translatePeerCertificate(c) {
   if (c.subject != null) c.subject = parseCertString(c.subject);
   if (c.infoAccess != null) {
     const info = c.infoAccess;
-    c.infoAccess = Object.create(null);
+    c.infoAccess = ObjectCreate(null);
 
     // XXX: More key validation?
     info.replace(/([^\n:]*):([^\n]*)(?:\n|$)/g, (all, key, val) => {

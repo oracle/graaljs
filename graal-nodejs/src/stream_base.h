@@ -3,7 +3,8 @@
 
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
-#include "async_wrap-inl.h"
+#include "env.h"
+#include "async_wrap.h"
 #include "node.h"
 #include "util.h"
 
@@ -29,7 +30,14 @@ using JSMethodFunction = void(const v8::FunctionCallbackInfo<v8::Value>& args);
 
 class StreamReq {
  public:
-  static constexpr int kStreamReqField = 1;
+  // The kSlot internal field here mirrors BaseObject::InternalFields::kSlot
+  // here because instances derived from StreamReq will also derive from
+  // BaseObject, and the slots are used for the identical purpose.
+  enum InternalFields {
+    kSlot = BaseObject::kSlot,
+    kStreamReqField = BaseObject::kInternalFieldCount,
+    kInternalFieldCount
+  };
 
   explicit StreamReq(StreamBase* stream,
                      v8::Local<v8::Object> req_wrap_obj) : stream_(stream) {
@@ -275,10 +283,15 @@ class StreamResource {
 
 class StreamBase : public StreamResource {
  public:
-  // 0 is reserved for the BaseObject pointer.
-  static constexpr int kStreamBaseField = 1;
-  static constexpr int kOnReadFunctionField = 2;
-  static constexpr int kStreamBaseFieldCount = 3;
+  // The kSlot field here mirrors that of BaseObject::InternalFields::kSlot
+  // because instances deriving from StreamBase generally also derived from
+  // BaseObject (it's possible for it not to, however).
+  enum InternalFields {
+    kSlot = BaseObject::kSlot,
+    kStreamBaseField = BaseObject::kInternalFieldCount,
+    kOnReadFunctionField,
+    kInternalFieldCount
+  };
 
   static void AddMethods(Environment* env,
                          v8::Local<v8::FunctionTemplate> target);

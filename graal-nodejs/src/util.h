@@ -24,7 +24,14 @@
 
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
+#if (__GNUC__ >= 8) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
+#endif
 #include "v8.h"
+#if (__GNUC__ >= 8) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 #include <cassert>
 #include <climits>  // PATH_MAX
@@ -41,6 +48,12 @@
 #include <array>
 #include <unordered_map>
 #include <utility>
+
+#ifdef __GNUC__
+#define MUST_USE_RESULT __attribute__((warn_unused_result))
+#else
+#define MUST_USE_RESULT
+#endif
 
 namespace node {
 
@@ -598,6 +611,8 @@ class ArrayBufferViewContents {
 class Utf8Value : public MaybeStackBuffer<char> {
  public:
   explicit Utf8Value(v8::Isolate* isolate, v8::Local<v8::Value> value);
+
+  inline std::string ToString() const { return std::string(out(), length()); }
 };
 
 class TwoByteValue : public MaybeStackBuffer<uint16_t> {
@@ -608,6 +623,8 @@ class TwoByteValue : public MaybeStackBuffer<uint16_t> {
 class BufferValue : public MaybeStackBuffer<char> {
  public:
   explicit BufferValue(v8::Isolate* isolate, v8::Local<v8::Value> value);
+
+  inline std::string ToString() const { return std::string(out(), length()); }
 };
 
 #define SPREAD_BUFFER_ARG(val, name)                                          \
@@ -625,13 +642,36 @@ class BufferValue : public MaybeStackBuffer<char> {
 // silence a compiler warning about that.
 template <typename T> inline void USE(T&&) {}
 
-// Run a function when exiting the current scope.
-struct OnScopeLeave {
-  std::function<void()> fn_;
+template <typename Fn>
+struct OnScopeLeaveImpl {
+  Fn fn_;
+  bool active_;
 
-  explicit OnScopeLeave(std::function<void()> fn) : fn_(std::move(fn)) {}
-  ~OnScopeLeave() { fn_(); }
+  explicit OnScopeLeaveImpl(Fn&& fn) : fn_(std::move(fn)), active_(true) {}
+  ~OnScopeLeaveImpl() { if (active_) fn_(); }
+
+  OnScopeLeaveImpl(const OnScopeLeaveImpl& other) = delete;
+  OnScopeLeaveImpl& operator=(const OnScopeLeaveImpl& other) = delete;
+  OnScopeLeaveImpl(OnScopeLeaveImpl&& other)
+    : fn_(std::move(other.fn_)), active_(other.active_) {
+    other.active_ = false;
+  }
+  OnScopeLeaveImpl& operator=(OnScopeLeaveImpl&& other) {
+    if (this == &other) return *this;
+    this->~OnScopeLeave();
+    new (this)OnScopeLeaveImpl(std::move(other));
+    return *this;
+  }
 };
+
+// Run a function when exiting the current scope. Used like this:
+// auto on_scope_leave = OnScopeLeave([&] {
+//   // ... run some code ...
+// });
+template <typename Fn>
+inline MUST_USE_RESULT OnScopeLeaveImpl<Fn> OnScopeLeave(Fn&& fn) {
+  return OnScopeLeaveImpl<Fn>{std::move(fn)};
+}
 
 // Simple RAII wrapper for contiguous data that uses malloc()/free().
 template <typename T>
@@ -810,12 +850,6 @@ constexpr T RoundUp(T a, T b) {
   return a % b != 0 ? a + b - (a % b) : a;
 }
 
-#ifdef __GNUC__
-#define MUST_USE_RESULT __attribute__((warn_unused_result))
-#else
-#define MUST_USE_RESULT
-#endif
-
 class SlicedArguments : public MaybeStackBuffer<v8::Local<v8::Value>> {
  public:
   inline explicit SlicedArguments(
@@ -833,11 +867,7 @@ class PersistentToLocal {
   static inline v8::Local<TypeName> Default(
       v8::Isolate* isolate,
       const v8::PersistentBase<TypeName>& persistent) {
-    if (persistent.IsWeak()) {
-      return PersistentToLocal::Weak(isolate, persistent);
-    } else {
-      return PersistentToLocal::Strong(persistent);
-    }
+    return v8::Local<TypeName>::New(isolate, persistent);
   }
 
   // Unchecked conversion from a non-weak Persistent<T> to Local<T>,
@@ -848,8 +878,7 @@ class PersistentToLocal {
   template <class TypeName>
   static inline v8::Local<TypeName> Strong(
       const v8::PersistentBase<TypeName>& persistent) {
-    return *reinterpret_cast<v8::Local<TypeName>*>(
-        const_cast<v8::PersistentBase<TypeName>*>(&persistent));
+    return v8::Local<TypeName>::New(v8::Isolate::GetCurrent(), persistent);
   }
 
   template <class TypeName>

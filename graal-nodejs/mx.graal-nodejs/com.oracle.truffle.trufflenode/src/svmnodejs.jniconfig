@@ -125,6 +125,7 @@
       { "name": "moduleGetRequest" },
       { "name": "moduleGetRequestsLength" },
       { "name": "moduleGetStatus" },
+      { "name": "moduleGetUnboundModuleScript" },
       { "name": "moduleSetSyntheticModuleExport" },
       { "name": "nullInstance" },
       { "name": "numberNew" },

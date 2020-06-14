@@ -66,6 +66,14 @@
 
 'use strict';
 
+const {
+  ArrayIsArray
+} = primordials;
+
+const {
+  ERR_INVALID_ARG_TYPE
+} = require('internal/errors').codes;
+
 let base64Map;
 
 const VLQ_BASE_SHIFT = 5;
@@ -129,17 +137,27 @@ class SourceMap {
       for (let i = 0; i < base64Digits.length; ++i)
         base64Map[base64Digits[i]] = i;
     }
-    this._parseMappingPayload(payload);
+    this._payload = cloneSourceMapV3(payload);
+    this._parseMappingPayload();
+  }
+
+  /**
+   * @return {Object} raw source map v3 payload.
+   */
+  get payload() {
+    return cloneSourceMapV3(this._payload);
   }
 
   /**
    * @param {SourceMapV3} mappingPayload
    */
-  _parseMappingPayload(mappingPayload) {
-    if (mappingPayload.sections)
-      this._parseSections(mappingPayload.sections);
-    else
-      this._parseMap(mappingPayload, 0, 0);
+  _parseMappingPayload() {
+    if (this._payload.sections) {
+      this._parseSections(this._payload.sections);
+    } else {
+      this._parseMap(this._payload, 0, 0);
+    }
+    this._mappings.sort(compareSourceMapEntry);
   }
 
   /**
@@ -175,24 +193,18 @@ class SourceMap {
     const entry = this._mappings[first];
     if (!first && entry && (lineNumber < entry[0] ||
         (lineNumber === entry[0] && columnNumber < entry[1]))) {
-      return null;
+      return {};
+    } else if (!entry) {
+      return {};
+    } else {
+      return {
+        generatedLine: entry[0],
+        generatedColumn: entry[1],
+        originalSource: entry[2],
+        originalLine: entry[3],
+        originalColumn: entry[4]
+      };
     }
-    return entry;
-  }
-
-  /**
-   * @param {string} sourceURL of the originating resource
-   * @param {number} lineNumber in the originating resource
-   * @return {Array}
-   */
-  findEntryReversed(sourceURL, lineNumber) {
-    const mappings = this._reverseMappingsBySourceURL[sourceURL];
-    for (; lineNumber < mappings.length; ++lineNumber) {
-      const mapping = mappings[lineNumber];
-      if (mapping)
-        return mapping;
-    }
-    return this._mappings[0];
   }
 
   /**
@@ -251,19 +263,6 @@ class SourceMap {
       this._mappings.push([lineNumber, columnNumber, sourceURL,
                            sourceLineNumber, sourceColumnNumber]);
     }
-
-    for (let i = 0; i < this._mappings.length; ++i) {
-      const mapping = this._mappings[i];
-      const url = mapping[2];
-      if (!url)
-        continue;
-      if (!this._reverseMappingsBySourceURL[url])
-        this._reverseMappingsBySourceURL[url] = [];
-      const reverseMappings = this._reverseMappingsBySourceURL[url];
-      const sourceLine = mapping[3];
-      if (!reverseMappings[sourceLine])
-        reverseMappings[sourceLine] = [mapping[0], mapping[1]];
-    }
   };
 }
 
@@ -292,8 +291,51 @@ function decodeVLQ(stringCharIterator) {
 
   // Fix the sign.
   const negative = result & 1;
-  result >>= 1;
-  return negative ? -result : result;
+  // Use unsigned right shift, so that the 32nd bit is properly shifted to the
+  // 31st, and the 32nd becomes unset.
+  result >>>= 1;
+  if (!negative) {
+    return result;
+  }
+
+  // We need to OR here to ensure the 32nd bit (the sign bit in an Int32) is
+  // always set for negative numbers. If `result` were 1, (meaning `negate` is
+  // true and all other bits were zeros), `result` would now be 0. But -0
+  // doesn't flip the 32nd bit as intended. All other numbers will successfully
+  // set the 32nd bit without issue, so doing this is a noop for them.
+  return -result | (1 << 31);
+}
+
+/**
+ * @param {SourceMapV3} payload
+ * @return {SourceMapV3}
+ */
+function cloneSourceMapV3(payload) {
+  if (typeof payload !== 'object') {
+    throw new ERR_INVALID_ARG_TYPE('payload', ['Object'], payload);
+  }
+  payload = { ...payload };
+  for (const key in payload) {
+    if (payload.hasOwnProperty(key) && ArrayIsArray(payload[key])) {
+      payload[key] = payload[key].slice(0);
+    }
+  }
+  return payload;
+}
+
+/**
+ * @param {Array} entry1 source map entry [lineNumber, columnNumber, sourceURL,
+ *  sourceLineNumber, sourceColumnNumber]
+ * @param {Array} entry2 source map entry.
+ * @return {number}
+ */
+function compareSourceMapEntry(entry1, entry2) {
+  const [lineNumber1, columnNumber1] = entry1;
+  const [lineNumber2, columnNumber2] = entry2;
+  if (lineNumber1 !== lineNumber2) {
+    return lineNumber1 - lineNumber2;
+  }
+  return columnNumber1 - columnNumber2;
 }
 
 module.exports = {

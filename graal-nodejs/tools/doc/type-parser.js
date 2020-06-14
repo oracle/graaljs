@@ -15,7 +15,7 @@ const jsPrimitives = {
 
 const jsGlobalObjectsUrl = `${jsDocPrefix}Reference/Global_Objects/`;
 const jsGlobalTypes = [
-  'Array', 'ArrayBuffer', 'ArrayBufferView', 'DataView', 'Date', 'Error',
+  'Array', 'ArrayBuffer', 'DataView', 'Date', 'Error',
   'EvalError', 'Function', 'Map', 'Object', 'Promise', 'RangeError',
   'ReferenceError', 'RegExp', 'Set', 'SharedArrayBuffer', 'SyntaxError',
   'TypeError', 'TypedArray', 'URIError', 'Uint8Array',
@@ -26,9 +26,14 @@ const customTypesMap = {
 
   'this': `${jsDocPrefix}Reference/Operators/this`,
 
+  'ArrayBufferView':
+    'https://developer.mozilla.org/en-US/docs/Web/API/ArrayBufferView',
+
   'AsyncIterator': 'https://tc39.github.io/ecma262/#sec-asynciterator-interface',
 
   'bigint': `${jsDocPrefix}Reference/Global_Objects/BigInt`,
+  'WebAssembly.Instance':
+    `${jsDocPrefix}Reference/Global_Objects/WebAssembly/Instance`,
 
   'Iterable':
     `${jsDocPrefix}Reference/Iteration_protocols#The_iterable_protocol`,
@@ -101,6 +106,10 @@ const customTypesMap = {
   'https.Server': 'https.html#https_class_https_server',
 
   'module': 'modules.html#modules_the_module_object',
+
+  'module.SourceMap':
+    'modules.html#modules_class_module_sourcemap',
+
   'require': 'modules.html#modules_require_id',
 
   'Handle': 'net.html#net_server_listen_handle_backlog_callback',
@@ -141,6 +150,7 @@ const customTypesMap = {
   'URL': 'url.html#url_the_whatwg_url_api',
   'URLSearchParams': 'url.html#url_class_urlsearchparams',
 
+  'vm.Module': 'vm.html#vm_class_vm_module',
   'vm.SourceTextModule': 'vm.html#vm_class_vm_sourcetextmodule',
 
   'MessagePort': 'worker_threads.html#worker_threads_class_messageport',

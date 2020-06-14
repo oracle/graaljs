@@ -21,7 +21,13 @@
 
 'use strict';
 
-const { Object } = primordials;
+const {
+  ObjectAssign,
+  ObjectDefineProperty,
+  ObjectSetPrototypeOf,
+  RegExp,
+  Symbol,
+} = primordials;
 
 const {
   assertCrypto,
@@ -33,6 +39,7 @@ assertCrypto();
 const { setImmediate } = require('timers');
 const assert = require('internal/assert');
 const crypto = require('crypto');
+const EE = require('events');
 const net = require('net');
 const tls = require('tls');
 const common = require('_tls_common');
@@ -43,23 +50,37 @@ const { TCP, constants: TCPConstants } = internalBinding('tcp_wrap');
 const tls_wrap = internalBinding('tls_wrap');
 const { Pipe, constants: PipeConstants } = internalBinding('pipe_wrap');
 const { owner_symbol } = require('internal/async_hooks').symbols;
+const { isArrayBufferView } = require('internal/util/types');
 const { SecureContext: NativeSecureContext } = internalBinding('crypto');
 const { connResetException, codes } = require('internal/errors');
 const {
   ERR_INVALID_ARG_TYPE,
+  ERR_INVALID_ARG_VALUE,
   ERR_INVALID_CALLBACK,
   ERR_MULTIPLE_CALLBACK,
   ERR_SOCKET_CLOSED,
   ERR_TLS_DH_PARAM_SIZE,
   ERR_TLS_HANDSHAKE_TIMEOUT,
+  ERR_TLS_INVALID_CONTEXT,
   ERR_TLS_RENEGOTIATION_DISABLED,
   ERR_TLS_REQUIRED_SERVER_NAME,
   ERR_TLS_SESSION_ATTACK,
-  ERR_TLS_SNI_FROM_SERVER
+  ERR_TLS_SNI_FROM_SERVER,
+  ERR_TLS_INVALID_STATE
 } = codes;
-const { getOptionValue } = require('internal/options');
-const { validateString } = require('internal/validators');
+const { onpskexchange: kOnPskExchange } = internalBinding('symbols');
+const {
+  getOptionValue,
+  getAllowUnauthorized,
+} = require('internal/options');
+const {
+  validateString,
+  validateBuffer,
+  validateUint32
+} = require('internal/validators');
 const traceTls = getOptionValue('--trace-tls');
+const tlsKeylog = getOptionValue('--tls-keylog');
+const { appendFile } = require('fs');
 const kConnectOptions = Symbol('connect-options');
 const kDisableRenegotiation = Symbol('disable-renegotiation');
 const kErrorEmitted = Symbol('error-emitted');
@@ -67,6 +88,10 @@ const kHandshakeTimeout = Symbol('handshake-timeout');
 const kRes = Symbol('res');
 const kSNICallback = Symbol('snicallback');
 const kEnableTrace = Symbol('enableTrace');
+const kPskCallback = Symbol('pskcallback');
+const kPskIdentityHint = Symbol('pskidentityhint');
+const kPendingSession = Symbol('pendingSession');
+const kIsVerified = Symbol('verified');
 
 const noop = () => {};
 
@@ -250,7 +275,11 @@ function requestOCSPDone(socket) {
 function onnewsessionclient(sessionId, session) {
   debug('client emit session');
   const owner = this[owner_symbol];
-  owner.emit('session', session);
+  if (owner[kIsVerified]) {
+    owner.emit('session', session);
+  } else {
+    owner[kPendingSession] = session;
+  }
 }
 
 function onnewsession(sessionId, session) {
@@ -286,6 +315,67 @@ function onnewsession(sessionId, session) {
     done();
 }
 
+function onPskServerCallback(identity, maxPskLen) {
+  const owner = this[owner_symbol];
+  const ret = owner[kPskCallback](owner, identity);
+  if (ret == null)
+    return undefined;
+
+  let psk;
+  if (isArrayBufferView(ret)) {
+    psk = ret;
+  } else {
+    if (typeof ret !== 'object') {
+      throw new ERR_INVALID_ARG_TYPE(
+        'ret',
+        ['Object', 'Buffer', 'TypedArray', 'DataView'],
+        ret
+      );
+    }
+    psk = ret.psk;
+    validateBuffer(psk, 'psk');
+  }
+
+  if (psk.length > maxPskLen) {
+    throw new ERR_INVALID_ARG_VALUE(
+      'psk',
+      psk,
+      `Pre-shared key exceeds ${maxPskLen} bytes`
+    );
+  }
+
+  return psk;
+}
+
+function onPskClientCallback(hint, maxPskLen, maxIdentityLen) {
+  const owner = this[owner_symbol];
+  const ret = owner[kPskCallback](hint);
+  if (ret == null)
+    return undefined;
+
+  if (typeof ret !== 'object')
+    throw new ERR_INVALID_ARG_TYPE('ret', 'Object', ret);
+
+  validateBuffer(ret.psk, 'psk');
+  if (ret.psk.length > maxPskLen) {
+    throw new ERR_INVALID_ARG_VALUE(
+      'psk',
+      ret.psk,
+      `Pre-shared key exceeds ${maxPskLen} bytes`
+    );
+  }
+
+  validateString(ret.identity, 'identity');
+  if (Buffer.byteLength(ret.identity) > maxIdentityLen) {
+    throw new ERR_INVALID_ARG_VALUE(
+      'identity',
+      ret.identity,
+      `PSK identity exceeds ${maxIdentityLen} bytes`
+    );
+  }
+
+  return { psk: ret.psk, identity: ret.identity };
+}
 
 function onkeylogclient(line) {
   debug('client onkeylog');
@@ -382,12 +472,15 @@ function TLSSocket(socket, opts) {
   this._securePending = false;
   this._newSessionPending = false;
   this._controlReleased = false;
+  this.secureConnecting = true;
   this._SNICallback = null;
   this.servername = null;
   this.alpnProtocol = null;
   this.authorized = false;
   this.authorizationError = null;
   this[kRes] = null;
+  this[kIsVerified] = false;
+  this[kPendingSession] = null;
 
   let wrap;
   if ((socket instanceof net.Socket && socket._handle) || !socket) {
@@ -435,8 +528,8 @@ function TLSSocket(socket, opts) {
   // Read on next tick so the caller has a chance to setup listeners
   process.nextTick(initRead, this, socket);
 }
-Object.setPrototypeOf(TLSSocket.prototype, net.Socket.prototype);
-Object.setPrototypeOf(TLSSocket, net.Socket);
+ObjectSetPrototypeOf(TLSSocket.prototype, net.Socket.prototype);
+ObjectSetPrototypeOf(TLSSocket, net.Socket);
 exports.TLSSocket = TLSSocket;
 
 const proxiedMethods = [
@@ -455,9 +548,9 @@ function makeMethodProxy(name) {
       return this._parent[name].apply(this._parent, args);
   };
 }
-for (let n = 0; n < proxiedMethods.length; n++) {
-  tls_wrap.TLSWrap.prototype[proxiedMethods[n]] =
-    makeMethodProxy(proxiedMethods[n]);
+for (const proxiedMethod of proxiedMethods) {
+  tls_wrap.TLSWrap.prototype[proxiedMethod] =
+    makeMethodProxy(proxiedMethod);
 }
 
 tls_wrap.TLSWrap.prototype.close = function close(cb) {
@@ -511,8 +604,9 @@ TLSSocket.prototype._wrapHandle = function(wrap) {
                   options.credentials ||
                   tls.createSecureContext(options);
   assert(handle.isStreamBase, 'handle must be a StreamBase');
-  assert(context.context instanceof NativeSecureContext,
-         'context.context must be a NativeSecureContext');
+  if (!(context.context instanceof NativeSecureContext)) {
+    throw new ERR_TLS_INVALID_CONTEXT('context');
+  }
   const res = tls_wrap.wrap(handle, context.context, !!options.isServer);
   res._parent = handle;  // C++ "wrap" object: TCPWrap, JSStream, ...
   res._parentWrap = wrap;  // JS object: net.Socket, JSStreamSocket, ...
@@ -529,7 +623,7 @@ TLSSocket.prototype._wrapHandle = function(wrap) {
 // This eliminates a cyclic reference to TLSWrap
 // Ref: https://github.com/nodejs/node/commit/f7620fb96d339f704932f9bb9a0dceb9952df2d4
 function defineHandleReading(socket, handle) {
-  Object.defineProperty(handle, 'reading', {
+  ObjectDefineProperty(handle, 'reading', {
     get: () => {
       return socket[kRes].reading;
     },
@@ -557,9 +651,13 @@ TLSSocket.prototype._destroySSL = function _destroySSL() {
     this.ssl._secureContext.context = null;
   }
   this.ssl = null;
+  this[kPendingSession] = null;
+  this[kIsVerified] = false;
 };
 
 // Constructor guts, arbitrarily factored out.
+let warnOnTlsKeylog = true;
+let warnOnTlsKeylogError = true;
 TLSSocket.prototype._init = function(socket, wrap) {
   const options = this._tlsOptions;
   const ssl = this._handle;
@@ -643,6 +741,24 @@ TLSSocket.prototype._init = function(socket, wrap) {
     }
   }
 
+  if (tlsKeylog) {
+    if (warnOnTlsKeylog) {
+      warnOnTlsKeylog = false;
+      process.emitWarning('Using --tls-keylog makes TLS connections insecure ' +
+        'by writing secret key material to file ' + tlsKeylog);
+      ssl.enableKeylogCallback();
+      this.on('keylog', (line) => {
+        appendFile(tlsKeylog, line, { mode: 0o600 }, (err) => {
+          if (err && warnOnTlsKeylogError) {
+            warnOnTlsKeylogError = false;
+            process.emitWarning('Failed to write TLS keylog (this warning ' +
+              'will not be repeated): ' + err);
+          }
+        });
+      });
+    }
+  }
+
   ssl.onerror = onerror;
 
   // If custom SNICallback was given, or if
@@ -662,6 +778,32 @@ TLSSocket.prototype._init = function(socket, wrap) {
     ssl._secureContext.alpnBuffer = options.ALPNProtocols;
     ssl.setALPNProtocols(ssl._secureContext.alpnBuffer);
   }
+
+  if (options.pskCallback && ssl.enablePskCallback) {
+    if (typeof options.pskCallback !== 'function') {
+      throw new ERR_INVALID_ARG_TYPE('pskCallback',
+                                     'function',
+                                     options.pskCallback);
+    }
+
+    ssl[kOnPskExchange] = options.isServer ?
+      onPskServerCallback : onPskClientCallback;
+
+    this[kPskCallback] = options.pskCallback;
+    ssl.enablePskCallback();
+
+    if (options.pskIdentityHint) {
+      if (typeof options.pskIdentityHint !== 'string') {
+        throw new ERR_INVALID_ARG_TYPE(
+          'options.pskIdentityHint',
+          'string',
+          options.pskIdentityHint
+        );
+      }
+      ssl.setPskIdentityHint(options.pskIdentityHint);
+    }
+  }
+
 
   if (options.handshakeTimeout > 0)
     this.setTimeout(options.handshakeTimeout, this._handleTimeout);
@@ -734,6 +876,18 @@ TLSSocket.prototype.renegotiate = function(options, callback) {
   }
 
   return true;
+};
+
+TLSSocket.prototype.exportKeyingMaterial = function(length, label, context) {
+  validateUint32(length, 'length', true);
+  validateString(label, 'label');
+  if (context !== undefined)
+    validateBuffer(context, 'context');
+
+  if (!this._secureEstablished)
+    throw new ERR_TLS_INVALID_STATE();
+
+  return this._handle.exportKeyingMaterial(length, label, context);
 };
 
 TLSSocket.prototype.setMaxSendFragment = function setMaxSendFragment(size) {
@@ -874,7 +1028,7 @@ function makeSocketMethodProxy(name) {
   TLSSocket.prototype[method] = makeSocketMethodProxy(method);
 });
 
-// TODO: support anonymous (nocert) and PSK
+// TODO: support anonymous (nocert)
 
 
 function onServerSocketSecure() {
@@ -892,6 +1046,7 @@ function onServerSocketSecure() {
 
   if (!this.destroyed && this._releaseControl()) {
     debug('server emit secureConnection');
+    this.secureConnecting = false;
     this._tlsOptions.server.emit('secureConnection', this);
   }
 }
@@ -930,6 +1085,8 @@ function tlsConnectionListener(rawSocket) {
     SNICallback: this[kSNICallback] || SNICallback,
     enableTrace: this[kEnableTrace],
     pauseOnConnect: this.pauseOnConnect,
+    pskCallback: this[kPskCallback],
+    pskIdentityHint: this[kPskIdentityHint],
   });
 
   socket.on('secure', onServerSocketSecure);
@@ -1034,6 +1191,8 @@ function Server(options, listener) {
 
   this[kHandshakeTimeout] = options.handshakeTimeout || (120 * 1000);
   this[kSNICallback] = options.SNICallback;
+  this[kPskCallback] = options.pskCallback;
+  this[kPskIdentityHint] = options.pskIdentityHint;
 
   if (typeof this[kHandshakeTimeout] !== 'number') {
     throw new ERR_INVALID_ARG_TYPE(
@@ -1043,6 +1202,18 @@ function Server(options, listener) {
   if (this[kSNICallback] && typeof this[kSNICallback] !== 'function') {
     throw new ERR_INVALID_ARG_TYPE(
       'options.SNICallback', 'function', options.SNICallback);
+  }
+
+  if (this[kPskCallback] && typeof this[kPskCallback] !== 'function') {
+    throw new ERR_INVALID_ARG_TYPE(
+      'options.pskCallback', 'function', options.pskCallback);
+  }
+  if (this[kPskIdentityHint] && typeof this[kPskIdentityHint] !== 'string') {
+    throw new ERR_INVALID_ARG_TYPE(
+      'options.pskIdentityHint',
+      'string',
+      options.pskIdentityHint
+    );
   }
 
   // constructor call
@@ -1055,8 +1226,8 @@ function Server(options, listener) {
   this[kEnableTrace] = options.enableTrace;
 }
 
-Object.setPrototypeOf(Server.prototype, net.Server.prototype);
-Object.setPrototypeOf(Server, net.Server);
+ObjectSetPrototypeOf(Server.prototype, net.Server.prototype);
+ObjectSetPrototypeOf(Server, net.Server);
 exports.Server = Server;
 exports.createServer = function createServer(options, listener) {
   return new Server(options, listener);
@@ -1241,6 +1412,8 @@ Server.prototype.setOptions = deprecate(function(options) {
                                   .digest('hex')
                                   .slice(0, 32);
   }
+  if (options.pskCallback) this[kPskCallback] = options.pskCallback;
+  if (options.pskIdentityHint) this[kPskIdentityHint] = options.pskIdentityHint;
 }, 'Server.prototype.setOptions() is deprecated', 'DEP0122');
 
 // SNI Contexts High-Level API
@@ -1256,11 +1429,23 @@ Server.prototype.addContext = function(servername, context) {
   this._contexts.push([re, tls.createSecureContext(context).context]);
 };
 
+Server.prototype[EE.captureRejectionSymbol] = function(
+  err, event, sock) {
+
+  switch (event) {
+    case 'secureConnection':
+      sock.destroy(err);
+      break;
+    default:
+      net.Server.prototype[Symbol.for('nodejs.rejection')]
+        .call(this, err, event, sock);
+  }
+};
+
 function SNICallback(servername, callback) {
   const contexts = this.server._contexts;
 
-  for (let i = 0; i < contexts.length; i++) {
-    const elem = contexts[i];
+  for (const elem of contexts) {
     if (elem[0].test(servername)) {
       callback(null, elem[1]);
       return;
@@ -1296,9 +1481,9 @@ function normalizeConnectArgs(listArgs) {
   // the host/port/path args that it knows about, not the tls options.
   // This means that options.host overrides a host arg.
   if (listArgs[1] !== null && typeof listArgs[1] === 'object') {
-    Object.assign(options, listArgs[1]);
+    ObjectAssign(options, listArgs[1]);
   } else if (listArgs[2] !== null && typeof listArgs[2] === 'object') {
-    Object.assign(options, listArgs[2]);
+    ObjectAssign(options, listArgs[2]);
   }
 
   return cb ? [options, cb] : [options];
@@ -1350,6 +1535,12 @@ function onConnectSecure() {
     this.emit('secureConnect');
   }
 
+  this[kIsVerified] = true;
+  const session = this[kPendingSession];
+  this[kPendingSession] = null;
+  if (session)
+    this.emit('session', session);
+
   this.removeListener('end', onConnectEnd);
 }
 
@@ -1369,22 +1560,12 @@ function onConnectEnd() {
   }
 }
 
-let warnOnAllowUnauthorized = true;
-
 // Arguments: [port,] [host,] [options,] [cb]
 exports.connect = function connect(...args) {
   args = normalizeConnectArgs(args);
   let options = args[0];
   const cb = args[1];
-  const allowUnauthorized = process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0';
-
-  if (allowUnauthorized && warnOnAllowUnauthorized) {
-    warnOnAllowUnauthorized = false;
-    process.emitWarning('Setting the NODE_TLS_REJECT_UNAUTHORIZED ' +
-                        'environment variable to \'0\' makes TLS connections ' +
-                        'and HTTPS requests insecure by disabling ' +
-                        'certificate verification.');
-  }
+  const allowUnauthorized = getAllowUnauthorized();
 
   options = {
     rejectUnauthorized: !allowUnauthorized,
@@ -1416,7 +1597,8 @@ exports.connect = function connect(...args) {
     session: options.session,
     ALPNProtocols: options.ALPNProtocols,
     requestOCSP: options.requestOCSP,
-    enableTrace: options.enableTrace
+    enableTrace: options.enableTrace,
+    pskCallback: options.pskCallback,
   });
 
   tlssock[kConnectOptions] = options;

@@ -24,7 +24,15 @@
 
 'use strict';
 
-const { Math, Object } = primordials;
+const {
+  Map,
+  MathMax,
+  NumberIsSafeInteger,
+  ObjectCreate,
+  ObjectDefineProperties,
+  ObjectDefineProperty,
+  Promise,
+} = primordials;
 
 const { fs: constants } = internalBinding('constants');
 const {
@@ -94,9 +102,10 @@ const {
   parseMode,
   validateBuffer,
   validateInteger,
-  validateInt32,
-  validateUint32
+  validateInt32
 } = require('internal/validators');
+// 2 ** 32 - 1
+const kMaxUserId = 4294967295;
 
 let truncateWarn = true;
 let fs;
@@ -209,7 +218,7 @@ function exists(path, callback) {
   }
 }
 
-Object.defineProperty(exists, internalUtil.promisify.custom, {
+ObjectDefineProperty(exists, internalUtil.promisify.custom, {
   value: (path) => {
     return new Promise((resolve) => fs.exists(path, resolve));
   }
@@ -228,7 +237,16 @@ function existsSync(path) {
     return false;
   }
   const ctx = { path };
-  binding.access(pathModule.toNamespacedPath(path), F_OK, undefined, ctx);
+  const nPath = pathModule.toNamespacedPath(path);
+  binding.access(nPath, F_OK, undefined, ctx);
+
+  // In case of an invalid symlink, `binding.access()` on win32
+  // will **not** return an error and is therefore not enough.
+  // Double check with `binding.stat()`.
+  if (isWindows && ctx.errno === undefined) {
+    binding.stat(nPath, false, undefined, ctx);
+  }
+
   return ctx.errno === undefined;
 }
 
@@ -441,8 +459,36 @@ function openSync(path, flags, mode) {
   return result;
 }
 
+// usage:
+// fs.read(fd, buffer, offset, length, position, callback);
+// OR
+// fs.read(fd, {}, callback)
 function read(fd, buffer, offset, length, position, callback) {
   validateInt32(fd, 'fd', 0);
+
+  if (arguments.length <= 3) {
+    // Assume fs.read(fd, options, callback)
+    let options = {};
+    if (arguments.length < 3) {
+      // This is fs.read(fd, callback)
+      // buffer will be the callback
+      callback = buffer;
+    } else {
+      // This is fs.read(fd, {}, callback)
+      // buffer will be the options object
+      // offset is the callback
+      options = buffer;
+      callback = offset;
+    }
+
+    ({
+      buffer = Buffer.alloc(16384),
+      offset = 0,
+      length = buffer.length,
+      position
+    } = options);
+  }
+
   validateBuffer(buffer);
   callback = maybeCallback(callback);
 
@@ -462,7 +508,7 @@ function read(fd, buffer, offset, length, position, callback) {
 
   validateOffsetLengthRead(offset, length, buffer.byteLength);
 
-  if (!Number.isSafeInteger(position))
+  if (!NumberIsSafeInteger(position))
     position = -1;
 
   function wrapper(err, bytesRead) {
@@ -476,11 +522,23 @@ function read(fd, buffer, offset, length, position, callback) {
   binding.read(fd, buffer, offset, length, position, req);
 }
 
-Object.defineProperty(read, internalUtil.customPromisifyArgs,
-                      { value: ['bytesRead', 'buffer'], enumerable: false });
+ObjectDefineProperty(read, internalUtil.customPromisifyArgs,
+                     { value: ['bytesRead', 'buffer'], enumerable: false });
 
+// usage:
+// fs.readSync(fd, buffer, offset, length, position);
+// OR
+// fs.readSync(fd, buffer, {}) or fs.readSync(fd, buffer)
 function readSync(fd, buffer, offset, length, position) {
   validateInt32(fd, 'fd', 0);
+
+  if (arguments.length <= 3) {
+    // Assume fs.read(fd, buffer, options)
+    const options = offset || {};
+
+    ({ offset = 0, length = buffer.length, position } = options);
+  }
+
   validateBuffer(buffer);
 
   offset |= 0;
@@ -497,12 +555,45 @@ function readSync(fd, buffer, offset, length, position) {
 
   validateOffsetLengthRead(offset, length, buffer.byteLength);
 
-  if (!Number.isSafeInteger(position))
+  if (!NumberIsSafeInteger(position))
     position = -1;
 
   const ctx = {};
   const result = binding.read(fd, buffer, offset, length, position,
                               undefined, ctx);
+  handleErrorFromBinding(ctx);
+  return result;
+}
+
+function readv(fd, buffers, position, callback) {
+  function wrapper(err, read) {
+    callback(err, read || 0, buffers);
+  }
+
+  validateInt32(fd, 'fd', /* min */ 0);
+  validateBufferArray(buffers);
+
+  const req = new FSReqCallback();
+  req.oncomplete = wrapper;
+
+  callback = maybeCallback(callback || position);
+
+  if (typeof position !== 'number')
+    position = null;
+
+  return binding.readBuffers(fd, buffers, position, req);
+}
+
+function readvSync(fd, buffers, position) {
+  validateInt32(fd, 'fd', 0);
+  validateBufferArray(buffers);
+
+  const ctx = {};
+
+  if (typeof position !== 'number')
+    position = null;
+
+  const result = binding.readBuffers(fd, buffers, position, undefined, ctx);
   handleErrorFromBinding(ctx);
   return result;
 }
@@ -549,8 +640,8 @@ function write(fd, buffer, offset, length, position, callback) {
   return binding.writeString(fd, buffer, offset, length, req);
 }
 
-Object.defineProperty(write, internalUtil.customPromisifyArgs,
-                      { value: ['bytesWritten', 'buffer'], enumerable: false });
+ObjectDefineProperty(write, internalUtil.customPromisifyArgs,
+                     { value: ['bytesWritten', 'buffer'], enumerable: false });
 
 // Usage:
 //  fs.writeSync(fd, buffer[, offset[, length[, position]]]);
@@ -603,7 +694,7 @@ function writev(fd, buffers, position, callback) {
   return binding.writeBuffers(fd, buffers, position, req);
 }
 
-Object.defineProperty(writev, internalUtil.customPromisifyArgs, {
+ObjectDefineProperty(writev, internalUtil.customPromisifyArgs, {
   value: ['bytesWritten', 'buffer'],
   enumerable: false
 });
@@ -697,7 +788,7 @@ function ftruncate(fd, len = 0, callback) {
   }
   validateInt32(fd, 'fd', 0);
   validateInteger(len, 'len');
-  len = Math.max(0, len);
+  len = MathMax(0, len);
   const req = new FSReqCallback();
   req.oncomplete = makeCallback(callback);
   binding.ftruncate(fd, len, req);
@@ -706,7 +797,7 @@ function ftruncate(fd, len = 0, callback) {
 function ftruncateSync(fd, len = 0) {
   validateInt32(fd, 'fd', 0);
   validateInteger(len, 'len');
-  len = Math.max(0, len);
+  len = MathMax(0, len);
   const ctx = {};
   binding.ftruncate(fd, len, undefined, ctx);
   handleErrorFromBinding(ctx);
@@ -795,7 +886,7 @@ function mkdir(path, options, callback) {
   path = getValidatedPath(path);
 
   if (typeof recursive !== 'boolean')
-    throw new ERR_INVALID_ARG_TYPE('recursive', 'boolean', recursive);
+    throw new ERR_INVALID_ARG_TYPE('options.recursive', 'boolean', recursive);
 
   const req = new FSReqCallback();
   req.oncomplete = callback;
@@ -814,13 +905,16 @@ function mkdirSync(path, options) {
 
   path = getValidatedPath(path);
   if (typeof recursive !== 'boolean')
-    throw new ERR_INVALID_ARG_TYPE('recursive', 'boolean', recursive);
+    throw new ERR_INVALID_ARG_TYPE('options.recursive', 'boolean', recursive);
 
   const ctx = { path };
-  binding.mkdir(pathModule.toNamespacedPath(path),
-                parseMode(mode, 'mode', 0o777), recursive, undefined,
-                ctx);
+  const result = binding.mkdir(pathModule.toNamespacedPath(path),
+                               parseMode(mode, 'mode', 0o777), recursive,
+                               undefined, ctx);
   handleErrorFromBinding(ctx);
+  if (recursive) {
+    return result;
+  }
 }
 
 function readdir(path, options, callback) {
@@ -890,7 +984,7 @@ function stat(path, options = { bigint: false }, callback) {
   binding.stat(pathModule.toNamespacedPath(path), options.bigint, req);
 }
 
-function fstatSync(fd, options = {}) {
+function fstatSync(fd, options = { bigint: false }) {
   validateInt32(fd, 'fd', 0);
   const ctx = { fd };
   const stats = binding.fstat(fd, options.bigint, undefined, ctx);
@@ -898,7 +992,7 @@ function fstatSync(fd, options = {}) {
   return getStatsFromBinding(stats);
 }
 
-function lstatSync(path, options = {}) {
+function lstatSync(path, options = { bigint: false }) {
   path = getValidatedPath(path);
   const ctx = { path };
   const stats = binding.lstat(pathModule.toNamespacedPath(path),
@@ -907,7 +1001,7 @@ function lstatSync(path, options = {}) {
   return getStatsFromBinding(stats);
 }
 
-function statSync(path, options = {}) {
+function statSync(path, options = { bigint: false }) {
   path = getValidatedPath(path);
   const ctx = { path };
   const stats = binding.stat(pathModule.toNamespacedPath(path),
@@ -1107,8 +1201,8 @@ function chmodSync(path, mode) {
 function lchown(path, uid, gid, callback) {
   callback = makeCallback(callback);
   path = getValidatedPath(path);
-  validateUint32(uid, 'uid');
-  validateUint32(gid, 'gid');
+  validateInteger(uid, 'uid', -1, kMaxUserId);
+  validateInteger(gid, 'gid', -1, kMaxUserId);
   const req = new FSReqCallback();
   req.oncomplete = callback;
   binding.lchown(pathModule.toNamespacedPath(path), uid, gid, req);
@@ -1116,8 +1210,8 @@ function lchown(path, uid, gid, callback) {
 
 function lchownSync(path, uid, gid) {
   path = getValidatedPath(path);
-  validateUint32(uid, 'uid');
-  validateUint32(gid, 'gid');
+  validateInteger(uid, 'uid', -1, kMaxUserId);
+  validateInteger(gid, 'gid', -1, kMaxUserId);
   const ctx = { path };
   binding.lchown(pathModule.toNamespacedPath(path), uid, gid, undefined, ctx);
   handleErrorFromBinding(ctx);
@@ -1125,8 +1219,8 @@ function lchownSync(path, uid, gid) {
 
 function fchown(fd, uid, gid, callback) {
   validateInt32(fd, 'fd', 0);
-  validateUint32(uid, 'uid');
-  validateUint32(gid, 'gid');
+  validateInteger(uid, 'uid', -1, kMaxUserId);
+  validateInteger(gid, 'gid', -1, kMaxUserId);
 
   const req = new FSReqCallback();
   req.oncomplete = makeCallback(callback);
@@ -1135,8 +1229,8 @@ function fchown(fd, uid, gid, callback) {
 
 function fchownSync(fd, uid, gid) {
   validateInt32(fd, 'fd', 0);
-  validateUint32(uid, 'uid');
-  validateUint32(gid, 'gid');
+  validateInteger(uid, 'uid', -1, kMaxUserId);
+  validateInteger(gid, 'gid', -1, kMaxUserId);
 
   const ctx = {};
   binding.fchown(fd, uid, gid, undefined, ctx);
@@ -1146,8 +1240,8 @@ function fchownSync(fd, uid, gid) {
 function chown(path, uid, gid, callback) {
   callback = makeCallback(callback);
   path = getValidatedPath(path);
-  validateUint32(uid, 'uid');
-  validateUint32(gid, 'gid');
+  validateInteger(uid, 'uid', -1, kMaxUserId);
+  validateInteger(gid, 'gid', -1, kMaxUserId);
 
   const req = new FSReqCallback();
   req.oncomplete = callback;
@@ -1156,8 +1250,8 @@ function chown(path, uid, gid, callback) {
 
 function chownSync(path, uid, gid) {
   path = getValidatedPath(path);
-  validateUint32(uid, 'uid');
-  validateUint32(gid, 'gid');
+  validateInteger(uid, 'uid', -1, kMaxUserId);
+  validateInteger(gid, 'gid', -1, kMaxUserId);
   const ctx = { path };
   binding.chown(pathModule.toNamespacedPath(path), uid, gid, undefined, ctx);
   handleErrorFromBinding(ctx);
@@ -1202,9 +1296,9 @@ function futimesSync(fd, atime, mtime) {
   handleErrorFromBinding(ctx);
 }
 
-function writeAll(fd, isUserFd, buffer, offset, length, position, callback) {
+function writeAll(fd, isUserFd, buffer, offset, length, callback) {
   // write(fd, buffer, offset, length, position, callback)
-  fs.write(fd, buffer, offset, length, position, (writeErr, written) => {
+  fs.write(fd, buffer, offset, length, null, (writeErr, written) => {
     if (writeErr) {
       if (isUserFd) {
         callback(writeErr);
@@ -1222,10 +1316,7 @@ function writeAll(fd, isUserFd, buffer, offset, length, position, callback) {
     } else {
       offset += written;
       length -= written;
-      if (position !== null) {
-        position += written;
-      }
-      writeAll(fd, isUserFd, buffer, offset, length, position, callback);
+      writeAll(fd, isUserFd, buffer, offset, length, callback);
     }
   });
 }
@@ -1251,9 +1342,8 @@ function writeFile(path, data, options, callback) {
   function writeFd(fd, isUserFd) {
     const buffer = isArrayBufferView(data) ?
       data : Buffer.from('' + data, options.encoding || 'utf8');
-    const position = (/a/.test(flag) || isUserFd) ? null : 0;
 
-    writeAll(fd, isUserFd, buffer, 0, buffer.byteLength, position, callback);
+    writeAll(fd, isUserFd, buffer, 0, buffer.byteLength, callback);
   }
 }
 
@@ -1269,15 +1359,11 @@ function writeFileSync(path, data, options) {
   }
   let offset = 0;
   let length = data.byteLength;
-  let position = (/a/.test(flag) || isUserFd) ? null : 0;
   try {
     while (length > 0) {
-      const written = fs.writeSync(fd, data, offset, length, position);
+      const written = fs.writeSync(fd, data, offset, length);
       offset += written;
       length -= written;
-      if (position !== null) {
-        position += written;
-      }
     }
   } finally {
     if (!isUserFd) fs.closeSync(fd);
@@ -1444,7 +1530,7 @@ if (isWindows) {
   nextPart = function nextPart(p, i) { return p.indexOf('/', i); };
 }
 
-const emptyObj = Object.create(null);
+const emptyObj = ObjectCreate(null);
 function realpathSync(p, options) {
   if (!options)
     options = emptyObj;
@@ -1463,8 +1549,8 @@ function realpathSync(p, options) {
     return maybeCachedResult;
   }
 
-  const seenLinks = Object.create(null);
-  const knownHard = Object.create(null);
+  const seenLinks = ObjectCreate(null);
+  const knownHard = ObjectCreate(null);
   const original = p;
 
   // Current character position in p
@@ -1601,8 +1687,8 @@ function realpath(p, options, callback) {
   validatePath(p);
   p = pathModule.resolve(p);
 
-  const seenLinks = Object.create(null);
-  const knownHard = Object.create(null);
+  const seenLinks = ObjectCreate(null);
+  const knownHard = ObjectCreate(null);
 
   // Current character position in p
   let pos;
@@ -1858,6 +1944,8 @@ module.exports = fs = {
   readdirSync,
   read,
   readSync,
+  readv,
+  readvSync,
   readFile,
   readFileSync,
   readlink,
@@ -1933,7 +2021,7 @@ module.exports = fs = {
   _toUnixTimestamp: toUnixTimestamp
 };
 
-Object.defineProperties(fs, {
+ObjectDefineProperties(fs, {
   F_OK: { enumerable: true, value: F_OK || 0 },
   R_OK: { enumerable: true, value: R_OK || 0 },
   W_OK: { enumerable: true, value: W_OK || 0 },

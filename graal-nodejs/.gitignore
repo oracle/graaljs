@@ -19,7 +19,6 @@
 !.gitkeep
 !.mailmap
 !.nycrc
-!.travis.yml
 !.eslintrc.yaml
 !.cpplint
 !.checkstyle_checks.xml
@@ -34,10 +33,10 @@
 /doc/api.xml
 /node
 /node_g
+/gon-config.json
 /*.exe
 /*.swp
 /out
-/*.txt
 /mxbuild
 /nbproject/private
 /mx.graal-nodejs/eclipse-launches
@@ -55,8 +54,8 @@
 /config_fips.gypi
 
 # === Rules for MSVS artifacts ===
-/Debug
-/Release
+Debug/
+Release/
 *.sln
 *.suo
 *.vcxproj*

@@ -4,7 +4,7 @@
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
 #include <cinttypes>
-#include "util.h"
+#include "util-inl.h"
 #include "v8.h"
 
 namespace node {
@@ -221,7 +221,8 @@ class AliasedBufferBase {
     const v8::HandleScope handle_scope(isolate_);
 
     const size_t old_size_in_bytes = sizeof(NativeT) * count_;
-    const size_t new_size_in_bytes = sizeof(NativeT) * new_capacity;
+    const size_t new_size_in_bytes = MultiplyWithOverflowCheck(sizeof(NativeT),
+                                                              new_capacity);
 
     // allocate v8 new ArrayBuffer
     v8::Local<v8::ArrayBuffer> ab = v8::ArrayBuffer::New(

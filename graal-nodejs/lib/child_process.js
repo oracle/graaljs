@@ -21,7 +21,15 @@
 
 'use strict';
 
-const { Object, ObjectPrototype } = primordials;
+const {
+  ArrayIsArray,
+  Error,
+  NumberIsInteger,
+  ObjectAssign,
+  ObjectDefineProperty,
+  ObjectPrototypeHasOwnProperty,
+  Promise,
+} = primordials;
 
 const {
   promisify,
@@ -59,7 +67,7 @@ function fork(modulePath /* , args, options */) {
   let options = {};
   let args = [];
   let pos = 1;
-  if (pos < arguments.length && Array.isArray(arguments[pos])) {
+  if (pos < arguments.length && ArrayIsArray(arguments[pos])) {
     args = arguments[pos++];
   }
 
@@ -92,7 +100,7 @@ function fork(modulePath /* , args, options */) {
 
   if (typeof options.stdio === 'string') {
     options.stdio = stdioStringToArray(options.stdio, 'ipc');
-  } else if (!Array.isArray(options.stdio)) {
+  } else if (!ArrayIsArray(options.stdio)) {
     // Use a separate fd=3 for the IPC channel. Inherit stdin, stdout,
     // and stderr from the parent if silent isn't set.
     options.stdio = stdioStringToArray(
@@ -108,12 +116,12 @@ function fork(modulePath /* , args, options */) {
   return spawn(options.execPath, args, options);
 }
 
-function _forkChild(fd) {
+function _forkChild(fd, serializationMode) {
   // set process.send()
   const p = new Pipe(PipeConstants.IPC);
   p.open(fd);
   p.unref();
-  const control = setupChannel(process, p);
+  const control = setupChannel(process, p, serializationMode);
   process.on('newListener', function onNewListener(name) {
     if (name === 'message' || name === 'disconnect') control.ref();
   });
@@ -170,7 +178,7 @@ const customPromiseExecFunction = (orig) => {
   };
 };
 
-Object.defineProperty(exec, promisify.custom, {
+ObjectDefineProperty(exec, promisify.custom, {
   enumerable: false,
   value: customPromiseExecFunction(exec)
 });
@@ -182,7 +190,7 @@ function execFile(file /* , args, options, callback */) {
 
   // Parse the optional positional parameters.
   let pos = 1;
-  if (pos < arguments.length && Array.isArray(arguments[pos])) {
+  if (pos < arguments.length && ArrayIsArray(arguments[pos])) {
     args = arguments[pos++];
   } else if (pos < arguments.length && arguments[pos] == null) {
     pos++;
@@ -389,7 +397,7 @@ function execFile(file /* , args, options, callback */) {
   return child;
 }
 
-Object.defineProperty(execFile, promisify.custom, {
+ObjectDefineProperty(execFile, promisify.custom, {
   enumerable: false,
   value: customPromiseExecFunction(execFile)
 });
@@ -400,7 +408,7 @@ function normalizeSpawnArguments(file, args, options) {
   if (file.length === 0)
     throw new ERR_INVALID_ARG_VALUE('file', file, 'cannot be empty');
 
-  if (Array.isArray(args)) {
+  if (ArrayIsArray(args)) {
     args = args.slice(0);
   } else if (args == null) {
     args = [];
@@ -509,7 +517,7 @@ function normalizeSpawnArguments(file, args, options) {
   // process.env.NODE_V8_COVERAGE always propagates, making it possible to
   // collect coverage for programs that spawn with white-listed environment.
   if (process.env.NODE_V8_COVERAGE &&
-      !ObjectPrototype.hasOwnProperty(options.env || {}, 'NODE_V8_COVERAGE')) {
+      !ObjectPrototypeHasOwnProperty(options.env || {}, 'NODE_V8_COVERAGE')) {
     env.NODE_V8_COVERAGE = process.env.NODE_V8_COVERAGE;
   }
 
@@ -557,7 +565,8 @@ function spawn(file, args, options) {
     envPairs: opts.envPairs,
     stdio: options.stdio,
     uid: options.uid,
-    gid: options.gid
+    gid: options.gid,
+    serialization: options.serialization,
   });
 
   return child;
@@ -631,7 +640,7 @@ function checkExecSyncError(ret, args, cmd) {
     err = new Error(msg);
   }
   if (err) {
-    Object.assign(err, ret);
+    ObjectAssign(err, ret);
   }
   return err;
 }
@@ -674,7 +683,7 @@ function execSync(command, options) {
 
 
 function validateTimeout(timeout) {
-  if (timeout != null && !(Number.isInteger(timeout) && timeout >= 0)) {
+  if (timeout != null && !(NumberIsInteger(timeout) && timeout >= 0)) {
     throw new ERR_OUT_OF_RANGE('timeout', 'an unsigned integer', timeout);
   }
 }

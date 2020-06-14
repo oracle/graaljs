@@ -32,8 +32,8 @@ assert.strictEqual(test_general.testGetPrototype(extendedObject),
 assert.notStrictEqual(test_general.testGetPrototype(baseObject),
                       test_general.testGetPrototype(extendedObject));
 
-// Test version management functions. The expected version is currently 4.
-assert.strictEqual(test_general.testGetVersion(), 5);
+// Test version management functions
+assert.strictEqual(test_general.testGetVersion(), 6);
 
 [
   123,
@@ -67,8 +67,8 @@ assert.strictEqual(derefItemWasCalled, true,
 // Assert that wrapping twice fails.
 const x = {};
 test_general.wrap(x);
-common.expectsError(() => test_general.wrap(x),
-                    { type: Error, message: 'Invalid argument' });
+assert.throws(() => test_general.wrap(x),
+              { name: 'Error', message: 'Invalid argument' });
 
 // Ensure that wrapping, removing the wrap, and then wrapping again works.
 const y = {};

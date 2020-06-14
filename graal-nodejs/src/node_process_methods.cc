@@ -1,4 +1,5 @@
 #include "base_object-inl.h"
+#include "debug_utils-inl.h"
 #include "env-inl.h"
 #include "node.h"
 #include "node_errors.h"
@@ -192,10 +193,13 @@ static void MemoryUsage(const FunctionCallbackInfo<Value>& args) {
   HeapStatistics v8_heap_stats;
   isolate->GetHeapStatistics(&v8_heap_stats);
 
+  NodeArrayBufferAllocator* array_buffer_allocator =
+      env->isolate_data()->node_allocator();
+
   // Get the double array pointer from the Float64Array argument.
   CHECK(args[0]->IsFloat64Array());
   Local<Float64Array> array = args[0].As<Float64Array>();
-  CHECK_EQ(array->Length(), 4);
+  CHECK_EQ(array->Length(), 5);
   Local<ArrayBuffer> ab = array->Buffer();
   double* fields = static_cast<double*>(ab->GetContents().Data());
 
@@ -203,13 +207,15 @@ static void MemoryUsage(const FunctionCallbackInfo<Value>& args) {
   fields[1] = v8_heap_stats.total_heap_size();
   fields[2] = v8_heap_stats.used_heap_size();
   fields[3] = v8_heap_stats.external_memory();
+  fields[4] = array_buffer_allocator == nullptr ?
+      0 : array_buffer_allocator->total_mem_usage();
 }
 
 void RawDebug(const FunctionCallbackInfo<Value>& args) {
   CHECK(args.Length() == 1 && args[0]->IsString() &&
         "must be called with a single string");
   Utf8Value message(args.GetIsolate(), args[0]);
-  PrintErrorString("%s\n", *message);
+  FPrintF(stderr, "%s\n", message);
   fflush(stderr);
 }
 
@@ -355,7 +361,7 @@ static void DebugProcess(const FunctionCallbackInfo<Value>& args) {
   LPTHREAD_START_ROUTINE* handler = nullptr;
   DWORD pid = 0;
 
-  OnScopeLeave cleanup([&]() {
+  auto cleanup = OnScopeLeave([&]() {
     if (process != nullptr) CloseHandle(process);
     if (thread != nullptr) CloseHandle(thread);
     if (handler != nullptr) UnmapViewOfFile(handler);

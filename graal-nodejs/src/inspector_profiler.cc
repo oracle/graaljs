@@ -1,6 +1,6 @@
 #include "inspector_profiler.h"
 #include "base_object-inl.h"
-#include "debug_utils.h"
+#include "debug_utils-inl.h"
 #include "diagnosticfilename-inl.h"
 #include "memory_tracker-inl.h"
 #include "node_file.h"
@@ -107,9 +107,9 @@ void V8ProfilerConnection::V8ProfilerSessionDelegate::SendMessageToFrontend(
 }
 
 static bool EnsureDirectory(const std::string& directory, const char* type) {
-  uv_fs_t req;
-  int ret = fs::MKDirpSync(nullptr, &req, directory, 0777, nullptr);
-  uv_fs_req_cleanup(&req);
+  fs::FSReqWrapSync req_wrap_sync;
+  int ret = fs::MKDirpSync(nullptr, &req_wrap_sync.req, directory, 0777,
+                           nullptr);
   if (ret < 0 && ret != UV_EEXIST) {
     char err_buf[128];
     uv_err_name_r(ret, err_buf, sizeof(err_buf));
@@ -208,6 +208,16 @@ void V8CoverageConnection::WriteProfile(Local<String> message) {
   Local<Context> context = env_->context();
   HandleScope handle_scope(isolate);
   Context::Scope context_scope(context);
+
+  // This is only set up during pre-execution (when the environment variables
+  // becomes available in the JS land). If it's empty, we don't have coverage
+  // directory path (which is resolved in JS land at the moment) either, so
+  // the best we could to is to just discard the profile and do nothing.
+  // This should only happen in half-baked Environments created using the
+  // embedder API.
+  if (env_->source_map_cache_getter().IsEmpty()) {
+    return;
+  }
 
   // Get message.result from the response.
   Local<Object> result;

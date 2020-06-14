@@ -64,7 +64,7 @@ class FSEventWrap: public HandleWrap {
   static const encoding kDefaultEncoding = UTF8;
 
   FSEventWrap(Environment* env, Local<Object> object);
-  ~FSEventWrap() = default;
+  ~FSEventWrap() override = default;
 
   static void OnEvent(uv_fs_event_t* handle, const char* filename, int events,
     int status);
@@ -97,7 +97,8 @@ void FSEventWrap::Initialize(Local<Object> target,
 
   auto fsevent_string = FIXED_ONE_BYTE_STRING(env->isolate(), "FSEvent");
   Local<FunctionTemplate> t = env->NewFunctionTemplate(New);
-  t->InstanceTemplate()->SetInternalFieldCount(1);
+  t->InstanceTemplate()->SetInternalFieldCount(
+      FSEventWrap::kInternalFieldCount);
   t->SetClassName(fsevent_string);
 
   t->Inherit(AsyncWrap::GetConstructorTemplate(env));

@@ -362,7 +362,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 int targetOffset = (int) targetOffsetLong;
                 if (arrayIsArrayBufferView.profile(JSArrayBufferView.isJSArrayBufferView(sourceObj))) {
                     setArrayBufferView(targetObj, sourceObj, targetOffset);
-                } else if (arrayIsArray.profile(JSArray.isJSArray(sourceObj))) {
+                } else if (arrayIsArray.profile(JSArray.isJSFastArray(sourceObj))) {
                     setArray(targetObj, sourceObj, targetOffset);
                 } else {
                     setObject(targetObj, sourceObj, targetOffset);
@@ -380,7 +380,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         private void setArray(DynamicObject thisObj, DynamicObject array, int offset) {
             assert JSArrayBufferView.isJSArrayBufferView(thisObj);
-            assert JSArray.isJSArray(array);
+            assert JSArray.isJSFastArray(array);
             boolean sourceCondition = JSArray.isJSArray(array);
             boolean targetCondition = JSArrayBufferView.isJSArrayBufferView(thisObj);
             ScriptArray sourceArray = arrayGetArrayType(array, sourceCondition);
@@ -395,7 +395,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         private void setObject(DynamicObject thisObj, DynamicObject array, int offset) {
             assert JSArrayBufferView.isJSArrayBufferView(thisObj);
-            assert !JSArray.isJSArray(array);
+            assert !JSArray.isJSFastArray(array);
             boolean targetCondition = JSArrayBufferView.isJSArrayBufferView(thisObj);
             long len = objectGetLength(array);
             TypedArray targetArray = targetArrayProf.profile(JSArrayBufferView.typedArrayGetArrayType(thisObj, targetCondition));
