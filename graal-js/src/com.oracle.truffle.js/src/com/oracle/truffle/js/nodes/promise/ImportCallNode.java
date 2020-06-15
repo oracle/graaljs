@@ -244,7 +244,14 @@ public class ImportCallNode extends JavaScriptNode {
                         promiseThenNode.execute((DynamicObject) moduleLoadedStartPromise, moduleLoadedCapability.getResolve(), moduleLoadedCapability.getReject(), moduleLoadedCapability);
                     } else {
                         Object result = finishDynamicImport(realm, moduleRecord, referencingScriptOrModule, specifier);
-                        callPromiseReaction.executeCall(JSArguments.create(Undefined.instance, moduleLoadedCapability.getResolve(), result));
+                        if (moduleRecord.isAsyncEvaluating()) {
+                            // Some module import started an async loading chain. The top-level
+                            // capability will reject/resolve the dynamic import promise.
+                            PromiseCapabilityRecord topLevelCapability = moduleRecord.getTopLevelCapability();
+                            promiseThenNode.execute(topLevelCapability.getPromise(), moduleLoadedCapability.getResolve(), moduleLoadedCapability.getReject(), null);
+                        } else {
+                            callPromiseReaction.executeCall(JSArguments.create(Undefined.instance, moduleLoadedCapability.getResolve(), result));
+                        }
                     }
                 } catch (Throwable t) {
                     if (shouldCatch(t)) {

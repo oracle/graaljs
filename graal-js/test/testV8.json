@@ -633,9 +633,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate"
   }, {
-    "filePath" : "mjsunit/harmony/modules-import-top-level-await-exception-3.mjs",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/harmony/private-fields-ic.js",
     "ecmaVersion" : {
       "minVersion" : 12
