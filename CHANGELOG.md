@@ -3,6 +3,12 @@
 This changelog summarizes major changes between GraalVM versions of the GraalVM JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 
+## Version 19.3.3
+* Updated Node.js to version 12.18.0.
+
+## Version 19.3.2
+* Updated Node.js to version 12.15.0.
+
 ## Version 19.3.1
 * Updated Node.js to version 12.14.0.
 
