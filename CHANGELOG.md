@@ -10,6 +10,7 @@ The main focus is on user-observable behavior of the engine.
 * Implemented the [Promise.any](https://github.com/tc39/proposal-promise-any) proposal. It is available in ECMAScript 2021 mode (`--js.ecmascript-version=2021`).
 * Implemented support for async stack traces.
 * Removed deprecation warning for flags previously passed via system properties.
+* Updated Node.js to version 12.18.0.
 
 ## Version 20.1.0
 * ECMAScript 2020 mode/features enabled by default.
