@@ -1164,7 +1164,9 @@ namespace v8 {
                     vm_args.append(strvalue);
                 } else if (value != 0 || start == end) {
                     fprintf(stderr, "Invalid value of --max-old-space-size option!\n");
-                    exit(10);
+                    argv[1] = arg;
+                    *argc = 2;
+                    return;
                 }
             } else if (!strcmp(arg, "--use-classpath-env-var")) {
                 GraalIsolate::use_classpath_env_var = true;
@@ -1179,7 +1181,9 @@ namespace v8 {
             }
             if (use_jvm && use_native) {
                 fprintf(stderr, "`--jvm` and `--native` options can not be used together.\n");
-                exit(9);
+                argv[1] = arg;
+                *argc = 2;
+                return;
             }
         }
 
