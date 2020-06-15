@@ -77,13 +77,13 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.polyglot.Engine;
+
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-
-import org.graalvm.polyglot.Engine;
 
 public abstract class TestSuite {
 
@@ -91,7 +91,6 @@ public abstract class TestSuite {
     public static final int INDIVIDUAL_TIMEOUT_SECONDS = 30;
 
     private static final char LINE_SEPARATOR = '\n';
-    private static final int MAX_IGNORE_TIMEOUT_COUNT = 4;
     private static final int REPORTED_STACK_TRACE_ELEMENTS = 10;
     private static final Pattern JS_FILE_PATTERN = Pattern.compile(".+\\.m?js$");
     private static final boolean PRINT_PROGRESS = System.console() != null;
@@ -380,13 +379,8 @@ public abstract class TestSuite {
     private boolean gateCheck(int unexpectedFailedTestsCount) {
         System.out.println(config.getSuiteDescription() + " failed: " + unexpectedFailedTestsCount + ", timeouts: " + timeoutCount);
         if (unexpectedFailedTestsCount > 0) {
-            if (unexpectedFailedTestsCount == timeoutCount && timeoutCount <= MAX_IGNORE_TIMEOUT_COUNT) {
-                // to avoid random timeouts to prevent from pushing
-                System.out.println("WARNING: " + config.getSuiteDescription() + " gate had " + timeoutCount + " timeouts. Testsuite assumes that to be safe.");
-            } else {
-                System.out.println("FAILED the " + config.getSuiteDescription() + " gate");
-                return false;
-            }
+            System.out.println("FAILED the " + config.getSuiteDescription() + " gate");
+            return false;
         }
         System.out.println();
         System.out.println("OK, passed the " + config.getSuiteDescription() + " gate");
