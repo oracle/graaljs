@@ -151,7 +151,14 @@ suite = {
           "<others>": {
             "layout" : {
               "./" : [
-                "file:deps/npm",
+                {
+                 "source_type": "file",
+                 "path": "deps/npm",
+                 "exclude": [
+                    "deps/npm/test",
+                    "deps/npm/docs/package-lock.json"
+                     ]
+                     },
                 "dependency:trufflenodeNative/out/headers/include",
               ],
               "NODE_README.md" : "file:README.md",
@@ -167,7 +174,14 @@ suite = {
           "<others>": {
             "layout" : {
               "./" : [
-                "file:deps/npm",
+                {
+                 "source_type": "file",
+                 "path": "deps/npm",
+                  "exclude": [
+                  "deps/npm/test",
+                  "deps/npm/docs/package-lock.json"
+                   ]
+                   },
                 "dependency:trufflenodeNative/headers/include",
               ],
               "NODE_README.md" : "file:README.md",
