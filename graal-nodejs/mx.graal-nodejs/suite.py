@@ -172,7 +172,10 @@ suite = {
           {
             "source_type": "file",
             "path": "deps/npm",
-            "exclude": ["deps/npm/test"]
+            "exclude": [
+              "deps/npm/test",
+              "deps/npm/docs/package-lock.json"
+            ]
           },
           "dependency:trufflenodeNative/headers/include",
         ],
