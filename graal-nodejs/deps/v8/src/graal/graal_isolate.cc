@@ -390,6 +390,9 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
         options.push_back({const_cast<char*>("-XX:HeapBaseMinAddress=24g"), nullptr});
     #endif
 
+        // Set process name (it would be shown in jcmd, jps)
+        options.push_back({const_cast<char*>("-Dsun.java.command=node"), nullptr});
+
     #if defined(DEBUG)
         std::string debugPort = getstdenv("DEBUG_PORT");
         if (!debugPort.empty()) {
