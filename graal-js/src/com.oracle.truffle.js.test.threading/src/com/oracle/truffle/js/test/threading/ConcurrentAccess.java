@@ -41,12 +41,14 @@
 package com.oracle.truffle.js.test.threading;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
@@ -60,22 +62,16 @@ public class ConcurrentAccess {
      */
     @Test
     public void concurrentEvalsTwoContexts() throws InterruptedException {
-        final Context cx1 = TestUtil.newContextBuilder().build();
-        final Context cx2 = TestUtil.newContextBuilder().build();
 
         final String jsonCode = "(function(x,y) { return JSON.stringify({x:x,y:y}); })";
-        try {
+        try (Context cx1 = TestUtil.newContextBuilder().build(); Context cx2 = TestUtil.newContextBuilder().build()) {
             Value json1 = cx1.eval("js", jsonCode);
             Value json2 = cx2.eval("js", jsonCode);
 
-            Thread thread = new Thread(new Runnable() {
-
-                @Override
-                public void run() {
-                    for (int i = 0; i < 1000; i++) {
-                        String encoded = json1.execute(42, 43).asString();
-                        assertEquals("{\"x\":42,\"y\":43}", encoded);
-                    }
+            Thread thread = new Thread(() -> {
+                for (int i = 0; i < 1000; i++) {
+                    String encoded = json1.execute(42, 43).asString();
+                    assertEquals("{\"x\":42,\"y\":43}", encoded);
                 }
             });
 
@@ -85,9 +81,6 @@ public class ConcurrentAccess {
                 assertEquals("{\"x\":42,\"y\":43}", encoded);
             }
             thread.join();
-        } finally {
-            cx1.close();
-            cx2.close();
         }
     }
 
@@ -100,13 +93,9 @@ public class ConcurrentAccess {
         final AtomicReference<Throwable> exception = new AtomicReference<>(null);
         final Context context = TestUtil.newContextBuilder().allowHostAccess(HostAccess.ALL).allowHostClassLookup(s -> true).build();
 
-        context.getBindings("js").putMember("onThreadException", new Thread.UncaughtExceptionHandler() {
-
-            @Override
-            public void uncaughtException(Thread t, Throwable e) {
-                exception.set(e);
-                endGate.countDown();
-            }
+        context.getBindings("js").putMember("onThreadException", (Thread.UncaughtExceptionHandler) (t, e) -> {
+            exception.set(e);
+            endGate.countDown();
         });
 
         final String threadCode = "var Thread = Java.type('java.lang.Thread');" +
@@ -142,26 +131,22 @@ public class ConcurrentAccess {
 
         Value json = cx.eval("js", "(function(x,y) { return JSON.stringify({x:x,y:y}); })");
 
-        Thread t = new Thread(new Runnable() {
-
-            @Override
-            public void run() {
+        Thread t = new Thread(() -> {
+            try {
+                startGate.await();
                 try {
-                    startGate.await();
-                    try {
-                        while (!hadException.get()) {
-                            try {
-                                String encoded = json.execute(42, 43).asString();
-                                assertEquals("{\"x\":42,\"y\":43}", encoded);
-                            } catch (IllegalStateException e) {
-                                hadException.set(true);
-                            }
+                    while (!hadException.get()) {
+                        try {
+                            String encoded = json.execute(42, 43).asString();
+                            assertEquals("{\"x\":42,\"y\":43}", encoded);
+                        } catch (IllegalStateException e) {
+                            hadException.set(true);
                         }
-                    } finally {
-                        endGate.countDown();
                     }
-                } catch (InterruptedException ignored) {
+                } finally {
+                    endGate.countDown();
                 }
+            } catch (InterruptedException ignored) {
             }
         });
 
@@ -196,35 +181,35 @@ public class ConcurrentAccess {
         final AtomicBoolean hadException = new AtomicBoolean(false);
 
         final Context cx = TestUtil.newContextBuilder().build();
+        final ReentrantLock contextLock = new ReentrantLock();
 
         cx.enter();
         Value json = cx.eval("js", "(function(x,y) { return JSON.stringify({x:x,y:y}); })");
         cx.leave();
 
-        Thread t = new Thread(new Runnable() {
-
-            @Override
-            public void run() {
+        Thread t = new Thread(() -> {
+            try {
+                startGate.await();
                 try {
-                    startGate.await();
-                    try {
-                        for (int it = 0; it < 100000; it++) {
+                    for (int it = 0; it < 100000; it++) {
+                        try {
                             try {
-                                synchronized (cx) {
-                                    cx.enter();
-                                    String encoded = json.execute(42, 43).asString();
-                                    assertEquals("{\"x\":42,\"y\":43}", encoded);
-                                    cx.leave();
-                                }
-                            } catch (IllegalStateException e) {
-                                hadException.set(true);
+                                contextLock.lock();
+                                cx.enter();
+                                String encoded = json.execute(42, 43).asString();
+                                assertEquals("{\"x\":42,\"y\":43}", encoded);
+                            } finally {
+                                cx.leave();
+                                contextLock.unlock();
                             }
+                        } catch (IllegalStateException e) {
+                            hadException.set(true);
                         }
-                    } finally {
-                        endGate.countDown();
                     }
-                } catch (InterruptedException ignored) {
+                } finally {
+                    endGate.countDown();
                 }
+            } catch (InterruptedException ignored) {
             }
         });
 
@@ -232,11 +217,14 @@ public class ConcurrentAccess {
             t.start();
             startGate.countDown();
             for (int it = 0; it < 100000; it++) {
-                synchronized (cx) {
+                try {
+                    contextLock.lock();
                     cx.enter();
                     String encoded = json.execute(42, 43).asString();
                     assertEquals("{\"x\":42,\"y\":43}", encoded);
                     cx.leave();
+                } finally {
+                    contextLock.unlock();
                 }
             }
             endGate.await();
@@ -246,6 +234,6 @@ public class ConcurrentAccess {
         } finally {
             cx.close();
         }
-        assertEquals(hadException.get(), false);
+        assertFalse(hadException.get());
     }
 }
