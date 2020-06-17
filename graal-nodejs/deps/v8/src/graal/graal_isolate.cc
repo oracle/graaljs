@@ -391,7 +391,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
     #endif
 
         // Set process name (it would be shown in jcmd, jps)
-        options.push_back({const_cast<char*>("-Dsun.java.command=graal-nodejs"), nullptr});
+        options.push_back({const_cast<char*>("-Dsun.java.command=node"), nullptr});
 
     #if defined(DEBUG)
         std::string debugPort = getstdenv("DEBUG_PORT");
