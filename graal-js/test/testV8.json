@@ -612,9 +612,6 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
-    "filePath" : "mjsunit/es6/proxies-set.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/es6/regress/regress-2322.js",
     "status" : "FAIL"
   }, {
@@ -631,9 +628,6 @@
     "filePath" : "mjsunit/es6/regress/regress-9234.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "mjsunit/es6/regress/regress-cr493566.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/regress/regress-crbug-465671-null.js",
     "status" : "SKIP",
@@ -794,6 +788,9 @@
     "filePath" : "mjsunit/harmony/import-from-fetch-errored.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/import-from-instantiation-errored.js",
+    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-15.js",
     "status" : "FAIL",
@@ -1110,18 +1107,8 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "mjsunit/modules-init1.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/modules-init2.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/modules-init3.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/modules-init4.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
   }, {
     "filePath" : "mjsunit/number-tostring-big-integer.js",
     "status" : "FAIL"
