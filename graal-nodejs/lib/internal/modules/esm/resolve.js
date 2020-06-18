@@ -339,7 +339,7 @@ function resolveExportsTargetString(
 function isArrayIndex(key) {
   const keyNum = +key;
   if (`${keyNum}` !== key) return false;
-  return keyNum >= 0 && keyNum < 0xFFFF_FFFF;
+  return keyNum >= 0 && keyNum < 0xFFFFFFFF;
 }
 
 function resolveExportsTarget(
