@@ -35,9 +35,6 @@ test-repl-pretty-stack: FAIL
 # Suspicious (V8 specific?) test checking whether ArrayBufferView lives on heap
 test-buffer-backing-arraybuffer: FAIL
 
-# RangeError caused by stack-overflow does not honor Error.stackTraceLimit
-test-cli-node-options: FAIL
-
 # Tests the content of Node.js original help (--help option).
 # We print a different help message.
 test-cli-node-print-help: FAIL
@@ -133,6 +130,15 @@ test-trace-events-promises: SKIP
 test-trace-events-v8: SKIP
 test-trace-events-vm: SKIP
 test-trace-events-worker-metadata: SKIP
+
+# WeakRef and FinalizationGroup/Registry are not supported
+test-finalization-group: FAIL
+test-finalization-group-regular-gc: FAIL
+test-weakref: FAIL
+
+# Class fields are not supported (but the tests pass when they are rewritten to avoid class fields)
+test-readline-tab-complete: FAIL
+test-repl-preview: FAIL
 
 # Unclassified
 test-assert: FAIL
