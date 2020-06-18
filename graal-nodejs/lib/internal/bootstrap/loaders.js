@@ -158,11 +158,6 @@ const getOwn = (target, property, receiver) => {
  * used, in which case there is no compatibility guarantee about this class.
  */
 class NativeModule {
-  /**
-   * A map from the module IDs to the module instances.
-   * @type {Map<string, NativeModule>}
-  */
-  static map = new Map(moduleIds.map((id) => [id, new NativeModule(id)]));
 
   constructor(id) {
     this.filename = `${id}.js`;
@@ -285,6 +280,13 @@ class NativeModule {
     return this.exports;
   }
 }
+
+  /**
+   * A map from the module IDs to the module instances.
+   * @type {Map<string, NativeModule>}
+  */
+NativeModule.map = new Map(moduleIds.map((id) => [id, new NativeModule(id)]));
+
 
 // Think of this as module.exports in this file even though it is not
 // written in CommonJS style.

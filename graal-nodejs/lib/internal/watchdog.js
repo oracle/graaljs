@@ -5,19 +5,23 @@ const {
 } = internalBinding('watchdog');
 
 class SigintWatchdog extends TraceSigintWatchdog {
-  _started = false;
-  _effective = false;
-  _onNewListener = (eve) => {
-    if (eve === 'SIGINT' && this._effective) {
-      super.stop();
-      this._effective = false;
-    }
-  };
-  _onRemoveListener = (eve) => {
-    if (eve === 'SIGINT' && process.listenerCount('SIGINT') === 0 &&
-        !this._effective) {
-      super.start();
-      this._effective = true;
+    
+  constructor() {
+    super();
+    this._started = false;
+    this._effective = false;
+    this._onNewListener = (eve) => {
+      if (eve === 'SIGINT' && this._effective) {
+        super.stop();
+        this._effective = false;
+      }
+    };
+    this._onRemoveListener = (eve) => {
+      if (eve === 'SIGINT' && process.listenerCount('SIGINT') === 0 &&
+          !this._effective) {
+        super.start();
+        this._effective = true;
+      }
     }
   }
 

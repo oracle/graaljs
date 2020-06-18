@@ -19,11 +19,10 @@ const kHandle = Symbol('kHandle');
 // record various metrics. This Histogram class provides a
 // generally read-only view of the internal histogram.
 class Histogram {
-  #handle = undefined;
-  #map = new Map();
 
   constructor(internal) {
-    this.#handle = internal;
+    this._handle = internal;
+    this._map = new Map();
   }
 
   [kInspect]() {
@@ -39,23 +38,23 @@ class Histogram {
   }
 
   get min() {
-    return this.#handle ? this.#handle.min() : undefined;
+    return this._handle ? this._handle.min() : undefined;
   }
 
   get max() {
-    return this.#handle ? this.#handle.max() : undefined;
+    return this._handle ? this._handle.max() : undefined;
   }
 
   get mean() {
-    return this.#handle ? this.#handle.mean() : undefined;
+    return this._handle ? this._handle.mean() : undefined;
   }
 
   get exceeds() {
-    return this.#handle ? this.#handle.exceeds() : undefined;
+    return this._handle ? this._handle.exceeds() : undefined;
   }
 
   get stddev() {
-    return this.#handle ? this.#handle.stddev() : undefined;
+    return this._handle ? this._handle.stddev() : undefined;
   }
 
   percentile(percentile) {
@@ -65,26 +64,26 @@ class Histogram {
     if (percentile <= 0 || percentile > 100)
       throw new ERR_INVALID_ARG_VALUE.RangeError('percentile', percentile);
 
-    return this.#handle ? this.#handle.percentile(percentile) : undefined;
+    return this._handle ? this._handle.percentile(percentile) : undefined;
   }
 
   get percentiles() {
-    this.#map.clear();
-    if (this.#handle)
-      this.#handle.percentiles(this.#map);
-    return this.#map;
+    this._map.clear();
+    if (this._handle)
+      this._handle.percentiles(this._map);
+    return this._map;
   }
 
   reset() {
-    if (this.#handle)
-      this.#handle.reset();
+    if (this._handle)
+      this._handle.reset();
   }
 
   [kDestroy]() {
-    this.#handle = undefined;
+    this._handle = undefined;
   }
 
-  get [kHandle]() { return this.#handle; }
+  get [kHandle]() { return this._handle; }
 }
 
 module.exports = {

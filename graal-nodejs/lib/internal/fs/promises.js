@@ -61,6 +61,10 @@ class FileHandle {
   constructor(filehandle) {
     this[kHandle] = filehandle;
     this[kFd] = filehandle.fd;
+    this.close = () => {
+      this[kFd] = -1;
+      return this[kHandle].close();
+    }
   }
 
   getAsyncId() {
@@ -127,10 +131,6 @@ class FileHandle {
     return writeFile(this, data, options);
   }
 
-  close = () => {
-    this[kFd] = -1;
-    return this[kHandle].close();
-  }
 }
 
 function validateFileHandle(handle) {
