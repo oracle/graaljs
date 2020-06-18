@@ -97,7 +97,7 @@ public class AsyncInteropTest {
             Executable javaExecutable = (resolve, reject) -> resolve.execute(42);
             context.getBindings(ID).putMember("javaExecutable", javaExecutable);
             Value asyncFn = context.eval(ID, "new Promise(javaExecutable).then(x => console.log(x));");
-            Consumer<Value> javaThen = (Value v) -> out.write("All done :)");
+            Consumer<Object> javaThen = (v) -> out.write("All done :)");
             asyncFn.invokeMember("then", javaThen);
         }
         assertEquals("42\nAll done :)", out.toString());
