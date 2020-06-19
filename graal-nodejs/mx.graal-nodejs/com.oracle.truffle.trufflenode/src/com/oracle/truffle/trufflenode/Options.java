@@ -119,7 +119,9 @@ public final class Options {
         private static final Set<String> IGNORED_OPTIONS = new HashSet<>(Arrays.asList(new String[]{
                         "debug-code",
                         "es-staging",
+                        "experimental-modules",
                         "expose-debug-as",
+                        "expose-internals",
                         "expose-natives-as",
                         "gc-global",
                         "gc-interval",
@@ -192,10 +194,6 @@ public final class Options {
                     polyglotOptions.put("js.shared-array-buffer", "true");
                     continue;
                 }
-                if ("harmony-weak-refs".equals(normalizedKey)) {
-                    polyglotOptions.put("js.ecmascript-version", "2021");
-                    continue;
-                }
                 // Convert -h to --help
                 if ("-h".equals(arg)) {
                     unprocessedArguments.add("--help");
@@ -238,10 +236,6 @@ public final class Options {
                 if ("prof".equals(key)) {
                     System.err.println("--prof option is not supported, use one of our profiling tools instead (use --help:tools for more details)");
                     System.exit(1);
-                }
-                if ("experimental-modules".equals(key) || "expose-internals".equals(key)) {
-                    polyglotOptions.put("js.ecmascript-version", "2020");
-                    continue;
                 }
                 unprocessedArguments.add(arg);
             }
