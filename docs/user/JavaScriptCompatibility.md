@@ -10,18 +10,17 @@ This document explains the public API it provides to user applications written i
 ## ECMAScript Language Compliance
 
 GraalVM JavaScript implements JavaScript as prescribed in the ECMAScript (ECMA-262) specification.
-GraalVM JavaScript is fully compatible with the [ECMAScript 2019 specification](http://www.ecma-international.org/ecma-262/10.0/index.html) (sometimes referred to as "version 10" or "ES10").
-Most features expected to be part of the upcoming ECMAScript 2020 are already implemented and are available behind specific flags.
-Starting with GraalVM 20.1.0, ECMAScript 2020 features will be enabled by default.
-Older versions starting from ECMAScript 5 can be enabled with a config flag.
-It is recommended to use a fixed ECMAScript version in a production environment, with the most recent published ECMAScript 2019 specification being a reasonable target.
+It is fully compatible with the [ECMAScript 2020 specification](http://www.ecma-international.org/ecma-262/11.0/index.html) (sometimes referred to as "version 11" or "ES11").
+Starting with GraalVM 20.1.0, ECMAScript 2020 features are enabled by default.
+Older versions starting from ECMAScript 5 can be enabled with a config flag (by number: `--js.ecmascript-version=5` or by year: `--js.ecmascript-version=2019`).
+In a production setup you might consider specifying a fixed ECMAScript version to be used, as future versions of GraalVM JavaScript will use newer versions of the specification once available.
 For informations on the flags, see the *--help* message of the executable.
 
 GraalVM JavaScript provides the following function objects in the global scope as specified by ECMAScript, representing the JavaScript core library:
 Array, ArrayBuffer, Boolean, DataView, Date, Error, Function, JSON, Map, Math, Number, Object, Promise, Proxy, Reflect, RegExp, Set, SharedArrayBuffer, String, Symbol, TypedArray, WeakMap, WeakSet
 
-Some additional objects are available under flags (run `js --help` for the list of available flags):
-Atomics, Intl, SIMD
+Additional objects are available under flags, for instance `Intl` (flag: `--js.intl-402`).
+Run `js --help` or `js --help:languages` for the list of available flags. 
 
 Several of these function objects and some of their members are only available when a certain version of the spec is selected for execution.
 For a list of methods provided, inspect the ECMAScript specification.
