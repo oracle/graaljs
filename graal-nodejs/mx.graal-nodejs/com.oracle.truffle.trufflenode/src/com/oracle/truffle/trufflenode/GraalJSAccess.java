@@ -3149,7 +3149,7 @@ public final class GraalJSAccess {
         if (moduleRecord.isEvaluated() && moduleRecord.getEvaluationError() == null) {
             return Undefined.instance;
         }
-        return jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord);
+        return JSRuntime.nullToUndefined(jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord));
     }
 
     public int moduleGetStatus(Object module) {
