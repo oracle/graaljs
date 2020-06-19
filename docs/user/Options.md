@@ -68,7 +68,7 @@ Stability: stable
 
 Provides compatibility to a specific version of the ECMAScript specification.
 Expects an integer value, where both the counting version numbers (`5` to `11`) and the publication years (starting from `2015`) are supported.
-The default is the latest finalized version of the specification, currently the [`ECMAScript 2019 specification`](http://www.ecma-international.org/ecma-262/10.0/index.html).
+The default is the latest finalized version of the specification, currently the [`ECMAScript 2020 specification`](http://www.ecma-international.org/ecma-262/11.0/index.html).
 Starting with GraalVM 20.1.0, the default will be moved to the draft ECMAScript 2020 specification.
 Graal.js implements some features of the future draft specification and of open proposals, if you explicitly select that version and/or enable specific experimental flags.
 For production settings, it is recommended to set the `ecmascript-version` to an existing, finalized version of the specification.
@@ -79,9 +79,9 @@ Available versions:
 * `7` or `2016` for ECMAScript 2016
 * `8` or `2017` for ECMAScript 2017
 * `9` or `2018` for ECMAScript 2018
-* `10` or `2019` for ECMAScript 2019 (latest finalized version of the specification)
-* `11` or `2020` for ECMAScript 2020 (currently in draft stage, mostly supported by GraalVM JavaScript)
-* `12` or `2021` for ECMAScript 2021 (advanced proposals not expected to land in ECMAScript 2020)
+* `10` or `2019` for ECMAScript 2019
+* `11` or `2020` for ECMAScript 2020 (default, latest finalized version of the specification)
+* `12` or `2021` for ECMAScript 2021 (currently in draft stage, some proposals are already supported by GraalVM JavaScript)
 
 ### intl-402
 
