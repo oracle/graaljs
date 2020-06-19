@@ -67,7 +67,6 @@ public class TestExtProcessCallable extends AbstractTestCallable {
 
     private static final List<String> CONSTANT_OPTIONS = Arrays.asList("--experimental-options",
                     optionToString(JSContextOptions.SYNTAX_EXTENSIONS_NAME, Boolean.toString(false)),
-                    optionToString(JSContextOptions.SHEBANG_NAME, Boolean.toString(false)),
                     optionToString(JSContextOptions.CONST_AS_VAR_NAME, Boolean.toString(false)));
 
     private final List<String> cmd;

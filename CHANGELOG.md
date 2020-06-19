@@ -6,6 +6,7 @@ The main focus is on user-observable behavior of the engine.
 ## Version 19.3.3
 * Updated Node.js to version 12.18.0.
 * ECMAScript 2020 mode/features enabled by default.
+* Enabled the [Hashbang Grammar](https://github.com/tc39/proposal-hashbang) proposal, by enabling the `--js.shebang` option by default in ECMAScript 2020 or later.
 
 ## Version 19.3.2
 * Updated Node.js to version 12.15.0.
