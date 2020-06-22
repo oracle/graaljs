@@ -162,12 +162,12 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
     @CompilerDirectives.TruffleBoundary
     private Object requireImpl(String moduleIdentifier, TruffleFile entryPath) {
         log("required module '", moduleIdentifier, "'                                core:", isCoreModule(moduleIdentifier), " from path ", entryPath);
-        if (isCoreModule(moduleIdentifier) || "".equals(moduleIdentifier)) {
+        if (isCoreModule(moduleIdentifier)) {
             String moduleReplacementName = getContext().getContextOptions().getCommonJSRequireBuiltins().get(moduleIdentifier);
             if (moduleReplacementName != null && !"".equals(moduleReplacementName)) {
                 return requireImpl(moduleReplacementName, modulesResolutionCwd);
             }
-            throw fail(moduleIdentifier);
+            // no core module replacement alias was found: continue and search in the FS.
         }
         TruffleFile maybeModule = CommonJSResolution.resolve(getContext(), moduleIdentifier, entryPath);
         log("module ", moduleIdentifier, " resolved to ", maybeModule);
