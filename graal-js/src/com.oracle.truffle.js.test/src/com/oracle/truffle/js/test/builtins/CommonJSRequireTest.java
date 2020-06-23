@@ -520,6 +520,45 @@ public class CommonJSRequireTest {
         }
     }
 
+    @Test
+    public void requireBuiltinNoReplacementFromFolder() {
+        /*
+         * When no replacement for builtin modules is provided, module resolution still tries to
+         * load a module from the FS. In this test case, we have a mockup module in
+         * `node_modules/util` so module resolution can happen.
+         */
+        Path f = getTestRootFolder();
+        try (Context cx = testContext(f)) {
+            Value foo = cx.eval(ID, "require('util').foo;");
+            Assert.assertTrue(foo.fitsInInt());
+            Assert.assertEquals(42, foo.asInt());
+        } catch (Throwable t) {
+            throw new AssertionError("Unexpected exception " + t);
+        }
+    }
+
+    @Test
+    public void requireBuiltinNoReplacementNoFolder() {
+        Path f = getTestRootFolder();
+        try (Context cx = testContext(f)) {
+            cx.eval(ID, "require('fs').foo;");
+            assert false : "Should throw";
+        } catch (PolyglotException e) {
+            Assert.assertEquals("TypeError: Cannot load CommonJS module: 'fs'", e.getMessage());
+        }
+    }
+
+    @Test
+    public void requireEmpty() {
+        Path f = getTestRootFolder();
+        try (Context cx = testContext(f)) {
+            cx.eval(ID, "require('').foo;");
+            assert false : "Should throw";
+        } catch (PolyglotException e) {
+            Assert.assertEquals("TypeError: Cannot load CommonJS module: ''", e.getMessage());
+        }
+    }
+
     // ##### ES Modules
 
     @Test
@@ -648,5 +687,28 @@ public class CommonJSRequireTest {
         Map<String, String> options = getDefaultOptions();
         options.put(COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, "assert:./builtin-assert-mockup.mjs");
         runAndExpectOutput(Source.newBuilder(ID, dirFile.toFile()).build(), "all OK!\n", options);
+    }
+
+    @Test
+    public void importBuiltinModuleEsFs() throws IOException {
+        final String src = "import {foo} from 'util'; console.log(`The answer is ${foo}`);";
+        Map<String, String> options = getDefaultOptions();
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "The answer is 42\n", options);
+    }
+
+    @Test
+    public void importBuiltinModuleEsNoFs() {
+        final String src = "import {whatever} from 'fs'; console.log('should not print!');";
+        final String expectedMessage = "TypeError: Cannot load CommonJS module: 'fs'";
+        Map<String, String> options = getDefaultOptions();
+        try {
+            runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "", "", options);
+            assert false;
+        } catch (Throwable t) {
+            if (!t.getClass().isAssignableFrom(PolyglotException.class)) {
+                throw new AssertionError("Unexpected exception " + t);
+            }
+            assertEquals(expectedMessage, t.getMessage());
+        }
     }
 }

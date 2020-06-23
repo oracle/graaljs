@@ -141,8 +141,8 @@ final class CommonJSResolution {
      */
     @CompilerDirectives.TruffleBoundary
     static TruffleFile resolve(JSContext context, String moduleIdentifier, TruffleFile entryPath) {
-        // 1. If X is a core module
-        if (isCoreModule(moduleIdentifier) || "".equals(moduleIdentifier)) {
+        // 1. If X is an empty module
+        if ("".equals(moduleIdentifier)) {
             return null;
         }
         TruffleLanguage.Env env = context.getRealm().getEnv();

@@ -121,11 +121,8 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
             return existingModule;
         }
         String moduleReplacementName = realm.getContext().getContextOptions().getCommonJSRequireBuiltins().get(specifier);
-        if (moduleReplacementName == null) {
-            throw fail(specifier);
-        }
         Source src;
-        if (moduleReplacementName.endsWith(MODULE_SOURCE_NAME_SUFFIX)) {
+        if (moduleReplacementName != null && moduleReplacementName.endsWith(MODULE_SOURCE_NAME_SUFFIX)) {
             // Just load the module
             try {
                 String cwdOption = realm.getContext().getContextOptions().getRequireCwd();
