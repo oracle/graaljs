@@ -478,7 +478,7 @@ defined by the Mozilla Public License, v. 2.0.
 
 ================================================================================
 
-ICU4J 66.1
+ICU4J 67.1
 
 COPYRIGHT AND PERMISSION NOTICE (ICU 58 and later)
 

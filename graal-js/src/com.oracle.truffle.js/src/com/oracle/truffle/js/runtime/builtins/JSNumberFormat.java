@@ -65,7 +65,6 @@ import com.ibm.icu.text.FormattedValue;
 import com.ibm.icu.text.NumberFormat;
 import com.ibm.icu.text.NumberingSystem;
 import com.ibm.icu.util.MeasureUnit;
-import com.ibm.icu.util.VersionInfo;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -396,17 +395,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
     private static FormattedValue formattedValue(InternalState state, Number x) {
         LocalizedNumberFormatter numberFormatter = state.getNumberFormatter();
-        FormattedValue formattedValue = numberFormatter.format(x);
-        if (IntlUtil.EXCEPT_ZERO.equals(state.signDisplay)) {
-            // Workaround for https://unicode-org.atlassian.net/browse/ICU-20709
-            // (do not produce +0 or -0 when the number is rounded to zero during formatting)
-            assert VersionInfo.ICU_VERSION.getMajor() == 66 : "revalidate the workaround after ICU update";
-            String formatted = formattedValue.toString();
-            if (formatted.equals(state.getZeroWithSign()) || formatted.equals(state.getMinusZeroWithSign())) {
-                formattedValue = numberFormatter.sign(SignDisplay.NEVER).format(x);
-            }
-        }
-        return formattedValue;
+        return numberFormatter.format(x);
     }
 
     @TruffleBoundary

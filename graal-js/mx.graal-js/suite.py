@@ -60,12 +60,12 @@ suite = {
 
     "ICU4J" : {
       "moduleName" : "com.ibm.icu",
-      "sha1" : "72c7519b6d91f7a1f993bd44a99fe95d67211b27",
-      "sourceSha1" : "57d00b7135ca8fa82311d6b9fd345309e4c46f0b",
+      "sha1" : "2e159807158095566726600534034030dddab6d0",
+      "sourceSha1" : "eb549b85cf9012f129d7d0489cd52fd49e9d9fc4",
       "maven" : {
         "groupId" : "com.ibm.icu",
         "artifactId" : "icu4j",
-        "version" : "66.1",
+        "version" : "67.1",
       },
     },
 
