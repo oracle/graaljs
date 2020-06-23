@@ -129,13 +129,12 @@ suite = {
       "workingSets" : "Truffle,JavaScript,NodeJS",
     },
     "coremodules" : {
-      "subDir" : "trufflenode",
       "buildDependencies" : [
         "graal-js:TRUFFLE_JS_SNAPSHOT_TOOL",
       ],
       "class" : "PreparsedCoreModulesProject",
       "prefix" : "",
-      "outputDir" : "mxbuild/trufflenode/coremodules",
+      "outputDir" : "out/coremodules",
     },
   },
 

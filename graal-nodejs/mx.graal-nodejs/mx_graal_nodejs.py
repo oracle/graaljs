@@ -245,16 +245,15 @@ class GraalNodeJsArchiveProject(mx.ArchivableProject):
 
 class PreparsedCoreModulesProject(mx.ArchivableProject):
     def __init__(self, suite, name, deps, workingSets, theLicense, **args):
+        self.outputDir = join(suite.dir, args['outputDir'])
+        self.prefix = args['prefix']
         super(PreparsedCoreModulesProject, self).__init__(suite, name, deps, workingSets, theLicense)
-        self.subDir = args.pop('subDir')
-        assert 'prefix' in args
-        assert 'outputDir' in args
 
     def getBuildTask(self, args):
         return PreparsedCoreModulesBuildTask(self, args, 1)
 
     def output_dir(self):
-        return self.get_output_root()
+        return self.outputDir
 
     def archive_prefix(self):
         return self.prefix
