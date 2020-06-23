@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -118,19 +118,19 @@ class JSFuzzilliRunner {
                     script = new String(scriptChars, StandardCharsets.UTF_8);
                     log(LogLevel.debug, "Got script:");
                     log(LogLevel.debug, script);
-                    Context context = contextBuilder.build();
-                    context.getBindings("js").putMember("__fuzzout__", fuzzout);
-                    context.getBindings("js").putMember("crash", crash);
-                    TimerTask canceller = new TimerTask() {
-                        @Override
-                        public void run() {
-                            context.close(true);
-                        }
-                    };
-                    timer.schedule(canceller, 1000);
-                    context.eval(Source.newBuilder("js", script, "fuzzilliInput").build());
-                    canceller.cancel();
-                    context.close();
+                    try (Context context = contextBuilder.build()) {
+                        context.getBindings("js").putMember("__fuzzout__", fuzzout);
+                        context.getBindings("js").putMember("crash", crash);
+                        TimerTask canceller = new TimerTask() {
+                            @Override
+                            public void run() {
+                                context.close(true);
+                            }
+                        };
+                        timer.schedule(canceller, 1000);
+                        context.eval(Source.newBuilder("js", script, "fuzzilliInput").build());
+                        canceller.cancel();
+                    }
                     status = 0;
                 } catch (PolyglotException e) {
                     if (e.isExit()) {
