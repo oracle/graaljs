@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -195,9 +196,9 @@ public abstract class JSIdenticalNode extends JSCompareNode {
 
     @Specialization(replaces = "doLazyStringReference")
     protected static boolean doLazyString(JSLazyString a, JSLazyString b,
-                    @Cached("createBinaryProfile()") ConditionProfile flattenA,
-                    @Cached("createBinaryProfile()") ConditionProfile flattenB,
-                    @Cached("createBinaryProfile()") ConditionProfile len) {
+                    @Cached("createBinaryProfile()") @Shared("flattenA") ConditionProfile flattenA,
+                    @Cached("createBinaryProfile()") @Shared("flattenB") ConditionProfile flattenB,
+                    @Cached("createBinaryProfile()") @Shared("sameLen") ConditionProfile len) {
         if (len.profile(a.length() != b.length())) {
             return false;
         } else {
@@ -206,24 +207,24 @@ public abstract class JSIdenticalNode extends JSCompareNode {
     }
 
     @Specialization
-    protected static boolean doLazyStringLeft(String a, JSLazyString b,
-                    @Cached("createBinaryProfile()") ConditionProfile flatten,
-                    @Cached("createBinaryProfile()") ConditionProfile len) {
+    protected static boolean doStringLazyString(String a, JSLazyString b,
+                    @Cached("createBinaryProfile()") @Shared("flattenB") ConditionProfile flattenB,
+                    @Cached("createBinaryProfile()") @Shared("sameLen") ConditionProfile len) {
         if (len.profile(a.length() != b.length())) {
             return false;
         } else {
-            return a.equals(b.toString(flatten));
+            return a.equals(b.toString(flattenB));
         }
     }
 
     @Specialization
-    protected static boolean doLazyStringRight(JSLazyString a, String b,
-                    @Cached("createBinaryProfile()") ConditionProfile flatten,
-                    @Cached("createBinaryProfile()") ConditionProfile len) {
+    protected static boolean doLazyStringString(JSLazyString a, String b,
+                    @Cached("createBinaryProfile()") @Shared("flattenA") ConditionProfile flattenA,
+                    @Cached("createBinaryProfile()") @Shared("sameLen") ConditionProfile len) {
         if (len.profile(a.length() != b.length())) {
             return false;
         } else {
-            return a.toString(flatten).equals(b);
+            return a.toString(flattenA).equals(b);
         }
     }
 
