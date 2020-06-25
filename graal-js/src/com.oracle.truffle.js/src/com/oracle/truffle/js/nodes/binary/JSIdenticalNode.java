@@ -40,7 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
-import com.oracle.truffle.api.TruffleLanguage;
+import java.util.Set;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -48,11 +49,11 @@ import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantBooleanNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
@@ -68,8 +69,6 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
-
-import java.util.Set;
 
 @NodeInfo(shortName = "===")
 @ImportStatic(JSRuntime.class)
@@ -181,10 +180,15 @@ public abstract class JSIdenticalNode extends JSCompareNode {
         return doBigIntDouble(b, a);
     }
 
-    @Specialization
-    protected static boolean doObject(DynamicObject a, DynamicObject b) {
-        assert a != null; // should have been transformed to Null.instance
+    @Specialization(guards = {"isJSType(a)"})
+    protected static boolean doJSObjectA(DynamicObject a, Object b) {
         assert b != null; // should have been transformed to Null.instance
+        return a == b;
+    }
+
+    @Specialization(guards = {"isJSType(b)"})
+    protected static boolean doJSObjectB(Object a, DynamicObject b) {
+        assert a != null; // should have been transformed to Null.instance
         return a == b;
     }
 
@@ -314,10 +318,11 @@ public abstract class JSIdenticalNode extends JSCompareNode {
         return doDouble(JSRuntime.doubleValue(a), JSRuntime.doubleValue(b));
     }
 
-    @Specialization(guards = {"isTruffleJavaObject(a)", "isTruffleJavaObject(b)"})
-    protected static boolean doTruffleJavaObjects(TruffleObject a, TruffleObject b) {
-        TruffleLanguage.Env env = JavaScriptLanguage.getCurrentEnv();
-        return env.asHostObject(a) == env.asHostObject(b);
+    @Specialization(guards = {"isForeignObject(a)", "isForeignObject(b)"}, limit = "3")
+    protected static boolean doForeignObject(Object a, Object b,
+                    @CachedLibrary("a") InteropLibrary aLib,
+                    @CachedLibrary("b") InteropLibrary bLib) {
+        return aLib.isIdentical(a, b, bLib);
     }
 
     @Fallback

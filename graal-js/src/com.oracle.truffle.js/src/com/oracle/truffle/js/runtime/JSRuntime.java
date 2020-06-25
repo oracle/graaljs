@@ -1587,11 +1587,7 @@ public final class JSRuntime {
         if (isString(a) && isString(b)) {
             return a.toString().equals(b.toString());
         }
-        TruffleLanguage.Env env = JavaScriptLanguage.getCurrentEnv();
-        if (env.isHostObject(a) && env.isHostObject(b)) {
-            return env.asHostObject(a) == env.asHostObject(b);
-        }
-        return false;
+        return InteropLibrary.getUncached(a).isIdentical(a, b, InteropLibrary.getUncached(b));
     }
 
     /**
