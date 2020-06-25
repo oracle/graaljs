@@ -189,12 +189,12 @@ public final class JSSet extends JSBuiltinObject implements JSConstructorFactory
 
     @Override
     @TruffleBoundary
-    public String safeToString(DynamicObject obj, int depth, JSContext context) {
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
         if (context.isOptionNashornCompatibilityMode()) {
             return "[" + getClassName() + "]";
         } else {
             JSHashMap set = JSSet.getInternalSet(obj);
-            return JSRuntime.collectionToConsoleString(obj, getClassName(obj), set, depth);
+            return JSRuntime.collectionToConsoleString(obj, getClassName(obj), set, depth, allowSideEffects);
         }
     }
 

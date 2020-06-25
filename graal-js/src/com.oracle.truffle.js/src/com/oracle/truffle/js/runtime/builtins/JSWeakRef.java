@@ -120,7 +120,7 @@ public final class JSWeakRef extends JSBuiltinObject implements JSConstructorFac
     }
 
     @Override
-    public String safeToString(DynamicObject obj, int depth, JSContext context) {
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
         return "[" + getClassName() + "]";
     }
 

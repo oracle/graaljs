@@ -38,71 +38,64 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.truffleinterop;
+package com.oracle.truffle.js.test.polyglot;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.JSRuntime;
 
 /**
- * JavaScript language view on JS values and foreign objects.
+ * Mockup for functions. Used for testing purposes.
  */
-@ExportLibrary(value = InteropLibrary.class, delegateTo = "delegate")
-public final class JavaScriptLanguageView implements TruffleObject {
+@ExportLibrary(value = InteropLibrary.class)
+public class ForeignTestFunction implements TruffleObject {
 
-    protected final Object delegate;
-
-    private JavaScriptLanguageView(Object delegate) {
-        this.delegate = delegate;
+    interface TestFunction {
+        Object execute(Object[] arguments);
     }
 
-    public static JavaScriptLanguageView create(Object delegate) {
-        return new JavaScriptLanguageView(delegate);
-    }
+    private final String name;
+    private final TestFunction function;
 
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    boolean hasLanguage() {
-        return true;
-    }
-
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return JavaScriptLanguage.class;
+    public ForeignTestFunction(String name, TestFunction function) {
+        this.name = name;
+        this.function = function;
     }
 
     @ExportMessage
-    Object toDisplayString(boolean allowSideEffects) {
-        return JSRuntime.toDisplayString(delegate, allowSideEffects);
-    }
-
-    @ExportMessage
-    @ExplodeLoop
-    boolean hasMetaObject(@CachedLibrary("this.delegate") InteropLibrary delegateLibrary) {
-        for (JSMetaType type : JSMetaType.KNOWN_TYPES) {
-            if (type.isInstance(delegate, delegateLibrary)) {
-                return true;
-            }
-        }
+    public boolean isNull() {
         return false;
     }
 
     @ExportMessage
-    @ExplodeLoop
-    Object getMetaObject(@CachedLibrary("this.delegate") InteropLibrary delegateLibrary) throws UnsupportedMessageException {
-        for (JSMetaType type : JSMetaType.KNOWN_TYPES) {
-            if (type.isInstance(delegate, delegateLibrary)) {
-                return type;
-            }
+    public boolean hasMembers() {
+        return true;
+    }
+
+    @SuppressWarnings({"static-method", "unused"})
+    @ExportMessage
+    public Object getMembers(boolean includeInternal) {
+        return null;
+    }
+
+    @ExportMessage
+    public boolean isExecutable() {
+        return true;
+    }
+
+    @SuppressWarnings({"static-method", "unused"})
+    @ExportMessage
+    public Object execute(Object[] arguments) {
+        return function.execute(arguments);
+    }
+
+    @ExportMessage
+    public Object toDisplayString(boolean allowSideEffects) {
+        if (allowSideEffects) {
+            return "function " + name + "()";
+        } else {
+            return "f()";
         }
-        throw UnsupportedMessageException.create();
     }
 }

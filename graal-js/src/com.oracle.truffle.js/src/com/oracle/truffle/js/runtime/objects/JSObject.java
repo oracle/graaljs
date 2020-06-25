@@ -523,8 +523,8 @@ public final class JSObject {
     }
 
     @TruffleBoundary
-    public static String safeToString(DynamicObject obj, int depth) {
-        return JSObject.getJSClass(obj).safeToString(obj, depth, JavaScriptLanguage.getCurrentLanguage().getJSContext());
+    public static String toDisplayString(DynamicObject obj, int depth, boolean allowSideEffects) {
+        return JSObject.getJSClass(obj).toDisplayStringImpl(obj, depth, allowSideEffects, JavaScriptLanguage.getCurrentLanguage().getJSContext());
     }
 
     /**

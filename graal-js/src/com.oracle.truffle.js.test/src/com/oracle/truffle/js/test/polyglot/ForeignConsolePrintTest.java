@@ -55,6 +55,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.truffleinterop.JavaScriptLanguageView;
 import com.oracle.truffle.js.test.JSTest;
 
 public final class ForeignConsolePrintTest {
@@ -77,6 +78,28 @@ public final class ForeignConsolePrintTest {
         Value res = fun.execute(new ArrayTruffleObject(new int[]{0, 1, 2, 3, 4}));
         String sRes = res.asString();
         assertEquals("(5)[0, 1, 2, 3, 4]", sRes);
+    }
+
+    @Test
+    public void testToDisplayString() {
+        ctx.enter();
+        try {
+            ctx.initialize(JavaScriptLanguage.ID);
+            final ForeignTestMap map = new ForeignTestMap();
+            map.getContainer().put("foo", "bar");
+            ForeignTestFunction f = new ForeignTestFunction("test", (arg) -> {
+                return arg[0] + ", " + arg[1];
+            });
+            map.getContainer().put("fun", f);
+
+            JavaScriptLanguageView jslv = JavaScriptLanguageView.create(map);
+            Object resWithSideEffects = InteropLibrary.getFactory().getUncached(jslv).toDisplayString(jslv, true);
+            Object resWithoutSideEffects = InteropLibrary.getFactory().getUncached(jslv).toDisplayString(jslv, false);
+            assertEquals("{foo: \"bar\", fun: function test()}", resWithSideEffects);
+            assertEquals("{foo: \"bar\", fun: f()}", resWithoutSideEffects);
+        } finally {
+            ctx.leave();
+        }
     }
 
     @Test

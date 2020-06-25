@@ -120,7 +120,7 @@ public final class JSWeakMap extends JSBuiltinObject implements JSConstructorFac
 
     @Override
     @TruffleBoundary
-    public String safeToString(DynamicObject obj, int depth, JSContext context) {
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
         if (context.isOptionNashornCompatibilityMode()) {
             return "[" + getClassName() + "]";
         } else {

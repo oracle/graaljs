@@ -510,11 +510,11 @@ public abstract class JSBuiltinObject extends JSClass {
     }
 
     @Override
-    public String safeToString(DynamicObject obj, int depth, JSContext context) {
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
         if (context.isOptionNashornCompatibilityMode()) {
             return defaultToString(obj);
         } else {
-            return JSRuntime.objectToConsoleString(obj, getClassName(obj), depth);
+            return JSRuntime.objectToConsoleString(obj, getClassName(obj), depth, allowSideEffects);
         }
     }
 
