@@ -47,6 +47,7 @@ import java.io.ByteArrayOutputStream;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
@@ -143,6 +144,18 @@ public class InnerContextTest {
             try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
                 context.initialize(JavaScriptLanguage.ID);
                 context.eval(Source.create(TestLanguage.ID, ""));
+            }
+        }
+    }
+
+    @Test(expected = PolyglotException.class)
+    public void innerParseLeakGlobalContext() throws Exception {
+        try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new ProxyParsingLanguage("a"))) {
+            try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+                Value constEval1 = context.eval(Source.create(TestLanguage.ID, "var x = 3; x"));
+                int x1 = constEval1.execute().asInt();
+                // Should throw exception as x should be undefined...
+                Value constEval2 = context.eval(Source.create(TestLanguage.ID, "x"));                
             }
         }
     }
