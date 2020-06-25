@@ -72,6 +72,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
@@ -1120,6 +1121,26 @@ public abstract class JSClass extends ObjectType {
             }
         }
         return false;
+    }
+
+    @ExportMessage
+    static final class IsIdenticalOrUndefined {
+        @Specialization
+        static TriState doHostObject(DynamicObject receiver, DynamicObject other) {
+            return TriState.valueOf(receiver == other);
+        }
+
+        @SuppressWarnings("unused")
+        @Fallback
+        static TriState doOther(DynamicObject receiver, Object other) {
+            return TriState.UNDEFINED;
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    static int identityHashCode(DynamicObject receiver) {
+        return System.identityHashCode(receiver);
     }
 
     static ReadElementNode getUncachedRead() {
