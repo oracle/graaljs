@@ -1036,7 +1036,11 @@ public class Parser extends AbstractParser {
         final long functionToken = Token.toDesc(FUNCTION, functionStart, source.getLength() - functionStart);
         final int functionLine = line;
 
-        final Scope topScope = (parseFlags & PARSE_EVAL) != 0 ? createEvalScope(parseFlags, parentScope) : Scope.createGlobal();
+        Scope topScope = (parseFlags & PARSE_EVAL) != 0 ? createEvalScope(parseFlags, parentScope) : Scope.createGlobal();
+        if (argumentNames != null) {
+            // If parsing with arguments, create an artificial local scope to emulate function-like semantics:
+            topScope = Scope.createFunctionBody(topScope, 0);
+        }
         final IdentNode ident = null;
         final List<IdentNode> parameters = createFunctionNodeParameters(argumentNames);
         final ParserContextFunctionNode script = createParserContextFunctionNode(
@@ -1074,9 +1078,9 @@ public class Parser extends AbstractParser {
             return Collections.emptyList();
         }
         ArrayList<IdentNode> list = new ArrayList<>();
-        for (int i = 0; i < argumentNames.length; i++) {
+        for (String argumentName : argumentNames) {
             // Create an artificial IdentNode that is not in the source.
-            list.add(new IdentNode(0, 0, argumentNames[i]));
+            list.add(new IdentNode(0, 0, argumentName));
         }
         return list;
     }
