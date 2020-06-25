@@ -273,7 +273,11 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         boolean profileTime = context.getContextOptions().isProfileTime();
         long startTime = profileTime ? System.nanoTime() : 0L;
         try {
-            return context.getEvaluator().parseScript(context, code, prolog, epilog, argumentNames.toArray(new String[0]));
+            String[] arguments = null;
+            if (!argumentNames.isEmpty()) {
+                arguments = argumentNames.toArray(new String[0]);
+            }
+            return context.getEvaluator().parseScript(context, code, prolog, epilog, arguments);
         } finally {
             if (profileTime) {
                 context.getTimeProfiler().printElapsed(startTime, "parsing " + code.getName());
