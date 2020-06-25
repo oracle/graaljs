@@ -288,6 +288,13 @@ public final class JSRuntime {
     }
 
     /**
+     * Returns whether {@code value} is JS {@code null} or {@code undefined} or a foreign null.
+     */
+    public static boolean isNullish(Object value) {
+        return value == Null.instance || value == Undefined.instance || InteropLibrary.getUncached(value).isNull(value);
+    }
+
+    /**
      * Implementation of ECMA 7.1.1 "ToPrimitive", with NO hint given.
      *
      * @param value an Object to be converted to a primitive value
@@ -1464,8 +1471,10 @@ public final class JSRuntime {
     public static boolean equal(Object a, Object b) {
         if (a == b) {
             return true;
-        } else if ((a == Undefined.instance || a == Null.instance) && (b == Undefined.instance || b == Null.instance)) {
-            return true;
+        } else if (a == Undefined.instance || a == Null.instance) {
+            return isNullish(b);
+        } else if (b == Undefined.instance || b == Null.instance) {
+            return isNullish(a);
         } else if (a instanceof Boolean && b instanceof Boolean) {
             return a.equals(b);
         } else if (isString(a) && isString(b)) {
@@ -1521,13 +1530,13 @@ public final class JSRuntime {
         final Object defaultValue = null;
         Object primLeft;
         if (isForeignObject(a)) {
-            primLeft = JSInteropUtil.toPrimitiveOrDefault(a, defaultValue, InteropLibrary.getFactory().getUncached(a), null);
+            primLeft = JSInteropUtil.toPrimitiveOrDefault(a, defaultValue, InteropLibrary.getUncached(a), null);
         } else {
             primLeft = isNullOrUndefined(a) ? Null.instance : a;
         }
         Object primRight;
         if (isForeignObject(b)) {
-            primRight = JSInteropUtil.toPrimitiveOrDefault(b, defaultValue, InteropLibrary.getFactory().getUncached(b), null);
+            primRight = JSInteropUtil.toPrimitiveOrDefault(b, defaultValue, InteropLibrary.getUncached(b), null);
         } else {
             primRight = isNullOrUndefined(b) ? Null.instance : b;
         }
@@ -1568,8 +1577,12 @@ public final class JSRuntime {
         if (a == Undefined.instance || b == Undefined.instance) {
             return false;
         }
-        if (a == Null.instance || b == Null.instance) {
-            return false;
+        if (a == Null.instance) {
+            assert b != Undefined.instance;
+            return InteropLibrary.getUncached(b).isNull(b);
+        } else if (b == Null.instance) {
+            assert a != Undefined.instance;
+            return InteropLibrary.getUncached(a).isNull(a);
         }
         if (isBigInt(a) && isBigInt(b)) {
             return a.equals(b);
@@ -1586,6 +1599,9 @@ public final class JSRuntime {
         }
         if (isString(a) && isString(b)) {
             return a.toString().equals(b.toString());
+        }
+        if (isObject(a) || isObject(b)) {
+            return false;
         }
         return InteropLibrary.getUncached(a).isIdentical(a, b, InteropLibrary.getUncached(b));
     }
