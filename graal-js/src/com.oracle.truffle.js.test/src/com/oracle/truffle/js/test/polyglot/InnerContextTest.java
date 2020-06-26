@@ -50,6 +50,7 @@ import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.junit.Rule;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -66,6 +67,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.test.JSTest;
+import org.junit.rules.ExpectedException;
 
 public class InnerContextTest {
     @Test
@@ -148,14 +150,21 @@ public class InnerContextTest {
         }
     }
 
-    @Test(expected = PolyglotException.class)
-    public void innerParseLeakGlobalContext() throws Exception {
+    @Rule
+    public final ExpectedException exception = ExpectedException.none();
+
+    @Test
+    public void innerParseWithArgumentsHasLocalEnvironment() throws Exception {
+        exception.expect(PolyglotException.class);
+        exception.expectMessage("x is not defined");
         try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new ProxyParsingLanguage("a"))) {
             try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
                 Value constEval1 = context.eval(Source.create(TestLanguage.ID, "var x = 3; x"));
                 int x1 = constEval1.execute().asInt();
-                // Should throw exception as x should be undefined...
-                Value constEval2 = context.eval(Source.create(TestLanguage.ID, "x"));                
+                assertEquals(3, x1);
+                Value constEval2 = context.eval(Source.create(TestLanguage.ID, "x"));
+                // Should throw exception when executing `x` as `x` should be undefined...
+                constEval2.execute().asInt();
             }
         }
     }
