@@ -57,12 +57,12 @@ import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 
 public final class JavaScriptTranslator extends GraalJSTranslator {
 
-    private JavaScriptTranslator(LexicalContext lc, NodeFactory factory, JSContext context, Source source, int prologLength, Environment environment, boolean isParentStrict) {
-        super(lc, factory, context, source, prologLength, environment, isParentStrict);
+    private JavaScriptTranslator(LexicalContext lc, NodeFactory factory, JSContext context, Source source, String[] argumentNames, int prologLength, Environment environment, boolean isParentStrict) {
+        super(lc, factory, context, source, argumentNames, prologLength, environment, isParentStrict);
     }
 
     private JavaScriptTranslator(NodeFactory factory, JSContext context, Source source, int prologLength, Environment environment, boolean isParentStrict) {
-        this(new LexicalContext(), factory, context, source, prologLength, environment, isParentStrict);
+        this(new LexicalContext(), factory, context, source, null, prologLength, environment, isParentStrict);
     }
 
     public static ScriptNode translateScript(NodeFactory factory, JSContext context, Source source, boolean isParentStrict, String prologue, String epilogue) {
@@ -96,7 +96,7 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
         if (directEval != null && directEval.enclosingClass != null) {
             lc.push(directEval.enclosingClass);
         }
-        return new JavaScriptTranslator(lc, nodeFactory, context, src, prologue.length(), env, isParentStrict).translateScript(parserFunctionNode);
+        return new JavaScriptTranslator(lc, nodeFactory, context, src, argumentNames, prologue.length(), env, isParentStrict).translateScript(parserFunctionNode);
     }
 
     private static Source applyExplicitSourceURL(Source source, FunctionNode parserFunctionNode) {
@@ -140,6 +140,6 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
 
     @Override
     protected GraalJSTranslator newTranslator(Environment env, LexicalContext savedLC) {
-        return new JavaScriptTranslator(savedLC.copy(), factory, context, source, prologLength, env, false);
+        return new JavaScriptTranslator(savedLC.copy(), factory, context, source, argumentNames, prologLength, env, false);
     }
 }
