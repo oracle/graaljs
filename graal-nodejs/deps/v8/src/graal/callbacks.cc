@@ -65,7 +65,7 @@
 #include "graal_external.h"
 #include "graal_script_or_module.h"
 #include "jni.h"
-#include "../../../../mxbuild/trufflenode/coremodules/node_snapshots.h"
+#include "../../../../out/coremodules/node_snapshots.h"
 #include <vector>
 #include <stdlib.h>
 #include <string.h>
