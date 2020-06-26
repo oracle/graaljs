@@ -617,23 +617,14 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         return map;
     }
 
+    /**
+     * Returns the canonical and case-regularized form of the timeZone argument. Returns null if the
+     * argument is not a valid time zone name.
+     *
+     * https://tc39.github.io/ecma402/#sec-canonicalizetimezonename
+     */
     @TruffleBoundary
-    public static TimeZone toTimeZone(Object tzVal) {
-        if (tzVal != Undefined.instance) {
-            String tzId = JSDateTimeFormat.canonicalizeTimeZone(JSRuntime.toString(tzVal));
-            if (tzId != null) {
-                return TimeZone.getTimeZone(tzId);
-            } else {
-                throw Errors.createRangeError(String.format("Invalid time zone %s", tzVal));
-            }
-        } else {
-            return TimeZone.getDefault();
-        }
-    }
-
-    @TruffleBoundary
-    // https://tc39.github.io/ecma402/#sec-canonicalizetimezonename
-    private static String canonicalizeTimeZone(String tzId) {
+    public static String canonicalizeTimeZoneName(String tzId) {
         String ucTzId = IntlUtil.toUpperCase(tzId);
         String canTzId = canonicalTimeZoneIDMap.get().get(ucTzId);
         if (canTzId == null) {

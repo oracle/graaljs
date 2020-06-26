@@ -601,6 +601,11 @@ public final class Errors {
         return Errors.createRangeError("index is too large", originatingNode);
     }
 
+    @TruffleBoundary
+    public static JSException createRangeErrorInvalidTimeZone(CharSequence timeZoneName) {
+        return Errors.createRangeError(String.format("Invalid time zone %s", timeZoneName));
+    }
+
     public static RuntimeException unsupported(String message) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new UnsupportedOperationException(message);

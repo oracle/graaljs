@@ -43,13 +43,16 @@ package com.oracle.truffle.js.nodes.intl;
 import java.util.MissingResourceException;
 
 import com.ibm.icu.util.TimeZone;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 /*
@@ -84,6 +87,8 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
     @Child GetStringOptionNode getDateStyleOption;
     @Child GetStringOptionNode getTimeStyleOption;
 
+    @Child private JSToStringNode toStringNode;
+
     private final JSContext context;
 
     protected InitializeDateTimeFormatNode(JSContext context, String required, String defaults) {
@@ -115,6 +120,8 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         this.getTimeZoneNameOption = GetStringOptionNode.create(context, IntlUtil.TIME_ZONE_NAME, new String[]{IntlUtil.SHORT, IntlUtil.LONG}, null);
         this.getDateStyleOption = GetStringOptionNode.create(context, IntlUtil.DATE_STYLE, new String[]{IntlUtil.FULL, IntlUtil.LONG, IntlUtil.MEDIUM, IntlUtil.SHORT}, null);
         this.getTimeStyleOption = GetStringOptionNode.create(context, IntlUtil.TIME_STYLE, new String[]{IntlUtil.FULL, IntlUtil.LONG, IntlUtil.MEDIUM, IntlUtil.SHORT}, null);
+
+        this.toStringNode = JSToStringNode.create();
     }
 
     public abstract DynamicObject executeInit(DynamicObject collator, Object locales, Object options);
@@ -151,7 +158,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
             String hcOpt = getHourCycleOption.executeValue(options);
 
             Object timeZoneValue = getTimeZoneNode.getValue(options);
-            TimeZone timeZone = JSDateTimeFormat.toTimeZone(timeZoneValue);
+            TimeZone timeZone = toTimeZone(timeZoneValue);
 
             String dateStyleOpt = getDateStyleOption.executeValue(options);
             String timeStyleOpt = getTimeStyleOption.executeValue(options);
@@ -188,5 +195,25 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         }
 
         return dateTimeFormatObj;
+    }
+
+    private TimeZone toTimeZone(Object timeZoneValue) {
+        String tzId;
+        if (timeZoneValue != Undefined.instance) {
+            String name = toStringNode.executeString(timeZoneValue);
+            tzId = JSDateTimeFormat.canonicalizeTimeZoneName(name);
+            if (tzId == null) {
+                throw Errors.createRangeErrorInvalidTimeZone(name);
+            }
+        } else {
+            tzId = context.getRealm().getLocalTimeZoneName();
+        }
+        return getICUTimeZone(tzId);
+    }
+
+    @TruffleBoundary
+    private static TimeZone getICUTimeZone(String tzId) {
+        assert tzId != null;
+        return TimeZone.getTimeZone(tzId);
     }
 }

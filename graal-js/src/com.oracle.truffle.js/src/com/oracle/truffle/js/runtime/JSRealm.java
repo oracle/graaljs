@@ -2081,6 +2081,11 @@ public class JSRealm {
         return getEnv().getTimeZone();
     }
 
+    @TruffleBoundary
+    public String getLocalTimeZoneName() {
+        return getLocalTimeZoneId().getId();
+    }
+
     private void initTimeOffsetAndRandom() {
         assert !getEnv().isPreInitialization();
 
