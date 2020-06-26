@@ -16,6 +16,21 @@ Specific applications:
 * For JSR 223 ScriptEngine, you might want to set the system property `polyglot.js.nashorn-compat` to `true` in order to use the Nashorn compatibility mode
 * For `ant`, use `ANT_OPTS="-Dpolyglot.js.nashorn-compat=true" ant` when using GraalVM JavaScript via ScriptEngine
 
+### Builtin functions like `array.map()` or `fn.apply()` are not available on non-JavaScript objects like `ProxyArray`s from Java.
+
+Reason:
+* Java objects provided to JavaScript are treated as close as possible to their JavaScript counterpart. For instance, Java arrays provided to JavaScript are treated like JavaScript _Array exotic objects_ (JavaScript arrays) whenever possible; the same is true for _functions_. One obvious difference is that such object's prototype is `null`. This means that while you can e.g. read the `length` or read and write the values of a Java array in JavaScript code, you cannot call `sort()` on it, as the `Array.prototype` is not provided by default.
+
+Solution:
+* While the objects don't have the methods of the prototype assigned, you can explicitly call them, e.g. `Array.prototype.call.sort(myArray)`.
+* We offer the experimental option `js.experimental-foreign-object-prototype`. When enabled, objects on the JavaScript side get the most prototype (e.g. `Array.prototype`, `Function.prototype`, `Object.prototype`) set and can thus behave more similarly to native JavaScript objects of the respective type. Normal JavaScript precedence rules apply here, e.g. own properties (of the Java object in that case) take precedence over and hide properties from the prototype.
+
+Note that while the JavaScript builtin functions e.g. from `Array.prototype` can be called on the respective Java types, those functions expect JavaScript semantics.
+This for instance means that operations might fail (typically with a `TypeError`: `Message not supported`) when an operation is not supported in Java.
+Consider `Array.prototype.push` as an example: while arrays can grow in size in JavaScript, they are fixed-size in Java, thus pushing a value is semantically not possible and will fail.
+In such cases, you can wrap the Java object and handle that case explicitly.
+Use the interfaces `ProxyObject` and `ProxyArray` for that purpose.
+
 ## Performance
 
 ### My application is slower on GraalVM JavaScript than on [another engine]
@@ -27,6 +42,7 @@ Reason:
 Solution:
 * Use proper warmup in your benchmark, and disregard the first few iterations where the application still warms up.
 * Use the `--jvm` option for slower startup, but higher peak performance.
+* Double-check you have no flags set that might lower your performance, e.g. `-ea`/`-esa`.
 * Try to minify the problem to the root cause, and [file an issue](https://github.com/graalvm/graaljs/issues) so the GraalVM team can have a look.
 
 ## Errors
@@ -89,4 +105,5 @@ Reason:
 
 Solution:
 * Ensure the object (type) in question does handle the respective message.
+* Specifically, ensure the JavaScript operation you try to execute on a Java type is possible semantically in Java. For instance, while you can `push` a value to an array in JavaScript and thus automatically grow the array, arrays in Java are of fixed length and trying to push to them will result in a `Message not supported` failure. You might want to wrap Java objects for such cases, e.g. as a `ProxyArray`.
 * Ensure access to the class is permitted, by having `@HostAccess.Export` on your class and/or the `Context.Builder.allowHostAccess()` set to a permissive setting. See [JavaDoc of org.graalvm.polyglot.Context](https://graalvm.org/truffle/javadoc/org/graalvm/polyglot/Context.html).
