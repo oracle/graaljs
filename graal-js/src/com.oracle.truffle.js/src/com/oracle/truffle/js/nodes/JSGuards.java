@@ -46,7 +46,6 @@ import java.util.List;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
@@ -148,10 +147,6 @@ public final class JSGuards {
 
     public static boolean isUndefined(Object value) {
         return value == Undefined.instance;
-    }
-
-    public static boolean isJavaNull(Object o) {
-        return o == null;
     }
 
     public static boolean isJSNull(Object value) {
@@ -506,10 +501,6 @@ public final class JSGuards {
         return buffer instanceof ByteBuffer;
     }
 
-    public static boolean isClass(Object value) {
-        return value instanceof Class;
-    }
-
     public static boolean isList(Object value) {
         return value instanceof List;
     }
@@ -573,20 +564,6 @@ public final class JSGuards {
         return null;
     }
 
-    public static Class<?> getNonJSObjectClass(Object value) {
-        if (value != null && !JSObject.isJSObject(value)) {
-            return value.getClass();
-        }
-        return null;
-    }
-
-    public static Class<?> getNonDynamicObjectClass(Object value) {
-        if (value != null && !(value instanceof DynamicObject)) {
-            return value.getClass();
-        }
-        return null;
-    }
-
     public static Class<?> getNonTruffleObjectClass(Object value) {
         if (value != null && !(value instanceof TruffleObject)) {
             return value.getClass();
@@ -632,10 +609,6 @@ public final class JSGuards {
 
     public static boolean isJSObjectShape(Shape shape) {
         return shape.getObjectType() instanceof JSClass;
-    }
-
-    public static boolean isTruffleJavaObject(TruffleObject object) {
-        return JavaScriptLanguage.getCurrentEnv().isHostObject(object);
     }
 
     public static boolean isArrayIndexLengthInRange(String str) {
