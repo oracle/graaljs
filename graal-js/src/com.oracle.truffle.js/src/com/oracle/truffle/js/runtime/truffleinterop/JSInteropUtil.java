@@ -52,7 +52,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -88,7 +88,7 @@ public final class JSInteropUtil {
         }
     }
 
-    public static Object readMemberOrDefault(Object obj, Object member, Object defaultValue, InteropLibrary interop, JSForeignToJSTypeNode importValue, Node originatingNode) {
+    public static Object readMemberOrDefault(Object obj, Object member, Object defaultValue, InteropLibrary interop, ImportValueNode importValue, Node originatingNode) {
         if (!(member instanceof String)) {
             return defaultValue;
         }
@@ -101,7 +101,7 @@ public final class JSInteropUtil {
         }
     }
 
-    public static Object readArrayElementOrDefault(Object obj, long index, Object defaultValue, InteropLibrary interop, JSForeignToJSTypeNode importValue, Node originatingNode) {
+    public static Object readArrayElementOrDefault(Object obj, long index, Object defaultValue, InteropLibrary interop, ImportValueNode importValue, Node originatingNode) {
         try {
             return importValue.executeWithTarget(interop.readArrayElement(obj, index));
         } catch (InvalidArrayIndexException e) {

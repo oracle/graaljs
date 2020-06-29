@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -77,7 +77,7 @@ public abstract class JSInteropInvokeNode extends JSInteropCallNode {
                     @Cached("createGetProperty(cachedName, languageRef)") PropertyGetNode functionPropertyGetNode,
                     @Shared("isCallable") @Cached IsCallableNode isCallableNode,
                     @Shared("call") @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
-                    @Shared("importValue") @Cached JSForeignToJSTypeNode importValueNode) throws UnknownIdentifierException, UnsupportedMessageException {
+                    @Shared("importValue") @Cached ImportValueNode importValueNode) throws UnknownIdentifierException, UnsupportedMessageException {
         Object function = functionPropertyGetNode.getValueOrDefault(receiver, null);
         if (function == null) {
             throw UnknownIdentifierException.create(cachedName);
@@ -95,7 +95,7 @@ public abstract class JSInteropInvokeNode extends JSInteropCallNode {
                     @Cached(value = "create(languageRef.get().getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
                     @Shared("isCallable") @Cached IsCallableNode isCallableNode,
                     @Shared("call") @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
-                    @Shared("importValue") @Cached JSForeignToJSTypeNode importValueNode) throws UnknownIdentifierException, UnsupportedMessageException {
+                    @Shared("importValue") @Cached ImportValueNode importValueNode) throws UnknownIdentifierException, UnsupportedMessageException {
         Object function;
         if (readNode == null) {
             function = JSObject.getOrDefault(receiver, name, receiver, null, JSClassProfile.getUncached());

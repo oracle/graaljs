@@ -78,7 +78,7 @@ import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropInstantiateNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropInvokeNode;
@@ -549,7 +549,7 @@ public abstract class JSClass extends ObjectType {
     @ExportMessage
     static void writeMember(DynamicObject target, String key, Object value,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo,
-                    @Shared("importValue") @Cached JSForeignToJSTypeNode castValueNode,
+                    @Shared("importValue") @Cached ImportValueNode castValueNode,
                     @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
                     @Cached(value = "createCachedInterop(languageRef)", uncached = "getUncachedWrite()") WriteElementNode writeNode)
                     throws UnknownIdentifierException, UnsupportedMessageException {
@@ -662,7 +662,7 @@ public abstract class JSClass extends ObjectType {
     @ExportMessage
     static void writeArrayElement(DynamicObject target, long index, Object value,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo,
-                    @Shared("importValue") @Cached JSForeignToJSTypeNode castValueNode,
+                    @Shared("importValue") @Cached ImportValueNode castValueNode,
                     @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
                     @Cached(value = "createCachedInterop(languageRef)", uncached = "getUncachedWrite()") WriteElementNode writeNode) throws InvalidArrayIndexException, UnsupportedMessageException {
         if (!hasArrayElements(target)) {

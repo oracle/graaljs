@@ -57,7 +57,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
@@ -200,7 +200,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
     protected Object doTruffleJavaObject(Object object,
                     @CachedLibrary("object") InteropLibrary interop,
                     @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
-                    @Cached("create()") JSForeignToJSTypeNode toJSType) {
+                    @Cached("create()") ImportValueNode toJSType) {
         if (interop.isNull(object)) {
             return Null.instance;
         }

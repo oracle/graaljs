@@ -58,11 +58,11 @@ import com.oracle.truffle.js.runtime.truffleinterop.InteropFunction;
  * @see JSRuntime#importValue(Object)
  */
 @GenerateUncached
-public abstract class JSForeignToJSTypeNode extends JavaScriptBaseNode {
+public abstract class ImportValueNode extends JavaScriptBaseNode {
     public abstract Object executeWithTarget(Object target);
 
-    public static JSForeignToJSTypeNode create() {
-        return JSForeignToJSTypeNodeGen.create();
+    public static ImportValueNode create() {
+        return ImportValueNodeGen.create();
     }
 
     @Specialization

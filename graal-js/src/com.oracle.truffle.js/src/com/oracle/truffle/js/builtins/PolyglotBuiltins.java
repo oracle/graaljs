@@ -90,7 +90,7 @@ import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotWriteNodeG
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -295,7 +295,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @Specialization
         protected Object doString(String identifier,
                         @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop,
-                        @Shared("importValue") @Cached JSForeignToJSTypeNode importValueNode) {
+                        @Shared("importValue") @Cached ImportValueNode importValueNode) {
             Object polyglotBindings;
             try {
                 polyglotBindings = getContext().getRealm().getEnv().getPolyglotBindings();
@@ -314,7 +314,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @Specialization(guards = {"!isString(identifier)"})
         protected Object doMaybeUnbox(TruffleObject identifier,
                         @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop,
-                        @Shared("importValue") @Cached JSForeignToJSTypeNode importValueNode) {
+                        @Shared("importValue") @Cached ImportValueNode importValueNode) {
             if (interop.isString(identifier)) {
                 String unboxed;
                 try {
@@ -438,21 +438,21 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
 
         @Specialization
         protected Object member(TruffleObject obj, String name,
-                        @Shared("importValue") @Cached("create()") JSForeignToJSTypeNode foreignConvert,
+                        @Shared("importValue") @Cached("create()") ImportValueNode foreignConvert,
                         @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
             return JSInteropUtil.readMemberOrDefault(obj, name, Null.instance, interop, foreignConvert, this);
         }
 
         @Specialization
         protected Object arrayElementInt(TruffleObject obj, int index,
-                        @Shared("importValue") @Cached("create()") JSForeignToJSTypeNode foreignConvert,
+                        @Shared("importValue") @Cached("create()") ImportValueNode foreignConvert,
                         @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
             return JSInteropUtil.readArrayElementOrDefault(obj, index, Null.instance, interop, foreignConvert, this);
         }
 
         @Specialization(guards = "isNumber(index)", replaces = "arrayElementInt")
         protected Object arrayElement(TruffleObject obj, Number index,
-                        @Shared("importValue") @Cached("create()") JSForeignToJSTypeNode foreignConvert,
+                        @Shared("importValue") @Cached("create()") ImportValueNode foreignConvert,
                         @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
             return JSInteropUtil.readArrayElementOrDefault(obj, JSRuntime.longValue(index), Null.instance, interop, foreignConvert, this);
         }
@@ -460,7 +460,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isString(key)", "!isNumber(key)"})
         protected Object unsupportedKey(TruffleObject obj, Object key,
-                        @Shared("importValue") @Cached("create()") JSForeignToJSTypeNode foreignConvert,
+                        @Shared("importValue") @Cached("create()") ImportValueNode foreignConvert,
                         @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop,
                         @CachedLibrary(limit = "3") InteropLibrary keyInterop) {
             try {

@@ -74,7 +74,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -332,7 +332,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         @Specialization(guards = {"isForeignObject(target)"}, limit = "3")
         protected Object doForeignObject(Object target, Object propertyKey, @SuppressWarnings("unused") Object[] optionalArgs,
                         @CachedLibrary("target") InteropLibrary interop,
-                        @Cached JSForeignToJSTypeNode importValue) {
+                        @Cached ImportValueNode importValue) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             if (interop.hasMembers(target)) {
                 return JSInteropUtil.readMemberOrDefault(target, key, Undefined.instance, interop, importValue, this);

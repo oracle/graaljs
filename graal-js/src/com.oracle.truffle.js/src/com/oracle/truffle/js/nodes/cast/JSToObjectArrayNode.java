@@ -61,7 +61,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -212,7 +212,7 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
     protected Object[] doForeignObject(Object obj,
                     @CachedLibrary("obj") InteropLibrary interop,
                     @Cached("create()") BranchProfile hasPropertiesBranch,
-                    @Cached("create()") JSForeignToJSTypeNode foreignConvertNode) {
+                    @Cached("create()") ImportValueNode foreignConvertNode) {
         try {
             if (!interop.hasArrayElements(obj)) {
                 throw Errors.createTypeError("foreign Object reports not to have a SIZE");

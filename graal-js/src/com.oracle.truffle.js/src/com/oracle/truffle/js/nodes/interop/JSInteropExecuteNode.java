@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,7 +61,7 @@ public abstract class JSInteropExecuteNode extends JSInteropCallNode {
     Object doDefault(DynamicObject function, Object thisArg, Object[] arguments,
                     @Cached IsCallableNode isCallableNode,
                     @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
-                    @Cached JSForeignToJSTypeNode importValueNode) throws UnsupportedMessageException {
+                    @Cached ImportValueNode importValueNode) throws UnsupportedMessageException {
         if (!isCallableNode.executeBoolean(function)) {
             throw UnsupportedMessageException.create();
         }

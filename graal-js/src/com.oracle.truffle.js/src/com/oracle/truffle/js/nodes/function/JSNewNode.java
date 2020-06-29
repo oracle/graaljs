@@ -68,7 +68,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationTag;
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -213,7 +213,7 @@ public abstract class JSNewNode extends JavaScriptNode {
     public Object doNewForeignObject(VirtualFrame frame, Object target,
                     @CachedLibrary(limit = "5") InteropLibrary interop,
                     @Cached("create()") ExportValueNode convert,
-                    @Cached("create()") JSForeignToJSTypeNode toJSType,
+                    @Cached("create()") ImportValueNode toJSType,
                     @Cached("createBinaryProfile()") ConditionProfile isHostClassProf,
                     @Cached("createBinaryProfile()") ConditionProfile isAbstractProf) {
         Object newTarget = target;

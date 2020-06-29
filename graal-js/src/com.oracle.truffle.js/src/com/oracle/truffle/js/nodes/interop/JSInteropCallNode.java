@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,7 @@ public abstract class JSInteropCallNode extends JavaScriptBaseNode {
     protected JSInteropCallNode() {
     }
 
-    protected static Object[] prepare(Object[] arguments, JSForeignToJSTypeNode importValueNode) {
+    protected static Object[] prepare(Object[] arguments, ImportValueNode importValueNode) {
         for (int i = 0; i < arguments.length; i++) {
             arguments[i] = importValueNode.executeWithTarget(arguments[i]);
         }

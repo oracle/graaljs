@@ -70,7 +70,7 @@ import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -379,7 +379,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     protected DynamicObject doForeignObject(DynamicObject newTarget, Object object, @SuppressWarnings("unused") Object byteOffset0, @SuppressWarnings("unused") Object length0,
                     @CachedLibrary("object") InteropLibrary interop,
                     @Cached("createWriteOwn()") WriteElementNode writeOwnNode,
-                    @Cached JSForeignToJSTypeNode importValue) {
+                    @Cached ImportValueNode importValue) {
         long length;
         if (interop.hasArrayElements(object)) {
             length = toIndex(JSInteropUtil.getArraySize(object, interop, this));

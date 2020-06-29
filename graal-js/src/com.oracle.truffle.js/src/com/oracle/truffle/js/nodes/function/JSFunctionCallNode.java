@@ -92,7 +92,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.interop.ExportArgumentsNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -1398,12 +1398,12 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
     private abstract static class ForeignCallNode extends AbstractCacheNode {
         @Child private ExportArgumentsNode exportArgumentsNode;
-        @Child private JSForeignToJSTypeNode typeConvertNode;
+        @Child private ImportValueNode typeConvertNode;
         private final ValueProfile functionClassProfile = ValueProfile.createClassProfile();
 
         ForeignCallNode(int expectedArgumentCount) {
             this.exportArgumentsNode = ExportArgumentsNode.create(expectedArgumentCount);
-            this.typeConvertNode = JSForeignToJSTypeNode.create();
+            this.typeConvertNode = ImportValueNode.create();
         }
 
         @Override

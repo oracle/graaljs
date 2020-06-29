@@ -140,7 +140,7 @@ import com.oracle.truffle.js.nodes.control.DeletePropertyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.nodes.unary.JSIsArrayNode;
@@ -2469,7 +2469,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private final BranchProfile noCompareFnBranch = BranchProfile.create();
         private final BranchProfile growProfile = BranchProfile.create();
         @Child private InteropLibrary interopNode;
-        @Child private JSForeignToJSTypeNode importValueNode;
+        @Child private ImportValueNode importValueNode;
 
         public JSArraySortNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
             super(context, builtin, isTypedArrayImplementation);
@@ -2710,11 +2710,11 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         private Object[] truffleobjectToArray(Object thisObj, long len) {
             InteropLibrary interop = interopNode;
-            JSForeignToJSTypeNode importValue = importValueNode;
+            ImportValueNode importValue = importValueNode;
             if (interop == null || importValue == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 interopNode = interop = insert(InteropLibrary.getFactory().createDispatched(3));
-                importValueNode = importValue = insert(JSForeignToJSTypeNode.create());
+                importValueNode = importValue = insert(ImportValueNode.create());
             }
             SimpleArrayList<Object> list = SimpleArrayList.create(len);
             for (long index = 0; index < len; index++) {
