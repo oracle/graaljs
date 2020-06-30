@@ -722,31 +722,6 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
             this.setNumberFormatter(formatter);
         }
 
-        private String zeroWithSign;
-        private String minusZeroWithSign;
-
-        public String getZeroWithSign() {
-            assert IntlUtil.EXCEPT_ZERO.equals(signDisplay);
-            if (zeroWithSign == null) {
-                initZerosWithSign();
-            }
-            return zeroWithSign;
-        }
-
-        public String getMinusZeroWithSign() {
-            assert IntlUtil.EXCEPT_ZERO.equals(signDisplay);
-            if (minusZeroWithSign == null) {
-                initZerosWithSign();
-            }
-            return minusZeroWithSign;
-        }
-
-        private void initZerosWithSign() {
-            boolean accounting = IntlUtil.ACCOUNTING.equals(currencySign);
-            zeroWithSign = getNumberFormatter().sign(accounting ? SignDisplay.ACCOUNTING_ALWAYS : SignDisplay.ALWAYS).format(0).toString();
-            minusZeroWithSign = getNumberFormatter().sign(accounting ? SignDisplay.ACCOUNTING_ALWAYS : SignDisplay.ALWAYS).format(-0.0).toString();
-        }
-
         public String getStyle() {
             return style;
         }
