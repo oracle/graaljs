@@ -14,6 +14,7 @@ The main focus is on user-observable behavior of the engine.
 * Updated ICU4J library to version 67.1
 * Fixed `Date.toLocaleString` and `Intl.DateTimeFormat` to use the context's default time zone rather than the system default if no explicit time zone is requested.
 * Improved `js.timezone` option to validate the time zone ID and support zone offsets like "-07:00".
+* Changed the `===` operator to treat foreign null values the same as JS `null` and use `InteropLibrary.isIdentical` for foreign objects.
 
 ## Version 20.1.0
 * ECMAScript 2020 mode/features enabled by default.
