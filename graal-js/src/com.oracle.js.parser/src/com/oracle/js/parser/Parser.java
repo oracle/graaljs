@@ -1040,6 +1040,11 @@ public class Parser extends AbstractParser {
         if (argumentNames != null) {
             // If parsing with arguments, create an artificial local scope to emulate function-like semantics:
             topScope = Scope.createFunctionBody(topScope, 0);
+            // We have to also explicitly put parameters in the top scope, because
+            // ParserContextFunctionNode will not do it automatically for script nodes.
+            for (String argument : argumentNames) {
+                topScope.putSymbol(new Symbol(argument, Symbol.IS_VAR | Symbol.IS_PARAM));
+            }
         }
         final IdentNode ident = null;
         final List<IdentNode> parameters = createFunctionNodeParameters(argumentNames);
