@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
+import java.time.ZoneId;
 import java.util.MissingResourceException;
 
 import com.ibm.icu.util.TimeZone;
@@ -206,7 +207,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
                 throw Errors.createRangeErrorInvalidTimeZone(name);
             }
         } else {
-            tzId = context.getRealm().getLocalTimeZoneName();
+            tzId = toICUTimeZoneId(context.getRealm().getLocalTimeZoneId());
         }
         return getICUTimeZone(tzId);
     }
@@ -215,5 +216,17 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
     private static TimeZone getICUTimeZone(String tzId) {
         assert tzId != null;
         return TimeZone.getTimeZone(tzId);
+    }
+
+    @TruffleBoundary
+    private static String toICUTimeZoneId(ZoneId zoneId) {
+        String tzid = zoneId.getId();
+        char c = tzid.charAt(0);
+        if (c == '+' || c == '-') {
+            tzid = "GMT" + tzid;
+        } else if (c == 'Z' && tzid.length() == 1) {
+            tzid = "UTC";
+        }
+        return tzid;
     }
 }
