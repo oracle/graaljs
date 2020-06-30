@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.time.DateTimeException;
+import java.time.ZoneId;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -206,8 +208,18 @@ public final class JSContextOptions {
     @CompilationFinal private boolean parseOnly;
 
     public static final String TIME_ZONE_NAME = JS_OPTION_PREFIX + "timezone";
-    @Option(name = TIME_ZONE_NAME, category = OptionCategory.USER, help = "Set custom timezone.") //
-    public static final OptionKey<String> TIME_ZONE = new OptionKey<>("");
+    @Option(name = TIME_ZONE_NAME, category = OptionCategory.USER, help = "Set custom time zone ID.") //
+    public static final OptionKey<String> TIME_ZONE = new OptionKey<>("", new OptionType<>("ZoneId", new Function<String, String>() {
+        @Override
+        public String apply(String tz) {
+            // Validate the time zone ID and convert legacy short IDs to long IDs.
+            try {
+                return ZoneId.of(tz, ZoneId.SHORT_IDS).getId();
+            } catch (DateTimeException e) {
+                throw new IllegalArgumentException(e);
+            }
+        }
+    }));
 
     public static final String TIMER_RESOLUTION_NAME = JS_OPTION_PREFIX + "timer-resolution";
     @Option(name = TIMER_RESOLUTION_NAME, category = OptionCategory.USER, help = "Resolution of timers (performance.now() and Date built-ins) in nanoseconds. Fuzzy time is used when set to 0.") //
