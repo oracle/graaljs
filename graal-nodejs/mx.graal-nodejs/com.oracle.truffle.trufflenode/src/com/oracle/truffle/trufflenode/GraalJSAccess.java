@@ -1895,7 +1895,7 @@ public final class GraalJSAccess {
         Source source = null;
         if (hostDefinedOptions == null) {
             // sources of built-in modules
-            source = Source.newBuilder(JavaScriptLanguage.ID, body, sourceName).build();
+            source = Source.newBuilder(JavaScriptLanguage.ID, body, sourceName).internal(isBootstrapSource(sourceName)).build();
         } else {
             if (!sourceName.isEmpty()) {
                 try {
@@ -1929,6 +1929,10 @@ public final class GraalJSAccess {
         ((DynamicObject) function).define(NodeScriptOrModule.SCRIPT_OR_MODULE, scriptOrModule);
 
         return new Object[]{function, scriptOrModule};
+    }
+
+    private static boolean isBootstrapSource(String sourceName) {
+        return sourceName.startsWith("internal/per_context") || sourceName.startsWith("internal/bootstrap");
     }
 
     public Object scriptCompile(Object context, Object sourceCode, Object fileName, Object hostDefinedOptions) {
