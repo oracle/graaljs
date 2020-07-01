@@ -45,6 +45,7 @@ import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_S
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.Writer;
+import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -52,7 +53,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.SplittableRandom;
-import java.util.TimeZone;
 import java.util.WeakHashMap;
 
 import org.graalvm.home.HomeFinder;
@@ -2076,7 +2076,12 @@ public class JSRealm {
     private ZoneId getTimeZoneFromEnv() {
         OptionValues options = getEnv().getOptions();
         if (JSContextOptions.TIME_ZONE.hasBeenSet(options)) {
-            return TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(options)).toZoneId();
+            try {
+                return ZoneId.of(JSContextOptions.TIME_ZONE.getValue(options));
+            } catch (DateTimeException e) {
+                // The time zone ID should have already been validated by the OptionType.
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
         }
         return getEnv().getTimeZone();
     }

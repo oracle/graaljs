@@ -12,6 +12,8 @@ The main focus is on user-observable behavior of the engine.
 * Removed deprecation warning for flags previously passed via system properties.
 * Updated Node.js to version 12.18.0.
 * Updated ICU4J library to version 67.1
+* Fixed `Date.toLocaleString` and `Intl.DateTimeFormat` to use the context's default time zone rather than the system default if no explicit time zone is requested.
+* Improved `js.timezone` option to validate the time zone ID and support zone offsets like "-07:00".
 
 ## Version 20.1.0
 * ECMAScript 2020 mode/features enabled by default.
