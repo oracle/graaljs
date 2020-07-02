@@ -2574,20 +2574,21 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private void checkCompareFunction(Object compare) {
-            if (!(isCallable(compare) || compare == Undefined.instance)) {
+            if (!(compare == Undefined.instance || isCallable(compare))) {
                 errorBranch.enter();
                 throw Errors.createTypeError("The comparison function must be either a function or undefined");
             }
         }
 
         private Comparator<Object> getComparator(Object thisObj, Object compare) {
-            if (isCallable(compare)) {
+            if (compare == Undefined.instance) {
+                noCompareFnBranch.enter();
+                return getDefaultComparator(thisObj);
+            } else {
+                assert isCallable(compare);
                 hasCompareFnBranch.enter();
                 DynamicObject arrayBufferObj = isTypedArrayImplementation && JSArrayBufferView.isJSArrayBufferView(thisObj) ? JSArrayBufferView.getArrayBuffer((DynamicObject) thisObj) : null;
                 return new SortComparator(compare, arrayBufferObj);
-            } else {
-                noCompareFnBranch.enter();
-                return getDefaultComparator(thisObj);
             }
         }
 
