@@ -1603,7 +1603,9 @@ public final class JSRuntime {
         if (isObject(a) || isObject(b)) {
             return false;
         }
-        return InteropLibrary.getUncached(a).isIdentical(a, b, InteropLibrary.getUncached(b));
+        InteropLibrary aInterop = InteropLibrary.getUncached(a);
+        InteropLibrary bInterop = InteropLibrary.getUncached(b);
+        return aInterop.isIdentical(a, b, bInterop) || (aInterop.isNull(a) && bInterop.isNull(b));
     }
 
     /**

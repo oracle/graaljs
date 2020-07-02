@@ -349,7 +349,7 @@ public abstract class JSIdenticalNode extends JSCompareNode {
     protected static boolean doForeignObject(Object a, Object b,
                     @CachedLibrary("a") InteropLibrary aInterop,
                     @CachedLibrary("b") InteropLibrary bInterop) {
-        return aInterop.isIdentical(a, b, bInterop);
+        return aInterop.isIdentical(a, b, bInterop) || (aInterop.isNull(a) && bInterop.isNull(b));
     }
 
     @Fallback
