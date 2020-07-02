@@ -3,7 +3,7 @@ GraalVM JavaScript is a High-Performance JavaScript implementation built atop th
 Truffle is a framework for implementing languages as self-optimizing interpreters written in Java.
 Graal is a dynamic compiler that is used to generate efficient machine code from partially evaluated Truffle interpreters.
 
-GraalVM JavaScript is compatible with the releases of the ECMAScript specification, from version 5 up to [ECMAScript 2018](http://www.ecma-international.org/ecma-262/9.0/index.html) and the latest ECMAScript 2019.
+GraalVM JavaScript is compatible with the releases of the ECMAScript specification, from version 5 up to [ECMAScript 2020](http://www.ecma-international.org/ecma-262/11.0/index.html).
 Features of new ECMAScript proposals are added regularly but need to be activated by flags.
 
 ## Building
