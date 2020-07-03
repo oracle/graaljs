@@ -186,24 +186,24 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     @TruffleBoundary
     private Object jsonStrPrepareArray(JSONData data, int key, DynamicObject holder) {
         Object value = JSObject.get(holder, key);
-        return jsonStrPreparePart2(data, key, holder, value);
+        return jsonStrPreparePart2(data, String.valueOf(key), holder, value);
     }
 
     @TruffleBoundary
     private Object jsonStrPrepareForeign(JSONData data, int key, Object holder) {
         assert JSGuards.isForeignObject(holder);
         Object value = truffleRead(holder, key);
-        return jsonStrPreparePart2(data, key, holder, value);
+        return jsonStrPreparePart2(data, String.valueOf(key), holder, value);
     }
 
-    private Object jsonStrPreparePart2(JSONData data, Object key, Object holder, Object valueArg) {
+    private Object jsonStrPreparePart2(JSONData data, String key, Object holder, Object valueArg) {
         Object value = valueArg;
         if (JSRuntime.isObject(value) || JSRuntime.isBigInt(value)) {
-            value = jsonStrPrepareObject(JSRuntime.toPropertyKey(key), value);
+            value = jsonStrPrepareObject(key, value);
         }
 
         if (data.getReplacerFnObj() != null) {
-            value = JSRuntime.call(data.getReplacerFnObj(), holder, new Object[]{JSRuntime.toPropertyKey(key), value});
+            value = JSRuntime.call(data.getReplacerFnObj(), holder, new Object[]{key, value});
         }
         if (JSObject.isJSObject(value)) {
             return jsonStrPrepareJSObject((DynamicObject) value);
