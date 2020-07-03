@@ -1037,15 +1037,7 @@ public class Parser extends AbstractParser {
         final int functionLine = line;
 
         Scope topScope = (parseFlags & PARSE_EVAL) != 0 ? createEvalScope(parseFlags, parentScope) : Scope.createGlobal();
-        if (argumentNames != null) {
-            // If parsing with arguments, create an artificial local scope to emulate function-like semantics:
-            topScope = Scope.createFunctionBody(topScope, 0);
-            // We have to also explicitly put parameters in the top scope, because
-            // ParserContextFunctionNode will not do it automatically for script nodes.
-            for (String argument : argumentNames) {
-                topScope.putSymbol(new Symbol(argument, Symbol.IS_VAR | Symbol.IS_PARAM));
-            }
-        }
+        topScope = applyArgumentsToScope(topScope, argumentNames);
         final IdentNode ident = null;
         final List<IdentNode> parameters = createFunctionNodeParameters(argumentNames);
         final ParserContextFunctionNode script = createParserContextFunctionNode(
@@ -1076,6 +1068,20 @@ public class Parser extends AbstractParser {
         expect(EOF);
 
         return createFunctionNode(script, functionToken, ident, functionLine, programBody);
+    }
+
+    private static Scope applyArgumentsToScope(Scope scope, String[] argumentNames) {
+        if (argumentNames == null) {
+            return scope;
+        }
+        // If parsing with arguments, create an artificial local scope to emulate function-like semantics:
+        Scope body = Scope.createFunctionBody(scope, 0);
+        // We have to also explicitly put parameters in the top scope, because
+        // ParserContextFunctionNode will not do it automatically for script nodes.
+        for (String argument : argumentNames) {
+            body.putSymbol(new Symbol(argument, Symbol.IS_VAR | Symbol.IS_PARAM));
+        }
+        return body;
     }
 
     private static List<IdentNode> createFunctionNodeParameters(String[] argumentNames) {
