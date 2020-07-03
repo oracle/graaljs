@@ -788,13 +788,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (environment instanceof EvalEnvironment) {
             assert !isArrowFunction && !isGeneratorFunction && !isDerivedConstructor && !isAsyncFunction;
             functionEnv = new FunctionEnvironment(environment.getParent(), factory, context, isStrict, true, ((EvalEnvironment) environment).isDirectEval(), false, false, false, false, isGlobal,
-                    hasSyntheticArguments);
+                            hasSyntheticArguments);
         } else if (environment instanceof DebugEnvironment) {
             assert !isArrowFunction && !isGeneratorFunction && !isDerivedConstructor && !isAsyncFunction;
             functionEnv = new FunctionEnvironment(environment, factory, context, isStrict, true, true, false, false, false, false, isGlobal, hasSyntheticArguments);
         } else {
             functionEnv = new FunctionEnvironment(environment, factory, context, isStrict, false, false, isArrowFunction, isGeneratorFunction, isDerivedConstructor, isAsyncFunction, isGlobal,
-                    hasSyntheticArguments);
+                            hasSyntheticArguments);
         }
         return new EnvironmentCloseable(functionEnv);
     }
