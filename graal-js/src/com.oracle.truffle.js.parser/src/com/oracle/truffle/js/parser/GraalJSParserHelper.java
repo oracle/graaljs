@@ -81,15 +81,20 @@ public final class GraalJSParserHelper {
 
     public static FunctionNode parseScript(JSContext context, com.oracle.truffle.api.source.Source truffleSource, JSParserOptions parserOptions, boolean eval, boolean evalInFunction,
                     Scope evalScope, String prologue, String epilogue) {
-        return parseSource(context, truffleSource, parserOptions, false, eval, evalInFunction, evalScope, prologue, epilogue);
+        return parseSource(context, truffleSource, parserOptions, false, eval, evalInFunction, evalScope, prologue, epilogue, null);
+    }
+
+    public static FunctionNode parseScript(JSContext context, com.oracle.truffle.api.source.Source truffleSource, JSParserOptions parserOptions, boolean eval, boolean evalInFunction,
+                    Scope evalScope, String prologue, String epilogue, String[] argumentNames) {
+        return parseSource(context, truffleSource, parserOptions, false, eval, evalInFunction, evalScope, prologue, epilogue, argumentNames);
     }
 
     public static FunctionNode parseModule(JSContext context, com.oracle.truffle.api.source.Source truffleSource, JSParserOptions parserOptions) {
-        return parseSource(context, truffleSource, parserOptions, true, false, false, null, "", "");
+        return parseSource(context, truffleSource, parserOptions, true, false, false, null, "", "", null);
     }
 
     private static FunctionNode parseSource(JSContext context, com.oracle.truffle.api.source.Source truffleSource, JSParserOptions parserOptions,
-                    boolean parseModule, boolean eval, boolean evalInFunction, Scope evalScope, String prologue, String epilogue) {
+                    boolean parseModule, boolean eval, boolean evalInFunction, Scope evalScope, String prologue, String epilogue, String[] argumentNames) {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         CharSequence code;
         if (prologue.isEmpty() && epilogue.isEmpty()) {
@@ -119,6 +124,8 @@ public final class GraalJSParserHelper {
             parsed = parser.parseModule(":module");
         } else if (eval) {
             parsed = parser.parseEval(evalInFunction, evalScope);
+        } else if (argumentNames != null) {
+            parsed = parser.parseWithArguments(argumentNames);
         } else {
             parsed = parser.parse();
         }

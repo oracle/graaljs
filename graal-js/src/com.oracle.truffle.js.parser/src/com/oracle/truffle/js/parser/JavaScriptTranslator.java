@@ -57,41 +57,46 @@ import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 
 public final class JavaScriptTranslator extends GraalJSTranslator {
 
-    private JavaScriptTranslator(LexicalContext lc, NodeFactory factory, JSContext context, Source source, int prologLength, Environment environment, boolean isParentStrict) {
-        super(lc, factory, context, source, prologLength, environment, isParentStrict);
+    private JavaScriptTranslator(LexicalContext lc, NodeFactory factory, JSContext context, Source source, String[] argumentNames, int prologLength, Environment environment, boolean isParentStrict) {
+        super(lc, factory, context, source, argumentNames, prologLength, environment, isParentStrict);
     }
 
     private JavaScriptTranslator(NodeFactory factory, JSContext context, Source source, int prologLength, Environment environment, boolean isParentStrict) {
-        this(new LexicalContext(), factory, context, source, prologLength, environment, isParentStrict);
+        this(new LexicalContext(), factory, context, source, null, prologLength, environment, isParentStrict);
     }
 
     public static ScriptNode translateScript(NodeFactory factory, JSContext context, Source source, boolean isParentStrict, String prologue, String epilogue) {
-        return translateScript(factory, context, null, source, isParentStrict, false, false, null, prologue, epilogue);
+        return translateScript(factory, context, source, isParentStrict, prologue, epilogue, null);
+    }
+
+    public static ScriptNode translateScript(NodeFactory factory, JSContext context, Source source, boolean isParentStrict, String prologue,
+                    String epilogue, String[] argumentNames) {
+        return translateScript(factory, context, null, source, isParentStrict, false, false, null, prologue, epilogue, argumentNames);
     }
 
     public static ScriptNode translateEvalScript(NodeFactory factory, JSContext context, Source source, boolean isParentStrict, DirectEvalContext directEval) {
         Environment parentEnv = directEval == null ? null : directEval.env;
         EvalEnvironment env = new EvalEnvironment(parentEnv, factory, context, directEval != null);
         boolean evalInFunction = parentEnv != null && (parentEnv.function() == null || !parentEnv.function().isGlobal());
-        return translateScript(factory, context, env, source, isParentStrict, true, evalInFunction, directEval, "", "");
+        return translateScript(factory, context, env, source, isParentStrict, true, evalInFunction, directEval, "", "", null);
     }
 
     public static ScriptNode translateInlineScript(NodeFactory factory, JSContext context, Environment env, Source source, boolean isParentStrict) {
         boolean evalInFunction = env.getParent() != null;
-        return translateScript(factory, context, env, source, isParentStrict, true, evalInFunction, null, "", "");
+        return translateScript(factory, context, env, source, isParentStrict, true, evalInFunction, null, "", "", null);
     }
 
     private static ScriptNode translateScript(NodeFactory nodeFactory, JSContext context, Environment env, Source source, boolean isParentStrict,
-                    boolean isEval, boolean evalInFunction, DirectEvalContext directEval, String prologue, String epilogue) {
+                    boolean isEval, boolean evalInFunction, DirectEvalContext directEval, String prologue, String epilogue, String[] argumentNames) {
         Scope parentScope = directEval == null ? null : directEval.scope;
         FunctionNode parserFunctionNode = GraalJSParserHelper.parseScript(context, source, context.getParserOptions().putStrict(isParentStrict), isEval, evalInFunction, parentScope, prologue,
-                        epilogue);
+                        epilogue, argumentNames);
         Source src = applyExplicitSourceURL(source, parserFunctionNode);
         LexicalContext lc = new LexicalContext();
         if (directEval != null && directEval.enclosingClass != null) {
             lc.push(directEval.enclosingClass);
         }
-        return new JavaScriptTranslator(lc, nodeFactory, context, src, prologue.length(), env, isParentStrict).translateScript(parserFunctionNode);
+        return new JavaScriptTranslator(lc, nodeFactory, context, src, argumentNames, prologue.length(), env, isParentStrict).translateScript(parserFunctionNode);
     }
 
     private static Source applyExplicitSourceURL(Source source, FunctionNode parserFunctionNode) {
@@ -135,6 +140,6 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
 
     @Override
     protected GraalJSTranslator newTranslator(Environment env, LexicalContext savedLC) {
-        return new JavaScriptTranslator(savedLC.copy(), factory, context, source, prologLength, env, false);
+        return new JavaScriptTranslator(savedLC.copy(), factory, context, source, argumentNames, prologLength, env, false);
     }
 }

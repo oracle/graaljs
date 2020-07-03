@@ -341,7 +341,7 @@ public class Parser extends AbstractParser {
      * @return function node resulting from successful parse
      */
     public FunctionNode parse() {
-        return parse(PROGRAM_NAME, 0, source.getLength(), 0, null);
+        return parse(PROGRAM_NAME, 0, source.getLength(), 0, null, null);
     }
 
     /**
@@ -404,17 +404,18 @@ public class Parser extends AbstractParser {
      *            the code being reparsed. This allows us to recognize special forms of functions
      *            such as property getters and setters or instances of ES6 method shorthand in
      *            object literals.
+     * @param argumentNames optional names of arguments assumed by the parsed function node.
      *
      * @return function node resulting from successful parse
      */
-    public FunctionNode parse(final String scriptName, final int startPos, final int len, final int reparseFlags, Scope parentScope) {
+    public FunctionNode parse(final String scriptName, final int startPos, final int len, final int reparseFlags, Scope parentScope, String[] argumentNames) {
         long startTime = PROFILE_PARSING ? System.nanoTime() : 0L;
         try {
             prepareLexer(startPos, len);
 
             scanFirstToken();
 
-            return program(scriptName, reparseFlags, parentScope);
+            return program(scriptName, reparseFlags, parentScope, argumentNames);
         } catch (final Exception e) {
             handleParseException(e);
 
@@ -470,7 +471,16 @@ public class Parser extends AbstractParser {
      * @param parentScope optional caller context scope (direct eval)
      */
     public FunctionNode parseEval(boolean functionContext, Scope parentScope) {
-        return parse(PROGRAM_NAME, 0, source.getLength(), PARSE_EVAL | (functionContext ? PARSE_FUNCTION_CONTEXT_EVAL : 0), parentScope);
+        return parse(PROGRAM_NAME, 0, source.getLength(), PARSE_EVAL | (functionContext ? PARSE_FUNCTION_CONTEXT_EVAL : 0), parentScope, null);
+    }
+
+    /**
+     * Parse code assuming a set of given arguments for the returned {@code FunctionNode}.
+     *
+     * @param argumentNames names of arguments assumed by the parsed function node.
+     */
+    public FunctionNode parseWithArguments(String[] argumentNames) {
+        return parse(PROGRAM_NAME, 0, source.getLength(), 0, null, argumentNames);
     }
 
     /**
@@ -1020,20 +1030,24 @@ public class Parser extends AbstractParser {
      *      SourceElements?
      * </pre>
      */
-    private FunctionNode program(final String scriptName, final int parseFlags, final Scope parentScope) {
+    private FunctionNode program(final String scriptName, final int parseFlags, final Scope parentScope, final String[] argumentNames) {
         // Make a pseudo-token for the script holding its start and length.
         int functionStart = Math.min(Token.descPosition(Token.withDelimiter(token)), finish);
         final long functionToken = Token.toDesc(FUNCTION, functionStart, source.getLength() - functionStart);
         final int functionLine = line;
 
-        final Scope topScope = (parseFlags & PARSE_EVAL) != 0 ? createEvalScope(parseFlags, parentScope) : Scope.createGlobal();
+        Scope topScope = (parseFlags & PARSE_EVAL) != 0 ? createEvalScope(parseFlags, parentScope) : Scope.createGlobal();
+        topScope = applyArgumentsToScope(topScope, argumentNames);
         final IdentNode ident = null;
+        final List<IdentNode> parameters = createFunctionNodeParameters(argumentNames);
         final ParserContextFunctionNode script = createParserContextFunctionNode(
                         ident,
                         functionToken,
                         FunctionNode.IS_SCRIPT,
                         functionLine,
-                        Collections.<IdentNode> emptyList(), 0, topScope);
+                        parameters,
+                        parameters.size(),
+                        topScope);
         script.setInternalName(scriptName);
 
         lc.push(script);
@@ -1054,6 +1068,33 @@ public class Parser extends AbstractParser {
         expect(EOF);
 
         return createFunctionNode(script, functionToken, ident, functionLine, programBody);
+    }
+
+    private static Scope applyArgumentsToScope(Scope scope, String[] argumentNames) {
+        if (argumentNames == null) {
+            return scope;
+        }
+        // If parsing with arguments, create an artificial local scope to emulate
+        // function-like semantics:
+        Scope body = Scope.createFunctionBody(scope, 0);
+        // We have to also explicitly put parameters in the top scope, because
+        // ParserContextFunctionNode will not do it automatically for script nodes.
+        for (String argument : argumentNames) {
+            body.putSymbol(new Symbol(argument, Symbol.IS_VAR | Symbol.IS_PARAM));
+        }
+        return body;
+    }
+
+    private static List<IdentNode> createFunctionNodeParameters(String[] argumentNames) {
+        if (argumentNames == null) {
+            return Collections.emptyList();
+        }
+        ArrayList<IdentNode> list = new ArrayList<>();
+        for (String argumentName : argumentNames) {
+            // Create an artificial IdentNode that is not in the source.
+            list.add(new IdentNode(0, 0, argumentName));
+        }
+        return list;
     }
 
     private Scope createEvalScope(final int parseFlags, Scope parentScope) {

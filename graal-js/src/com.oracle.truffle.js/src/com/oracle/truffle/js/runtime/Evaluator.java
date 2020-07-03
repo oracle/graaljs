@@ -112,10 +112,10 @@ public interface Evaluator {
     }
 
     default ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog) {
-        return parseScript(context, source, prolog, epilog, false);
+        return parseScript(context, source, prolog, epilog, null);
     }
 
-    ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog, boolean alwaysReturnValue);
+    ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog, String[] argumentNames);
 
     ScriptNode parseScript(JSContext context, String sourceString);
 

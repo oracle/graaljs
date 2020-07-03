@@ -262,13 +262,13 @@ public final class GraalJSEvaluator implements JSParser {
     // JSParser methods below
 
     @Override
-    public ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog, boolean alwaysReturnValue) {
+    public ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog, String[] argumentNames) {
         String mimeType = source.getMimeType();
         if (MODULE_MIME_TYPE.equals(mimeType) || (mimeType == null && source.getName().endsWith(MODULE_SOURCE_NAME_SUFFIX))) {
             return fakeScriptForModule(context, source);
         }
         try {
-            return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, source, context.getParserOptions().isStrict(), prolog, epilog);
+            return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, source, context.getParserOptions().isStrict(), prolog, epilog, argumentNames);
         } catch (com.oracle.js.parser.ParserException e) {
             throw Errors.createSyntaxError(e.getMessage());
         }

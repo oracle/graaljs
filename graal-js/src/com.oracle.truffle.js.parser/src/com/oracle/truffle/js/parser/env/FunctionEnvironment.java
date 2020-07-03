@@ -101,6 +101,8 @@ public class FunctionEnvironment extends Environment {
     private final boolean isGeneratorFunction;
     private final boolean isDerivedConstructor;
     private final boolean isAsyncFunction;
+    // Synthetic arguments are declared externally, e.g. when parsing with arguments.
+    private final boolean hasSyntheticArguments;
     private boolean hasRestParameter;
     private boolean simpleParameterList = true;
     private boolean isDynamicallyScoped;
@@ -108,7 +110,7 @@ public class FunctionEnvironment extends Environment {
 
     public FunctionEnvironment(Environment parent, NodeFactory factory, JSContext context,
                     boolean isStrictMode, boolean isEval, boolean isDirectEval, boolean isArrowFunction, boolean isGeneratorFunction, boolean isDerivedConstructor, boolean isAsyncFunction,
-                    boolean isGlobal) {
+                    boolean isGlobal, boolean hasSyntheticArguments) {
         super(parent, factory, context);
         this.isDirectEval = isDirectEval;
         this.isAsyncFunction = isAsyncFunction;
@@ -118,6 +120,7 @@ public class FunctionEnvironment extends Environment {
         this.isGeneratorFunction = isGeneratorFunction;
         this.isDerivedConstructor = isDerivedConstructor;
         this.isGlobal = isGlobal;
+        this.hasSyntheticArguments = hasSyntheticArguments;
         this.parent = parent == null ? null : parent.function();
 
         this.frameDescriptor = factory.createFrameDescriptor();
@@ -445,8 +448,12 @@ public class FunctionEnvironment extends Environment {
         return isGlobal;
     }
 
+    public boolean hasSyntheticArguments() {
+        return this.hasSyntheticArguments;
+    }
+
     public boolean returnsLastStatementResult() {
-        return isGlobal() || isDirectEval();
+        return isGlobal() || isDirectEval() || hasSyntheticArguments();
     }
 
     public void setIsDynamicallyScoped(boolean isDynamicallyScoped) {

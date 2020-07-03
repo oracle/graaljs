@@ -47,8 +47,10 @@ import java.io.ByteArrayOutputStream;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.junit.Rule;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -65,6 +67,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.test.JSTest;
+import org.junit.rules.ExpectedException;
 
 public class InnerContextTest {
     @Test
@@ -95,7 +98,8 @@ public class InnerContextTest {
             }
         })) {
             try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
-                context.eval(Source.create(TestLanguage.ID, ""));
+                Value result = context.eval(Source.create(TestLanguage.ID, ""));
+                assertEquals(result.asInt(), 42);
             }
             try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
                 context.initialize(JavaScriptLanguage.ID);
@@ -135,7 +139,9 @@ public class InnerContextTest {
             }
         })) {
             try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
-                context.eval(Source.create(TestLanguage.ID, ""));
+                String result = context.eval(Source.create(TestLanguage.ID, "")).as(String.class);
+                // (1 + 2 + 3 + 4 + 0.1 + 1.5) + ':' + 'test'
+                assertEquals("11.600000001490116:test", result);
             }
             try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
                 context.initialize(JavaScriptLanguage.ID);
@@ -144,11 +150,78 @@ public class InnerContextTest {
         }
     }
 
+    @Rule public final ExpectedException exception = ExpectedException.none();
+
+    @Test
+    public void innerParseWithArgumentsHasLocalEnvironment() throws Exception {
+        exception.expect(PolyglotException.class);
+        exception.expectMessage("x is not defined");
+        try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new ProxyParsingLanguage("a"))) {
+            try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+                Value constEval1 = context.eval(Source.create(TestLanguage.ID, "var x = 3; x"));
+                int x1 = constEval1.execute().asInt();
+                assertEquals(3, x1);
+                Value constEval2 = context.eval(Source.create(TestLanguage.ID, "x"));
+                // Should throw exception when executing `x` as `x` should be undefined...
+                constEval2.execute().asInt();
+            }
+        }
+    }
+
+    @Test
+    public void innerParseWithArgumentsEnvironmentVarClash() throws Exception {
+        try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new ProxyParsingLanguage("a"))) {
+            try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+                // Redeclare 'a' as local variable and return the redeclaration.
+                Value constEval1 = context.eval(Source.create(TestLanguage.ID, "if(a != 10) { throw 'Expected 10.'; }; var a = 3; a"));
+                int x1 = constEval1.execute(10).asInt();
+                assertEquals(3, x1);
+                // And now return original argument (ensuring `var a = 3` is not declared globally).
+                Value constEval2 = context.eval(Source.create(TestLanguage.ID, "a"));
+                int x2 = constEval2.execute(15).asInt();
+                assertEquals(15, x2);
+            }
+        }
+    }
+
+    @Test
+    public void innerParseWithArgumentsEnvironmentLetClash() throws Exception {
+        exception.expect(PolyglotException.class);
+        exception.expectMessage("Variable \"a\" has already been declared");
+        try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new ProxyParsingLanguage("a"))) {
+            try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+                Value constEval1 = context.eval(Source.create(TestLanguage.ID, "let a = 3; a"));
+                constEval1.execute(10).asInt();
+            }
+        }
+    }
+
+    @Test
+    public void innerParseConsistencyWithAndWithoutArguments() throws Exception {
+        String noParameters;
+        String withParameters;
+        try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new ProxyParsingLanguage())) {
+            try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+                Value constEval = context.eval(Source.create(TestLanguage.ID, "'hello world'"));
+                Value helloWorld = constEval.execute();
+                noParameters = helloWorld.as(String.class);
+            }
+        }
+        try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new ProxyParsingLanguage("unused-parameter"))) {
+            try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+                Value constEval = context.eval(Source.create(TestLanguage.ID, "'hello world'"));
+                Value helloWorld = constEval.execute("unused parameter value");
+                withParameters = helloWorld.as(String.class);
+            }
+        }
+        assertEquals(noParameters, withParameters);
+    }
+
     @Test
     public void innerParseSimpleExpression() throws Exception {
         try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new ProxyParsingLanguage("multiplier"))) {
             try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
-                Value mul = context.eval(Source.create(TestLanguage.ID, "return 6 * multiplier"));
+                Value mul = context.eval(Source.create(TestLanguage.ID, "6 * multiplier"));
                 Value fourtyTwo = mul.execute(7);
                 assertEquals(42, fourtyTwo.asInt());
             }
