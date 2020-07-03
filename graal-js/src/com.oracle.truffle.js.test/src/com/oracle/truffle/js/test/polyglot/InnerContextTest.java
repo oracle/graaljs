@@ -192,15 +192,15 @@ public class InnerContextTest {
         try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new ProxyParsingLanguage("a"))) {
             try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
                 Value constEval1 = context.eval(Source.create(TestLanguage.ID, "let a = 3; a"));
-                int x1 = constEval1.execute(10).asInt();
+                constEval1.execute(10).asInt();
             }
         }
     }
 
     @Test
     public void innerParseConsistencyWithAndWithoutArguments() throws Exception {
-        String noParameters = null;
-        String withParameters = null;
+        String noParameters;
+        String withParameters;
         try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new ProxyParsingLanguage())) {
             try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
                 Value constEval = context.eval(Source.create(TestLanguage.ID, "'hello world'"));
