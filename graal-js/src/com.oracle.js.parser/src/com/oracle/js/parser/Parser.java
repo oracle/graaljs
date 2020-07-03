@@ -1074,7 +1074,8 @@ public class Parser extends AbstractParser {
         if (argumentNames == null) {
             return scope;
         }
-        // If parsing with arguments, create an artificial local scope to emulate function-like semantics:
+        // If parsing with arguments, create an artificial local scope to emulate
+        // function-like semantics:
         Scope body = Scope.createFunctionBody(scope, 0);
         // We have to also explicitly put parameters in the top scope, because
         // ParserContextFunctionNode will not do it automatically for script nodes.
