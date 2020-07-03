@@ -134,7 +134,7 @@ public final class DefinePropertyUtil {
         // of current and Desc are the Boolean negation of each other.
         if (!currentConfigurable) {
             if (configurable || (descriptor.hasEnumerable() && (enumerable != currentEnumerable))) {
-                return reject(doThrow, nonConfigurableMessage(key));
+                return reject(doThrow, nonConfigurableMessage(key, doThrow));
             }
         }
 
@@ -154,13 +154,13 @@ public final class DefinePropertyUtil {
                     if (writable) {
                         // 10.a.i. Reject, if the [[Writable]] field of current is false and the
                         // [[Writable]] field of Desc is true.
-                        return reject(doThrow, nonConfigurableMessage(key));
+                        return reject(doThrow, nonConfigurableMessage(key, doThrow));
                     } else if (descriptor.hasValue()) {
                         // 10.a.ii.1. Reject, if the [[Value]] field of Desc is present and
                         // SameValue(Desc.[[Value]], current.[[Value]]) is false.
                         Object value = descriptor.getValue();
                         if (!JSRuntime.isSameValue(value, currentDesc.getValue())) {
-                            return reject(doThrow, nonWritableMessage(key));
+                            return reject(doThrow, nonWritableMessage(key, doThrow));
                         }
                     }
                     return true;
@@ -177,10 +177,10 @@ public final class DefinePropertyUtil {
                 }
 
                 if (descriptor.hasSet() && !JSRuntime.isSameValue(descriptor.getSet(), currentAccessor.getSetter())) {
-                    return reject(doThrow, nonConfigurableMessage(key));
+                    return reject(doThrow, nonConfigurableMessage(key, doThrow));
                 }
                 if (descriptor.hasGet() && !JSRuntime.isSameValue(descriptor.getGet(), currentAccessor.getGetter())) {
-                    return reject(doThrow, nonConfigurableMessage(key));
+                    return reject(doThrow, nonConfigurableMessage(key, doThrow));
                 }
                 return true;
             }
@@ -189,7 +189,7 @@ public final class DefinePropertyUtil {
             // 9. IsDataDescriptor(current) and IsDataDescriptor(Desc) have different results
             if (!currentConfigurable) {
                 // 9.a. Reject, if the [[Configurable]] field of current is false.
-                return reject(doThrow, nonConfigurableMessage(key));
+                return reject(doThrow, nonConfigurableMessage(key, doThrow));
             }
             // rest of 9 moved below, after duplicating the shapes
 
@@ -346,12 +346,18 @@ public final class DefinePropertyUtil {
         return false;
     }
 
-    private static String nonConfigurableMessage(Object key) {
-        return isNashornMode() ? "property is not configurable" : cannotRedefineMessage(key);
+    private static String nonConfigurableMessage(Object key, boolean reject) {
+        if (reject) {
+            return isNashornMode() ? "property is not configurable" : cannotRedefineMessage(key);
+        }
+        return "";
     }
 
-    private static String nonWritableMessage(Object key) {
-        return isNashornMode() ? "property is not writable" : cannotRedefineMessage(key);
+    private static String nonWritableMessage(Object key, boolean reject) {
+        if (reject) {
+            return isNashornMode() ? "property is not writable" : cannotRedefineMessage(key);
+        }
+        return "";
     }
 
     private static boolean isNashornMode() {

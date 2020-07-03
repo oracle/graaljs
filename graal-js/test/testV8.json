@@ -1726,10 +1726,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
   }, {
-    "filePath" : "mjsunit/regress/regress-v8-9460.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
     "filePath" : "mjsunit/regress/regress-wasm-crbug-599413.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"

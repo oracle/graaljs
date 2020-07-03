@@ -198,7 +198,7 @@ public final class JSSlowArray extends JSAbstractArray {
 
         if (!deleteSucceeded) {
             JSContext context = JavaScriptLanguage.getCurrentJSRealm().getContext();
-            return DefinePropertyUtil.reject(doThrow, context.isOptionNashornCompatibilityMode() ? "cannot set property: length" : "Cannot redefine property: length");
+            return DefinePropertyUtil.reject(doThrow, context.isOptionNashornCompatibilityMode() ? "cannot set property: length" : CANNOT_REDEFINE_PROPERTY_LENGTH);
         }
         return true;
     }
