@@ -455,4 +455,56 @@ describe('Object', function () {
             assert.strictEqual(module.Object_GetRealNamedPropertyAttributes(o, "accessor"), 6 /* DontEnum | DontDelete */);
         });
     });
+    describe('SetIntegrityLevel', function () {
+        it('should freeze the object', function () {
+            var o = {
+                bar: 42
+            };
+            assert.strictEqual(module.Object_SetIntegrityLevel(o, true), true);
+            assert.throws(function () {
+                "use strict";
+                o.bar = 211;
+            }, TypeError);
+            assert.throws(function () {
+                "use strict";
+                o.foo = 42;
+            }, TypeError);
+        });
+        it('should seal the object', function () {
+            var o = {
+                bar: 42
+            };
+            assert.strictEqual(module.Object_SetIntegrityLevel(o, false), true);
+            o.bar = 211; // value of an existing property can be modified
+            assert.strictEqual(o.bar, 211);
+            assert.throws(function () {
+                "use strict";
+                o.foo = 42;
+            }, TypeError);
+        });
+        var proxy = new Proxy({}, {
+            preventExtensions: function () {
+                return false;
+            }
+        });
+        it('should throw for a Proxy refusing to prevent extensions (freeze)', function () {
+            assert.throws(function () {
+                module.Object_SetIntegrityLevel(proxy, true);
+            }, TypeError);
+        });
+        it('should throw for a Proxy refusing to prevent extensions (seal)', function () {
+            assert.throws(function () {
+                module.Object_SetIntegrityLevel(proxy, false);
+            }, TypeError);
+        });
+        if (typeof java === 'object') {
+            var point = new java.awt.Point();
+            it('should not crash for foreign objects (freeze)', function () {
+                assert.strictEqual(module.Object_SetIntegrityLevel(point, true), true);
+            });
+            it('should not crash for foreign objects (seal)', function () {
+                assert.strictEqual(module.Object_SetIntegrityLevel(point, false), true);
+            });
+        }
+    });
 });
