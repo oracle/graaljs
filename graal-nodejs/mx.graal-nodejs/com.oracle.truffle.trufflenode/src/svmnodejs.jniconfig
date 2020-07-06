@@ -156,6 +156,7 @@
       { "name": "objectSetAccessor" },
       { "name": "objectSetAlignedPointerInInternalField" },
       { "name": "objectSetIndex" },
+      { "name": "objectSetIntegrityLevel" },
       { "name": "objectSetPrivate" },
       { "name": "objectSetPrototype" },
       { "name": "objectSlowGetAlignedPointerFromInternalField" },
