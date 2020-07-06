@@ -38,6 +38,11 @@ test-child-process-pass-fd: SKIP
 # fails randomly
 test-timers-blocking-callback: SKIP
 
+[$system==win32]
+
+# Triggers stack-overflow that may not be handled well
+test-fs-stat-sync-overflow: SKIP
+
 ### Graal-specific end ###
 
 [$system==win32]
