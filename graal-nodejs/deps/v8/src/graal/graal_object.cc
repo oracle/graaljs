@@ -358,6 +358,6 @@ v8::MaybeLocal<v8::Array> GraalObject::PreviewEntries(bool* is_key_value) {
 v8::Maybe<bool> GraalObject::SetIntegrityLevel(v8::Local<v8::Context> context, v8::IntegrityLevel level) {
     GraalIsolate* graal_isolate = Isolate();
     jboolean freeze = (level == v8::IntegrityLevel::kFrozen);
-    JNI_CALL(jboolean, result, graal_isolate, GraalAccessMethod::object_set_integrity_level, Boolean, GetJavaObject(), freeze);
-    return graal_isolate->GetJNIEnv()->ExceptionCheck() ? v8::Nothing<bool>() : v8::Just<bool>(result);
+    JNI_CALL_VOID(graal_isolate, GraalAccessMethod::object_set_integrity_level, GetJavaObject(), freeze);
+    return graal_isolate->GetJNIEnv()->ExceptionCheck() ? v8::Nothing<bool>() : v8::Just<bool>(true);
 }

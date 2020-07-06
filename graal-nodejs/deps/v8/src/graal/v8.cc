@@ -1035,7 +1035,7 @@ namespace v8 {
     }
 
     void V8::FromJustIsNothing() {
-        TRACE
+        reinterpret_cast<GraalIsolate*> (GraalIsolate::GetCurrent())->ReportAPIFailure("v8::FromJust", "Maybe value is Nothing.");
     }
 
     const char* V8::GetVersion() {
