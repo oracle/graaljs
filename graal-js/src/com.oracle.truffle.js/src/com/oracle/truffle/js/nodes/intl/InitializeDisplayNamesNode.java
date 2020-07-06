@@ -44,6 +44,7 @@ import java.util.MissingResourceException;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -58,6 +59,7 @@ public abstract class InitializeDisplayNamesNode extends JavaScriptBaseNode {
     @Child GetStringOptionNode getStyleOption;
     @Child GetStringOptionNode getTypeOption;
     @Child GetStringOptionNode getFallbackOption;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected InitializeDisplayNamesNode(JSContext context) {
         this.context = context;
@@ -88,6 +90,7 @@ public abstract class InitializeDisplayNamesNode extends JavaScriptBaseNode {
             JSDisplayNames.InternalState state = JSDisplayNames.getInternalState(displayNamesObject);
             JSDisplayNames.setupInternalState(context, state, locales, optStyle, optType, optFallback);
         } catch (MissingResourceException e) {
+            errorBranch.enter();
             throw Errors.createICU4JDataError(e);
         }
 

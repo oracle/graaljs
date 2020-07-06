@@ -44,6 +44,7 @@ import java.util.MissingResourceException;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -61,6 +62,7 @@ public abstract class InitializeListFormatNode extends JavaScriptBaseNode {
 
     @Child GetStringOptionNode getTypeOption;
     @Child GetStringOptionNode getStyleOption;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected InitializeListFormatNode(JSContext context) {
         this.context = context;
@@ -100,6 +102,7 @@ public abstract class InitializeListFormatNode extends JavaScriptBaseNode {
             JSListFormat.setupInternalListFormatter(state);
 
         } catch (MissingResourceException e) {
+            errorBranch.enter();
             throw Errors.createICU4JDataError(e);
         }
 

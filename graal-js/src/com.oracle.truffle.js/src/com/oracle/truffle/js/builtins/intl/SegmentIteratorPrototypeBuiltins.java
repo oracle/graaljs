@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.SegmentIteratorPrototypeBuiltinsFactory.SegmentIteratorFollowingNodeGen;
 import com.oracle.truffle.js.builtins.intl.SegmentIteratorPrototypeBuiltinsFactory.SegmentIteratorNextNodeGen;
@@ -200,6 +201,8 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
     @ImportStatic(JSSegmenter.class)
     public abstract static class SegmentIteratorAdvanceOpNode extends SegmentIteratorOpNode {
 
+        protected final BranchProfile errorBranch = BranchProfile.create();
+
         public SegmentIteratorAdvanceOpNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
@@ -261,6 +264,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         @Override
         final void doCheckOffsetRange(long offset, int length) {
             if (offset == 0 || offset > length) {
+                errorBranch.enter();
                 throw Errors.createRangeErrorFormat("Offset out of bounds in Intl.Segment iterator %s method.", this, "preceding");
             }
         }
@@ -281,6 +285,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         @Override
         final void doCheckOffsetRange(long offset, int length) {
             if (offset >= length) {
+                errorBranch.enter();
                 throw Errors.createRangeErrorFormat("Offset out of bounds in Intl.Segment iterator %s method.", this, "following");
             }
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import java.util.MissingResourceException;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -66,6 +67,7 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
     @Child GetStringOptionNode getCaseFirstOption;
     @Child GetStringOptionNode getSensitivityOption;
     @Child GetBooleanOptionNode getIgnorePunctuationOption;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected InitializeCollatorNode(JSContext context) {
         this.context = context;
@@ -103,6 +105,7 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
             JSCollator.initializeCollator(context, state, locales, usage, optLocaleMatcher, optkn, optkf, sensitivity, ignorePunctuation);
 
         } catch (MissingResourceException e) {
+            errorBranch.enter();
             throw Errors.createICU4JDataError(e);
         }
 

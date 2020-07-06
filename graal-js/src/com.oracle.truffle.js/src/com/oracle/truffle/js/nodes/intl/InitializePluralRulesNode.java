@@ -44,6 +44,7 @@ import java.util.MissingResourceException;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -65,6 +66,7 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
     @Child SetNumberFormatDigitOptionsNode setNumberFormatDigitOptions;
 
     @Child GetStringOptionNode getTypeOption;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected InitializePluralRulesNode(JSContext context) {
         this.context = context;
@@ -103,6 +105,7 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
             state.initializeNumberFormatter();
             state.initializePluralRules();
         } catch (MissingResourceException e) {
+            errorBranch.enter();
             throw Errors.createICU4JDataError(e);
         }
         return pluralRulesObj;

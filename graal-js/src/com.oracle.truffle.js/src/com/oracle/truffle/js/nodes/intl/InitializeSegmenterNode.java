@@ -44,6 +44,7 @@ import java.util.MissingResourceException;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -60,6 +61,7 @@ public abstract class InitializeSegmenterNode extends JavaScriptBaseNode {
     @Child GetStringOptionNode getLocaleMatcherOption;
 
     @Child GetStringOptionNode getGranularityOption;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected InitializeSegmenterNode(JSContext context) {
         this.context = context;
@@ -80,7 +82,6 @@ public abstract class InitializeSegmenterNode extends JavaScriptBaseNode {
 
         // must be invoked before any code that tries to access ICU library data
         try {
-
             JSSegmenter.InternalState state = JSSegmenter.getInternalState(segmenterObj);
 
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
@@ -91,8 +92,8 @@ public abstract class InitializeSegmenterNode extends JavaScriptBaseNode {
 
             JSSegmenter.setLocale(context, state, locales);
             JSSegmenter.setupInternalBreakIterator(state, optGranularity);
-
         } catch (MissingResourceException e) {
+            errorBranch.enter();
             throw Errors.createICU4JDataError(e);
         }
 

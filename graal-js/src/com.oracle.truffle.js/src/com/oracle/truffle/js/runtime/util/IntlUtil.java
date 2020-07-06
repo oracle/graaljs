@@ -57,9 +57,9 @@ import com.ibm.icu.util.Region;
 import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
@@ -333,8 +333,9 @@ public final class IntlUtil {
         return NumberingSystem.getInstance(locale).getName();
     }
 
-    public static void validateUnicodeLocaleIdentifierType(String type) {
+    public static void validateUnicodeLocaleIdentifierType(String type, BranchProfile errorBranch) {
         if (!UTS35Validator.isStructurallyValidType(type)) {
+            errorBranch.enter();
             throw Errors.createRangeErrorFormat("Invalid option: %s", null, type);
         }
     }
@@ -387,12 +388,8 @@ public final class IntlUtil {
 
     @TruffleBoundary
     public static void ensureIsStructurallyValidLanguageTag(String languageTag) {
-        createValidatedLocale(languageTag);
-    }
-
-    private static Locale createValidatedLocale(String languageTag) throws JSException {
         try {
-            return new Locale.Builder().setLanguageTag(languageTag).build();
+            new Locale.Builder().setLanguageTag(languageTag).build();
         } catch (IllformedLocaleException e) {
             throw Errors.createRangeError(e.getMessage());
         }
