@@ -40,18 +40,20 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
-import com.oracle.truffle.api.TruffleLanguage;
+import java.util.Set;
+
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantBooleanNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
@@ -67,14 +69,14 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
-
-import java.util.Set;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 @NodeInfo(shortName = "===")
 @ImportStatic(JSRuntime.class)
 @ReportPolymorphism
 public abstract class JSIdenticalNode extends JSCompareNode {
     protected static final int MAX_CLASSES = 3;
+    protected static final int INTEROP_LIMIT = 5;
 
     protected static final int STRICT_EQUALITY_COMPARISON = 0;
     protected static final int SAME_VALUE = 1;
@@ -180,11 +182,53 @@ public abstract class JSIdenticalNode extends JSCompareNode {
         return doBigIntDouble(b, a);
     }
 
-    @Specialization
-    protected static boolean doObject(DynamicObject a, DynamicObject b) {
-        assert a != null; // should have been transformed to Null.instance
-        assert b != null; // should have been transformed to Null.instance
+    @Specialization(guards = {"isUndefined(a)"})
+    protected static boolean doUndefinedA(Object a, Object b) {
         return a == b;
+    }
+
+    @Specialization(guards = {"isUndefined(b)"})
+    protected static boolean doUndefinedB(Object a, Object b) {
+        return a == b;
+    }
+
+    @Specialization(guards = {"isJSObject(a)"})
+    protected static boolean doJSObjectA(DynamicObject a, Object b) {
+        return a == b;
+    }
+
+    @Specialization(guards = {"isJSObject(b)"})
+    protected static boolean doJSObjectB(Object a, DynamicObject b) {
+        return a == b;
+    }
+
+    @Specialization(guards = {"isJSNull(a)", "isJSNull(b)"})
+    protected static boolean doNullNull(@SuppressWarnings("unused") Object a, @SuppressWarnings("unused") Object b) {
+        return true;
+    }
+
+    @Specialization(guards = {"isJSNull(a)", "isUndefined(b)"})
+    protected static boolean doNullUndefined(@SuppressWarnings("unused") Object a, @SuppressWarnings("unused") Object b) {
+        return false;
+    }
+
+    @Specialization(guards = {"isUndefined(a)", "isJSNull(b)"})
+    protected static boolean doUndefinedNull(@SuppressWarnings("unused") Object a, @SuppressWarnings("unused") Object b) {
+        return false;
+    }
+
+    @Specialization(guards = {"isJSNull(a)", "!isJSNull(b)", "!isUndefined(b)"}, limit = "INTEROP_LIMIT")
+    protected static boolean doNullA(@SuppressWarnings("unused") Object a, Object b,
+                    @CachedLibrary("b") InteropLibrary bInterop) {
+        assert b != Undefined.instance;
+        return bInterop.isNull(b);
+    }
+
+    @Specialization(guards = {"!isJSNull(a)", "!isUndefined(a)", "isJSNull(b)"}, limit = "INTEROP_LIMIT")
+    protected static boolean doNullB(Object a, @SuppressWarnings("unused") Object b,
+                    @CachedLibrary("a") InteropLibrary aInterop) {
+        assert a != Undefined.instance;
+        return aInterop.isNull(a);
     }
 
     @SuppressWarnings("unused")
@@ -195,9 +239,9 @@ public abstract class JSIdenticalNode extends JSCompareNode {
 
     @Specialization(replaces = "doLazyStringReference")
     protected static boolean doLazyString(JSLazyString a, JSLazyString b,
-                    @Cached("createBinaryProfile()") ConditionProfile flattenA,
-                    @Cached("createBinaryProfile()") ConditionProfile flattenB,
-                    @Cached("createBinaryProfile()") ConditionProfile len) {
+                    @Cached("createBinaryProfile()") @Shared("flattenA") ConditionProfile flattenA,
+                    @Cached("createBinaryProfile()") @Shared("flattenB") ConditionProfile flattenB,
+                    @Cached("createBinaryProfile()") @Shared("sameLen") ConditionProfile len) {
         if (len.profile(a.length() != b.length())) {
             return false;
         } else {
@@ -206,24 +250,24 @@ public abstract class JSIdenticalNode extends JSCompareNode {
     }
 
     @Specialization
-    protected static boolean doLazyStringLeft(String a, JSLazyString b,
-                    @Cached("createBinaryProfile()") ConditionProfile flatten,
-                    @Cached("createBinaryProfile()") ConditionProfile len) {
+    protected static boolean doStringLazyString(String a, JSLazyString b,
+                    @Cached("createBinaryProfile()") @Shared("flattenB") ConditionProfile flattenB,
+                    @Cached("createBinaryProfile()") @Shared("sameLen") ConditionProfile len) {
         if (len.profile(a.length() != b.length())) {
             return false;
         } else {
-            return a.equals(b.toString(flatten));
+            return a.equals(b.toString(flattenB));
         }
     }
 
     @Specialization
-    protected static boolean doLazyStringRight(JSLazyString a, String b,
-                    @Cached("createBinaryProfile()") ConditionProfile flatten,
-                    @Cached("createBinaryProfile()") ConditionProfile len) {
+    protected static boolean doLazyStringString(JSLazyString a, String b,
+                    @Cached("createBinaryProfile()") @Shared("flattenA") ConditionProfile flattenA,
+                    @Cached("createBinaryProfile()") @Shared("sameLen") ConditionProfile len) {
         if (len.profile(a.length() != b.length())) {
             return false;
         } else {
-            return a.toString(flatten).equals(b);
+            return a.toString(flattenA).equals(b);
         }
     }
 
@@ -251,18 +295,6 @@ public abstract class JSIdenticalNode extends JSCompareNode {
 
     @Specialization(guards = {"isSymbol(a) != isSymbol(b)"})
     protected static boolean doSymbolNotSymbol(Object a, Object b) {
-        assert (a != null) && (b != null);
-        return false;
-    }
-
-    @Specialization(guards = {"isJSNull(a) != isJSNull(b)"})
-    protected static boolean doNullNotNull(Object a, Object b) {
-        assert (a != null) && (b != null);
-        return false;
-    }
-
-    @Specialization(guards = {"isUndefined(a) != isUndefined(b)"})
-    protected static boolean doUndefinedNotUndefined(Object a, Object b) {
         assert (a != null) && (b != null);
         return false;
     }
@@ -313,10 +345,11 @@ public abstract class JSIdenticalNode extends JSCompareNode {
         return doDouble(JSRuntime.doubleValue(a), JSRuntime.doubleValue(b));
     }
 
-    @Specialization(guards = {"isTruffleJavaObject(a)", "isTruffleJavaObject(b)"})
-    protected static boolean doTruffleJavaObjects(TruffleObject a, TruffleObject b) {
-        TruffleLanguage.Env env = JavaScriptLanguage.getCurrentEnv();
-        return env.asHostObject(a) == env.asHostObject(b);
+    @Specialization(guards = {"isForeignObject(a)", "isForeignObject(b)"}, limit = "INTEROP_LIMIT")
+    protected static boolean doForeignObject(Object a, Object b,
+                    @CachedLibrary("a") InteropLibrary aInterop,
+                    @CachedLibrary("b") InteropLibrary bInterop) {
+        return aInterop.isIdentical(a, b, bInterop) || (aInterop.isNull(a) && bInterop.isNull(b));
     }
 
     @Fallback

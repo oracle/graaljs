@@ -43,6 +43,7 @@ package com.oracle.truffle.js.test.interop;
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -226,6 +227,22 @@ public class JavaScriptHostInteropTest {
         } catch (PolyglotException e) {
             assertTrue(e.isGuestException());
             exceptionVerifier.accept(e);
+        }
+    }
+
+    @Test
+    public void hostObjectIdentity() {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).build()) {
+            Object proxy1 = new Object();
+            Object proxy2 = new Object();
+
+            Value equals = context.eval(ID, "(function(a, b){return a == b;})");
+            Value identical = context.eval(ID, "(function(a, b){return a === b;})");
+
+            assertTrue(equals.execute(proxy1, proxy1).asBoolean());
+            assertTrue(identical.execute(proxy1, proxy1).asBoolean());
+            assertFalse(equals.execute(proxy1, proxy2).asBoolean());
+            assertFalse(identical.execute(proxy1, proxy2).asBoolean());
         }
     }
 }

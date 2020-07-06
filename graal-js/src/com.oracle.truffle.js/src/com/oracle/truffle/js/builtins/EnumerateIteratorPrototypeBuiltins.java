@@ -52,7 +52,7 @@ import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -98,7 +98,7 @@ public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContaine
     public abstract static class EnumerateNextNode extends JSBuiltinNode {
         @Child private CreateIterResultObjectNode createIterResultObjectNode;
         @Child private PropertyGetNode getIteratorNode;
-        @Child private JSForeignToJSTypeNode importValueNode;
+        @Child private ImportValueNode importValueNode;
         private final BranchProfile errorBranch;
         private final ValueProfile iteratorProfile;
 
@@ -106,7 +106,7 @@ public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContaine
             super(context, builtin);
             this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
             this.getIteratorNode = PropertyGetNode.createGetHidden(JSRuntime.ENUMERATE_ITERATOR_ID, context);
-            this.importValueNode = JSForeignToJSTypeNode.create();
+            this.importValueNode = ImportValueNode.create();
             this.errorBranch = BranchProfile.create();
             this.iteratorProfile = ValueProfile.createClassProfile();
         }

@@ -75,8 +75,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNodeGen;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
@@ -1509,7 +1508,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Child private InteropLibrary interop;
         @Child private InteropLibrary keyInterop;
         @Child private ExportValueNode exportKeyNode;
-        @Child private JSForeignToJSTypeNode toJSTypeNode;
+        @Child private ImportValueNode importValueNode;
         @Child private InteropLibrary getterInterop;
         @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
         @Child private ReadElementNode readFromPrototypeNode;
@@ -1519,7 +1518,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             super(next);
             this.targetClass = targetClass;
             this.exportKeyNode = ExportValueNode.create();
-            this.toJSTypeNode = JSForeignToJSTypeNodeGen.create();
+            this.importValueNode = ImportValueNode.create();
             this.interop = InteropLibrary.getFactory().createDispatched(3);
             this.keyInterop = InteropLibrary.getFactory().createDispatched(3);
             this.toStringNode = JSToStringNode.create();
@@ -1558,7 +1557,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     return maybeReadFromPrototype(truffleObject, stringKey, root.context);
                 }
             }
-            return toJSType(foreignResult);
+            return importValue(foreignResult);
         }
 
         private Object tryInvokeGetter(Object thisObj, String key, JSContext context) {
@@ -1598,12 +1597,12 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
         }
 
-        private Object toJSType(Object value) {
-            if (toJSTypeNode == null) {
+        private Object importValue(Object value) {
+            if (importValueNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                toJSTypeNode = insert(JSForeignToJSTypeNode.create());
+                importValueNode = insert(ImportValueNode.create());
             }
-            return toJSTypeNode.executeWithTarget(value);
+            return importValueNode.executeWithTarget(value);
         }
 
         private Object getSize(Object truffleObject) {

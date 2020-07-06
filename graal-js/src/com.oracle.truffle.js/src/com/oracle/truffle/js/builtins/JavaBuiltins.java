@@ -81,7 +81,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -385,7 +385,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         private final BranchProfile needErrorBranches = BranchProfile.create();
 
         @Child private WriteElementNode writeNode;
-        @Child private JSForeignToJSTypeNode foreignConvertNode;
+        @Child private ImportValueNode foreignConvertNode;
         @Child private InteropLibrary interop;
 
         JavaFromNode(JSContext context, JSBuiltin builtin) {
@@ -404,7 +404,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         private Object foreignConvert(Object value) {
             if (foreignConvertNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                foreignConvertNode = insert(JSForeignToJSTypeNode.create());
+                foreignConvertNode = insert(ImportValueNode.create());
             }
             return foreignConvertNode.executeWithTarget(value);
         }

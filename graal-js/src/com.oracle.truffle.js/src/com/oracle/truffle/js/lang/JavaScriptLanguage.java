@@ -97,7 +97,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgent;
@@ -195,7 +195,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         RootNode rootNode = new RootNode(this) {
             @Child private DirectCallNode directCallNode = DirectCallNode.create(program.getCallTarget());
             @Child private ExportValueNode exportValueNode = ExportValueNode.create();
-            @Child private JSForeignToJSTypeNode importValueNode = JSForeignToJSTypeNode.create();
+            @Child private ImportValueNode importValueNode = ImportValueNode.create();
             @CompilationFinal private ContextReference<JSRealm> contextReference;
 
             @Override

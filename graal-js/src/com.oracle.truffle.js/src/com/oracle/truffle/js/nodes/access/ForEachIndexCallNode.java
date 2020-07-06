@@ -51,7 +51,7 @@ import com.oracle.truffle.js.nodes.array.JSArrayFirstElementIndexNode;
 import com.oracle.truffle.js.nodes.array.JSArrayLastElementIndexNode;
 import com.oracle.truffle.js.nodes.array.JSArrayNextElementIndexNode;
 import com.oracle.truffle.js.nodes.array.JSArrayPreviousElementIndexNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -108,7 +108,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
     @Child private JSArrayFirstElementIndexNode firstElementIndexNode;
     @Child private JSArrayLastElementIndexNode lastElementIndexNode;
     @Child private JSHasPropertyNode hasPropertyNode;
-    @Child private JSForeignToJSTypeNode toJSTypeNode;
+    @Child private ImportValueNode toJSTypeNode;
     @Child private InteropLibrary interop;
     protected final JSContext context;
 
@@ -167,7 +167,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
     protected Object foreignRead(Object target, long index) {
         if (toJSTypeNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            toJSTypeNode = insert(JSForeignToJSTypeNode.create());
+            toJSTypeNode = insert(ImportValueNode.create());
         }
         return JSInteropUtil.readArrayElementOrDefault(target, index, Undefined.instance, getInterop(), toJSTypeNode, this);
     }

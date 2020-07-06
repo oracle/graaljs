@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -65,13 +67,12 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
-import java.util.Set;
-
 @NodeInfo(shortName = "==")
 @ImportStatic({JSRuntime.class, JSInteropUtil.class})
 @ReportPolymorphism
 public abstract class JSEqualNode extends JSCompareNode {
     protected static final int MAX_CLASSES = 3;
+    protected static final int INTEROP_LIMIT = 5;
 
     protected JSEqualNode(JavaScriptNode left, JavaScriptNode right) {
         super(left, right);
@@ -200,21 +201,24 @@ public abstract class JSEqualNode extends JSCompareNode {
         return true;
     }
 
-    @Specialization(guards = {"isNullOrUndefined(a)"}, replaces = {"doBothNullOrUndefined"})
-    protected static boolean doLeftNullOrUndefined(@SuppressWarnings("unused") Object a, Object b) {
-        return JSGuards.isNullOrUndefined(b);
+    @Specialization(guards = {"isNullOrUndefined(a)"})
+    protected static boolean doLeftNullOrUndefined(@SuppressWarnings("unused") Object a, Object b,
+                    @Shared("bInterop") @CachedLibrary(limit = "INTEROP_LIMIT") InteropLibrary bInterop) {
+        return isNullish(b, bInterop);
     }
 
-    @Specialization(guards = {"isNullOrUndefined(b)"}, replaces = {"doBothNullOrUndefined"})
-    protected static boolean doRightNullOrUndefined(Object a, @SuppressWarnings("unused") Object b) {
-        return JSGuards.isNullOrUndefined(a);
+    @Specialization(guards = {"isNullOrUndefined(b)"})
+    protected static boolean doRightNullOrUndefined(Object a, @SuppressWarnings("unused") Object b,
+                    @Shared("aInterop") @CachedLibrary(limit = "INTEROP_LIMIT") InteropLibrary aInterop) {
+        return isNullish(a, aInterop);
     }
 
     @Specialization(guards = {"isObject(a)", "!isObject(b)"})
     protected boolean doJSObject(DynamicObject a, Object b,
+                    @Shared("bInterop") @CachedLibrary(limit = "INTEROP_LIMIT") InteropLibrary bInterop,
                     @Shared("toPrimitive") @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveNode,
                     @Shared("equal") @Cached JSEqualNode nestedEqualNode) {
-        if (JSGuards.isNullOrUndefined(b)) {
+        if (isNullish(b, bInterop)) {
             return false;
         }
         return nestedEqualNode.executeBoolean(toPrimitiveNode.execute(a), b);
@@ -222,9 +226,10 @@ public abstract class JSEqualNode extends JSCompareNode {
 
     @Specialization(guards = {"!isObject(a)", "isObject(b)"})
     protected boolean doJSObject(Object a, DynamicObject b,
+                    @Shared("aInterop") @CachedLibrary(limit = "INTEROP_LIMIT") InteropLibrary aInterop,
                     @Shared("toPrimitive") @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveNode,
                     @Shared("equal") @Cached JSEqualNode nestedEqualNode) {
-        if (JSGuards.isNullOrUndefined(a)) {
+        if (isNullish(a, aInterop)) {
             return false;
         }
         return nestedEqualNode.executeBoolean(a, toPrimitiveNode.execute(b));
@@ -276,11 +281,11 @@ public abstract class JSEqualNode extends JSCompareNode {
         return false;
     }
 
-    @Specialization(guards = "oneIsForeign(a,b)", limit = "5")
+    @Specialization(guards = "isForeignObject(a) || isForeignObject(b)")
     protected boolean doForeign(Object a, Object b,
-                    @CachedLibrary("a") InteropLibrary aInterop,
-                    @CachedLibrary("b") InteropLibrary bInterop,
-                    @Cached JSEqualNode nestedEqualNode) {
+                    @Shared("aInterop") @CachedLibrary(limit = "INTEROP_LIMIT") InteropLibrary aInterop,
+                    @Shared("bInterop") @CachedLibrary(limit = "INTEROP_LIMIT") InteropLibrary bInterop,
+                    @Shared("equal") @Cached JSEqualNode nestedEqualNode) {
         assert (a != null) && (b != null);
         final Object defaultValue = null;
         Object primLeft;
@@ -339,8 +344,8 @@ public abstract class JSEqualNode extends JSCompareNode {
         return JSRuntime.equal(a, b);
     }
 
-    protected static boolean oneIsForeign(Object a, Object b) {
-        return JSGuards.isForeignObject(a) || JSGuards.isForeignObject(b);
+    protected static boolean isNullish(Object value, InteropLibrary interop) {
+        return JSRuntime.isNullOrUndefined(value) || interop.isNull(value);
     }
 
     @Override

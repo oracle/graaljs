@@ -54,7 +54,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.helper.ListGetNode;
 import com.oracle.truffle.js.builtins.helper.ListSizeNode;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -131,7 +131,7 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
                     @CachedLibrary("from") InteropLibrary objInterop,
                     @CachedLibrary(limit = "3") InteropLibrary keysInterop,
                     @CachedLibrary(limit = "3") InteropLibrary stringInterop,
-                    @Cached JSForeignToJSTypeNode importValue) {
+                    @Cached ImportValueNode importValue) {
         if (objInterop.isNull(from)) {
             return target;
         }

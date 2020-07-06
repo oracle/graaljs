@@ -40,22 +40,43 @@
  */
 package com.oracle.truffle.js.nodes.unary;
 
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.runtime.objects.Null;
-
 import java.util.Set;
 
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.Undefined;
+
 public abstract class IsNullNode extends IsIdenticalBaseNode {
+    protected static final int INTEROP_LIMIT = 5;
 
     protected IsNullNode(JavaScriptNode operand, boolean leftConstant) {
         super(operand, leftConstant);
     }
 
-    @Specialization
-    protected static boolean doCached(Object operand) {
-        return operand == Null.instance;
+    @Specialization(guards = {"isJSNull(operand)"})
+    protected static boolean doNull(@SuppressWarnings("unused") Object operand) {
+        return true;
+    }
+
+    @Specialization(guards = {"isUndefined(operand)"})
+    protected static boolean doUndefined(@SuppressWarnings("unused") Object operand) {
+        return false;
+    }
+
+    @Specialization(guards = {"isJSObject(operand)"})
+    protected static boolean doObject(@SuppressWarnings("unused") Object operand) {
+        return false;
+    }
+
+    @Specialization(guards = {"!isJSType(operand)"}, limit = "INTEROP_LIMIT")
+    protected static boolean doCached(Object operand,
+                    @CachedLibrary("operand") InteropLibrary interop) {
+        assert operand != Undefined.instance;
+        return interop.isNull(operand);
     }
 
     public static IsNullNode create(JavaScriptNode operand, boolean leftConstant) {

@@ -80,8 +80,7 @@ import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.function.CreateMethodPropertyNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNodeGen;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -903,7 +902,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     public static final class ForeignPropertyGetNode extends LinkedPropertyGetNode {
 
-        @Child private JSForeignToJSTypeNode toJSTypeNode;
+        @Child private ImportValueNode importValueNode;
         @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
         @Child private PropertyGetNode getFromPrototypeNode;
         private final boolean isLength;
@@ -917,7 +916,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         public ForeignPropertyGetNode(Object key, boolean isMethod, boolean isGlobal, JSContext context) {
             super(new ForeignLanguageCheckNode());
             this.context = context;
-            this.toJSTypeNode = JSForeignToJSTypeNodeGen.create();
+            this.importValueNode = ImportValueNode.create();
             this.isLength = key.equals(JSAbstractArray.LENGTH);
             this.isMethod = isMethod;
             this.isGlobal = isGlobal;
@@ -961,7 +960,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     return maybeGetFromPrototype(thisObj, key);
                 }
             }
-            return toJSTypeNode.executeWithTarget(foreignResult);
+            return importValueNode.executeWithTarget(foreignResult);
         }
 
         private Object maybeGetFromPrototype(Object thisObj, Object key) {

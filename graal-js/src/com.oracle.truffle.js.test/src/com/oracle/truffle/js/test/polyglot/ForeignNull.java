@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,38 +38,48 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.interop;
+package com.oracle.truffle.js.test.polyglot;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.unary.IsCallableNode;
-import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.utilities.TriState;
 
-@GenerateUncached
-public abstract class JSInteropExecuteNode extends JSInteropCallNode {
-    protected JSInteropExecuteNode() {
+/**
+ * Just a foreign null value.
+ */
+@ExportLibrary(InteropLibrary.class)
+public class ForeignNull implements TruffleObject {
+    public ForeignNull() {
     }
 
-    public abstract Object execute(DynamicObject function, Object thisArg, Object[] args) throws UnsupportedMessageException;
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    final boolean isNull() {
+        return true;
+    }
 
-    @Specialization
-    Object doDefault(DynamicObject function, Object thisArg, Object[] arguments,
-                    @Cached IsCallableNode isCallableNode,
-                    @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
-                    @Cached ImportValueNode importValueNode) throws UnsupportedMessageException {
-        if (!isCallableNode.executeBoolean(function)) {
-            throw UnsupportedMessageException.create();
+    @ExportMessage
+    static final class IsIdenticalOrUndefined {
+        @Specialization
+        static TriState doMyObject(ForeignNull receiver, ForeignNull other) {
+            return TriState.valueOf(receiver == other);
         }
-        Object[] preparedArgs = prepare(arguments, importValueNode);
-        if (callNode == null) {
-            return JSRuntime.call(function, thisArg, preparedArgs);
-        } else {
-            return callNode.executeCall(JSArguments.create(thisArg, function, preparedArgs));
+
+        @SuppressWarnings("unused")
+        @Fallback
+        static TriState doOther(ForeignNull receiver, Object other) {
+            return TriState.UNDEFINED;
         }
+    }
+
+    @TruffleBoundary
+    @ExportMessage
+    final int identityHashCode() {
+        return super.hashCode();
     }
 }

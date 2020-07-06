@@ -47,6 +47,8 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -56,6 +58,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -237,5 +240,25 @@ public class ForeignTestMap implements TruffleObject {
         } else {
             throw UnsupportedMessageException.create();
         }
+    }
+
+    @ExportMessage
+    static final class IsIdenticalOrUndefined {
+        @Specialization
+        static TriState doSLObject(ForeignTestMap receiver, ForeignTestMap other) {
+            return TriState.valueOf(receiver == other);
+        }
+
+        @SuppressWarnings("unused")
+        @Fallback
+        static TriState doOther(ForeignTestMap receiver, Object other) {
+            return TriState.UNDEFINED;
+        }
+    }
+
+    @TruffleBoundary
+    @ExportMessage
+    final int identityHashCode() {
+        return System.identityHashCode(this);
     }
 }

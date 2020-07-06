@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,20 +40,15 @@
  */
 package com.oracle.truffle.js.nodes.interop;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropFunction;
 
 /**
@@ -63,92 +58,83 @@ import com.oracle.truffle.js.runtime.truffleinterop.InteropFunction;
  * @see JSRuntime#importValue(Object)
  */
 @GenerateUncached
-public abstract class JSForeignToJSTypeNode extends JavaScriptBaseNode {
+public abstract class ImportValueNode extends JavaScriptBaseNode {
     public abstract Object executeWithTarget(Object target);
 
-    public static JSForeignToJSTypeNode create() {
-        return JSForeignToJSTypeNodeGen.create();
+    public static ImportValueNode create() {
+        return ImportValueNodeGen.create();
     }
 
     @Specialization
-    public int fromInt(int value) {
+    static int fromInt(int value) {
         return value;
     }
 
     @Specialization
-    public String fromString(String value) {
+    static String fromString(String value) {
         return value;
     }
 
     @Specialization
-    public boolean fromBoolean(boolean value) {
+    static boolean fromBoolean(boolean value) {
         return value;
     }
 
     @Specialization
-    public BigInt fromBigInt(BigInt value) {
+    static BigInt fromBigInt(BigInt value) {
         return value;
     }
 
     @Specialization(guards = "isLongRepresentableAsInt32(value)")
-    public int fromLongToInt(long value) {
+    static int fromLongToInt(long value) {
         return (int) value;
     }
 
     @Specialization(guards = "!isLongRepresentableAsInt32(value)")
-    public long fromLong(long value) {
+    static long fromLong(long value) {
         return value;
     }
 
     @Specialization
-    public double fromDouble(double value) {
+    static double fromDouble(double value) {
         return value;
     }
 
     @Specialization
-    public int fromNumber(byte value) {
+    static int fromNumber(byte value) {
         return value;
     }
 
     @Specialization
-    public int fromNumber(short value) {
+    static int fromNumber(short value) {
         return value;
     }
 
     @Specialization
-    public double fromNumber(float value) {
+    static double fromNumber(float value) {
         return value;
     }
 
     @Specialization
-    public String fromChar(char value) {
+    static String fromChar(char value) {
         return String.valueOf(value);
     }
 
-    @Specialization(guards = "isJavaNull(value)")
-    public Object isNull(@SuppressWarnings("unused") Object value) {
-        return Null.instance;
+    @Specialization
+    static Object fromDynamicObject(DynamicObject value) {
+        return value;
     }
 
     @Specialization
-    public Object fromTruffleJavaObject(TruffleObject value,
-                    @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef) {
+    static Object fromTruffleObject(TruffleObject value) {
         if (value instanceof InteropFunction) {
             return ((InteropFunction) value).getFunction();
-        } else {
-            TruffleLanguage.Env env = contextRef.get().getEnv();
-            if (env.isHostObject(value)) {
-                Object object = env.asHostObject(value);
-                if (object == null) {
-                    return Null.instance;
-                }
-            }
         }
         return value;
     }
 
     @Fallback
-    public Object fallbackCase(Object value) {
+    static Object fallbackCase(Object value) {
         throw Errors.createTypeErrorUnsupportedInteropType(value);
     }
 }

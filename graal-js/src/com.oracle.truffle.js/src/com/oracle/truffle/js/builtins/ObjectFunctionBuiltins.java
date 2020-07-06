@@ -105,7 +105,7 @@ import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
@@ -341,7 +341,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"isForeignObject(thisObj)"}, limit = "3")
         protected DynamicObject getForeignObject(Object thisObj, Object property,
                         @CachedLibrary("thisObj") InteropLibrary interop,
-                        @Cached("create()") JSForeignToJSTypeNode toJSType) {
+                        @Cached("create()") ImportValueNode toJSType) {
             Object propertyKey = toPropertyKeyNode.execute(property);
             if (propertyKey instanceof String) {
                 try {
@@ -416,7 +416,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected DynamicObject getForeignObject(Object thisObj,
                         @CachedLibrary("thisObj") InteropLibrary interop,
                         @CachedLibrary(limit = "3") InteropLibrary members,
-                        @Cached("create()") JSForeignToJSTypeNode toJSType) {
+                        @Cached("create()") ImportValueNode toJSType) {
             DynamicObject result = JSUserObject.create(getContext());
 
             try {
@@ -1048,7 +1048,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected DynamicObject enumerableOwnPropertyNamesForeign(Object thisObj,
                         @CachedLibrary("thisObj") InteropLibrary interop,
                         @CachedLibrary(limit = "3") InteropLibrary members,
-                        @Cached JSForeignToJSTypeNode importValue,
+                        @Cached ImportValueNode importValue,
                         @Cached BranchProfile growProfile) {
             try {
                 Object keysObj = interop.getMembers(thisObj);
