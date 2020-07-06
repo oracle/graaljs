@@ -44,6 +44,7 @@ import java.util.MissingResourceException;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -78,6 +79,7 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
     @Child GetStringOptionNode getCompactDisplayOption;
     @Child GetBooleanOptionNode getUseGroupingOption;
     @Child GetStringOptionNode getSignDisplayOption;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected InitializeNumberFormatNode(JSContext context) {
         this.context = context;
@@ -118,7 +120,7 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
             getLocaleMatcherOption.executeValue(options);
             String numberingSystem = getNumberingSystemOption.executeValue(options);
             if (numberingSystem != null) {
-                IntlUtil.validateUnicodeLocaleIdentifierType(numberingSystem);
+                IntlUtil.validateUnicodeLocaleIdentifierType(numberingSystem, errorBranch);
                 numberingSystem = IntlUtil.normalizeUnicodeLocaleIdentifierType(numberingSystem);
             }
             state.resolveLocaleAndNumberingSystem(context, locales, numberingSystem);
@@ -156,6 +158,7 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
 
             state.initializeNumberFormatter();
         } catch (MissingResourceException e) {
+            errorBranch.enter();
             throw Errors.createICU4JDataError(e);
         }
         return numberFormatObj;
@@ -180,6 +183,7 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
 
         if (IntlUtil.CURRENCY.equals(style)) {
             if (currency == null) {
+                errorBranch.enter();
                 throw Errors.createTypeError("Currency can not be undefined when style is \"currency\".");
             }
             currency = IntlUtil.toUpperCase(currency);
@@ -188,6 +192,7 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
             state.setCurrencySign(currencySign);
         } else if (IntlUtil.UNIT.equals(style)) {
             if (unit == null) {
+                errorBranch.enter();
                 throw Errors.createTypeError("Unit can not be undefined when style is \"unit\".");
             }
             state.setUnit(unit);

@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -65,6 +66,7 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
     @Child GetStringOptionNode getCaseFirstOption;
     @Child GetBooleanOptionNode getNumericOption;
     @Child GetStringOptionNode getNumberingSystemOption;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected InitializeLocaleNode(JSContext context) {
         this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
@@ -92,23 +94,24 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
             String tag = applyOptionsToTag(tagArg, options);
             String optCalendar = getCalendarOption.executeValue(options);
             if (optCalendar != null) {
-                IntlUtil.validateUnicodeLocaleIdentifierType(optCalendar);
+                IntlUtil.validateUnicodeLocaleIdentifierType(optCalendar, errorBranch);
             }
             String optCollation = getCollationOption.executeValue(options);
             if (optCollation != null) {
-                IntlUtil.validateUnicodeLocaleIdentifierType(optCollation);
+                IntlUtil.validateUnicodeLocaleIdentifierType(optCollation, errorBranch);
             }
             String optHourCycle = getHourCycleOption.executeValue(options);
             String optCaseFirst = getCaseFirstOption.executeValue(options);
             Boolean optNumeric = getNumericOption.executeValue(options);
             String optNumberingSystem = getNumberingSystemOption.executeValue(options);
             if (optNumberingSystem != null) {
-                IntlUtil.validateUnicodeLocaleIdentifierType(optNumberingSystem);
+                IntlUtil.validateUnicodeLocaleIdentifierType(optNumberingSystem, errorBranch);
             }
             Locale locale = applyUnicodeExtensionToTag(tag, optCalendar, optCollation, optHourCycle, optCaseFirst, optNumeric, optNumberingSystem);
             JSLocale.InternalState state = JSLocale.getInternalState(localeObject);
             JSLocale.setupInternalState(state, locale);
         } catch (MissingResourceException e) {
+            errorBranch.enter();
             throw Errors.createICU4JDataError(e);
         }
         return localeObject;

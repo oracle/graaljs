@@ -44,6 +44,7 @@ import java.util.MissingResourceException;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -62,6 +63,7 @@ public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNod
 
     @Child GetStringOptionNode getStyleOption;
     @Child GetStringOptionNode getNumericOption;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected InitializeRelativeTimeFormatNode(JSContext context) {
         this.context = context;
@@ -92,7 +94,7 @@ public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNod
             getLocaleMatcherOption.executeValue(options);
             String numberingSystem = getNumberingSystemOption.executeValue(options);
             if (numberingSystem != null) {
-                IntlUtil.validateUnicodeLocaleIdentifierType(numberingSystem);
+                IntlUtil.validateUnicodeLocaleIdentifierType(numberingSystem, errorBranch);
                 numberingSystem = IntlUtil.normalizeUnicodeLocaleIdentifierType(numberingSystem);
             }
 
@@ -105,6 +107,7 @@ public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNod
             state.resolveLocaleAndNumberingSystem(context, locales, numberingSystem);
             state.initializeRelativeTimeFormatter();
         } catch (MissingResourceException e) {
+            errorBranch.enter();
             throw Errors.createICU4JDataError(e);
         }
 

@@ -47,6 +47,7 @@ import com.ibm.icu.util.TimeZone;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -89,6 +90,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
     @Child GetStringOptionNode getTimeStyleOption;
 
     @Child private JSToStringNode toStringNode;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     private final JSContext context;
 
@@ -146,12 +148,12 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
 
             String calendarOpt = getCalendarOption.executeValue(options);
             if (calendarOpt != null) {
-                IntlUtil.validateUnicodeLocaleIdentifierType(calendarOpt);
+                IntlUtil.validateUnicodeLocaleIdentifierType(calendarOpt, errorBranch);
                 calendarOpt = IntlUtil.normalizeUnicodeLocaleIdentifierType(calendarOpt);
             }
             String numberingSystemOpt = getNumberingSystemOption.executeValue(options);
             if (numberingSystemOpt != null) {
-                IntlUtil.validateUnicodeLocaleIdentifierType(numberingSystemOpt);
+                IntlUtil.validateUnicodeLocaleIdentifierType(numberingSystemOpt, errorBranch);
                 numberingSystemOpt = IntlUtil.normalizeUnicodeLocaleIdentifierType(numberingSystemOpt);
             }
 
@@ -192,6 +194,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
                             timeZone, calendarOpt, numberingSystemOpt, dateStyleOpt, timeStyleOpt);
 
         } catch (MissingResourceException e) {
+            errorBranch.enter();
             throw Errors.createICU4JDataError(e);
         }
 
@@ -204,6 +207,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
             String name = toStringNode.executeString(timeZoneValue);
             tzId = JSDateTimeFormat.canonicalizeTimeZoneName(name);
             if (tzId == null) {
+                errorBranch.enter();
                 throw Errors.createRangeErrorInvalidTimeZone(name);
             }
         } else {

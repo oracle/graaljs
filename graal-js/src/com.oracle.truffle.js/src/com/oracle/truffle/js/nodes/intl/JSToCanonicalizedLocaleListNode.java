@@ -50,6 +50,7 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
@@ -70,6 +71,7 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
  */
 public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode {
     final JSContext context;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected JSToCanonicalizedLocaleListNode(JSContext context) {
         this.context = context;
@@ -111,6 +113,7 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
                 Object kValue = JSObject.get(localeObj, k);
                 String typeOfKValue = typeOfNode.executeString(kValue);
                 if (JSRuntime.isNullOrUndefined(kValue) || ((!typeOfKValue.equals("string") && !typeOfKValue.equals("object")))) {
+                    errorBranch.enter();
                     throw Errors.createTypeError(Boundaries.stringFormat("String or Object expected in locales list, got %s", typeOfKValue));
                 }
                 String lt;
@@ -138,6 +141,7 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
         try {
             len = interop.getArraySize(object);
         } catch (UnsupportedMessageException e) {
+            errorBranch.enter();
             throw Errors.createTypeErrorInteropException(object, e, "getArraySize", this);
         }
         for (long k = 0; k < len; k++) {
@@ -146,10 +150,12 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
                 try {
                     kValue = interop.readArrayElement(object, k);
                 } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+                    errorBranch.enter();
                     throw Errors.createTypeErrorInteropException(object, e, "readArrayElement", k, this);
                 }
                 String typeOfKValue = typeOfNode.executeString(kValue);
                 if (!typeOfKValue.equals("string") && !typeOfKValue.equals("object")) {
+                    errorBranch.enter();
                     throw Errors.createTypeError(Boundaries.stringFormat("String or Object expected in locales list, got %s", typeOfKValue));
                 }
                 String lt = toStringNode.executeString(kValue);
