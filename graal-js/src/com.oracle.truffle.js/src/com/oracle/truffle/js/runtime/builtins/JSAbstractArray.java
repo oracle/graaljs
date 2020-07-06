@@ -85,6 +85,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
 
     protected static final String ARRAY_LENGTH_NOT_WRITABLE = "array length is not writable";
     private static final String LENGTH_PROPERTY_NOT_WRITABLE = "length property not writable";
+    protected static final String CANNOT_REDEFINE_PROPERTY_LENGTH = "Cannot redefine property: length";
     protected static final String MAKE_SLOW_ARRAY_NEVER_PART_OF_COMPILATION_MESSAGE = "do not convert to slow array from compiled code";
     public static final String ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION = "Array.prototype no element assumption";
 
@@ -208,7 +209,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     public static void arraySetArray(DynamicObject thisObj, Object array) {
         assert JSObject.hasArray(thisObj);
         assert array != null && (array.getClass().isArray() || array instanceof TreeMap<?, ?>);
-        JSAbstractArray.ARRAY_PROPERTY.setSafe(thisObj, array, null);
+        ARRAY_PROPERTY.setSafe(thisObj, array, null);
     }
 
     public static int arrayGetHoleCount(DynamicObject thisObj) {
@@ -727,6 +728,10 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
                 return DefinePropertyUtil.reject(doThrow, LENGTH_PROPERTY_NOT_WRITABLE);
             }
         } else {
+            if (descriptor.getConfigurable() || (newEnumerable != currentEnumerable)) {
+                // ES2020 9.1.6.3, 4.a and 4.b
+                return DefinePropertyUtil.reject(doThrow, CANNOT_REDEFINE_PROPERTY_LENGTH);
+            }
             if (currentWritable == newWritable && currentEnumerable == newEnumerable) {
                 if (!descriptor.hasValue() || len == getLength(thisObj)) {
                     return true; // nothing changed
@@ -821,7 +826,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     @TruffleBoundary
     @Override
     public boolean setPrototypeOf(DynamicObject thisObj, DynamicObject newPrototype) {
-        JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
+        JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().invalidate(ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
         return super.setPrototypeOf(thisObj, newPrototype);
     }
 
