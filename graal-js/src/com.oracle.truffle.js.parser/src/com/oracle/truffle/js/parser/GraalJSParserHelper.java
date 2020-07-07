@@ -60,7 +60,6 @@ import com.oracle.truffle.js.builtins.helper.TruffleJSONParser;
 import com.oracle.truffle.js.parser.internal.ir.debug.JSONWriter;
 import com.oracle.truffle.js.parser.json.JSONParser;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSParserOptions;
@@ -183,13 +182,13 @@ public final class GraalJSParserHelper {
         return builder.build();
     }
 
-    public static void checkFunctionSyntax(JSContext context, JSParserOptions parserOptions, String parameterList, String body, boolean generator, boolean async) {
+    public static void checkFunctionSyntax(JSContext context, JSParserOptions parserOptions, String parameterList, String body, boolean generator, boolean async, String sourceName) {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         ScriptEnvironment env = makeScriptEnvironment(parserOptions);
         ErrorManager errors = new com.oracle.js.parser.ErrorManager.ThrowErrorManager();
-        Parser parser = createParser(context, env, com.oracle.js.parser.Source.sourceFor(Evaluator.FUNCTION_SOURCE_NAME, parameterList), errors, parserOptions);
+        Parser parser = createParser(context, env, com.oracle.js.parser.Source.sourceFor(sourceName, parameterList), errors, parserOptions);
         parser.parseFormalParameterList();
-        parser = createParser(context, env, com.oracle.js.parser.Source.sourceFor(Evaluator.FUNCTION_SOURCE_NAME, body), errors, parserOptions);
+        parser = createParser(context, env, com.oracle.js.parser.Source.sourceFor(sourceName, body), errors, parserOptions);
         parser.parseFunctionBody(generator, async);
     }
 

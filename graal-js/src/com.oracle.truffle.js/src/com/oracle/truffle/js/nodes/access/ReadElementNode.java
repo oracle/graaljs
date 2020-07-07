@@ -1491,7 +1491,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
             TruffleObject truffleObject = targetClass.cast(target);
             if (interop.isNull(truffleObject)) {
-                throw Errors.createTypeErrorCannotGetProperty(index, target, false, this);
+                throw Errors.createTypeErrorCannotGetProperty(JSRuntime.safeToString(index), target, false, this);
             }
             Object exportedKey = exportKeyNode.execute(index);
             if (exportedKey instanceof Symbol) {

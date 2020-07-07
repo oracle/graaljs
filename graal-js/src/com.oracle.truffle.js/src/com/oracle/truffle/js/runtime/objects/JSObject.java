@@ -518,6 +518,13 @@ public final class JSObject {
     }
 
     @TruffleBoundary
+    public static Object getWithReceiver(DynamicObject obj, Object key, Object receiver) {
+        assert JSRuntime.isPropertyKey(key);
+        Object result = getJSClass(obj).getHelper(obj, receiver, key);
+        return result == null ? Undefined.instance : result;
+    }
+
+    @TruffleBoundary
     public static String defaultToString(DynamicObject obj) {
         return JSObject.getJSClass(obj).defaultToString(obj);
     }

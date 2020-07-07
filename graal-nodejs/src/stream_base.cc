@@ -180,12 +180,26 @@ int StreamBase::WriteBuffer(const FunctionCallbackInfo<Value>& args) {
   }
 
   Local<Object> req_wrap_obj = args[0].As<Object>();
-
   uv_buf_t buf;
   buf.base = Buffer::Data(args[1]);
   buf.len = Buffer::Length(args[1]);
 
-  StreamWriteResult res = Write(&buf, 1, nullptr, req_wrap_obj);
+  uv_stream_t* send_handle = nullptr;
+
+  if (args[2]->IsObject() && IsIPCPipe()) {
+    Local<Object> send_handle_obj = args[2].As<Object>();
+
+    HandleWrap* wrap;
+    ASSIGN_OR_RETURN_UNWRAP(&wrap, send_handle_obj, UV_EINVAL);
+    send_handle = reinterpret_cast<uv_stream_t*>(wrap->GetHandle());
+    // Reference LibuvStreamWrap instance to prevent it from being garbage
+    // collected before `AfterWrite` is called.
+    req_wrap_obj->Set(env->context(),
+                      env->handle_string(),
+                      send_handle_obj).Check();
+  }
+
+  StreamWriteResult res = Write(&buf, 1, send_handle, req_wrap_obj);
   SetWriteResult(res);
 
   return res.err;
@@ -326,7 +340,8 @@ MaybeLocal<Value> StreamBase::CallJSOnreadMethod(ssize_t nread,
 
   AsyncWrap* wrap = GetAsyncWrap();
   CHECK_NOT_NULL(wrap);
-  Local<Value> onread = wrap->object()->GetInternalField(kOnReadFunctionField);
+  Local<Value> onread = wrap->object()->GetInternalField(
+      StreamBase::kOnReadFunctionField);
   CHECK(onread->IsFunction());
   return wrap->MakeCallback(onread.As<Function>(), arraysize(argv), argv);
 }
@@ -395,8 +410,11 @@ void StreamBase::AddMethods(Environment* env, Local<FunctionTemplate> t) {
                               True(env->isolate()));
   t->PrototypeTemplate()->SetAccessor(
       FIXED_ONE_BYTE_STRING(env->isolate(), "onread"),
-      BaseObject::InternalFieldGet<kOnReadFunctionField>,
-      BaseObject::InternalFieldSet<kOnReadFunctionField, &Value::IsFunction>);
+      BaseObject::InternalFieldGet<
+          StreamBase::kOnReadFunctionField>,
+      BaseObject::InternalFieldSet<
+          StreamBase::kOnReadFunctionField,
+          &Value::IsFunction>);
 }
 
 void StreamBase::GetFD(const FunctionCallbackInfo<Value>& args) {
@@ -494,12 +512,20 @@ uv_buf_t CustomBufferJSListener::OnStreamAlloc(size_t suggested_size) {
 
 void CustomBufferJSListener::OnStreamRead(ssize_t nread, const uv_buf_t& buf) {
   CHECK_NOT_NULL(stream_);
-  CHECK_EQ(buf.base, buffer_.base);
 
   StreamBase* stream = static_cast<StreamBase*>(stream_);
   Environment* env = stream->stream_env();
   HandleScope handle_scope(env->isolate());
   Context::Scope context_scope(env->context());
+
+  // To deal with the case where POLLHUP is received and UV_EOF is returned, as
+  // libuv returns an empty buffer (on unices only).
+  if (nread == UV_EOF && buf.base == nullptr) {
+    stream->CallJSOnreadMethod(nread, Local<ArrayBuffer>());
+    return;
+  }
+
+  CHECK_EQ(buf.base, buffer_.base);
 
   MaybeLocal<Value> ret = stream->CallJSOnreadMethod(nread,
                              Local<ArrayBuffer>(),

@@ -14,7 +14,22 @@
 
 'use strict';
 
-const { ObjectPrototype } = primordials;
+const {
+  Array,
+  ArrayBuffer,
+  Error,
+  Float32Array,
+  Float64Array,
+  Int16Array,
+  Int32Array,
+  Int8Array,
+  Map,
+  ObjectPrototypeToString,
+  Uint16Array,
+  Uint32Array,
+  Uint8Array,
+  Uint8ClampedArray,
+} = primordials;
 
 const { Buffer } = require('buffer');
 const { validateString } = require('internal/validators');
@@ -32,14 +47,7 @@ const {
   createHeapSnapshotStream,
   triggerHeapSnapshot
 } = internalBinding('heap_utils');
-const { Readable } = require('stream');
-const { owner_symbol } = require('internal/async_hooks').symbols;
-const {
-  kUpdateTimer,
-  onStreamRead,
-} = require('internal/stream_base_commons');
-const kHandle = Symbol('kHandle');
-
+const { HeapSnapshotStream } = require('internal/heap_utils');
 
 function writeHeapSnapshot(filename) {
   if (filename !== undefined) {
@@ -47,31 +55,6 @@ function writeHeapSnapshot(filename) {
     filename = toNamespacedPath(filename);
   }
   return triggerHeapSnapshot(filename);
-}
-
-class HeapSnapshotStream extends Readable {
-  constructor(handle) {
-    super({ autoDestroy: true });
-    this[kHandle] = handle;
-    handle[owner_symbol] = this;
-    handle.onread = onStreamRead;
-  }
-
-  _read() {
-    if (this[kHandle])
-      this[kHandle].readStart();
-  }
-
-  _destroy() {
-    // Release the references on the handle so that
-    // it can be garbage collected.
-    this[kHandle][owner_symbol] = undefined;
-    this[kHandle] = undefined;
-  }
-
-  [kUpdateTimer]() {
-    // Does nothing
-  }
 }
 
 function getHeapSnapshot() {
@@ -220,7 +203,7 @@ const arrayBufferViewTypeToIndex = new Map();
 {
   const dummy = new ArrayBuffer();
   for (const [i, ctor] of arrayBufferViewTypes.entries()) {
-    const tag = ObjectPrototype.toString(new ctor(dummy));
+    const tag = ObjectPrototypeToString(new ctor(dummy));
     arrayBufferViewTypeToIndex.set(tag, i);
   }
 }
@@ -239,7 +222,7 @@ class DefaultSerializer extends Serializer {
     if (abView.constructor === Buffer) {
       i = bufferConstructorIndex;
     } else {
-      const tag = ObjectPrototype.toString(abView);
+      const tag = ObjectPrototypeToString(abView);
       i = arrayBufferViewTypeToIndex.get(tag);
 
       if (i === undefined) {
@@ -305,5 +288,5 @@ module.exports = {
   DefaultDeserializer,
   deserialize,
   serialize,
-  writeHeapSnapshot
+  writeHeapSnapshot,
 };

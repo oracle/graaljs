@@ -154,7 +154,7 @@ public final class JSParserOptions {
         opts = opts.putEcmaScriptVersion(ECMASCRIPT_VERSION.getValue(optionValues));
         opts = opts.putSyntaxExtensions(SYNTAX_EXTENSIONS.hasBeenSet(optionValues) ? SYNTAX_EXTENSIONS.getValue(optionValues) : NASHORN_COMPATIBILITY_MODE.getValue(optionValues));
         opts = opts.putScripting(SCRIPTING.getValue(optionValues));
-        opts = opts.putShebang(SHEBANG.getValue(optionValues));
+        opts = opts.putShebang(SHEBANG.hasBeenSet(optionValues) ? SHEBANG.getValue(optionValues) : ecmaScriptVersion >= JSTruffleOptions.ECMAScript2020);
         opts = opts.putStrict(STRICT.getValue(optionValues));
         opts = opts.putConstAsVar(CONST_AS_VAR.getValue(optionValues));
         opts = opts.putFunctionStatementError(FUNCTION_STATEMENT_ERROR.getValue(optionValues));

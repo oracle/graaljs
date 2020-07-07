@@ -20,7 +20,15 @@
 
 'use strict';
 
-const { Object } = primordials;
+const {
+  Error,
+  ObjectAssign,
+  ObjectIs,
+  ObjectKeys,
+  ObjectPrototypeIsPrototypeOf,
+  Map,
+  RegExpPrototypeTest,
+} = primordials;
 
 const { Buffer } = require('buffer');
 const {
@@ -268,7 +276,7 @@ function getErrMessage(message, fn) {
   const call = err.stack[0];
 
   const filename = call.getFileName();
-  const line = call.getLineNumber() - 1;
+  let line = call.getLineNumber() - 1;
   let column = call.getColumnNumber() - 1;
   let identifier;
   let code;
@@ -288,6 +296,9 @@ function getErrMessage(message, fn) {
       return message;
     }
     code = String(fn);
+    // For functions created with the Function constructor, V8 does not count
+    // the lines containing the function header.
+    line += 2;
     identifier = `${code}${line}${column}`;
   }
 
@@ -490,7 +501,7 @@ assert.strictEqual = function strictEqual(actual, expected, message) {
   if (arguments.length < 2) {
     throw new ERR_MISSING_ARGS('actual', 'expected');
   }
-  if (!Object.is(actual, expected)) {
+  if (!ObjectIs(actual, expected)) {
     innerFail({
       actual,
       expected,
@@ -505,7 +516,7 @@ assert.notStrictEqual = function notStrictEqual(actual, expected, message) {
   if (arguments.length < 2) {
     throw new ERR_MISSING_ARGS('actual', 'expected');
   }
-  if (Object.is(actual, expected)) {
+  if (ObjectIs(actual, expected)) {
     innerFail({
       actual,
       expected,
@@ -523,7 +534,7 @@ class Comparison {
         if (actual !== undefined &&
             typeof actual[key] === 'string' &&
             isRegExp(obj[key]) &&
-            obj[key].test(actual[key])) {
+            RegExpPrototypeTest(obj[key], actual[key])) {
           this[key] = actual[key];
         } else {
           this[key] = obj[key];
@@ -562,25 +573,24 @@ function compareExceptionKey(actual, expected, key, message, keys, fn) {
 }
 
 function expectedException(actual, expected, message, fn) {
+  let generatedMessage = false;
+  let throwError = false;
+
   if (typeof expected !== 'function') {
     // Handle regular expressions.
     if (isRegExp(expected)) {
       const str = String(actual);
-      if (expected.test(str))
+      if (RegExpPrototypeTest(expected, str))
         return;
 
-      throw new AssertionError({
-        actual,
-        expected,
-        message: message || 'The input did not match the regular expression ' +
-                            `${inspect(expected)}. Input:\n\n${inspect(str)}\n`,
-        operator: fn.name,
-        stackStartFn: fn
-      });
-    }
-
-    // Handle primitives properly.
-    if (typeof actual !== 'object' || actual === null) {
+      if (!message) {
+        generatedMessage = true;
+        message = 'The input did not match the regular expression ' +
+                  `${inspect(expected)}. Input:\n\n${inspect(str)}\n`;
+      }
+      throwError = true;
+      // Handle primitives properly.
+    } else if (typeof actual !== 'object' || actual === null) {
       const err = new AssertionError({
         actual,
         expected,
@@ -590,43 +600,52 @@ function expectedException(actual, expected, message, fn) {
       });
       err.operator = fn.name;
       throw err;
-    }
-
-    // Handle validation objects.
-    const keys = Object.keys(expected);
-    // Special handle errors to make sure the name and the message are compared
-    // as well.
-    if (expected instanceof Error) {
-      keys.push('name', 'message');
-    } else if (keys.length === 0) {
-      throw new ERR_INVALID_ARG_VALUE('error',
-                                      expected, 'may not be an empty object');
-    }
-    if (isDeepEqual === undefined) lazyLoadComparison();
-    for (const key of keys) {
-      if (typeof actual[key] === 'string' &&
-          isRegExp(expected[key]) &&
-          expected[key].test(actual[key])) {
-        continue;
+    } else {
+      // Handle validation objects.
+      const keys = ObjectKeys(expected);
+      // Special handle errors to make sure the name and the message are
+      // compared as well.
+      if (expected instanceof Error) {
+        keys.push('name', 'message');
+      } else if (keys.length === 0) {
+        throw new ERR_INVALID_ARG_VALUE('error',
+                                        expected, 'may not be an empty object');
       }
-      compareExceptionKey(actual, expected, key, message, keys, fn);
+      if (isDeepEqual === undefined) lazyLoadComparison();
+      for (const key of keys) {
+        if (typeof actual[key] === 'string' &&
+            isRegExp(expected[key]) &&
+            RegExpPrototypeTest(expected[key], actual[key])) {
+          continue;
+        }
+        compareExceptionKey(actual, expected, key, message, keys, fn);
+      }
+      return;
     }
-    return;
-  }
-
   // Guard instanceof against arrow functions as they don't have a prototype.
   // Check for matching Error classes.
-  if (expected.prototype !== undefined && actual instanceof expected) {
+  } else if (expected.prototype !== undefined && actual instanceof expected) {
     return;
-  }
-  if (Error.isPrototypeOf(expected)) {
+  } else if (ObjectPrototypeIsPrototypeOf(Error, expected)) {
     throw actual;
+  } else {
+    // Check validation functions return value.
+    const res = expected.call({}, actual);
+    if (res !== true) {
+      throw actual;
+    }
   }
 
-  // Check validation functions return value.
-  const res = expected.call({}, actual);
-  if (res !== true) {
-    throw actual;
+  if (throwError) {
+    const err = new AssertionError({
+      actual,
+      expected,
+      message,
+      operator: fn.name,
+      stackStartFn: fn
+    });
+    err.generatedMessage = generatedMessage;
+    throw err;
   }
 }
 
@@ -733,7 +752,7 @@ function hasMatchingError(actual, expected) {
   if (typeof expected !== 'function') {
     if (isRegExp(expected)) {
       const str = String(actual);
-      return expected.test(str);
+      return RegExpPrototypeTest(expected, str);
     }
     throw new ERR_INVALID_ARG_TYPE(
       'expected', ['Function', 'RegExp'], expected
@@ -822,9 +841,9 @@ assert.ifError = function ifError(err) {
       tmp2.shift();
       // Filter all frames existing in err.stack.
       let tmp1 = newErr.stack.split('\n');
-      for (let i = 0; i < tmp2.length; i++) {
+      for (const errFrame of tmp2) {
         // Find the first occurrence of the frame.
-        const pos = tmp1.indexOf(tmp2[i]);
+        const pos = tmp1.indexOf(errFrame);
         if (pos !== -1) {
           // Only keep new frames.
           tmp1 = tmp1.slice(0, pos);
@@ -838,11 +857,54 @@ assert.ifError = function ifError(err) {
   }
 };
 
+function internalMatch(string, regexp, message, fn) {
+  if (!isRegExp(regexp)) {
+    throw new ERR_INVALID_ARG_TYPE(
+      'regexp', 'RegExp', regexp
+    );
+  }
+  const match = fn.name === 'match';
+  if (typeof string !== 'string' ||
+      RegExpPrototypeTest(regexp, string) !== match) {
+    if (message instanceof Error) {
+      throw message;
+    }
+
+    const generatedMessage = !message;
+
+    // 'The input was expected to not match the regular expression ' +
+    message = message || (typeof string !== 'string' ?
+      'The "string" argument must be of type string. Received type ' +
+        `${typeof string} (${inspect(string)})` :
+      (match ?
+        'The input did not match the regular expression ' :
+        'The input was expected to not match the regular expression ') +
+          `${inspect(regexp)}. Input:\n\n${inspect(string)}\n`);
+    const err = new AssertionError({
+      actual: string,
+      expected: regexp,
+      message,
+      operator: fn.name,
+      stackStartFn: fn
+    });
+    err.generatedMessage = generatedMessage;
+    throw err;
+  }
+}
+
+assert.match = function match(string, regexp, message) {
+  internalMatch(string, regexp, message, match);
+};
+
+assert.doesNotMatch = function doesNotMatch(string, regexp, message) {
+  internalMatch(string, regexp, message, doesNotMatch);
+};
+
 // Expose a strict only variant of assert
 function strict(...args) {
   innerOk(strict, args.length, ...args);
 }
-assert.strict = Object.assign(strict, assert, {
+assert.strict = ObjectAssign(strict, assert, {
   equal: assert.strictEqual,
   deepEqual: assert.deepStrictEqual,
   notEqual: assert.notStrictEqual,

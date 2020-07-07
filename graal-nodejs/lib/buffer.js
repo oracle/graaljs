@@ -22,17 +22,24 @@
 'use strict';
 
 const {
-  Object: {
-    defineProperties: ObjectDefineProperties,
-    defineProperty: ObjectDefineProperty,
-    setPrototypeOf: ObjectSetPrototypeOf,
-    create: ObjectCreate
-  },
-  Math: {
-    floor: MathFloor,
-    trunc: MathTrunc,
-    min: MathMin
-  }
+  Array,
+  ArrayIsArray,
+  Error,
+  MathFloor,
+  MathMin,
+  MathTrunc,
+  NumberIsNaN,
+  NumberMAX_SAFE_INTEGER,
+  NumberMIN_SAFE_INTEGER,
+  ObjectCreate,
+  ObjectDefineProperties,
+  ObjectDefineProperty,
+  ObjectGetOwnPropertyDescriptor,
+  ObjectGetPrototypeOf,
+  ObjectSetPrototypeOf,
+  SymbolSpecies,
+  SymbolToPrimitive,
+  Uint8ArrayPrototype,
 } = primordials;
 
 const graalBuffer = require('internal/graal/buffer');
@@ -53,11 +60,13 @@ const {
   zeroFill: bindingZeroFill
 } = internalBinding('buffer');
 const {
+  arraybuffer_untransferable_private_symbol,
   getOwnNonIndexProperties,
   propertyFilter: {
     ALL_PROPERTIES,
     ONLY_ENUMERABLE
-  }
+  },
+  setHiddenValue,
 } = internalBinding('util');
 const {
   customInspectSymbol,
@@ -89,6 +98,7 @@ const {
   hideStackFrames
 } = require('internal/errors');
 const {
+  validateBuffer,
   validateInt32,
   validateString
 } = require('internal/validators');
@@ -97,6 +107,13 @@ const {
   FastBuffer,
   addBufferPrototypeMethods
 } = require('internal/buffer');
+
+const TypedArrayPrototype = ObjectGetPrototypeOf(Uint8ArrayPrototype);
+
+const TypedArrayProto_byteLength =
+      ObjectGetOwnPropertyDescriptor(TypedArrayPrototype,
+                                     'byteLength').get;
+const TypedArrayFill = TypedArrayPrototype.fill;
 
 FastBuffer.prototype.constructor = Buffer;
 Buffer.prototype = FastBuffer.prototype;
@@ -142,6 +159,7 @@ function createUnsafeBuffer(size) {
 function createPool() {
   poolSize = Buffer.poolSize;
   allocPool = createUnsafeBuffer(poolSize).buffer;
+  setHiddenValue(allocPool, arraybuffer_untransferable_private_symbol, true);
   poolOffset = 0;
 }
 createPool();
@@ -180,9 +198,9 @@ function showFlaggedDeprecation() {
 
 function toInteger(n, defaultVal) {
   n = +n;
-  if (!Number.isNaN(n) &&
-      n >= Number.MIN_SAFE_INTEGER &&
-      n <= Number.MAX_SAFE_INTEGER) {
+  if (!NumberIsNaN(n) &&
+      n >= NumberMIN_SAFE_INTEGER &&
+      n <= NumberMAX_SAFE_INTEGER) {
     return ((n % 1) === 0 ? n : MathFloor(n));
   }
   return defaultVal;
@@ -227,6 +245,10 @@ function _copy(source, target, targetStart, sourceStart, sourceEnd) {
                                sourceStart);
   }
 
+  return _copyActual(source, target, targetStart, sourceStart, sourceEnd);
+}
+
+function _copyActual(source, target, targetStart, sourceStart, sourceEnd) {
   if (sourceEnd - sourceStart > target.length - targetStart)
     sourceEnd = sourceStart + target.length - targetStart;
 
@@ -268,7 +290,7 @@ function Buffer(arg, encodingOrOffset, length) {
   return Buffer.from(arg, encodingOrOffset, length);
 }
 
-ObjectDefineProperty(Buffer, Symbol.species, {
+ObjectDefineProperty(Buffer, SymbolSpecies, {
   enumerable: false,
   configurable: true,
   get() { return FastBuffer; }
@@ -291,17 +313,21 @@ Buffer.from = function from(value, encodingOrOffset, length) {
       return fromArrayBuffer(value, encodingOrOffset, length);
 
     const valueOf = value.valueOf && value.valueOf();
-    if (valueOf !== null && valueOf !== undefined && valueOf !== value)
-      return Buffer.from(valueOf, encodingOrOffset, length);
+    if (valueOf != null &&
+        valueOf !== value &&
+        (typeof valueOf === 'string' || typeof valueOf === 'object')) {
+      return from(valueOf, encodingOrOffset, length);
+    }
 
     const b = fromObject(value);
     if (b)
       return b;
 
-    if (typeof value[Symbol.toPrimitive] === 'function') {
-      return Buffer.from(value[Symbol.toPrimitive]('string'),
-                         encodingOrOffset,
-                         length);
+    if (typeof value[SymbolToPrimitive] === 'function') {
+      const primitive = value[SymbolToPrimitive]('string');
+      if (typeof primitive === 'string') {
+        return fromString(primitive, encodingOrOffset);
+      }
     }
   }
 
@@ -433,21 +459,13 @@ function fromString(string, encoding) {
   return fromStringFast(string, ops);
 }
 
-function fromArrayLike(obj) {
-  const length = obj.length;
-  const b = allocate(length);
-  for (let i = 0; i < length; i++)
-    b[i] = obj[i];
-  return b;
-}
-
 function fromArrayBuffer(obj, byteOffset, length) {
   // Convert byteOffset to integer
   if (byteOffset === undefined) {
     byteOffset = 0;
   } else {
     byteOffset = +byteOffset;
-    if (Number.isNaN(byteOffset))
+    if (NumberIsNaN(byteOffset))
       byteOffset = 0;
   }
 
@@ -472,17 +490,22 @@ function fromArrayBuffer(obj, byteOffset, length) {
   return new FastBuffer(obj, byteOffset, length);
 }
 
-function fromObject(obj) {
-  if (isUint8Array(obj)) {
-    const b = allocate(obj.length);
-
-    if (b.length === 0)
-      return b;
-
-    _copy(obj, b, 0, 0, obj.length);
+function fromArrayLike(obj) {
+  if (obj.length <= 0)
+    return new FastBuffer();
+  if (obj.length < (Buffer.poolSize >>> 1)) {
+    if (obj.length > (poolSize - poolOffset))
+      createPool();
+    const b = new FastBuffer(allocPool, poolOffset, obj.length);
+    b.set(obj, 0);
+    poolOffset += obj.length;
+    alignPool();
     return b;
   }
+  return new FastBuffer(obj);
+}
 
+function fromObject(obj) {
   if (obj.length !== undefined || isAnyArrayBuffer(obj.buffer)) {
     if (typeof obj.length !== 'number') {
       return new FastBuffer();
@@ -490,7 +513,7 @@ function fromObject(obj) {
     return fromArrayLike(obj);
   }
 
-  if (obj.type === 'Buffer' && Array.isArray(obj.data)) {
+  if (obj.type === 'Buffer' && ArrayIsArray(obj.data)) {
     return fromArrayLike(obj.data);
   }
 }
@@ -525,7 +548,7 @@ Buffer[kIsEncodingSymbol] = Buffer.isEncoding;
 
 Buffer.concat = function concat(list, length) {
   let i;
-  if (!Array.isArray(list)) {
+  if (!ArrayIsArray(list)) {
     throw new ERR_INVALID_ARG_TYPE('list', 'Array', list);
   }
 
@@ -553,8 +576,7 @@ Buffer.concat = function concat(list, length) {
       throw new ERR_INVALID_ARG_TYPE(
         `list[${i}]`, ['Buffer', 'Uint8Array'], list[i]);
     }
-    _copy(buf, buffer, pos);
-    pos += buf.length;
+    pos += _copyActual(buf, buffer, pos, 0, buf.length);
   }
 
   // Note: `length` is always equal to `buffer.length` at this point
@@ -562,7 +584,7 @@ Buffer.concat = function concat(list, length) {
     // Zero-fill the remaining bytes if the specified `length` was more than
     // the actual total length, i.e. if we have some remaining allocated bytes
     // there were not initialized.
-    buffer.fill(0, pos, length);
+    TypedArrayFill.call(buffer, 0, pos, length);
   }
 
   return buffer;
@@ -884,6 +906,8 @@ Buffer.prototype.compare = function compare(target,
 // - encoding - an optional encoding, relevant if val is a string
 // - dir - true for indexOf, false for lastIndexOf
 function bidirectionalIndexOf(buffer, val, byteOffset, encoding, dir) {
+  validateBuffer(buffer);
+
   if (typeof byteOffset === 'string') {
     encoding = byteOffset;
     byteOffset = undefined;
@@ -895,8 +919,8 @@ function bidirectionalIndexOf(buffer, val, byteOffset, encoding, dir) {
   // Coerce to Number. Values like null and [] become 0.
   byteOffset = +byteOffset;
   // If the offset is undefined, "foo", {}, coerces to NaN, search whole buffer.
-  if (Number.isNaN(byteOffset)) {
-    byteOffset = dir ? 0 : buffer.length;
+  if (NumberIsNaN(byteOffset)) {
+    byteOffset = dir ? 0 : (buffer.length || buffer.byteLength);
   }
   dir = !!dir;  // Cast to bool.
 
@@ -996,11 +1020,22 @@ function _fill(buf, value, offset, end, encoding) {
       return buf;
   }
 
-  const res = bindingFill(buf, value, offset, end, encoding);
-  if (res < 0) {
-    if (res === -1)
-      throw new ERR_INVALID_ARG_VALUE('value', value);
-    throw new ERR_BUFFER_OUT_OF_BOUNDS();
+
+  if (typeof value === 'number') {
+    // OOB check
+    const byteLen = TypedArrayProto_byteLength.call(buf);
+    const fillLength = end - offset;
+    if (offset > end || fillLength + offset > byteLen)
+      throw new ERR_BUFFER_OUT_OF_BOUNDS();
+
+    TypedArrayFill.call(buf, value, offset, end);
+  } else {
+    const res = bindingFill(buf, value, offset, end, encoding);
+    if (res < 0) {
+      if (res === -1)
+        throw new ERR_INVALID_ARG_VALUE('value', value);
+      throw new ERR_BUFFER_OUT_OF_BOUNDS();
+    }
   }
 
   return buf;
@@ -1068,7 +1103,7 @@ function adjustOffset(offset, length) {
   if (offset < length) {
     return offset;
   }
-  return Number.isNaN(offset) ? 0 : length;
+  return NumberIsNaN(offset) ? 0 : length;
 }
 
 Buffer.prototype.slice = function slice(start, end) {

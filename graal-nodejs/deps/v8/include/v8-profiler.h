@@ -26,6 +26,10 @@ struct CpuProfileDeoptFrame {
   size_t position;
 };
 
+namespace internal {
+class CpuProfile;
+}  // namespace internal
+
 }  // namespace v8
 
 #ifdef V8_OS_WIN
@@ -47,75 +51,6 @@ template class V8_EXPORT std::vector<v8::CpuProfileDeoptInfo>;
 #endif
 
 namespace v8 {
-
-// TickSample captures the information collected for each sample.
-struct V8_EXPORT TickSample {
-  // Internal profiling (with --prof + tools/$OS-tick-processor) wants to
-  // include the runtime function we're calling. Externally exposed tick
-  // samples don't care.
-  enum RecordCEntryFrame { kIncludeCEntryFrame, kSkipCEntryFrame };
-
-  TickSample()
-      : state(OTHER),
-        pc(nullptr),
-        external_callback_entry(nullptr),
-        frames_count(0),
-        has_external_callback(false),
-        update_stats(true) {}
-
-  /**
-   * Initialize a tick sample from the isolate.
-   * \param isolate The isolate.
-   * \param state Execution state.
-   * \param record_c_entry_frame Include or skip the runtime function.
-   * \param update_stats Whether update the sample to the aggregated stats.
-   * \param use_simulator_reg_state When set to true and V8 is running under a
-   *                                simulator, the method will use the simulator
-   *                                register state rather than the one provided
-   *                                with |state| argument. Otherwise the method
-   *                                will use provided register |state| as is.
-   */
-  void Init(Isolate* isolate, const v8::RegisterState& state,
-            RecordCEntryFrame record_c_entry_frame, bool update_stats,
-            bool use_simulator_reg_state = true);
-  /**
-   * Get a call stack sample from the isolate.
-   * \param isolate The isolate.
-   * \param state Register state.
-   * \param record_c_entry_frame Include or skip the runtime function.
-   * \param frames Caller allocated buffer to store stack frames.
-   * \param frames_limit Maximum number of frames to capture. The buffer must
-   *                     be large enough to hold the number of frames.
-   * \param sample_info The sample info is filled up by the function
-   *                    provides number of actual captured stack frames and
-   *                    the current VM state.
-   * \param use_simulator_reg_state When set to true and V8 is running under a
-   *                                simulator, the method will use the simulator
-   *                                register state rather than the one provided
-   *                                with |state| argument. Otherwise the method
-   *                                will use provided register |state| as is.
-   * \note GetStackSample is thread and signal safe and should only be called
-   *                      when the JS thread is paused or interrupted.
-   *                      Otherwise the behavior is undefined.
-   */
-  static bool GetStackSample(Isolate* isolate, v8::RegisterState* state,
-                             RecordCEntryFrame record_c_entry_frame,
-                             void** frames, size_t frames_limit,
-                             v8::SampleInfo* sample_info,
-                             bool use_simulator_reg_state = true);
-  StateTag state;  // The state of the VM.
-  void* pc;        // Instruction pointer.
-  union {
-    void* tos;  // Top stack value (*sp).
-    void* external_callback_entry;
-  };
-  static const unsigned kMaxFramesCountLog2 = 8;
-  static const unsigned kMaxFramesCount = (1 << kMaxFramesCountLog2) - 1;
-  void* stack[kMaxFramesCount];                 // Call stack.
-  unsigned frames_count : kMaxFramesCountLog2;  // Number of captured frames.
-  bool has_external_callback : 1;
-  bool update_stats : 1;  // Whether the sample should update aggregated stats.
-};
 
 /**
  * CpuProfileNode represents a node in a call graph.
@@ -307,6 +242,15 @@ enum CpuProfilingNamingMode {
   kDebugNaming,
 };
 
+enum CpuProfilingLoggingMode {
+  // Enables logging when a profile is active, and disables logging when all
+  // profiles are detached.
+  kLazyLogging,
+  // Enables logging for the lifetime of the CpuProfiler. Calls to
+  // StartRecording are faster, at the expense of runtime overhead.
+  kEagerLogging,
+};
+
 /**
  * Optional profiling attributes.
  */
@@ -340,6 +284,11 @@ class V8_EXPORT CpuProfilingOptions {
   int sampling_interval_us() const { return sampling_interval_us_; }
 
  private:
+  friend class internal::CpuProfile;
+
+  bool has_filter_context() const;
+  void* raw_filter_context() const;
+
   CpuProfilingMode mode_;
   unsigned max_samples_;
   int sampling_interval_us_;
@@ -359,6 +308,9 @@ class V8_EXPORT CpuProfiler {
   static CpuProfiler* New(Isolate* isolate);
   static CpuProfiler* New(Isolate* isolate,
                           CpuProfilingNamingMode mode);
+  static CpuProfiler* New(Isolate* isolate,
+                          CpuProfilingNamingMode namingMode,
+                          CpuProfilingLoggingMode loggingMode);
 
   /**
    * Synchronously collect current stack sample in all profilers attached to

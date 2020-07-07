@@ -1,6 +1,16 @@
 'use strict';
 
-const { Object, Reflect } = primordials;
+const {
+  ArrayIsArray,
+  BigInt,
+  DateNow,
+  Error,
+  Number,
+  NumberIsFinite,
+  ObjectSetPrototypeOf,
+  ReflectOwnKeys,
+  Symbol,
+} = primordials;
 
 const { Buffer, kMaxLength } = require('buffer');
 const {
@@ -118,7 +128,7 @@ class DirentFromStats extends Dirent {
   }
 }
 
-for (const name of Reflect.ownKeys(Dirent.prototype)) {
+for (const name of ReflectOwnKeys(Dirent.prototype)) {
   if (name === 'constructor') {
     continue;
   }
@@ -353,8 +363,8 @@ function BigIntStats(dev, mode, nlink, uid, gid, rdev, blksize,
   this.birthtime = dateFromMs(this.birthtimeMs);
 }
 
-Object.setPrototypeOf(BigIntStats.prototype, StatsBase.prototype);
-Object.setPrototypeOf(BigIntStats, StatsBase);
+ObjectSetPrototypeOf(BigIntStats.prototype, StatsBase.prototype);
+ObjectSetPrototypeOf(BigIntStats, StatsBase);
 
 BigIntStats.prototype._checkModeProperty = function(property) {
   if (isWindows && (property === S_IFIFO || property === S_IFBLK ||
@@ -379,8 +389,8 @@ function Stats(dev, mode, nlink, uid, gid, rdev, blksize,
   this.birthtime = dateFromMs(birthtimeMs);
 }
 
-Object.setPrototypeOf(Stats.prototype, StatsBase.prototype);
-Object.setPrototypeOf(Stats, StatsBase);
+ObjectSetPrototypeOf(Stats.prototype, StatsBase.prototype);
+ObjectSetPrototypeOf(Stats, StatsBase);
 
 // HACK: Workaround for https://github.com/standard-things/esm/issues/821.
 // TODO(ronag): Remove this as soon as `esm` publishes a fixed version.
@@ -481,9 +491,9 @@ function toUnixTimestamp(time, name = 'time') {
   if (typeof time === 'string' && +time == time) {
     return +time;
   }
-  if (Number.isFinite(time)) {
+  if (NumberIsFinite(time)) {
     if (time < 0) {
-      return Date.now() / 1000;
+      return DateNow() / 1000;
     }
     return time;
   }
@@ -496,13 +506,15 @@ function toUnixTimestamp(time, name = 'time') {
 
 const validateOffsetLengthRead = hideStackFrames(
   (offset, length, bufferLength) => {
-    if (offset < 0 || offset >= bufferLength) {
-      throw new ERR_OUT_OF_RANGE('offset',
-                                 `>= 0 && <= ${bufferLength}`, offset);
+    if (offset < 0) {
+      throw new ERR_OUT_OF_RANGE('offset', '>= 0', offset);
     }
-    if (length < 0 || offset + length > bufferLength) {
+    if (length < 0) {
+      throw new ERR_OUT_OF_RANGE('length', '>= 0', length);
+    }
+    if (offset + length > bufferLength) {
       throw new ERR_OUT_OF_RANGE('length',
-                                 `>= 0 && <= ${bufferLength - offset}`, length);
+                                 `<= ${bufferLength - offset}`, length);
     }
   }
 );
@@ -539,7 +551,7 @@ const getValidatedPath = hideStackFrames((fileURLOrPath, propName = 'path') => {
 });
 
 const validateBufferArray = hideStackFrames((buffers, propName = 'buffers') => {
-  if (!Array.isArray(buffers))
+  if (!ArrayIsArray(buffers))
     throw new ERR_INVALID_ARG_TYPE(propName, 'ArrayBufferView[]', buffers);
 
   for (let i = 0; i < buffers.length; i++) {
@@ -563,8 +575,8 @@ function warnOnNonPortableTemplate(template) {
 }
 
 const defaultRmdirOptions = {
-  emfileWait: 1000,
-  maxBusyTries: 3,
+  retryDelay: 100,
+  maxRetries: 0,
   recursive: false,
 };
 
@@ -579,8 +591,8 @@ const validateRmdirOptions = hideStackFrames((options) => {
   if (typeof options.recursive !== 'boolean')
     throw new ERR_INVALID_ARG_TYPE('recursive', 'boolean', options.recursive);
 
-  validateInt32(options.emfileWait, 'emfileWait', 0);
-  validateUint32(options.maxBusyTries, 'maxBusyTries');
+  validateInt32(options.retryDelay, 'retryDelay', 0);
+  validateUint32(options.maxRetries, 'maxRetries');
 
   return options;
 });

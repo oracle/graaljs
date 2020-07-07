@@ -92,6 +92,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -123,6 +124,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ControlFlowException;
@@ -198,6 +200,7 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
+import com.oracle.truffle.js.runtime.objects.JSModuleRecord.Status;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -923,57 +926,132 @@ public final class GraalJSAccess {
         return name;
     }
 
+    private static String foreignStringToString(Object foreignString) throws UnsupportedMessageException {
+        if (foreignString instanceof String) {
+            return (String) foreignString;
+        } else {
+            return InteropLibrary.getFactory().getUncached(foreignString).asString(foreignString);
+        }
+    }
+
     public Object objectGetOwnPropertyNames(Object object) {
-        DynamicObject dynamicObject = (DynamicObject) object;
-        List<String> names = JSObject.enumerableOwnNames(dynamicObject);
-        Object[] namesArray = names.toArray();
-        convertArrayIndicesToNumbers(namesArray);
-        JSContext context = JSObject.getJSContext(dynamicObject);
-        return JSArray.createConstantObjectArray(context, namesArray);
+        Object[] namesArray;
+        if (JSObject.isJSObject(object)) {
+            DynamicObject dynamicObject = (DynamicObject) object;
+            List<String> names = JSObject.enumerableOwnNames(dynamicObject);
+            namesArray = names.toArray();
+            convertArrayIndicesToNumbers(namesArray);
+        } else {
+            assert JSRuntime.isForeignObject(object);
+            try {
+                List<Object> names = new ArrayList<>();
+                InteropLibrary library = InteropLibrary.getFactory().getUncached(object);
+                if (library.hasMembers(object)) {
+                    Object members = library.getMembers(object);
+                    InteropLibrary membersLibrary = InteropLibrary.getFactory().getUncached(members);
+                    long size = membersLibrary.getArraySize(members);
+                    for (long i = 0; i < size; i++) {
+                        Object key = membersLibrary.readArrayElement(members, i);
+                        names.add(foreignStringToString(key));
+                    }
+                }
+                if (library.hasArrayElements(object)) {
+                    long size = library.getArraySize(object);
+                    for (long i = 0; i < size; i++) {
+                        if (library.isArrayElementExisting(object, i)) {
+                            names.add(JSRuntime.longToIntOrDouble(i));
+                        }
+                    }
+                }
+                namesArray = names.toArray();
+            } catch (UnsupportedMessageException | InvalidArrayIndexException ex) {
+                namesArray = new Object[0];
+            }
+        }
+        return JSArray.createConstantObjectArray(mainJSContext, namesArray);
     }
 
     public Object objectGetPropertyNames(Object object, boolean ownOnly,
                     boolean enumerableOnly, boolean configurableOnly, boolean writableOnly,
                     boolean skipIndices, boolean skipSymbols, boolean skipStrings,
                     boolean keepNumbers) {
-        List<Object> keys = new ArrayList<>();
-        DynamicObject dynamicObject = (DynamicObject) object;
-        JSContext context = JSObject.getJSContext(dynamicObject);
-        do {
-            JSClass jsclass = JSObject.getJSClass(dynamicObject);
-            Iterable<Object> ownKeys = jsclass.ownPropertyKeys(dynamicObject);
-            for (Object key : ownKeys) {
-                Object keyToStore = key;
-                if (key instanceof String) {
-                    boolean index = JSRuntime.isArrayIndex((String) key);
-                    if (index) {
-                        if (skipIndices) {
-                            continue;
-                        }
-                        if (keepNumbers) {
-                            keyToStore = JSRuntime.stringToNumber((String) key);
-                        }
-                    } else {
+        Object[] propertyNames;
+        if (JSObject.isJSObject(object)) {
+            Set<Object> keys = new LinkedHashSet<>();
+            DynamicObject dynamicObject = (DynamicObject) object;
+            do {
+                JSClass jsclass = JSObject.getJSClass(dynamicObject);
+                Iterable<Object> ownKeys = jsclass.ownPropertyKeys(dynamicObject);
+                for (Object key : ownKeys) {
+                    Object keyToStore = key;
+                    if (key instanceof String) {
                         if (skipStrings) {
                             continue;
                         }
+                        boolean index = JSRuntime.isArrayIndex((String) key);
+                        if (index) {
+                            if (skipIndices) {
+                                continue;
+                            }
+                            if (keepNumbers) {
+                                keyToStore = JSRuntime.stringToNumber((String) key);
+                            }
+                        }
+                    } else {
+                        assert key instanceof Symbol;
+                        if (skipSymbols) {
+                            continue;
+                        }
                     }
-                } else {
-                    assert key instanceof Symbol;
-                    if (skipSymbols) {
+                    PropertyDescriptor desc = jsclass.getOwnProperty(dynamicObject, key);
+                    if ((enumerableOnly && (desc == null || !desc.getEnumerable())) || (configurableOnly && (desc == null || !desc.getConfigurable())) ||
+                                    (writableOnly && (desc == null || !desc.getWritable()))) {
                         continue;
                     }
+                    keys.add(keyToStore);
                 }
-                PropertyDescriptor desc = jsclass.getOwnProperty(dynamicObject, key);
-                if ((enumerableOnly && (desc == null || !desc.getEnumerable())) || (configurableOnly && (desc == null || !desc.getConfigurable())) ||
-                                (writableOnly && (desc == null || !desc.getWritable()))) {
-                    continue;
+                dynamicObject = JSObject.getPrototype(dynamicObject);
+            } while (!ownOnly && dynamicObject != Null.instance);
+            propertyNames = keys.toArray();
+        } else {
+            assert JSRuntime.isForeignObject(object);
+            try {
+                List<Object> keys = new ArrayList<>();
+                InteropLibrary library = InteropLibrary.getFactory().getUncached(object);
+                if (!skipStrings && library.hasMembers(object)) {
+                    Object members = library.getMembers(object);
+                    InteropLibrary membersLibrary = InteropLibrary.getFactory().getUncached(members);
+                    long size = membersLibrary.getArraySize(members);
+                    for (long i = 0; i < size; i++) {
+                        Object key = membersLibrary.readArrayElement(members, i);
+                        String stringKey = foreignStringToString(key);
+                        if (!writableOnly || library.isMemberWritable(object, stringKey)) {
+                            keys.add(stringKey);
+                        }
+                    }
                 }
-                keys.add(keyToStore);
+                if (!skipIndices && library.hasArrayElements(object)) {
+                    long size = library.getArraySize(object);
+                    for (long i = 0; i < size; i++) {
+                        if (library.isArrayElementExisting(object, i)) {
+                            Object key;
+                            if (keepNumbers) {
+                                key = JSRuntime.longToIntOrDouble(i);
+                            } else {
+                                key = String.valueOf(i);
+                            }
+                            if (!writableOnly || library.isArrayElementWritable(object, i)) {
+                                keys.add(key);
+                            }
+                        }
+                    }
+                }
+                propertyNames = keys.toArray();
+            } catch (UnsupportedMessageException | InvalidArrayIndexException ex) {
+                propertyNames = new Object[0];
             }
-            dynamicObject = JSObject.getPrototype(dynamicObject);
-        } while (!ownOnly && dynamicObject != Null.instance);
-        return JSArray.createConstantObjectArray(context, keys.toArray());
+        }
+        return JSArray.createConstantObjectArray(mainJSContext, propertyNames);
     }
 
     private void convertArrayIndicesToNumbers(Object[] namesArray) {
@@ -1107,9 +1185,7 @@ public final class GraalJSAccess {
     }
 
     public void arrayBufferDetach(Object arrayBuffer) {
-        if (JSArrayBuffer.getDirectByteLength((DynamicObject) arrayBuffer) != 0) {
-            JSArrayBuffer.setDirectByteBuffer((DynamicObject) arrayBuffer, ByteBuffer.allocateDirect(0));
-        }
+        JSArrayBuffer.detachArrayBuffer((DynamicObject) arrayBuffer);
     }
 
     public static int arrayBufferViewByteLength(JSContext context, DynamicObject arrayBufferView) {
@@ -1481,7 +1557,7 @@ public final class GraalJSAccess {
         FunctionTemplate functionTemplate = (FunctionTemplate) templateObj;
         functionTemplate.setClassName((String) name);
         ObjectTemplate instanceTemplate = functionTemplate.getInstanceTemplate();
-        instanceTemplate.addValue(new Value(Symbol.SYMBOL_TO_STRING_TAG, name, JSAttributes.configurableEnumerableWritable()));
+        instanceTemplate.addValue(new Value(Symbol.SYMBOL_TO_STRING_TAG, name, JSAttributes.configurableNotEnumerableNotWritable()));
     }
 
     public Object functionTemplateInstanceTemplate(Object templateObj) {
@@ -1764,7 +1840,7 @@ public final class GraalJSAccess {
         String parameterList = params.toString();
 
         try {
-            GraalJSParserHelper.checkFunctionSyntax(jsContext, jsContext.getParserOptions(), parameterList, body, false, false);
+            GraalJSParserHelper.checkFunctionSyntax(jsContext, jsContext.getParserOptions(), parameterList, body, false, false, sourceName);
         } catch (com.oracle.js.parser.ParserException ex) {
             // throw the correct JS error
             nodeEvaluator.parseFunction(jsContext, parameterList, body, false, false, sourceName);
@@ -1786,6 +1862,12 @@ public final class GraalJSAccess {
         code.append("(function (");
         code.append(parameterList);
         code.append(") {");
+
+        // hashbang would result in SyntaxError => comment it out
+        if (body.startsWith("#!")) {
+            code.append("//");
+        }
+
         code.append(body);
         code.append("\n});");
 
@@ -1807,13 +1889,21 @@ public final class GraalJSAccess {
             hostDefinedOptionsMap.put(source, hostDefinedOptions);
         }
 
+        Object function;
         if (snapshot == null) {
             DynamicObject fn = (DynamicObject) nodeEvaluator.evaluate(realm, null, source);
-            return anyExtension ? JSFunction.call(fn, Undefined.instance, extensions) : fn;
+            function = anyExtension ? JSFunction.call(fn, Undefined.instance, extensions) : fn;
         } else {
             ScriptNode scriptNode = parseScriptNodeFromSnapshot(jsContext, source, snapshot);
-            return scriptNode.run(realm);
+            function = scriptNode.run(realm);
         }
+        assert JSFunction.isJSFunction(function);
+
+        NodeScriptOrModule scriptOrModule = new NodeScriptOrModule(jsContext, source);
+        // function should keep scriptOrModule alive
+        ((DynamicObject) function).define(NodeScriptOrModule.SCRIPT_OR_MODULE, scriptOrModule);
+
+        return new Object[]{function, scriptOrModule};
     }
 
     public Object scriptCompile(Object context, Object sourceCode, Object fileName, Object hostDefinedOptions) {
@@ -2273,12 +2363,30 @@ public final class GraalJSAccess {
     private final Set<WeakCallback> weakCallbacks = new HashSet<>();
 
     @SuppressWarnings("unchecked")
-    private WeakCallback updateWeakCallback(DynamicObject object, long reference, long data, long callbackPointer, int type, HiddenKey key) {
-        Map<Long, WeakCallback> map = (Map<Long, WeakCallback>) object.get(key);
-        if (map == null) {
-            map = new HashMap<>();
-            object.define(key, map);
+    private WeakCallback updateWeakCallback(Object object, long reference, long data, long callbackPointer, int type) {
+        Map<Long, WeakCallback> map;
+        if (object instanceof NodeScriptOrModule) {
+            map = ((NodeScriptOrModule) object).getWeakCallbackMap();
+        } else {
+            DynamicObject target;
+            HiddenKey key;
+            if (object instanceof JSRealm) {
+                target = ((JSRealm) object).getGlobalObject();
+                key = HIDDEN_WEAK_CALLBACK_CONTEXT;
+            } else if (object instanceof DynamicObject) {
+                target = (DynamicObject) object;
+                key = HIDDEN_WEAK_CALLBACK;
+            } else {
+                System.err.println("Weak references not supported for " + object);
+                return null;
+            }
+            map = (Map<Long, WeakCallback>) target.get(key);
+            if (map == null) {
+                map = new HashMap<>();
+                target.define(key, map);
+            }
         }
+
         WeakCallback weakCallback = map.get(reference);
         if (weakCallback == null) {
             weakCallback = new WeakCallback(object, data, callbackPointer, type, weakCallbackQueue);
@@ -2327,17 +2435,7 @@ public final class GraalJSAccess {
             return;
         }
 
-        DynamicObject target;
-        HiddenKey key;
-        if (object instanceof JSRealm) {
-            target = ((JSRealm) object).getGlobalObject();
-            key = HIDDEN_WEAK_CALLBACK_CONTEXT;
-        } else {
-            target = (DynamicObject) object;
-            key = HIDDEN_WEAK_CALLBACK;
-        }
-
-        updateWeakCallback(target, reference, data, callbackPointer, type, key);
+        updateWeakCallback(object, reference, data, callbackPointer, type);
         pollWeakCallbackQueue(false);
     }
 
@@ -2350,17 +2448,7 @@ public final class GraalJSAccess {
             return 0;
         }
 
-        DynamicObject target;
-        HiddenKey key;
-        if (object instanceof JSRealm) {
-            target = ((JSRealm) object).getGlobalObject();
-            key = HIDDEN_WEAK_CALLBACK_CONTEXT;
-        } else {
-            target = (DynamicObject) object;
-            key = HIDDEN_WEAK_CALLBACK;
-        }
-
-        WeakCallback callback = updateWeakCallback(target, reference, 0, 0, 0, key);
+        WeakCallback callback = updateWeakCallback(object, reference, 0, 0, 0);
         return callback.data;
     }
 
@@ -3043,11 +3131,12 @@ public final class GraalJSAccess {
     }
 
     public void moduleInstantiate(Object context, Object module, long resolveCallback) {
+        JSRealm jsRealm = (JSRealm) context;
+        JSContext jsContext = jsRealm.getContext();
         ESModuleLoader loader = getModuleLoader();
         loader.setResolver(resolveCallback);
-        JSContext jsContext = ((JSRealm) context).getContext();
         try {
-            jsContext.getEvaluator().moduleInstantiation((JSModuleRecord) module);
+            jsContext.getEvaluator().moduleInstantiation(jsRealm, (JSModuleRecord) module);
         } finally {
             loader.setResolver(0);
         }
@@ -3060,7 +3149,7 @@ public final class GraalJSAccess {
         if (moduleRecord.isEvaluated() && moduleRecord.getEvaluationError() == null) {
             return Undefined.instance;
         }
-        return jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord);
+        return JSRuntime.nullToUndefined(jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord));
     }
 
     public int moduleGetStatus(Object module) {
@@ -3111,12 +3200,6 @@ public final class GraalJSAccess {
         return System.identityHashCode(module);
     }
 
-    /**
-     * Exports of synthetic modules that were set before the evaluation of the module started (and
-     * the storage for the exports was created).
-     */
-    private Map<JSModuleRecord, Map<String, Object>> earlySyntheticModuleExports = new WeakHashMap<>();
-
     public Object moduleCreateSyntheticModule(String moduleName, Object[] exportNames, final long evaluationStepsCallback) {
         FrameDescriptor frameDescriptor = new FrameDescriptor(Undefined.instance);
         List<Module.ExportEntry> localExportEntries = new ArrayList<>();
@@ -3124,27 +3207,28 @@ public final class GraalJSAccess {
             frameDescriptor.addFrameSlot(exportName);
             localExportEntries.add(Module.ExportEntry.exportSpecifier((String) exportName));
         }
-        Module module = new Module(Collections.emptyList(), Collections.emptyList(), localExportEntries, Collections.emptyList(), Collections.emptyList(), null, null);
+        Module moduleNode = new Module(Collections.emptyList(), Collections.emptyList(), localExportEntries, Collections.emptyList(), Collections.emptyList(), null, null);
         Source source = Source.newBuilder(JavaScriptLanguage.ID, "<unavailable>", moduleName).build();
-        final JSModuleRecord moduleRecord = new JSModuleRecord(module, mainJSContext, getModuleLoader(), source, () -> {
+        final JSModuleRecord moduleRecord = new JSModuleRecord(moduleNode, mainJSContext, getModuleLoader(), source, () -> {
         });
         moduleRecord.setFrameDescriptor(frameDescriptor);
-        JavaScriptRootNode rootNode = new JavaScriptRootNode(null, null, frameDescriptor) {
+        JavaScriptRootNode rootNode = new JavaScriptRootNode(mainJSContext.getLanguage(), source.createUnavailableSection(), frameDescriptor) {
             @Override
             public Object execute(VirtualFrame frame) {
-                moduleRecord.setEnvironment(frame.materialize());
-                return invokeEvaluationStepsCallback(mainJSContext.getRealm());
+                JSModuleRecord module = (JSModuleRecord) JSArguments.getUserArgument(frame.getArguments(), 0);
+                if (module.getEnvironment() == null) {
+                    assert module.getStatus() == Status.Instantiating;
+                    module.setEnvironment(frame.materialize());
+                    return Undefined.instance;
+                } else {
+                    assert module.getStatus() == Status.Evaluating;
+                    return invokeEvaluationStepsCallback(mainJSContext.getRealm(), module);
+                }
             }
 
             @TruffleBoundary
-            private Object invokeEvaluationStepsCallback(JSRealm realm) {
-                Map<String, Object> map = earlySyntheticModuleExports.get(moduleRecord);
-                if (map != null) {
-                    for (Map.Entry<String, Object> entry : map.entrySet()) {
-                        moduleSetSyntheticModuleExport(moduleRecord, entry.getKey(), entry.getValue());
-                    }
-                }
-                return NativeAccess.syntheticModuleEvaluationSteps(evaluationStepsCallback, realm, moduleRecord);
+            private Object invokeEvaluationStepsCallback(JSRealm realm, JSModuleRecord module) {
+                return NativeAccess.syntheticModuleEvaluationSteps(evaluationStepsCallback, realm, module);
             }
         };
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
@@ -3157,17 +3241,18 @@ public final class GraalJSAccess {
         JSModuleRecord moduleRecord = (JSModuleRecord) module;
         FrameDescriptor frameDescriptor = moduleRecord.getFrameDescriptor();
         FrameSlot frameSlot = frameDescriptor.findFrameSlot(exportName);
-        MaterializedFrame frame = moduleRecord.getEnvironment();
-        if (frame == null) {
-            Map<String, Object> map = earlySyntheticModuleExports.get(module);
-            if (map == null) {
-                map = new HashMap<>();
-                earlySyntheticModuleExports.put(moduleRecord, map);
-            }
-            map.put(exportName, exportValue);
-        } else {
-            frame.setObject(frameSlot, exportValue);
+        if (frameSlot == null) {
+            throw Errors.createReferenceError("Export '" + exportName + "' is not defined in module");
         }
+        MaterializedFrame frame = moduleRecord.getEnvironment();
+        frame.setObject(frameSlot, exportValue);
+    }
+
+    private static final ByteBuffer DUMMY_UNBOUND_MODULE_PARSE_RESULT = ByteBuffer.allocate(0);
+
+    public Object moduleGetUnboundModuleScript(Object module) {
+        JSModuleRecord moduleRecord = (JSModuleRecord) module;
+        return new UnboundScript(moduleRecord.getSource(), DUMMY_UNBOUND_MODULE_PARSE_RESULT);
     }
 
     public String scriptOrModuleGetResourceName(Object scriptOrModule) {
@@ -3446,6 +3531,28 @@ public final class GraalJSAccess {
 
     public JavaMessagePortData getCurrentMessagePortData() {
         return currentMessagePortData;
+    }
+
+    /**
+     * {@code ScriptOrModule} of a function produced by
+     * {@code ScriptCompiler::CompileFunctionInContext()}. It supports native weak references.
+     */
+    static class NodeScriptOrModule extends ScriptOrModule {
+        static final HiddenKey SCRIPT_OR_MODULE = new HiddenKey("scriptOrModule");
+
+        private Map<Long, WeakCallback> weakCallbackMap;
+
+        NodeScriptOrModule(JSContext context, Source source) {
+            super(context, source);
+        }
+
+        Map<Long, WeakCallback> getWeakCallbackMap() {
+            if (weakCallbackMap == null) {
+                weakCallbackMap = new HashMap<>();
+            }
+            return weakCallbackMap;
+        }
+
     }
 
 }

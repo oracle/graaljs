@@ -2,6 +2,7 @@
 
 <!--lint disable prohibited-strings-->
 <!--lint disable maximum-line-length-->
+<!--lint disable no-literal-urls-->
 
 <table>
 <tr>
@@ -52,7 +53,6 @@
   * [0.10.x](CHANGELOG_V010.md)
   * [io.js](CHANGELOG_IOJS.md)
   * [Archive](CHANGELOG_ARCHIVE.md)
-
 
 <a id="10.15.3"></a>
 ## 2019-03-05, Version 10.15.3 'Dubnium' (LTS), @BethGriggs

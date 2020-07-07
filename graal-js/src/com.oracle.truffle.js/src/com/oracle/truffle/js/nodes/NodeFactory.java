@@ -166,6 +166,8 @@ import com.oracle.truffle.js.nodes.control.GeneratorWrapperNode;
 import com.oracle.truffle.js.nodes.control.IfNode;
 import com.oracle.truffle.js.nodes.control.IteratorCloseWrapperNode;
 import com.oracle.truffle.js.nodes.control.LabelNode;
+import com.oracle.truffle.js.nodes.control.ModuleBodyNode;
+import com.oracle.truffle.js.nodes.control.ModuleYieldNode;
 import com.oracle.truffle.js.nodes.control.ReturnNode;
 import com.oracle.truffle.js.nodes.control.ReturnTargetNode;
 import com.oracle.truffle.js.nodes.control.RuntimeErrorNode;
@@ -1055,22 +1057,12 @@ public class NodeFactory {
         return JSGuardDisconnectedArgumentWrite.create(index, argumentsArrayAccess, argumentsArray, rhs, slot);
     }
 
-    public JavaScriptNode createSetModuleEnvironment(JavaScriptNode moduleRecordNode) {
-        return new StatementNode() {
-            @Child private JavaScriptNode moduleNode = moduleRecordNode;
+    public JavaScriptNode createModuleBody(JavaScriptNode moduleBody) {
+        return ModuleBodyNode.create(moduleBody);
+    }
 
-            @Override
-            public Object execute(VirtualFrame frame) {
-                JSModuleRecord module = (JSModuleRecord) moduleNode.execute(frame);
-                module.setEnvironment(frame.materialize());
-                return EMPTY;
-            }
-
-            @Override
-            protected JavaScriptNode copyUninitialized() {
-                return copy();
-            }
-        };
+    public JavaScriptNode createModuleYield() {
+        return ModuleYieldNode.create();
     }
 
     public JavaScriptNode createReadModuleImportBinding(JSModuleRecord moduleRecord, String bindingName) {

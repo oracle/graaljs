@@ -1,26 +1,23 @@
 'use strict';
 
 const {
-  JSON,
-  Object: {
-    create: ObjectCreate,
-    keys: ObjectKeys,
-    getOwnPropertyDescriptor: ObjectGetOwnPropertyDescriptor,
-  },
-  ObjectPrototype: {
-    hasOwnProperty: ObjectHasOwnProperty
-  },
-  MapPrototype: {
-    entries: MapEntries
-  }, uncurryThis
+  JSONParse,
+  ObjectCreate,
+  ObjectKeys,
+  ObjectGetOwnPropertyDescriptor,
+  ObjectPrototypeHasOwnProperty,
+  Map,
+  MapPrototypeEntries,
+  WeakMap,
+  WeakMapPrototypeGet,
+  uncurryThis,
 } = primordials;
 
-const MapIteratorNext = uncurryThis(MapEntries(new Map()).next);
-const WeakMapGet = uncurryThis(WeakMap.prototype.get);
+const MapIteratorNext = uncurryThis(MapPrototypeEntries(new Map()).next);
 
 function ObjectGetValueSafe(obj, key) {
   const desc = ObjectGetOwnPropertyDescriptor(obj, key);
-  return ObjectHasOwnProperty(desc, 'value') ? desc.value : undefined;
+  return ObjectPrototypeHasOwnProperty(desc, 'value') ? desc.value : undefined;
 }
 
 // See https://sourcemaps.info/spec.html for SourceMap V3 specification.
@@ -40,6 +37,7 @@ const cjsSourceMapCache = new WeakMap();
 const esmSourceMapCache = new Map();
 const { fileURLToPath, URL } = require('url');
 let Module;
+let SourceMap;
 
 let experimentalSourceMaps;
 function maybeCacheSourceMap(filename, content, cjsModuleInstance) {
@@ -115,7 +113,7 @@ function lineLengths(content) {
 function sourceMapFromFile(sourceMapFile) {
   try {
     const content = fs.readFileSync(sourceMapFile, 'utf8');
-    const data = JSON.parse(content);
+    const data = JSONParse(content);
     return sourcesToAbsolute(dirname(sourceMapFile), data);
   } catch (err) {
     debug(err.stack);
@@ -134,7 +132,7 @@ function sourceMapFromDataUrl(basePath, url) {
     const decodedData = base64 ?
       Buffer.from(data, 'base64').toString('utf8') : data;
     try {
-      const parsedData = JSON.parse(decodedData);
+      const parsedData = JSONParse(decodedData);
       return sourcesToAbsolute(basePath, parsedData);
     } catch (err) {
       debug(err.stack);
@@ -182,7 +180,7 @@ function rekeySourceMap(cjsModuleInstance, newInstance) {
 function sourceMapCacheToObject() {
   const obj = ObjectCreate(null);
 
-  const it = MapEntries(esmSourceMapCache);
+  const it = MapPrototypeEntries(esmSourceMapCache);
   let entry;
   while (!(entry = MapIteratorNext(it)).done) {
     const k = entry.value[0];
@@ -211,7 +209,7 @@ function appendCJSCache(obj) {
   for (let i = 0; i < cjsModules.length; i++) {
     const key = cjsModules[i];
     const module = ObjectGetValueSafe(cjsModuleCache, key);
-    const value = WeakMapGet(cjsSourceMapCache, module);
+    const value = WeakMapPrototypeGet(cjsSourceMapCache, module);
     if (value) {
       // This is okay because `obj` has a null prototype.
       obj[`file://${key}`] = {
@@ -225,8 +223,13 @@ function appendCJSCache(obj) {
 
 // Attempt to lookup a source map, which is either attached to a file URI, or
 // keyed on an error instance.
+// TODO(bcoe): once WeakRefs are available in Node.js, refactor to drop
+// requirement of error parameter.
 function findSourceMap(uri, error) {
   if (!Module) Module = require('internal/modules/cjs/loader').Module;
+  if (!SourceMap) {
+    SourceMap = require('internal/source_map/source_map').SourceMap;
+  }
   let sourceMap = cjsSourceMapCache.get(Module._cache[uri]);
   if (!uri.startsWith('file://')) uri = normalizeReferrerURL(uri);
   if (sourceMap === undefined) {
@@ -238,7 +241,11 @@ function findSourceMap(uri, error) {
       sourceMap = candidateSourceMap;
     }
   }
-  return sourceMap;
+  if (sourceMap && sourceMap.data) {
+    return new SourceMap(sourceMap.data);
+  } else {
+    return undefined;
+  }
 }
 
 module.exports = {

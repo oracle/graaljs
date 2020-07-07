@@ -546,10 +546,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode handleGeneratorBody(JavaScriptNode body) {
         assert currentFunction().isGeneratorFunction() && !currentFunction().isAsyncGeneratorFunction();
+        JavaScriptNode instrumentedBody = instrumentSuspendNodes(body);
+        if (lc.getCurrentFunction().isModule()) {
+            return factory.createModuleBody(instrumentedBody);
+        }
         VarRef yieldVar = environment.findYieldValueVar();
         JSWriteFrameSlotNode writeYieldValueNode = (JSWriteFrameSlotNode) yieldVar.createWriteNode(null);
         JSReadFrameSlotNode readYieldResultNode = JSTruffleOptions.YieldResultInFrame ? (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getYieldResultSlot()).createReadNode() : null;
-        JavaScriptNode instrumentedBody = instrumentSuspendNodes(body);
         return factory.createGeneratorBody(context, instrumentedBody, writeYieldValueNode, readYieldResultNode);
     }
 
@@ -1460,7 +1463,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return accessThisNode;
     }
 
-    private VarRef findScopeVar(String name, boolean skipWith) {
+    protected final VarRef findScopeVar(String name, boolean skipWith) {
         return environment.findVar(name, skipWith);
     }
 
@@ -1939,6 +1942,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode createYieldNode(UnaryNode unaryNode) {
         FunctionEnvironment currentFunction = currentFunction();
         assert currentFunction.isGeneratorFunction();
+        if (lc.getCurrentFunction().isModule()) {
+            currentFunction.addYield();
+            return factory.createModuleYield();
+        }
+
         boolean asyncGeneratorYield = currentFunction.isAsyncFunction();
         boolean yieldStar = unaryNode.tokenType() == TokenType.YIELD_STAR;
 

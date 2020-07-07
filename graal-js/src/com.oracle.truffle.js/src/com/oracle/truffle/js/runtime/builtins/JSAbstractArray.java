@@ -376,6 +376,10 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     @TruffleBoundary
     @Override
     public final boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
+        if (receiver != thisObj) {
+            return ordinarySetWithReceiver(thisObj, key, value, receiver, isStrict);
+        }
+        assert receiver == thisObj;
         long idx = JSRuntime.propertyKeyToArrayIndex(key);
         if (JSRuntime.isArrayIndex(idx)) {
             return set(thisObj, idx, value, receiver, isStrict);
@@ -387,15 +391,19 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     @TruffleBoundary
     @Override
     public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
+        if (receiver != thisObj) {
+            return ordinarySetWithReceiver(thisObj, Boundaries.stringValueOf(index), value, receiver, isStrict);
+        }
+        assert receiver == thisObj;
         if (arrayGetArrayType(thisObj).hasElement(thisObj, index)) {
-            return setOwn(thisObj, index, value, receiver, isStrict);
+            return setElement(thisObj, index, value, isStrict);
         } else {
             return setPropertySlow(thisObj, index, value, receiver, isStrict);
         }
     }
 
     @TruffleBoundary
-    private boolean setPropertySlow(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
+    private static boolean setPropertySlow(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
         if (!JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().isValid() && setPropertyPrototypes(thisObj, index, value, receiver, isStrict)) {
             return true;
         }
@@ -406,7 +414,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
             }
             return true;
         }
-        return setOwn(thisObj, index, value, receiver, isStrict);
+        return setElement(thisObj, index, value, isStrict);
     }
 
     private static boolean setPropertyPrototypes(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
@@ -447,8 +455,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         return !JSArrayBufferView.isJSArrayBufferView(current);
     }
 
-    @Override
-    public boolean setOwn(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
+    private static boolean setElement(DynamicObject thisObj, long index, Object value, boolean isStrict) {
         arraySetArrayType(thisObj, arrayGetArrayType(thisObj).setElement(thisObj, index, value, isStrict));
         return true;
     }

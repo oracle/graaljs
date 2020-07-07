@@ -65,6 +65,7 @@ import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSListFormat;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
+import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
@@ -436,6 +437,14 @@ public final class JSGuards {
 
     public static boolean isJSWeakSet(Object value) {
         return JSWeakSet.isJSWeakSet(value);
+    }
+
+    public static boolean isJSModuleNamespace(DynamicObject value) {
+        return JSModuleNamespace.isJSModuleNamespace(value);
+    }
+
+    public static boolean isJSModuleNamespace(Object value) {
+        return JSModuleNamespace.isJSModuleNamespace(value);
     }
 
     public static boolean isJSAdapter(Object object) {

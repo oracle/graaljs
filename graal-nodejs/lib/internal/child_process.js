@@ -1,6 +1,11 @@
 'use strict';
 
-const { JSON, Object } = primordials;
+const {
+  ArrayIsArray,
+  ObjectDefineProperty,
+  ObjectSetPrototypeOf,
+  Symbol,
+} = primordials;
 
 const {
   errnoException,
@@ -55,8 +60,6 @@ const {
 
 const { SocketListSend, SocketListReceive } = SocketList;
 
-// Lazy loaded for startup performance.
-let StringDecoder;
 // Lazy loaded for startup performance and to allow monkey patching of
 // internalBinding('http_parser').HTTPParser.
 let freeParser;
@@ -283,8 +286,8 @@ function ChildProcess() {
     maybeClose(this);
   };
 }
-Object.setPrototypeOf(ChildProcess.prototype, EventEmitter.prototype);
-Object.setPrototypeOf(ChildProcess, EventEmitter);
+ObjectSetPrototypeOf(ChildProcess.prototype, EventEmitter.prototype);
+ObjectSetPrototypeOf(ChildProcess, EventEmitter);
 
 
 function flushStdio(subprocess) {
@@ -343,23 +346,33 @@ ChildProcess.prototype.spawn = function(options) {
   const ipcFd = stdio.ipcFd;
   stdio = options.stdio = stdio.stdio;
 
+  if (options.serialization !== undefined &&
+      options.serialization !== 'json' &&
+      options.serialization !== 'advanced') {
+    throw new ERR_INVALID_OPT_VALUE('options.serialization',
+                                    options.serialization);
+  }
+
+  const serialization = options.serialization || 'json';
+
   if (ipc !== undefined) {
     // Let child process know about opened IPC channel
     if (options.envPairs === undefined)
       options.envPairs = [];
-    else if (!Array.isArray(options.envPairs)) {
+    else if (!ArrayIsArray(options.envPairs)) {
       throw new ERR_INVALID_ARG_TYPE('options.envPairs',
                                      'Array',
                                      options.envPairs);
     }
 
-    options.envPairs.push('NODE_CHANNEL_FD=' + ipcFd);
+    options.envPairs.push(`NODE_CHANNEL_FD=${ipcFd}`);
+    options.envPairs.push(`NODE_CHANNEL_SERIALIZATION_MODE=${serialization}`);
   }
 
   validateString(options.file, 'options.file');
   this.spawnfile = options.file;
 
-  if (Array.isArray(options.args))
+  if (ArrayIsArray(options.args))
     this.spawnargs = options.args;
   else if (options.args === undefined)
     this.spawnargs = [];
@@ -450,7 +463,7 @@ ChildProcess.prototype.spawn = function(options) {
     this.stdio.push(stdio[i].socket === undefined ? null : stdio[i].socket);
 
   // Add .send() method and start listening for IPC data
-  if (ipc !== undefined) setupChannel(this, ipc);
+  if (ipc !== undefined) setupChannel(this, ipc, serialization);
 
   return err;
 };
@@ -517,11 +530,12 @@ class Control extends EventEmitter {
   }
 }
 
-function setupChannel(target, channel) {
+let serialization;
+function setupChannel(target, channel, serializationMode) {
   target.channel = channel;
 
   // _channel can be deprecated in version 8
-  Object.defineProperty(target, '_channel', {
+  ObjectDefineProperty(target, '_channel', {
     get() { return target.channel; },
     set(val) { target.channel = val; },
     enumerable: true
@@ -532,12 +546,16 @@ function setupChannel(target, channel) {
 
   const control = new Control(channel);
 
-  if (StringDecoder === undefined)
-    StringDecoder = require('string_decoder').StringDecoder;
-  const decoder = new StringDecoder('utf8');
-  var jsonBuffer = '';
-  var pendingHandle = null;
-  channel.buffering = false;
+  if (serialization === undefined)
+    serialization = require('internal/child_process/serialization');
+  const {
+    initMessageChannel,
+    parseChannelMessages,
+    writeChannelMessage
+  } = serialization[serializationMode];
+
+  let pendingHandle = null;
+  initMessageChannel(channel);
   channel.pendingHandle = null;
   channel.onread = function(arrayBuffer) {
     const recvHandle = channel.pendingHandle;
@@ -549,21 +567,7 @@ function setupChannel(target, channel) {
       if (recvHandle)
         pendingHandle = recvHandle;
 
-      // Linebreak is used as a message end sign
-      var chunks = decoder.write(pool).split('\n');
-      var numCompleteChunks = chunks.length - 1;
-      // Last line does not have trailing linebreak
-      var incompleteChunk = chunks[numCompleteChunks];
-      if (numCompleteChunks === 0) {
-        jsonBuffer += incompleteChunk;
-        this.buffering = jsonBuffer.length !== 0;
-        return;
-      }
-      chunks[0] = jsonBuffer + chunks[0];
-
-      for (var i = 0; i < numCompleteChunks; i++) {
-        var message = JSON.parse(chunks[i]);
-
+      for (const message of parseChannelMessages(channel, pool)) {
         // There will be at most one NODE_HANDLE message in every chunk we
         // read because SCM_RIGHTS messages don't get coalesced. Make sure
         // that we deliver the handle with the right message however.
@@ -578,9 +582,6 @@ function setupChannel(target, channel) {
           handleMessage(message, undefined, false);
         }
       }
-      jsonBuffer = incompleteChunk;
-      this.buffering = jsonBuffer.length !== 0;
-
     } else {
       this.buffering = false;
       target.disconnect();
@@ -611,7 +612,7 @@ function setupChannel(target, channel) {
         }
       }
 
-      assert(Array.isArray(target._handleQueue));
+      assert(ArrayIsArray(target._handleQueue));
       const queue = target._handleQueue;
       target._handleQueue = null;
 
@@ -779,8 +780,7 @@ function setupChannel(target, channel) {
 
     const req = new WriteWrap();
 
-    const string = JSON.stringify(message) + '\n';
-    const err = channel.writeUtf8String(req, string, handle);
+    const err = writeChannelMessage(channel, req, message, handle);
     const wasAsyncWrite = streamBaseState[kLastWriteWasAsync];
 
     if (err === 0) {
@@ -911,7 +911,7 @@ function getValidStdio(stdio, sync) {
   // Replace shortcut with an array
   if (typeof stdio === 'string') {
     stdio = stdioStringToArray(stdio);
-  } else if (!Array.isArray(stdio)) {
+  } else if (!ArrayIsArray(stdio)) {
     throw new ERR_INVALID_OPT_VALUE('stdio', inspect(stdio));
   }
 

@@ -1,6 +1,11 @@
 'use strict';
 
-const { Math } = primordials;
+const {
+  MathMax,
+  MathMin,
+  NumberIsSafeInteger,
+  Symbol,
+} = primordials;
 
 const {
   F_OK,
@@ -47,6 +52,7 @@ const pathModule = require('path');
 const { promisify } = require('internal/util');
 
 const kHandle = Symbol('kHandle');
+const kFd = Symbol('kFd');
 const { kUsePromises } = binding;
 
 const getDirectoryEntriesPromise = promisify(getDirents);
@@ -54,6 +60,11 @@ const getDirectoryEntriesPromise = promisify(getDirents);
 class FileHandle {
   constructor(filehandle) {
     this[kHandle] = filehandle;
+    this[kFd] = filehandle.fd;
+    this.close = () => {
+      this[kFd] = -1;
+      return this[kHandle].close();
+    }
   }
 
   getAsyncId() {
@@ -61,11 +72,11 @@ class FileHandle {
   }
 
   get fd() {
-    return this[kHandle].fd;
+    return this[kFd];
   }
 
   appendFile(data, options) {
-    return appendFile(this, data, options);
+    return writeFile(this, data, options);
   }
 
   chmod(mode) {
@@ -86,6 +97,10 @@ class FileHandle {
 
   read(buffer, offset, length, position) {
     return read(this, buffer, offset, length, position);
+  }
+
+  readv(buffers, position) {
+    return readv(this, buffers, position);
   }
 
   readFile(options) {
@@ -116,9 +131,6 @@ class FileHandle {
     return writeFile(this, data, options);
   }
 
-  close() {
-    return this[kHandle].close();
-  }
 }
 
 function validateFileHandle(handle) {
@@ -134,7 +146,7 @@ async function writeFileHandle(filehandle, data, options) {
   do {
     const { bytesWritten } =
       await write(filehandle, buffer, 0,
-                  Math.min(16384, buffer.length));
+                  MathMin(16384, buffer.length));
     remaining -= bytesWritten;
     buffer = buffer.slice(bytesWritten);
   } while (remaining > 0);
@@ -160,7 +172,7 @@ async function readFileHandle(filehandle, options) {
   const chunks = [];
   const chunkSize = size === 0 ?
     kReadFileMaxChunkSize :
-    Math.min(size, kReadFileMaxChunkSize);
+    MathMin(size, kReadFileMaxChunkSize);
   let endOfFile = false;
   do {
     const buf = Buffer.alloc(chunkSize);
@@ -172,11 +184,8 @@ async function readFileHandle(filehandle, options) {
   } while (!endOfFile);
 
   const result = Buffer.concat(chunks);
-  if (options.encoding) {
-    return result.toString(options.encoding);
-  } else {
-    return result;
-  }
+
+  return options.encoding ? result.toString(options.encoding) : result;
 }
 
 // All of the functions are defined as async in order to ensure that errors
@@ -227,13 +236,25 @@ async function read(handle, buffer, offset, length, position) {
 
   validateOffsetLengthRead(offset, length, buffer.length);
 
-  if (!Number.isSafeInteger(position))
+  if (!NumberIsSafeInteger(position))
     position = -1;
 
   const bytesRead = (await binding.read(handle.fd, buffer, offset, length,
                                         position, kUsePromises)) || 0;
 
   return { bytesRead, buffer };
+}
+
+async function readv(handle, buffers, position) {
+  validateFileHandle(handle);
+  validateBufferArray(buffers);
+
+  if (typeof position !== 'number')
+    position = null;
+
+  const bytesRead = (await binding.readBuffers(handle.fd, buffers, position,
+                                               kUsePromises)) || 0;
+  return { bytesRead, buffers };
 }
 
 async function write(handle, buffer, offset, length, position) {
@@ -290,7 +311,7 @@ async function truncate(path, len = 0) {
 async function ftruncate(handle, len = 0) {
   validateFileHandle(handle);
   validateInteger(len, 'len');
-  len = Math.max(0, len);
+  len = MathMax(0, len);
   return binding.ftruncate(handle.fd, len, kUsePromises);
 }
 
@@ -325,7 +346,7 @@ async function mkdir(path, options) {
   } = options || {};
   path = getValidatedPath(path);
   if (typeof recursive !== 'boolean')
-    throw new ERR_INVALID_ARG_TYPE('recursive', 'boolean', recursive);
+    throw new ERR_INVALID_ARG_TYPE('options.recursive', 'boolean', recursive);
 
   return binding.mkdir(pathModule.toNamespacedPath(path),
                        parseMode(mode, 'mode', 0o777), recursive,
@@ -411,7 +432,7 @@ async function lchmod(path, mode) {
     throw new ERR_METHOD_NOT_IMPLEMENTED('lchmod()');
 
   const fd = await open(path, O_WRONLY | O_SYMLINK);
-  return fchmod(fd, mode).finally(fd.close.bind(fd));
+  return fchmod(fd, mode).finally(fd.close);
 }
 
 async function lchown(path, uid, gid) {
@@ -476,7 +497,7 @@ async function writeFile(path, data, options) {
     return writeFileHandle(path, data, options);
 
   const fd = await open(path, flag, options.mode);
-  return writeFileHandle(fd, data, options).finally(fd.close.bind(fd));
+  return writeFileHandle(fd, data, options).finally(fd.close);
 }
 
 async function appendFile(path, data, options) {
@@ -494,7 +515,7 @@ async function readFile(path, options) {
     return readFileHandle(path, options);
 
   const fd = await open(path, flag, 0o666);
-  return readFileHandle(fd, options).finally(fd.close.bind(fd));
+  return readFileHandle(fd, options).finally(fd.close);
 }
 
 module.exports = {

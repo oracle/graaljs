@@ -1,11 +1,17 @@
 'use strict';
+
+const {
+  ArrayIsArray,
+} = primordials;
+
 const errors = require('internal/errors');
 const { isIP } = require('internal/net');
 const {
   ChannelWrap,
   strerror,
   AI_ADDRCONFIG,
-  AI_V4MAPPED
+  AI_ALL,
+  AI_V4MAPPED,
 } = internalBinding('cares_wrap');
 const IANA_DNS_PORT = 53;
 const IPv6RE = /^\[([^[\]]*)\]/;
@@ -38,7 +44,7 @@ class Resolver {
   }
 
   setServers(servers) {
-    if (!Array.isArray(servers)) {
+    if (!ArrayIsArray(servers)) {
       throw new ERR_INVALID_ARG_TYPE('servers', 'Array', servers);
     }
 
@@ -131,10 +137,7 @@ function bindDefaultResolver(target, source) {
 }
 
 function validateHints(hints) {
-  if (hints !== 0 &&
-      hints !== AI_ADDRCONFIG &&
-      hints !== AI_V4MAPPED &&
-      hints !== (AI_ADDRCONFIG | AI_V4MAPPED)) {
+  if ((hints & ~(AI_ADDRCONFIG | AI_ALL | AI_V4MAPPED)) !== 0) {
     throw new ERR_INVALID_OPT_VALUE('hints', hints);
   }
 }

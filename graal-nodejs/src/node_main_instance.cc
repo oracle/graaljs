@@ -1,3 +1,5 @@
+#include <memory>
+
 #include "node_main_instance.h"
 #include "node_internals.h"
 #include "node_options-inl.h"
@@ -18,6 +20,7 @@ using v8::HandleScope;
 using v8::Isolate;
 using v8::Local;
 using v8::Locker;
+using v8::Object;
 using v8::SealHandleScope;
 
 NodeMainInstance::NodeMainInstance(Isolate* isolate,
@@ -33,8 +36,11 @@ NodeMainInstance::NodeMainInstance(Isolate* isolate,
       isolate_data_(nullptr),
       owns_isolate_(false),
       deserialize_mode_(false) {
-  isolate_data_.reset(new IsolateData(isolate_, event_loop, platform, nullptr));
-  SetIsolateUpForNode(isolate_, IsolateSettingCategories::kMisc);
+  isolate_data_ =
+      std::make_unique<IsolateData>(isolate_, event_loop, platform, nullptr);
+
+  IsolateSettings misc;
+  SetIsolateMiscHandlers(isolate_, misc);
 }
 
 std::unique_ptr<NodeMainInstance> NodeMainInstance::Create(
@@ -73,16 +79,17 @@ NodeMainInstance::NodeMainInstance(
   deserialize_mode_ = per_isolate_data_indexes != nullptr;
   // If the indexes are not nullptr, we are not deserializing
   CHECK_IMPLIES(deserialize_mode_, params->external_references != nullptr);
-  isolate_data_.reset(new IsolateData(isolate_,
-                                      event_loop,
-                                      platform,
-                                      array_buffer_allocator_.get(),
-                                      per_isolate_data_indexes));
-  SetIsolateUpForNode(isolate_, IsolateSettingCategories::kMisc);
+  isolate_data_ = std::make_unique<IsolateData>(isolate_,
+                                                event_loop,
+                                                platform,
+                                                array_buffer_allocator_.get(),
+                                                per_isolate_data_indexes);
+  IsolateSettings s;
+  SetIsolateMiscHandlers(isolate_, s);
   if (!deserialize_mode_) {
     // If in deserialize mode, delay until after the deserialization is
     // complete.
-    SetIsolateUpForNode(isolate_, IsolateSettingCategories::kErrorHandlers);
+    SetIsolateErrorHandlers(isolate_, s);
   }
 }
 
@@ -96,6 +103,7 @@ NodeMainInstance::~NodeMainInstance() {
     return;
   }
   platform_->UnregisterIsolate(isolate_);
+  isolate_->Dispose();
 }
 
 int NodeMainInstance::Run() {
@@ -110,12 +118,7 @@ int NodeMainInstance::Run() {
   Context::Scope context_scope(env->context());
 
   if (exit_code == 0) {
-    {
-      AsyncCallbackScope callback_scope(env.get());
-      env->async_hooks()->push_async_ids(1, 0);
-      LoadEnvironment(env.get());
-      env->async_hooks()->pop_async_id(1);
-    }
+    LoadEnvironment(env.get());
 
     env->set_trace_sync_io(env->options()->trace_sync_io);
 
@@ -197,7 +200,8 @@ std::unique_ptr<Environment> NodeMainInstance::CreateMainEnvironment(
     context =
         Context::FromSnapshot(isolate_, kNodeContextIndex).ToLocalChecked();
     InitializeContextRuntime(context);
-    SetIsolateUpForNode(isolate_, IsolateSettingCategories::kErrorHandlers);
+    IsolateSettings s;
+    SetIsolateErrorHandlers(isolate_, s);
   } else {
     context = NewContext(isolate_);
   }

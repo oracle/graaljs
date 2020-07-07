@@ -151,11 +151,13 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
             } else {
                 assert functionNode.getBody().getScope().hasSymbol(localName) && functionNode.getBody().getScope().getExistingSymbol(localName).isImportBinding();
                 // Let resolution be importedModule.ResolveExport(in.[[ImportName]], << >>, << >>).
+                ExportResolution resolution = evaluator.resolveExport(importedModule, importEntry.getImportName());
                 // If resolution is null or resolution is "ambiguous", throw SyntaxError.
+                if (resolution.isNull() || resolution.isAmbiguous()) {
+                    throw Errors.createSyntaxError("Could not resolve import entry");
+                }
                 // Call envRec.CreateImportBinding(in.[[LocalName]], resolution.[[module]],
                 // resolution.[[bindingName]]).
-                ExportResolution resolution = evaluator.resolveExport(importedModule, importEntry.getImportName());
-                assert !(resolution.isNull() || resolution.isAmbiguous());
                 createImportBinding(localName, resolution.getModule(), resolution.getBindingName());
             }
         }
@@ -163,7 +165,6 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
         // Check for duplicate exports
         verifyModuleExportedNames();
 
-        declarations.add(factory.createSetModuleEnvironment(getActiveScriptOrModule()));
         return declarations;
     }
 

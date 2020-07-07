@@ -1,4 +1,3 @@
-// Flags: --experimental-modules
 /* eslint-disable node-core/require-common-first, node-core/required-modules */
 
 import { createRequire } from 'module';
@@ -38,9 +37,7 @@ const {
   mustNotCall,
   printSkipMessage,
   skip,
-  ArrayStream,
   nodeProcessAborted,
-  busyLoop,
   isAlive,
   expectWarning,
   expectsError,
@@ -85,9 +82,7 @@ export {
   mustNotCall,
   printSkipMessage,
   skip,
-  ArrayStream,
   nodeProcessAborted,
-  busyLoop,
   isAlive,
   expectWarning,
   expectsError,

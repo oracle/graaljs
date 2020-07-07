@@ -1,10 +1,11 @@
 #include "node_dir.h"
+#include "node_file-inl.h"
 #include "node_process.h"
+#include "memory_tracker-inl.h"
 #include "util.h"
 
 #include "tracing/trace_event.h"
 
-#include "req_wrap-inl.h"
 #include "string_bytes.h"
 
 #include <fcntl.h>
@@ -36,6 +37,7 @@ using v8::Isolate;
 using v8::Local;
 using v8::MaybeLocal;
 using v8::Null;
+using v8::Number;
 using v8::Object;
 using v8::ObjectTemplate;
 using v8::String;
@@ -59,8 +61,8 @@ DirHandle::DirHandle(Environment* env, Local<Object> obj, uv_dir_t* dir)
       dir_(dir) {
   MakeWeak();
 
-  dir_->nentries = arraysize(dirents_);
-  dir_->dirents = dirents_;
+  dir_->nentries = 0;
+  dir_->dirents = nullptr;
 }
 
 DirHandle* DirHandle::New(Environment* env, uv_dir_t* dir) {
@@ -82,6 +84,10 @@ DirHandle::~DirHandle() {
   CHECK(!closing_);  // We should not be deleting while explicitly closing!
   GCClose();         // Close synchronously and emit warning
   CHECK(closed_);    // We have to be closed at the point
+}
+
+void DirHandle::MemoryInfo(MemoryTracker* tracker) const {
+  tracker->TrackFieldWithSize("dir", sizeof(*dir_));
 }
 
 // Close the directory handle if it hasn't already been closed. A process
@@ -166,7 +172,7 @@ static MaybeLocal<Array> DirentListToArray(
     int num,
     enum encoding encoding,
     Local<Value>* err_out) {
-  MaybeStackBuffer<Local<Value>, 96> entries(num * 3);
+  MaybeStackBuffer<Local<Value>, 64> entries(num * 2);
 
   // Return an array of all read filenames.
   int j = 0;
@@ -230,22 +236,31 @@ void DirHandle::Read(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = env->isolate();
 
   const int argc = args.Length();
-  CHECK_GE(argc, 2);
+  CHECK_GE(argc, 3);
 
   const enum encoding encoding = ParseEncoding(isolate, args[0], UTF8);
 
   DirHandle* dir;
   ASSIGN_OR_RETURN_UNWRAP(&dir, args.Holder());
 
-  FSReqBase* req_wrap_async = GetReqWrap(env, args[1]);
-  if (req_wrap_async != nullptr) {  // dir.read(encoding, req)
+  CHECK(args[1]->IsNumber());
+  uint64_t buffer_size = args[1].As<Number>()->Value();
+
+  if (buffer_size != dir->dirents_.size()) {
+    dir->dirents_.resize(buffer_size);
+    dir->dir_->nentries = buffer_size;
+    dir->dir_->dirents = dir->dirents_.data();
+  }
+
+  FSReqBase* req_wrap_async = GetReqWrap(env, args[2]);
+  if (req_wrap_async != nullptr) {  // dir.read(encoding, bufferSize, req)
     AsyncCall(env, req_wrap_async, args, "readdir", encoding,
               AfterDirRead, uv_fs_readdir, dir->dir());
-  } else {  // dir.read(encoding, undefined, ctx)
-    CHECK_EQ(argc, 3);
+  } else {  // dir.read(encoding, bufferSize, undefined, ctx)
+    CHECK_EQ(argc, 4);
     FSReqWrapSync req_wrap_sync;
     FS_DIR_SYNC_TRACE_BEGIN(readdir);
-    int err = SyncCall(env, args[2], &req_wrap_sync, "readdir", uv_fs_readdir,
+    int err = SyncCall(env, args[3], &req_wrap_sync, "readdir", uv_fs_readdir,
                        dir->dir());
     FS_DIR_SYNC_TRACE_END(readdir);
     if (err < 0) {
@@ -305,7 +320,7 @@ static void OpenDir(const FunctionCallbackInfo<Value>& args) {
 
   const enum encoding encoding = ParseEncoding(isolate, args[1], UTF8);
 
-  FSReqBase* req_wrap_async = static_cast<FSReqBase*>(GetReqWrap(env, args[2]));
+  FSReqBase* req_wrap_async = GetReqWrap(env, args[2]);
   if (req_wrap_async != nullptr) {  // openDir(path, encoding, req)
     AsyncCall(env, req_wrap_async, args, "opendir", encoding, AfterOpenDir,
               uv_fs_opendir, *path);
@@ -343,7 +358,7 @@ void Initialize(Local<Object> target,
   env->SetProtoMethod(dir, "read", DirHandle::Read);
   env->SetProtoMethod(dir, "close", DirHandle::Close);
   Local<ObjectTemplate> dirt = dir->InstanceTemplate();
-  dirt->SetInternalFieldCount(DirHandle::kDirHandleFieldCount);
+  dirt->SetInternalFieldCount(DirHandle::kInternalFieldCount);
   Local<String> handleString =
        FIXED_ONE_BYTE_STRING(isolate, "DirHandle");
   dir->SetClassName(handleString);

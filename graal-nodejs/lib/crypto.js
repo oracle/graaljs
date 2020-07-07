@@ -24,7 +24,10 @@
 
 'use strict';
 
-const { Object } = primordials;
+const {
+  ObjectDefineProperty,
+  ObjectDefineProperties,
+} = primordials;
 
 const {
   assertCrypto,
@@ -68,7 +71,8 @@ const {
 const {
   DiffieHellman,
   DiffieHellmanGroup,
-  ECDH
+  ECDH,
+  diffieHellman
 } = require('internal/crypto/diffiehellman');
 const {
   Cipher,
@@ -161,6 +165,7 @@ module.exports = {
   createSecretKey,
   createSign,
   createVerify,
+  diffieHellman,
   getCiphers,
   getCurves,
   getDiffieHellman: createDiffieHellmanGroup,
@@ -220,7 +225,11 @@ function getFipsForced() {
   return 1;
 }
 
-Object.defineProperties(module.exports, {
+ObjectDefineProperty(constants, 'defaultCipherList', {
+  value: getOptionValue('--tls-cipher-list')
+});
+
+ObjectDefineProperties(module.exports, {
   createCipher: {
     enumerable: false,
     value: deprecate(createCipher,

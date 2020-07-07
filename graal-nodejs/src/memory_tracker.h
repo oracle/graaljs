@@ -30,6 +30,8 @@ namespace node {
 
 class MemoryTracker;
 class MemoryRetainerNode;
+template <typename T, bool kIsWeak>
+class BaseObjectPtrImpl;
 
 namespace crypto {
 class NodeBIO;
@@ -133,11 +135,20 @@ class MemoryTracker {
   inline void TrackFieldWithSize(const char* edge_name,
                                  size_t size,
                                  const char* node_name = nullptr);
+  inline void TrackInlineFieldWithSize(const char* edge_name,
+                                       size_t size,
+                                       const char* node_name = nullptr);
+
   // Shortcut to extract the underlying object out of the smart pointer
-  template <typename T>
+  template <typename T, typename D>
   inline void TrackField(const char* edge_name,
-                         const std::unique_ptr<T>& value,
+                         const std::unique_ptr<T, D>& value,
                          const char* node_name = nullptr);
+
+  template <typename T, bool kIsWeak>
+  void TrackField(const char* edge_name,
+                  const BaseObjectPtrImpl<T, kIsWeak>& value,
+                  const char* node_name = nullptr);
 
   // For containers, the elements will be graphed as grandchildren nodes
   // if the container is not empty.
@@ -213,6 +224,9 @@ class MemoryTracker {
   inline void TrackField(const char* edge_name,
                          const uv_async_t& value,
                          const char* node_name = nullptr);
+  inline void TrackInlineField(const char* edge_name,
+                               const uv_async_t& value,
+                               const char* node_name = nullptr);
   template <class NativeT, class V8T>
   inline void TrackField(const char* edge_name,
                          const AliasedBufferBase<NativeT, V8T>& value,

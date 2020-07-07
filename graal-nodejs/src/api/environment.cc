@@ -12,16 +12,18 @@ using errors::TryCatchScope;
 using v8::Array;
 using v8::Context;
 using v8::EscapableHandleScope;
+using v8::FinalizationGroup;
 using v8::Function;
+using v8::FunctionCallbackInfo;
 using v8::HandleScope;
 using v8::Isolate;
 using v8::Local;
 using v8::MaybeLocal;
-using v8::MicrotasksPolicy;
 using v8::Null;
 using v8::Object;
 using v8::ObjectTemplate;
 using v8::Private;
+using v8::PropertyDescriptor;
 using v8::String;
 using v8::Value;
 
@@ -76,11 +78,44 @@ static MaybeLocal<Value> PrepareStackTraceCallback(Local<Context> context,
   return result;
 }
 
+static void HostCleanupFinalizationGroupCallback(
+    Local<Context> context, Local<FinalizationGroup> group) {
+  Environment* env = Environment::GetCurrent(context);
+  if (env == nullptr) {
+    return;
+  }
+  env->RegisterFinalizationGroupForCleanup(group);
+}
+
 void* NodeArrayBufferAllocator::Allocate(size_t size) {
+  void* ret;
   if (zero_fill_field_ || per_process::cli_options->zero_fill_all_buffers)
-    return UncheckedCalloc(size);
+    ret = UncheckedCalloc(size);
   else
-    return UncheckedMalloc(size);
+    ret = UncheckedMalloc(size);
+  if (LIKELY(ret != nullptr))
+    total_mem_usage_.fetch_add(size, std::memory_order_relaxed);
+  return ret;
+}
+
+void* NodeArrayBufferAllocator::AllocateUninitialized(size_t size) {
+  void* ret = node::UncheckedMalloc(size);
+  if (LIKELY(ret != nullptr))
+    total_mem_usage_.fetch_add(size, std::memory_order_relaxed);
+  return ret;
+}
+
+void* NodeArrayBufferAllocator::Reallocate(
+    void* data, size_t old_size, size_t size) {
+  void* ret = UncheckedRealloc<char>(static_cast<char*>(data), size);
+  if (LIKELY(ret != nullptr) || UNLIKELY(size == 0))
+    total_mem_usage_.fetch_add(size - old_size, std::memory_order_relaxed);
+  return ret;
+}
+
+void NodeArrayBufferAllocator::Free(void* data, size_t size) {
+  total_mem_usage_.fetch_sub(size, std::memory_order_relaxed);
+  free(data);
 }
 
 DebuggingArrayBufferAllocator::~DebuggingArrayBufferAllocator() {
@@ -130,11 +165,13 @@ void* DebuggingArrayBufferAllocator::Reallocate(void* data,
 
 void DebuggingArrayBufferAllocator::RegisterPointer(void* data, size_t size) {
   Mutex::ScopedLock lock(mutex_);
+  NodeArrayBufferAllocator::RegisterPointer(data, size);
   RegisterPointerInternal(data, size);
 }
 
 void DebuggingArrayBufferAllocator::UnregisterPointer(void* data, size_t size) {
   Mutex::ScopedLock lock(mutex_);
+  NodeArrayBufferAllocator::UnregisterPointer(data, size);
   UnregisterPointerInternal(data, size);
 }
 
@@ -186,34 +223,56 @@ void SetIsolateCreateParamsForNode(Isolate::CreateParams* params) {
   }
 }
 
-void SetIsolateUpForNode(v8::Isolate* isolate, IsolateSettingCategories cat) {
-  switch (cat) {
-    case IsolateSettingCategories::kErrorHandlers:
-      isolate->AddMessageListenerWithErrorLevel(
-          errors::PerIsolateMessageListener,
-          Isolate::MessageErrorLevel::kMessageError |
-              Isolate::MessageErrorLevel::kMessageWarning);
-      isolate->SetAbortOnUncaughtExceptionCallback(
-          ShouldAbortOnUncaughtException);
-      isolate->SetFatalErrorHandler(OnFatalError);
-      isolate->SetPrepareStackTraceCallback(PrepareStackTraceCallback);
-      break;
-    case IsolateSettingCategories::kMisc:
-      isolate->SetMicrotasksPolicy(MicrotasksPolicy::kExplicit);
-      isolate->SetAllowWasmCodeGenerationCallback(
-          AllowWasmCodeGenerationCallback);
-      isolate->SetPromiseRejectCallback(task_queue::PromiseRejectCallback);
-      v8::CpuProfiler::UseDetailedSourcePositionsForProfiling(isolate);
-      break;
-    default:
-      UNREACHABLE();
-      break;
-  }
+void SetIsolateErrorHandlers(v8::Isolate* isolate, const IsolateSettings& s) {
+  if (s.flags & MESSAGE_LISTENER_WITH_ERROR_LEVEL)
+    isolate->AddMessageListenerWithErrorLevel(
+            errors::PerIsolateMessageListener,
+            Isolate::MessageErrorLevel::kMessageError |
+                Isolate::MessageErrorLevel::kMessageWarning);
+
+  auto* abort_callback = s.should_abort_on_uncaught_exception_callback ?
+      s.should_abort_on_uncaught_exception_callback :
+      ShouldAbortOnUncaughtException;
+  isolate->SetAbortOnUncaughtExceptionCallback(abort_callback);
+
+  auto* fatal_error_cb = s.fatal_error_callback ?
+      s.fatal_error_callback : OnFatalError;
+  isolate->SetFatalErrorHandler(fatal_error_cb);
+
+  auto* prepare_stack_trace_cb = s.prepare_stack_trace_callback ?
+      s.prepare_stack_trace_callback : PrepareStackTraceCallback;
+  isolate->SetPrepareStackTraceCallback(prepare_stack_trace_cb);
+}
+
+void SetIsolateMiscHandlers(v8::Isolate* isolate, const IsolateSettings& s) {
+  isolate->SetMicrotasksPolicy(s.policy);
+
+  auto* allow_wasm_codegen_cb = s.allow_wasm_code_generation_callback ?
+    s.allow_wasm_code_generation_callback : AllowWasmCodeGenerationCallback;
+  isolate->SetAllowWasmCodeGenerationCallback(allow_wasm_codegen_cb);
+
+  auto* promise_reject_cb = s.promise_reject_callback ?
+    s.promise_reject_callback : task_queue::PromiseRejectCallback;
+  isolate->SetPromiseRejectCallback(promise_reject_cb);
+
+  auto* host_cleanup_cb = s.host_cleanup_finalization_group_callback ?
+    s.host_cleanup_finalization_group_callback :
+    HostCleanupFinalizationGroupCallback;
+  isolate->SetHostCleanupFinalizationGroupCallback(host_cleanup_cb);
+
+  if (s.flags & DETAILED_SOURCE_POSITIONS_FOR_PROFILING)
+    v8::CpuProfiler::UseDetailedSourcePositionsForProfiling(isolate);
+}
+
+void SetIsolateUpForNode(v8::Isolate* isolate,
+                         const IsolateSettings& settings) {
+  SetIsolateErrorHandlers(isolate, settings);
+  SetIsolateMiscHandlers(isolate, settings);
 }
 
 void SetIsolateUpForNode(v8::Isolate* isolate) {
-  SetIsolateUpForNode(isolate, IsolateSettingCategories::kErrorHandlers);
-  SetIsolateUpForNode(isolate, IsolateSettingCategories::kMisc);
+  IsolateSettings settings;
+  SetIsolateUpForNode(isolate, settings);
 }
 
 Isolate* NewIsolate(ArrayBufferAllocator* allocator, uv_loop_t* event_loop) {
@@ -281,23 +340,8 @@ Environment* CreateEnvironment(IsolateData* isolate_data,
                                       Environment::kOwnsProcessState |
                                       Environment::kOwnsInspector));
   env->InitializeLibuv(per_process::v8_is_profiling);
-  if (env->RunBootstrapping().IsEmpty()) {
+  if (env->RunBootstrapping().IsEmpty())
     return nullptr;
-  }
-
-  std::vector<Local<String>> parameters = {
-      env->require_string(),
-      FIXED_ONE_BYTE_STRING(env->isolate(), "markBootstrapComplete")};
-  std::vector<Local<Value>> arguments = {
-      env->native_module_require(),
-      env->NewFunctionTemplate(MarkBootstrapComplete)
-          ->GetFunction(env->context())
-          .ToLocalChecked()};
-  if (ExecuteBootstrapper(
-          env, "internal/bootstrap/environment", &parameters, &arguments)
-          .IsEmpty()) {
-    return nullptr;
-  }
   return env;
 }
 
@@ -320,11 +364,6 @@ MultiIsolatePlatform* CreatePlatform(
   return new NodePlatform(thread_pool_size, tracing_controller);
 }
 
-MultiIsolatePlatform* InitializeV8Platform(int thread_pool_size) {
-  per_process::v8_platform.Initialize(thread_pool_size);
-  return per_process::v8_platform.Platform();
-}
-
 void FreePlatform(MultiIsolatePlatform* platform) {
   delete platform;
 }
@@ -344,7 +383,8 @@ MaybeLocal<Object> GetPerContextExports(Local<Context> context) {
     return handle_scope.Escape(existing_value.As<Object>());
 
   Local<Object> exports = Object::New(isolate);
-  if (context->Global()->SetPrivate(context, key, exports).IsNothing())
+  if (context->Global()->SetPrivate(context, key, exports).IsNothing() ||
+      !InitializePrimordials(context))
     return MaybeLocal<Object>();
   return handle_scope.Escape(exports);
 }
@@ -362,6 +402,10 @@ Local<Context> NewContext(Isolate* isolate,
   }
 
   return context;
+}
+
+void ProtoThrower(const FunctionCallbackInfo<Value>& info) {
+  THROW_ERR_PROTO_ACCESS(info.GetIsolate());
 }
 
 // This runs at runtime, regardless of whether the context
@@ -392,6 +436,32 @@ void InitializeContextRuntime(Local<Context> context) {
     Local<Object> atomics = atomics_v.As<Object>();
     atomics->Delete(context, wake_string).FromJust();
   }
+
+  // Remove __proto__
+  // https://github.com/nodejs/node/issues/31951
+  Local<String> object_string = FIXED_ONE_BYTE_STRING(isolate, "Object");
+  Local<String> prototype_string = FIXED_ONE_BYTE_STRING(isolate, "prototype");
+  Local<Object> prototype = context->Global()
+                                ->Get(context, object_string)
+                                .ToLocalChecked()
+                                .As<Object>()
+                                ->Get(context, prototype_string)
+                                .ToLocalChecked()
+                                .As<Object>();
+  Local<String> proto_string = FIXED_ONE_BYTE_STRING(isolate, "__proto__");
+  if (per_process::cli_options->disable_proto == "delete") {
+    prototype->Delete(context, proto_string).ToChecked();
+  } else if (per_process::cli_options->disable_proto == "throw") {
+    Local<Value> thrower =
+        Function::New(context, ProtoThrower).ToLocalChecked();
+    PropertyDescriptor descriptor(thrower, thrower);
+    descriptor.set_enumerable(false);
+    descriptor.set_configurable(true);
+    prototype->DefineProperty(context, proto_string, descriptor).ToChecked();
+  } else if (per_process::cli_options->disable_proto != "") {
+    // Validated in ProcessGlobalArgs
+    FatalError("InitializeContextRuntime()", "invalid --disable-proto mode");
+  }
 }
 
 bool InitializeContextForSnapshot(Local<Context> context) {
@@ -400,48 +470,50 @@ bool InitializeContextForSnapshot(Local<Context> context) {
 
   context->SetEmbedderData(ContextEmbedderIndex::kAllowWasmCodeGeneration,
                            True(isolate));
+  return InitializePrimordials(context);
+}
 
-  {
-    // Run per-context JS files.
-    Context::Scope context_scope(context);
-    Local<Object> exports;
+bool InitializePrimordials(Local<Context> context) {
+  // Run per-context JS files.
+  Isolate* isolate = context->GetIsolate();
+  Context::Scope context_scope(context);
+  Local<Object> exports;
 
-    Local<String> primordials_string =
-        FIXED_ONE_BYTE_STRING(isolate, "primordials");
-    Local<String> global_string = FIXED_ONE_BYTE_STRING(isolate, "global");
-    Local<String> exports_string = FIXED_ONE_BYTE_STRING(isolate, "exports");
+  Local<String> primordials_string =
+      FIXED_ONE_BYTE_STRING(isolate, "primordials");
+  Local<String> global_string = FIXED_ONE_BYTE_STRING(isolate, "global");
+  Local<String> exports_string = FIXED_ONE_BYTE_STRING(isolate, "exports");
 
-    // Create primordials first and make it available to per-context scripts.
-    Local<Object> primordials = Object::New(isolate);
-    if (!primordials->SetPrototype(context, Null(isolate)).FromJust() ||
-        !GetPerContextExports(context).ToLocal(&exports) ||
-        !exports->Set(context, primordials_string, primordials).FromJust()) {
+  // Create primordials first and make it available to per-context scripts.
+  Local<Object> primordials = Object::New(isolate);
+  if (!primordials->SetPrototype(context, Null(isolate)).FromJust() ||
+      !GetPerContextExports(context).ToLocal(&exports) ||
+      !exports->Set(context, primordials_string, primordials).FromJust()) {
+    return false;
+  }
+
+  static const char* context_files[] = {"internal/per_context/primordials",
+                                        "internal/per_context/domexception",
+                                        "internal/per_context/messageport",
+                                        nullptr};
+
+  for (const char** module = context_files; *module != nullptr; module++) {
+    std::vector<Local<String>> parameters = {
+        global_string, exports_string, primordials_string};
+    Local<Value> arguments[] = {context->Global(), exports, primordials};
+    MaybeLocal<Function> maybe_fn =
+        native_module::NativeModuleEnv::LookupAndCompile(
+            context, *module, &parameters, nullptr);
+    if (maybe_fn.IsEmpty()) {
       return false;
     }
-
-    static const char* context_files[] = {"internal/per_context/primordials",
-                                          "internal/per_context/domexception",
-                                          nullptr};
-
-    for (const char** module = context_files; *module != nullptr; module++) {
-      std::vector<Local<String>> parameters = {
-          global_string, exports_string, primordials_string};
-      Local<Value> arguments[] = {context->Global(), exports, primordials};
-      MaybeLocal<Function> maybe_fn =
-          native_module::NativeModuleEnv::LookupAndCompile(
-              context, *module, &parameters, nullptr);
-      if (maybe_fn.IsEmpty()) {
-        return false;
-      }
-      Local<Function> fn = maybe_fn.ToLocalChecked();
-      MaybeLocal<Value> result =
-          fn->Call(context, Undefined(isolate),
-                   arraysize(arguments), arguments);
-      // Execution failed during context creation.
-      // TODO(joyeecheung): deprecate this signature and return a MaybeLocal.
-      if (result.IsEmpty()) {
-        return false;
-      }
+    Local<Function> fn = maybe_fn.ToLocalChecked();
+    MaybeLocal<Value> result =
+        fn->Call(context, Undefined(isolate), arraysize(arguments), arguments);
+    // Execution failed during context creation.
+    // TODO(joyeecheung): deprecate this signature and return a MaybeLocal.
+    if (result.IsEmpty()) {
+      return false;
     }
   }
 
@@ -464,6 +536,34 @@ uv_loop_t* GetCurrentEventLoop(Isolate* isolate) {
   Environment* env = Environment::GetCurrent(context);
   if (env == nullptr) return nullptr;
   return env->event_loop();
+}
+
+void AddLinkedBinding(Environment* env, const node_module& mod) {
+  CHECK_NOT_NULL(env);
+  Mutex::ScopedLock lock(env->extra_linked_bindings_mutex());
+
+  node_module* prev_head = env->extra_linked_bindings_head();
+  env->extra_linked_bindings()->push_back(mod);
+  if (prev_head != nullptr)
+    prev_head->nm_link = &env->extra_linked_bindings()->back();
+}
+
+void AddLinkedBinding(Environment* env,
+                      const char* name,
+                      addon_context_register_func fn,
+                      void* priv) {
+  node_module mod = {
+    NODE_MODULE_VERSION,
+    NM_F_LINKED,
+    nullptr,  // nm_dso_handle
+    nullptr,  // nm_filename
+    nullptr,  // nm_register_func
+    fn,
+    name,
+    priv,
+    nullptr   // nm_link
+  };
+  AddLinkedBinding(env, mod);
 }
 
 }  // namespace node

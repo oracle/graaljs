@@ -185,8 +185,9 @@ public class ImportCallNode extends JavaScriptNode {
                 String specifier = request.getSecond();
 
                 JSModuleRecord moduleRecord = context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, specifier);
-                context.getEvaluator().moduleInstantiation(moduleRecord);
-                context.getEvaluator().moduleEvaluation(context.getRealm(), moduleRecord);
+                JSRealm realm = context.getRealm();
+                context.getEvaluator().moduleInstantiation(realm, moduleRecord);
+                context.getEvaluator().moduleEvaluation(realm, moduleRecord);
                 return finishDynamicImport(moduleRecord, referencingScriptOrModule, specifier);
             }
 

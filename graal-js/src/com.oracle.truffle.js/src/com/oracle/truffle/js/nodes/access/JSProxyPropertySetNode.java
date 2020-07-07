@@ -62,7 +62,7 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
-import com.oracle.truffle.js.runtime.util.JSReflectUtils;
+import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 @NodeInfo(cost = NodeCost.NONE)
 public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
@@ -93,7 +93,8 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
 
     @Specialization
     protected boolean doGeneric(DynamicObject proxy, Object receiver, Object value, Object key,
-                    @Cached("createBinaryProfile()") ConditionProfile hasTrap) {
+                    @Cached("createBinaryProfile()") ConditionProfile hasTrap,
+                    @Cached JSClassProfile targetClassProfile) {
         assert JSProxy.isProxy(proxy);
         assert !(key instanceof HiddenKey);
         Object propertyKey = toPropertyKey(key);
@@ -102,11 +103,7 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
         Object trapFun = trapGet.executeWithTarget(handler);
         if (hasTrap.profile(trapFun == Undefined.instance)) {
             if (JSObject.isJSObject(target)) {
-                boolean result = JSReflectUtils.performOrdinarySet((DynamicObject) target, propertyKey, value, receiver);
-                if (isStrict && !result) {
-                    throw Errors.createTypeErrorCannotSetProperty(propertyKey, proxy, this);
-                }
-                return result;
+                return JSObject.setWithReceiver((DynamicObject) target, propertyKey, value, receiver, isStrict, targetClassProfile);
             } else {
                 truffleWrite(target, propertyKey, value);
                 return true;

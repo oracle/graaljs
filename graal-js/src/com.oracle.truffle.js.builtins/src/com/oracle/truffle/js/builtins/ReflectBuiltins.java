@@ -45,7 +45,8 @@ import java.util.List;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.ReflectBuiltinsFactory.ReflectApplyNodeGen;
@@ -64,13 +65,14 @@ import com.oracle.truffle.js.builtins.ReflectBuiltinsFactory.ReflectSetPrototype
 import com.oracle.truffle.js.nodes.access.IsExtensibleNode;
 import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNode;
 import com.oracle.truffle.js.nodes.access.ToPropertyDescriptorNode;
-import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectArrayNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectArrayNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.interop.ExportValueNode;
+import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -81,15 +83,12 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
-import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
-import com.oracle.truffle.js.runtime.util.JSReflectUtils;
 
 /**
  * Contains builtins for Reflect (ES2015, 26.1).
@@ -139,7 +138,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             case deleteProperty:
                 return ReflectDeletePropertyNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case get:
-                return ReflectGetNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
+                return ReflectGetNodeGen.create(context, builtin, args().fixedArgs(2).varArgs().createArgumentNodes(context));
             case getOwnPropertyDescriptor:
                 return ReflectGetOwnPropertyDescriptorNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case getPrototypeOf:
@@ -153,7 +152,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             case preventExtensions:
                 return ReflectPreventExtensionsNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case set:
-                return ReflectSetNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
+                return ReflectSetNodeGen.create(context, builtin, args().fixedArgs(3).varArgs().createArgumentNodes(context));
             case setPrototypeOf:
                 return ReflectSetPrototypeOfNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
         }
@@ -285,27 +284,33 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             super(context, builtin);
         }
 
-        @Specialization(guards = "!targetIsObject(args)")
-        protected Object doNonObject(@SuppressWarnings("unused") Object[] args) {
-            throw Errors.createTypeErrorCalledOnNonObject();
-        }
-
-        @Specialization(guards = "targetIsObject(args)")
-        protected Object doObject(Object[] args,
+        @Specialization(guards = "isJSObject(target)")
+        protected Object doObject(DynamicObject target, Object propertyKey, Object[] optionalArgs,
                         @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode,
                         @Cached("create()") JSClassProfile classProfile) {
-            Object target = args[0];
-            Object propertyKey = JSRuntime.getArgOrUndefined(args, 1);
-            Object receiver = JSRuntime.getArg(args, 2, target);
+            Object receiver = JSRuntime.getArg(optionalArgs, 0, target);
             Object key = toPropertyKeyNode.execute(propertyKey);
-            DynamicObject store = (DynamicObject) target;
-            return JSRuntime.nullToUndefined(classProfile.getJSClass(store).getHelper(store, receiver, key));
+            return JSRuntime.nullToUndefined(classProfile.getJSClass(target).getHelper(target, receiver, key));
         }
 
-        protected static boolean targetIsObject(Object[] args) {
-            return args.length != 0 && JSRuntime.isObject(args[0]);
+        @Specialization(guards = {"isForeignObject(target)"}, limit = "3")
+        protected Object doForeignObject(Object target, Object propertyKey, @SuppressWarnings("unused") Object[] optionalArgs,
+                        @CachedLibrary("target") InteropLibrary interop,
+                        @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode,
+                        @Cached JSForeignToJSTypeNode importValue) {
+            Object key = toPropertyKeyNode.execute(propertyKey);
+            if (interop.hasMembers(target)) {
+                return JSInteropUtil.readMemberOrDefault(target, key, Undefined.instance, interop, importValue, this);
+            } else {
+                throw Errors.createTypeErrorCalledOnNonObject();
+            }
         }
 
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"!isJSObject(target)", "!isForeignObject(target)"})
+        protected Object doNonObject(Object target, Object propertyKey, Object[] optionalArgs) {
+            throw Errors.createTypeErrorCalledOnNonObject();
+        }
     }
 
     public abstract static class ReflectGetOwnPropertyDescriptorNode extends ReflectOperation {
@@ -400,72 +405,33 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             super(context, builtin);
         }
 
-        protected static boolean isProxy(Object[] args) {
-            return args.length > 0 && JSProxy.isProxy(args[0]);
-        }
-
-        protected static boolean isModuleNamespace(Object[] args) {
-            return args.length > 0 && JSModuleNamespace.isJSModuleNamespace(args[0]);
-        }
-
-        @Specialization(guards = "isProxy(args)")
-        protected boolean reflectSetProxy(Object[] args,
+        @Specialization(guards = {"isJSObject(target)"})
+        protected boolean reflectSet(DynamicObject target, Object propertyKey, Object value, Object[] optionalArgs,
                         @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode,
-                        @Cached("create()") JSToBooleanNode toBooleanNode) {
-            Object proxy = args[0];
-            Object propertyKey = JSRuntime.getArgOrUndefined(args, 1);
-            Object value = JSRuntime.getArgOrUndefined(args, 2);
-            Object receiver = JSRuntime.getArg(args, 3, proxy);
-
+                        @Cached JSClassProfile jsclassProfile) {
             Object key = toPropertyKeyNode.execute(propertyKey);
-            DynamicObject proxyObj = (DynamicObject) proxy;
-
-            DynamicObject handler = JSProxy.getHandler(proxyObj);
-            TruffleObject pxTarget = JSProxy.getTarget(proxyObj);
-            TruffleObject trap = JSProxy.getTrapFromObject(handler, JSProxy.SET);
-
-            while (trap == Undefined.instance) {
-                if (JSProxy.isProxy(pxTarget)) {
-                    proxyObj = (DynamicObject) pxTarget;
-                    handler = JSProxy.getHandler(proxyObj);
-                    pxTarget = JSProxy.getTarget(proxyObj);
-                    trap = JSProxy.getTrapFromObject(handler, JSProxy.SET);
-                } else if (JSModuleNamespace.isJSModuleNamespace(pxTarget)) {
-                    return false;
-                } else if (JSObject.isJSObject(pxTarget)) {
-                    return JSReflectUtils.performOrdinarySet((DynamicObject) pxTarget, key, value, receiver);
-                } else {
-                    JSInteropUtil.writeMember(pxTarget, key, value);
-                    return true;
-                }
-            }
-
-            Object[] trapArgs = new Object[]{pxTarget, key, value, receiver};
-            boolean booleanTrapResult = toBooleanNode.executeBoolean(JSRuntime.call(trap, handler, trapArgs));
-            if (!booleanTrapResult) {
-                return false;
-            }
-            return JSProxy.checkProxySetTrapInvariants(proxyObj, key, value);
+            Object receiver = JSRuntime.getArg(optionalArgs, 0, target);
+            return JSObject.setWithReceiver(target, key, value, receiver, false, jsclassProfile);
         }
 
-        @Specialization(guards = "isModuleNamespace(args)")
-        protected boolean reflectSetModuleNamespace(Object[] args,
-                        @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
-            Object propertyKey = JSRuntime.getArgOrUndefined(args, 1);
-            toPropertyKeyNode.execute(propertyKey);
-            return false;
+        @Specialization(guards = {"isForeignObject(target)"}, limit = "3")
+        protected Object doForeignObject(Object target, Object propertyKey, Object value, @SuppressWarnings("unused") Object[] optionalArgs,
+                        @CachedLibrary("target") InteropLibrary interop,
+                        @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode,
+                        @Cached ExportValueNode exportValue) {
+            Object key = toPropertyKeyNode.execute(propertyKey);
+            if (interop.hasMembers(target)) {
+                JSInteropUtil.writeMember(target, key, value, interop, exportValue, this);
+                return true;
+            } else {
+                throw Errors.createTypeErrorCalledOnNonObject();
+            }
         }
 
-        @Specialization(guards = {"!isProxy(args)", "!isModuleNamespace(args)"})
-        protected boolean reflectSet(Object[] args,
-                        @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
-            Object target = JSRuntime.getArgOrUndefined(args, 0);
-            Object propertyKey = JSRuntime.getArgOrUndefined(args, 1);
-            Object value = JSRuntime.getArgOrUndefined(args, 2);
-            ensureObject(target);
-            Object key = toPropertyKeyNode.execute(propertyKey);
-            Object receiver = JSRuntime.getArg(args, 3, target);
-            return JSReflectUtils.performOrdinarySet((DynamicObject) target, key, value, receiver);
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"!isJSObject(target)", "!isForeignObject(target)"})
+        protected Object doNonObject(Object target, Object propertyKey, Object value, Object[] optionalArgs) {
+            throw Errors.createTypeErrorCalledOnNonObject();
         }
     }
 

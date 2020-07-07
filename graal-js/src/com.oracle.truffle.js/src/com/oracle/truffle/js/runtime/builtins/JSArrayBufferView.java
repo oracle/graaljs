@@ -216,33 +216,110 @@ public final class JSArrayBufferView extends JSBuiltinObject {
 
     @TruffleBoundary
     @Override
-    public Object getHelper(DynamicObject store, Object thisObj, long index) {
-        return getOwnHelper(store, thisObj, index);
+    public Object getHelper(DynamicObject store, Object receiver, long index) {
+        return getOwnHelper(store, receiver, index);
     }
 
+    @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object thisObj, long index) {
+    public Object getOwnHelper(DynamicObject store, Object receiver, long index) {
         checkDetachedView(store);
         return typedArrayGetArrayType(store).getElement(store, index);
     }
 
+    /**
+     * 9.4.5.4 [[Get]] for Integer Indexed exotic object.
+     */
+    @TruffleBoundary
+    @Override
+    public Object getHelper(DynamicObject store, Object receiver, Object key) {
+        assert JSRuntime.isPropertyKey(key);
+        if (key instanceof String) {
+            Object numericIndex = JSRuntime.canonicalNumericIndexString((String) key);
+            if (numericIndex != Undefined.instance) {
+                return integerIndexedElementGet(store, numericIndex);
+            }
+        }
+        return super.getHelper(store, receiver, key);
+    }
+
+    @TruffleBoundary
+    @Override
+    public Object getOwnHelper(DynamicObject store, Object receiver, Object key) {
+        assert JSRuntime.isPropertyKey(key);
+        if (key instanceof String) {
+            Object numericIndex = JSRuntime.canonicalNumericIndexString((String) key);
+            if (numericIndex != Undefined.instance) {
+                return integerIndexedElementGet(store, numericIndex);
+            }
+        }
+        return super.getOwnHelper(store, receiver, key);
+    }
+
+    @TruffleBoundary
+    private static Object integerIndexedElementGet(DynamicObject thisObj, Object numericIndex) {
+        assert JSRuntime.isNumber(numericIndex);
+        checkDetachedView(thisObj);
+        if (!JSRuntime.isInteger(numericIndex)) {
+            return Undefined.instance;
+        }
+        if (numericIndex instanceof Double && JSRuntime.isNegativeZero(((Double) numericIndex).doubleValue())) {
+            return Undefined.instance;
+        }
+        long index = ((Number) numericIndex).longValue();
+        int length = JSArrayBufferView.typedArrayGetLength(thisObj);
+        if (index < 0 || index >= length) {
+            return Undefined.instance;
+        }
+        return JSArrayBufferView.typedArrayGetArrayType(thisObj).getElement(thisObj, index);
+    }
+
+    @TruffleBoundary
     @Override
     public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
+        if (thisObj != receiver) { // off-spec
+            return ordinarySetIndex(thisObj, index, value, receiver, isStrict);
+        }
+        Object numValue = convertValue(thisObj, value);
         checkDetachedView(thisObj);
-        typedArrayGetArrayType(thisObj).setElement(thisObj, index, value, isStrict);
+        typedArrayGetArrayType(thisObj).setElement(thisObj, index, numValue, isStrict);
         return true;
     }
 
     @TruffleBoundary
     @Override
     public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
-        if (JSRuntime.isString(key)) {
-            Object numericIndex = JSRuntime.canonicalNumericIndexString(key);
+        assert JSRuntime.isPropertyKey(key);
+        if (thisObj != receiver) { // off-spec
+            return ordinarySet(thisObj, key, value, receiver, isStrict);
+        }
+        if (key instanceof String) {
+            Object numericIndex = JSRuntime.canonicalNumericIndexString((String) key);
             if (numericIndex != Undefined.instance) {
-                return JSRuntime.integerIndexedElementSet(thisObj, numericIndex, value);
+                // IntegerIndexedElementSet
+                Object numValue = convertValue(thisObj, value);
+                checkDetachedView(thisObj);
+                if (!JSRuntime.isInteger(numericIndex)) {
+                    return false;
+                }
+                if (numericIndex instanceof Double && JSRuntime.isNegativeZero(((Double) numericIndex).doubleValue())) {
+                    return false;
+                }
+                int length = JSArrayBufferView.typedArrayGetLength(thisObj);
+                long index = ((Number) numericIndex).longValue();
+                if (index < 0 || index >= length) {
+                    return false;
+                } else {
+                    typedArrayGetArrayType(thisObj).setElement(thisObj, index, numValue, isStrict);
+                    return true;
+                }
             }
         }
         return super.set(thisObj, key, value, receiver, isStrict);
+    }
+
+    private static Object convertValue(DynamicObject thisObj, Object value) {
+        return JSArrayBufferView.isBigIntArrayBufferView(thisObj) ? JSRuntime.toBigInt(value) : JSRuntime.toNumber(value);
     }
 
     @TruffleBoundary
@@ -254,8 +331,9 @@ public final class JSArrayBufferView extends JSBuiltinObject {
     @TruffleBoundary
     @Override
     public boolean hasProperty(DynamicObject thisObj, Object key) {
-        if (JSRuntime.isString(key)) {
-            Object numericIndex = JSRuntime.canonicalNumericIndexString(key);
+        assert JSRuntime.isPropertyKey(key);
+        if (key instanceof String) {
+            Object numericIndex = JSRuntime.canonicalNumericIndexString((String) key);
             if (numericIndex != Undefined.instance) {
                 return hasNumericIndex(thisObj, numericIndex);
             }
@@ -263,16 +341,19 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         return super.hasProperty(thisObj, key);
     }
 
+    @TruffleBoundary
     @Override
     public boolean hasOwnProperty(DynamicObject thisObj, long index) {
         checkDetachedView(thisObj);
         return typedArrayGetArrayType(thisObj).hasElement(thisObj, index);
     }
 
+    @TruffleBoundary
     @Override
     public boolean hasOwnProperty(DynamicObject thisObj, Object key) {
-        if (JSRuntime.isString(key)) {
-            Object numericIndex = JSRuntime.canonicalNumericIndexString(key);
+        assert JSRuntime.isPropertyKey(key);
+        if (key instanceof String) {
+            Object numericIndex = JSRuntime.canonicalNumericIndexString((String) key);
             if (numericIndex != Undefined.instance) {
                 return hasNumericIndex(thisObj, numericIndex);
             }
@@ -291,21 +372,6 @@ public final class JSArrayBufferView extends JSBuiltinObject {
             return false;
         }
         return d < JSArrayBufferView.typedArrayGetLength(thisObj, JSArrayBufferView.isJSArrayBufferView(thisObj));
-    }
-
-    /**
-     * 9.4.5.4 [[Get]] for Integer Indexed exotic object.
-     */
-    @TruffleBoundary
-    @Override
-    public Object getHelper(DynamicObject store, Object thisObj, Object key) {
-        if (JSRuntime.isString(key)) {
-            Object numericIndex = JSRuntime.canonicalNumericIndexString(key);
-            if (numericIndex != Undefined.instance) {
-                return JSRuntime.integerIndexedElementGet(store, numericIndex);
-            }
-        }
-        return super.getHelper(store, thisObj, key);
     }
 
     public static DynamicObject createArrayBufferView(JSContext context, DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length) {
@@ -525,8 +591,9 @@ public final class JSArrayBufferView extends JSBuiltinObject {
 
     @Override
     public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor descriptor, boolean doThrow) {
-        if (JSRuntime.isString(key)) {
-            Object numericIndex = JSRuntime.canonicalNumericIndexString(key);
+        assert JSRuntime.isPropertyKey(key);
+        if (key instanceof String) {
+            Object numericIndex = JSRuntime.canonicalNumericIndexString((String) key);
             if (numericIndex != Undefined.instance) {
                 boolean success = defineOwnPropertyIndex(thisObj, numericIndex, descriptor);
                 if (doThrow && !success) {
@@ -541,16 +608,20 @@ public final class JSArrayBufferView extends JSBuiltinObject {
 
     @TruffleBoundary
     private static boolean defineOwnPropertyIndex(DynamicObject thisObj, Object numericIndex, PropertyDescriptor desc) {
+        // IsValidIntegerIndex
         if (!JSRuntime.isInteger(numericIndex)) {
             return false;
         }
         double dIndex = ((Number) numericIndex).doubleValue();
-        if (JSRuntime.isNegativeZero(dIndex) || dIndex < 0) {
+        if (JSRuntime.isNegativeZero(dIndex)) {
             return false;
         }
-        if ((long) dIndex >= JSArrayBufferView.typedArrayGetLength(thisObj)) {
+        int length = JSArrayBufferView.typedArrayGetLength(thisObj);
+        long index = (long) dIndex;
+        if (index < 0 || index >= length) {
             return false;
         }
+
         if (desc.isAccessorDescriptor()) {
             return false;
         }
@@ -564,7 +635,13 @@ public final class JSArrayBufferView extends JSBuiltinObject {
             return false;
         }
         if (desc.hasValue()) {
-            JSRuntime.integerIndexedElementSet(thisObj, (int) dIndex, desc.getValue());
+            // IntegerIndexedElementSet
+            Object value = desc.getValue();
+            Object numValue = convertValue(thisObj, value);
+            checkDetachedView(thisObj);
+            assert index >= 0 && index < length;
+            JSArrayBufferView.typedArrayGetArrayType(thisObj).setElement(thisObj, index, numValue, true);
+            return true;
         }
         return true;
     }
@@ -594,7 +671,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
     @Override
     public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object key) {
         assert JSRuntime.isPropertyKey(key);
-        if (JSRuntime.isString(key)) {
+        if (key instanceof String) {
             long numericIndex = JSRuntime.propertyKeyToIntegerIndex(key);
             if (numericIndex >= 0) {
                 Object value = getOwnHelper(thisObj, thisObj, numericIndex);
@@ -630,8 +707,9 @@ public final class JSArrayBufferView extends JSBuiltinObject {
 
     @Override
     public boolean delete(DynamicObject thisObj, Object key, boolean isStrict) {
-        if (JSRuntime.isString(key)) {
-            Object numericIndex = JSRuntime.canonicalNumericIndexString(key);
+        assert JSRuntime.isPropertyKey(key);
+        if (key instanceof String) {
+            Object numericIndex = JSRuntime.canonicalNumericIndexString((String) key);
             if (numericIndex != Undefined.instance) {
                 if (hasNumericIndex(thisObj, numericIndex)) {
                     if (isStrict) {

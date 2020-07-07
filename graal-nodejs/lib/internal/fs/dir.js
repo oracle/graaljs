@@ -1,6 +1,10 @@
 'use strict';
 
-const { Object } = primordials;
+const {
+  ObjectDefineProperty,
+  Symbol,
+  SymbolAsyncIterator,
+} = primordials;
 
 const pathModule = require('path');
 const binding = internalBinding('fs');
@@ -21,6 +25,9 @@ const {
   getValidatedPath,
   handleErrorFromBinding
 } = require('internal/fs/utils');
+const {
+  validateUint32
+} = require('internal/validators');
 
 const kDirHandle = Symbol('kDirHandle');
 const kDirPath = Symbol('kDirPath');
@@ -39,9 +46,14 @@ class Dir {
     this[kDirPath] = path;
     this[kDirClosed] = false;
 
-    this[kDirOptions] = getOptions(options, {
-      encoding: 'utf8'
-    });
+    this[kDirOptions] = {
+      bufferSize: 32,
+      ...getOptions(options, {
+        encoding: 'utf8'
+      })
+    };
+
+    validateUint32(this[kDirOptions].bufferSize, 'options.bufferSize', true);
 
     this[kDirReadPromisified] =
         internalUtil.promisify(this[kDirReadImpl]).bind(this, false);
@@ -88,11 +100,12 @@ class Dir {
 
     this[kDirHandle].read(
       this[kDirOptions].encoding,
+      this[kDirOptions].bufferSize,
       req
     );
   }
 
-  readSync(options) {
+  readSync() {
     if (this[kDirClosed] === true) {
       throw new ERR_DIR_CLOSED();
     }
@@ -105,6 +118,7 @@ class Dir {
     const ctx = { path: this[kDirPath] };
     const result = this[kDirHandle].read(
       this[kDirOptions].encoding,
+      this[kDirOptions].bufferSize,
       undefined,
       ctx
     );
@@ -162,7 +176,7 @@ class Dir {
   }
 }
 
-Object.defineProperty(Dir.prototype, Symbol.asyncIterator, {
+ObjectDefineProperty(Dir.prototype, SymbolAsyncIterator, {
   value: Dir.prototype.entries,
   enumerable: false,
   writable: true,

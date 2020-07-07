@@ -23,7 +23,12 @@
 
 'use strict';
 
-const { Object } = primordials;
+const {
+  Array,
+  ArrayIsArray,
+  ObjectCreate,
+  ObjectKeys,
+} = primordials;
 
 const { Buffer } = require('buffer');
 const {
@@ -167,7 +172,7 @@ function stringify(obj, sep, eq, options) {
   }
 
   if (obj !== null && typeof obj === 'object') {
-    const keys = Object.keys(obj);
+    const keys = ObjectKeys(obj);
     const len = keys.length;
     const flast = len - 1;
     let fields = '';
@@ -177,7 +182,7 @@ function stringify(obj, sep, eq, options) {
       let ks = encode(stringifyPrimitive(k));
       ks += eq;
 
-      if (Array.isArray(v)) {
+      if (ArrayIsArray(v)) {
         const vlen = v.length;
         if (vlen === 0) continue;
         const vlast = vlen - 1;
@@ -233,7 +238,7 @@ function addKeyVal(obj, key, value, keyEncoded, valEncoded, decode) {
 
 // Parse a key/val string.
 function parse(qs, sep, eq, options) {
-  const obj = Object.create(null);
+  const obj = ObjectCreate(null);
 
   if (typeof qs !== 'string' || qs.length === 0) {
     return obj;
