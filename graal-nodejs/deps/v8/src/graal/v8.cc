@@ -1035,7 +1035,7 @@ namespace v8 {
     }
 
     void V8::FromJustIsNothing() {
-        TRACE
+        reinterpret_cast<GraalIsolate*> (GraalIsolate::GetCurrent())->ReportAPIFailure("v8::FromJust", "Maybe value is Nothing.");
     }
 
     const char* V8::GetVersion() {
@@ -2254,8 +2254,7 @@ namespace v8 {
     }
 
     Maybe<bool> Object::SetIntegrityLevel(Local<Context> context, IntegrityLevel level) {
-        TRACE
-        return Nothing<bool>();
+        return reinterpret_cast<GraalObject*> (this)->SetIntegrityLevel(context, level);
     }
 
     ScriptOrigin Message::GetScriptOrigin() const {

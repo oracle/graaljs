@@ -149,6 +149,7 @@ enum GraalAccessMethod {
     object_creation_context,
     object_define_property,
     object_preview_entries,
+    object_set_integrity_level,
     array_new,
     array_length,
     array_buffer_new,

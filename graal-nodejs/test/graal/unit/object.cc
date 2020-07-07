@@ -241,4 +241,17 @@ EXPORT_TO_JS(GetRealNamedPropertyAttributes) {
     args.GetReturnValue().Set(result);
 }
 
+EXPORT_TO_JS(SetIntegrityLevel) {
+    Local<Context> context = args.GetIsolate()->GetCurrentContext();
+    Local<Object> obj = args[0].As<Object>();
+    bool freeze = args[1].As<Boolean>()->Value();
+
+    IntegrityLevel level = freeze ? IntegrityLevel::kFrozen : IntegrityLevel::kSealed;
+    Maybe<bool> result = obj->SetIntegrityLevel(context, level);
+
+    if (result.IsJust()) {
+        args.GetReturnValue().Set(result.FromJust());
+    }
+}
+
 #undef SUITE
