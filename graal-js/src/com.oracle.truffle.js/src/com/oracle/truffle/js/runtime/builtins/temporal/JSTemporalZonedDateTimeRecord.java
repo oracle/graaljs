@@ -40,15 +40,16 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public final class JSTemporalZonedDateTimeRecord extends JSTemporalDateTimeRecord {
-    private final String timeZoneOffsetString;
-    private final String timeZoneName;
+    private final TruffleString timeZoneOffsetString;
+    private final TruffleString timeZoneName;
     private final boolean timeZoneZ;
 
     private JSTemporalZonedDateTimeRecord(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond,
-                    String calendar, boolean hasCalendar, boolean timeZoneZ, String timeZoneOffsetString, String timeZoneName) {
+                    TruffleString calendar, boolean hasCalendar, boolean timeZoneZ, TruffleString timeZoneOffsetString, TruffleString timeZoneName) {
         super(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, 0, false, calendar, hasCalendar);
         this.timeZoneOffsetString = timeZoneOffsetString;
         this.timeZoneName = timeZoneName;
@@ -56,16 +57,16 @@ public final class JSTemporalZonedDateTimeRecord extends JSTemporalDateTimeRecor
     }
 
     public static JSTemporalZonedDateTimeRecord create(long year, long month, long day, long hour, long minute, long second,
-                    long millisecond, long microsecond, long nanosecond, String calendar, boolean timeZoneZ, String timeZoneOffsetString, String timeZoneName) {
+                    long millisecond, long microsecond, long nanosecond, TruffleString calendar, boolean timeZoneZ, TruffleString timeZoneOffsetString, TruffleString timeZoneName) {
         return new JSTemporalZonedDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond,
                         calendar, !TemporalUtil.isNullish(calendar), timeZoneZ, timeZoneOffsetString, timeZoneName);
     }
 
-    public String getTimeZoneOffsetString() {
+    public TruffleString getTimeZoneOffsetString() {
         return timeZoneOffsetString;
     }
 
-    public String getTimeZoneName() {
+    public TruffleString getTimeZoneName() {
         return timeZoneName;
     }
 

@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.function.BuiltinArgumentBuilder;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 
 public interface BuiltinEnum<E extends Enum<? extends BuiltinEnum<E>>> {
     @SuppressWarnings("unchecked")
@@ -50,12 +52,12 @@ public interface BuiltinEnum<E extends Enum<? extends BuiltinEnum<E>>> {
         return (E) this;
     }
 
-    default String getName() {
-        return prependAccessorPrefix(stripName(asEnum().name()));
+    default TruffleString getName() {
+        return prependAccessorPrefix(stripName(Strings.fromJavaString(asEnum().name())));
     }
 
     default Object getKey() {
-        return stripName(asEnum().name());
+        return stripName(Strings.fromJavaString(asEnum().name()));
     }
 
     default boolean isConstructor() {
@@ -113,19 +115,19 @@ public interface BuiltinEnum<E extends Enum<? extends BuiltinEnum<E>>> {
         return BuiltinArgumentBuilder.builder();
     }
 
-    static String stripName(String name) {
-        if (name.endsWith("_") && !name.endsWith("__")) {
-            return name.substring(0, name.length() - 1);
+    static TruffleString stripName(TruffleString name) {
+        if (Strings.endsWith(name, Strings.UNDERSCORE) && !Strings.endsWith(name, Strings.UNDERSCORE_2)) {
+            return Strings.substring(name, 0, Strings.length(name) - 1);
         } else {
             return name;
         }
     }
 
-    default String prependAccessorPrefix(String name) {
+    default TruffleString prependAccessorPrefix(TruffleString name) {
         if (isGetter()) {
-            return "get " + name;
+            return Strings.concat(Strings.GET_SPC, name);
         } else if (isSetter()) {
-            return "set " + name;
+            return Strings.concat(Strings.SET_SPC, name);
         }
         return name;
     }

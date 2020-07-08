@@ -53,11 +53,13 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 
@@ -79,7 +81,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
     }
 
     @Specialization(guards = "accept(target)")
-    public Object write(DynamicObject target, String str, int destOffset, int bytes) {
+    public Object write(DynamicObject target, TruffleString str, int destOffset, int bytes) {
         try {
             return doWrite(target, str, destOffset, bytes);
         } catch (CharacterCodingException e) {
@@ -88,7 +90,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
     }
 
     @Specialization(guards = {"accept(target)", "isUndefined(bytes)"})
-    public Object writeDefaultOffset(DynamicObject target, String str, int destOffset, Object bytes) {
+    public Object writeDefaultOffset(DynamicObject target, TruffleString str, int destOffset, Object bytes) {
         try {
             return doWrite(target, str, destOffset, getBytes(str).length);
         } catch (CharacterCodingException e) {
@@ -97,7 +99,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
     }
 
     @Specialization(guards = {"accept(target)", "isUndefined(destOffset)", "isUndefined(bytes)"})
-    public Object writeDefaultValues(DynamicObject target, String str, Object destOffset, Object bytes) {
+    public Object writeDefaultValues(DynamicObject target, TruffleString str, Object destOffset, Object bytes) {
         try {
             return doWrite(target, str, 0, getBytes(str).length);
         } catch (CharacterCodingException e) {
@@ -106,7 +108,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
     }
 
     @Specialization(guards = "accept(target)")
-    public Object write(DynamicObject target, String str, double destOffset, double bytes) {
+    public Object write(DynamicObject target, TruffleString str, double destOffset, double bytes) {
         try {
             return doWrite(target, str, toInt.executeInt(destOffset), toInt.executeInt(bytes));
         } catch (CharacterCodingException e) {
@@ -125,12 +127,12 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
         throw Errors.createTypeErrorArrayBufferViewExpected();
     }
 
-    private Object doNativeFallback(DynamicObject target, String str, Object destOffset, Object bytes) {
+    private Object doNativeFallback(DynamicObject target, TruffleString str, Object destOffset, Object bytes) {
         nativePath.enter();
         return JSFunction.call(getNativeUtf8Write(), target, new Object[]{str, destOffset, bytes});
     }
 
-    private int doWrite(DynamicObject target, String str, int destOffset, int bytes) throws CharacterCodingException {
+    private int doWrite(DynamicObject target, TruffleString str, int destOffset, int bytes) throws CharacterCodingException {
         DynamicObject arrayBuffer = getArrayBuffer(target);
         int bufferOffset = getOffset(target);
         int bufferLen = getLength(target);
@@ -164,11 +166,11 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
     }
 
     @TruffleBoundary
-    private static CoderResult doEncode(String str, ByteBuffer buffer) throws CharacterCodingException {
+    private static CoderResult doEncode(TruffleString str, ByteBuffer buffer) throws CharacterCodingException {
         CharsetEncoder encoder = utf8.newEncoder();
         encoder.onMalformedInput(CodingErrorAction.REPORT);
         encoder.onUnmappableCharacter(CodingErrorAction.REPORT);
-        CharBuffer cb = CharBuffer.wrap(str);
+        CharBuffer cb = CharBuffer.wrap(Strings.toJavaString(str));
         CoderResult res = encoder.encode(cb, buffer, true);
 
         if (res.isUnderflow()) {
@@ -185,8 +187,8 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
     }
 
     @TruffleBoundary
-    private static byte[] getBytes(String str) {
-        return str.getBytes(utf8);
+    private static byte[] getBytes(TruffleString str) {
+        return Strings.toJavaString(str).getBytes(utf8);
     }
 
 }

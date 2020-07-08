@@ -43,11 +43,13 @@ package com.oracle.truffle.trufflenode.threading;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.JSExternal;
@@ -59,8 +61,11 @@ import com.oracle.truffle.trufflenode.threading.SharedMemMessagingBuiltinsFactor
 import com.oracle.truffle.trufflenode.threading.SharedMemMessagingBuiltinsFactory.LeaveNodeGen;
 
 public class SharedMemMessagingBuiltins extends JSBuiltinsContainer.SwitchEnum<SharedMemMessagingBuiltins.API> {
+
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("SharedMemMessaging.prototype");
+
     protected SharedMemMessagingBuiltins() {
-        super("SharedMemMessaging.prototype", API.class);
+        super(PROTOTYPE_NAME, API.class);
     }
 
     public enum API implements BuiltinEnum<API> {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,8 @@
 
 package com.oracle.js.parser;
 
+import com.oracle.truffle.api.strings.TruffleString;
+
 import java.util.HashMap;
 
 /**
@@ -53,7 +55,7 @@ public class Namespace {
     private final Namespace parent;
 
     /** Name directory - version count for each name */
-    private final HashMap<String, Integer> directory;
+    private final HashMap<TruffleString, Integer> directory;
 
     /**
      * Constructor
@@ -88,15 +90,15 @@ public class Namespace {
      *
      * @return Generated uniqueName name.
      */
-    public String uniqueName(final String base) {
+    public TruffleString uniqueName(final TruffleString base) {
         for (Namespace namespace = this; namespace != null; namespace = namespace.getParent()) {
-            final HashMap<String, Integer> namespaceDirectory = namespace.directory;
+            final HashMap<TruffleString, Integer> namespaceDirectory = namespace.directory;
             final Integer counter = namespaceDirectory.get(base);
 
             if (counter != null) {
                 final int count = counter + 1;
                 namespaceDirectory.put(base, count);
-                return base + '-' + count;
+                return ParserStrings.concatAll(base, ParserStrings.DASH, ParserStrings.fromLong(count));
             }
         }
 

@@ -46,11 +46,12 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltins;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantEmptyPrototypeArray;
@@ -60,7 +61,7 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
 public final class JSObjectPrototype extends JSNonProxy {
 
-    public static final String CLASS_NAME = "Object";
+    public static final TruffleString CLASS_NAME = Strings.constant("Object");
 
     public static final JSObjectPrototype INSTANCE = new JSObjectPrototype();
     public static final JSBuiltinsContainer BUILTINS = ObjectPrototypeBuiltins.BUILTINS;
@@ -77,12 +78,12 @@ public final class JSObjectPrototype extends JSNonProxy {
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return CLASS_NAME;
     }
 
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         return defaultToString(obj);
     }
 
@@ -106,7 +107,7 @@ public final class JSObjectPrototype extends JSNonProxy {
         if (array.hasElement(thisObj, index)) {
             return true;
         }
-        return super.hasOwnProperty(thisObj, Boundaries.stringValueOf(index));
+        return super.hasOwnProperty(thisObj, Strings.fromLong(index));
     }
 
     @TruffleBoundary
@@ -116,7 +117,7 @@ public final class JSObjectPrototype extends JSNonProxy {
         if (array.hasElement(store, index)) {
             return array.getElement(store, index);
         }
-        return super.getOwnHelper(store, thisObj, Boundaries.stringValueOf(index), encapsulatingNode);
+        return super.getOwnHelper(store, thisObj, Strings.fromLong(index), encapsulatingNode);
     }
 
     @TruffleBoundary

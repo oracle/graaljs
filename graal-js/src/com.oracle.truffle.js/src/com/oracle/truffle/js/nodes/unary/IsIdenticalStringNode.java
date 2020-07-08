@@ -40,46 +40,36 @@
  */
 package com.oracle.truffle.js.nodes.unary;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
-
-import java.util.Set;
+import com.oracle.truffle.js.runtime.Strings;
 
 public abstract class IsIdenticalStringNode extends IsIdenticalBaseNode {
 
-    protected final String string;
+    protected final TruffleString string;
 
-    protected IsIdenticalStringNode(String string, JavaScriptNode operand, boolean leftConstant) {
+    protected IsIdenticalStringNode(TruffleString string, JavaScriptNode operand, boolean leftConstant) {
         super(operand, leftConstant);
         this.string = string;
     }
 
     @Specialization
-    protected boolean doLazyString(JSLazyString other,
-                    @Cached("createBinaryProfile()") ConditionProfile flatten,
-                    @Cached("createBinaryProfile()") ConditionProfile len) {
-        if (len.profile(other.length() != string.length())) {
-            return false;
-        }
-        return string.equals(other.toString(flatten));
+    protected boolean doString(TruffleString other,
+                    @Cached TruffleString.EqualNode equalsNode) {
+        return Strings.equals(equalsNode, string, other);
     }
 
-    @Specialization
-    protected boolean doString(String other) {
-        return string.equals(other);
-    }
-
-    @Fallback
+    @Specialization(guards = "!isTruffleString(other)")
     protected boolean doOther(@SuppressWarnings("unused") Object other) {
         return false;
     }
 
-    public static IsIdenticalStringNode create(String string, JavaScriptNode operand, boolean leftConstant) {
+    public static IsIdenticalStringNode create(TruffleString string, JavaScriptNode operand, boolean leftConstant) {
         return IsIdenticalStringNodeGen.create(string, operand, leftConstant);
     }
 

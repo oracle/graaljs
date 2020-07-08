@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 
 package com.oracle.js.parser;
+
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * Handles JavaScript error reporting.
@@ -105,12 +107,12 @@ public abstract class ErrorManager {
         sb.append(source.getName()).append(':').append(line).append(':').append(column).append(' ').append(message).append(eoln);
 
         // Source content.
-        final CharSequence sourceLine = source.getSourceLine(position);
+        final TruffleString sourceLine = source.getSourceLine(position);
         sb.append(sourceLine).append(eoln);
 
         // Pointer to column.
         for (int i = 0; i < column; i++) {
-            if (sourceLine.charAt(i) == '\t') {
+            if (ParserStrings.charAt(sourceLine, i) == '\t') {
                 sb.append('\t');
             } else {
                 sb.append(' ');

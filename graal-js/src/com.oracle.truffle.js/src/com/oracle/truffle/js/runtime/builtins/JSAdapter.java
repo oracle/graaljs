@@ -46,12 +46,14 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -60,35 +62,35 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
 public final class JSAdapter extends AbstractJSClass implements JSConstructorFactory.Default, PrototypeSupplier {
 
-    public static final String CLASS_NAME = "JSAdapter";
+    public static final TruffleString CLASS_NAME = Strings.constant("JSAdapter");
 
     public static final JSAdapter INSTANCE = new JSAdapter();
 
-    private static final String GET = "__get__";
-    private static final String PUT = "__put__";
-    private static final String HAS = "__has__";
-    private static final String CALL = "__call__";
-    private static final String DELETE = "__delete__";
-    public static final String NEW = "__new__";
-    public static final String GET_IDS = "__getIds__";
-    public static final String GET_VALUES = "__getValues__";
+    private static final TruffleString GET = Strings.constant("__get__");
+    private static final TruffleString PUT = Strings.constant("__put__");
+    private static final TruffleString HAS = Strings.constant("__has__");
+    private static final TruffleString CALL = Strings.constant("__call__");
+    private static final TruffleString DELETE = Strings.constant("__delete__");
+    public static final TruffleString NEW = Strings.constant("__new__");
+    public static final TruffleString GET_IDS = Strings.constant("__getIds__");
+    public static final TruffleString GET_VALUES = Strings.constant("__getValues__");
 
     private JSAdapter() {
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 
     @Override
     public String toString() {
-        return getClassName();
+        return Strings.toJavaString(getClassName());
     }
 
     public static DynamicObject create(JSContext context, JSRealm realm, DynamicObject adaptee, DynamicObject overrides, DynamicObject proto) {
@@ -282,7 +284,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     }
 
     @Override
-    public String toDisplayStringImpl(DynamicObject object, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(DynamicObject object, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         return defaultToString(object);
     }
 

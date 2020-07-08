@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,11 +38,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.objects;
+package com.oracle.truffle.trufflenode;
 
-/**
- * Used for implicit conversion in the type system. Represents a {@link JSLazyString} that has not
- * been flattened yet.
- */
-public interface JSLazyStringRaw {
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+
+@ExportLibrary(InteropLibrary.class)
+public final class NativeBufferWrapper implements TruffleObject {
+
+    private final long address;
+
+    private NativeBufferWrapper(long address) {
+        this.address = address;
+    }
+
+    public static NativeBufferWrapper create(long address) {
+        return new NativeBufferWrapper(address);
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    public boolean isPointer() {
+        return true;
+    }
+
+    @ExportMessage
+    public long asPointer() {
+        return address;
+    }
 }

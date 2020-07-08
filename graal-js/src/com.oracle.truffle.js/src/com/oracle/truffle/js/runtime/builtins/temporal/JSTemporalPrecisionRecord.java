@@ -40,18 +40,20 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
+import com.oracle.truffle.api.strings.TruffleString;
+
 public final class JSTemporalPrecisionRecord {
-    private final Object precision; // number, or String "auto"
-    private final String unit;
+    private final Object precision; // number, or TruffleString "auto"
+    private final TruffleString unit;
     private final double increment;
 
-    private JSTemporalPrecisionRecord(Object precision, String unit, double increment) {
+    private JSTemporalPrecisionRecord(Object precision, TruffleString unit, double increment) {
         this.precision = precision;
         this.unit = unit;
         this.increment = increment;
     }
 
-    public static JSTemporalPrecisionRecord create(Object precision, String unit, double increment) {
+    public static JSTemporalPrecisionRecord create(Object precision, TruffleString unit, double increment) {
         return new JSTemporalPrecisionRecord(precision, unit, increment);
     }
 
@@ -59,7 +61,7 @@ public final class JSTemporalPrecisionRecord {
         return precision;
     }
 
-    public String getUnit() {
+    public TruffleString getUnit() {
         return unit;
     }
 

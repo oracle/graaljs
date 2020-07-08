@@ -44,24 +44,25 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 
 public class JSONData {
 
     protected List<Object> stack = new ArrayList<>();
     private int indent;
-    private final String gap;
-    private final List<String> propertyList;
+    private final TruffleString gap;
+    private final List<Object> propertyList;
     private final DynamicObject replacerFnObj;
 
     private static final int MAX_STACK_SIZE = 1000;
 
-    public JSONData(String gap, DynamicObject replacerFnObj, List<String> replacerList) {
+    public JSONData(TruffleString gap, DynamicObject replacerFnObj, List<Object> replacerList) {
         this.gap = gap;
         this.replacerFnObj = replacerFnObj;
         this.propertyList = replacerList;
     }
 
-    public String getGap() {
+    public TruffleString getGap() {
         return gap;
     }
 
@@ -73,7 +74,7 @@ public class JSONData {
         this.indent = indentCount;
     }
 
-    public List<String> getPropertyList() {
+    public List<Object> getPropertyList() {
         return propertyList;
     }
 

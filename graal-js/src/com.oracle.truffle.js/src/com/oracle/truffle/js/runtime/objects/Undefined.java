@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,16 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.Strings;
+
 /**
  * A singleton instance of this class represents an undefined JavaScript value.
  */
 public final class Undefined {
 
-    public static final String NAME = "undefined";
-    public static final String TYPE_NAME = NAME;
+    public static final TruffleString NAME = Strings.UNDEFINED;
+    public static final TruffleString TYPE_NAME = NAME;
     public static final JSDynamicObject instance = new Nullish();
 
     private Undefined() {

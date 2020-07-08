@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,16 +43,17 @@ package com.oracle.js.parser.ir;
 
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
+import com.oracle.truffle.api.strings.TruffleString;
 
 public class ImportNode extends Node {
 
-    private final LiteralNode<String> moduleSpecifier;
+    private final LiteralNode<TruffleString> moduleSpecifier;
 
     private final ImportClauseNode importClause;
 
     private final FromNode from;
 
-    public ImportNode(final long token, final int start, final int finish, final LiteralNode<String> moduleSpecifier) {
+    public ImportNode(final long token, final int start, final int finish, final LiteralNode<TruffleString> moduleSpecifier) {
         this(token, start, finish, moduleSpecifier, null, null);
     }
 
@@ -60,21 +61,21 @@ public class ImportNode extends Node {
         this(token, start, finish, null, importClause, from);
     }
 
-    private ImportNode(final long token, final int start, final int finish, final LiteralNode<String> moduleSpecifier, ImportClauseNode importClause, FromNode from) {
+    private ImportNode(final long token, final int start, final int finish, final LiteralNode<TruffleString> moduleSpecifier, ImportClauseNode importClause, FromNode from) {
         super(token, start, finish);
         this.moduleSpecifier = moduleSpecifier;
         this.importClause = importClause;
         this.from = from;
     }
 
-    private ImportNode(final ImportNode node, final LiteralNode<String> moduleSpecifier, ImportClauseNode importClause, FromNode from) {
+    private ImportNode(final ImportNode node, final LiteralNode<TruffleString> moduleSpecifier, ImportClauseNode importClause, FromNode from) {
         super(node);
         this.moduleSpecifier = moduleSpecifier;
         this.importClause = importClause;
         this.from = from;
     }
 
-    public LiteralNode<String> getModuleSpecifier() {
+    public LiteralNode<TruffleString> getModuleSpecifier() {
         return moduleSpecifier;
     }
 
@@ -86,7 +87,7 @@ public class ImportNode extends Node {
         return from;
     }
 
-    public ImportNode setModuleSpecifier(LiteralNode<String> moduleSpecifier) {
+    public ImportNode setModuleSpecifier(LiteralNode<TruffleString> moduleSpecifier) {
         if (this.moduleSpecifier == moduleSpecifier) {
             return this;
         }
@@ -111,8 +112,8 @@ public class ImportNode extends Node {
     @SuppressWarnings("unchecked")
     public Node accept(NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterImportNode(this)) {
-            LiteralNode<String> newModuleSpecifier = moduleSpecifier == null ? null
-                            : (LiteralNode<String>) moduleSpecifier.accept(visitor);
+            LiteralNode<TruffleString> newModuleSpecifier = moduleSpecifier == null ? null
+                            : (LiteralNode<TruffleString>) moduleSpecifier.accept(visitor);
             ImportClauseNode newImportClause = importClause == null ? null
                             : (ImportClauseNode) importClause.accept(visitor);
             FromNode newFrom = from == null ? null

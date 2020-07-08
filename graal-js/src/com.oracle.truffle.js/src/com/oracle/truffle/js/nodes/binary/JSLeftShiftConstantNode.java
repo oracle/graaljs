@@ -48,6 +48,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
@@ -59,6 +60,7 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 /**
@@ -137,8 +139,8 @@ public abstract class JSLeftShiftConstantNode extends JSUnaryNode {
         return overloadedOperatorNode.execute(a, shiftValue);
     }
 
-    protected String getOverloadedOperatorName() {
-        return "<<";
+    protected TruffleString getOverloadedOperatorName() {
+        return Strings.ANGLE_BRACKET_OPEN_2;
     }
 
     @Specialization(guards = {"!hasOverloadedOperators(a)"}, replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigInt"})

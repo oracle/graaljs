@@ -41,17 +41,12 @@
 package com.oracle.truffle.js.nodes;
 
 import com.oracle.truffle.api.dsl.ImplicitCast;
-import com.oracle.truffle.api.dsl.TypeCast;
 import com.oracle.truffle.api.dsl.TypeCheck;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
-import com.oracle.truffle.js.runtime.objects.JSLazyStringFlattened;
-import com.oracle.truffle.js.runtime.objects.JSLazyStringRaw;
 
 /**
  * @see JavaScriptNode
@@ -78,53 +73,8 @@ public class JSTypes {
         return value;
     }
 
-    @TypeCheck(CharSequence.class)
-    public static boolean isCharSequence(Object value) {
-        return JSRuntime.isString(value);
-    }
-
     @TypeCheck(DynamicObject.class)
     public static boolean isDynamicObject(Object value) {
         return JSDynamicObject.isJSDynamicObject(value);
-    }
-
-    @TypeCheck(JSLazyStringFlattened.class)
-    public static boolean isLazyStringFlattened(Object object) {
-        return object instanceof JSLazyString && ((JSLazyString) object).isFlat();
-    }
-
-    @TypeCast(JSLazyStringFlattened.class)
-    public static JSLazyStringFlattened asLazyStringFlattened(Object object) {
-        return (JSLazyString) object;
-    }
-
-    @TypeCheck(JSLazyStringRaw.class)
-    public static boolean isLazyStringRaw(Object object) {
-        return object instanceof JSLazyString && !((JSLazyString) object).isFlat();
-    }
-
-    @TypeCast(JSLazyStringRaw.class)
-    public static JSLazyStringRaw asLazyStringRaw(Object object) {
-        return (JSLazyString) object;
-    }
-
-    @ImplicitCast
-    public static String convertLazyStringFlattened(JSLazyStringFlattened value) {
-        return ((JSLazyString) value).getFlattenedString(); // avoid to have flatten() in the code
-    }
-
-    @ImplicitCast
-    public static String convertLazyStringRaw(JSLazyStringRaw value) {
-        return ((JSLazyString) value).toString();
-    }
-
-    @ImplicitCast
-    public static CharSequence castCharSequence(String value) {
-        return value;
-    }
-
-    @ImplicitCast
-    public static CharSequence castCharSequence(JSLazyString value) {
-        return value;
     }
 }

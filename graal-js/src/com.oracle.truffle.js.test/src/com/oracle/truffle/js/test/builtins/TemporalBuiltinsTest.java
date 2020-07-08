@@ -46,6 +46,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.oracle.truffle.js.runtime.Strings;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
@@ -764,13 +765,13 @@ public class TemporalBuiltinsTest extends JSTest {
 
     @Test
     public void testParsing() {
-        TemporalParser parser = new TemporalParser("2019-11-18T15:23:30.123456789+01:00[Europe/Madrid][u-ca=gregory]");
+        TemporalParser parser = new TemporalParser(Strings.fromJavaString("2019-11-18T15:23:30.123456789+01:00[Europe/Madrid][u-ca=gregory]"));
         JSTemporalParserRecord rec = parser.parseISODateTime();
         assertEquals(2019, rec.getYear());
         assertEquals(11, rec.getMonth());
         assertEquals(18, rec.getDay());
-        assertEquals("Europe/Madrid", rec.getTimeZoneIANAName());
-        assertEquals("gregory", rec.getCalendar());
+        assertEquals(Strings.fromJavaString("Europe/Madrid"), rec.getTimeZoneIANAName());
+        assertEquals(Strings.fromJavaString("gregory"), rec.getCalendar());
     }
 
     @Test
@@ -795,14 +796,14 @@ public class TemporalBuiltinsTest extends JSTest {
     private static void testTimeZoneFailFrom(String code) {
         try (Context ctx = getJSContext()) {
             Value result = ctx.eval(ID, "try { Temporal.TimeZone.from('" + code + "'); false; } catch (ex) { true; }");
-            assertEquals(true, result.asBoolean());
+            assertTrue(result.asBoolean());
         }
     }
 
     private static void testTimeZoneFailConstructor(String code) {
         try (Context ctx = getJSContext()) {
             Value result = ctx.eval(ID, "try { new Temporal.TimeZone('" + code + "'); false; } catch (ex) { true; }");
-            assertEquals(true, result.asBoolean());
+            assertTrue(result.asBoolean());
         }
     }
 

@@ -45,15 +45,17 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyBuiltins;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JSWebAssembly {
 
-    public static final String CLASS_NAME = "WebAssembly";
+    public static final TruffleString CLASS_NAME = Strings.constant("WebAssembly");
 
     public static final HiddenKey FUNCTION_ADDRESS = new HiddenKey("FunctionAddress");
 

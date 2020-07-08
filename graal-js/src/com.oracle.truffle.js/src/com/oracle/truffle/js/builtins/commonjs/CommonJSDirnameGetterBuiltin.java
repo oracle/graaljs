@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,9 +44,11 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 
 public abstract class CommonJSDirnameGetterBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
 
@@ -60,15 +62,15 @@ public abstract class CommonJSDirnameGetterBuiltin extends GlobalBuiltins.JSFile
     }
 
     @CompilerDirectives.TruffleBoundary
-    private String getCurrentFolderName() {
+    private TruffleString getCurrentFolderName() {
         String filePath = CommonJSResolution.getCurrentFileNameFromStack();
         TruffleLanguage.Env env = getRealm().getEnv();
         if (filePath != null) {
             TruffleFile truffleFile = env.getPublicTruffleFile(filePath);
             assert truffleFile.isRegularFile() && truffleFile.getParent().isDirectory();
-            return truffleFile.getParent().normalize().toString();
+            return Strings.fromJavaString(truffleFile.getParent().normalize().toString());
         }
-        return CommonJSRequireBuiltin.getModuleResolveCurrentWorkingDirectory(getContext(), env).getAbsoluteFile().toString();
+        return Strings.fromJavaString(CommonJSRequireBuiltin.getModuleResolveCurrentWorkingDirectory(getContext(), env).getAbsoluteFile().toString());
     }
 
 }

@@ -82,6 +82,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -106,6 +107,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -387,10 +389,10 @@ public class Recording {
                 stringified = String.valueOf(constant);
             } else if (constant instanceof Long) {
                 stringified = String.valueOf(constant) + 'L';
-            } else if (constant instanceof String) {
-                stringified = JSONParserUtil.quote((String) constant);
+            } else if (Strings.isTString(constant)) {
+                stringified = Strings.toJavaString(JSONParserUtil.quote((TruffleString) constant));
             } else if (constant instanceof BigInt) {
-                stringified = typeName(BigInt.class) + ".valueOf(" + JSONParserUtil.quote(constant.toString()) + ")";
+                stringified = typeName(BigInt.class) + ".valueOf(" + JSONParserUtil.quote(Strings.fromBigInt((BigInt) constant)) + ")";
             } else if (constant.getClass().isEnum()) {
                 stringified = typeName(constant.getClass()) + "." + constant;
             } else if (constant == Dead.instance()) {
@@ -412,7 +414,7 @@ public class Recording {
 
         @Override
         public boolean isPrimitiveValue() {
-            return !(constant instanceof String || constant instanceof BigInt);
+            return !(Strings.isTString(constant) || constant instanceof BigInt);
         }
 
         @Override
@@ -866,9 +868,9 @@ public class Recording {
 
     private static class FixUpFunctionDataNameInst extends Inst implements FixUpInst {
         private final Inst node;
-        private final String name;
+        private final TruffleString name;
 
-        FixUpFunctionDataNameInst(Inst node, String name) {
+        FixUpFunctionDataNameInst(Inst node, TruffleString name) {
             this.node = node;
             this.name = name;
         }
@@ -1366,9 +1368,9 @@ public class Recording {
     private void addNodeFixUps(NodeInst nodeInst, Object result) {
         if (result instanceof JSFunctionData) {
             JSFunctionData functionData = (JSFunctionData) result;
-            String originalName = functionData.getName();
+            TruffleString originalName = functionData.getName();
             addFixUp((earlyFixup) -> {
-                String currentName = functionData.getName();
+                TruffleString currentName = functionData.getName();
                 boolean nameChanged = !originalName.equals(currentName);
                 if (nameChanged) {
                     insts.add(new FixUpFunctionDataNameInst(nodeInst.asVar(), currentName));

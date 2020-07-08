@@ -40,12 +40,15 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -56,19 +59,17 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-import java.util.Set;
-
 public abstract class DeclareGlobalVariableNode extends DeclareGlobalNode {
     private final boolean configurable;
     @Child private HasPropertyCacheNode hasOwnPropertyNode;
     @Child private IsExtensibleNode isExtensibleNode = IsExtensibleNode.create();
 
-    protected DeclareGlobalVariableNode(String varName, boolean configurable) {
+    protected DeclareGlobalVariableNode(TruffleString varName, boolean configurable) {
         super(varName);
         this.configurable = configurable;
     }
 
-    public static DeclareGlobalVariableNode create(String varName, boolean configurable) {
+    public static DeclareGlobalVariableNode create(TruffleString varName, boolean configurable) {
         return DeclareGlobalVariableNodeGen.create(varName, configurable);
     }
 

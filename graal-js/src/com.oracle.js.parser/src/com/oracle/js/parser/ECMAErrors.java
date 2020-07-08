@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,8 +72,12 @@ public final class ECMAErrors {
      * @return the filled out error string
      */
     public static String getMessage(final String msgId, final String... args) {
+        return getMessageFormat(msgId).format(args);
+    }
+
+    private static MessageFormat getMessageFormat(final String msgId) {
         try {
-            return new MessageFormat(MESSAGES_BUNDLE.getString(msgId)).format(args);
+            return new MessageFormat(MESSAGES_BUNDLE.getString(msgId));
         } catch (final MissingResourceException e) {
             throw new RuntimeException("no message resource found for message id: " + msgId);
         }

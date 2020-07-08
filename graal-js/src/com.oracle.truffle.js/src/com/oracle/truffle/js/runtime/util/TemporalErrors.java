@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.util;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSException;
 
@@ -74,12 +75,12 @@ public final class TemporalErrors {
     }
 
     @TruffleBoundary
-    public static JSException createRangeErrorRelativeToNotUndefined(String unit) {
+    public static JSException createRangeErrorRelativeToNotUndefined(TruffleString unit) {
         return Errors.createRangeError(String.format("RelativeTo object should be not undefined if unit is %s.", unit));
     }
 
     @TruffleBoundary
-    public static JSException createRangeErrorDisallowedField(String property) {
+    public static JSException createRangeErrorDisallowedField(TruffleString property) {
         return Errors.createRangeError(String.format("Property %s is a disallowed field and not 0.", property));
     }
 
@@ -89,7 +90,7 @@ public final class TemporalErrors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorPropertyRequired(String property) {
+    public static JSException createTypeErrorPropertyRequired(TruffleString property) {
         return Errors.createTypeError(String.format("Property %s is required.", property));
     }
 

@@ -1220,6 +1220,7 @@ public class JSDebugTest {
         tester.assertColumnBreakpointsResolution(sourceString, "B", "R", "js");
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testGettersSettersSideEffects() throws Exception {
         try (DebuggerSession session = startSession()) {

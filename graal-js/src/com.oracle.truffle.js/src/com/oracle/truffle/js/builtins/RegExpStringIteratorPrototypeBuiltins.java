@@ -47,6 +47,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.RegExpPrototypeSymbolOperation;
 import com.oracle.truffle.js.builtins.RegExpStringIteratorPrototypeBuiltinsFactory.RegExpStringIteratorNextNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
@@ -58,6 +59,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -137,7 +139,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
             }
 
             Object regex = getGetIteratingRegExpNode().getValue(iterator);
-            String string = (String) getGetIteratedStringNode().getValue(iterator);
+            TruffleString string = (TruffleString) getGetIteratedStringNode().getValue(iterator);
             boolean global;
             boolean fullUnicode;
             try {
@@ -155,8 +157,8 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
                 return getCreateIterResultObjectNode().execute(frame, Undefined.instance, true);
             } else {
                 if (globalProfile.profile(global)) {
-                    String matchStr = getToStringNode().executeString(read(match, 0));
-                    if (matchStr.isEmpty()) {
+                    TruffleString matchStr = getToStringNode().executeString(read(match, 0));
+                    if (Strings.isEmpty(matchStr)) {
                         int thisIndex = (int) getToLengthNode().executeLong(getLastIndex(regex));
                         int nextIndex = fullUnicode ? advanceStringIndexUnicode(string, thisIndex) : thisIndex + 1;
                         setLastIndex(regex, nextIndex);

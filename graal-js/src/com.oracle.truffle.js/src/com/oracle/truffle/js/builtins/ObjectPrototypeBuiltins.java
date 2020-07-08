@@ -53,6 +53,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.FormatCacheNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.GetBuiltinToStringTagNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeDefineGetterOrSetterNodeGen;
@@ -81,11 +82,11 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
@@ -235,7 +236,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected DynamicObject valueOfLazyString(JSLazyString thisObj) {
+        protected DynamicObject valueOfLazyString(TruffleString thisObj) {
             return toJSObject(thisObj);
         }
 
@@ -273,7 +274,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.getStringTagNode = PropertyGetNode.create(Symbol.SYMBOL_TO_STRING_TAG, false, context);
         }
 
-        private String formatString(String name) {
+        private TruffleString formatString(TruffleString name) {
             if (formatCacheNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 formatCacheNode = insert(FormatCacheNode.create());
@@ -281,10 +282,10 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return formatCacheNode.execute(name);
         }
 
-        private String getToStringTag(DynamicObject thisObj) {
+        private TruffleString getToStringTag(DynamicObject thisObj) {
             if (getContext().getEcmaScriptVersion() >= 6) {
                 Object toStringTag = getStringTagNode.getValue(thisObj);
-                if (JSRuntime.isString(toStringTag)) {
+                if (Strings.isTString(toStringTag)) {
                     return JSRuntime.toStringIsString(toStringTag);
                 }
             }
@@ -292,9 +293,9 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = {"isJSObject(thisObj)", "!isJSProxy(thisObj)"})
-        protected String doJSObject(DynamicObject thisObj,
+        protected TruffleString doJSObject(DynamicObject thisObj,
                         @Shared("builtinTag") @Cached GetBuiltinToStringTagNode getBuiltinToStringTagNode) {
-            String toString = getToStringTag(thisObj);
+            TruffleString toString = getToStringTag(thisObj);
             if (toString == null) {
                 if (getContext().getEcmaScriptVersion() >= 6) {
                     toString = getBuiltinToStringTagNode.execute(thisObj);
@@ -306,11 +307,11 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "isJSProxy(thisObj)")
-        protected String doJSProxy(DynamicObject thisObj,
+        protected TruffleString doJSProxy(DynamicObject thisObj,
                         @Shared("builtinTag") @Cached("create()") GetBuiltinToStringTagNode getBuiltinToStringTagNode) {
             // builtinTag must be read before tag because the latter may revoke the proxy
-            String builtinTag = getBuiltinToStringTagNode.execute(thisObj);
-            String tag = getToStringTag(thisObj);
+            TruffleString builtinTag = getBuiltinToStringTagNode.execute(thisObj);
+            TruffleString tag = getToStringTag(thisObj);
             if (tag == null) {
                 tag = builtinTag;
             }
@@ -318,55 +319,55 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "isJSNull(thisObj)")
-        protected String doNull(@SuppressWarnings("unused") Object thisObj) {
-            return "[object Null]";
+        protected TruffleString doNull(@SuppressWarnings("unused") Object thisObj) {
+            return Strings.TO_STRING_VALUE_NULL;
         }
 
         @Specialization(guards = "isUndefined(thisObj)")
-        protected String doUndefined(@SuppressWarnings("unused") Object thisObj) {
-            return "[object Undefined]";
+        protected TruffleString doUndefined(@SuppressWarnings("unused") Object thisObj) {
+            return Strings.TO_STRING_VALUE_UNDEFINED;
         }
 
         @Specialization(guards = "isForeignObject(thisObj)", limit = "1")
         @TruffleBoundary
-        protected String doForeignObject(Object thisObj,
+        protected TruffleString doForeignObject(Object thisObj,
                         @CachedLibrary("thisObj") InteropLibrary interop) {
             if (interop.isNull(thisObj)) {
-                return "[object Null]";
+                return Strings.TO_STRING_VALUE_NULL;
             } else if (interop.hasArrayElements(thisObj)) {
-                return "[object Array]";
+                return Strings.TO_STRING_VALUE_ARRAY;
             } else if (interop.isExecutable(thisObj) || interop.isInstantiable(thisObj)) {
-                return "[object Function]";
+                return Strings.TO_STRING_VALUE_FUNCTION;
             } else if (interop.isInstant(thisObj)) {
-                return "[object Date]";
+                return Strings.TO_STRING_VALUE_DATE;
             } else {
-                return "[object Object]";
+                return Strings.TO_STRING_VALUE_OBJECT;
             }
         }
 
         @Specialization
-        protected String doSymbol(Symbol thisObj) {
+        protected TruffleString doSymbol(Symbol thisObj) {
             assert thisObj != null;
             return JSObject.defaultToString(toJSObject(thisObj));
         }
 
         @Specialization
-        protected String doLazyString(JSLazyString thisObj) {
+        protected TruffleString doString(TruffleString thisObj) {
             return JSObject.defaultToString(toJSObject(thisObj));
         }
 
         @Specialization
-        protected String doSafeInteger(SafeInteger thisObj) {
+        protected TruffleString doSafeInteger(SafeInteger thisObj) {
             return JSObject.defaultToString(toJSObject(thisObj));
         }
 
         @Specialization
-        protected String doBigInt(BigInt thisObj) {
+        protected TruffleString doBigInt(BigInt thisObj) {
             return JSObject.defaultToString(toJSObject(thisObj));
         }
 
         @Specialization(guards = {"!isTruffleObject(thisObj)"})
-        protected String doObject(Object thisObj) {
+        protected TruffleString doObject(Object thisObj) {
             assert thisObj != null;
             return JSObject.defaultToString(toJSObject(thisObj));
         }
@@ -374,7 +375,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
     public abstract static class GetBuiltinToStringTagNode extends JavaScriptBaseNode {
 
-        public abstract String execute(Object object);
+        public abstract TruffleString execute(Object object);
 
         public static GetBuiltinToStringTagNode create() {
             return GetBuiltinToStringTagNodeGen.create();
@@ -382,43 +383,44 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "5")
-        protected static String cached(DynamicObject object,
+        protected static TruffleString cached(DynamicObject object,
                         @Cached("getJSClassChecked(object)") JSClass cachedClass) {
             return cachedClass.getBuiltinToStringTag(object);
         }
 
         @TruffleBoundary
         @Specialization(guards = "isJSDynamicObject(object)", replaces = "cached")
-        protected static String uncached(DynamicObject object) {
+        protected static TruffleString uncached(DynamicObject object) {
             return JSObject.getJSClass(object).getBuiltinToStringTag(object);
         }
 
         @Specialization(guards = "!isJSDynamicObject(object)")
-        protected static String foreign(@SuppressWarnings("unused") DynamicObject object) {
-            return "Foreign";
+        protected static TruffleString foreign(@SuppressWarnings("unused") DynamicObject object) {
+            return Strings.UC_FOREIGN;
         }
     }
 
     public abstract static class FormatCacheNode extends JavaScriptBaseNode {
 
-        public abstract String execute(String name);
+        public abstract TruffleString execute(TruffleString name);
 
         public static FormatCacheNode create() {
             return FormatCacheNodeGen.create();
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"cachedName.equals(name)"}, limit = "10")
-        protected String executeCached(String name,
-                        @Cached("name") String cachedName,
-                        @Cached("executeUncached(name)") String cachedResult) {
+        @Specialization(guards = {"stringEquals(equalsNode, cachedName, name)"}, limit = "10")
+        protected TruffleString executeCached(TruffleString name,
+                        @Cached("name") TruffleString cachedName,
+                        @Cached("executeUncached(name)") TruffleString cachedResult,
+                        @Cached TruffleString.EqualNode equalsNode) {
             return cachedResult;
         }
 
         @TruffleBoundary
         @Specialization
-        protected String executeUncached(String name) {
-            return "[object " + name + "]";
+        protected TruffleString executeUncached(TruffleString name) {
+            return Strings.concatAll(Strings.BRACKET_OBJECT_SPC, name, Strings.BRACKET_CLOSE);
         }
     }
 
@@ -428,7 +430,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         public ObjectPrototypeToLocaleStringNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            getToString = PropertyGetNode.create(JSRuntime.TO_STRING, false, context);
+            getToString = PropertyGetNode.create(Strings.TO_STRING, false, context);
             callNode = JSFunctionCallNode.createCall();
         }
 
@@ -475,7 +477,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "isJSObject(thisObj)")
-        protected boolean doJSObjectStringKey(DynamicObject thisObj, String propertyName) {
+        protected boolean doJSObjectTStringKey(DynamicObject thisObj, TruffleString propertyName) {
             return getHasOwnPropertyNode().executeBoolean(thisObj, propertyName);
         }
 
@@ -484,7 +486,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return getHasOwnPropertyNode().executeBoolean(thisObj, index);
         }
 
-        @Specialization(guards = "isJSObject(thisObj)", replaces = {"doJSObjectStringKey", "doJSObjectIntKey"})
+        @Specialization(guards = "isJSObject(thisObj)", replaces = {"doJSObjectTStringKey", "doJSObjectIntKey"})
         protected boolean doJSObjectAnyKey(DynamicObject thisObj, Object propName) {
             Object key = getToPropertyKeyNode().execute(propName);
             return getHasOwnPropertyNode().executeBoolean(thisObj, key);
@@ -497,7 +499,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected boolean hasOwnPropertyLazyString(JSLazyString thisObj, Object propName) {
+        protected boolean hasOwnPropertyTString(TruffleString thisObj, Object propName) {
             return hasOwnPropertyPrimitive(thisObj, propName);
         }
 

@@ -45,6 +45,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -162,7 +163,7 @@ public final class JSShape {
         return JSShapeData.getPropertyKeyList(shape, strings, symbols);
     }
 
-    public static UnmodifiableArrayList<String> getEnumerablePropertyNames(Shape shape) {
+    public static UnmodifiableArrayList<TruffleString> getEnumerablePropertyNames(Shape shape) {
         assert JSConfig.FastOwnKeys;
         return JSShapeData.getEnumerablePropertyNames(shape);
     }

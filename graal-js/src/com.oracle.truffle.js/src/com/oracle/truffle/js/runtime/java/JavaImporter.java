@@ -46,9 +46,11 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
@@ -58,7 +60,7 @@ import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JavaImporter extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
-    public static final String CLASS_NAME = "JavaImporter";
+    public static final TruffleString CLASS_NAME = Strings.constant("JavaImporter");
 
     private static final JavaImporter INSTANCE = new JavaImporter();
 
@@ -66,18 +68,18 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 
     @Override
     public String toString() {
-        return CLASS_NAME;
+        return Strings.toJavaString(CLASS_NAME);
     }
 
     public static DynamicObject create(JSContext context, JSRealm realm, Object[] value) {
@@ -100,8 +102,8 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
     @TruffleBoundary
     @Override
     public Object getOwnHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
-        if (key instanceof String) {
-            String name = (String) key;
+        if (key instanceof TruffleString) {
+            TruffleString name = (TruffleString) key;
             Object[] imports = getImports(store);
             JSRealm realm = JSRealm.get(null);
             // Nashorn searches the imports from the last one
@@ -115,7 +117,7 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
                     }
                 } else {
                     try {
-                        if (name.equals(InteropLibrary.getUncached().asString(InteropLibrary.getUncached().getMetaSimpleName(anImport)))) {
+                        if (name.equals(InteropLibrary.getUncached().asTruffleString(InteropLibrary.getUncached().getMetaSimpleName(anImport)))) {
                             return anImport;
                         }
                     } catch (UnsupportedMessageException e) {
@@ -133,8 +135,8 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
     }
 
     @Override
-    public String toDisplayStringImpl(DynamicObject object, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        return "[JavaImporter]";
+    public TruffleString toDisplayStringImpl(DynamicObject object, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+        return Strings.addBrackets(getClassName());
     }
 
     @Override

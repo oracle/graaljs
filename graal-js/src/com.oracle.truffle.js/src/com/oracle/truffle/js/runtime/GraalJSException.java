@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,6 +64,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
@@ -84,11 +86,10 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public abstract class GraalJSException extends AbstractTruffleException {
     private static final long serialVersionUID = -6624166672101791072L;
     private static final JSStackTraceElement[] EMPTY_STACK_TRACE = new JSStackTraceElement[0];
+
     private JSStackTraceElement[] jsStackTrace;
     private Object location;
     private int stackTraceLimit;
-
-    private static final String DYNAMIC_FUNCTION_NAME = "anonymous";
 
     protected GraalJSException(String message, Throwable cause, Node node, int stackTraceLimit) {
         super(message, cause, stackTraceLimit, node);
@@ -410,19 +411,21 @@ public abstract class GraalJSException extends AbstractTruffleException {
         SourceSection callNodeSourceSection = callNode.getSourceSection();
         Source source = callNodeSourceSection.getSource();
 
-        String fileName = getFileName(source);
-        String functionName;
+        TruffleString fileName = getFileName(source);
+        TruffleString functionName;
         if (JSFunction.isBuiltin(functionObj)) {
             functionName = JSFunction.getName(functionObj);
+        } else if (rootNode instanceof FunctionRootNode) {
+            functionName = ((FunctionRootNode) rootNode).getNameTString();
         } else {
-            functionName = rootNode.getName();
+            functionName = Strings.fromJavaString(rootNode.getName());
         }
         boolean eval = false;
         if (isEvalSource(source)) {
-            functionName = "eval";
+            functionName = Strings.EVAL;
             eval = true;
         } else if (functionName == null || isInternalFunctionName(functionName)) {
-            functionName = "";
+            functionName = Strings.EMPTY_STRING;
         }
         SourceSection targetSourceSection = null;
         if (!inNashornMode) { // for V8
@@ -440,8 +443,8 @@ public abstract class GraalJSException extends AbstractTruffleException {
         return source != null && source.getName().startsWith(Evaluator.EVAL_AT_SOURCE_NAME_PREFIX);
     }
 
-    private static boolean isInternalFunctionName(String functionName) {
-        return functionName.length() >= 1 && functionName.charAt(0) == ':';
+    private static boolean isInternalFunctionName(TruffleString functionName) {
+        return Strings.length(functionName) >= 1 && Strings.charAt(functionName, 0) == ':';
     }
 
     private static boolean isGlobalObject(Object object, JSRealm realm) {
@@ -455,24 +458,24 @@ public abstract class GraalJSException extends AbstractTruffleException {
             // can happen around FastR root nodes, see GR-6604
             return null;
         }
-        String fileName = getFileName(sourceSection.getSource());
-        String functionName = rootNode.getName();
+        TruffleString fileName = getFileName(sourceSection.getSource());
+        TruffleString functionName = Strings.fromJavaString(rootNode.getName());
         Object thisObj = null;
         Object functionObj = null;
 
         return new JSStackTraceElement(fileName, functionName, sourceSection, thisObj, functionObj, null, strict, false, false, inNashornMode, async, -1);
     }
 
-    private static String getPrimitiveConstructorName(Object thisObj) {
+    private static TruffleString getPrimitiveConstructorName(Object thisObj) {
         assert JSRuntime.isJSPrimitive(thisObj);
         if (thisObj instanceof Boolean) {
-            return "Boolean";
+            return Strings.UC_BOOLEAN;
         } else if (JSRuntime.isNumber(thisObj)) {
-            return "Number";
-        } else if (JSRuntime.isString(thisObj)) {
-            return "String";
+            return Strings.UC_NUMBER;
+        } else if (Strings.isTString(thisObj)) {
+            return Strings.UC_STRING;
         } else if (thisObj instanceof Symbol) {
-            return "Symbol";
+            return Strings.UC_SYMBOL;
         }
         return null;
     }
@@ -513,8 +516,8 @@ public abstract class GraalJSException extends AbstractTruffleException {
         return offset;
     }
 
-    private static String getFileName(Source source) {
-        return source != null ? source.getName() : "<unknown>";
+    private static TruffleString getFileName(Source source) {
+        return source != null ? Strings.fromJavaString(source.getName()) : Strings.UNKNOWN_FILENAME;
     }
 
     public void printJSStackTrace() {
@@ -618,8 +621,8 @@ public abstract class GraalJSException extends AbstractTruffleException {
     }
 
     public static final class JSStackTraceElement {
-        private final String fileName;
-        private final String functionName;
+        private final TruffleString fileName;
+        private final TruffleString functionName;
         private final SourceSection sourceSection;
         private final Object thisObj;
         private final Object functionObj;
@@ -631,7 +634,8 @@ public abstract class GraalJSException extends AbstractTruffleException {
         private final boolean async;
         private final int promiseIndex;
 
-        private JSStackTraceElement(String fileName, String functionName, SourceSection sourceSection, Object thisObj, Object functionObj, SourceSection targetSourceSection, boolean strict,
+        private JSStackTraceElement(TruffleString fileName, TruffleString functionName, SourceSection sourceSection, Object thisObj, Object functionObj, SourceSection targetSourceSection,
+                        boolean strict,
                         boolean eval, boolean global, boolean inNashornMode, boolean async, int promiseIndex) {
             CompilerAsserts.neverPartOfCompilation();
             this.fileName = fileName;
@@ -650,29 +654,29 @@ public abstract class GraalJSException extends AbstractTruffleException {
 
         // This method is called from nashorn tests via java interop
         @TruffleBoundary
-        public String getFileName() {
-            if (fileName.startsWith(Evaluator.EVAL_AT_SOURCE_NAME_PREFIX)) {
-                return Evaluator.EVAL_SOURCE_NAME;
+        public TruffleString getFileName() {
+            if (Strings.startsWith(fileName, Evaluator.TS_EVAL_AT_SOURCE_NAME_PREFIX)) {
+                return Evaluator.TS_EVAL_SOURCE_NAME;
             }
             return fileName;
         }
 
         // This method is called from nashorn tests via java interop
-        public String getClassName() {
+        public TruffleString getClassName() {
             return getTypeName(false);
         }
 
-        public String getTypeName() {
+        public TruffleString getTypeName() {
             return getTypeName(true);
         }
 
         @TruffleBoundary
-        public String getTypeName(boolean checkGlobal) {
+        public TruffleString getTypeName(boolean checkGlobal) {
             if (inNashornMode) {
-                return "<" + fileName + ">";
+                return Strings.concatAll(Strings.ANGLE_BRACKET_OPEN, fileName, Strings.ANGLE_BRACKET_CLOSE);
             } else {
                 if (checkGlobal && global) {
-                    return "global";
+                    return Strings.GLOBAL;
                 }
                 Object thisObject = getThis();
                 if (thisObject == JSFunction.CONSTRUCT) {
@@ -689,27 +693,27 @@ public abstract class GraalJSException extends AbstractTruffleException {
         }
 
         @TruffleBoundary
-        public String getFunctionName() {
+        public TruffleString getFunctionName() {
             if (JSFunction.isJSFunction(functionObj)) {
-                String dynamicName = findFunctionName((DynamicObject) functionObj);
+                TruffleString dynamicName = findFunctionName((DynamicObject) functionObj);
                 // The default name of dynamic functions is "anonymous" as per the spec.
                 // Yet, in V8 stack traces it is "eval" unless overwritten.
-                if (dynamicName != null && !dynamicName.isEmpty() &&
-                                (!isEval() || !dynamicName.equals(DYNAMIC_FUNCTION_NAME) || !JSObject.getJSContext((DynamicObject) functionObj).isOptionV8CompatibilityMode())) {
+                if (dynamicName != null && !Strings.isEmpty(dynamicName) &&
+                                (!isEval() || !Strings.equals(Strings.DYNAMIC_FUNCTION_NAME, dynamicName) || !JSObject.getJSContext((DynamicObject) functionObj).isOptionV8CompatibilityMode())) {
                     return dynamicName;
                 }
             }
             return functionName;
         }
 
-        private static String findFunctionName(DynamicObject functionObj) {
+        private static TruffleString findFunctionName(DynamicObject functionObj) {
             assert JSFunction.isJSFunction(functionObj);
             PropertyDescriptor desc = JSObject.getOwnProperty(functionObj, JSFunction.NAME);
             if (desc != null) {
                 if (desc.isDataDescriptor()) {
                     Object name = desc.getValue();
-                    if (JSRuntime.isString(name)) {
-                        return JSRuntime.javaToString(name);
+                    if (Strings.isTString(name)) {
+                        return (TruffleString) name;
                     }
                 }
             }
@@ -719,11 +723,11 @@ public abstract class GraalJSException extends AbstractTruffleException {
         // This method is called from nashorn tests via java interop
         @TruffleBoundary
         public String getMethodName() {
-            return getMethodName(JavaScriptLanguage.getCurrentLanguage().getJSContext());
+            return Strings.toJavaString(getMethodName(JavaScriptLanguage.getCurrentLanguage().getJSContext()));
         }
 
         @TruffleBoundary
-        public String getMethodName(JSContext context) {
+        public TruffleString getMethodName(JSContext context) {
             if (context.isOptionNashornCompatibilityMode()) {
                 return JSError.correctMethodName(functionName, context);
             }
@@ -736,8 +740,8 @@ public abstract class GraalJSException extends AbstractTruffleException {
 
             DynamicObject receiver = (DynamicObject) thisObj;
             DynamicObject function = (DynamicObject) functionObj;
-            if (functionName != null && !functionName.isEmpty()) {
-                String name = findMethodPropertyNameByFunctionName(receiver, functionName, function);
+            if (functionName != null && !Strings.isEmpty(functionName)) {
+                TruffleString name = findMethodPropertyNameByFunctionName(receiver, functionName, function);
                 if (name != null) {
                     return name;
                 }
@@ -745,11 +749,11 @@ public abstract class GraalJSException extends AbstractTruffleException {
             return findMethodPropertyName(receiver, function);
         }
 
-        private static String findMethodPropertyNameByFunctionName(DynamicObject receiver, String functionName, DynamicObject functionObj) {
-            String propertyName = functionName;
+        private static TruffleString findMethodPropertyNameByFunctionName(DynamicObject receiver, TruffleString functionName, DynamicObject functionObj) {
+            TruffleString propertyName = functionName;
             boolean accessor = false;
-            if (propertyName.startsWith("get ") || propertyName.startsWith("set ")) {
-                propertyName = propertyName.substring(4);
+            if (Strings.startsWith(propertyName, Strings.GET_SPC) || Strings.startsWith(propertyName, Strings.SET_SPC)) {
+                propertyName = Strings.substring(propertyName, 4);
                 accessor = true;
             }
             if (propertyName.isEmpty()) {
@@ -767,10 +771,10 @@ public abstract class GraalJSException extends AbstractTruffleException {
             return null;
         }
 
-        private static String findMethodPropertyName(DynamicObject receiver, DynamicObject functionObj) {
-            String name = null;
+        private static TruffleString findMethodPropertyName(DynamicObject receiver, DynamicObject functionObj) {
+            TruffleString name = null;
             for (DynamicObject current = receiver; current != Null.instance && !JSProxy.isJSProxy(current); current = JSObject.getPrototype(current)) {
-                for (String key : JSObject.enumerableOwnNames(current)) {
+                for (TruffleString key : JSObject.enumerableOwnNames(current)) {
                     PropertyDescriptor desc = JSObject.getOwnProperty(current, key);
                     if (desc.getValue() == functionObj || desc.getGet() == functionObj || desc.getSet() == functionObj) {
                         if (name == null) {
@@ -805,12 +809,12 @@ public abstract class GraalJSException extends AbstractTruffleException {
         }
 
         @TruffleBoundary
-        public String getLine() {
+        public TruffleString getLine() {
             int lineNumber = getLineNumber();
             if (sourceSection == null || sourceSection.getSource() == null || lineNumber <= 0) {
-                return "<unknown>";
+                return Strings.UNKNOWN_FILENAME;
             }
-            return sourceSection.getSource().getCharacters(lineNumber).toString();
+            return Strings.fromJavaString(sourceSection.getSource().getCharacters(lineNumber).toString());
         }
 
         @TruffleBoundary
@@ -879,8 +883,8 @@ public abstract class GraalJSException extends AbstractTruffleException {
         }
 
         @TruffleBoundary
-        public String getEvalOrigin() {
-            if (fileName.startsWith("<")) {
+        public TruffleString getEvalOrigin() {
+            if (Strings.startsWith(fileName, Strings.ANGLE_BRACKET_OPEN)) {
                 return null;
             }
             return fileName;
@@ -902,21 +906,23 @@ public abstract class GraalJSException extends AbstractTruffleException {
         @Override
         public String toString() {
             JSContext context = JavaScriptLanguage.getCurrentJSRealm().getContext();
-            return toString(context);
+            return Strings.toJavaString(toString(context));
         }
 
         @TruffleBoundary
-        public String toString(JSContext context) {
-            StringBuilder builder = new StringBuilder();
+        public TruffleString toString(JSContext context) {
+            TruffleStringBuilder sb = Strings.builderCreate();
             if (isPromiseAll()) {
-                builder.append("async").append(' ').append("Promise.all").append(" (").append("index").append(' ').append(promiseIndex).append(")");
-                return builder.toString();
+                Strings.builderAppend(sb, Strings.ASYNC_PROMISE_ALL_BEGIN);
+                Strings.builderAppend(sb, promiseIndex);
+                Strings.builderAppend(sb, Strings.PAREN_CLOSE);
+                return Strings.builderToString(sb);
             }
 
-            String className = getClassName();
-            String methodName = JSError.correctMethodName(getFunctionName(), context);
-            if (methodName == null || methodName.isEmpty()) {
-                String name = getMethodName(context);
+            TruffleString className = getClassName();
+            TruffleString methodName = JSError.correctMethodName(getFunctionName(), context);
+            if (methodName == null || Strings.isEmpty(methodName)) {
+                TruffleString name = getMethodName(context);
                 if (name == null) {
                     methodName = JSError.getAnonymousFunctionNameStackTrace(context);
                 } else {
@@ -926,38 +932,39 @@ public abstract class GraalJSException extends AbstractTruffleException {
             boolean includeMethodName = className != null || !JSError.getAnonymousFunctionNameStackTrace(context).equals(methodName);
             if (includeMethodName) {
                 if (async) {
-                    builder.append("async").append(' ');
+                    Strings.builderAppend(sb, Strings.ASYNC_SPC);
                 }
                 if (className != null) {
                     if (className.equals(methodName)) {
                         if (isConstructor()) {
-                            builder.append("new ");
+                            Strings.builderAppend(sb, Strings.NEW_SPACE);
                         }
                     } else {
-                        builder.append(className).append('.');
+                        Strings.builderAppend(sb, className);
+                        Strings.builderAppend(sb, Strings.DOT);
                     }
                 }
-                builder.append(methodName);
-                builder.append(" (");
+                Strings.builderAppend(sb, methodName);
+                Strings.builderAppend(sb, Strings.SPACE_PAREN_OPEN);
             }
             if (JSFunction.isBuiltinSourceSection(sourceSection)) {
-                builder.append("native");
+                Strings.builderAppend(sb, Strings.NATIVE);
             } else {
-                String evalOrigin = getEvalOrigin();
-                String sourceName = evalOrigin != null ? evalOrigin : getFileName();
-                builder.append(sourceName);
+                TruffleString evalOrigin = getEvalOrigin();
+                TruffleString sourceName = evalOrigin != null ? evalOrigin : getFileName();
+                Strings.builderAppend(sb, sourceName);
                 if (eval) {
-                    builder.append(", <anonymous>");
+                    Strings.builderAppend(sb, Strings.COMMA_ANONYMOUS_BRACKETS);
                 }
-                builder.append(":");
-                builder.append(getLineNumber());
-                builder.append(":");
-                builder.append(getColumnNumber());
+                Strings.builderAppend(sb, Strings.COLON);
+                Strings.builderAppend(sb, getLineNumber());
+                Strings.builderAppend(sb, Strings.COLON);
+                Strings.builderAppend(sb, getColumnNumber());
             }
             if (includeMethodName) {
-                builder.append(")");
+                Strings.builderAppend(sb, Strings.PAREN_CLOSE);
             }
-            return builder.toString();
+            return Strings.builderToString(sb);
         }
     }
 }

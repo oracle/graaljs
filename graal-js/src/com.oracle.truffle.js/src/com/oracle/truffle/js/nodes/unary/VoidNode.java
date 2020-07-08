@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.unary;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -49,8 +51,6 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.util.Set;
 
 @NodeInfo(shortName = "void", cost = NodeCost.NONE)
 public abstract class VoidNode extends JSUnaryNode {

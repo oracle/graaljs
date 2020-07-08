@@ -297,6 +297,17 @@ enum GraalAccessMethod {
     regexp_new,
     regexp_get_source,
     regexp_get_flags,
+    string_empty,
+    string_new,
+    string_new_from_two_byte,
+    string_length,
+    string_equals,
+    string_concat,
+    string_utf8_length,
+    string_utf8_write,
+    string_write_one_byte,
+    string_write,
+    string_contains_only_one_byte,
     string_object_new,
     string_object_value_of,
     number_object_new,
@@ -542,6 +553,10 @@ public:
 
     inline v8::Local<v8::Context> GetCurrentContext() {
         return contexts.back();
+    }
+
+    inline bool ContextEntered() {
+        return !contexts.empty();
     }
 
     inline jobject CurrentJavaContext() {

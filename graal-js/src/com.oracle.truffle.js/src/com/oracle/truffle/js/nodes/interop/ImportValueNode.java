@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -48,11 +49,13 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.interop.InteropFunction;
 
 /**
@@ -79,8 +82,15 @@ public abstract class ImportValueNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    static String fromString(String value) {
-        return value;
+    static TruffleString fromString(String value,
+                    @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
+        return Strings.fromJavaString(fromJavaStringNode, value);
+    }
+
+    @Specialization
+    static TruffleString fromTruffleString(TruffleString value,
+                    @Cached TruffleString.SwitchEncodingNode switchEncodingNode) {
+        return switchEncodingNode.execute(value, TruffleString.Encoding.UTF_16);
     }
 
     @Specialization
@@ -124,8 +134,9 @@ public abstract class ImportValueNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    static String fromChar(char value) {
-        return String.valueOf(value);
+    static TruffleString fromChar(char value,
+                    @Cached TruffleString.FromCodePointNode fromCodePointNode) {
+        return Strings.fromCodePoint(fromCodePointNode, value);
     }
 
     @Specialization
@@ -153,10 +164,10 @@ public abstract class ImportValueNode extends JavaScriptBaseNode {
     }
 
     @Fallback
-    static Object fallbackCase(Object value) {
+    static TruffleString fallbackCase(Object value) {
         if (InteropLibrary.getUncached().isString(value)) {
             try {
-                return InteropLibrary.getUncached().asString(value);
+                return InteropLibrary.getUncached().asTruffleString(value).switchEncodingUncached(TruffleString.Encoding.UTF_16);
             } catch (UnsupportedMessageException e) {
                 throw CompilerDirectives.shouldNotReachHere(e);
             }

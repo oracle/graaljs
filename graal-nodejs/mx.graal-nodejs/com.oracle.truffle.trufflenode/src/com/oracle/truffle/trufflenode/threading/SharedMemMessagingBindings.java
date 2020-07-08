@@ -44,9 +44,11 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
@@ -59,11 +61,12 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
  */
 public final class SharedMemMessagingBindings extends JSNonProxy {
 
+    private static final TruffleString CLASS_NAME = Strings.constant("SharedMemMessaging");
+    private static final TruffleString SHARED_MEM_MESSAGING_INIT = Strings.constant("SharedMemMessagingInit");
+
     private static final SharedMemMessagingBindings INSTANCE = new SharedMemMessagingBindings();
 
     private static final JSBuiltinsContainer BUILTINS = new SharedMemMessagingBuiltins();
-
-    private static final String CLASS_NAME = "SharedMemMessaging";
 
     private SharedMemMessagingBindings() {
     }
@@ -77,7 +80,7 @@ public final class SharedMemMessagingBindings extends JSNonProxy {
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return CLASS_NAME;
     }
 
@@ -90,7 +93,7 @@ public final class SharedMemMessagingBindings extends JSNonProxy {
                 return create(getRealm());
             }
         };
-        JSFunctionData functionData = JSFunctionData.createCallOnly(realm.getContext(), wrapperNode.getCallTarget(), 2, "SharedMemMessagingInit");
+        JSFunctionData functionData = JSFunctionData.createCallOnly(realm.getContext(), wrapperNode.getCallTarget(), 2, SHARED_MEM_MESSAGING_INIT);
         return JSFunction.create(realm, functionData);
     }
 

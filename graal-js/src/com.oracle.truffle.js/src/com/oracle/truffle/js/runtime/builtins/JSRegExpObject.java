@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
@@ -85,7 +86,7 @@ public final class JSRegExpObject extends JSNonProxyObject implements JSCopyable
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return JSRegExp.CLASS_NAME;
     }
 

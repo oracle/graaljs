@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.wasm;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigInt64Node;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
@@ -71,10 +72,10 @@ public abstract class ToWebAssemblyValueNode extends JavaScriptBaseNode {
         return ToWebAssemblyValueNode.Uncached.INSTANCE;
     }
 
-    public abstract Object execute(Object value, String type);
+    public abstract Object execute(Object value, TruffleString type);
 
     @Specialization
-    protected Object convert(Object value, String type) {
+    protected Object convert(Object value, TruffleString type) {
         assert getLanguage().getJSContext().getContextOptions().isWasmBigInt() || !JSWebAssemblyValueTypes.isI64(type);
         if (JSWebAssemblyValueTypes.isI64(type)) {
             return toBigInt64Node.execute(value);
@@ -100,7 +101,7 @@ public abstract class ToWebAssemblyValueNode extends JavaScriptBaseNode {
         }
 
         @Override
-        public Object execute(Object value, String type) {
+        public Object execute(Object value, TruffleString type) {
             assert getLanguage().getJSContext().getContextOptions().isWasmBigInt() || !JSWebAssemblyValueTypes.isI64(type);
             if (JSWebAssemblyValueTypes.isI64(type)) {
                 return JSRuntime.toBigInt(value).longValue();

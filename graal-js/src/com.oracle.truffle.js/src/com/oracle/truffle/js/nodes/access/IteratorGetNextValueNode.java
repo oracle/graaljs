@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -51,10 +53,8 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-
-import java.util.Set;
 
 /**
  * Combines IteratorStep and IteratorValue in one node.
@@ -90,8 +90,8 @@ public abstract class IteratorGetNextValueNode extends JavaScriptNode {
 
     protected IteratorGetNextValueNode(JSContext context, JavaScriptNode iteratorNode, JavaScriptNode doneNode, boolean setDone) {
         this.iteratorNode = iteratorNode;
-        this.getValueNode = PropertyGetNode.create(JSRuntime.VALUE, false, context);
-        this.getDoneNode = PropertyGetNode.create(JSRuntime.DONE, false, context);
+        this.getValueNode = PropertyGetNode.create(Strings.VALUE, false, context);
+        this.getDoneNode = PropertyGetNode.create(Strings.DONE, false, context);
         this.methodCallNode = JSFunctionCallNode.createCall();
         this.isObjectNode = IsJSObjectNode.create();
         this.toBooleanNode = JSToBooleanNode.create();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -58,6 +59,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -77,8 +79,8 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
             }
         } else if (value instanceof Boolean) {
             return createBoolean((Boolean) value);
-        } else if (value instanceof String) {
-            return createString((String) value);
+        } else if (value instanceof TruffleString) {
+            return createString((TruffleString) value);
         } else if (value == Null.instance) {
             return createNull();
         } else if (value == Undefined.instance) {
@@ -90,6 +92,7 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
         } else if (JSDynamicObject.isJSDynamicObject(value)) {
             return new JSConstantJSObjectNode((DynamicObject) value);
         } else {
+            assert !(value instanceof String);
             return new JSConstantObjectNode(value);
         }
     }
@@ -156,7 +159,7 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
         return new JSConstantBooleanNode(value);
     }
 
-    public static JSConstantNode createString(String value) {
+    public static JSConstantNode createString(TruffleString value) {
         return new JSConstantStringNode(value);
     }
 
@@ -432,9 +435,9 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
 
     public static final class JSConstantStringNode extends JSConstantNode {
 
-        private final String stringValue;
+        private final TruffleString stringValue;
 
-        private JSConstantStringNode(String str) {
+        private JSConstantStringNode(TruffleString str) {
             this.stringValue = Objects.requireNonNull(str);
         }
 
@@ -444,13 +447,8 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
         }
 
         @Override
-        public String executeString(VirtualFrame frame) {
-            return stringValue;
-        }
-
-        @Override
         public boolean isResultAlwaysOfType(Class<?> clazz) {
-            return clazz == String.class;
+            return clazz == TruffleString.class;
         }
 
         @Override
@@ -474,7 +472,7 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
     @TruffleBoundary
     public Map<String, Object> getDebugProperties() {
         Map<String, Object> map = super.getDebugProperties();
-        map.put(JSRuntime.VALUE, getValue() instanceof String ? JSRuntime.quote((String) getValue()) : getValue());
+        map.put("value", Strings.isTString(getValue()) ? JSRuntime.quote(Strings.toJavaString((TruffleString) getValue())) : getValue());
         return map;
     }
 
@@ -482,8 +480,8 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
     public String expressionToString() {
         Object value = getValue();
         if (JSRuntime.isJSPrimitive(value)) {
-            String string = JSRuntime.toString(value);
-            if (JSRuntime.isString(value)) {
+            String string = JSRuntime.toJavaString(value);
+            if (Strings.isTString(value)) {
                 return JSRuntime.quote(string);
             } else {
                 return string;

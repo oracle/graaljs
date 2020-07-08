@@ -47,7 +47,7 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -62,7 +62,7 @@ public class IteratorCloseNode extends JavaScriptBaseNode {
     @Child private JavaScriptNode iteratorNode;
 
     protected IteratorCloseNode(JSContext context, JavaScriptNode iteratorNode) {
-        this.getReturnNode = GetMethodNode.create(context, JSRuntime.RETURN);
+        this.getReturnNode = GetMethodNode.create(context, Strings.RETURN);
         this.methodCallNode = JSFunctionCallNode.createCall();
         this.isObjectNode = IsJSObjectNode.create();
         this.iteratorNode = iteratorNode;

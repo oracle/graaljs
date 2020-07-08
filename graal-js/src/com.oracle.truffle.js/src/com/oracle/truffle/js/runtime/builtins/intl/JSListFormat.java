@@ -52,11 +52,13 @@ import com.ibm.icu.util.UResourceBundle;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.intl.ListFormatFunctionBuiltins;
 import com.oracle.truffle.js.builtins.intl.ListFormatPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
@@ -70,8 +72,9 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public final class JSListFormat extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
-    public static final String CLASS_NAME = "ListFormat";
-    public static final String PROTOTYPE_NAME = "ListFormat.prototype";
+    public static final TruffleString CLASS_NAME = Strings.constant("ListFormat");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("ListFormat.prototype");
+    public static final TruffleString TO_STRING_TAG = Strings.constant("Intl.ListFormat");
 
     public static final JSListFormat INSTANCE = new JSListFormat();
 
@@ -83,12 +86,12 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 
@@ -98,7 +101,7 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
         DynamicObject listFormatPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, listFormatPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, listFormatPrototype, ListFormatPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putToStringTag(listFormatPrototype, "Intl.ListFormat");
+        JSObjectUtil.putToStringTag(listFormatPrototype, TO_STRING_TAG);
         return listFormatPrototype;
     }
 
@@ -184,9 +187,9 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
     }
 
     @TruffleBoundary
-    public static String format(DynamicObject listFormatObj, List<String> list) {
+    public static TruffleString format(DynamicObject listFormatObj, List<String> list) {
         ListFormatter listFormatter = getListFormatterProperty(listFormatObj);
-        return listFormatter.format(list);
+        return Strings.fromJavaString(listFormatter.format(list));
     }
 
     @TruffleBoundary
@@ -232,9 +235,9 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
 
         DynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
             DynamicObject result = JSOrdinary.create(context, realm);
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.LOCALE, locale, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.TYPE, type, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.STYLE, style, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(locale), JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_TYPE, Strings.fromJavaString(type), JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_STYLE, Strings.fromJavaString(style), JSAttributes.getDefault());
             return result;
         }
 

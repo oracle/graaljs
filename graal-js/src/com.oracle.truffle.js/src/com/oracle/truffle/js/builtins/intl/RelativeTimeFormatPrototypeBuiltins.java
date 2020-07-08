@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins.intl;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.RelativeTimeFormatPrototypeBuiltinsFactory.JSRelativeTimeFormatFormatNodeGen;
 import com.oracle.truffle.js.builtins.intl.RelativeTimeFormatPrototypeBuiltinsFactory.JSRelativeTimeFormatFormatToPartsNodeGen;
@@ -54,6 +55,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
 
@@ -120,10 +122,10 @@ public final class RelativeTimeFormatPrototypeBuiltins extends JSBuiltinsContain
         }
 
         @Specialization(guards = "isJSRelativeTimeFormat(relativeTimeFormat)")
-        public String doFormat(DynamicObject relativeTimeFormat, Object value, Object unit,
+        public TruffleString doFormat(DynamicObject relativeTimeFormat, Object value, Object unit,
                         @Cached("create()") JSToStringNode toStringNode,
                         @Cached("create()") JSToNumberNode toNumberNode) {
-            return JSRelativeTimeFormat.format(relativeTimeFormat, JSRuntime.doubleValue(toNumberNode.executeNumber(value)), toStringNode.executeString(unit));
+            return JSRelativeTimeFormat.format(relativeTimeFormat, JSRuntime.doubleValue(toNumberNode.executeNumber(value)), Strings.toJavaString(toStringNode.executeString(unit)));
         }
 
         @Specialization(guards = "!isJSRelativeTimeFormat(bummer)")
@@ -144,8 +146,8 @@ public final class RelativeTimeFormatPrototypeBuiltins extends JSBuiltinsContain
                         @Cached("create()") JSToStringNode toStringNode,
                         @Cached("create()") JSToNumberNode toNumberNode) {
             double amount = JSRuntime.doubleValue(toNumberNode.executeNumber(value));
-            String unitString = toStringNode.executeString(unit);
-            return JSRelativeTimeFormat.formatToParts(getContext(), getRealm(), relativeTimeFormat, amount, unitString);
+            TruffleString unitString = toStringNode.executeString(unit);
+            return JSRelativeTimeFormat.formatToParts(getContext(), getRealm(), relativeTimeFormat, amount, Strings.toJavaString(unitString));
         }
 
         @Specialization(guards = "!isJSRelativeTimeFormat(bummer)")

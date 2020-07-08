@@ -54,6 +54,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.intl.CollatorFunctionBuiltins;
 import com.oracle.truffle.js.builtins.intl.CollatorPrototypeBuiltins;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -65,6 +66,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -80,10 +82,12 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public final class JSCollator extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
-    public static final String CLASS_NAME = "Collator";
-    public static final String PROTOTYPE_NAME = "Collator.prototype";
+    public static final TruffleString CLASS_NAME = Strings.constant("Collator");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("Collator.prototype");
+    public static final TruffleString TO_STRING_TAG = Strings.constant("Intl.Collator");
+    public static final TruffleString GET_COMPARE_NAME = Strings.constant("get compare");
 
-    static final HiddenKey BOUND_OBJECT_KEY = new HiddenKey(CLASS_NAME);
+    static final HiddenKey BOUND_OBJECT_KEY = new HiddenKey(Strings.toJavaString(CLASS_NAME));
 
     public static final JSCollator INSTANCE = new JSCollator();
 
@@ -95,12 +99,12 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 
@@ -110,8 +114,8 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
         DynamicObject collatorPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, collatorPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, collatorPrototype, CollatorPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putBuiltinAccessorProperty(collatorPrototype, "compare", createCompareFunctionGetter(realm, ctx), Undefined.instance);
-        JSObjectUtil.putToStringTag(collatorPrototype, "Intl.Collator");
+        JSObjectUtil.putBuiltinAccessorProperty(collatorPrototype, Strings.COMPARE, createCompareFunctionGetter(realm, ctx), Undefined.instance);
+        JSObjectUtil.putToStringTag(collatorPrototype, TO_STRING_TAG);
         return collatorPrototype;
     }
 
@@ -262,13 +266,13 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
 
         DynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
             DynamicObject result = JSOrdinary.create(context, realm);
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.LOCALE, locale, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.USAGE, usage, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.SENSITIVITY, sensitivity, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.IGNORE_PUNCTUATION, ignorePunctuation, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.COLLATION, collation, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.NUMERIC, numeric, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.CASE_FIRST, caseFirst, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(locale), JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_USAGE, Strings.fromJavaString(usage), JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_SENSITIVITY, Strings.fromJavaString(sensitivity), JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_IGNORE_PUNCTUATION, ignorePunctuation, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_COLLATION, Strings.fromJavaString(collation), JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_NUMERIC, numeric, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_CASE_FIRST, Strings.fromJavaString(caseFirst), JSAttributes.getDefault());
             return result;
         }
     }
@@ -331,17 +335,17 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
                 DynamicObject thisObj = (DynamicObject) getBoundObjectNode.getValue(JSArguments.getFunctionObject(arguments));
                 assert isJSCollator(thisObj);
                 int argumentCount = JSArguments.getUserArgumentCount(arguments);
-                String one = (argumentCount > 0) ? toString1Node.executeString(JSArguments.getUserArgument(arguments, 0)) : Undefined.NAME;
-                String two = (argumentCount > 1) ? toString2Node.executeString(JSArguments.getUserArgument(arguments, 1)) : Undefined.NAME;
+                String one = Strings.toJavaString((argumentCount > 0) ? toString1Node.executeString(JSArguments.getUserArgument(arguments, 0)) : Undefined.NAME);
+                String two = Strings.toJavaString((argumentCount > 1) ? toString2Node.executeString(JSArguments.getUserArgument(arguments, 1)) : Undefined.NAME);
                 return compare(thisObj, one, two);
             }
-        }.getCallTarget(), 2, "");
+        }.getCallTarget(), 2, Strings.EMPTY_STRING);
     }
 
     private static DynamicObject createCompareFunctionGetter(JSRealm realm, JSContext context) {
         JSFunctionData fd = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.CollatorGetCompare, (c) -> {
             CallTarget ct = createGetCompareCallTarget(context);
-            return JSFunctionData.create(context, ct, ct, 0, "get compare", false, false, false, true);
+            return JSFunctionData.create(context, ct, ct, 0, GET_COMPARE_NAME, false, false, false, true);
         });
         return JSFunction.create(realm, fd);
     }

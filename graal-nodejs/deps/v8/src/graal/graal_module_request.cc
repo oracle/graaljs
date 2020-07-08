@@ -54,7 +54,7 @@ GraalHandleContent* GraalModuleRequest::CopyImpl(jobject java_object_copy) {
 v8::Local<v8::String> GraalModuleRequest::GetSpecifier() const {
     GraalIsolate* graal_isolate = Isolate();
     JNI_CALL(jobject, java_specifier, graal_isolate, GraalAccessMethod::module_request_get_specifier, Object, GetJavaObject());
-    GraalString* graal_specifier = GraalString::Allocate(graal_isolate, (jstring) java_specifier);
+    GraalString* graal_specifier = GraalString::Allocate(graal_isolate, java_specifier);
     return reinterpret_cast<v8::String*> (graal_specifier);
 }
 

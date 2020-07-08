@@ -65,6 +65,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -79,12 +80,12 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -501,7 +502,7 @@ public class WriteElementNode extends JSTargetableNode {
     private static WriteElementTypeCacheNode makeTypeCacheNode(Object target, WriteElementTypeCacheNode next) {
         if (JSDynamicObject.isJSDynamicObject(target)) {
             return new JSObjectWriteElementTypeCacheNode(next);
-        } else if (JSRuntime.isString(target)) {
+        } else if (Strings.isTString(target)) {
             return new StringWriteElementTypeCacheNode(target.getClass(), next);
         } else if (target instanceof Boolean) {
             return new BooleanWriteElementTypeCacheNode(next);
@@ -591,7 +592,7 @@ public class WriteElementNode extends JSTargetableNode {
                         setPropertyGenericEvaluatedIndex(targetObject, index, value, receiver, root);
                     }
                 } else {
-                    setPropertyGenericEvaluatedStringOrSymbol(targetObject, Boundaries.stringValueOf(index), value, receiver, root);
+                    setPropertyGenericEvaluatedStringOrSymbol(targetObject, Strings.fromInt(index), value, receiver, root);
                 }
             } else {
                 setPropertyGeneric(targetObject, index, value, receiver, root);
@@ -609,7 +610,7 @@ public class WriteElementNode extends JSTargetableNode {
                         setPropertyGenericEvaluatedIndex(targetObject, index, value, receiver, root);
                     }
                 } else {
-                    setPropertyGenericEvaluatedStringOrSymbol(targetObject, Boundaries.stringValueOf(index), value, receiver, root);
+                    setPropertyGenericEvaluatedStringOrSymbol(targetObject, Strings.fromLong(index), value, receiver, root);
                 }
             } else {
                 setPropertyGeneric(targetObject, index, value, receiver, root);
@@ -1670,14 +1671,14 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root) {
-            CharSequence charSequence = (CharSequence) CompilerDirectives.castExact(target, stringClass);
+            TruffleString charSequence = (TruffleString) CompilerDirectives.castExact(target, stringClass);
             Object convertedIndex = toArrayIndexNode.execute(index);
             if (isIndexProfile.profile(convertedIndex instanceof Long)) {
                 long longIndex = (long) convertedIndex;
-                if (isImmutable.profile(longIndex >= 0 && longIndex < JSRuntime.length(charSequence))) {
+                if (isImmutable.profile(longIndex >= 0 && longIndex < Strings.length(charSequence))) {
                     // cannot set characters of immutable strings
                     if (root.isStrict) {
-                        throw Errors.createTypeErrorNotWritableProperty(Boundaries.stringValueOf(index), charSequence, this);
+                        throw Errors.createTypeErrorNotWritableProperty(Strings.fromLong(longIndex), charSequence, this);
                     }
                     return;
                 }
@@ -1687,11 +1688,11 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
-            CharSequence charSequence = (CharSequence) CompilerDirectives.castExact(target, stringClass);
-            if (isImmutable.profile(index >= 0 && index < JSRuntime.length(charSequence))) {
+            TruffleString charSequence = (TruffleString) CompilerDirectives.castExact(target, stringClass);
+            if (isImmutable.profile(index >= 0 && index < Strings.length(charSequence))) {
                 // cannot set characters of immutable strings
                 if (root.isStrict) {
-                    throw Errors.createTypeErrorNotWritableProperty(Boundaries.stringValueOf(index), charSequence, this);
+                    throw Errors.createTypeErrorNotWritableProperty(Strings.fromLong(index), charSequence, this);
                 }
                 return;
             } else {
@@ -1872,14 +1873,15 @@ public class WriteElementNode extends JSTargetableNode {
             if (propertyKey instanceof Symbol) {
                 return;
             }
-            String stringKey = (String) propertyKey;
+            TruffleString stringKey = (TruffleString) propertyKey;
             if (root.context.isOptionNashornCompatibilityMode()) {
                 if (tryInvokeSetter(truffleObject, stringKey, exportedValue, root.context)) {
                     return;
                 }
             }
             try {
-                interop.writeMember(truffleObject, stringKey, exportedValue);
+                String javaPropertyKey = Strings.toJavaString(stringKey);
+                interop.writeMember(truffleObject, javaPropertyKey, exportedValue);
             } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
                 if (root.isStrict) {
                     errorBranch.enter();
@@ -1905,11 +1907,11 @@ public class WriteElementNode extends JSTargetableNode {
             return CompilerDirectives.isExact(target, targetClass);
         }
 
-        private boolean tryInvokeSetter(Object thisObj, String key, Object value, JSContext context) {
+        private boolean tryInvokeSetter(Object thisObj, TruffleString key, Object value, JSContext context) {
             assert context.isOptionNashornCompatibilityMode();
             TruffleLanguage.Env env = getRealm().getEnv();
             if (env.isHostObject(thisObj)) {
-                String setterKey = PropertyCacheNode.getAccessorKey("set", key);
+                TruffleString setterKey = PropertyCacheNode.getAccessorKey(Strings.SET, key);
                 if (setterKey == null) {
                     return false;
                 }
@@ -1917,11 +1919,11 @@ public class WriteElementNode extends JSTargetableNode {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     setterInterop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
                 }
-                if (!setterInterop.isMemberInvocable(thisObj, setterKey)) {
+                if (!setterInterop.isMemberInvocable(thisObj, Strings.toJavaString(setterKey))) {
                     return false;
                 }
                 try {
-                    setterInterop.invokeMember(thisObj, setterKey, value);
+                    setterInterop.invokeMember(thisObj, Strings.toJavaString(setterKey), value);
                     return true;
                 } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
                     // silently ignore

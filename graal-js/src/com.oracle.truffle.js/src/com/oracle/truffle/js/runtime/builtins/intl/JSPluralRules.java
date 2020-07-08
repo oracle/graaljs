@@ -53,11 +53,13 @@ import com.ibm.icu.text.PluralRules.PluralType;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.intl.PluralRulesFunctionBuiltins;
 import com.oracle.truffle.js.builtins.intl.PluralRulesPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
@@ -69,8 +71,9 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public final class JSPluralRules extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
-    public static final String CLASS_NAME = "PluralRules";
-    public static final String PROTOTYPE_NAME = "PluralRules.prototype";
+    public static final TruffleString CLASS_NAME = Strings.constant("PluralRules");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("PluralRules.prototype");
+    public static final TruffleString TO_STRING_TAG = Strings.constant("Intl.PluralRules");
 
     public static final JSPluralRules INSTANCE = new JSPluralRules();
 
@@ -82,12 +85,12 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 
@@ -97,7 +100,7 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
         DynamicObject pluralRulesPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, pluralRulesPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, pluralRulesPrototype, PluralRulesPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putToStringTag(pluralRulesPrototype, "Intl.PluralRules");
+        JSObjectUtil.putToStringTag(pluralRulesPrototype, TO_STRING_TAG);
         return pluralRulesPrototype;
     }
 
@@ -129,20 +132,20 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
     }
 
     @TruffleBoundary
-    public static String select(DynamicObject pluralRulesObj, Object n) {
+    public static TruffleString select(DynamicObject pluralRulesObj, Object n) {
         PluralRules pluralRules = getPluralRulesProperty(pluralRulesObj);
         LocalizedNumberFormatter numberFormatter = getNumberFormatter(pluralRulesObj);
         Number number = JSRuntime.toNumber(n);
         FormattedNumber formattedNumber = numberFormatter.format(number);
-        return pluralRules.select(formattedNumber);
+        return Strings.fromJavaString(pluralRules.select(formattedNumber));
     }
 
     @TruffleBoundary
-    public static String selectRange(DynamicObject pluralRulesObj, double x, double y) {
+    public static TruffleString selectRange(DynamicObject pluralRulesObj, double x, double y) {
         PluralRules pluralRules = getPluralRulesProperty(pluralRulesObj);
         LocalizedNumberRangeFormatter rangeFormatter = getInternalState(pluralRulesObj).getNumberRangeFormatter();
         FormattedNumberRange formattedRange = rangeFormatter.formatRange(x, y);
-        return pluralRules.select(formattedRange);
+        return Strings.fromJavaString(pluralRules.select(formattedRange));
     }
 
     public static class InternalState extends JSNumberFormat.BasicInternalState {
@@ -151,23 +154,25 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
 
         private String type;
         private PluralRules pluralRules;
-        private final List<Object> pluralCategories = new LinkedList<>();
+        private final List<TruffleString> pluralCategories = new LinkedList<>();
 
         @Override
         void fillResolvedOptions(JSContext context, JSRealm realm, DynamicObject result) {
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.LOCALE, getLocale(), JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.TYPE, type, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(getLocale()), JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_TYPE, Strings.fromJavaString(type), JSAttributes.getDefault());
             super.fillResolvedOptions(context, realm, result);
-            JSObjectUtil.defineDataProperty(context, result, "pluralCategories", JSRuntime.createArrayFromList(realm.getContext(), realm, pluralCategories), JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_PLURAL_CATEGORIES, JSRuntime.createArrayFromList(realm.getContext(), realm, pluralCategories), JSAttributes.getDefault());
             String roundingType = getRoundingType();
             String resolvedRoundingType = (IntlUtil.MORE_PRECISION.equals(roundingType) || IntlUtil.LESS_PRECISION.equals(roundingType)) ? roundingType : IntlUtil.AUTO;
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.ROUNDING_PRIORITY, resolvedRoundingType, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_ROUNDING_PRIORITY, Strings.fromJavaString(resolvedRoundingType), JSAttributes.getDefault());
         }
 
         @TruffleBoundary
         public void initializePluralRules() {
             pluralRules = PluralRules.forLocale(getJavaLocale(), IntlUtil.ORDINAL.equals(type) ? PluralType.ORDINAL : PluralType.CARDINAL);
-            pluralCategories.addAll(pluralRules.getKeywords());
+            for (String keyword : pluralRules.getKeywords()) {
+                pluralCategories.add(Strings.fromJavaString(keyword));
+            }
         }
 
         @Override

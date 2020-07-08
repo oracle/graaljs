@@ -47,18 +47,20 @@ import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.SharedArrayBufferFunctionBuiltins;
 import com.oracle.truffle.js.builtins.SharedArrayBufferPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
 public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSConstructorFactory.Default.WithFunctionsAndSpecies, PrototypeSupplier {
 
-    public static final String CLASS_NAME = "SharedArrayBuffer";
-    public static final String PROTOTYPE_NAME = CLASS_NAME + ".prototype";
+    public static final TruffleString CLASS_NAME = Strings.constant("SharedArrayBuffer");
+    public static final TruffleString PROTOTYPE_NAME = Strings.concat(CLASS_NAME, Strings.DOT_PROTOTYPE);
 
     public static final JSSharedArrayBuffer INSTANCE = new JSSharedArrayBuffer();
 
@@ -100,12 +102,12 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 

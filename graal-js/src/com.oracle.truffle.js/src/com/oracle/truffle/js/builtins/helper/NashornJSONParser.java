@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,8 +52,11 @@ import com.oracle.js.parser.ParserException;
 import com.oracle.js.parser.Source;
 import com.oracle.js.parser.Token;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
@@ -70,16 +73,34 @@ import com.oracle.truffle.js.runtime.objects.Null;
  */
 public class NashornJSONParser {
 
-    private final String source;
+    private final TruffleString source;
     private final JSContext context;
     private final int length;
     private int pos = 0;
 
     private static final int EOF = -1;
 
-    private static final String TRUE = "true";
-    private static final String FALSE = "false";
-    private static final String NULL = "null";
+    private static final TruffleString TRUE = Strings.constant("true");
+    private static final TruffleString FALSE = Strings.constant("false");
+    private static final TruffleString NULL = Strings.constant("null");
+
+    private static final String MSG_INVALID_ESCAPE_CHAR = "invalid.escape.char";
+    private static final String MSG_INVALID_HEX = "invalid.hex";
+    private static final String MSG_JSON_INVALID_NUMBER = "json.invalid.number";
+    private static final String MSG_LEXER_ERROR = "lexer.error.";
+    private static final String MSG_MISSING_CLOSE_QUOTE = "missing.close.quote";
+    private static final String MSG_PARSER_ERROR = "parser.error.";
+    private static final String MSG_SYNTAX_ERROR_INVALID_JSON = "syntax.error.invalid.json";
+    private static final String MSG_TRAILING_COMMA_IN_JSON = "trailing.comma.in.json";
+
+    private static final String ERR_COLON = ":";
+    private static final String ERR_COMMA_OR_RBRACE = ", or }";
+    private static final String ERR_COMMA_OR_RBRACKET = ", or ]";
+    private static final String ERR_EOF_STR = "eof";
+    private static final String ERR_EXPECTED = "expected";
+    private static final String ERR_IDENT = "ident";
+    private static final String ERR_JSON_LITERAL = "json literal";
+    private static final String ERR_STRING_CONTAINS_CONTROL_CHARACTER = "String contains control character";
 
     private static final int STATE_EMPTY = 0;
     private static final int STATE_ELEMENT_PARSED = 1;
@@ -91,10 +112,10 @@ public class NashornJSONParser {
      * @param source the source
      * @param context the global object
      */
-    public NashornJSONParser(final String source, final JSContext context) {
+    public NashornJSONParser(final TruffleString source, final JSContext context) {
         this.source = source;
         this.context = context;
-        this.length = source.length();
+        this.length = Strings.length(source);
     }
 
     /**
@@ -106,7 +127,7 @@ public class NashornJSONParser {
         final Object value = parseLiteral();
         skipWhiteSpace();
         if (pos < length) {
-            throw expectedError(pos, "eof", toString(peek()));
+            throw expectedError(pos, ERR_EOF_STR, toString(peek()));
         }
         return value;
     }
@@ -116,7 +137,7 @@ public class NashornJSONParser {
 
         final int c = peek();
         if (c == EOF) {
-            throw expectedError(pos, "json literal", "eof");
+            throw expectedError(pos, ERR_JSON_LITERAL, ERR_EOF_STR);
         }
         switch (c) {
             case '{':
@@ -137,7 +158,7 @@ public class NashornJSONParser {
                 } else if (c == '.') {
                     throw numberError(pos);
                 } else {
-                    throw expectedError(pos, "json literal", toString(c));
+                    throw expectedError(pos, ERR_JSON_LITERAL, toString(c));
                 }
         }
     }
@@ -157,9 +178,9 @@ public class NashornJSONParser {
             switch (c) {
                 case '"':
                     if (state == STATE_ELEMENT_PARSED) {
-                        throw expectedError(pos, ", or }", toString(c));
+                        throw expectedError(pos, ERR_COMMA_OR_RBRACE, toString(c));
                     }
-                    final String id = parseString();
+                    final Object id = parseString();
                     expectColon();
                     final Object value = parseLiteral();
                     addObjectProperty(jsobject, id, value);
@@ -179,21 +200,21 @@ public class NashornJSONParser {
                     pos++;
                     return jsobject;
                 default:
-                    throw expectedError(pos, ", or }", toString(c));
+                    throw expectedError(pos, ERR_COMMA_OR_RBRACE, toString(c));
             }
         }
-        throw expectedError(pos, ", or }", "eof");
+        throw expectedError(pos, ERR_COMMA_OR_RBRACE, ERR_EOF_STR);
     }
 
-    private void addObjectProperty(final DynamicObject object, final String id, final Object value) {
-        JSObjectUtil.defineDataProperty(context, object, id, value, JSAttributes.getDefault());
+    private void addObjectProperty(final DynamicObject object, final Object idStr, final Object value) {
+        JSObjectUtil.defineDataProperty(context, object, idStr, value, JSAttributes.getDefault());
     }
 
     private void expectColon() {
         skipWhiteSpace();
         final int n = next();
         if (n != ':') {
-            throw expectedError(pos - 1, ":", toString(n));
+            throw expectedError(pos - 1, ERR_COLON, toString(n));
         }
     }
 
@@ -226,7 +247,7 @@ public class NashornJSONParser {
                     return jsarray;
                 default:
                     if (state == STATE_ELEMENT_PARSED) {
-                        throw expectedError(pos, ", or ]", toString(c));
+                        throw expectedError(pos, ERR_COMMA_OR_RBRACKET, toString(c));
                     }
                     final long index = arrayData.length(jsarray);
                     arrayData = arrayData.setElement(jsarray, index, parseLiteral(), true);
@@ -236,38 +257,38 @@ public class NashornJSONParser {
             }
         }
 
-        throw expectedError(pos, ", or ]", "eof");
+        throw expectedError(pos, ERR_COMMA_OR_RBRACKET, ERR_EOF_STR);
     }
 
-    private String parseString() {
+    private TruffleString parseString() {
         // String buffer is only instantiated if string contains escape sequences.
         int start = ++pos;
-        StringBuilder sb = null;
+        TruffleStringBuilder sb = null;
 
         while (pos < length) {
             final int c = next();
             if (c <= 0x1f) {
                 // Characters < 0x1f are not allowed in JSON strings.
-                throw syntaxError(pos, "String contains control character");
+                throw syntaxError(pos, ERR_STRING_CONTAINS_CONTROL_CHARACTER);
 
             } else if (c == '\\') {
                 if (sb == null) {
-                    sb = new StringBuilder(pos - start + 16);
+                    sb = Strings.builderCreate(pos - start + 16);
                 }
-                sb.append(source, start, pos - 1);
-                sb.append(parseEscapeSequence());
+                Strings.builderAppend(sb, source, start, pos - 1);
+                Strings.builderAppend(sb, parseEscapeSequence());
                 start = pos;
 
             } else if (c == '"') {
                 if (sb != null) {
-                    sb.append(source, start, pos - 1);
-                    return sb.toString();
+                    Strings.builderAppend(sb, source, start, pos - 1);
+                    return Strings.builderToString(sb);
                 }
-                return source.substring(start, pos - 1);
+                return Strings.substring(source, start, pos - 1 - start);
             }
         }
 
-        throw error(lexerMessage("missing.close.quote"), pos, length);
+        throw error(lexerMessage(MSG_MISSING_CLOSE_QUOTE), pos, length);
     }
 
     private char parseEscapeSequence() {
@@ -292,7 +313,7 @@ public class NashornJSONParser {
             case 'u':
                 return parseUnicodeEscape();
             default:
-                throw error(lexerMessage("invalid.escape.char"), pos - 1, length);
+                throw error(lexerMessage(MSG_INVALID_ESCAPE_CHAR), pos - 1, length);
         }
     }
 
@@ -309,7 +330,7 @@ public class NashornJSONParser {
         } else if (c >= 'a' && c <= 'f') {
             return c + 10 - 'a';
         }
-        throw error(lexerMessage("invalid.hex"), pos - 1, length);
+        throw error(lexerMessage(MSG_INVALID_HEX), pos - 1, length);
     }
 
     private static boolean isDigit(final int c) {
@@ -364,7 +385,12 @@ public class NashornJSONParser {
             skipDigits();
         }
 
-        final double d = Double.parseDouble(source.substring(start, pos));
+        final double d;
+        try {
+            d = Strings.parseDouble(Strings.substring(source, start, pos - start));
+        } catch (TruffleString.NumberFormatException e) {
+            throw numberError(start);
+        }
         if (JSType.isRepresentableAsInt(d)) {
             return (int) d;
         } else if (JSType.isRepresentableAsLong(d)) {
@@ -373,11 +399,11 @@ public class NashornJSONParser {
         return d;
     }
 
-    private Object parseKeyword(final String keyword, final Object value) {
-        if (!source.regionMatches(pos, keyword, 0, keyword.length())) {
-            throw expectedError(pos, "json literal", "ident");
+    private Object parseKeyword(final TruffleString keyword, final Object value) {
+        if (!Strings.regionEquals(source, pos, keyword, 0, Strings.length(keyword))) {
+            throw expectedError(pos, ERR_JSON_LITERAL, ERR_IDENT);
         }
-        pos += keyword.length();
+        pos += Strings.length(keyword);
         return value;
     }
 
@@ -385,7 +411,7 @@ public class NashornJSONParser {
         if (pos >= length) {
             return -1;
         }
-        return source.charAt(pos);
+        return Strings.charAt(source, pos);
     }
 
     private int next() {
@@ -410,14 +436,14 @@ public class NashornJSONParser {
     }
 
     private static String toString(final int c) {
-        return c == EOF ? "eof" : String.valueOf((char) c);
+        return c == EOF ? ERR_EOF_STR : String.valueOf((char) c);
     }
 
     @SuppressWarnings("hiding")
     ParserException error(final String message, final int start, final int length) throws ParserException {
         final long token = Token.toDesc(STRING, start, length);
         final int pos = Token.descPosition(token);
-        final Source src = Source.sourceFor("<json>", source);
+        final Source src = Source.sourceFor("<json>", Strings.toJavaString(source));
         final int lineNum = src.getLine(pos);
         final int columnNum = src.getColumn(pos);
         return new ParserException(JSErrorType.SyntaxError, message, src, lineNum, columnNum, token);
@@ -428,12 +454,12 @@ public class NashornJSONParser {
     }
 
     private ParserException numberError(final int start) {
-        return error(lexerMessage("json.invalid.number"), start);
+        return error(lexerMessage(MSG_JSON_INVALID_NUMBER), start);
     }
 
     private ParserException expectedError(final int start, final String expected, final String found) {
         return context.isOptionNashornCompatibilityMode()
-                        ? error(parserMessage("expected", expected, found), start)
+                        ? error(parserMessage(ERR_EXPECTED, expected, found), start)
                         : expectedErrorV8(start, found);
     }
 
@@ -452,21 +478,21 @@ public class NashornJSONParser {
     }
 
     private ParserException syntaxError(final int start, final String reason) {
-        final String message = ECMAErrors.getMessage("syntax.error.invalid.json", reason);
+        final String message = ECMAErrors.getMessage(MSG_SYNTAX_ERROR_INVALID_JSON, reason);
         return error(message, start);
     }
 
     private static String lexerMessage(final String msgId, String... args) {
-        return ECMAErrors.getMessage("lexer.error." + msgId, args);
+        return ECMAErrors.getMessage(MSG_LEXER_ERROR + msgId, args);
     }
 
     private static String parserMessage(final String msgId, String... args) {
-        return ECMAErrors.getMessage("parser.error." + msgId, args);
+        return ECMAErrors.getMessage(MSG_PARSER_ERROR + msgId, args);
     }
 
     private ParserException trailingCommaError(int start, String found) {
         return context.isOptionNashornCompatibilityMode()
-                        ? error(parserMessage("trailing.comma.in.json"), start)
+                        ? error(parserMessage(MSG_TRAILING_COMMA_IN_JSON), start)
                         : expectedErrorV8(start, found);
     }
 }

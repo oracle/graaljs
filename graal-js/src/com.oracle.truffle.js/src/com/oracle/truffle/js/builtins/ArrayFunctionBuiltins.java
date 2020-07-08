@@ -63,10 +63,10 @@ import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
@@ -187,7 +187,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             int pos = 0;
             for (Object arg : args) {
                 Object value = JSRuntime.nullToUndefined(arg);
-                JSRuntime.createDataPropertyOrThrow(obj, Boundaries.stringValueOf(pos), value);
+                JSRuntime.createDataPropertyOrThrow(obj, Strings.fromInt(pos), value);
                 pos++;
             }
             JSObject.set(obj, JSAbstractArray.LENGTH, len, true, this);
@@ -234,7 +234,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             }
             if (getNextMethodNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getNextMethodNode = insert(PropertyGetNode.create(JSRuntime.NEXT, getContext()));
+                getNextMethodNode = insert(PropertyGetNode.create(Strings.NEXT, getContext()));
             }
 
             return GetIteratorNode.getIterator(object, usingIterator, callIteratorMethodNode, isObjectNode, getNextMethodNode, this);
@@ -332,7 +332,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                     if (isTypedArrayImplementation || isFastArrayNode.execute(obj)) {
                         writeOwn(obj, k, mapped);
                     } else {
-                        JSRuntime.createDataPropertyOrThrow(obj, Boundaries.stringValueOf(k), mapped);
+                        JSRuntime.createDataPropertyOrThrow(obj, Strings.fromLong(k), mapped);
                     }
                     k++;
                 }
@@ -357,7 +357,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 if (isTypedArrayImplementation || isFastArrayNode.execute(obj)) {
                     writeOwn(obj, k, mapped);
                 } else {
-                    JSRuntime.createDataPropertyOrThrow(obj, Boundaries.stringValueOf(k), mapped);
+                    JSRuntime.createDataPropertyOrThrow(obj, Strings.fromLong(k), mapped);
                 }
                 k++;
             }

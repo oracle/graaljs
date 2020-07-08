@@ -43,6 +43,9 @@ package com.oracle.truffle.js.runtime.util;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalParserRecord;
 
 /**
@@ -62,33 +65,33 @@ public final class TemporalParser {
     private static final String patternDateSpecMonthDay = "^[\\-]?(\\d\\d)[\\-]?(\\d\\d)";
     private static final String patternTimeZoneIANAName = "^([A-Za-z_]+(/[A-Za-z\\-_]+)*)";
 
-    private final String input;
-    private String rest;
+    private final TruffleString input;
+    private TruffleString rest;
     private int pos;
 
     // results
-    private String year;
-    private String month;
-    private String day;
-    private String hour;
-    private String minute;
-    private String second;
-    private String fraction;
+    private TruffleString year;
+    private TruffleString month;
+    private TruffleString day;
+    private TruffleString hour;
+    private TruffleString minute;
+    private TruffleString second;
+    private TruffleString fraction;
 
-    private String calendar;
-    private String timeZoneIANAName;
-    private String timeZoneUTCOffsetName;
-    private String timeZoneNumericUTCOffset;
-    private String timeZoneEtcName;
-    private String utcDesignator;
+    private TruffleString calendar;
+    private TruffleString timeZoneIANAName;
+    private TruffleString timeZoneUTCOffsetName;
+    private TruffleString timeZoneNumericUTCOffset;
+    private TruffleString timeZoneEtcName;
+    private TruffleString utcDesignator;
 
-    private String offsetSign;
-    private String offsetHour;
-    private String offsetMinute;
-    private String offsetSecond;
-    private String offsetFraction;
+    private TruffleString offsetSign;
+    private TruffleString offsetHour;
+    private TruffleString offsetMinute;
+    private TruffleString offsetSecond;
+    private TruffleString offsetFraction;
 
-    public TemporalParser(String input) {
+    public TemporalParser(TruffleString input) {
         this.input = input;
     }
 
@@ -184,9 +187,9 @@ public final class TemporalParser {
     private boolean parseTimeZoneIANAName() {
         Matcher matcher = createMatch(patternTimeZoneIANAName, rest);
         if (matcher.matches()) {
-            this.timeZoneIANAName = matcher.group(1);
+            this.timeZoneIANAName = group(rest, matcher, 1);
 
-            assert timeZoneIANAName == null || isTZLeadingChar(timeZoneIANAName.charAt(0));
+            assert timeZoneIANAName == null || isTZLeadingChar(Strings.charAt(timeZoneIANAName, 0));
 
             move(matcher.end(1));
             return true;
@@ -252,13 +255,13 @@ public final class TemporalParser {
 
     private boolean parseTimeZoneNameRequired() {
         // this effectively is rule `TimeZoneNameRequired`
-        return rest.contains("[") && rest.contains("]") && parseTimeZone();
+        return Strings.indexOf(rest, '[') >= 0 && Strings.indexOf(rest, ']') >= 0 && parseTimeZone();
     }
 
     private boolean parseCalendarName() {
         Matcher matcher = createMatch(patternCalendarName, rest);
         if (matcher.matches()) {
-            this.calendar = matcher.group(1);
+            this.calendar = group(rest, matcher, 1);
 
             move(matcher.end(1));
             return true;
@@ -277,11 +280,16 @@ public final class TemporalParser {
         }
     }
 
-    private static long prepare(String value, long max) {
+    private static long prepare(TruffleString value, long max) {
         if (value == null) {
             return Long.MIN_VALUE;
         }
-        long l = Long.parseLong(value);
+        long l = 0;
+        try {
+            l = Strings.parseLong(value);
+        } catch (TruffleString.NumberFormatException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
+        }
         if (l < 0 || l > max) {
             throw new RuntimeException("date value out of bounds");
         }
@@ -289,7 +297,7 @@ public final class TemporalParser {
     }
 
     private boolean atEnd() {
-        return pos >= input.length();
+        return pos >= Strings.length(input);
     }
 
     private void reset() {
@@ -320,16 +328,16 @@ public final class TemporalParser {
 
     private void move(int newPos) {
         pos += newPos;
-        rest = (pos >= 0 && input.length() > pos) ? input.substring(pos) : "";
+        rest = (pos >= 0 && Strings.length(input) > pos) ? Strings.substring(input, pos) : Strings.EMPTY_STRING;
     }
 
     private boolean parseDateSpecYearMonth() {
         Matcher matcher = createMatch(patternDateSpecYearMonth, rest);
         if (matcher.matches()) {
-            year = matcher.group(1);
-            month = matcher.group(2);
-            if (year.charAt(0) == '\u2212') {
-                year = "-" + year.substring(1);
+            year = group(rest, matcher, 1);
+            month = group(rest, matcher, 2);
+            if (Strings.charAt(year, 0) == '\u2212') {
+                year = Strings.concat(Strings.DASH, Strings.substring(year, 1));
             }
             move(matcher.end(2));
             return true;
@@ -340,8 +348,8 @@ public final class TemporalParser {
     private boolean parseDateSpecMonthDay() {
         Matcher matcher = createMatch(patternDateSpecMonthDay, rest);
         if (matcher.matches()) {
-            month = matcher.group(1);
-            day = matcher.group(2);
+            month = group(rest, matcher, 1);
+            day = group(rest, matcher, 2);
 
             move(matcher.end(2));
             return true;
@@ -352,11 +360,11 @@ public final class TemporalParser {
     private boolean parseDate() {
         Matcher matcher = createMatch(patternDate, rest);
         if (matcher.matches()) {
-            year = matcher.group(1);
-            month = matcher.group(2);
-            day = matcher.group(3);
-            if (year.charAt(0) == '\u2212') {
-                year = "-" + year.substring(1);
+            year = group(rest, matcher, 1);
+            month = group(rest, matcher, 2);
+            day = group(rest, matcher, 3);
+            if (Strings.charAt(year, 0) == '\u2212') {
+                year = Strings.concat(Strings.DASH, Strings.substring(year, 1));
             }
             move(matcher.end(3));
             return true;
@@ -367,10 +375,10 @@ public final class TemporalParser {
     private boolean parseTime() {
         Matcher matcher = createMatch(patternTime, rest);
         if (matcher.matches()) {
-            hour = matcher.group(1);
-            minute = matcher.group(3);
-            second = matcher.group(5);
-            fraction = matcher.group(7);
+            hour = group(rest, matcher, 1);
+            minute = group(rest, matcher, 3);
+            second = group(rest, matcher, 5);
+            fraction = group(rest, matcher, 7);
 
             move(matcher.end(2));
             return true;
@@ -379,10 +387,10 @@ public final class TemporalParser {
     }
 
     private boolean parseDateTimeSeparator() {
-        if (rest.length() <= 0) {
+        if (Strings.length(rest) <= 0) {
             return false;
         }
-        char ch = rest.charAt(0);
+        char ch = Strings.charAt(rest, 0);
         if (ch == 't' || ch == 'T' || ch == ' ') {
             move(1);
             return true;
@@ -393,7 +401,7 @@ public final class TemporalParser {
     private boolean parseCalendar() {
         Matcher matcher = createMatch(patternCalendar, rest);
         if (matcher.matches()) {
-            calendar = matcher.group(2);
+            calendar = group(rest, matcher, 2);
 
             move(matcher.end(1));
             return true;
@@ -405,12 +413,12 @@ public final class TemporalParser {
         // TimeZOneNumericUTCOffset
         Matcher matcher = createMatch(patternTimeZoneNumericUTCOffset, rest, false);
         if (matcher.matches()) {
-            offsetSign = matcher.group(1);
-            offsetHour = matcher.group(2);
-            offsetMinute = matcher.group(4);
-            offsetSecond = matcher.group(6);
-            offsetFraction = matcher.group(8);
-            timeZoneNumericUTCOffset = rest.substring(matcher.start(1), matcher.end(3) != -1 ? matcher.end(3) : rest.length());
+            offsetSign = group(rest, matcher, 1);
+            offsetHour = group(rest, matcher, 2);
+            offsetMinute = group(rest, matcher, 4);
+            offsetSecond = group(rest, matcher, 6);
+            offsetFraction = group(rest, matcher, 8);
+            timeZoneNumericUTCOffset = Strings.substring(rest, matcher.start(1), matcher.end(3) != -1 ? matcher.end(3) : Strings.length(rest));
 
             move(matcher.end(3));
 
@@ -430,12 +438,12 @@ public final class TemporalParser {
         // first two options are from `TimeZoneOffsetRequired` (with bracket optional)
         Matcher matcher = createMatch(patternTimeZoneNumericUTCOffset, rest, true);
         if (matcher.matches()) {
-            offsetSign = matcher.group(1);
-            offsetHour = matcher.group(2);
-            offsetMinute = matcher.group(4);
-            offsetSecond = matcher.group(6);
-            offsetFraction = matcher.group(8);
-            timeZoneNumericUTCOffset = rest.substring(matcher.start(1), matcher.end(3) != -1 ? matcher.end(3) : rest.length());
+            offsetSign = group(rest, matcher, 1);
+            offsetHour = group(rest, matcher, 2);
+            offsetMinute = group(rest, matcher, 4);
+            offsetSecond = group(rest, matcher, 6);
+            offsetFraction = group(rest, matcher, 8);
+            timeZoneNumericUTCOffset = Strings.substring(rest, matcher.start(1), matcher.end(3) != -1 ? matcher.end(3) : Strings.length(rest));
 
             if (offsetHour == null) {
                 return false;
@@ -448,15 +456,15 @@ public final class TemporalParser {
                 return true;
             }
 
-            if ((rest == null || rest.length() == 0)) {
+            if ((rest == null || Strings.length(rest) == 0)) {
                 return true;
             }
         }
 
-        if (rest.startsWith("Z") || rest.startsWith("z")) {
+        if (Strings.startsWith(rest, Strings.UC_Z) || Strings.startsWith(rest, Strings.Z)) {
             move(1);
             this.timeZoneIANAName = TemporalConstants.UTC; // TODO is this correct?
-            this.utcDesignator = "Z";
+            this.utcDesignator = Strings.UC_Z;
 
             parseTimeZoneBracket(); // optional
             return true;
@@ -474,16 +482,16 @@ public final class TemporalParser {
     private boolean parseTimeZoneBracket() {
         Matcher matcher = createMatch(patternTimeZoneBracketedAnnotation, rest);
         if (matcher.matches()) {
-            String content = matcher.group(2);
+            TruffleString content = group(rest, matcher, 2);
 
             // content could be TimeZoneIANAName, Etc/GMT, or TimeZOneUTCOffsetName
             if (content != null) {
-                if (content.startsWith("Etc")) {
+                if (Strings.startsWith(content, Strings.UC_ETC)) {
                     timeZoneEtcName = content;
-                } else if (isSign(content.charAt(0))) {
+                } else if (isSign(Strings.charAt(content, 0))) {
                     timeZoneUTCOffsetName = content;
                 } else {
-                    assert isTZLeadingChar(content.charAt(0));
+                    assert isTZLeadingChar(Strings.charAt(content, 0));
                     timeZoneIANAName = content;
                 }
             }
@@ -502,13 +510,17 @@ public final class TemporalParser {
         return c == '+' || c == '-' || c == '\u2212';
     }
 
-    private static Matcher createMatch(String pattern, String input) {
+    private static Matcher createMatch(String pattern, TruffleString input) {
         return createMatch(pattern, input, true);
     }
 
-    private static Matcher createMatch(String pattern, String input, boolean addMatchAll) {
+    private static Matcher createMatch(String pattern, TruffleString input, boolean addMatchAll) {
         Pattern patternObj = Pattern.compile(pattern + (addMatchAll ? ".*" : ""));
-        return patternObj.matcher(input);
+        return patternObj.matcher(Strings.toJavaString(input));
     }
 
+    public static TruffleString group(TruffleString string, Matcher matcher, int groupNumber) {
+        int start = matcher.start(groupNumber);
+        return start < 0 ? null : Strings.substring(string, start, matcher.end(groupNumber) - start);
+    }
 }

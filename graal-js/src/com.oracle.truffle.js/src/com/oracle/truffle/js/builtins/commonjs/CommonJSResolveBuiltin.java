@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,15 +40,17 @@
  */
 package com.oracle.truffle.js.builtins.commonjs;
 
-import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 
 public abstract class CommonJSResolveBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
 
@@ -57,19 +59,19 @@ public abstract class CommonJSResolveBuiltin extends GlobalBuiltins.JSFileLoadin
     }
 
     @Specialization
-    protected String resolve(String moduleIdentifier) {
+    protected TruffleString resolve(TruffleString moduleIdentifier) {
         JSRealm realm = getRealm();
         TruffleFile cwd = CommonJSRequireBuiltin.getModuleResolveCurrentWorkingDirectory(getContext(), realm.getEnv());
         TruffleFile maybeModule = CommonJSResolution.resolve(realm, moduleIdentifier, cwd);
         if (maybeModule == null) {
             throw fail(moduleIdentifier);
         } else {
-            return maybeModule.getAbsoluteFile().normalize().toString();
+            return Strings.fromJavaString(maybeModule.getAbsoluteFile().normalize().toString());
         }
     }
 
     @TruffleBoundary
-    private static JSException fail(String moduleIdentifier) {
+    private static JSException fail(TruffleString moduleIdentifier) {
         return JSException.create(JSErrorType.TypeError, "Cannot find module: '" + moduleIdentifier + "'");
     }
 

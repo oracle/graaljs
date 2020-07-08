@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,19 +40,21 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
+import com.oracle.truffle.api.strings.TruffleString;
+
 /**
  * Represents the information of a parsed TemporalTimeZoneString format.
  */
 public final class JSTemporalTimeZoneStringRecord {
-    private final String z;
-    private final String sign;
-    private final String hours;
-    private final String minutes;
-    private final String seconds;
-    private final String fraction;
-    private final String name;
+    private final TruffleString z;
+    private final TruffleString sign;
+    private final TruffleString hours;
+    private final TruffleString minutes;
+    private final TruffleString seconds;
+    private final TruffleString fraction;
+    private final TruffleString name;
 
-    private JSTemporalTimeZoneStringRecord(String z, String sign, String hours, String minutes, String seconds, String fraction, String name) {
+    private JSTemporalTimeZoneStringRecord(TruffleString z, TruffleString sign, TruffleString hours, TruffleString minutes, TruffleString seconds, TruffleString fraction, TruffleString name) {
         this.z = z;
         this.sign = sign;
         this.hours = hours;
@@ -62,35 +64,36 @@ public final class JSTemporalTimeZoneStringRecord {
         this.name = name;
     }
 
-    public static JSTemporalTimeZoneStringRecord create(String z, String sign, String hours, String minutes, String seconds, String fraction, String name) {
+    public static JSTemporalTimeZoneStringRecord create(TruffleString z, TruffleString sign, TruffleString hours, TruffleString minutes, TruffleString seconds, TruffleString fraction,
+                    TruffleString name) {
         return new JSTemporalTimeZoneStringRecord(z, sign, hours, minutes, seconds, fraction, name);
     }
 
-    public String getZ() {
+    public TruffleString getZ() {
         return z;
     }
 
-    public String getSign() {
+    public TruffleString getSign() {
         return sign;
     }
 
-    public String getHours() {
+    public TruffleString getHours() {
         return hours;
     }
 
-    public String getMinutes() {
+    public TruffleString getMinutes() {
         return minutes;
     }
 
-    public String getSeconds() {
+    public TruffleString getSeconds() {
         return seconds;
     }
 
-    public String getFraction() {
+    public TruffleString getFraction() {
         return fraction;
     }
 
-    public String getName() {
+    public TruffleString getName() {
         return name;
     }
 

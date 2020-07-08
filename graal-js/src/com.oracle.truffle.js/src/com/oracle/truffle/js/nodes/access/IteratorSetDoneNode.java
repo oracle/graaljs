@@ -40,13 +40,13 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-
-import java.util.Set;
 
 /**
  * Sets the [[Done]] field of an IteratorRecord.

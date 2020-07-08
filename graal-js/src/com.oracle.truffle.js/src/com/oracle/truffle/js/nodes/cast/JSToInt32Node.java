@@ -40,12 +40,15 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
@@ -57,10 +60,9 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
-
-import java.util.Set;
 
 /**
  * This node implements the behavior of 9.5 ToInt32. Not to confuse with 9.4 ToInteger, etc.
@@ -189,7 +191,7 @@ public abstract class JSToInt32Node extends JSUnaryNode {
     }
 
     @Specialization
-    protected int doString(String value,
+    protected int doString(TruffleString value,
                     @Cached("create()") JSStringToNumberNode stringToNumberNode) {
         return doubleToInt32(stringToNumberNode.executeString(value));
     }
@@ -214,8 +216,8 @@ public abstract class JSToInt32Node extends JSUnaryNode {
         return overloadedOperatorNode.execute(value, 0);
     }
 
-    protected String getOverloadedOperatorName() {
-        return "|";
+    protected TruffleString getOverloadedOperatorName() {
+        return Strings.SYMBOL_PIPE;
     }
 
     @Specialization(guards = {"isJSObject(value)", "!isBitwiseOr() || !hasOverloadedOperators(value)"})

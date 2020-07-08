@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.arguments;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -48,8 +50,6 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.runtime.JSArguments;
-
-import java.util.Set;
 
 public final class AccessLevelFunctionNode extends JavaScriptNode implements RepeatableNode {
 

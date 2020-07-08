@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -78,7 +79,7 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
     @Specialization(guards = {"frameDescriptor == resolution.getModule().getFrameDescriptor()", "bindingName.equals(resolution.getBindingName())"}, limit = "1")
     static Object doCached(ExportResolution resolution,
                     @Cached("resolution.getModule().getFrameDescriptor()") @SuppressWarnings("unused") FrameDescriptor frameDescriptor,
-                    @Cached("resolution.getBindingName()") @SuppressWarnings("unused") String bindingName,
+                    @Cached("resolution.getBindingName()") @SuppressWarnings("unused") TruffleString bindingName,
                     @Cached("create(frameDescriptor, findImportedSlotIndex(bindingName, resolution.getModule()))") JSReadFrameSlotNode readFrameSlot) {
         JSModuleRecord module = resolution.getModule();
         assert module.getStatus().compareTo(Status.Linked) >= 0 : module.getStatus();
@@ -93,7 +94,7 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
     final Object doUncached(ExportResolution resolution) {
         JSModuleRecord module = resolution.getModule();
         assert module.getStatus().compareTo(Status.Linked) >= 0 : module.getStatus();
-        String bindingName = resolution.getBindingName();
+        TruffleString bindingName = resolution.getBindingName();
         FrameDescriptor moduleFrameDescriptor = module.getFrameDescriptor();
         int slotIndex = findImportedSlotIndex(bindingName, module);
         boolean hasTemporalDeadZone = JSFrameUtil.hasTemporalDeadZone(moduleFrameDescriptor, slotIndex);
@@ -110,7 +111,7 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
         return value;
     }
 
-    static int findImportedSlotIndex(String bindingName, JSModuleRecord module) {
+    static int findImportedSlotIndex(TruffleString bindingName, JSModuleRecord module) {
         return JSFrameUtil.findRequiredFrameSlotIndex(module.getFrameDescriptor(), bindingName);
     }
 

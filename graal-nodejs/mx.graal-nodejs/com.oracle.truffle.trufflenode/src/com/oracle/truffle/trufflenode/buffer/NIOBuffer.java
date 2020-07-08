@@ -43,10 +43,12 @@ package com.oracle.truffle.trufflenode.buffer;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
@@ -58,9 +60,10 @@ import com.oracle.truffle.trufflenode.RealmData;
 public final class NIOBuffer extends JSNonProxy {
     private static final JSBuiltinsContainer NIO_BUFFER_BUILTINS = new NIOBufferBuiltins();
 
-    public static final String NIO_BUFFER_MODULE_NAME = "node:internal/graal/buffer";
+    public static final TruffleString NIO_BUFFER_MODULE_NAME = Strings.constant("node:internal/graal/buffer");
 
-    private static final String CLASS_NAME = "NIOBuffer";
+    private static final TruffleString CLASS_NAME = Strings.constant("NIOBuffer");
+    private static final TruffleString NIO_BUFFER_BUILTINS_INIT_FUNCTION = Strings.constant("NIOBufferBuiltinsInitFunction");
 
     private NIOBuffer() {
     }
@@ -74,7 +77,7 @@ public final class NIOBuffer extends JSNonProxy {
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return CLASS_NAME;
     }
 
@@ -95,7 +98,7 @@ public final class NIOBuffer extends JSNonProxy {
                 return create(getRealm());
             }
         };
-        JSFunctionData functionData = JSFunctionData.createCallOnly(realm.getContext(), wrapperNode.getCallTarget(), 2, "NIOBufferBuiltinsInitFunction");
+        JSFunctionData functionData = JSFunctionData.createCallOnly(realm.getContext(), wrapperNode.getCallTarget(), 2, NIO_BUFFER_BUILTINS_INIT_FUNCTION);
         return JSFunction.create(realm, functionData);
     }
 

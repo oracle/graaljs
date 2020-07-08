@@ -43,8 +43,10 @@ package com.oracle.truffle.js.nodes.function;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
@@ -64,23 +66,22 @@ public class SetFunctionNameNode extends JavaScriptBaseNode {
         return execute(functionValue, propertyKey, null);
     }
 
-    public Object execute(Object functionValue, Object propertyKey, String prefix) {
+    public Object execute(Object functionValue, Object propertyKey, TruffleString prefix) {
         assert JSFunction.isJSFunction(functionValue);
         assert JSRuntime.isPropertyKey(propertyKey);
-        String name = isSymbolProfile.profile(propertyKey instanceof Symbol) ? ((Symbol) propertyKey).toFunctionNameString() : (String) propertyKey;
-        if (prefix != null && !prefix.isEmpty()) {
+        TruffleString name = isSymbolProfile.profile(propertyKey instanceof Symbol) ? ((Symbol) propertyKey).toFunctionNameString() : (TruffleString) propertyKey;
+        if (prefix != null && !Strings.isEmpty(prefix)) {
             name = concatenate(prefix, name);
         }
-
         return setFunctionName((DynamicObject) functionValue, name);
     }
 
     @TruffleBoundary
-    private static String concatenate(String prefix, String name) {
-        return new StringBuilder(prefix.length() + 1 + name.length()).append(prefix).append(' ').append(name).toString();
+    private static TruffleString concatenate(TruffleString prefix, TruffleString name) {
+        return Strings.concatAll(prefix, Strings.SPACE, name);
     }
 
-    private static Object setFunctionName(DynamicObject functionValue, String name) {
+    private static Object setFunctionName(DynamicObject functionValue, TruffleString name) {
         PropertyDescriptor propDesc = PropertyDescriptor.createData(name, false, false, true);
         JSRuntime.definePropertyOrThrow(functionValue, JSFunction.NAME, propDesc);
         return functionValue;

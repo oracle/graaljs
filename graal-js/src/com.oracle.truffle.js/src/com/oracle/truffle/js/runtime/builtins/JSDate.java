@@ -55,6 +55,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.DateFunctionBuiltins;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -62,6 +63,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -70,8 +72,8 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 
 public final class JSDate extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
-    public static final String CLASS_NAME = "Date";
-    public static final String PROTOTYPE_NAME = "Date.prototype";
+    public static final TruffleString CLASS_NAME = Strings.constant("Date");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("Date.prototype");
 
     public static final JSDate INSTANCE = new JSDate();
 
@@ -97,7 +99,7 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
     private static final int YEAR_SHIFT = 280000;
     private static final int DAY_SHIFT = (YEAR_SHIFT / 400) * DAYS_IN_400_YEARS;
 
-    public static final String INVALID_DATE_STRING = "Invalid Date";
+    public static final TruffleString INVALID_DATE_STRING = Strings.constant("Invalid Date");
 
     private JSDate() {
     }
@@ -117,17 +119,17 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 
     @Override
-    public String getBuiltinToStringTag(DynamicObject object) {
+    public TruffleString getBuiltinToStringTag(DynamicObject object) {
         return getClassName(object);
     }
 
@@ -148,8 +150,8 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
         JSObjectUtil.putFunctionsFromContainer(realm, datePrototype, DatePrototypeBuiltins.BUILTINS);
 
         if (ctx.isOptionAnnexB()) {
-            Object utcStringFunction = JSDynamicObject.getOrNull(datePrototype, "toUTCString");
-            JSObjectUtil.putDataProperty(ctx, datePrototype, "toGMTString", utcStringFunction, JSAttributes.getDefaultNotEnumerable());
+            Object utcStringFunction = JSDynamicObject.getOrNull(datePrototype, Strings.TO_UTC_STRING);
+            JSObjectUtil.putDataProperty(ctx, datePrototype, Strings.TO_GMT_STRING, utcStringFunction, JSAttributes.getDefaultNotEnumerable());
         }
         return datePrototype;
     }
@@ -665,18 +667,18 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
     }
 
     @TruffleBoundary
-    public static String format(DateFormat format, double time) {
-        return format.format(time);
+    public static TruffleString format(DateFormat format, double time) {
+        return Strings.fromJavaString(format.format(time));
     }
 
-    public static String toString(double time, JSRealm realm) {
+    public static TruffleString toString(double time, JSRealm realm) {
         if (Double.isNaN(time)) {
             return INVALID_DATE_STRING;
         }
         return format(realm.getDateToStringFormat(), time);
     }
 
-    public static String toISOStringIntl(double time, JSRealm realm) {
+    public static TruffleString toISOStringIntl(double time, JSRealm realm) {
         return format(realm.getJSDateISOFormat(time), time);
     }
 
@@ -728,16 +730,16 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
 
     @TruffleBoundary
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         double time = getTimeMillisField(obj);
-        String formattedDate;
+        TruffleString formattedDate;
         if (isTimeValid(time)) {
             formattedDate = toISOStringIntl(time, JSRealm.get(null));
         } else {
             formattedDate = INVALID_DATE_STRING;
         }
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
-            return "[Date " + formattedDate + "]";
+            return Strings.concatAll(Strings.BRACKET_DATE_SPC, formattedDate, Strings.BRACKET_CLOSE);
         } else {
             return formattedDate;
         }

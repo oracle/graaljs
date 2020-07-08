@@ -52,6 +52,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
@@ -77,12 +78,12 @@ public final class JSDateObject extends JSNonProxyObject {
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return JSDate.CLASS_NAME;
     }
 
     @Override
-    public String getBuiltinToStringTag() {
+    public TruffleString getBuiltinToStringTag() {
         return getClassName();
     }
 

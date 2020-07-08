@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,6 +72,7 @@ import com.oracle.js.parser.ir.VarNode;
 import com.oracle.js.parser.ir.WhileNode;
 import com.oracle.js.parser.ir.WithNode;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * Print out the AST as human readable source code. This works both on lowered and unlowered ASTs
@@ -272,7 +273,7 @@ public final class PrintVisitor extends NodeVisitor<LexicalContext> {
     @Override
     public boolean enterUnaryNode(final UnaryNode unaryNode) {
         final TokenType tokenType = unaryNode.tokenType();
-        final String name = tokenType.getName();
+        final TruffleString name = tokenType.getName();
         final boolean isPostfix = tokenType == DECPOSTFIX || tokenType == INCPOSTFIX;
 
         boolean rhsParen = tokenType.needsParens(unaryNode.getExpression().tokenType(), false);

@@ -13,12 +13,12 @@ load('../assert.js');
 //coverage for toNumberFromPrimitive
 var a = [1,2,3];
 Object.defineProperty(a, 'length', { value: '42' });
-assertThrows(()=>{Object.defineProperty(a, 'length', { value: Debug.createLazyString('1234567890','12345678901234567890') })}, RangeError, "Invalid array length");
+assertThrows(()=>{Object.defineProperty(a, 'length', { value: '1234567890' + '12345678901234567890' })}, RangeError, "Invalid array length");
 assertThrows(()=>{Object.defineProperty(a, 'length', { value: Symbol('42') })}, TypeError, "Cannot convert a Symbol");
 assertThrows(()=>{Object.defineProperty(a, 'length', { value: BigInt('42') })}, TypeError, "Cannot convert a BigInt");
 
 
 //coverage for toString
-assertThrows(()=>{Debug.createLazyString(Symbol('42'), 'test')}, TypeError, "Cannot convert a Symbol");
-assertSame('12345678901234567890test', Debug.createLazyString(BigInt('12345678901234567890'), 'test'));
-assertTrue(Debug.createLazyString('ABC', new (Java.type('java.lang.Object'))()).indexOf('ABCjava.lang.Object@') == 0);
+assertThrows(()=>{Symbol('42') + 'test'}, TypeError, "Cannot convert a Symbol");
+assertSame('12345678901234567890test', BigInt('12345678901234567890') + 'test');
+assertTrue(('ABC' + new (Java.type('java.lang.Object'))()).indexOf('ABCjava.lang.Object@') == 0);

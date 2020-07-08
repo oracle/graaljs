@@ -169,10 +169,6 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
         }
     }
 
-    public String executeString(VirtualFrame frame) throws UnexpectedResultException {
-        return JSTypesGen.expectString(execute(frame));
-    }
-
     public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
         return JSTypesGen.expectLong(execute(frame));
     }
@@ -478,5 +474,4 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
         assert parent instanceof RootNode : "Node " + node + " is not adopted.";
         return parent;
     }
-
 }

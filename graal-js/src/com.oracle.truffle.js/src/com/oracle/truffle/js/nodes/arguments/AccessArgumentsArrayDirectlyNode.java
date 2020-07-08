@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.arguments;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -48,8 +50,6 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.CallApplyArgumentsNode;
 import com.oracle.truffle.js.runtime.JSArguments;
-
-import java.util.Set;
 
 /**
  * This node accesses the arguments array optimistically directly as {@code Object[]}, but can fall

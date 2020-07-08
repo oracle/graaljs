@@ -41,12 +41,16 @@
 package com.oracle.truffle.js.builtins.helper;
 
 import com.oracle.js.parser.ParserException;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -58,7 +62,7 @@ public class TruffleJSONParser {
     protected final JSContext context;
     protected int pos;
     protected int len;
-    protected String parseStr;
+    protected TruffleString parseStr;
     protected int parseDepth;
 
     protected static final char[] NullLiteral = new char[]{'n', 'u', 'l', 'l'};
@@ -72,11 +76,11 @@ public class TruffleJSONParser {
         this.context = context;
     }
 
-    public Object parse(String value, JSRealm realm) {
+    public Object parse(TruffleString value, JSRealm realm) {
         this.pos = 0;
         this.parseDepth = 0;
         this.parseStr = value;
-        this.len = parseStr.length();
+        this.len = Strings.length(parseStr);
         try {
             skipWhitespace();
             Object result = parseJSONValue(realm);
@@ -89,7 +93,7 @@ public class TruffleJSONParser {
             throwStackError();
         } catch (JSException ex) {
             throw ex;
-        } catch (StringIndexOutOfBoundsException ex) {
+        } catch (IndexOutOfBoundsException ex) {
             throwSyntaxError(unexpectedEndOfInputMessage());
         } catch (Exception ex) {
             throwSyntaxError(null);
@@ -168,7 +172,7 @@ public class TruffleJSONParser {
     }
 
     private Member parseJSONMember(JSRealm realm) {
-        String jsonString = parseJSONString();
+        TruffleString jsonString = parseJSONString();
         expectChar(':');
         skipWhitespace();
         Object jsonValue = parseJSONValue(realm);
@@ -226,7 +230,7 @@ public class TruffleJSONParser {
         return scriptArray;
     }
 
-    protected String parseJSONString() {
+    protected TruffleString parseJSONString() {
         if (!isStringQuote(get())) {
             if (isDigit(get())) {
                 unexpectedNumber();
@@ -235,7 +239,7 @@ public class TruffleJSONParser {
             }
         }
         skipChar('"');
-        String str = parseJSONStringCharacters();
+        TruffleString str = parseJSONStringCharacters();
         if (!isStringQuote(get())) {
             error("String quote expected");
         }
@@ -252,7 +256,7 @@ public class TruffleJSONParser {
         return '0' <= c && c <= '9';
     }
 
-    protected String parseJSONStringCharacters() {
+    protected TruffleString parseJSONStringCharacters() {
         int startPos = pos;
         boolean hasEscapes = false;
         int firstEscape = -1;
@@ -270,48 +274,50 @@ public class TruffleJSONParser {
             skipChar();
             c = get();
         }
-        String s = parseStr.substring(startPos, pos);
+        int sLength = pos - startPos;
+        TruffleString s = Strings.substring(parseStr, startPos, sLength);
         if (hasEscapes) {
-            return unquoteJSON(s, firstEscape - startPos);
+            return unquoteJSON(s, sLength, firstEscape - startPos);
         } else {
             return s;
         }
     }
 
-    protected String unquoteJSON(String string, int posFirstBackslash) {
+    protected TruffleString unquoteJSON(TruffleString string, int sLength, int posFirstBackslash) {
+        assert sLength == Strings.length(string);
         assert posFirstBackslash >= 0; // guaranteed by caller
         int posBackslash = posFirstBackslash;
 
         int curPos = 0;
-        StringBuilder builder = new StringBuilder(string.length());
+        TruffleStringBuilder builder = Strings.builderCreate(sLength);
         while (posBackslash >= 0) {
-            builder.append(string, curPos, posBackslash);
+            Strings.builderAppend(builder, string, curPos, posBackslash);
             curPos = posBackslash;
-            char c = string.charAt(posBackslash + 1);
+            char c = Strings.charAt(string, posBackslash + 1);
             switch (c) {
                 case '"':
-                    builder.append('"');
+                    Strings.builderAppend(builder, '"');
                     break;
                 case '\\':
-                    builder.append('\\');
+                    Strings.builderAppend(builder, '\\');
                     break;
                 case 'b':
-                    builder.append('\b');
+                    Strings.builderAppend(builder, '\b');
                     break;
                 case 'f':
-                    builder.append('\f');
+                    Strings.builderAppend(builder, '\f');
                     break;
                 case 'n':
-                    builder.append('\n');
+                    Strings.builderAppend(builder, '\n');
                     break;
                 case 'r':
-                    builder.append('\r');
+                    Strings.builderAppend(builder, '\r');
                     break;
                 case 't':
-                    builder.append('\t');
+                    Strings.builderAppend(builder, '\t');
                     break;
                 case '/':
-                    builder.append('/');
+                    Strings.builderAppend(builder, '/');
                     break;
                 case 'u':
                     unquoteJSONUnicode(string, posBackslash, builder);
@@ -322,12 +328,12 @@ public class TruffleJSONParser {
                     break;
             }
             curPos += 2; // valid for all escapes
-            posBackslash = string.indexOf('\\', curPos);
+            posBackslash = Strings.indexOf(string, '\\', curPos);
         }
-        if (curPos < string.length()) {
-            builder.append(string, curPos, string.length());
+        if (curPos < sLength) {
+            Strings.builderAppend(builder, string, curPos, sLength);
         }
-        return builder.toString();
+        return Strings.builderToString(builder);
     }
 
     protected int hexDigitValue(char c) {
@@ -339,13 +345,13 @@ public class TruffleJSONParser {
         return value;
     }
 
-    protected void unquoteJSONUnicode(String string, int posBackslash, StringBuilder builder) {
-        char c1 = string.charAt(posBackslash + 2);
-        char c2 = string.charAt(posBackslash + 3);
-        char c3 = string.charAt(posBackslash + 4);
-        char c4 = string.charAt(posBackslash + 5);
+    protected void unquoteJSONUnicode(TruffleString string, int posBackslash, TruffleStringBuilder builder) {
+        char c1 = Strings.charAt(string, posBackslash + 2);
+        char c2 = Strings.charAt(string, posBackslash + 3);
+        char c3 = Strings.charAt(string, posBackslash + 4);
+        char c4 = Strings.charAt(string, posBackslash + 5);
         char unencodedC = (char) ((hexDigitValue(c1) << 12) | (hexDigitValue(c2) << 8) | (hexDigitValue(c3) << 4) | hexDigitValue(c4));
-        builder.append(unencodedC);
+        Strings.builderAppend(builder, unencodedC);
     }
 
     protected Number parseJSONNumber() {
@@ -419,12 +425,17 @@ public class TruffleJSONParser {
                 }
             }
         }
-        String valueStr = parseStr.substring(startPos, endPos);
+        TruffleString valueStr = Strings.substring(parseStr, startPos, endPos - startPos);
         return parseAsDouble(sign, valueStr);
     }
 
-    protected static Number parseAsDouble(int sign, String valueStr) {
-        return Double.parseDouble(valueStr) * sign;
+    protected Number parseAsDouble(int sign, TruffleString valueStr) {
+        try {
+            return Strings.parseDouble(valueStr) * sign;
+        } catch (TruffleString.NumberFormatException e) {
+            error(MALFORMED_NUMBER);
+            throw CompilerDirectives.shouldNotReachHere();
+        }
     }
 
     protected void skipExponent() {
@@ -462,7 +473,7 @@ public class TruffleJSONParser {
 
     protected Object parseNullLiteral() {
         assert isNullLiteral(get());
-        skipString("null");
+        skipString(Strings.NULL);
         return Null.instance;
     }
 
@@ -473,10 +484,10 @@ public class TruffleJSONParser {
     protected Object parseBooleanLiteral() {
         assert isBooleanLiteral(get());
         if (get() == 't') {
-            skipString("true");
+            skipString(Strings.TRUE);
             return true;
         } else if (get() == 'f') {
-            skipString("false");
+            skipString(Strings.FALSE);
             return false;
         }
         return error("cannot parse JSONBooleanLiteral");
@@ -525,14 +536,15 @@ public class TruffleJSONParser {
     }
 
     protected char get(int posParam) {
-        return parseStr.charAt(posParam);
+        return Strings.charAt(parseStr, posParam);
     }
 
     // needs to be checked by the caller already that the content matches!
-    protected void skipString(String expected) {
-        assert len >= pos + expected.length();
-        assert parseStr.substring(pos, pos + expected.length()).equals(expected);
-        pos += expected.length();
+    protected void skipString(TruffleString expected) {
+        int length = Strings.length(expected);
+        assert len >= pos + length;
+        assert Strings.equals(Strings.substring(parseStr, pos, length), expected);
+        pos += length;
         skipWhitespace();
     }
 
@@ -581,15 +593,15 @@ public class TruffleJSONParser {
     }
 
     protected final class Member {
-        private final String key;
+        private final TruffleString key;
         private final Object value;
 
-        public Member(String key, Object value) {
+        public Member(TruffleString key, Object value) {
             this.key = key;
             this.value = value;
         }
 
-        public String getKey() {
+        public TruffleString getKey() {
             return key;
         }
 

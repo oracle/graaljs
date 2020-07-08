@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,7 +64,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionExpressionNode;
@@ -73,10 +73,10 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.Null;
 
 public class TestHelper implements AutoCloseable {
@@ -121,12 +121,12 @@ public class TestHelper implements AutoCloseable {
         return getRealm().getGlobalObject();
     }
 
-    public Object getBinding(String key) {
-        return DynamicObjectLibrary.getUncached().getOrDefault(getGlobalObject(), key, null);
+    public Object getBinding(TruffleString key) {
+        return Properties.getOrDefaultUncached(getGlobalObject(), key, null);
     }
 
-    public void putBinding(String key, Object value) {
-        DynamicObjectLibrary.getUncached().putIfPresent(getGlobalObject(), key, value);
+    public void putBinding(TruffleString key, Object value) {
+        Properties.putIfPresentUncached(getGlobalObject(), key, value);
     }
 
     public Object run(String sourceCode) {
@@ -184,14 +184,7 @@ public class TestHelper implements AutoCloseable {
     }
 
     public Object runNoPolyglot(ScriptNode scriptNode) {
-        return transformResult(scriptNode.run(getRealm()));
-    }
-
-    private static Object transformResult(Object value) {
-        if (value instanceof JSLazyString) {
-            return value.toString();
-        }
-        return value;
+        return scriptNode.run(getRealm());
     }
 
     public Value runRedirectOutput(String sourceCode, PrintStream writer, PrintStream errorWriter, boolean isInteractive, Map<String, Object> bindings) {

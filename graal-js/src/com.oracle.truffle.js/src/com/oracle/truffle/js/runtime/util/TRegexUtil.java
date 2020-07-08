@@ -52,6 +52,9 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.Props.CompiledRegex;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropIsMemberReadableNodeGen;
@@ -210,10 +213,10 @@ public final class TRegexUtil {
     @GenerateUncached
     public abstract static class InteropReadStringMemberNode extends Node {
 
-        public abstract String execute(Object obj, String key);
+        public abstract TruffleString execute(Object obj, String key);
 
         @Specialization(guards = "objs.isMemberReadable(obj, key)", limit = "3")
-        static String read(Object obj, String key, @Cached InteropToStringNode coerceNode, @CachedLibrary("obj") InteropLibrary objs) {
+        static TruffleString read(Object obj, String key, @Cached InteropToStringNode coerceNode, @CachedLibrary("obj") InteropLibrary objs) {
             try {
                 return coerceNode.execute(objs.readMember(obj, key));
             } catch (UnsupportedMessageException | UnknownIdentifierException e) {
@@ -270,20 +273,26 @@ public final class TRegexUtil {
         }
     }
 
+    @ImportStatic(JSGuards.class)
     @GenerateUncached
     public abstract static class InteropToStringNode extends Node {
 
-        public abstract String execute(Object obj);
+        public abstract TruffleString execute(Object obj);
 
         @Specialization
-        static String coerceDirect(String obj) {
+        static TruffleString coerceJavaString(String obj) {
+            return Strings.fromJavaString(obj);
+        }
+
+        @Specialization
+        static TruffleString coerceDirect(TruffleString obj) {
             return obj;
         }
 
-        @Specialization(guards = "objs.isString(obj)", limit = "3")
-        static String coerce(Object obj, @CachedLibrary("obj") InteropLibrary objs) {
+        @Specialization(guards = {"!isTruffleString(obj)", "objs.isString(obj)"}, limit = "3")
+        static TruffleString coerce(Object obj, @CachedLibrary("obj") InteropLibrary objs) {
             try {
-                return objs.asString(obj);
+                return objs.asTruffleString(obj);
             } catch (UnsupportedMessageException e) {
                 throw CompilerDirectives.shouldNotReachHere(e);
             }
@@ -294,10 +303,10 @@ public final class TRegexUtil {
     @GenerateUncached
     public abstract static class InvokeExecMethodNode extends Node {
 
-        public abstract Object execute(Object compiledRegex, String input, long fromIndex);
+        public abstract Object execute(Object compiledRegex, Object input, long fromIndex);
 
         @Specialization(guards = "objs.isMemberInvocable(compiledRegex, EXEC)", limit = "3")
-        static Object exec(Object compiledRegex, String input, long fromIndex,
+        static Object exec(Object compiledRegex, Object input, long fromIndex,
                         @CachedLibrary("compiledRegex") InteropLibrary objs) {
             try {
                 return objs.invokeMember(compiledRegex, CompiledRegex.EXEC, input, fromIndex);
@@ -318,7 +327,7 @@ public final class TRegexUtil {
     @GenerateUncached
     public abstract static class InvokeGetGroupBoundariesMethodNode extends Node {
 
-        public abstract int execute(Object regexResult, String method, int groupNumber);
+        public abstract int execute(Object regexResult, Object method, int groupNumber);
 
         @Specialization(guards = "objs.isMemberInvocable(regexResult, method)", limit = NUMBER_OF_REGEX_RESULT_TYPES)
         static int exec(Object regexResult, String method, int groupNumber,
@@ -355,7 +364,7 @@ public final class TRegexUtil {
             return new TRegexCompiledRegexAccessor();
         }
 
-        public String pattern(Object compiledRegexObject) {
+        public Object pattern(Object compiledRegexObject) {
             return getReadPatternNode().execute(compiledRegexObject, Props.CompiledRegex.PATTERN);
         }
 
@@ -363,7 +372,7 @@ public final class TRegexUtil {
             return getReadFlagsNode().execute(compiledRegexObject, Props.CompiledRegex.FLAGS);
         }
 
-        public Object exec(Object compiledRegexObject, String input, long fromIndex) {
+        public Object exec(Object compiledRegexObject, Object input, long fromIndex) {
             return getInvokeExecMethodNode().execute(compiledRegexObject, input, fromIndex);
         }
 
@@ -432,18 +441,18 @@ public final class TRegexUtil {
             return interop.isNull(namedCaptureGroupsMap);
         }
 
-        public boolean hasGroup(Object namedCaptureGroupsMap, String name) {
-            return interop.isMemberReadable(namedCaptureGroupsMap, name);
+        public boolean hasGroup(Object namedCaptureGroupsMap, TruffleString name) {
+            return interop.isMemberReadable(namedCaptureGroupsMap, Strings.toJavaString(name));
         }
 
-        public int getGroupNumber(Object namedCaptureGroupsMap, String name) {
+        public int getGroupNumber(Object namedCaptureGroupsMap, TruffleString name) {
             InteropToIntNode toInt = toIntNode;
             if (toInt == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toIntNode = toInt = insert(InteropToIntNodeGen.create());
             }
             try {
-                return toInt.execute(interop.readMember(namedCaptureGroupsMap, name));
+                return toInt.execute(interop.readMember(namedCaptureGroupsMap, Strings.toJavaString(name)));
             } catch (UnsupportedMessageException | UnknownIdentifierException e) {
                 throw CompilerDirectives.shouldNotReachHere(e);
             }
@@ -468,7 +477,7 @@ public final class TRegexUtil {
             return new TRegexFlagsAccessor();
         }
 
-        public String source(Object regexFlagsObject) {
+        public Object source(Object regexFlagsObject) {
             return getReadSourceNode().execute(regexFlagsObject, Props.Flags.SOURCE);
         }
 
@@ -655,9 +664,11 @@ public final class TRegexUtil {
         private static final TRegexMaterializeResultNode UNCACHED = new TRegexMaterializeResultNode(false);
 
         @Child TRegexResultAccessor resultAccessor;
+        @Child TruffleString.SubstringByteIndexNode substringNode;
 
         private TRegexMaterializeResultNode(boolean cached) {
             resultAccessor = cached ? TRegexResultAccessor.create() : TRegexResultAccessor.getUncached();
+            substringNode = cached ? TruffleString.SubstringByteIndexNode.create() : TruffleString.SubstringByteIndexNode.getUncached();
         }
 
         public static TRegexMaterializeResultNode create() {
@@ -668,21 +679,21 @@ public final class TRegexUtil {
             return UNCACHED;
         }
 
-        public Object materializeGroup(Object regexResult, int i, String input) {
-            return materializeGroup(resultAccessor, regexResult, i, input);
+        public Object materializeGroup(Object regexResult, int i, TruffleString input) {
+            return materializeGroup(resultAccessor, substringNode, regexResult, i, input);
         }
 
-        public static Object materializeGroup(TRegexResultAccessor accessor, Object regexResult, int i, String input) {
+        public static Object materializeGroup(TRegexResultAccessor accessor, TruffleString.SubstringByteIndexNode substringNode, Object regexResult, int i, TruffleString input) {
             final int beginIndex = accessor.captureGroupStart(regexResult, i);
             if (beginIndex == Constants.CAPTURE_GROUP_NO_MATCH) {
                 assert i > 0;
                 return Undefined.instance;
             } else {
-                return input.substring(beginIndex, accessor.captureGroupEnd(regexResult, i));
+                return Strings.substring(substringNode, input, beginIndex, accessor.captureGroupEnd(regexResult, i) - beginIndex);
             }
         }
 
-        public Object[] materializeFull(Object regexResult, int groupCount, String input) {
+        public Object[] materializeFull(Object regexResult, int groupCount, TruffleString input) {
             Object[] result = new Object[groupCount];
             for (int i = 0; i < groupCount; i++) {
                 result[i] = materializeGroup(regexResult, i, input);

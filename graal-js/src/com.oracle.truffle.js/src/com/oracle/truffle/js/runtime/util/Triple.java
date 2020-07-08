@@ -40,9 +40,9 @@
  */
 package com.oracle.truffle.js.runtime.util;
 
-import com.oracle.truffle.api.CompilerDirectives;
-
 import java.util.Objects;
+
+import com.oracle.truffle.api.CompilerDirectives;
 
 public final class Triple<T, U, P> {
 

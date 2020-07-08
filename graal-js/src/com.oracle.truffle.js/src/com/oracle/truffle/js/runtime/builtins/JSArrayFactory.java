@@ -47,6 +47,7 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -104,7 +105,7 @@ public abstract class JSArrayFactory {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             setProto = context.adoptNode(JSObjectUtil.createCached(JSObject.HIDDEN_PROTO, obj));
         }
-        setProto.put(obj, JSObject.HIDDEN_PROTO, prototype);
+        Properties.put(setProto, obj, JSObject.HIDDEN_PROTO, prototype);
     }
 
     protected final boolean isInObjectProto() {

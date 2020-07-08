@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,26 +43,27 @@ package com.oracle.js.parser.ir;
 
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
+import com.oracle.truffle.api.strings.TruffleString;
 
 public class FromNode extends Node {
 
-    private final LiteralNode<String> moduleSpecifier;
+    private final LiteralNode<TruffleString> moduleSpecifier;
 
-    public FromNode(final long token, final int start, final int finish, final LiteralNode<String> moduleSpecifier) {
+    public FromNode(final long token, final int start, final int finish, final LiteralNode<TruffleString> moduleSpecifier) {
         super(token, start, finish);
         this.moduleSpecifier = moduleSpecifier;
     }
 
-    private FromNode(final FromNode node, final LiteralNode<String> moduleSpecifier) {
+    private FromNode(final FromNode node, final LiteralNode<TruffleString> moduleSpecifier) {
         super(node);
         this.moduleSpecifier = moduleSpecifier;
     }
 
-    public LiteralNode<String> getModuleSpecifier() {
+    public LiteralNode<TruffleString> getModuleSpecifier() {
         return moduleSpecifier;
     }
 
-    public FromNode setModuleSpecifier(LiteralNode<String> moduleSpecifier) {
+    public FromNode setModuleSpecifier(LiteralNode<TruffleString> moduleSpecifier) {
         if (this.moduleSpecifier == moduleSpecifier) {
             return this;
         }
@@ -74,7 +75,7 @@ public class FromNode extends Node {
     public Node accept(NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterFromNode(this)) {
             return visitor.leaveFromNode(
-                            setModuleSpecifier((LiteralNode<String>) moduleSpecifier.accept(visitor)));
+                            setModuleSpecifier((LiteralNode<TruffleString>) moduleSpecifier.accept(visitor)));
         }
 
         return this;

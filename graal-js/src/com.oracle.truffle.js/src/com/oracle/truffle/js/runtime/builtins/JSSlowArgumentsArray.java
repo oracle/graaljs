@@ -43,7 +43,7 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.runtime.Boundaries;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 
 public final class JSSlowArgumentsArray extends JSAbstractArgumentsArray {
@@ -96,7 +96,7 @@ public final class JSSlowArgumentsArray extends JSAbstractArgumentsArray {
     @TruffleBoundary
     @Override
     public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
-        String indexAsString = Boundaries.stringValueOf(index);
+        Object indexAsString = Strings.fromLong(index);
         if (JSOrdinary.INSTANCE.hasOwnProperty(thisObj, indexAsString)) {
             return ordinarySet(thisObj, indexAsString, value, receiver, isStrict, encapsulatingNode);
         }
@@ -106,7 +106,7 @@ public final class JSSlowArgumentsArray extends JSAbstractArgumentsArray {
     @TruffleBoundary
     @Override
     public Object getOwnHelper(DynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
-        String indexAsString = Boundaries.stringValueOf(index);
+        Object indexAsString = Strings.fromLong(index);
         if (JSOrdinary.INSTANCE.hasOwnProperty(store, indexAsString)) {
             return JSOrdinary.INSTANCE.getOwnHelper(store, thisObj, indexAsString, encapsulatingNode);
         }

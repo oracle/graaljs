@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -47,8 +49,6 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.util.Set;
 
 /**
  * The entry point of module functions. Responsible for saving and restoring the module's

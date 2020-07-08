@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,20 +40,22 @@
  */
 package com.oracle.js.parser;
 
+import com.oracle.truffle.api.strings.TruffleString;
+
 /**
  * ParserContextNode that represents a LabelNode
  */
 class ParserContextLabelNode extends ParserContextBaseNode {
 
     /** Name for label */
-    private final String name;
+    private final TruffleString name;
 
     /**
      * Constructor
      *
      * @param name The name of the label
      */
-    ParserContextLabelNode(final String name) {
+    ParserContextLabelNode(final TruffleString name) {
         this.name = name;
     }
 
@@ -62,7 +64,7 @@ class ParserContextLabelNode extends ParserContextBaseNode {
      *
      * @return name of label
      */
-    public String getLabelName() {
+    public TruffleString getLabelName() {
         return name;
     }
 }

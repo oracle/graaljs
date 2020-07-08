@@ -45,11 +45,13 @@ import java.math.BigDecimal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 
 public abstract class ToIntlMathematicalValue extends JavaScriptBaseNode {
@@ -87,8 +89,8 @@ public abstract class ToIntlMathematicalValue extends JavaScriptBaseNode {
 
     @TruffleBoundary
     @Specialization
-    protected Number doString(String value) {
-        return parseStringNumericLiteral(value);
+    protected Number doString(TruffleString value) {
+        return parseStringNumericLiteral(Strings.toJavaString(value));
     }
 
     @Specialization

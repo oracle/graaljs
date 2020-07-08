@@ -68,6 +68,7 @@ import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
@@ -203,7 +204,7 @@ public class JSContext {
      */
     private final Assumption globalObjectPristineAssumption;
 
-    private volatile Map<String, Symbol> symbolRegistry;
+    private volatile Map<TruffleString, Symbol> symbolRegistry;
 
     // 0 = Number, 1 = BigInt, 2 = String
     private int operatorCounter = 3;
@@ -487,9 +488,9 @@ public class JSContext {
     private final PropertyProxy argumentsPropertyProxy;
     private final PropertyProxy callerPropertyProxy;
 
-    private final Set<String> supportedImportAssertions;
+    private final Set<TruffleString> supportedImportAssertions;
 
-    private static final String TYPE_IMPORT_ASSERTION = "type";
+    private static final TruffleString TYPE_IMPORT_ASSERTION = Strings.constant("type");
 
     /**
      * A shared root node that acts as a parent providing a lock to nodes that are not rooted in a
@@ -660,7 +661,7 @@ public class JSContext {
         this.regExpGroupsEmptyShape = JSRegExp.makeInitialGroupsObjectShape(this);
 
         this.regexOptions = createRegexOptions(contextOptions);
-        this.regexValidateOptions = regexOptions.isEmpty() ? REGEX_OPTION_VALIDATE : REGEX_OPTION_VALIDATE + ',' + regexOptions;
+        this.regexValidateOptions = regexOptions.isEmpty() ? REGEX_OPTION_VALIDATE : REGEX_OPTION_VALIDATE + "," + regexOptions;
 
         this.supportedImportAssertions = contextOptions.isImportAssertions() ? new HashSet<>() : Collections.emptySet();
         if (contextOptions.isImportAssertions()) {
@@ -790,7 +791,7 @@ public class JSContext {
         return JSShape.makeEmptyRoot(JSGlobal.INSTANCE, this);
     }
 
-    public final Map<String, Symbol> getSymbolRegistry() {
+    public final Map<TruffleString, Symbol> getSymbolRegistry() {
         if (symbolRegistry == null) {
             createSymbolRegistry();
         }
@@ -1157,19 +1158,19 @@ public class JSContext {
     private static String createRegexOptions(JSContextOptions contextOptions) {
         StringBuilder options = new StringBuilder();
         if (JSConfig.U180EWhitespace) {
-            options.append(REGEX_OPTION_U180E_WHITESPACE + "=true,");
+            options.append(REGEX_OPTION_U180E_WHITESPACE).append("=true,");
         }
         if (contextOptions.isRegexRegressionTestMode()) {
-            options.append(REGEX_OPTION_REGRESSION_TEST_MODE + "=true,");
+            options.append(REGEX_OPTION_REGRESSION_TEST_MODE).append("=true,");
         }
         if (contextOptions.isRegexDumpAutomata()) {
-            options.append(REGEX_OPTION_DUMP_AUTOMATA + "=true,");
+            options.append(REGEX_OPTION_DUMP_AUTOMATA).append("=true,");
         }
         if (contextOptions.isRegexStepExecution()) {
-            options.append(REGEX_OPTION_STEP_EXECUTION + "=true,");
+            options.append(REGEX_OPTION_STEP_EXECUTION).append("=true,");
         }
         if (contextOptions.isRegexAlwaysEager()) {
-            options.append(REGEX_OPTION_ALWAYS_EAGER + "=true,");
+            options.append(REGEX_OPTION_ALWAYS_EAGER).append("=true,");
         }
         return options.toString();
     }
@@ -1195,7 +1196,7 @@ public class JSContext {
         return regExpGroupsEmptyShape;
     }
 
-    public void setSymbolRegistry(Map<String, Symbol> newSymbolRegistry) {
+    public void setSymbolRegistry(Map<TruffleString, Symbol> newSymbolRegistry) {
         this.symbolRegistry = newSymbolRegistry;
     }
 
@@ -1346,7 +1347,7 @@ public class JSContext {
                 if (result == null) {
                     result = JSFunctionData.create(this,
                                     getBoundFunctionCallTarget(), getBoundFunctionConstructTarget(), getBoundFunctionConstructNewTarget(),
-                                    0, "bound", constructor, false, true, false, false, false, false, false, true, false, true);
+                                    0, Strings.BOUND, constructor, false, true, false, false, false, false, false, true, false, true);
                     if (constructor) {
                         boundConstructorFunctionData = result;
                     } else {
@@ -1749,7 +1750,7 @@ public class JSContext {
                 throw Errors.createTypeError("'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them");
             }
         }.getCallTarget();
-        return JSFunctionData.create(this, throwTypeErrorCallTarget, throwTypeErrorCallTarget, 0, "", false, false, false, true);
+        return JSFunctionData.create(this, throwTypeErrorCallTarget, throwTypeErrorCallTarget, 0, Strings.EMPTY_STRING, false, false, false, true);
     }
 
     private JSFunctionData protoSetterFunction() {
@@ -1775,7 +1776,7 @@ public class JSContext {
                 return Undefined.instance;
             }
         }.getCallTarget();
-        return JSFunctionData.createCallOnly(this, callTarget, 0, "set " + JSObject.PROTO);
+        return JSFunctionData.createCallOnly(this, callTarget, 0, Strings.concat(Strings.SET_SPC, JSObject.PROTO));
     }
 
     private JSFunctionData protoGetterFunction() {
@@ -1792,7 +1793,7 @@ public class JSContext {
                 return Null.instance;
             }
         }.getCallTarget();
-        return JSFunctionData.createCallOnly(this, callTarget, 0, "get " + JSObject.PROTO);
+        return JSFunctionData.createCallOnly(this, callTarget, 0, Strings.concat(Strings.GET_SPC, JSObject.PROTO));
     }
 
     public void checkEvalAllowed() {
@@ -1879,11 +1880,11 @@ public class JSContext {
         return getContextOptions().isTopLevelAwait();
     }
 
-    public final Set<String> getSupportedImportAssertions() {
+    public final Set<TruffleString> getSupportedImportAssertions() {
         return supportedImportAssertions;
     }
 
-    public static String getTypeImportAssertion() {
+    public static TruffleString getTypeImportAssertion() {
         return TYPE_IMPORT_ASSERTION;
     }
 }

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.interop;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -66,7 +67,7 @@ public abstract class JSInteropCallNode extends JavaScriptBaseNode {
         if (propertyGetNode == null) {
             method = JSObject.getOrDefault(receiver, key, receiver, defaultValue);
         } else {
-            assert JSRuntime.propertyKeyEquals(propertyGetNode.getKey(), key);
+            assert JSRuntime.propertyKeyEquals(TruffleString.EqualNode.getUncached(), propertyGetNode.getKey(), key);
             method = propertyGetNode.getValueOrDefault(receiver, defaultValue);
         }
         return method;

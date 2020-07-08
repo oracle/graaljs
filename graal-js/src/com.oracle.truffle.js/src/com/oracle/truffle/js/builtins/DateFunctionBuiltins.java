@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.DateFunctionBuiltinsFactory.DateNowNodeGen;
 import com.oracle.truffle.js.builtins.DateFunctionBuiltinsFactory.DateParseNodeGen;
 import com.oracle.truffle.js.builtins.DateFunctionBuiltinsFactory.DateUTCNodeGen;
@@ -53,6 +54,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 
@@ -106,9 +108,9 @@ public final class DateFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<D
 
         @Specialization
         protected double parse(Object parseDate,
-                        @Cached("create()") JSToStringNode toStringNode) {
-            String dateString = toStringNode.executeString(parseDate);
-            Integer[] fields = getContext().getEvaluator().parseDate(getRealm(), dateString.trim(), false);
+                        @Cached JSToStringNode toStringNode) {
+            TruffleString dateString = toStringNode.executeString(parseDate);
+            Integer[] fields = getContext().getEvaluator().parseDate(getRealm(), Strings.toJavaString(Strings.trim(dateString)), false);
             if (gotFieldsProfile.profile(fields != null)) {
                 return JSDate.makeDate(fields[0], fields[1], fields[2], fields[3], fields[4], fields[5], fields[6], fields[7]);
             }

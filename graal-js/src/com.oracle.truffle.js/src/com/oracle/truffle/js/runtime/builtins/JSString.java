@@ -49,16 +49,17 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.StringFunctionBuiltins;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -76,20 +77,20 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
 
     public static final JSString INSTANCE = new JSString();
 
-    public static final String TYPE_NAME = "string";
-    public static final String CLASS_NAME = "String";
-    public static final String PROTOTYPE_NAME = "String.prototype";
-    public static final String CLASS_NAME_EXTENSIONS = "StringExtensions";
+    public static final TruffleString TYPE_NAME = Strings.STRING;
+    public static final TruffleString CLASS_NAME = Strings.UC_STRING;
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("String.prototype");
+    public static final TruffleString CLASS_NAME_EXTENSIONS = Strings.constant("StringExtensions");
 
-    public static final String LENGTH = "length";
+    public static final TruffleString LENGTH = Strings.constant("length");
 
-    public static final String ITERATOR_CLASS_NAME = "String Iterator";
-    public static final String ITERATOR_PROTOTYPE_NAME = "String Iterator.prototype";
+    public static final TruffleString ITERATOR_CLASS_NAME = Strings.constant("String Iterator");
+    public static final TruffleString ITERATOR_PROTOTYPE_NAME = Strings.constant("String Iterator.prototype");
     public static final HiddenKey ITERATED_STRING_ID = new HiddenKey("IteratedString");
     public static final HiddenKey STRING_ITERATOR_NEXT_INDEX_ID = new HiddenKey("StringIteratorNextIndex");
 
-    public static final String REGEXP_ITERATOR_CLASS_NAME = "RegExp String Iterator";
-    public static final String REGEXP_ITERATOR_PROTOTYPE_NAME = "RegExp String Iterator.prototype";
+    public static final TruffleString REGEXP_ITERATOR_CLASS_NAME = Strings.constant("RegExp String Iterator");
+    public static final TruffleString REGEXP_ITERATOR_PROTOTYPE_NAME = Strings.constant("RegExp String Iterator.prototype");
     public static final HiddenKey REGEXP_ITERATOR_ITERATING_REGEXP_ID = new HiddenKey("IteratingRegExp");
     public static final HiddenKey REGEXP_ITERATOR_ITERATED_STRING_ID = new HiddenKey("IteratedString");
     public static final HiddenKey REGEXP_ITERATOR_GLOBAL_ID = new HiddenKey("Global");
@@ -98,10 +99,15 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
 
     private static final PropertyProxy LENGTH_PROXY = new StringLengthProxyProperty();
 
+    public static final TruffleString TRIM_START = Strings.constant("trimStart");
+    public static final TruffleString TRIM_END = Strings.constant("trimEnd");
+    public static final TruffleString TRIM_LEFT = Strings.constant("trimLeft");
+    public static final TruffleString TRIM_RIGHT = Strings.constant("trimRight");
+
     private JSString() {
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm, CharSequence value) {
+    public static DynamicObject create(JSContext context, JSRealm realm, TruffleString value) {
         DynamicObject stringObj = JSStringObject.create(realm, context.getStringFactory(), value);
         assert isJSString(stringObj);
         return context.trackAllocation(stringObj);
@@ -117,19 +123,15 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
         return index >= 0 && index < getStringLength(thisObj);
     }
 
-    public static CharSequence getCharSequence(DynamicObject obj) {
+    public static TruffleString getString(DynamicObject obj) {
         assert isJSString(obj);
-        return ((com.oracle.truffle.js.runtime.builtins.JSStringObject) obj).getCharSequence();
-    }
-
-    public static String getString(DynamicObject obj) {
-        return Boundaries.stringValueOf(getCharSequence(obj));
+        return ((com.oracle.truffle.js.runtime.builtins.JSStringObject) obj).getString();
     }
 
     @TruffleBoundary
     public static int getStringLength(DynamicObject obj) {
         assert isJSString(obj);
-        return getCharSequence(obj).length();
+        return Strings.length(getString(obj));
     }
 
     @Override
@@ -137,7 +139,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
         if (index >= 0 && index < getStringLength(thisObj)) {
             return true;
         }
-        return super.hasOwnProperty(thisObj, Boundaries.stringValueOf(index));
+        return super.hasOwnProperty(thisObj, Strings.fromLong(index));
     }
 
     @TruffleBoundary
@@ -145,7 +147,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     public Object getOwnHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
         long value = JSRuntime.propertyKeyToArrayIndex(key);
         if (0 <= value && value < getStringLength(store)) {
-            return String.valueOf(getCharSequence(store).charAt((int) value));
+            return Strings.substring(getString(store), (int) value, 1);
         }
         return super.getOwnHelper(store, thisObj, key, encapsulatingNode);
     }
@@ -154,9 +156,9 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     @Override
     public Object getOwnHelper(DynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
         if (0 <= index && index < getStringLength(store)) {
-            return String.valueOf(getCharSequence(store).charAt((int) index));
+            return Strings.substring(getString(store), (int) index, 1);
         }
-        return super.getOwnHelper(store, thisObj, Boundaries.stringValueOf(index), encapsulatingNode);
+        return super.getOwnHelper(store, thisObj, Strings.fromLong(index), encapsulatingNode);
     }
 
     @TruffleBoundary
@@ -169,7 +171,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
         if (index >= 0 && index < getStringLength(thisObj)) {
             // Indexed properties of a String are non-writable and non-configurable.
             if (isStrict) {
-                throw Errors.createTypeErrorNotWritableProperty(Boundaries.stringValueOf(index), thisObj);
+                throw Errors.createTypeErrorNotWritableProperty(Strings.fromLong(index), thisObj);
             }
             return true;
         } else {
@@ -181,12 +183,12 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     @Override
     public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         if (receiver != thisObj) {
-            return ordinarySetWithReceiver(thisObj, Boundaries.stringValueOf(index), value, receiver, isStrict, encapsulatingNode);
+            return ordinarySetWithReceiver(thisObj, Strings.fromLong(index), value, receiver, isStrict, encapsulatingNode);
         }
         if (index < getStringLength(thisObj)) {
             // Indexed properties of a String are non-writable and non-configurable.
             if (isStrict) {
-                throw Errors.createTypeErrorNotWritableProperty(Boundaries.stringValueOf(index), thisObj);
+                throw Errors.createTypeErrorNotWritableProperty(Strings.fromLong(index), thisObj);
             }
             return true;
         } else {
@@ -206,14 +208,14 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
             List<Object> list = new ArrayList<>(keyList.size());
             if (strings) {
                 keyList.forEach(k -> {
-                    if (k instanceof String && JSRuntime.isArrayIndex((String) k)) {
+                    if (Strings.isTString(k) && JSRuntime.isArrayIndexString((TruffleString) k)) {
                         assert JSRuntime.propertyKeyToArrayIndex(k) >= len;
                         list.add(k);
                     }
                 });
                 Collections.sort(list, JSRuntime::comparePropertyKeys);
                 keyList.forEach(k -> {
-                    if (k instanceof String && !JSRuntime.isArrayIndex((String) k)) {
+                    if (Strings.isTString(k) && !JSRuntime.isArrayIndexString((TruffleString) k)) {
                         list.add(k);
                     }
                 });
@@ -246,7 +248,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
         Shape protoShape = JSShape.createPrototypeShape(ctx, INSTANCE, realm.getObjectPrototype());
-        DynamicObject prototype = JSStringObject.create(protoShape, "");
+        DynamicObject prototype = JSStringObject.create(protoShape, Strings.EMPTY_STRING);
         JSObjectUtil.setOrVerifyPrototype(ctx, prototype, realm.getObjectPrototype());
 
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
@@ -258,10 +260,10 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
         }
         if (ctx.isOptionAnnexB()) {
             // trimLeft/trimRight are the same objects as trimStart/trimEnd
-            Object trimStart = JSObject.get(prototype, "trimStart");
-            Object trimEnd = JSObject.get(prototype, "trimEnd");
-            JSObjectUtil.putDataProperty(ctx, prototype, "trimLeft", trimStart, JSAttributes.configurableNotEnumerableWritable());
-            JSObjectUtil.putDataProperty(ctx, prototype, "trimRight", trimEnd, JSAttributes.configurableNotEnumerableWritable());
+            Object trimStart = JSObject.get(prototype, TRIM_START);
+            Object trimEnd = JSObject.get(prototype, TRIM_END);
+            JSObjectUtil.putDataProperty(ctx, prototype, TRIM_LEFT, trimStart, JSAttributes.configurableNotEnumerableWritable());
+            JSObjectUtil.putDataProperty(ctx, prototype, TRIM_RIGHT, trimEnd, JSAttributes.configurableNotEnumerableWritable());
         }
         return prototype;
     }
@@ -278,29 +280,28 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 
     @Override
-    public String getBuiltinToStringTag(DynamicObject object) {
+    public TruffleString getBuiltinToStringTag(DynamicObject object) {
         return getClassName(object);
     }
 
     @TruffleBoundary
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
-            return "[" + CLASS_NAME + " " + getCharSequence(obj) + "]";
+            return Strings.concatAll(Strings.BRACKET_OPEN, CLASS_NAME, Strings.SPACE, getString(obj), Strings.BRACKET_CLOSE);
         } else {
-            String primitiveValue = JSString.getString(obj);
             return JSRuntime.objectToDisplayString(obj, allowSideEffects, format, depth,
-                            getBuiltinToStringTag(obj), new String[]{JSRuntime.PRIMITIVE_VALUE}, new Object[]{primitiveValue});
+                            getBuiltinToStringTag(obj), new TruffleString[]{Strings.PRIMITIVE_VALUE}, new Object[]{JSString.getString(obj)});
         }
     }
 
@@ -357,12 +358,12 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
         if (index < 0) {
             return null;
         }
-        String s = getString(thisObj);
-        int len = s.length();
+        TruffleString s = getString(thisObj);
+        int len = Strings.length(s);
         if (len <= index) {
             return null;
         }
-        String resultStr = s.substring((int) index, (int) index + 1);
+        TruffleString resultStr = Strings.substring(s, (int) index, 1);
         return PropertyDescriptor.createData(resultStr, true, false, false);
     }
 

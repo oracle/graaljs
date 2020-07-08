@@ -42,12 +42,14 @@ package com.oracle.truffle.trufflenode;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 
 public final class JSExternal extends JSNonProxy {
 
-    public static final String CLASS_NAME = "external";
+    public static final TruffleString CLASS_NAME = Strings.constant("external");
     public static final JSExternal INSTANCE = new JSExternal();
 
     private JSExternal() {
@@ -69,7 +71,7 @@ public final class JSExternal extends JSNonProxy {
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return CLASS_NAME;
     }
 }

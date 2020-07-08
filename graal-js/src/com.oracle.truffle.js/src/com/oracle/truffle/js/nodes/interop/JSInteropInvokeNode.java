@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -63,18 +64,19 @@ public abstract class JSInteropInvokeNode extends JSInteropCallNode {
         return JSInteropInvokeNodeGen.create();
     }
 
-    public abstract Object execute(DynamicObject receiver, String name, Object[] arguments) throws UnknownIdentifierException, UnsupportedMessageException;
+    public abstract Object execute(DynamicObject receiver, TruffleString name, Object[] arguments) throws UnknownIdentifierException, UnsupportedMessageException;
 
-    @Specialization(guards = {"cachedName.equals(name)"}, limit = "1")
-    Object doCached(DynamicObject receiver, @SuppressWarnings("unused") String name, Object[] arguments,
-                    @Cached("name") String cachedName,
+    @Specialization(guards = {"stringEquals(equalNode, cachedName, name)"}, limit = "1")
+    Object doCached(DynamicObject receiver, @SuppressWarnings("unused") TruffleString name, Object[] arguments,
+                    @Cached("name") TruffleString cachedName,
+                    @Cached @SuppressWarnings("unused") TruffleString.EqualNode equalNode,
                     @Cached("createGetProperty(cachedName)") PropertyGetNode functionPropertyGetNode,
                     @Shared("isCallable") @Cached IsCallableNode isCallableNode,
                     @Shared("call") @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
                     @Shared("importValue") @Cached ImportValueNode importValueNode) throws UnknownIdentifierException, UnsupportedMessageException {
         Object function = functionPropertyGetNode.getValueOrDefault(receiver, null);
         if (function == null) {
-            throw UnknownIdentifierException.create(cachedName);
+            throw UnknownIdentifierException.create(cachedName.toJavaStringUncached());
         }
         if (isCallableNode.executeBoolean(function)) {
             return callNode.executeCall(JSArguments.create(receiver, function, prepare(arguments, importValueNode)));
@@ -84,7 +86,7 @@ public abstract class JSInteropInvokeNode extends JSInteropCallNode {
     }
 
     @Specialization(replaces = "doCached")
-    Object doUncached(DynamicObject receiver, String name, Object[] arguments,
+    Object doUncached(DynamicObject receiver, TruffleString name, Object[] arguments,
                     @Cached(value = "create(getLanguage().getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
                     @Shared("isCallable") @Cached IsCallableNode isCallableNode,
                     @Shared("call") @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
@@ -96,7 +98,7 @@ public abstract class JSInteropInvokeNode extends JSInteropCallNode {
             function = readNode.executeWithTargetAndIndexOrDefault(receiver, name, null);
         }
         if (function == null) {
-            throw UnknownIdentifierException.create(name);
+            throw UnknownIdentifierException.create(name.toJavaStringUncached());
         }
         if (isCallableNode.executeBoolean(function)) {
             Object[] preparedArgs = prepare(arguments, importValueNode);
@@ -106,7 +108,7 @@ public abstract class JSInteropInvokeNode extends JSInteropCallNode {
         }
     }
 
-    PropertyGetNode createGetProperty(String name) {
+    PropertyGetNode createGetProperty(TruffleString name) {
         return PropertyGetNode.create(name, false, getLanguage().getJSContext());
     }
 

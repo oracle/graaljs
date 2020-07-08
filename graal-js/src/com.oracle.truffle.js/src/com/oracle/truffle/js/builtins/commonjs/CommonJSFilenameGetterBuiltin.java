@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,9 +43,11 @@ package com.oracle.truffle.js.builtins.commonjs;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 
 public abstract class CommonJSFilenameGetterBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
 
@@ -59,14 +61,14 @@ public abstract class CommonJSFilenameGetterBuiltin extends GlobalBuiltins.JSFil
     }
 
     @CompilerDirectives.TruffleBoundary
-    private String getCurrentFileName() {
+    private TruffleString getCurrentFileName() {
         String filePath = CommonJSResolution.getCurrentFileNameFromStack();
         if (filePath != null) {
             TruffleFile truffleFile = getRealm().getEnv().getPublicTruffleFile(filePath);
             assert truffleFile.isRegularFile();
-            return truffleFile.normalize().toString();
+            return Strings.fromJavaString(truffleFile.normalize().toString());
         }
-        return "unknown";
+        return Strings.UNKNOWN;
     }
 
 }

@@ -57,6 +57,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -257,7 +258,7 @@ public final class SparseArray extends DynamicArray {
         Set<Long> keySet = arrayMap(object).keySet();
         List<Object> list = new ArrayList<>(keySet.size());
         for (long index : keySet) {
-            list.add(Boundaries.stringValueOf(index));
+            list.add(Strings.fromLong(index));
         }
         return list;
     }

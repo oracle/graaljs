@@ -52,6 +52,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltins;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -64,6 +65,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
@@ -81,19 +83,29 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
 
     public static final JSTemporalCalendar INSTANCE = new JSTemporalCalendar();
 
-    public static final String CLASS_NAME = "Calendar";
-    public static final String PROTOTYPE_NAME = "Calendar.prototype";
+    public static final TruffleString CLASS_NAME = Strings.constant("Calendar");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("Calendar.prototype");
+    public static final TruffleString TO_STRING_TAG = Strings.constant("Temporal.Calendar");
+
+    public static final TruffleString DAY_OF_WEEK = Strings.constant("dayOfWeek");
+    public static final TruffleString DAY_OF_YEAR = Strings.constant("dayOfYear");
+    public static final TruffleString WEEK_OF_YEAR = Strings.constant("weekOfYear");
+    public static final TruffleString DAYS_IN_WEEK = Strings.constant("daysInWeek");
+    public static final TruffleString DAYS_IN_MONTH = Strings.constant("daysInMonth");
+    public static final TruffleString DAYS_IN_YEAR = Strings.constant("daysInYear");
+    public static final TruffleString MONTHS_IN_YEAR = Strings.constant("monthsInYear");
+    public static final TruffleString IN_LEAP_YEAR = Strings.constant("inLeapYear");
 
     private JSTemporalCalendar() {
 
     }
 
-    public static DynamicObject create(JSContext context, String id) {
+    public static DynamicObject create(JSContext context, TruffleString id) {
         JSRealm realm = JSRealm.get(null);
         return create(context, realm, id);
     }
 
-    public static DynamicObject create(JSContext context, JSRealm realm, String id) {
+    public static DynamicObject create(JSContext context, JSRealm realm, TruffleString id) {
         if (!isBuiltinCalendar(id)) {
             throw TemporalErrors.createRangeErrorCalendarNotSupported();
         }
@@ -103,12 +115,12 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
-        return "Temporal.Calendar";
+    public TruffleString getClassName(DynamicObject object) {
+        return TO_STRING_TAG;
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
@@ -120,7 +132,7 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
 
         JSObjectUtil.putBuiltinAccessorProperty(prototype, ID, realm.lookupAccessor(TemporalCalendarPrototypeBuiltins.BUILTINS, ID));
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalCalendarPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putToStringTag(prototype, "Temporal.Calendar");
+        JSObjectUtil.putToStringTag(prototype, TO_STRING_TAG);
 
         return prototype;
     }
@@ -145,12 +157,12 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
     }
 
     // 12.1.2
-    public static boolean isBuiltinCalendar(String id) {
+    public static boolean isBuiltinCalendar(TruffleString id) {
         return id.equals(ISO8601) || id.equals(GREGORY) || id.equals(JAPANESE);
     }
 
     // 12.1.3
-    public static JSTemporalCalendarObject getBuiltinCalendar(String id, JSContext ctx) {
+    public static JSTemporalCalendarObject getBuiltinCalendar(TruffleString id, JSContext ctx) {
         if (!isBuiltinCalendar(id)) {
             throw TemporalErrors.createRangeErrorCalendarNotSupported();
         }
@@ -162,7 +174,7 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
         return getBuiltinCalendar(ISO8601, ctx);
     }
 
-    private static Object executeFunction(DynamicObject obj, String fnName, Object... funcArgs) {
+    private static Object executeFunction(DynamicObject obj, TruffleString fnName, Object... funcArgs) {
         DynamicObject fn = (DynamicObject) JSObject.getMethod(obj, fnName);
         return JSRuntime.call(fn, obj, funcArgs);
     }
@@ -186,7 +198,7 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
     }
 
     // 12.1.11
-    public static String calendarMonthCode(DynamicObject calendar, DynamicObject dateLike) {
+    public static TruffleString calendarMonthCode(DynamicObject calendar, DynamicObject dateLike) {
         Object result = executeFunction(calendar, MONTH_CODE, dateLike);
         if (result == Undefined.instance) {
             throw Errors.createRangeError("");
@@ -205,42 +217,42 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
 
     // 12.1.13
     public static Object calendarDayOfWeek(DynamicObject calendar, DynamicObject dateLike) {
-        return executeFunction(calendar, "dayOfWeek", dateLike);
+        return executeFunction(calendar, DAY_OF_WEEK, dateLike);
     }
 
     // 12.1.14
     public static Object calendarDayOfYear(DynamicObject calendar, DynamicObject dateLike) {
-        return executeFunction(calendar, "dayOfYear", dateLike);
+        return executeFunction(calendar, DAY_OF_YEAR, dateLike);
     }
 
     // 12.1.15
     public static Object calendarWeekOfYear(DynamicObject calendar, DynamicObject dateLike) {
-        return executeFunction(calendar, "weekOfYear", dateLike);
+        return executeFunction(calendar, WEEK_OF_YEAR, dateLike);
     }
 
     // 12.1.16
     public static Object calendarDaysInWeek(DynamicObject calendar, DynamicObject dateLike) {
-        return executeFunction(calendar, "daysInWeek", dateLike);
+        return executeFunction(calendar, DAYS_IN_WEEK, dateLike);
     }
 
     // 12.1.17
     public static Object calendarDaysInMonth(DynamicObject calendar, DynamicObject dateLike) {
-        return executeFunction(calendar, "daysInMonth", dateLike);
+        return executeFunction(calendar, DAYS_IN_MONTH, dateLike);
     }
 
     // 12.1.18
     public static Object calendarDaysInYear(DynamicObject calendar, DynamicObject dateLike) {
-        return executeFunction(calendar, "daysInYear", dateLike);
+        return executeFunction(calendar, DAYS_IN_YEAR, dateLike);
     }
 
     // 12.1.19
     public static Object calendarMonthsInYear(DynamicObject calendar, DynamicObject dateLike) {
-        return executeFunction(calendar, "monthsInYear", dateLike);
+        return executeFunction(calendar, MONTHS_IN_YEAR, dateLike);
     }
 
     // 12.1.20
     public static Object calendarInLeapYear(DynamicObject calendar, DynamicObject dateLike) {
-        return executeFunction(calendar, "inLeapYear", dateLike);
+        return executeFunction(calendar, IN_LEAP_YEAR, dateLike);
     }
 
     // 12.1.38
@@ -253,12 +265,12 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
             }
             return month;
         }
-        assert monthCode instanceof String;
-        int monthLength = ((String) monthCode).length();
+        assert monthCode instanceof TruffleString;
+        int monthLength = Strings.length((TruffleString) monthCode);
         if (monthLength != 3) {
             throw Errors.createRangeError("Month code should be in 3 character code.");
         }
-        String numberPart = ((String) monthCode).substring(1);
+        TruffleString numberPart = Strings.substring((TruffleString) monthCode, 1);
         double numberPart2 = stringToNumber.executeString(numberPart);
         if (Double.isNaN(numberPart2)) {
             throw Errors.createRangeError("The last character of the monthCode should be a number.");
@@ -344,15 +356,15 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
         return JSTemporalYearMonthDayRecord.create(referenceISOYear, result.getMonth(), result.getDay());
     }
 
-    public static String isoMonthCode(TemporalMonth date) {
+    public static TruffleString isoMonthCode(TemporalMonth date) {
         long month = date.getMonth();
         return buildISOMonthCode(month);
     }
 
     @TruffleBoundary
-    private static String buildISOMonthCode(long month) {
-        String monthCode = String.format("%1$02d", month);
-        return "M".concat(monthCode);
+    private static TruffleString buildISOMonthCode(long month) {
+        TruffleString monthCode = Strings.format("%1$02d", month);
+        return Strings.concat(Strings.UC_M, monthCode);
     }
 
     // 12.1.45

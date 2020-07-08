@@ -42,8 +42,10 @@ package com.oracle.truffle.js.runtime.util;
 
 import com.oracle.truffle.api.nodes.NodeCloneable;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.js.runtime.Boundaries;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.Strings;
 
 /**
  * A wrapper around StringBuilder methods that takes care of profiling and checking that the string
@@ -66,58 +68,63 @@ public final class StringBuilderProfile extends NodeCloneable {
     }
 
     @SuppressWarnings("static-method")
-    public StringBuilder newStringBuilder() {
-        return new StringBuilder();
-    }
-
-    public StringBuilder newStringBuilder(int capacity) {
-        return new StringBuilder(Math.max(16, Math.min(capacity, stringLengthLimit)));
+    public TruffleStringBuilder newStringBuilder() {
+        return Strings.builderCreate();
     }
 
     @SuppressWarnings("static-method")
-    public String toString(StringBuilder builder) {
-        return Boundaries.builderToString(builder);
+    public TruffleStringBuilder newStringBuilder(int capacity) {
+        return Strings.builderCreate(capacity);
     }
 
-    public void append(StringBuilder builder, String str) {
-        if ((builder.length() + str.length()) > stringLengthLimit) {
+    public static TruffleString toString(TruffleStringBuilder.ToStringNode node, TruffleStringBuilder builder) {
+        return Strings.builderToString(node, builder);
+    }
+
+    public void append(TruffleStringBuilder.AppendStringNode node, TruffleStringBuilder builder, TruffleString str) {
+        if ((Strings.builderLength(builder) + Strings.length(str)) > stringLengthLimit) {
             errorBranch.enter();
             throw Errors.createRangeErrorInvalidStringLength();
         }
-        Boundaries.builderAppend(builder, str);
+        Strings.builderAppend(node, builder, str);
     }
 
-    public void append(StringBuilder builder, char c) {
-        if (builder.length() + 1 > stringLengthLimit) {
+    public void append(TruffleStringBuilder.AppendCharUTF16Node node, TruffleStringBuilder builder, char c) {
+        if (Strings.builderLength(builder) + 1 > stringLengthLimit) {
             errorBranch.enter();
             throw Errors.createRangeErrorInvalidStringLength();
         }
-        Boundaries.builderAppend(builder, c);
+        Strings.builderAppend(node, builder, c);
     }
 
-    public void append(StringBuilder builder, int intValue) {
-        if (builder.length() + MAX_INT_STRING_LENGTH > stringLengthLimit) {
+    public void append(TruffleStringBuilder.AppendIntNumberNode node, TruffleStringBuilder builder, int intValue) {
+        if (Strings.builderLength(builder) + MAX_INT_STRING_LENGTH > stringLengthLimit) {
             errorBranch.enter();
             throw Errors.createRangeErrorInvalidStringLength();
         }
-        Boundaries.builderAppend(builder, intValue);
+        Strings.builderAppend(node, builder, intValue);
     }
 
-    public void append(StringBuilder builder, long longValue) {
-        if (builder.length() + MAX_LONG_STRING_LENGTH > stringLengthLimit) {
+    public void append(TruffleStringBuilder.AppendLongNumberNode node, TruffleStringBuilder builder, long longValue) {
+        if (Strings.builderLength(builder) + MAX_LONG_STRING_LENGTH > stringLengthLimit) {
             errorBranch.enter();
             throw Errors.createRangeErrorInvalidStringLength();
         }
-        Boundaries.builderAppend(builder, longValue);
+        Strings.builderAppend(node, builder, longValue);
     }
 
-    public void append(StringBuilder builder, String charSequence, int start, int end) {
+    public void append(TruffleStringBuilder.AppendSubstringByteIndexNode node, TruffleStringBuilder builder, TruffleString charSequence, int start, int end) {
         assert start <= end;
-        if (builder.length() + (end - start) > stringLengthLimit) {
+        int length = end - start;
+        if (Strings.builderLength(builder) + length > stringLengthLimit) {
             errorBranch.enter();
             throw Errors.createRangeErrorInvalidStringLength();
         }
-        Boundaries.builderAppend(builder, charSequence, start, end);
+        Strings.builderAppend(node, builder, charSequence, start, end);
+    }
+
+    public static int length(TruffleStringBuilder builder) {
+        return Strings.builderLength(builder);
     }
 
     @Override

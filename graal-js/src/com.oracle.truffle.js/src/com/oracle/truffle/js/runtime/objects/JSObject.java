@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,6 +60,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
@@ -74,6 +75,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
@@ -94,13 +96,13 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
 @ExportLibrary(InteropLibrary.class)
 public abstract class JSObject extends JSDynamicObject {
 
-    public static final String CONSTRUCTOR = "constructor";
-    public static final String PROTOTYPE = "prototype";
-    public static final String PROTO = "__proto__";
+    public static final TruffleString CONSTRUCTOR = Strings.constant("constructor");
+    public static final TruffleString PROTOTYPE = Strings.constant("prototype");
+    public static final TruffleString PROTO = Strings.constant("__proto__");
     public static final HiddenKey HIDDEN_PROTO = new HiddenKey("[[Prototype]]");
 
-    public static final String NO_SUCH_PROPERTY_NAME = "__noSuchProperty__";
-    public static final String NO_SUCH_METHOD_NAME = "__noSuchMethod__";
+    public static final TruffleString NO_SUCH_PROPERTY_NAME = Strings.constant("__noSuchProperty__");
+    public static final TruffleString NO_SUCH_METHOD_NAME = Strings.constant("__noSuchMethod__");
     protected static final String[] EMPTY_STRING_ARRAY = new String[0];
 
     protected JSObject(Shape shape) {
@@ -143,10 +145,10 @@ public abstract class JSObject extends JSDynamicObject {
     protected static String[] filterEnumerableNames(DynamicObject target, Iterable<Object> ownKeys, JSClass jsclass) {
         List<String> names = new ArrayList<>();
         for (Object obj : ownKeys) {
-            if (obj instanceof String && !JSRuntime.isArrayIndex((String) obj)) {
+            if (Strings.isTString(obj) && !JSRuntime.isArrayIndex(obj)) {
                 PropertyDescriptor desc = jsclass.getOwnProperty(target, obj);
                 if (desc != null && desc.getEnumerable()) {
-                    names.add((String) obj);
+                    names.add(Strings.toJavaString((TruffleString) obj));
                 }
             }
         }
@@ -163,12 +165,13 @@ public abstract class JSObject extends JSDynamicObject {
                     @Cached(value = "create(language(self).getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
                     @Cached(value = "language(self).bindMemberFunctions()", allowUncached = true) boolean bindMemberFunctions,
                     @Cached @Exclusive ExportValueNode exportNode) throws UnknownIdentifierException {
+        TruffleString tStringKey = Strings.fromJavaString(key);
         DynamicObject target = this;
         Object result;
         if (readNode == null) {
-            result = JSObject.getOrDefault(target, key, target, null);
+            result = JSObject.getOrDefault(target, tStringKey, target, null);
         } else {
-            result = readNode.executeWithTargetAndIndexOrDefault(target, key, null);
+            result = readNode.executeWithTargetAndIndexOrDefault(target, tStringKey, null);
         }
         if (result == null) {
             throw UnknownIdentifierException.create(key);
@@ -195,11 +198,12 @@ public abstract class JSObject extends JSDynamicObject {
         if (!keyInfo.execute(target, key, KeyInfoNode.WRITABLE)) {
             throw UnknownIdentifierException.create(key);
         }
+        TruffleString tStringKey = Strings.fromJavaString(key);
         Object importedValue = castValueNode.executeWithTarget(value);
         if (writeNode == null) {
-            JSObject.set(target, key, importedValue, true, null);
+            JSObject.set(target, tStringKey, importedValue, true, null);
         } else {
-            writeNode.executeWithTargetAndIndexAndValue(target, key, importedValue);
+            writeNode.executeWithTargetAndIndexAndValue(target, tStringKey, importedValue);
         }
     }
 
@@ -220,7 +224,7 @@ public abstract class JSObject extends JSDynamicObject {
         if (testIntegrityLevel(false)) {
             throw UnsupportedMessageException.create();
         }
-        JSObject.delete(this, key, true);
+        JSObject.delete(this, Strings.fromJavaString(key), true);
     }
 
     @ExportMessage
@@ -238,7 +242,7 @@ public abstract class JSObject extends JSDynamicObject {
         JSRealm realm = JSRealm.get(self);
         language.interopBoundaryEnter(realm);
         try {
-            Object result = callNode.execute(this, id, args);
+            Object result = callNode.execute(this, Strings.fromJavaString(id), args);
             return exportNode.execute(result);
         } finally {
             language.interopBoundaryExit(realm);
@@ -370,6 +374,7 @@ public abstract class JSObject extends JSDynamicObject {
     @TruffleBoundary
     public static boolean set(DynamicObject obj, Object key, Object value, boolean isStrict, Node encapsulatingNode) {
         assert JSRuntime.isPropertyKey(key);
+        assert !(value instanceof String);
         return JSObject.getJSClass(obj).set(obj, key, value, obj, isStrict, encapsulatingNode);
     }
 
@@ -378,6 +383,7 @@ public abstract class JSObject extends JSDynamicObject {
      */
     public static boolean setWithReceiver(DynamicObject obj, Object key, Object value, Object receiver, boolean isStrict, JSClassProfile classProfile, Node encapsulatingNode) {
         assert JSRuntime.isPropertyKey(key);
+        assert !(value instanceof String);
         return classProfile.getJSClass(obj).set(obj, key, value, receiver, isStrict, encapsulatingNode);
     }
 
@@ -480,18 +486,18 @@ public abstract class JSObject extends JSDynamicObject {
      * 7.3.21 EnumerableOwnNames (O).
      */
     @TruffleBoundary
-    public static List<String> enumerableOwnNames(DynamicObject thisObj) {
+    public static List<TruffleString> enumerableOwnNames(DynamicObject thisObj) {
         JSClass jsclass = JSObject.getJSClass(thisObj);
         if (JSConfig.FastOwnKeys && jsclass.hasOnlyShapeProperties(thisObj)) {
             return JSShape.getEnumerablePropertyNames(thisObj.getShape());
         }
         Iterable<Object> ownKeys = jsclass.ownPropertyKeys(thisObj);
-        List<String> names = new ArrayList<>();
+        List<TruffleString> names = new ArrayList<>();
         for (Object obj : ownKeys) {
-            if (obj instanceof String) {
+            if (Strings.isTString(obj)) {
                 PropertyDescriptor desc = jsclass.getOwnProperty(thisObj, obj);
                 if (desc != null && desc.getEnumerable()) {
-                    names.add((String) obj);
+                    names.add((TruffleString) obj);
                 }
             }
         }
@@ -546,7 +552,7 @@ public abstract class JSObject extends JSDynamicObject {
     }
 
     @TruffleBoundary
-    public static String defaultToString(DynamicObject obj) {
+    public static TruffleString defaultToString(DynamicObject obj) {
         return JSObject.getJSClass(obj).defaultToString(obj);
     }
 
@@ -554,7 +560,7 @@ public abstract class JSObject extends JSDynamicObject {
      * ES2015 7.1.1 ToPrimitive in case an Object is passed.
      */
     @TruffleBoundary
-    public static Object toPrimitive(DynamicObject obj, String hint) {
+    public static Object toPrimitive(DynamicObject obj, Object hint) {
         assert obj != Null.instance && obj != Undefined.instance;
         Object exoticToPrim = JSObject.getMethod(obj, Symbol.SYMBOL_TO_PRIMITIVE);
         if (exoticToPrim != Undefined.instance) {
@@ -564,8 +570,8 @@ public abstract class JSObject extends JSDynamicObject {
             }
             return result;
         }
-        if (hint.equals(JSRuntime.HINT_DEFAULT)) {
-            return ordinaryToPrimitive(obj, JSRuntime.HINT_NUMBER);
+        if (hint.equals(Strings.HINT_DEFAULT)) {
+            return ordinaryToPrimitive(obj, Strings.HINT_NUMBER);
         } else {
             return ordinaryToPrimitive(obj, hint);
         }
@@ -573,23 +579,23 @@ public abstract class JSObject extends JSDynamicObject {
 
     @TruffleBoundary
     public static Object toPrimitive(DynamicObject obj) {
-        return toPrimitive(obj, JSRuntime.HINT_DEFAULT);
+        return toPrimitive(obj, Strings.HINT_DEFAULT);
     }
 
     /**
      * ES2018 7.1.1.1 OrdinaryToPrimitive.
      */
     @TruffleBoundary
-    public static Object ordinaryToPrimitive(DynamicObject obj, String hint) {
+    public static Object ordinaryToPrimitive(DynamicObject obj, Object hint) {
         assert JSRuntime.isObject(obj);
-        assert JSRuntime.HINT_STRING.equals(hint) || JSRuntime.HINT_NUMBER.equals(hint);
-        String[] methodNames;
-        if (JSRuntime.HINT_STRING.equals(hint)) {
-            methodNames = new String[]{JSRuntime.TO_STRING, JSRuntime.VALUE_OF};
+        assert Strings.HINT_STRING.equals(hint) || Strings.HINT_NUMBER.equals(hint);
+        Object[] methodNames;
+        if (Strings.HINT_STRING.equals(hint)) {
+            methodNames = new Object[]{Strings.TO_STRING, Strings.VALUE_OF};
         } else {
-            methodNames = new String[]{JSRuntime.VALUE_OF, JSRuntime.TO_STRING};
+            methodNames = new Object[]{Strings.VALUE_OF, Strings.TO_STRING};
         }
-        for (String name : methodNames) {
+        for (Object name : methodNames) {
             Object method = JSObject.getMethod(obj, name);
             if (JSRuntime.isCallable(method)) {
                 Object result = JSRuntime.call(method, obj, new Object[]{});
@@ -627,7 +633,7 @@ public abstract class JSObject extends JSDynamicObject {
      * @return the internal property [[Class]] of the object.
      */
     @TruffleBoundary
-    public static String getClassName(DynamicObject obj) {
+    public static TruffleString getClassName(DynamicObject obj) {
         return JSObject.getJSClass(obj).getClassName(obj);
     }
 

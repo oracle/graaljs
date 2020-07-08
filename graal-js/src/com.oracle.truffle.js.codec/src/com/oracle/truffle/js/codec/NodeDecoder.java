@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.codec;
 
+import com.oracle.truffle.api.strings.TruffleString;
+
 import java.nio.ByteBuffer;
 
 public interface NodeDecoder<F> {
@@ -91,7 +93,7 @@ public interface NodeDecoder<F> {
             return decoder.getDouble();
         }
 
-        public String getString() {
+        public TruffleString getString() {
             return decoder.getString();
         }
 

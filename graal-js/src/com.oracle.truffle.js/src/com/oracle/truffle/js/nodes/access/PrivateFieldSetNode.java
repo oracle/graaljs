@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
@@ -56,10 +58,10 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Properties;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.util.Set;
 
 /**
  * Sets the value of a private field with a private name in a JS object. Throws a TypeError if the
@@ -86,7 +88,7 @@ public abstract class PrivateFieldSetNode extends JSTargetableNode {
     Object doField(DynamicObject target, HiddenKey key, Object value,
                     @CachedLibrary("target") DynamicObjectLibrary access,
                     @Cached BranchProfile errorBranch) {
-        if (!access.putIfPresent(target, key, value)) {
+        if (!Properties.putIfPresent(access, target, key, value)) {
             errorBranch.enter();
             missing(target, key, value);
         }
@@ -113,8 +115,8 @@ public abstract class PrivateFieldSetNode extends JSTargetableNode {
     }
 
     @TruffleBoundary
-    private String keyAsString() {
-        return keyNode.expressionToString();
+    private Object keyAsString() {
+        return Strings.fromJavaString(keyNode.expressionToString());
     }
 
     @Override

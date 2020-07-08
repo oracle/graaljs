@@ -58,6 +58,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
@@ -143,8 +144,8 @@ public abstract class InstanceofNode extends JSBinaryNode {
         throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
     }
 
-    @Specialization()
-    protected boolean doStringTarget(@SuppressWarnings("unused") Object obj, String target) {
+    @Specialization
+    protected boolean doStringTarget(@SuppressWarnings("unused") Object obj, TruffleString target) {
         throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
     }
 

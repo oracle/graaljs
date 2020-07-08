@@ -49,6 +49,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -65,7 +66,7 @@ public final class UserScriptException extends GraalJSException {
     final Object exceptionObject;
 
     private UserScriptException(Object exceptionObject, Node originatingNode, int stackTraceLimit) {
-        super(getMessage(exceptionObject), originatingNode, stackTraceLimit);
+        super(Strings.toJavaString(getMessage(exceptionObject)), originatingNode, stackTraceLimit);
         this.exceptionObject = exceptionObject;
     }
 
@@ -143,7 +144,7 @@ public final class UserScriptException extends GraalJSException {
      * Best effort method to get the error message without side effects.
      */
     @TruffleBoundary
-    private static String getMessage(Object exc) {
+    private static TruffleString getMessage(Object exc) {
         if (JSRuntime.isObject(exc)) {
             // try to get the constructor name, and then the message
             DynamicObject errorObj = (DynamicObject) exc;
@@ -151,11 +152,11 @@ public final class UserScriptException extends GraalJSException {
             if (prototype != Null.instance) {
                 Object constructor = JSDynamicObject.getOrDefault(prototype, JSObject.CONSTRUCTOR, null);
                 if (JSFunction.isJSFunction(constructor)) {
-                    String name = JSFunction.getName((DynamicObject) constructor);
-                    if (!name.isEmpty()) {
+                    TruffleString name = JSFunction.getName((DynamicObject) constructor);
+                    if (!Strings.isEmpty(name)) {
                         Object message = JSDynamicObject.getOrDefault(errorObj, JSError.MESSAGE, null);
-                        if (JSRuntime.isString(message)) {
-                            return name + ": " + message;
+                        if (Strings.isTString(message)) {
+                            return Strings.concatAll(name, Strings.COLON_SPACE, (TruffleString) message);
                         }
                         return name;
                     }

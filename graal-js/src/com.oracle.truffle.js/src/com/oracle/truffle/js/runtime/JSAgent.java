@@ -52,7 +52,6 @@ import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.builtins.AtomicsBuiltins;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.JSAgentWaiterListEntry;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.WaiterRecord;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
@@ -187,7 +186,7 @@ public abstract class JSAgent implements EcmaAgent {
                             iter.remove();
                             checkWaiterRecords = true;
                             if (wl.contains(wr)) {
-                                wr.setResult(AtomicsBuiltins.TIMED_OUT);
+                                wr.setResult(Strings.TIMED_OUT);
                                 wl.remove(wr);
                             }
                         }

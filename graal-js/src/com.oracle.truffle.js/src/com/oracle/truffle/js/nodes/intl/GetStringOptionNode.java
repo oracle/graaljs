@@ -40,16 +40,19 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
-import com.oracle.truffle.api.dsl.Specialization;
+import java.util.Arrays;
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import java.util.Arrays;
-import java.util.List;
 
 public abstract class GetStringOptionNode extends JavaScriptBaseNode {
 
@@ -59,7 +62,7 @@ public abstract class GetStringOptionNode extends JavaScriptBaseNode {
 
     @Child JSToStringNode toStringNode = JSToStringNode.create();
 
-    protected GetStringOptionNode(JSContext context, String property, String[] values, String fallback) {
+    protected GetStringOptionNode(JSContext context, TruffleString property, String[] values, String fallback) {
         this.validValues = values != null ? Arrays.asList(values) : null;
         this.fallback = fallback;
         this.propertyGetNode = PropertyGetNode.create(property, false, context);
@@ -67,7 +70,7 @@ public abstract class GetStringOptionNode extends JavaScriptBaseNode {
 
     public abstract String executeValue(Object options);
 
-    public static GetStringOptionNode create(JSContext context, String property, String[] values, String fallback) {
+    public static GetStringOptionNode create(JSContext context, TruffleString property, String[] values, String fallback) {
         return GetStringOptionNodeGen.create(context, property, values, fallback);
     }
 
@@ -82,6 +85,7 @@ public abstract class GetStringOptionNode extends JavaScriptBaseNode {
 
     @TruffleBoundary
     private void ensureSelectedValueIsValid(String value) {
+        // TODO
         if (!validValues.contains(value)) {
             throw Errors.createRangeError(String.format("invalid option %s found where only %s is allowed", value, validValues.toString()));
         }
@@ -93,10 +97,10 @@ public abstract class GetStringOptionNode extends JavaScriptBaseNode {
         if (propertyValue == Undefined.instance) {
             return fallback;
         }
-        return makeFinalSelection(toOptionType(propertyValue));
+        return makeFinalSelection(Strings.toJavaString(toOptionType(propertyValue)));
     }
 
-    protected String toOptionType(Object propertyValue) {
+    protected TruffleString toOptionType(Object propertyValue) {
         return toStringNode.executeString(propertyValue);
     }
 

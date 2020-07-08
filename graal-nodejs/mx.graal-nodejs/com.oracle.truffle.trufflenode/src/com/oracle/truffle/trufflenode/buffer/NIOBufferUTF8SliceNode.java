@@ -50,10 +50,12 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 
@@ -116,7 +118,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
         }
         if (rawBuffer.capacity() == 0) {
             // By default, an empty buffer returns an empty string
-            return "";
+            return Strings.EMPTY_STRING;
         }
         if (actualEnd > rawBuffer.capacity() || !oobCheck(start, end)) {
             errorBranch.enter();
@@ -136,12 +138,12 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
     }
 
     @TruffleBoundary
-    private static Object doDecode(ByteBuffer data) throws CharacterCodingException {
+    private static TruffleString doDecode(ByteBuffer data) throws CharacterCodingException {
         CharsetDecoder decoder = utf8.newDecoder();
         decoder.onMalformedInput(CodingErrorAction.REPORT);
         decoder.onUnmappableCharacter(CodingErrorAction.REPORT);
         CharBuffer decoded = decoder.decode(data);
-        return decoded.toString();
+        return Strings.fromJavaString(decoded.toString());
     }
 
     private static boolean oobCheck(int start, int end) {

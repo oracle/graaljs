@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -72,8 +74,6 @@ import com.oracle.truffle.js.runtime.array.dyn.HolesIntArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
-
-import java.util.Set;
 
 @GenerateWrapper
 public abstract class ArrayLiteralNode extends JavaScriptNode {

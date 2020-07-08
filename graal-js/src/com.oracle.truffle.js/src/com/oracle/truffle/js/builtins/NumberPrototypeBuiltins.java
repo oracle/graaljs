@@ -53,6 +53,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.NumberPrototypeBuiltinsFactory.JSNumberToExponentialNodeGen;
 import com.oracle.truffle.js.builtins.NumberPrototypeBuiltinsFactory.JSNumberToFixedNodeGen;
 import com.oracle.truffle.js.builtins.NumberPrototypeBuiltinsFactory.JSNumberToLocaleStringIntlNodeGen;
@@ -67,12 +68,12 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.intl.InitializeNumberFormatNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
@@ -171,7 +172,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private final BranchProfile radixOtherBranch = BranchProfile.create();
         private final BranchProfile radixErrorBranch = BranchProfile.create();
 
-        protected String doubleToString(double value) {
+        protected Object doubleToString(double value) {
             if (doubleToStringNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 doubleToStringNode = insert(JSDoubleToStringNode.create());
@@ -185,50 +186,50 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJSNumber(thisObj)", "isJSNumberInteger(thisObj)", "isRadix10(radix)"})
-        protected String toStringIntRadix10(DynamicObject thisObj, Object radix) {
+        protected Object toStringIntRadix10(DynamicObject thisObj, Object radix) {
             Integer i = (Integer) getNumberValue(thisObj);
-            return Boundaries.stringValueOf(i.intValue());
+            return Strings.fromInt(i.intValue());
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJSNumber(thisObj)", "isRadix10(radix)"})
-        protected String toStringRadix10(DynamicObject thisObj, Object radix) {
+        protected Object toStringRadix10(DynamicObject thisObj, Object radix) {
             return doubleToString(getDoubleValue(thisObj));
         }
 
         @Specialization(guards = {"isJSNumber(thisObj)", "!isUndefined(radix)"})
-        protected String toString(DynamicObject thisObj, Object radix,
+        protected Object toString(DynamicObject thisObj, Object radix,
                         @Shared("toInt") @Cached("create()") JSToIntegerAsIntNode toIntegerNode) {
             return toStringIntl(getDoubleValue(thisObj), radix, toIntegerNode);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJavaNumber(thisObj)", "isNumberInteger(thisObj)", "isRadix10(radix)"})
-        protected String toStringPrimitiveIntRadix10(Object thisObj, Object radix) {
+        protected Object toStringPrimitiveIntRadix10(Object thisObj, Object radix) {
             Integer i = (Integer) thisObj;
-            return Boundaries.stringValueOf(i.intValue());
+            return Strings.fromInt(i.intValue());
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJavaNumber(thisObj)", "isRadix10(radix)"})
-        protected String toStringPrimitiveRadix10(Object thisObj, Object radix) {
+        protected Object toStringPrimitiveRadix10(Object thisObj, Object radix) {
             Number n = (Number) thisObj;
             return doubleToString(JSRuntime.doubleValue(n));
         }
 
         @Specialization
-        protected String toStringPrimitiveRadixInt(Number thisObj, int radix) {
+        protected Object toStringPrimitiveRadixInt(Number thisObj, int radix) {
             return toStringIntl(JSRuntime.doubleValue(thisObj), radix);
         }
 
         @Specialization(guards = {"!isUndefined(radix)"}, replaces = "toStringPrimitiveRadixInt")
-        protected String toStringPrimitive(Number thisObj, Object radix,
+        protected Object toStringPrimitive(Number thisObj, Object radix,
                         @Shared("toInt") @Cached("create()") JSToIntegerAsIntNode toIntegerNode) {
             return toStringIntl(JSRuntime.doubleValue(thisObj), radix, toIntegerNode);
         }
 
         @Specialization(guards = "isForeignObject(thisObj)", limit = "InteropLibraryLimit")
-        protected String toStringForeignObject(Object thisObj, Object radix,
+        protected Object toStringForeignObject(Object thisObj, Object radix,
                         @Cached("create()") JSToIntegerAsIntNode toIntegerNode,
                         @CachedLibrary("thisObj") InteropLibrary interop) {
             return toStringIntl(getDoubleValue(interop, thisObj), (radix == Undefined.instance) ? 10 : radix, toIntegerNode);
@@ -240,12 +241,12 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             throw Errors.createTypeErrorNotANumber(thisObj);
         }
 
-        private String toStringIntl(double numberVal, Object radix, JSToIntegerAsIntNode toIntegerNode) {
+        private Object toStringIntl(double numberVal, Object radix, JSToIntegerAsIntNode toIntegerNode) {
             int radixVal = toIntegerNode.executeInt(radix);
             return toStringIntl(numberVal, radixVal);
         }
 
-        private String toStringIntl(double numberVal, int radixVal) {
+        private Object toStringIntl(double numberVal, int radixVal) {
             if (radixVal < 2 || radixVal > 36) {
                 radixErrorBranch.enter();
                 throw Errors.createRangeError("toString() expects radix in range 2-36");
@@ -267,27 +268,27 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "isJSNumber(thisObj)")
-        protected String toLocaleString(DynamicObject thisObj) {
+        protected Object toLocaleString(DynamicObject thisObj) {
             double d = getDoubleValue(thisObj);
             return toLocaleStringIntl(d);
         }
 
         @Specialization(guards = "isJavaNumber(thisObj)")
-        protected String toLocaleStringPrimitive(Object thisObj) {
+        protected Object toLocaleStringPrimitive(Object thisObj) {
             double d = JSRuntime.doubleValue((Number) thisObj);
             return toLocaleStringIntl(d);
         }
 
-        private static String toLocaleStringIntl(double d) {
+        private static Object toLocaleStringIntl(double d) {
             if (JSRuntime.doubleIsRepresentableAsInt(d)) {
-                return Boundaries.stringValueOf((int) d);
+                return Strings.fromInt((int) d);
             } else {
-                return Boundaries.stringValueOf(d);
+                return Strings.fromDouble(d);
             }
         }
 
         @Specialization(guards = "isForeignObject(thisObj)", limit = "InteropLibraryLimit")
-        protected String toLocaleStringForeignObject(Object thisObj,
+        protected Object toLocaleStringForeignObject(Object thisObj,
                         @CachedLibrary("thisObj") InteropLibrary interop) {
             return toLocaleStringIntl(getDoubleValue(interop, thisObj));
         }
@@ -320,19 +321,19 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "isJSNumber(thisObj)")
-        protected String jsNumberToLocaleString(DynamicObject thisObj, Object locales, Object options) {
+        protected TruffleString jsNumberToLocaleString(DynamicObject thisObj, Object locales, Object options) {
             DynamicObject numberFormatObj = createNumberFormat(locales, options);
             return JSNumberFormat.format(numberFormatObj, getNumberValue(thisObj));
         }
 
         @Specialization(guards = "isJavaNumber(thisObj)")
-        protected String javaNumberToLocaleString(Object thisObj, Object locales, Object options) {
+        protected TruffleString javaNumberToLocaleString(Object thisObj, Object locales, Object options) {
             DynamicObject numberFormatObj = createNumberFormat(locales, options);
             return JSNumberFormat.format(numberFormatObj, JSRuntime.doubleValue((Number) thisObj));
         }
 
         @Specialization(guards = "isForeignObject(thisObj)", limit = "InteropLibraryLimit")
-        protected String toLocaleStringForeignObject(Object thisObj, Object locales, Object options,
+        protected TruffleString toLocaleStringForeignObject(Object thisObj, Object locales, Object options,
                         @CachedLibrary("thisObj") InteropLibrary interop) {
             double doubleValue = getDoubleValue(interop, thisObj);
             DynamicObject numberFormatObj = createNumberFormat(locales, options);
@@ -341,7 +342,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Fallback
         @SuppressWarnings("unused")
-        protected String failForNonNumbers(Object notANumber, Object locales, Object options) {
+        protected Object failForNonNumbers(Object notANumber, Object locales, Object options) {
             throw Errors.createTypeErrorNotANumber(notANumber);
         }
     }
@@ -387,21 +388,21 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "isJSNumber(thisNumber)")
-        protected String toFixed(DynamicObject thisNumber, Object fractionDigits,
+        protected Object toFixed(DynamicObject thisNumber, Object fractionDigits,
                         @Shared("toInt") @Cached("create()") JSToIntegerAsIntNode toIntegerNode) {
             int digits = toIntegerNode.executeInt(fractionDigits);
             return toFixedIntl(getDoubleValue(thisNumber), digits);
         }
 
         @Specialization(guards = "isJavaNumber(thisNumber)")
-        protected String toFixedJava(Object thisNumber, Object fractionDigits,
+        protected Object toFixedJava(Object thisNumber, Object fractionDigits,
                         @Shared("toInt") @Cached("create()") JSToIntegerAsIntNode toIntegerNode) {
             int digits = toIntegerNode.executeInt(fractionDigits);
             return toFixedIntl(JSRuntime.doubleValue((Number) thisNumber), digits);
         }
 
         @Specialization(guards = "isForeignObject(thisNumber)", limit = "InteropLibraryLimit")
-        protected String toFixedForeignObject(Object thisNumber, Object fractionDigits,
+        protected Object toFixedForeignObject(Object thisNumber, Object fractionDigits,
                         @Cached("create()") JSToIntegerAsIntNode toIntegerNode,
                         @CachedLibrary("thisNumber") InteropLibrary interop) {
             double doubleValue = getDoubleValue(interop, thisNumber);
@@ -411,18 +412,18 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @SuppressWarnings("unused")
         @Fallback
-        protected String toFixedGeneric(Object thisNumber, Object fractionDigits) {
+        protected Object toFixedGeneric(Object thisNumber, Object fractionDigits) {
             throw Errors.createTypeErrorNotANumber(thisNumber);
         }
 
-        private String toFixedIntl(double value, int digits) {
+        private Object toFixedIntl(double value, int digits) {
             if (0 > digits || digits > ((getContext().getEcmaScriptVersion() >= 9) ? 100 : 20)) {
                 digitsErrorBranch.enter();
                 throw Errors.createRangeError("toFixed() fraction digits need to be in range 0-100");
             }
             if (Double.isNaN(value)) {
                 nanBranch.enter();
-                return JSRuntime.NAN_STRING;
+                return Strings.NAN;
             }
             if (dtoaOrString.profile(value >= 1E21 || value <= -1E21)) {
                 return toString(value);
@@ -431,7 +432,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
         }
 
-        private String toString(double value) {
+        private Object toString(double value) {
             if (doubleToStringNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 doubleToStringNode = insert(JSDoubleToStringNode.create());
@@ -449,13 +450,13 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJSNumber(thisNumber)", "isUndefined(fractionDigits)"})
-        protected String toExponentialUndefined(DynamicObject thisNumber, Object fractionDigits) {
+        protected Object toExponentialUndefined(DynamicObject thisNumber, Object fractionDigits) {
             double doubleValue = getDoubleValue(thisNumber);
             return toExponentialStandard(doubleValue);
         }
 
         @Specialization(guards = {"isJSNumber(thisNumber)", "!isUndefined(fractionDigits)"})
-        protected String toExponential(DynamicObject thisNumber, Object fractionDigits,
+        protected Object toExponential(DynamicObject thisNumber, Object fractionDigits,
                         @Cached @Shared("digitsError") BranchProfile digitsErrorBranch,
                         @Shared("toInt") @Cached("create()") JSToIntegerAsIntNode toIntegerNode) {
             double doubleValue = getDoubleValue(thisNumber);
@@ -465,13 +466,13 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJavaNumber(thisNumber)", "isUndefined(fractionDigits)"})
-        protected String toExponentialPrimitiveUndefined(Object thisNumber, Object fractionDigits) {
+        protected Object toExponentialPrimitiveUndefined(Object thisNumber, Object fractionDigits) {
             double doubleValue = JSRuntime.doubleValue((Number) thisNumber);
             return toExponentialStandard(doubleValue);
         }
 
         @Specialization(guards = {"isJavaNumber(thisNumber)", "!isUndefined(fractionDigits)"})
-        protected String toExponentialPrimitive(Object thisNumber, Object fractionDigits,
+        protected Object toExponentialPrimitive(Object thisNumber, Object fractionDigits,
                         @Cached @Shared("digitsError") BranchProfile digitsErrorBranch,
                         @Shared("toInt") @Cached("create()") JSToIntegerAsIntNode toIntegerNode) {
             double doubleValue = JSRuntime.doubleValue((Number) thisNumber);
@@ -480,14 +481,14 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = {"isForeignObject(thisNumber)", "isUndefined(fractionDigits)"}, limit = "InteropLibraryLimit")
-        protected String toExponentialForeignObjectUndefined(Object thisNumber, @SuppressWarnings("unused") Object fractionDigits,
+        protected Object toExponentialForeignObjectUndefined(Object thisNumber, @SuppressWarnings("unused") Object fractionDigits,
                         @CachedLibrary("thisNumber") InteropLibrary interop) {
             double doubleValue = getDoubleValue(interop, thisNumber);
             return toExponentialStandard(doubleValue);
         }
 
         @Specialization(guards = {"isForeignObject(thisNumber)", "!isUndefined(fractionDigits)"}, limit = "InteropLibraryLimit")
-        protected String toExponentialForeignObject(Object thisNumber, Object fractionDigits,
+        protected Object toExponentialForeignObject(Object thisNumber, Object fractionDigits,
                         @Cached BranchProfile digitsErrorBranch,
                         @Cached("create()") JSToIntegerAsIntNode toIntegerNode,
                         @CachedLibrary("thisNumber") InteropLibrary interop) {
@@ -498,24 +499,24 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isJSNumber(thisNumber)", "!isJavaNumber(thisNumber)", "!isForeignObject(thisNumber)"})
-        protected String toExponentialOther(Object thisNumber, Object fractionDigits) {
+        protected Object toExponentialOther(Object thisNumber, Object fractionDigits) {
             throw Errors.createTypeErrorNotANumber(thisNumber);
         }
 
-        private static String toExponentialStandard(double value) {
+        private static Object toExponentialStandard(double value) {
             if (Double.isNaN(value)) {
-                return JSRuntime.NAN_STRING;
+                return Strings.NAN;
             } else if (Double.isInfinite(value)) {
-                return (value < 0) ? JSRuntime.NEGATIVE_INFINITY_STRING : JSRuntime.INFINITY_STRING;
+                return (value < 0) ? Strings.NEGATIVE_INFINITY : Strings.INFINITY;
             }
             return JSRuntime.formatDtoAExponential(value);
         }
 
-        private String toExponential(double value, int digits, BranchProfile digitsErrorBranch) {
+        private Object toExponential(double value, int digits, BranchProfile digitsErrorBranch) {
             if (Double.isNaN(value)) {
-                return JSRuntime.NAN_STRING;
+                return Strings.NAN;
             } else if (Double.isInfinite(value)) {
-                return (value < 0) ? JSRuntime.NEGATIVE_INFINITY_STRING : JSRuntime.INFINITY_STRING;
+                return (value < 0) ? Strings.NEGATIVE_INFINITY : Strings.INFINITY;
             }
             checkDigits(digits, digitsErrorBranch);
             return JSRuntime.formatDtoAExponential(value, digits);
@@ -545,13 +546,13 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJSNumber(thisNumber)", "isUndefined(precision)"})
-        protected String toPrecisionUndefined(DynamicObject thisNumber, Object precision,
+        protected Object toPrecisionUndefined(DynamicObject thisNumber, Object precision,
                         @Shared("toString") @Cached("create()") JSToStringNode toStringNode) {
             return toStringNode.executeString(thisNumber); // ECMA 15.7.4.7 2
         }
 
         @Specialization(guards = {"isJSNumber(thisNumber)", "!isUndefined(precision)"})
-        protected String toPrecision(DynamicObject thisNumber, Object precision,
+        protected Object toPrecision(DynamicObject thisNumber, Object precision,
                         @Shared("toNumber") @Cached("create()") JSToNumberNode toNumberNode) {
             long lPrecision = JSRuntime.toInteger(toNumberNode.executeNumber(precision));
             double thisNumberVal = getDoubleValue(thisNumber);
@@ -560,13 +561,13 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJavaNumber(thisNumber)", "isUndefined(precision)"})
-        protected String toPrecisionPrimitiveUndefined(Object thisNumber, Object precision,
+        protected Object toPrecisionPrimitiveUndefined(Object thisNumber, Object precision,
                         @Shared("toString") @Cached("create()") JSToStringNode toStringNode) {
             return toStringNode.executeString(thisNumber); // ECMA 15.7.4.7 2
         }
 
         @Specialization(guards = {"isJavaNumber(thisNumber)", "!isUndefined(precision)"})
-        protected String toPrecisionPrimitive(Object thisNumber, Object precision,
+        protected Object toPrecisionPrimitive(Object thisNumber, Object precision,
                         @Shared("toNumber") @Cached("create()") JSToNumberNode toNumberNode) {
             long lPrecision = JSRuntime.toInteger(toNumberNode.executeNumber(precision));
             double thisNumberVal = JSRuntime.doubleValue((Number) thisNumber);
@@ -575,14 +576,14 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isForeignObject(thisNumber)", "isUndefined(precision)"}, limit = "InteropLibraryLimit")
-        protected String toPrecisionForeignObjectUndefined(Object thisNumber, Object precision,
+        protected Object toPrecisionForeignObjectUndefined(Object thisNumber, Object precision,
                         @Cached("create()") JSToStringNode toStringNode,
                         @CachedLibrary("thisNumber") InteropLibrary interop) {
             return toStringNode.executeString(getDoubleValue(interop, thisNumber));
         }
 
         @Specialization(guards = {"isForeignObject(thisNumber)", "!isUndefined(precision)"}, limit = "InteropLibraryLimit")
-        protected String toPrecisionForeignObject(Object thisNumber, Object precision,
+        protected Object toPrecisionForeignObject(Object thisNumber, Object precision,
                         @Cached("create()") JSToNumberNode toNumberNode,
                         @CachedLibrary("thisNumber") InteropLibrary interop) {
             double thisNumberVal = getDoubleValue(interop, thisNumber);
@@ -592,15 +593,15 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isJSNumber(thisNumber)", "!isJavaNumber(thisNumber)", "!isForeignObject(thisNumber)"})
-        protected String toPrecisionOther(Object thisNumber, Object precision) {
+        protected Object toPrecisionOther(Object thisNumber, Object precision) {
             throw Errors.createTypeErrorNotANumber(thisNumber);
         }
 
-        private String toPrecisionIntl(double thisNumberVal, long lPrecision) {
+        private Object toPrecisionIntl(double thisNumberVal, long lPrecision) {
             if (Double.isNaN(thisNumberVal)) {
-                return JSRuntime.NAN_STRING;
+                return Strings.NAN;
             } else if (Double.isInfinite(thisNumberVal)) {
-                return (thisNumberVal < 0) ? JSRuntime.NEGATIVE_INFINITY_STRING : JSRuntime.INFINITY_STRING;
+                return (thisNumberVal < 0) ? Strings.NEGATIVE_INFINITY : Strings.INFINITY;
             }
             checkPrecision(lPrecision);
             return JSRuntime.formatDtoAPrecision(thisNumberVal, (int) lPrecision);

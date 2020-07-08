@@ -45,6 +45,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 
@@ -242,7 +243,7 @@ public class JSModuleRecord extends ScriptOrModule {
 
     @TruffleBoundary
     private void initializeMetaObject(DynamicObject metaObj) {
-        JSObject.set(metaObj, "url", getSource().getURI().toString());
+        JSObject.set(metaObj, Strings.URL, Strings.fromJavaString(getSource().getURI().toString()));
     }
 
     public void setUninstantiated() {

@@ -49,6 +49,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNameNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugContinueInInterpreterNodeGen;
@@ -89,6 +90,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
@@ -255,7 +257,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         }
 
         @Specialization
-        protected String toStringConv(Object obj) {
+        protected TruffleString toStringConv(Object obj) {
             return toStringNode.executeString(obj);
         }
     }
@@ -356,7 +358,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         public TestV8CreateAsyncFromSyncIterator(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.setState = PropertySetNode.createSetHidden(JSFunction.ASYNC_FROM_SYNC_ITERATOR_KEY, context);
-            this.getNextMethodNode = PropertyGetNode.create(JSRuntime.NEXT, context);
+            this.getNextMethodNode = PropertyGetNode.create(Strings.NEXT, context);
         }
 
         @Specialization(guards = "isJSObject(syncIterator)")

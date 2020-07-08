@@ -49,8 +49,10 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.util.DebugCounter;
 import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
@@ -63,7 +65,7 @@ import com.oracle.truffle.js.runtime.util.UnmodifiablePropertyKeyList;
  */
 public final class JSShapeData {
     private static final Property[] EMPTY_PROPERTY_ARRAY = new Property[0];
-    private static final String[] EMPTY_STRING_ARRAY = new String[0];
+    private static final TruffleString[] EMPTY_STRING_ARRAY = new TruffleString[0];
     private static final int UNKNOWN = -1;
 
     /** The position in the property array where strings end and symbols start. */
@@ -71,7 +73,7 @@ public final class JSShapeData {
     /** All properties, sorted using {@link JSRuntime#comparePropertyKeys}. */
     private Property[] propertyArray;
     /** Only enumerable properties with string keys (no symbols). */
-    private String[] enumerablePropertyNames;
+    private TruffleString[] enumerablePropertyNames;
 
     private JSShapeData() {
     }
@@ -84,13 +86,13 @@ public final class JSShapeData {
         return ownProperties.toArray(EMPTY_PROPERTY_ARRAY);
     }
 
-    private static String[] createEnumerablePropertyNamesArray(Shape shape) {
+    private static TruffleString[] createEnumerablePropertyNamesArray(Shape shape) {
         CompilerAsserts.neverPartOfCompilation();
         enumerablePropertyListAllocCount.inc();
-        List<String> ownProperties = new ArrayList<>();
+        List<TruffleString> ownProperties = new ArrayList<>();
         shape.getPropertyList().forEach(property -> {
-            if (JSProperty.isEnumerable(property) && property.getKey() instanceof String) {
-                ownProperties.add((String) property.getKey());
+            if (JSProperty.isEnumerable(property) && Strings.isTString(property.getKey())) {
+                ownProperties.add((TruffleString) property.getKey());
             }
         });
         sortPropertyKeys(ownProperties);
@@ -161,13 +163,13 @@ public final class JSShapeData {
     }
 
     @TruffleBoundary
-    private static String[] getEnumerablePropertyNamesArray(Shape shape) {
+    private static TruffleString[] getEnumerablePropertyNamesArray(Shape shape) {
         assert shape.getPropertyCount() != 0;
         return getEnumerablePropertyNamesArray(getShapeData(shape), shape);
     }
 
-    private static String[] getEnumerablePropertyNamesArray(JSShapeData shapeData, Shape shape) {
-        String[] enumeratePropertyNames = shapeData.enumerablePropertyNames;
+    private static TruffleString[] getEnumerablePropertyNamesArray(JSShapeData shapeData, Shape shape) {
+        TruffleString[] enumeratePropertyNames = shapeData.enumerablePropertyNames;
         if (enumeratePropertyNames == null) {
             enumeratePropertyNames = createEnumerablePropertyNamesArray(shape);
             shapeData.enumerablePropertyNames = enumeratePropertyNames;
@@ -175,7 +177,7 @@ public final class JSShapeData {
         return enumeratePropertyNames;
     }
 
-    static UnmodifiableArrayList<String> getEnumerablePropertyNames(Shape shape) {
+    static UnmodifiableArrayList<TruffleString> getEnumerablePropertyNames(Shape shape) {
         return asUnmodifiableList(shape.getPropertyCount() == 0 ? EMPTY_STRING_ARRAY : getEnumerablePropertyNamesArray(shape));
     }
 

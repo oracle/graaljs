@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -67,13 +68,13 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createAggregateError(Object errors, String message, Node originatingNode) {
+    public static JSException createAggregateError(Object errors, TruffleString message, Node originatingNode) {
         JSContext context = JavaScriptLanguage.get(originatingNode).getJSContext();
         JSRealm realm = JSRealm.get(originatingNode);
         DynamicObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
         JSError.setMessage(errorObj, message);
         JSObjectUtil.putDataProperty(context, errorObj, JSError.ERRORS_NAME, errors, JSError.ERRORS_ATTRIBUTES);
-        JSException exception = JSException.create(JSErrorType.AggregateError, message, errorObj, realm);
+        JSException exception = JSException.create(JSErrorType.AggregateError, Strings.toJavaString(message), errorObj, realm);
         JSError.setException(realm, errorObj, exception, false);
         return exception;
     }
@@ -177,7 +178,7 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorTypeXExpected(String type) {
+    public static JSException createTypeErrorTypeXExpected(Object type) {
         return createTypeErrorFormat("%s object expected.", type);
     }
 
@@ -212,6 +213,16 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorNoOverloadFound(TruffleString operatorName, Node originatingNode) {
+        return createTypeError("No overload found for " + Strings.toJavaString(operatorName), originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorUnrecognizedOperator(TruffleString operatorName, Node originatingNode) {
+        return createTypeError("unrecognized operator " + Strings.toJavaString(operatorName), originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createSyntaxError(String message, Throwable cause, Node originatingNode) {
         return JSException.create(JSErrorType.SyntaxError, message, cause, originatingNode);
     }
@@ -237,7 +248,7 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createSyntaxErrorVariableAlreadyDeclared(String varName, Node originatingNode) {
+    public static JSException createSyntaxErrorVariableAlreadyDeclared(TruffleString varName, Node originatingNode) {
         return Errors.createSyntaxError("Variable \"" + varName + "\" has already been declared", originatingNode);
     }
 
@@ -343,6 +354,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorIncompatibleReceiver(TruffleString methodName, Object receiver) {
+        return createTypeErrorIncompatibleReceiver(Strings.toJavaString(methodName), receiver);
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorIncompatibleReceiver(String methodName, Object receiver) {
         return Errors.createTypeError("Method " + methodName + " called on incompatible receiver " + JSRuntime.safeToString(receiver));
     }
@@ -410,7 +426,7 @@ public final class Errors {
 
     private static String keyToString(Object key) {
         assert JSRuntime.isPropertyKey(key);
-        return key instanceof String ? "\"" + key + "\"" : key.toString();
+        return Strings.isTString(key) ? '"' + Strings.toJavaString((TruffleString) key) + '"' : key.toString();
     }
 
     @TruffleBoundary
@@ -489,7 +505,7 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorCannotDeclareGlobalFunction(String varName, Node originatingNode) {
+    public static JSException createTypeErrorCannotDeclareGlobalFunction(Object varName, Node originatingNode) {
         return Errors.createTypeError("Cannot declare global function '" + varName + "'", originatingNode);
     }
 
@@ -499,7 +515,7 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createRangeErrorInvalidUnitArgument(String functionName, String unit) {
+    public static JSException createRangeErrorInvalidUnitArgument(String functionName, Object unit) {
         return createRangeError(String.format("Invalid unit argument for %s() '%s'", functionName, unit));
     }
 
@@ -671,7 +687,7 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createRangeErrorInvalidTimeZone(CharSequence timeZoneName) {
+    public static JSException createRangeErrorInvalidTimeZone(TruffleString timeZoneName) {
         return Errors.createRangeError(String.format("Invalid time zone %s", timeZoneName));
     }
 
@@ -731,7 +747,7 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorTrapReturnedFalsish(String trap, Object propertyKey) {
+    public static JSException createTypeErrorTrapReturnedFalsish(Object trap, Object propertyKey) {
         return createTypeError("'" + trap + "' on proxy: trap returned falsish for property '" + propertyKey + "'");
     }
 
@@ -750,8 +766,8 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createTypeErrorProxyGetInvariantViolated(Object propertyKey, Object expectedValue, Object actualValue) {
         String propertyName = propertyKey.toString();
-        String expected = JSRuntime.safeToString(expectedValue);
-        String actual = JSRuntime.safeToString(actualValue);
+        Object expected = JSRuntime.safeToString(expectedValue);
+        Object actual = JSRuntime.safeToString(actualValue);
         return createTypeError("'get' on proxy: property '" + propertyName +
                         "' is a read-only and non-configurable data property on the proxy target but the proxy did not return its actual value (expected '" + expected + "' but got '" + actual + "')");
     }
@@ -803,7 +819,7 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorClassNotFound(String className) {
+    public static JSException createTypeErrorClassNotFound(Object className) {
         return Errors.createTypeErrorFormat("Access to host class %s is not allowed or does not exist.", className);
     }
 
@@ -842,7 +858,7 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorCannotGetPrivateMember(boolean fieldAccess, String name, Node originatingNode) {
+    public static JSException createTypeErrorCannotGetPrivateMember(boolean fieldAccess, TruffleString name, Node originatingNode) {
         String message;
         if (fieldAccess) {
             message = String.format("Cannot read private member %s from an object whose class did not declare it.", name);
@@ -853,7 +869,7 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorCannotSetPrivateMember(String name, Node originatingNode) {
+    public static JSException createTypeErrorCannotSetPrivateMember(Object name, Node originatingNode) {
         return createTypeError(String.format("Cannot write private member %s to an object whose class did not declare it.", name), originatingNode);
     }
 

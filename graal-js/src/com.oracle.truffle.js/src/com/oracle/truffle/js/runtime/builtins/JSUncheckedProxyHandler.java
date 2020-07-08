@@ -42,13 +42,15 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public class JSUncheckedProxyHandler extends JSNonProxy implements PrototypeSupplier {
 
-    public static final String CLASS_NAME = "UncheckedProxyHandler";
+    public static final TruffleString CLASS_NAME = Strings.constant("UncheckedProxyHandler");
     public static final JSUncheckedProxyHandler INSTANCE = new JSUncheckedProxyHandler();
 
     public static DynamicObject create(JSContext context, JSRealm realm) {
@@ -59,7 +61,7 @@ public class JSUncheckedProxyHandler extends JSNonProxy implements PrototypeSupp
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return CLASS_NAME;
     }
 

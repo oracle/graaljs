@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,12 +41,14 @@
 
 package com.oracle.js.parser;
 
+import com.oracle.truffle.api.strings.TruffleString;
+
 /**
  * Utility for scanning thru a char array.
  */
 public class Scanner {
     /** Characters to scan. */
-    protected final char[] content;
+    protected final TruffleString content;
 
     /** Position in content. */
     protected int position;
@@ -74,7 +76,7 @@ public class Scanner {
      * @param start position index in content where to start
      * @param length length of input
      */
-    protected Scanner(final char[] content, final int line, final int start, final int length) {
+    protected Scanner(final TruffleString content, final int line, final int start, final int length) {
         this.content = content;
         this.position = start;
         this.limit = start + length;
@@ -173,7 +175,7 @@ public class Scanner {
      */
     protected final char charAt(final int i) {
         // Get a character from the content, '\0' if beyond the end of file.
-        return i < limit ? content[i] : '\0';
+        return i < limit ? ParserStrings.charAt(content, i) : '\0';
     }
 
     /**
@@ -186,7 +188,7 @@ public class Scanner {
         ch1 = charAt(i + 1);
         ch2 = charAt(i + 2);
         ch3 = charAt(i + 3);
-        position = i < limit ? i : limit;
+        position = Math.min(i, limit);
     }
 
     /**

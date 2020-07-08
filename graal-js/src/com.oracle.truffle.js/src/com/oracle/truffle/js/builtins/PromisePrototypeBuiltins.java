@@ -71,6 +71,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -268,7 +269,7 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
                     return function;
                 }
             }
-            return JSFunctionData.createCallOnly(context, new PromiseFinallyRootNode().getCallTarget(), 1, "");
+            return JSFunctionData.createCallOnly(context, new PromiseFinallyRootNode().getCallTarget(), 1, Strings.EMPTY_STRING);
         }
 
         static JSFunctionData createThrower(JSContext context) {
@@ -288,7 +289,7 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
                     return body.execute(frame);
                 }
             }.getCallTarget();
-            return JSFunctionData.createCallOnly(context, callTarget, 0, "");
+            return JSFunctionData.createCallOnly(context, callTarget, 0, Strings.EMPTY_STRING);
         }
     }
 }

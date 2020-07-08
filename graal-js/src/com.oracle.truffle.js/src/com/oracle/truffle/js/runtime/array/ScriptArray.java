@@ -61,10 +61,10 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractConstantArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantEmptyArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantObjectArray;
@@ -104,7 +104,7 @@ public abstract class ScriptArray {
         if (context.isOptionNashornCompatibilityMode()) {
             throw Errors.createTypeErrorFormat("Cannot set property \"%d\" of frozen array", index);
         } else {
-            throw Errors.createTypeErrorCannotRedefineProperty(String.valueOf(index));
+            throw Errors.createTypeErrorCannotRedefineProperty(Strings.fromLong(index));
         }
     }
 
@@ -485,7 +485,7 @@ public abstract class ScriptArray {
             @Override
             public Object get(int index) {
                 if (index >= 0 && rangeStart + index < rangeEnd) {
-                    return Boundaries.stringValueOf(rangeStart + index);
+                    return Strings.fromLong(rangeStart + index);
                 } else {
                     throw new IndexOutOfBoundsException();
                 }
@@ -509,7 +509,7 @@ public abstract class ScriptArray {
                         long rangeEnd = ranges[rangeIndex + 1];
                         long rangeLen = rangeEnd - rangeStart;
                         if (relativeIndex < rangeLen) {
-                            return Boundaries.stringValueOf(rangeStart + relativeIndex);
+                            return Strings.fromLong(rangeStart + relativeIndex);
                         } else {
                             relativeIndex -= rangeLen;
                         }

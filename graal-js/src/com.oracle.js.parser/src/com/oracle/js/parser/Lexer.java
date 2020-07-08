@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,12 +74,29 @@ import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
+
 /**
  * Responsible for converting source content into a stream of tokens.
  */
 @SuppressWarnings("fallthrough")
 public class Lexer extends Scanner {
     private static final boolean XML_LITERALS = Options.getBooleanProperty("lexer.xmlliterals");
+
+    private static final String MSG_EDIT_STRING_MISSING_BRACE = "edit.string.missing.brace";
+    private static final String MSG_HERE_MISSING_END_MARKER = "here.missing.end.marker";
+    private static final String MSG_HERE_NON_MATCHING_DELIMITER = "here.non.matching.delimiter";
+    private static final String MSG_ILLEGAL_IDENTIFIER_CHARACTER = "illegal.identifier.character";
+    private static final String MSG_INVALID_ESCAPE_CHAR = "invalid.escape.char";
+    private static final String MSG_INVALID_HEX = "invalid.hex";
+    private static final String MSG_LEXER_ERROR = "lexer.error.";
+    private static final String MSG_MISSING_CLOSE_QUOTE = "missing.close.quote";
+    private static final String MSG_MISSING_SPACE_AFTER_NUMBER = "missing.space.after.number";
+    private static final String MSG_NUMERIC_LITERAL_MULTIPLE_SEPARATORS = "numeric.literal.multiple.separators";
+    private static final String MSG_NUMERIC_LITERAL_TRAILING_SEPARATOR = "numeric.literal.trailing.separator";
+    private static final String MSG_STRICT_NO_NONOCTALDECIMAL = "strict.no.nonoctaldecimal";
+    private static final String MSG_STRICT_NO_OCTAL = "strict.no.octal";
 
     /** Content source. */
     private final Source source;
@@ -119,12 +136,10 @@ public class Lexer extends Scanner {
     boolean pauseOnRightBrace;
 
     /** Map to intern strings during parsing (memory footprint). */
-    private final Map<String, String> internedStrings;
-
-    private static final String MESSAGE_INVALID_HEX = "invalid.hex";
+    private final Map<TruffleString, TruffleString> internedStrings;
 
     //@formatter:off
-    private static final String JAVASCRIPT_WHITESPACE_HIGH =
+    private static final TruffleString JAVASCRIPT_WHITESPACE_HIGH = ParserStrings.constant(
         "\u1680" + // Ogham space mark
         "\u2000" + // en quad
         "\u2001" + // em quad
@@ -143,10 +158,10 @@ public class Lexer extends Scanner {
         "\u205f" + // medium mathematical space
         "\u3000" + // ideographic space
         "\ufeff"   // byte order mark
-        ;
+    );
     //@formatter:on
 
-    private static final int JAVASCRIPT_WHITESPACE_HIGH_START = JAVASCRIPT_WHITESPACE_HIGH.charAt(0);
+    private static final int JAVASCRIPT_WHITESPACE_HIGH_START = ParserStrings.charAt(JAVASCRIPT_WHITESPACE_HIGH, 0);
 
     /**
      * Constructor
@@ -180,7 +195,7 @@ public class Lexer extends Scanner {
      */
     public Lexer(final Source source, final int start, final int len, final TokenStream stream, final boolean scripting, final int ecmaScriptVersion, final boolean shebang, final boolean isModule,
                     final boolean pauseOnFunctionBody, final boolean allowBigInt) {
-        super(source.getContent().toString().toCharArray(), 1, start, len);
+        super(source.getContent(), 1, start, len);
         this.source = source;
         this.stream = stream;
         this.scripting = scripting;
@@ -370,8 +385,8 @@ public class Lexer extends Scanner {
     }
 
     private static boolean isWhitespaceHigh(final char ch) {
-        for (int pos = 0; pos < JAVASCRIPT_WHITESPACE_HIGH.length(); pos++) {
-            char cur = JAVASCRIPT_WHITESPACE_HIGH.charAt(pos);
+        for (int pos = 0; pos < ParserStrings.length(JAVASCRIPT_WHITESPACE_HIGH); pos++) {
+            char cur = ParserStrings.charAt(JAVASCRIPT_WHITESPACE_HIGH, pos);
             if (cur == ch) {
                 return true;
             } else if (cur > ch) {
@@ -584,7 +599,7 @@ public class Lexer extends Scanner {
         // Reset to beginning of content.
         reset(start);
         // Buffer for recording characters.
-        final StringBuilder sb = new StringBuilder(length);
+        final TruffleStringBuilder sb = ParserStrings.builderCreate(length);
 
         // Skip /.
         skip(1);
@@ -593,8 +608,8 @@ public class Lexer extends Scanner {
         while (!atEOF() && ch0 != '/' && !isEOL(ch0) || inBrackets) {
             // Skip over escaped character.
             if (ch0 == '\\') {
-                sb.append(ch0);
-                sb.append(ch1);
+                sb.appendCharUTF16Uncached(ch0);
+                sb.appendCharUTF16Uncached(ch1);
                 skip(2);
             } else {
                 if (ch0 == '[') {
@@ -604,19 +619,19 @@ public class Lexer extends Scanner {
                 }
 
                 // Skip literal character.
-                sb.append(ch0);
+                sb.appendCharUTF16Uncached(ch0);
                 skip(1);
             }
         }
 
         // Get pattern as string.
-        final String regex = stringIntern(sb.toString());
+        final TruffleString regex = stringIntern(sb.toStringUncached());
 
         // Skip /.
         skip(1);
 
         // Options as string.
-        final String options = stringIntern(source.getString(position, scanIdentifier()));
+        final TruffleString options = stringIntern(source.getString(position, scanIdentifier()));
 
         reset(savePosition);
 
@@ -752,7 +767,7 @@ public class Lexer extends Scanner {
         while (true) {
             if (allowSeparator && ch0 == '_') {
                 if (seenSeparator) {
-                    error(Lexer.message("numeric.literal.multiple.separators"), type, position, limit - position);
+                    error(Lexer.message(MSG_NUMERIC_LITERAL_MULTIPLE_SEPARATORS), type, position, limit - position);
                 } else {
                     seenSeparator = true;
                     skip(1);
@@ -761,7 +776,7 @@ public class Lexer extends Scanner {
                 int digit = convertDigit(ch0, base);
                 if (digit == -1) {
                     if (seenSeparator) {
-                        error(Lexer.message("numeric.literal.trailing.separator"), type, position, limit - position);
+                        error(Lexer.message(MSG_NUMERIC_LITERAL_TRAILING_SEPARATOR), type, position, limit - position);
                     } else {
                         break; // end of numeric literal
                     }
@@ -815,7 +830,7 @@ public class Lexer extends Scanner {
             final int digit = convertDigit(ch0, 16);
 
             if (digit == -1) {
-                error(Lexer.message(MESSAGE_INVALID_HEX), type, position, limit - position);
+                error(Lexer.message(MSG_INVALID_HEX), type, position, limit - position);
                 return i == 0 ? -1 : value;
             }
 
@@ -844,7 +859,7 @@ public class Lexer extends Scanner {
                     skip(1);
                     return value;
                 } else {
-                    error(Lexer.message(MESSAGE_INVALID_HEX), type, position, limit - position);
+                    error(Lexer.message(MSG_INVALID_HEX), type, position, limit - position);
                     skip(1);
                     return -1;
                 }
@@ -853,14 +868,14 @@ public class Lexer extends Scanner {
             final int digit = convertDigit(ch0, 16);
 
             if (digit == -1) {
-                error(Lexer.message(MESSAGE_INVALID_HEX), type, position, limit - position);
+                error(Lexer.message(MSG_INVALID_HEX), type, position, limit - position);
                 return i == 0 ? -1 : value;
             }
 
             value = digit | value << 4;
 
             if (value > 1114111) {
-                error(Lexer.message(MESSAGE_INVALID_HEX), type, position, limit - position);
+                error(Lexer.message(MSG_INVALID_HEX), type, position, limit - position);
                 return -1;
             }
 
@@ -917,7 +932,7 @@ public class Lexer extends Scanner {
         }
 
         for (int i = 0; i < len; ++i) {
-            if (content[start + i] != keyword.charAt(i)) {
+            if (ParserStrings.charAt(content, start + i) != keyword.charAt(i)) {
                 return false;
             }
         }
@@ -933,18 +948,18 @@ public class Lexer extends Scanner {
      * @param convertUnicode convert Unicode symbols in the Ident string.
      * @return Ident string or null if an error.
      */
-    private String valueOfIdent(final int start, final int length, final boolean convertUnicode) {
+    private TruffleString valueOfIdent(final int start, final int length, final boolean convertUnicode) {
         // End of scan.
         final int end = start + length;
         // Buffer for recording characters.
-        final StringBuilder sb = new StringBuilder(length);
+        final TruffleStringBuilder sb = ParserStrings.builderCreate(length);
 
         int pos = start;
 
         // Scan until end of line or end of file.
         while (pos < end) {
 
-            char curCh0 = content[pos];
+            char curCh0 = ParserStrings.charAt(content, pos);
 
             // If escape character.
             if (convertUnicode && curCh0 == '\\' && charAt(pos + 1) == 'u') {
@@ -956,21 +971,21 @@ public class Lexer extends Scanner {
                     return null;
                 }
                 if (ch < 0) {
-                    sb.append('\\');
-                    sb.append('u');
+                    sb.appendCharUTF16Uncached('\\');
+                    sb.appendCharUTF16Uncached('u');
                 } else {
-                    sb.appendCodePoint(ch);
+                    sb.appendCodePointUncached(ch);
                 }
                 pos = position;
                 reset(savePosition);
             } else {
                 // Add regular character.
-                sb.append(curCh0);
+                sb.appendCharUTF16Uncached(curCh0);
                 pos++;
             }
         }
 
-        return stringIntern(sb.toString());
+        return stringIntern(sb.toStringUncached());
     }
 
     /**
@@ -1001,7 +1016,7 @@ public class Lexer extends Scanner {
      * @param length Length of token.
      * @return JavaScript string object.
      */
-    private String valueOfString(final int start, final int length, final boolean strict) {
+    private TruffleString valueOfString(final int start, final int length, final boolean strict) {
         // Save the current position.
         final int savePosition = position;
         // Calculate the end position.
@@ -1010,7 +1025,7 @@ public class Lexer extends Scanner {
         reset(start);
 
         // Buffer for recording characters.
-        final StringBuilder sb = new StringBuilder(length);
+        final TruffleStringBuilder sb = ParserStrings.builderCreate(length);
 
         // Scan until end of string.
         while (position < end) {
@@ -1038,7 +1053,7 @@ public class Lexer extends Scanner {
                             // octal escape sequences are not allowed (eg. "\02", "\31").
                             // See section 7.8.4 String literals production EscapeSequence
                             if (next != '0' || (ch0 >= '0' && ch0 <= '9')) {
-                                error(Lexer.message("strict.no.octal"), STRING, position, limit - position);
+                                error(Lexer.message(MSG_STRICT_NO_OCTAL), STRING, position, limit - position);
                             }
                         }
                         reset(afterSlash);
@@ -1046,43 +1061,43 @@ public class Lexer extends Scanner {
                         final int ch = octalSequence();
 
                         if (ch < 0) {
-                            sb.append('\\');
-                            sb.append('x');
+                            sb.appendCharUTF16Uncached('\\');
+                            sb.appendCharUTF16Uncached('x');
                         } else {
-                            sb.append((char) ch);
+                            sb.appendCharUTF16Uncached((char) ch);
                         }
                         break;
                     }
                     case '8':
                     case '9':
                         if (strict) {
-                            error(Lexer.message("strict.no.nonoctaldecimal"), STRING, position, limit - position);
+                            error(Lexer.message(MSG_STRICT_NO_NONOCTALDECIMAL), STRING, position, limit - position);
                         }
-                        sb.append(next);
+                        sb.appendCharUTF16Uncached(next);
                         break;
                     case 'n':
-                        sb.append('\n');
+                        sb.appendCharUTF16Uncached('\n');
                         break;
                     case 't':
-                        sb.append('\t');
+                        sb.appendCharUTF16Uncached('\t');
                         break;
                     case 'b':
-                        sb.append('\b');
+                        sb.appendCharUTF16Uncached('\b');
                         break;
                     case 'f':
-                        sb.append('\f');
+                        sb.appendCharUTF16Uncached('\f');
                         break;
                     case 'r':
-                        sb.append('\r');
+                        sb.appendCharUTF16Uncached('\r');
                         break;
                     case '\'':
-                        sb.append('\'');
+                        sb.appendCharUTF16Uncached('\'');
                         break;
                     case '\"':
-                        sb.append('\"');
+                        sb.appendCharUTF16Uncached('\"');
                         break;
                     case '\\':
-                        sb.append('\\');
+                        sb.appendCharUTF16Uncached('\\');
                         break;
                     case '\r': // CR | CRLF
                         if (ch0 == '\n') {
@@ -1100,10 +1115,10 @@ public class Lexer extends Scanner {
                         final int ch = hexSequence(2, STRING);
 
                         if (ch < 0) {
-                            sb.append('\\');
-                            sb.append('x');
+                            sb.appendCharUTF16Uncached('\\');
+                            sb.appendCharUTF16Uncached('x');
                         } else {
-                            sb.append((char) ch);
+                            sb.appendCharUTF16Uncached((char) ch);
                         }
                         break;
                     }
@@ -1112,28 +1127,30 @@ public class Lexer extends Scanner {
                         final int ch = unicodeEscapeSequence(STRING);
 
                         if (ch < 0) {
-                            sb.append('\\');
-                            sb.append('u');
+                            sb.appendCharUTF16Uncached('\\');
+                            sb.appendCharUTF16Uncached('u');
+                        } else if (ch <= 0xffff && Character.isSurrogate((char) ch)) {
+                            sb.appendCharUTF16Uncached((char) ch);
                         } else {
-                            sb.appendCodePoint(ch);
+                            sb.appendCodePointUncached(ch);
                         }
                         break;
                     }
                     case 'v':
-                        sb.append('\u000B');
+                        sb.appendCharUTF16Uncached('\u000B');
                         break;
                     // All other characters.
                     default:
-                        sb.append(next);
+                        sb.appendCharUTF16Uncached(next);
                         break;
                 }
             } else if (ch0 == '\r') {
                 // Convert CR-LF or CR to LF line terminator.
-                sb.append('\n');
+                sb.appendCharUTF16Uncached('\n');
                 skip(ch1 == '\n' ? 2 : 1);
             } else {
                 // Add regular character.
-                sb.append(ch0);
+                sb.appendCharUTF16Uncached(ch0);
                 skip(1);
             }
         }
@@ -1141,7 +1158,7 @@ public class Lexer extends Scanner {
         // Restore position.
         reset(savePosition);
 
-        return stringIntern(sb.toString());
+        return stringIntern(sb.toStringUncached());
     }
 
     /**
@@ -1167,7 +1184,7 @@ public class Lexer extends Scanner {
                 type = ESCSTRING;
                 skip(1);
                 if (!isEscapeCharacter(ch0)) {
-                    error(Lexer.message("invalid.escape.char"), STRING, position, limit - position);
+                    error(Lexer.message(MSG_INVALID_ESCAPE_CHAR), STRING, position, limit - position);
                 }
                 if (isEOL(ch0)) {
                     // Multiline string literal
@@ -1184,7 +1201,7 @@ public class Lexer extends Scanner {
             // Skip close quote.
             skip(1);
         } else {
-            error(Lexer.message("missing.close.quote"), STRING, position, limit - position);
+            error(Lexer.message(MSG_MISSING_CLOSE_QUOTE), STRING, position, limit - position);
         }
 
         // If not just scanning.
@@ -1268,7 +1285,7 @@ public class Lexer extends Scanner {
                 skip(1);
                 // EscapeSequence
                 if (!isEscapeCharacter(ch0)) {
-                    error(Lexer.message("invalid.escape.char"), TEMPLATE, position, limit - position);
+                    error(Lexer.message(MSG_INVALID_ESCAPE_CHAR), TEMPLATE, position, limit - position);
                 }
                 if (isEOL(ch0)) {
                     // LineContinuation
@@ -1285,7 +1302,7 @@ public class Lexer extends Scanner {
             skip(1);
         }
 
-        error(Lexer.message("missing.close.quote"), TEMPLATE, position, limit - position);
+        error(Lexer.message(MSG_MISSING_CLOSE_QUOTE), TEMPLATE, position, limit - position);
     }
 
     /**
@@ -1298,18 +1315,18 @@ public class Lexer extends Scanner {
         return true;
     }
 
-    private static String removeUnderscores(String string) {
-        if (string.indexOf('_') == -1) {
+    private static TruffleString removeUnderscores(TruffleString string) {
+        if (ParserStrings.indexOf(string, '_') == -1) {
             return string;
         } else {
-            StringBuilder sb = new StringBuilder(string.length());
-            for (int i = 0; i < string.length(); i++) {
-                char c = string.charAt(i);
+            TruffleStringBuilder sb = ParserStrings.builderCreate(ParserStrings.length(string));
+            for (int i = 0; i < ParserStrings.length(string); i++) {
+                char c = ParserStrings.charAt(string, i);
                 if (c != '_') {
-                    sb.append(c);
+                    sb.appendCharUTF16Uncached(c);
                 }
             }
-            return sb.toString();
+            return sb.toStringUncached();
         }
     }
 
@@ -1320,28 +1337,32 @@ public class Lexer extends Scanner {
      * @param radix Numeric base.
      * @return Converted number.
      */
-    private static Number valueOf(final String string, final int radix) throws NumberFormatException {
-        String valueString = removeUnderscores(string);
+    private static Number valueOf(final TruffleString string, final int radix) throws NumberFormatException {
+        TruffleString valueString = removeUnderscores(string);
         try {
-            final long value = Long.parseLong(valueString, radix);
+            final long value = valueString.parseLongUncached(radix);
             if (value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE) {
                 return (int) value;
             }
             return value;
-        } catch (final NumberFormatException e) {
+        } catch (final TruffleString.NumberFormatException e) {
             if (radix == 10) {
-                return Double.valueOf(valueString);
+                try {
+                    return valueString.parseDoubleUncached();
+                } catch (TruffleString.NumberFormatException ex) {
+                    throw new RuntimeException(e);
+                }
             }
             // (CWirth) added by Oracle Labs Graal.js
-            if (radix == 16 && valueString.length() >= 15) {
+            if (radix == 16 && ParserStrings.length(valueString) >= 15) {
                 // special case to parse large hex values; see testv8/hex-parsing.js
-                return (new BigInteger(valueString, 16)).doubleValue();
+                return (new BigInteger(valueString.toJavaStringUncached(), 16)).doubleValue();
             }
 
             double value = 0.0;
 
-            for (int i = 0; i < valueString.length(); i++) {
-                final char ch = valueString.charAt(i);
+            for (int i = 0; i < ParserStrings.length(valueString); i++) {
+                final char ch = ParserStrings.charAt(valueString, i);
                 // Preverified, should always be a valid digit.
                 final int digit = convertDigit(ch, radix);
                 value *= radix;
@@ -1352,24 +1373,24 @@ public class Lexer extends Scanner {
         }
     }
 
-    private static BigInteger valueOfBigInt(final String string) {
-        String valueString = removeUnderscores(string);
-        if (valueString.length() > 2 && valueString.charAt(0) == '0') {
-            switch (valueString.charAt(1)) {
+    private static BigInteger valueOfBigInt(final TruffleString string) {
+        TruffleString valueString = removeUnderscores(string);
+        if (ParserStrings.length(valueString) > 2 && ParserStrings.charAt(valueString, 0) == '0') {
+            switch (ParserStrings.charAt(valueString, 1)) {
                 case 'x':
                 case 'X':
-                    return new BigInteger(valueString.substring(2), 16);
+                    return new BigInteger(ParserStrings.substring(valueString, 2).toJavaStringUncached(), 16);
                 case 'o':
                 case 'O':
-                    return new BigInteger(valueString.substring(2), 8);
+                    return new BigInteger(ParserStrings.substring(valueString, 2).toJavaStringUncached(), 8);
                 case 'b':
                 case 'B':
-                    return new BigInteger(valueString.substring(2), 2);
+                    return new BigInteger(ParserStrings.substring(valueString, 2).toJavaStringUncached(), 2);
                 default:
-                    return new BigInteger(valueString, 10);
+                    return new BigInteger(valueString.toJavaStringUncached(), 10);
             }
         } else {
-            return new BigInteger(valueString, 10);
+            return new BigInteger(valueString.toJavaStringUncached(), 10);
         }
     }
 
@@ -1453,7 +1474,7 @@ public class Lexer extends Scanner {
         }
 
         if (Character.isJavaIdentifierStart(ch0)) {
-            error(Lexer.message("missing.space.after.number"), type, position, 1);
+            error(Lexer.message(MSG_MISSING_SPACE_AFTER_NUMBER), type, position, 1);
         }
 
         // Add number token.
@@ -1548,7 +1569,7 @@ public class Lexer extends Scanner {
             final int codePoint = unicodeEscapeSequence(TokenType.IDENT);
 
             if (!IdentUtils.isIdentifierStart(codePoint)) {
-                error(Lexer.message("illegal.identifier.character"), TokenType.IDENT, start, position - start);
+                error(Lexer.message(MSG_ILLEGAL_IDENTIFIER_CHARACTER), TokenType.IDENT, start, position - start);
             }
         } else if (IdentUtils.isIdentifierStart(ch0)) {
             skip(1);
@@ -1566,7 +1587,7 @@ public class Lexer extends Scanner {
                 final int codePoint = unicodeEscapeSequence(TokenType.IDENT);
 
                 if (!IdentUtils.isIdentifierPart(codePoint)) {
-                    error(Lexer.message("illegal.identifier.character"), TokenType.IDENT, start, position - start);
+                    error(Lexer.message(MSG_ILLEGAL_IDENTIFIER_CHARACTER), TokenType.IDENT, start, position - start);
                 }
             } else if (IdentUtils.isIdentifierPart(ch0)) {
                 skip(1);
@@ -1593,7 +1614,7 @@ public class Lexer extends Scanner {
     private boolean identifierEqual(final int aStart, final int aLength, final int bStart, final int bLength) {
         if (aLength == bLength) {
             for (int i = 0; i < aLength; i++) {
-                if (content[aStart + i] != content[bStart + i]) {
+                if (ParserStrings.charAt(content, aStart + i) != ParserStrings.charAt(content, bStart + i)) {
                     return false;
                 }
             }
@@ -1653,7 +1674,7 @@ public class Lexer extends Scanner {
          * Constructor.
          */
 
-        EditStringLexer(final Lexer lexer, final TokenType stringType, final State stringState) {
+        EditStringLexer(final Lexer lexer, final TokenType stringType, final Lexer.State stringState) {
             super(lexer, stringState);
 
             this.stringType = stringType;
@@ -1697,7 +1718,7 @@ public class Lexer extends Scanner {
                     skip(2);
 
                     // Save expression state.
-                    final State expressionState = saveState();
+                    final Lexer.State expressionState = saveState();
 
                     // Start with one open brace.
                     int braceCount = 1;
@@ -1721,7 +1742,7 @@ public class Lexer extends Scanner {
 
                     // If braces don't match then report an error.
                     if (braceCount != 0) {
-                        error(Lexer.message("edit.string.missing.brace"), LBRACE, expressionState.position - 1, 1);
+                        error(Lexer.message(MSG_EDIT_STRING_MISSING_BRACE), LBRACE, expressionState.position - 1, 1);
                     }
 
                     // Mark end of expression.
@@ -1809,7 +1830,7 @@ public class Lexer extends Scanner {
             final int identLength = scanIdentifier();
             if (noStringEditing) {
                 if (ch0 != quoteChar) {
-                    error(Lexer.message("here.non.matching.delimiter"), last, position, 0);
+                    error(Lexer.message(MSG_HERE_NON_MATCHING_DELIMITER), last, position, 0);
                     restoreState(saved);
                     return false;
                 }
@@ -1866,7 +1887,7 @@ public class Lexer extends Scanner {
 
             // If marker is missing.
             if (stringState.isEmpty() || atEOF()) {
-                error(Lexer.message("here.missing.end.marker", source.getString(identStart, identLength)), last, position, 0);
+                error(Lexer.message(MSG_HERE_MISSING_END_MARKER, source.getString(identStart, identLength).toJavaStringUncached()), last, position, 0);
                 restoreState(saved);
 
                 return false;
@@ -1875,12 +1896,12 @@ public class Lexer extends Scanner {
             // Remove last end of line if specified.
             if (excludeLastEOL) {
                 // Handles \n.
-                if (content[stringEnd - 1] == '\n') {
+                if (ParserStrings.charAt(content, stringEnd - 1) == '\n') {
                     stringEnd--;
                 }
 
                 // Handles \r and \r\n.
-                if (content[stringEnd - 1] == '\r') {
+                if (ParserStrings.charAt(content, stringEnd - 1) == '\r') {
                     stringEnd--;
                 }
 
@@ -2041,9 +2062,14 @@ public class Lexer extends Scanner {
             case BIGINT:
                 return Lexer.valueOfBigInt(source.getString(start, len - 1)); // number
             case FLOATING:
-                final String str = removeUnderscores(source.getString(start, len));
-                final double value = Double.parseDouble(str);
-                if (str.indexOf('.') != -1) {
+                final TruffleString str = removeUnderscores(source.getString(start, len));
+                final double value;
+                try {
+                    value = str.parseDoubleUncached();
+                } catch (TruffleString.NumberFormatException e) {
+                    throw new RuntimeException(e);
+                }
+                if (ParserStrings.indexOf(str, '.') != -1) {
                     return value; // number
                 }
                 // anything without an explicit decimal point is still subject to a
@@ -2091,7 +2117,7 @@ public class Lexer extends Scanner {
      * @return Template Value if the value is string, returns {@code null} otherwise (i.e. if the
      *         value is undefined).
      */
-    String valueOfTaggedTemplateString(final long token) {
+    TruffleString valueOfTaggedTemplateString(final long token) {
         final int savePosition = position;
 
         try {
@@ -2110,7 +2136,7 @@ public class Lexer extends Scanner {
      * @param token template string token
      * @return raw string
      */
-    public String valueOfRawString(final long token) {
+    public TruffleString valueOfRawString(final long token) {
         final int start = Token.descPosition(token);
         final int length = Token.descLength(token);
 
@@ -2122,17 +2148,17 @@ public class Lexer extends Scanner {
         reset(start);
 
         // Buffer for recording characters.
-        final StringBuilder sb = new StringBuilder(length);
+        final TruffleStringBuilder sb = ParserStrings.builderCreate(length);
 
         // Scan until end of string.
         while (position < end) {
             if (ch0 == '\r') {
                 // Convert CR-LF or CR to LF line terminator.
-                sb.append('\n');
+                sb.appendCharUTF16Uncached('\n');
                 skip(ch1 == '\n' ? 2 : 1);
             } else {
                 // Add regular character.
-                sb.append(ch0);
+                sb.appendCharUTF16Uncached(ch0);
                 skip(1);
             }
         }
@@ -2140,11 +2166,11 @@ public class Lexer extends Scanner {
         // Restore position.
         reset(savePosition);
 
-        return stringIntern(sb.toString());
+        return stringIntern(sb.toStringUncached());
     }
 
-    public String stringIntern(String candidate) {
-        String interned = internedStrings.putIfAbsent(candidate, candidate);
+    public TruffleString stringIntern(TruffleString candidate) {
+        TruffleString interned = internedStrings.putIfAbsent(candidate, candidate);
         return interned == null ? candidate : interned;
     }
 
@@ -2156,7 +2182,7 @@ public class Lexer extends Scanner {
      * @return message
      */
     protected static String message(final String msgId, final String... args) {
-        return ECMAErrors.getMessage("lexer.error." + msgId, args);
+        return ECMAErrors.getMessage(MSG_LEXER_ERROR + msgId, args);
     }
 
     /**
@@ -2180,14 +2206,14 @@ public class Lexer extends Scanner {
      * Helper class for Lexer tokens, e.g XML or RegExp tokens. This is the abstract superclass.
      */
     public abstract static class LexerToken {
-        private final String expression;
+        private final TruffleString expression;
 
         /**
          * Constructor
          *
          * @param expression token expression
          */
-        protected LexerToken(final String expression) {
+        protected LexerToken(final TruffleString expression) {
             this.expression = expression;
         }
 
@@ -2196,7 +2222,7 @@ public class Lexer extends Scanner {
          *
          * @return expression
          */
-        public String getExpression() {
+        public TruffleString getExpression() {
             return expression;
         }
     }
@@ -2206,7 +2232,7 @@ public class Lexer extends Scanner {
      */
     public static class RegexToken extends LexerToken {
         /** Options. */
-        private final String options;
+        private final TruffleString options;
 
         /**
          * Constructor.
@@ -2214,7 +2240,7 @@ public class Lexer extends Scanner {
          * @param expression regexp expression
          * @param options regexp options
          */
-        public RegexToken(final String expression, final String options) {
+        public RegexToken(final TruffleString expression, final TruffleString options) {
             super(expression);
             this.options = options;
         }
@@ -2224,13 +2250,13 @@ public class Lexer extends Scanner {
          *
          * @return options
          */
-        public String getOptions() {
+        public TruffleString getOptions() {
             return options;
         }
 
         @Override
         public String toString() {
-            return '/' + getExpression() + '/' + options;
+            return '/' + getExpression().toJavaStringUncached() + '/' + options.toJavaStringUncached();
         }
     }
 
@@ -2244,7 +2270,7 @@ public class Lexer extends Scanner {
          *
          * @param expression XML expression
          */
-        public XMLToken(final String expression) {
+        public XMLToken(final TruffleString expression) {
             super(expression);
         }
     }

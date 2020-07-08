@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,7 @@ import com.oracle.js.parser.ir.ParameterNode;
 import com.oracle.js.parser.ir.Scope;
 import com.oracle.js.parser.ir.Symbol;
 import com.oracle.js.parser.ir.VarNode;
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * ParserContextNode that represents a function that is currently being parsed
@@ -61,7 +62,7 @@ import com.oracle.js.parser.ir.VarNode;
 class ParserContextFunctionNode extends ParserContextBaseNode {
 
     /** Function name */
-    private final String name;
+    private final TruffleString name;
 
     /** Function identifier node */
     private final IdentNode ident;
@@ -105,7 +106,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     private long yieldOrAwaitInParameters;
 
     private Module module;
-    private String internalName;
+    private TruffleString internalName;
 
     /**
      * @param token The token for the function
@@ -116,7 +117,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      * @param parameters The parameters of the function
      * @param parentScope The parent scope
      */
-    ParserContextFunctionNode(final long token, final IdentNode ident, final String name, final Namespace namespace, final int line, final int flags,
+    ParserContextFunctionNode(final long token, final IdentNode ident, final TruffleString name, final Namespace namespace, final int line, final int flags,
                     final List<IdentNode> parameters, final int length, Scope parentScope, Scope functionScope) {
         super(flags);
         this.ident = ident;
@@ -136,7 +137,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     /**
      * @return Name of the function
      */
-    public String getName() {
+    public TruffleString getName() {
         return name;
     }
 
@@ -212,7 +213,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      * @param base prefix for name
      * @return base if no collision exists, otherwise a name prefix with base
      */
-    public String uniqueName(final String base) {
+    public TruffleString uniqueName(final TruffleString base) {
         return namespace.uniqueName(base);
     }
 
@@ -539,11 +540,11 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         }
     }
 
-    public String getInternalName() {
+    public TruffleString getInternalName() {
         return internalName;
     }
 
-    public void setInternalName(String internalName) {
+    public void setInternalName(TruffleString internalName) {
         this.internalName = internalName;
     }
 

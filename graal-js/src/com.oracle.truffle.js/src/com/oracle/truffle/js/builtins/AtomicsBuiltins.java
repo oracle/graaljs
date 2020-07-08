@@ -40,6 +40,10 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import static com.oracle.truffle.js.runtime.builtins.JSArrayBuffer.isDetachedBuffer;
+import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.getArrayBuffer;
+import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetArrayType;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -79,6 +83,7 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArray.BigInt64Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.BigUint64Array;
@@ -111,20 +116,12 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-import static com.oracle.truffle.js.runtime.builtins.JSArrayBuffer.isDetachedBuffer;
-import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.getArrayBuffer;
-import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetArrayType;
-
 /**
  * Contains builtins for {@linkplain Atomics}.
  */
 public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<AtomicsBuiltins.Atomics> {
 
     public static final JSBuiltinsContainer BUILTINS = new AtomicsBuiltins();
-
-    public static final String OK = "ok";
-    public static final String NOT_EQUAL = "not-equal";
-    public static final String TIMED_OUT = "timed-out";
 
     protected AtomicsBuiltins() {
         super(JSRealm.ATOMICS_CLASS_NAME, Atomics.class);
@@ -1099,8 +1096,8 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             toIndexNode = JSToIndexNode.create();
             toDoubleNode = JSToDoubleNode.create();
             loadNode = createHelperNode();
-            createAsyncPropertyNode = CreateDataPropertyNode.create(context, "async");
-            createValuePropertyNode = CreateDataPropertyNode.create(context, "value");
+            createAsyncPropertyNode = CreateDataPropertyNode.create(context, Strings.ASYNC);
+            createValuePropertyNode = CreateDataPropertyNode.create(context, Strings.VALUE);
         }
 
         protected AtomicsLoadNode createHelperNode() {
@@ -1150,31 +1147,31 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 if (isNotEqual) {
                     valuesNotEqualBranch.enter();
                     if (!isAsyncProfile.profile(isAsync)) {
-                        return NOT_EQUAL;
+                        return Strings.NOT_EQUAL;
                     }
                     createAsyncPropertyNode.executeVoid(resultObject, false);
-                    createValuePropertyNode.executeVoid(resultObject, NOT_EQUAL);
+                    createValuePropertyNode.executeVoid(resultObject, Strings.NOT_EQUAL);
                     return resultObject;
                 }
 
                 if (isAsync && t == 0) {
                     asyncImmediateTimeoutBranch.enter();
                     createAsyncPropertyNode.executeVoid(resultObject, false);
-                    createValuePropertyNode.executeVoid(resultObject, TIMED_OUT);
+                    createValuePropertyNode.executeVoid(resultObject, Strings.TIMED_OUT);
                     return resultObject;
                 }
                 int id = agent.getSignifier();
-                WaiterRecord waiterRecord = WaiterRecord.create(id, promiseCapability, t, OK, wl, agent);
+                WaiterRecord waiterRecord = WaiterRecord.create(id, promiseCapability, t, Strings.OK, wl, agent);
                 SharedMemorySync.addWaiter(agent, wl, waiterRecord, isAsync);
 
                 if (!isAsyncProfile.profile(isAsync)) {
                     boolean awoken = SharedMemorySync.suspendAgent(agent, wl, waiterRecord);
                     if (awokenProfile.profile(awoken)) {
                         assert !wl.contains(waiterRecord);
-                        return OK;
+                        return Strings.OK;
                     } else {
                         SharedMemorySync.removeWaiter(agent, wl, waiterRecord);
-                        return TIMED_OUT;
+                        return Strings.TIMED_OUT;
                     }
                 }
                 createAsyncPropertyNode.executeVoid(resultObject, true);

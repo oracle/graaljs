@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.js.parser;
 
 import java.util.Iterator;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 
@@ -54,7 +55,7 @@ import com.oracle.js.parser.ir.Scope;
 class ParserContextClassNode extends ParserContextBaseNode implements ParserContextScopableNode {
 
     private final Scope scope;
-    protected EconomicMap<String, IdentNode> unresolvedPrivateIdentifiers;
+    protected EconomicMap<TruffleString, IdentNode> unresolvedPrivateIdentifiers;
 
     /**
      * Constructs a ParserContextClassNode.
@@ -75,7 +76,7 @@ class ParserContextClassNode extends ParserContextBaseNode implements ParserCont
      * Register a private name usage for resolving.
      */
     void usePrivateName(IdentNode ident) {
-        String name = ident.getName();
+        TruffleString name = ident.getName();
         if (scope.findPrivateName(name)) {
             // Private name has already been declared in this class.
             return;
@@ -92,10 +93,10 @@ class ParserContextClassNode extends ParserContextBaseNode implements ParserCont
 
     IdentNode verifyAllPrivateIdentifiersValid(ParserContext lc) {
         if (unresolvedPrivateIdentifiers != null) {
-            MapCursor<String, IdentNode> entries = unresolvedPrivateIdentifiers.getEntries();
+            MapCursor<TruffleString, IdentNode> entries = unresolvedPrivateIdentifiers.getEntries();
             next: while (entries.advance()) {
                 IdentNode unresolved = entries.getValue();
-                String name = entries.getKey();
+                TruffleString name = entries.getKey();
                 if (scope.findPrivateName(name)) {
                     // found the private name in this or an outer class scope
                     continue next;

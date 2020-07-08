@@ -61,6 +61,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 
 /**
  * Implements OrdinaryToPrimitive (O, hint).
@@ -166,10 +167,10 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     }
 
     protected Object doForeignHintString(Object object, InteropLibrary interop) {
-        if (interop.hasMembers(object) && interop.isMemberInvocable(object, JSRuntime.TO_STRING)) {
+        if (interop.hasMembers(object) && interop.isMemberInvocable(object, Strings.toJavaString(Strings.TO_STRING))) {
             Object result;
             try {
-                result = JSRuntime.importValue(interop.invokeMember(object, JSRuntime.TO_STRING));
+                result = JSRuntime.importValue(interop.invokeMember(object, Strings.toJavaString(Strings.TO_STRING)));
             } catch (InteropException e) {
                 result = null;
             }
@@ -186,10 +187,10 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
             }
         }
 
-        if (interop.hasMembers(object) && interop.isMemberInvocable(object, JSRuntime.VALUE_OF)) {
+        if (interop.hasMembers(object) && interop.isMemberInvocable(object, Strings.toJavaString(Strings.VALUE_OF))) {
             Object result;
             try {
-                result = JSRuntime.importValue(interop.invokeMember(object, JSRuntime.VALUE_OF));
+                result = JSRuntime.importValue(interop.invokeMember(object, Strings.toJavaString(Strings.VALUE_OF)));
             } catch (InteropException e) {
                 result = null;
             }
@@ -209,10 +210,10 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     }
 
     protected Object doForeignHintNumber(Object object, InteropLibrary interop) {
-        if (interop.hasMembers(object) && interop.isMemberInvocable(object, JSRuntime.VALUE_OF)) {
+        if (interop.hasMembers(object) && interop.isMemberInvocable(object, Strings.toJavaString(Strings.VALUE_OF))) {
             Object result;
             try {
-                result = JSRuntime.importValue(interop.invokeMember(object, JSRuntime.VALUE_OF));
+                result = JSRuntime.importValue(interop.invokeMember(object, Strings.toJavaString(Strings.VALUE_OF)));
             } catch (InteropException e) {
                 result = null;
             }
@@ -229,10 +230,10 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
             }
         }
 
-        if (interop.hasMembers(object) && interop.isMemberInvocable(object, JSRuntime.TO_STRING)) {
+        if (interop.hasMembers(object) && interop.isMemberInvocable(object, Strings.toJavaString(Strings.TO_STRING))) {
             Object result;
             try {
-                result = JSRuntime.importValue(interop.invokeMember(object, JSRuntime.TO_STRING));
+                result = JSRuntime.importValue(interop.invokeMember(object, Strings.toJavaString(Strings.TO_STRING)));
             } catch (InteropException e) {
                 result = null;
             }
@@ -254,7 +255,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     private PropertyNode getToString() {
         if (getToStringNode == null || callToStringNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getToStringNode = insert(PropertyNode.createMethod(context, null, JSRuntime.TO_STRING));
+            getToStringNode = insert(PropertyNode.createMethod(context, null, Strings.TO_STRING));
             callToStringNode = insert(JSFunctionCallNode.createCall());
         }
         return getToStringNode;
@@ -263,7 +264,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     private PropertyNode getValueOf() {
         if (getValueOfNode == null || callValueOfNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getValueOfNode = insert(PropertyNode.createMethod(context, null, JSRuntime.VALUE_OF));
+            getValueOfNode = insert(PropertyNode.createMethod(context, null, Strings.VALUE_OF));
             callValueOfNode = insert(JSFunctionCallNode.createCall());
         }
         return getValueOfNode;

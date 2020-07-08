@@ -46,9 +46,11 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -169,8 +171,8 @@ public abstract class JSArrayNextElementIndexNode extends JSArrayElementIndexNod
             if (key == null) {
                 continue;
             }
-            if (key instanceof String) {
-                long candidate = JSRuntime.propertyNameToIntegerIndex((String) key);
+            if (Strings.isTString(key)) {
+                long candidate = JSRuntime.propertyNameToIntegerIndex((TruffleString) key);
                 // no other length check necessary - current result is guarded by ToLength
                 if (candidate > currentIndex && candidate < result) {
                     result = candidate;

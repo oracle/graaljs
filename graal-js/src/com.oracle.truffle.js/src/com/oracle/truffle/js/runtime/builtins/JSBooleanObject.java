@@ -45,6 +45,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
@@ -63,7 +64,7 @@ public final class JSBooleanObject extends JSNonProxyObject {
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return JSBoolean.CLASS_NAME;
     }
 

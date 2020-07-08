@@ -45,6 +45,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyTablePrototypeBuiltinsFactory.WebAssemblyTableGetNodeGen;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyTablePrototypeBuiltinsFactory.WebAssemblyTableGrowNodeGen;
@@ -57,6 +58,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssembly;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstance;
@@ -172,7 +174,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
                     return Null.instance;
                 }
                 Object funcTypeFn = realm.getWASMFuncType();
-                String funcType = (String) funcTypeLib.execute(funcTypeFn, fn);
+                TruffleString funcType = Strings.fromJavaString((String) funcTypeLib.execute(funcTypeFn, fn));
                 return JSWebAssemblyInstance.exportFunction(getContext(), realm, fn, funcType);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);

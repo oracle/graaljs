@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,8 +41,10 @@
 package com.oracle.truffle.js.test.runtime;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import com.oracle.truffle.js.runtime.Strings;
 import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
@@ -61,7 +63,7 @@ public class TestHelperTest extends JSTest {
     public void testTestHelper() {
         assertTrue(testHelper.getGlobalObject() != Undefined.instance);
         assertEquals(1.0, testHelper.runDouble("1.0"), 0.00001);
-        assertEquals(true, testHelper.runBoolean("true"));
+        assertTrue(testHelper.runBoolean("true"));
         assertTrue(testHelper.runExpectUndefined("undefined"));
         assertEquals("bar\n", testHelper.runToString("print('bar')"));
         assertEquals("test", testHelper.runSilent("print('NOT VISIBLE ON CONSOLE'); 'test';"));
@@ -69,14 +71,15 @@ public class TestHelperTest extends JSTest {
 
     @Test
     public void testBinding() {
-        testHelper.putBinding("__foo__", "bar"); // actually calls set, not define, thus failing!
-        assertEquals(null, testHelper.getBinding("__foo__"));
+        // actually calls set, not define, thus failing!
+        testHelper.putBinding(Strings.constant("__foo__"), Strings.constant("bar"));
+        assertNull(testHelper.getBinding(Strings.constant("__foo__")));
 
         testHelper.run("var __foo__ = 'set';");
 
-        testHelper.putBinding("__foo__", "bar");
+        testHelper.putBinding(Strings.constant("__foo__"), Strings.constant("bar"));
         testHelper.runVoid("__foo__+=42");
-        assertEquals("bar42", testHelper.getBinding("__foo__"));
+        assertEquals(Strings.fromJavaString("bar42"), testHelper.getBinding(Strings.constant("__foo__")));
     }
 
     @Test

@@ -45,6 +45,7 @@ import java.util.Objects;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.util.Pair;
@@ -116,7 +117,7 @@ public class Accessor {
         return cacheData.getOrCreateFunctionDataFromAccessor(this, getter, (c) -> {
             RootNode rootNode = new ExecuteNativeAccessorNode(context, getter);
             CallTarget callbackCallTarget = rootNode.getCallTarget();
-            return JSFunctionData.create(context, callbackCallTarget, callbackCallTarget, 0, "", false, false, false, true);
+            return JSFunctionData.create(context, callbackCallTarget, callbackCallTarget, 0, Strings.EMPTY_STRING, false, false, false, true);
         });
     }
 

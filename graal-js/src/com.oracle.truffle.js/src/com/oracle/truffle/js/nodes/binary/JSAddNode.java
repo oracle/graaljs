@@ -53,6 +53,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
@@ -68,7 +69,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
+import com.oracle.truffle.js.runtime.Strings;
 
 @NodeInfo(shortName = "+")
 public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
@@ -94,7 +95,7 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
                 Object rightValue = ((JSConstantNode) right).execute(null);
                 return JSAddConstantRightNumberNodeGen.create(left, (Number) rightValue, truncate);
             } else if (left instanceof JSConstantStringNode && right instanceof JSConstantStringNode) {
-                return JSConstantNode.createString((String) left.execute(null) + (String) right.execute(null));
+                return JSConstantNode.createString(((TruffleString) left.execute(null)).concatUncached((TruffleString) right.execute(null), TruffleString.Encoding.UTF_16, false));
             } else if (left instanceof JSConstantIntegerNode || left instanceof JSConstantDoubleNode) {
                 Object leftValue = ((JSConstantNode) left).execute(null);
                 return JSAddConstantLeftNumberNodeGen.create((Number) leftValue, right, truncate);
@@ -169,33 +170,37 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
     }
 
     @Specialization
-    protected CharSequence doString(CharSequence a, CharSequence b,
+    protected TruffleString doString(TruffleString a, TruffleString b,
                     @Cached @Shared("concatStringsNode") JSConcatStringsNode concatStringsNode) {
-        return concatStringsNode.executeCharSequence(a, b);
+        return concatStringsNode.executeTString(a, b);
     }
 
     @Specialization
-    protected CharSequence doStringInt(CharSequence a, int b) {
-        return JSLazyString.createLazyInt(a, b, getLanguage().getJSContext().getStringLengthLimit());
+    protected TruffleString doStringInt(TruffleString a, int b,
+                    @Cached @Shared("concatStringsNode") JSConcatStringsNode concatStringsNode,
+                    @Cached @Shared("stringFromLongNode") TruffleString.FromLongNode stringFromLongNode) {
+        return concatStringsNode.executeTString(a, Strings.fromLong(stringFromLongNode, b));
     }
 
     @Specialization
-    protected CharSequence doIntString(int a, CharSequence b) {
-        return JSLazyString.createLazyInt(a, b, getLanguage().getJSContext().getStringLengthLimit());
+    protected TruffleString doIntString(int a, TruffleString b,
+                    @Cached @Shared("concatStringsNode") JSConcatStringsNode concatStringsNode,
+                    @Cached @Shared("stringFromLongNode") TruffleString.FromLongNode stringFromLongNode) {
+        return concatStringsNode.executeTString(Strings.fromLong(stringFromLongNode, a), b);
     }
 
     @Specialization(guards = "isNumber(b)")
-    protected CharSequence doStringNumber(CharSequence a, Object b,
+    protected Object doStringNumber(TruffleString a, Object b,
                     @Cached @Shared("concatStringsNode") JSConcatStringsNode concatStringsNode,
                     @Cached @Shared("doubleToStringNode") JSDoubleToStringNode doubleToStringNode) {
-        return concatStringsNode.executeCharSequence(a, doubleToStringNode.executeString(b));
+        return concatStringsNode.executeTString(a, doubleToStringNode.executeString(b));
     }
 
     @Specialization(guards = "isNumber(a)")
-    protected CharSequence doNumberString(Object a, CharSequence b,
+    protected Object doNumberString(Object a, TruffleString b,
                     @Cached @Shared("concatStringsNode") JSConcatStringsNode concatStringsNode,
                     @Cached @Shared("doubleToStringNode") JSDoubleToStringNode doubleToStringNode) {
-        return concatStringsNode.executeCharSequence(doubleToStringNode.executeString(a), b);
+        return concatStringsNode.executeTString(doubleToStringNode.executeString(a), b);
     }
 
     /*
@@ -213,8 +218,8 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
         return overloadedOperatorNode.execute(a, b);
     }
 
-    protected String getOverloadedOperatorName() {
-        return "+";
+    protected TruffleString getOverloadedOperatorName() {
+        return Strings.SYMBOL_PLUS;
     }
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInt", "doIntOverflow", "doIntTruncate", "doSafeInteger",

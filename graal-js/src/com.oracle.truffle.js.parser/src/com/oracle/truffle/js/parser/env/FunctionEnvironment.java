@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -57,18 +58,19 @@ import com.oracle.truffle.js.nodes.control.BreakTarget;
 import com.oracle.truffle.js.nodes.control.ContinueTarget;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.Strings;
 
 public final class FunctionEnvironment extends Environment {
-    private static final String RETURN_SLOT_IDENTIFIER = "<return>";
-    static final String ARGUMENTS_SLOT_IDENTIFIER = "<arguments>";
-    static final String THIS_SLOT_IDENTIFIER = "<this>";
-    static final String SUPER_SLOT_IDENTIFIER = "<super>";
-    static final String NEW_TARGET_SLOT_IDENTIFIER = "<new.target>";
-    static final String YIELD_VALUE_SLOT_IDENTIFIER = "<yieldvalue>";
-    static final String ASYNC_CONTEXT_SLOT_IDENTIFIER = "<asynccontext>";
-    static final String ASYNC_RESULT_SLOT_IDENTIFIER = "<asyncresult>";
-    private static final String YIELD_RESULT_SLOT_IDENTIFIER = "<yieldresult>";
-    public static final String DYNAMIC_SCOPE_IDENTIFIER = ScopeFrameNode.EVAL_SCOPE_IDENTIFIER;
+    private static final TruffleString RETURN_SLOT_IDENTIFIER = Strings.constant("<return>");
+    static final TruffleString ARGUMENTS_SLOT_IDENTIFIER = Strings.constant("<arguments>");
+    static final TruffleString THIS_SLOT_IDENTIFIER = Strings.constant("<this>");
+    static final TruffleString SUPER_SLOT_IDENTIFIER = Strings.constant("<super>");
+    static final TruffleString NEW_TARGET_SLOT_IDENTIFIER = Strings.constant("<new.target>");
+    static final TruffleString YIELD_VALUE_SLOT_IDENTIFIER = Strings.constant("<yieldvalue>");
+    static final TruffleString ASYNC_CONTEXT_SLOT_IDENTIFIER = Strings.constant("<asynccontext>");
+    static final TruffleString ASYNC_RESULT_SLOT_IDENTIFIER = Strings.constant("<asyncresult>");
+    private static final TruffleString YIELD_RESULT_SLOT_IDENTIFIER = Strings.constant("<yieldresult>");
+    public static final TruffleString DYNAMIC_SCOPE_IDENTIFIER = ScopeFrameNode.EVAL_SCOPE_IDENTIFIER;
 
     private final FunctionEnvironment parentFunction;
     private final JSFrameDescriptor frameDescriptor;
@@ -78,8 +80,8 @@ public final class FunctionEnvironment extends Environment {
     private JSFrameSlot returnSlot;
     private JSFrameSlot blockScopeSlot;
 
-    private String functionName = "";
-    private String internalFunctionName = "";
+    private TruffleString functionName = Strings.EMPTY_STRING;
+    private TruffleString internalFunctionName = Strings.EMPTY_STRING;
     private boolean isNamedExpression;
     private boolean needsParentFrame;
     private boolean frozen;
@@ -301,19 +303,19 @@ public final class FunctionEnvironment extends Environment {
         return parameters.get(slot, -1);
     }
 
-    public String getFunctionName() {
+    public TruffleString getFunctionName() {
         return functionName;
     }
 
-    public void setFunctionName(String functionName) {
+    public void setFunctionName(TruffleString functionName) {
         this.functionName = functionName;
     }
 
-    public String getInternalFunctionName() {
+    public TruffleString getInternalFunctionName() {
         return internalFunctionName;
     }
 
-    public void setInternalFunctionName(String internalFunctionName) {
+    public void setInternalFunctionName(TruffleString internalFunctionName) {
         this.internalFunctionName = internalFunctionName;
     }
 

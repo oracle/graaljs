@@ -57,6 +57,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
@@ -157,7 +158,7 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected Object[] toArrayString(CharSequence value) {
+    protected Object[] toArrayString(TruffleString value) {
         return notAnObjectError(value);
     }
 

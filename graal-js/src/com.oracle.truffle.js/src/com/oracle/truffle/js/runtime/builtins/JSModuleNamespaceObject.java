@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,11 +44,12 @@ import java.util.Map;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 
 public final class JSModuleNamespaceObject extends JSNonProxyObject {
@@ -66,9 +67,9 @@ public final class JSModuleNamespaceObject extends JSNonProxyObject {
      * object. The list is ordered as if an Array of those String values had been sorted using
      * Array.prototype.sort using SortCompare as comparefn.
      */
-    private final Map<String, ExportResolution> exports;
+    private final Map<TruffleString, ExportResolution> exports;
 
-    protected JSModuleNamespaceObject(Shape shape, JSModuleRecord module, Map<String, ExportResolution> exports) {
+    protected JSModuleNamespaceObject(Shape shape, JSModuleRecord module, Map<TruffleString, ExportResolution> exports) {
         super(shape);
         this.module = module;
         this.exports = exports;
@@ -78,16 +79,16 @@ public final class JSModuleNamespaceObject extends JSNonProxyObject {
         return module;
     }
 
-    public Map<String, ExportResolution> getExports() {
+    public Map<TruffleString, ExportResolution> getExports() {
         return exports;
     }
 
-    public static DynamicObject create(JSRealm realm, JSObjectFactory factory, JSModuleRecord module, Map<String, ExportResolution> exports) {
+    public static DynamicObject create(JSRealm realm, JSObjectFactory factory, JSModuleRecord module, Map<TruffleString, ExportResolution> exports) {
         return factory.initProto(new JSModuleNamespaceObject(factory.getShape(realm), module, exports), realm);
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return JSModuleNamespace.CLASS_NAME;
     }
 

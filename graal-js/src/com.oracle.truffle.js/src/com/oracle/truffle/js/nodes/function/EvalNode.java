@@ -58,6 +58,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -72,6 +73,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -140,7 +142,7 @@ public abstract class EvalNode extends JavaScriptNode {
         String sourceName = sourceSection.getSource().getName();
         String callerName = callNode.getRootNode().getName();
         if (callerName == null || callerName.startsWith(":")) {
-            callerName = JSError.getAnonymousFunctionNameStackTrace(context);
+            callerName = Strings.toJavaString(JSError.getAnonymousFunctionNameStackTrace(context));
         }
         if (sourceName.startsWith(Evaluator.EVAL_AT_SOURCE_NAME_PREFIX)) {
             return Evaluator.EVAL_AT_SOURCE_NAME_PREFIX + callerName + " (" + sourceName + ")";
@@ -227,11 +229,11 @@ public abstract class EvalNode extends JavaScriptNode {
         }
 
         @Specialization
-        protected Object directEvalCharSequence(VirtualFrame frame, CharSequence source) {
+        protected Object directEvalCharSequence(VirtualFrame frame, TruffleString source) {
             return directEvalImpl(frame, source);
         }
 
-        private Object directEvalImpl(VirtualFrame frame, CharSequence sourceCode) {
+        private Object directEvalImpl(VirtualFrame frame, TruffleString sourceCode) {
             final Source source = sourceFromString(sourceCode);
             JSRealm realm = getRealm();
             Object evalThis = thisNode.execute(frame);
@@ -251,7 +253,7 @@ public abstract class EvalNode extends JavaScriptNode {
                         @CachedLibrary("sourceCode") InteropLibrary interop) {
             if (interop.isString(sourceCode)) {
                 try {
-                    return directEvalImpl(frame, interop.asString(sourceCode));
+                    return directEvalImpl(frame, interop.asTruffleString(sourceCode));
                 } catch (UnsupportedMessageException ex) {
                     throw Errors.createTypeErrorInteropException(sourceCode, ex, "asString", this);
                 }
@@ -261,7 +263,7 @@ public abstract class EvalNode extends JavaScriptNode {
         }
 
         @TruffleBoundary
-        private Source sourceFromString(CharSequence sourceCode) {
+        private Source sourceFromString(TruffleString sourceCode) {
             String evalSourceName = null;
             if (context.isOptionV8CompatibilityMode()) {
                 evalSourceName = formatEvalOrigin(this, context);
@@ -269,7 +271,7 @@ public abstract class EvalNode extends JavaScriptNode {
             if (evalSourceName == null) {
                 evalSourceName = Evaluator.EVAL_SOURCE_NAME;
             }
-            return Source.newBuilder(JavaScriptLanguage.ID, sourceCode.toString(), evalSourceName).build();
+            return Source.newBuilder(JavaScriptLanguage.ID, Strings.toJavaString(sourceCode), evalSourceName).build();
         }
 
         protected DirectEvalNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {

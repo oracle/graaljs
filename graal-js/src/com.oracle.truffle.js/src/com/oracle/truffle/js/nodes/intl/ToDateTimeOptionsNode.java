@@ -51,12 +51,19 @@ import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 // https://tc39.github.io/ecma402/#sec-todatetimeoptions
 public abstract class ToDateTimeOptionsNode extends JavaScriptBaseNode {
+
+    private static final String ALL = "all";
+    private static final String ANY = "any";
+    private static final String DATE = "date";
+    private static final String TIME = "time";
 
     @Child JSToObjectNode toObjectNode;
     final JSContext context;
@@ -89,41 +96,41 @@ public abstract class ToDateTimeOptionsNode extends JavaScriptBaseNode {
     private static DynamicObject setDefaultsIfNeeded(DynamicObject options, String required, String defaults) {
         boolean needDefaults = true;
         if (required != null) {
-            if (required.equals("date") || required.equals("any")) {
-                needDefaults &= JSGuards.isUndefined(JSObject.get(options, "weekday"));
-                needDefaults &= JSGuards.isUndefined(JSObject.get(options, "year"));
-                needDefaults &= JSGuards.isUndefined(JSObject.get(options, "month"));
-                needDefaults &= JSGuards.isUndefined(JSObject.get(options, "day"));
+            if (DATE.equals(required) || ANY.equals(required)) {
+                needDefaults &= JSGuards.isUndefined(JSObject.get(options, Strings.WEEKDAY));
+                needDefaults &= JSGuards.isUndefined(JSObject.get(options, Strings.YEAR));
+                needDefaults &= JSGuards.isUndefined(JSObject.get(options, Strings.MONTH));
+                needDefaults &= JSGuards.isUndefined(JSObject.get(options, Strings.DAY));
             }
-            if (required.equals("time") || required.equals("any")) {
-                needDefaults &= JSGuards.isUndefined(JSObject.get(options, "dayPeriod"));
-                needDefaults &= JSGuards.isUndefined(JSObject.get(options, "hour"));
-                needDefaults &= JSGuards.isUndefined(JSObject.get(options, "minute"));
-                needDefaults &= JSGuards.isUndefined(JSObject.get(options, "second"));
-                needDefaults &= JSGuards.isUndefined(JSObject.get(options, "fractionalSecondDigits"));
+            if (TIME.equals(required) || ANY.equals(required)) {
+                needDefaults &= JSGuards.isUndefined(JSObject.get(options, IntlUtil.KEY_DAY_PERIOD));
+                needDefaults &= JSGuards.isUndefined(JSObject.get(options, Strings.HOUR));
+                needDefaults &= JSGuards.isUndefined(JSObject.get(options, Strings.MINUTE));
+                needDefaults &= JSGuards.isUndefined(JSObject.get(options, Strings.SECOND));
+                needDefaults &= JSGuards.isUndefined(JSObject.get(options, IntlUtil.KEY_FRACTIONAL_SECOND_DIGITS));
             }
         }
-        Object dateStyle = JSObject.get(options, "dateStyle");
-        Object timeStyle = JSObject.get(options, "timeStyle");
+        Object dateStyle = JSObject.get(options, Strings.DATE_STYLE);
+        Object timeStyle = JSObject.get(options, Strings.TIME_STYLE);
         if (dateStyle != Undefined.instance || timeStyle != Undefined.instance) {
             needDefaults = false;
         }
-        if ("date".equals(required) && timeStyle != Undefined.instance) {
+        if (DATE.equals(required) && timeStyle != Undefined.instance) {
             throw Errors.createTypeError("timeStyle option is not allowed here");
         }
-        if ("time".equals(required) && dateStyle != Undefined.instance) {
+        if (TIME.equals(required) && dateStyle != Undefined.instance) {
             throw Errors.createTypeError("dateStyle option is not allowed here");
         }
         if (defaults != null) {
-            if (needDefaults && (defaults.equals("date") || defaults.equals("all"))) {
-                JSRuntime.createDataPropertyOrThrow(options, "year", "numeric");
-                JSRuntime.createDataPropertyOrThrow(options, "month", "numeric");
-                JSRuntime.createDataPropertyOrThrow(options, "day", "numeric");
+            if (needDefaults && (DATE.equals(defaults) || ALL.equals(defaults))) {
+                JSRuntime.createDataPropertyOrThrow(options, Strings.YEAR, Strings.NUMERIC);
+                JSRuntime.createDataPropertyOrThrow(options, Strings.MONTH, Strings.NUMERIC);
+                JSRuntime.createDataPropertyOrThrow(options, Strings.DAY, Strings.NUMERIC);
             }
-            if (needDefaults && (defaults.equals("time") || defaults.equals("all"))) {
-                JSRuntime.createDataPropertyOrThrow(options, "hour", "numeric");
-                JSRuntime.createDataPropertyOrThrow(options, "minute", "numeric");
-                JSRuntime.createDataPropertyOrThrow(options, "second", "numeric");
+            if (needDefaults && (TIME.equals(defaults) || ALL.equals(defaults))) {
+                JSRuntime.createDataPropertyOrThrow(options, Strings.HOUR, Strings.NUMERIC);
+                JSRuntime.createDataPropertyOrThrow(options, Strings.MINUTE, Strings.NUMERIC);
+                JSRuntime.createDataPropertyOrThrow(options, Strings.SECOND, Strings.NUMERIC);
             }
         }
         return options;

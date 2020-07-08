@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,6 +65,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.helper.ListGetNode;
 import com.oracle.truffle.js.nodes.JSTypesGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -77,12 +78,12 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementTag;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -110,7 +111,6 @@ import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
@@ -449,12 +449,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     private static ReadElementTypeCacheNode makeTypeCacheNode(Object target, ReadElementTypeCacheNode next) {
         if (JSDynamicObject.isJSDynamicObject(target)) {
             return new JSObjectReadElementTypeCacheNode(next);
-        } else if (target instanceof JSLazyString) {
-            return new LazyStringReadElementTypeCacheNode(next);
-        } else if (target instanceof String) {
+        } else if (Strings.isTString(target)) {
             return new StringReadElementTypeCacheNode(next);
-        } else if (JSRuntime.isString(target)) {
-            return new CharSequenceReadElementTypeCacheNode(target.getClass(), next);
         } else if (target instanceof Boolean) {
             return new BooleanReadElementTypeCacheNode(next);
         } else if (target instanceof Number) {
@@ -686,7 +682,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 if (arrayIndexProfile.profile(JSRuntime.isArrayIndex(index))) {
                     return executeArrayGet(targetObject, array, index, receiver, defaultValue, root.context);
                 } else {
-                    return getProperty(targetObject, Boundaries.stringValueOf(index), receiver, defaultValue);
+                    return getProperty(targetObject, Strings.fromInt(index), receiver, defaultValue);
                 }
             } else {
                 return readNonArrayObjectIndex(targetObject, index, receiver, defaultValue, root);
@@ -702,7 +698,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 if (arrayIndexProfile.profile(JSRuntime.isArrayIndex(index))) {
                     return executeArrayGet(targetObject, array, index, receiver, defaultValue, root.context);
                 } else {
-                    return getProperty(targetObject, Boundaries.stringValueOf(index), receiver, defaultValue);
+                    return getProperty(targetObject, Strings.fromLong(index), receiver, defaultValue);
                 }
             } else {
                 return readNonArrayObjectIndex(targetObject, index, receiver, defaultValue, root);
@@ -738,7 +734,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 if (arrayIndexProfile.profile(JSRuntime.isArrayIndex(index))) {
                     return executeArrayGetInt(targetObject, array, index, receiver, defaultValue, root.context);
                 } else {
-                    return JSTypesGen.expectInteger(getProperty(targetObject, Boundaries.stringValueOf(index), receiver, defaultValue));
+                    return JSTypesGen.expectInteger(getProperty(targetObject, Strings.fromInt(index), receiver, defaultValue));
                 }
             } else {
                 return JSTypesGen.expectInteger(readNonArrayObjectIndex(targetObject, index, receiver, defaultValue, root));
@@ -774,7 +770,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 if (arrayIndexProfile.profile(JSRuntime.isArrayIndex(index))) {
                     return executeArrayGetDouble(targetObject, array, index, receiver, defaultValue, root.context);
                 } else {
-                    return JSTypesGen.expectDouble(getProperty(targetObject, Boundaries.stringValueOf(index), receiver, defaultValue));
+                    return JSTypesGen.expectDouble(getProperty(targetObject, Strings.fromInt(index), receiver, defaultValue));
                 }
             } else {
                 return JSTypesGen.expectDouble(readNonArrayObjectIndex(targetObject, index, receiver, defaultValue, root));
@@ -1368,76 +1364,26 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
     }
 
-    private static class CharSequenceReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
-        private final Class<?> stringClass;
-        private final ConditionProfile arrayIndexProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile stringIndexInBounds = ConditionProfile.createBinaryProfile();
-        @Child private ToArrayIndexNode toArrayIndexNode;
-
-        CharSequenceReadElementTypeCacheNode(Class<?> stringClass, ReadElementTypeCacheNode next) {
-            super(next);
-            this.stringClass = stringClass;
-            this.toArrayIndexNode = ToArrayIndexNode.createNoToPropertyKey();
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
-            CharSequence charSequence = (CharSequence) CompilerDirectives.castExact(target, stringClass);
-            Object convertedIndex = toArrayIndexNode.execute(index);
-            if (arrayIndexProfile.profile(convertedIndex instanceof Long)) {
-                int intIndex = ((Long) convertedIndex).intValue();
-                if (stringIndexInBounds.profile(intIndex >= 0 && intIndex < JSRuntime.length(charSequence))) {
-                    // charAt needs boundary, SVM thinks it could be any type
-                    return String.valueOf(JSRuntime.charAt(charSequence, intIndex));
-                }
-            }
-            return JSObject.getOrDefault(JSString.create(root.context, getRealm(), charSequence), toPropertyKey(index), receiver, defaultValue, jsclassProfile, root);
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) {
-            CharSequence charSequence = (CharSequence) CompilerDirectives.castExact(target, stringClass);
-            if (stringIndexInBounds.profile(index >= 0 && index < JSRuntime.length(charSequence))) {
-                return String.valueOf(JSRuntime.charAt(charSequence, index));
-            } else {
-                return JSObject.getOrDefault(JSString.create(root.context, getRealm(), charSequence), index, receiver, defaultValue, jsclassProfile, root);
-            }
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
-            CharSequence charSequence = (CharSequence) CompilerDirectives.castExact(target, stringClass);
-            if (stringIndexInBounds.profile(index >= 0 && index < JSRuntime.length(charSequence))) {
-                return String.valueOf(JSRuntime.charAt(charSequence, (int) index));
-            } else {
-                return JSObject.getOrDefault(JSString.create(root.context, getRealm(), charSequence), index, receiver, defaultValue, jsclassProfile, root);
-            }
-        }
-
-        @Override
-        public boolean guard(Object target) {
-            return CompilerDirectives.isExact(target, stringClass);
-        }
-    }
-
     private static class StringReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
         private final ConditionProfile arrayIndexProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile stringIndexInBounds = ConditionProfile.createBinaryProfile();
         @Child private ToArrayIndexNode toArrayIndexNode;
+        @Child private TruffleString.SubstringByteIndexNode substringByteIndexNode;
 
         StringReadElementTypeCacheNode(ReadElementTypeCacheNode next) {
             super(next);
             this.toArrayIndexNode = ToArrayIndexNode.createNoToPropertyKey();
+            this.substringByteIndexNode = TruffleString.SubstringByteIndexNode.create();
         }
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
-            String string = (String) target;
+            TruffleString string = (TruffleString) target;
             Object convertedIndex = toArrayIndexNode.execute(index);
             if (arrayIndexProfile.profile(convertedIndex instanceof Long)) {
                 int intIndex = ((Long) convertedIndex).intValue();
-                if (stringIndexInBounds.profile(intIndex >= 0 && intIndex < string.length())) {
-                    return String.valueOf(string.charAt(intIndex));
+                if (stringIndexInBounds.profile(intIndex >= 0 && intIndex < Strings.length(string))) {
+                    return Strings.substring(substringByteIndexNode, string, intIndex, 1);
                 }
             }
             return JSObject.getOrDefault(JSString.create(root.context, getRealm(), string), toPropertyKey(index), receiver, defaultValue, jsclassProfile, root);
@@ -1445,9 +1391,9 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) {
-            String string = (String) target;
-            if (stringIndexInBounds.profile(index >= 0 && index < string.length())) {
-                return String.valueOf(string.charAt(index));
+            TruffleString string = (TruffleString) target;
+            if (stringIndexInBounds.profile(index >= 0 && index < Strings.length(string))) {
+                return Strings.substring(substringByteIndexNode, string, index, 1);
             } else {
                 return JSObject.getOrDefault(JSString.create(root.context, getRealm(), string), index, receiver, defaultValue, jsclassProfile, root);
             }
@@ -1455,9 +1401,9 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
-            String string = (String) target;
-            if (stringIndexInBounds.profile(index >= 0 && index < string.length())) {
-                return String.valueOf(string.charAt((int) index));
+            TruffleString string = (TruffleString) target;
+            if (stringIndexInBounds.profile(index >= 0 && index < Strings.length(string))) {
+                return Strings.substring(substringByteIndexNode, string, (int) index, 1);
             } else {
                 return JSObject.getOrDefault(JSString.create(root.context, getRealm(), string), index, receiver, defaultValue, jsclassProfile, root);
             }
@@ -1465,57 +1411,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         public boolean guard(Object target) {
-            return target instanceof String;
-        }
-    }
-
-    private static class LazyStringReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
-        private final ConditionProfile arrayIndexProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile stringIndexInBounds = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isFlatProfile = ConditionProfile.createBinaryProfile();
-        @Child private ToArrayIndexNode toArrayIndexNode;
-
-        LazyStringReadElementTypeCacheNode(ReadElementTypeCacheNode next) {
-            super(next);
-            this.toArrayIndexNode = ToArrayIndexNode.createNoToPropertyKey();
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
-            String str = ((JSLazyString) target).toString(isFlatProfile);
-            Object convertedIndex = toArrayIndexNode.execute(index);
-            if (arrayIndexProfile.profile(convertedIndex instanceof Long)) {
-                int intIndex = ((Long) convertedIndex).intValue();
-                if (stringIndexInBounds.profile(intIndex >= 0 && intIndex < str.length())) {
-                    return String.valueOf(str.charAt(intIndex));
-                }
-            }
-            return JSObject.getOrDefault(JSString.create(root.context, getRealm(), str), toPropertyKey(index), receiver, defaultValue, jsclassProfile, root);
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) {
-            String str = ((JSLazyString) target).toString(isFlatProfile);
-            if (stringIndexInBounds.profile(index >= 0 && index < str.length())) {
-                return String.valueOf(str.charAt(index));
-            } else {
-                return JSObject.getOrDefault(JSString.create(root.context, getRealm(), str), index, receiver, defaultValue, jsclassProfile, root);
-            }
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
-            String str = ((JSLazyString) target).toString(isFlatProfile);
-            if (stringIndexInBounds.profile(index >= 0 && index < str.length())) {
-                return String.valueOf(str.charAt((int) index));
-            } else {
-                return JSObject.getOrDefault(JSString.create(root.context, getRealm(), str), index, receiver, defaultValue, jsclassProfile, root);
-            }
-        }
-
-        @Override
-        public boolean guard(Object target) {
-            return target instanceof JSLazyString;
+            return target instanceof TruffleString;
         }
     }
 
@@ -1679,23 +1575,24 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             if (propertyKey instanceof Symbol) {
                 return maybeReadFromPrototype(truffleObject, propertyKey, root.context);
             }
-            String stringKey = (String) propertyKey;
-            if (hasArrayElements && JSAbstractArray.LENGTH.equals(stringKey)) {
+            TruffleString exportedKeyStr = (TruffleString) propertyKey;
+            if (hasArrayElements && Strings.equals(JSAbstractArray.LENGTH, exportedKeyStr)) {
                 return getSize(truffleObject);
             }
             if (root.context.isOptionNashornCompatibilityMode()) {
-                Object result = tryGetters(truffleObject, stringKey, root.context);
+                Object result = tryGetters(truffleObject, exportedKeyStr, root.context);
                 if (result != null) {
                     return result;
                 }
             }
+            String stringKey = Strings.toJavaString(exportedKeyStr);
             if (optimistic) {
                 try {
                     return interop.readMember(truffleObject, stringKey);
                 } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     optimistic = false;
-                    return maybeReadFromPrototype(truffleObject, stringKey, root.context);
+                    return maybeReadFromPrototype(truffleObject, exportedKeyStr, root.context);
                 }
             } else {
                 if (interop.isMemberReadable(truffleObject, stringKey)) {
@@ -1705,20 +1602,20 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                         return Undefined.instance;
                     }
                 } else {
-                    return maybeReadFromPrototype(truffleObject, stringKey, root.context);
+                    return maybeReadFromPrototype(truffleObject, exportedKeyStr, root.context);
                 }
             }
         }
 
-        private Object tryGetters(Object thisObj, String key, JSContext context) {
+        private Object tryGetters(Object thisObj, TruffleString key, JSContext context) {
             assert context.isOptionNashornCompatibilityMode();
             TruffleLanguage.Env env = getRealm().getEnv();
             if (env.isHostObject(thisObj)) {
-                Object result = tryInvokeGetter(thisObj, "get", key);
+                Object result = tryInvokeGetter(thisObj, Strings.GET, key);
                 if (result != null) {
                     return result;
                 }
-                result = tryInvokeGetter(thisObj, "is", key);
+                result = tryInvokeGetter(thisObj, Strings.IS, key);
                 if (result != null) {
                     return result;
                 }
@@ -1726,8 +1623,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             return null;
         }
 
-        private Object tryInvokeGetter(Object thisObj, String prefix, String key) {
-            String getterKey = PropertyCacheNode.getAccessorKey(prefix, key);
+        private Object tryInvokeGetter(Object thisObj, TruffleString prefix, TruffleString key) {
+            TruffleString getterKey = PropertyCacheNode.getAccessorKey(prefix, key);
             if (getterKey == null) {
                 return null;
             }
@@ -1735,11 +1632,11 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getterInterop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
             }
-            if (!getterInterop.isMemberInvocable(thisObj, getterKey)) {
+            if (!getterInterop.isMemberInvocable(thisObj, Strings.toJavaString(getterKey))) {
                 return null;
             }
             try {
-                return getterInterop.invokeMember(thisObj, getterKey, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+                return getterInterop.invokeMember(thisObj, Strings.toJavaString(getterKey), JSArguments.EMPTY_ARGUMENTS_ARRAY);
             } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
                 return null; // try the next fallback
             }

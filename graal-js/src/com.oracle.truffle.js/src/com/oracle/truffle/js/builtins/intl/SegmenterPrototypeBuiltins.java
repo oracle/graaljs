@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins.intl;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.SegmenterPrototypeBuiltinsFactory.JSSegmenterResolvedOptionsNodeGen;
 import com.oracle.truffle.js.builtins.intl.SegmenterPrototypeBuiltinsFactory.JSSegmenterSegmentNodeGen;
@@ -117,7 +118,7 @@ public final class SegmenterPrototypeBuiltins extends JSBuiltinsContainer.Switch
         @Specialization
         public Object doSegmenter(JSSegmenterObject segmenter, Object value,
                         @Cached("create()") JSToStringNode toStringNode) {
-            String string = toStringNode.executeString(value);
+            TruffleString string = toStringNode.executeString(value);
             return JSSegmenter.createSegments(getContext(), getRealm(), segmenter, string);
         }
 

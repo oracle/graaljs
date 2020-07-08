@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRealm;
 
 public final class JSDataViewObject extends JSArrayBufferViewBase {
@@ -51,7 +52,7 @@ public final class JSDataViewObject extends JSArrayBufferViewBase {
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return JSDataView.CLASS_NAME;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,13 +43,14 @@ package com.oracle.js.parser.ir;
 
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * IR representation of a property access (period operator.)
  */
 public final class AccessNode extends BaseNode {
     /** Property name. */
-    private final String property;
+    private final TruffleString property;
 
     /** Private member access. */
     private final boolean isPrivate;
@@ -62,18 +63,18 @@ public final class AccessNode extends BaseNode {
      * @param base base node
      * @param property property
      */
-    public AccessNode(final long token, final int finish, final Expression base, final String property, boolean isSuper, boolean isPrivate, boolean optional, boolean optionalChain) {
+    public AccessNode(final long token, final int finish, final Expression base, final TruffleString property, boolean isSuper, boolean isPrivate, boolean optional, boolean optionalChain) {
         super(token, finish, base, isSuper, optional, optionalChain);
         this.property = property;
         this.isPrivate = isPrivate;
         assert !(isSuper && isPrivate);
     }
 
-    public AccessNode(final long token, final int finish, final Expression base, final String property) {
+    public AccessNode(final long token, final int finish, final Expression base, final TruffleString property) {
         this(token, finish, base, property, false, false, false, false);
     }
 
-    private AccessNode(final AccessNode accessNode, final Expression base, final String property, boolean isSuper) {
+    private AccessNode(final AccessNode accessNode, final Expression base, final TruffleString property, boolean isSuper) {
         super(accessNode, base, isSuper, accessNode.isOptional(), accessNode.isOptionalChain());
         this.property = property;
         this.isPrivate = accessNode.isPrivate;
@@ -124,7 +125,7 @@ public final class AccessNode extends BaseNode {
      *
      * @return the property name
      */
-    public String getProperty() {
+    public TruffleString getProperty() {
         return property;
     }
 
@@ -132,7 +133,7 @@ public final class AccessNode extends BaseNode {
         return isPrivate;
     }
 
-    public String getPrivateName() {
+    public TruffleString getPrivateName() {
         assert isPrivate();
         return property;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
@@ -55,9 +56,11 @@ import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 
 public interface Evaluator {
 
-    String EVAL_SOURCE_NAME = "<eval>";
     String FUNCTION_SOURCE_NAME = "<function>";
+    String EVAL_SOURCE_NAME = "<eval>";
     String EVAL_AT_SOURCE_NAME_PREFIX = "eval at ";
+    TruffleString TS_EVAL_SOURCE_NAME = Strings.constant(EVAL_SOURCE_NAME);
+    TruffleString TS_EVAL_AT_SOURCE_NAME_PREFIX = Strings.constant(EVAL_AT_SOURCE_NAME_PREFIX);
 
     /**
      * Parse (indirect) eval code using the global execution context.
@@ -103,7 +106,7 @@ public interface Evaluator {
 
     DynamicObject getModuleNamespace(JSModuleRecord moduleRecord);
 
-    ExportResolution resolveExport(JSModuleRecord moduleRecord, String exportName);
+    ExportResolution resolveExport(JSModuleRecord moduleRecord, TruffleString exportName);
 
     /**
      * Parses a script string. Returns an executable script object.
@@ -123,7 +126,7 @@ public interface Evaluator {
         return parseScript(context, source, prolog, epilog, isStrict, null);
     }
 
-    ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog, boolean isStrict, String[] argumentNames);
+    ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog, boolean isStrict, TruffleString[] argumentNames);
 
     ScriptNode parseScript(JSContext context, String sourceString);
 

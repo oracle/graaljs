@@ -52,6 +52,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
@@ -189,7 +190,7 @@ public final class JSProxyObject extends JSClassObject {
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        public String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        public TruffleString toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
             return Null.NAME;
         }
 

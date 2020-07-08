@@ -55,6 +55,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstructorNode;
 import com.oracle.truffle.js.builtins.JSConstructTypedArrayNodeGen.IntegerIndexedObjectCreateNodeGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -78,6 +79,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
@@ -95,7 +97,7 @@ import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 /**
  * The %TypedArray% intrinsic constructor function object (ES6 22.2.1).
  */
-@ImportStatic({JSArrayBuffer.class, JSRuntime.class, JSConfig.class})
+@ImportStatic({JSArrayBuffer.class, JSRuntime.class, JSConfig.class, Strings.class})
 public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     @Child private JSToIndexNode toIndexNode;
     // for TypedArray(factory)
@@ -113,13 +115,13 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         this.factory = findTypedArrayFactory(builtin.getName());
     }
 
-    private static TypedArrayFactory findTypedArrayFactory(String name) {
+    private static TypedArrayFactory findTypedArrayFactory(TruffleString name) {
         for (TypedArrayFactory typedArrayFactory : TypedArray.factories()) {
-            if (typedArrayFactory.getName().equals(name)) {
+            if (Strings.equals(typedArrayFactory.getName(), name)) {
                 return typedArrayFactory;
             }
         }
-        throw new NoSuchElementException(name);
+        throw new NoSuchElementException(Strings.toJavaString(name));
     }
 
     private long toIndex(Object target) {
@@ -526,7 +528,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         return condition;
     }
 
-    private boolean rangeCheckIsMultipleOfElementSize(boolean condition, String what, String name, int bytesPerElement) {
+    private boolean rangeCheckIsMultipleOfElementSize(boolean condition, String what, TruffleString name, int bytesPerElement) {
         if (!condition) {
             errorBranch.enter();
             throw createRangeErrorNotMultipleOfElementSize(what, name, bytesPerElement);
@@ -535,7 +537,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     }
 
     @TruffleBoundary
-    private static RuntimeException createRangeErrorNotMultipleOfElementSize(String what, String name, int bytesPerElement) {
+    private static RuntimeException createRangeErrorNotMultipleOfElementSize(String what, TruffleString name, int bytesPerElement) {
         return Errors.createRangeError(String.format("%s of %s should be a multiple of %d", what, name, bytesPerElement));
     }
 

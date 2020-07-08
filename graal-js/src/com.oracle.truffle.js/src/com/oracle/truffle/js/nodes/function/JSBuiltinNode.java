@@ -60,6 +60,9 @@ import com.oracle.truffle.js.runtime.JSContext;
  */
 @NodeChild(value = "arguments", type = JavaScriptNode[].class)
 public abstract class JSBuiltinNode extends AbstractBodyNode {
+
+    public static final String ARGUMENTS = "arguments";
+
     private final JSContext context;
     private final JSBuiltin builtin;
     boolean construct;
@@ -154,18 +157,19 @@ public abstract class JSBuiltinNode extends AbstractBodyNode {
             int argumentNodeCount = 0;
             Class<? extends JSBuiltinNode> nodeclass = builtinNode.getClass();
             for (Class<?> superclass = nodeclass; superclass != null; superclass = superclass.getSuperclass()) {
-                argumentNodeCount += Arrays.stream(superclass.getDeclaredFields()).filter(f -> f.getAnnotation(Child.class) != null && f.getName().startsWith("arguments")).count();
+                argumentNodeCount += Arrays.stream(superclass.getDeclaredFields()).filter(f -> f.getAnnotation(Child.class) != null && f.getName().startsWith(ARGUMENTS)).count();
             }
             int providedArgumentNodeCount = 0;
             for (Class<?> superclass = nodeclass; superclass != null; superclass = superclass.getSuperclass()) {
-                providedArgumentNodeCount += Arrays.stream(superclass.getDeclaredFields()).filter(f -> f.getAnnotation(Child.class) != null && f.getName().startsWith("arguments")).filter(f -> {
-                    try {
-                        f.setAccessible(true);
-                        return f.get(builtinNode) != null;
-                    } catch (IllegalAccessException e) {
-                        throw new AssertionError(e);
-                    }
-                }).count();
+                providedArgumentNodeCount += Arrays.stream(superclass.getDeclaredFields()).filter(
+                                f -> f.getAnnotation(Child.class) != null && f.getName().startsWith(ARGUMENTS)).filter(f -> {
+                                    try {
+                                        f.setAccessible(true);
+                                        return f.get(builtinNode) != null;
+                                    } catch (IllegalAccessException e) {
+                                        throw new AssertionError(e);
+                                    }
+                                }).count();
             }
             assert providedArgumentNodeCount == argumentNodeCount : nodeclass + " provided=" + providedArgumentNodeCount + " required=" + argumentNodeCount;
         }

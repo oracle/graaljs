@@ -47,6 +47,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyGlobalPrototypeBuiltins;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.wasm.ToJSValueNode;
@@ -58,6 +59,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -70,19 +72,21 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
-    public static final String CLASS_NAME = "Global";
-    public static final String PROTOTYPE_NAME = "Global.prototype";
-    public static final String VALUE = "value";
+    public static final TruffleString CLASS_NAME = Strings.constant("Global");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("Global.prototype");
+    public static final TruffleString VALUE = Strings.constant("value");
+
+    public static final TruffleString WEB_ASSEMBLY_GLOBAL = Strings.constant("WebAssembly.Global");
 
     public static final JSWebAssemblyGlobal INSTANCE = new JSWebAssemblyGlobal();
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 
@@ -97,7 +101,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
         JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, WebAssemblyGlobalPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putAccessorProperty(ctx, prototype, VALUE, createValueGetterFunction(realm), createValueSetterFunction(realm), JSAttributes.configurableEnumerableWritable());
-        JSObjectUtil.putToStringTag(prototype, "WebAssembly.Global");
+        JSObjectUtil.putToStringTag(prototype, WEB_ASSEMBLY_GLOBAL);
         return prototype;
     }
 
@@ -115,7 +119,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
         return INSTANCE.createConstructorAndPrototype(realm);
     }
 
-    public static JSWebAssemblyGlobalObject create(JSContext context, JSRealm realm, Object wasmGlobal, String valueType) {
+    public static JSWebAssemblyGlobalObject create(JSContext context, JSRealm realm, Object wasmGlobal, TruffleString valueType) {
         Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmGlobal);
         if (embedderData instanceof JSWebAssemblyGlobalObject) {
             return (JSWebAssemblyGlobalObject) embedderData;
@@ -152,7 +156,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
                     }
                 }
             }.getCallTarget();
-            return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + VALUE);
+            return JSFunctionData.createCallOnly(c, callTarget, 0, Strings.concat(Strings.GET_SPC, VALUE));
         });
 
         return JSFunction.create(realm, getterData);
@@ -200,7 +204,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
                     }
                 }
             }.getCallTarget();
-            return JSFunctionData.createCallOnly(c, callTarget, 1, "set " + VALUE);
+            return JSFunctionData.createCallOnly(c, callTarget, 1, Strings.concat(Strings.SET_SPC, VALUE));
         });
 
         return JSFunction.create(realm, setterData);

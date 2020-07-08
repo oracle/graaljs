@@ -46,14 +46,15 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -64,6 +65,8 @@ import com.oracle.truffle.js.runtime.util.TRegexUtil;
  */
 public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpBuiltins.RegExpBuiltin> {
 
+    public static final TruffleString INPUT = Strings.constant("input");
+
     public static final JSBuiltinsContainer BUILTINS = new RegExpBuiltins();
 
     protected RegExpBuiltins() {
@@ -73,7 +76,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
     public enum RegExpBuiltin implements BuiltinEnum<RegExpBuiltin> {
 
         input(0),
-        set_input(1, "input"),
+        set_input(1, INPUT),
         lastMatch(0),
         lastParen(0),
         leftContext(0),
@@ -89,26 +92,26 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
         $8(0),
         $9(0);
 
-        private final String key;
+        private final TruffleString key;
         private final int length;
 
         RegExpBuiltin(int length) {
-            this.key = name();
+            this.key = Strings.fromJavaString(name());
             this.length = length;
         }
 
-        RegExpBuiltin(int length, String key) {
+        RegExpBuiltin(int length, TruffleString key) {
             this.key = key;
             this.length = length;
         }
 
         @Override
-        public String getName() {
+        public TruffleString getName() {
             return prependAccessorPrefix(key);
         }
 
         @Override
-        public String getKey() {
+        public TruffleString getKey() {
             return key;
         }
 
@@ -206,7 +209,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
         }
 
         @Specialization
-        String getInputProp(VirtualFrame frame) {
+        TruffleString getInputProp(VirtualFrame frame) {
             checkStaticRegexResultPropertyGet(getContext(), getRealm(), JSFrameUtil.getThisObj(frame));
             return getRealm().getStaticRegexResultInputString();
         }
@@ -295,7 +298,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
             resultAccessor = TRegexUtil.TRegexResultAccessor.create();
         }
 
-        String getInput() {
+        TruffleString getInput() {
             return getRealm().getStaticRegexResultOriginalInputString();
         }
     }
@@ -311,17 +314,18 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
         }
 
         @Specialization
-        String getGroup(VirtualFrame frame) {
+        TruffleString getGroup(VirtualFrame frame,
+                        @Cached TruffleString.SubstringByteIndexNode substringNode) {
             JSRealm realm = getRealm();
             checkStaticRegexResultPropertyGet(getContext(), realm, JSFrameUtil.getThisObj(frame));
             Object result = getResultNode.execute();
             if (resultAccessor.isMatch(result) && compiledRegexAccessor.groupCount(realm.getStaticRegexResultCompiledRegex()) > groupNumber) {
                 int start = resultAccessor.captureGroupStart(result, groupNumber);
                 if (start >= 0) {
-                    return Boundaries.substring(getInput(), start, resultAccessor.captureGroupEnd(result, groupNumber));
+                    return Strings.substring(substringNode, getInput(), start, resultAccessor.captureGroupEnd(result, groupNumber) - start);
                 }
             }
-            return "";
+            return Strings.EMPTY_STRING;
         }
     }
 
@@ -332,7 +336,8 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
         }
 
         @Specialization
-        String lastParen(VirtualFrame frame) {
+        TruffleString lastParen(VirtualFrame frame,
+                        @Cached TruffleString.SubstringByteIndexNode substringNode) {
             JSRealm realm = getRealm();
             checkStaticRegexResultPropertyGet(getContext(), realm, JSFrameUtil.getThisObj(frame));
             Object result = getResultNode.execute();
@@ -341,11 +346,11 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
                 if (groupNumber > 0) {
                     int start = resultAccessor.captureGroupStart(result, groupNumber);
                     if (start >= 0) {
-                        return Boundaries.substring(getInput(), start, resultAccessor.captureGroupEnd(result, groupNumber));
+                        return Strings.substring(substringNode, getInput(), start, resultAccessor.captureGroupEnd(result, groupNumber) - start);
                     }
                 }
             }
-            return "";
+            return Strings.EMPTY_STRING;
         }
     }
 
@@ -356,14 +361,15 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
         }
 
         @Specialization
-        String leftContext(VirtualFrame frame) {
+        TruffleString leftContext(VirtualFrame frame,
+                        @Cached TruffleString.SubstringByteIndexNode substringNode) {
             checkStaticRegexResultPropertyGet(getContext(), getRealm(), JSFrameUtil.getThisObj(frame));
             Object result = getResultNode.execute();
             if (resultAccessor.isMatch(result)) {
                 int start = resultAccessor.captureGroupStart(result, 0);
-                return Boundaries.substring(getInput(), 0, start);
+                return Strings.substring(substringNode, getInput(), 0, start);
             } else {
-                return "";
+                return Strings.EMPTY_STRING;
             }
         }
     }
@@ -375,14 +381,15 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
         }
 
         @Specialization
-        String rightContext(VirtualFrame frame) {
+        TruffleString rightContext(VirtualFrame frame,
+                        @Cached TruffleString.SubstringByteIndexNode substringNode) {
             checkStaticRegexResultPropertyGet(getContext(), getRealm(), JSFrameUtil.getThisObj(frame));
             Object result = getResultNode.execute();
             if (resultAccessor.isMatch(result)) {
                 int end = resultAccessor.captureGroupEnd(result, 0);
-                return Boundaries.substring(getInput(), end);
+                return Strings.substring(substringNode, getInput(), end);
             } else {
-                return "";
+                return Strings.EMPTY_STRING;
             }
         }
     }

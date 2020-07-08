@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.lang;
 
-import com.oracle.truffle.api.TruffleFile;
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.APPLICATION_MIME_TYPE;
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.JSON_MIME_TYPE;
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.JSON_SOURCE_NAME_SUFFIX;
@@ -50,6 +49,8 @@ import static com.oracle.truffle.js.lang.JavaScriptLanguage.SCRIPT_SOURCE_NAME_S
 
 import java.io.IOException;
 import java.nio.charset.Charset;
+
+import com.oracle.truffle.api.TruffleFile;
 
 public final class JSFileTypeDetector implements TruffleFile.FileTypeDetector {
 

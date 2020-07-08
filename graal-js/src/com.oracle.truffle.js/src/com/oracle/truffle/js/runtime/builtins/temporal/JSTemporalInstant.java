@@ -47,11 +47,13 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.EPOCH_SECONDS
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
@@ -65,8 +67,9 @@ public final class JSTemporalInstant extends JSNonProxy implements JSConstructor
 
     public static final JSTemporalInstant INSTANCE = new JSTemporalInstant();
 
-    public static final String CLASS_NAME = "Instant";
-    public static final String PROTOTYPE_NAME = "Instant.prototype";
+    public static final TruffleString CLASS_NAME = Strings.constant("Instant");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("Instant.prototype");
+    public static final TruffleString TO_STRING_TAG = Strings.constant("Temporal.Instant");
 
     private JSTemporalInstant() {
     }
@@ -80,12 +83,12 @@ public final class JSTemporalInstant extends JSNonProxy implements JSConstructor
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
-        return "Temporal.Instant";
+    public TruffleString getClassName(DynamicObject object) {
+        return TO_STRING_TAG;
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
@@ -101,15 +104,14 @@ public final class JSTemporalInstant extends JSNonProxy implements JSConstructor
         JSObjectUtil.putBuiltinAccessorProperty(prototype, EPOCH_MICROSECONDS, realm.lookupAccessor(TemporalInstantPrototypeBuiltins.BUILTINS, EPOCH_MICROSECONDS));
         JSObjectUtil.putBuiltinAccessorProperty(prototype, EPOCH_NANOSECONDS, realm.lookupAccessor(TemporalInstantPrototypeBuiltins.BUILTINS, EPOCH_NANOSECONDS));
 
-        JSObjectUtil.putToStringTag(prototype, "Temporal.Instant");
+        JSObjectUtil.putToStringTag(prototype, TO_STRING_TAG);
 
         return prototype;
     }
 
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
-        Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSTemporalInstant.INSTANCE, context);
-        return initialShape;
+        return JSObjectUtil.getProtoChildShape(prototype, JSTemporalInstant.INSTANCE, context);
     }
 
     @Override

@@ -42,9 +42,11 @@ package com.oracle.truffle.js.runtime.builtins.wasm;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyModuleFunctionBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
@@ -54,17 +56,19 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JSWebAssemblyModule extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
-    public static final String CLASS_NAME = "Module";
+    public static final TruffleString CLASS_NAME = Strings.constant("Module");
+
+    public static final TruffleString WEB_ASSEMBLY_MODULE = Strings.constant("WebAssembly.Module");
 
     public static final JSWebAssemblyModule INSTANCE = new JSWebAssemblyModule();
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 
@@ -77,7 +81,7 @@ public final class JSWebAssemblyModule extends JSNonProxy implements JSConstruct
         JSContext ctx = realm.getContext();
         DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
-        JSObjectUtil.putToStringTag(prototype, "WebAssembly.Module");
+        JSObjectUtil.putToStringTag(prototype, WEB_ASSEMBLY_MODULE);
         return prototype;
     }
 

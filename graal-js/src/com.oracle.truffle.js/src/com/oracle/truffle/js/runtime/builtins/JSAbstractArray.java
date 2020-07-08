@@ -54,10 +54,12 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.Boundaries;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Properties;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
@@ -79,7 +81,7 @@ import com.oracle.truffle.js.runtime.util.IteratorUtil;
 
 public abstract class JSAbstractArray extends JSNonProxy {
 
-    public static final String LENGTH = "length";
+    public static final TruffleString LENGTH = Strings.constant("length");
 
     protected static final String ARRAY_LENGTH_NOT_WRITABLE = "array length is not writable";
     private static final String LENGTH_PROPERTY_NOT_WRITABLE = "length property not writable";
@@ -165,11 +167,11 @@ public abstract class JSAbstractArray extends JSNonProxy {
 
     public static Object arrayGetRegexResult(DynamicObject thisObj, DynamicObjectLibrary lazyRegexResult) {
         assert JSArray.isJSArray(thisObj) && JSArray.arrayGetArrayType(thisObj) == LazyRegexResultArray.LAZY_REGEX_RESULT_ARRAY;
-        return lazyRegexResult.getOrDefault(thisObj, LAZY_REGEX_RESULT_ID, null);
+        return Properties.getOrDefault(lazyRegexResult, thisObj, LAZY_REGEX_RESULT_ID, null);
     }
 
-    public static String arrayGetRegexResultOriginalInput(DynamicObject thisObj, DynamicObjectLibrary lazyRegexResultOriginalInput) {
-        return (String) lazyRegexResultOriginalInput.getOrDefault(thisObj, LAZY_REGEX_ORIGINAL_INPUT_ID, null);
+    public static TruffleString arrayGetRegexResultOriginalInput(DynamicObject thisObj, DynamicObjectLibrary lazyRegexResultOriginalInput) {
+        return (TruffleString) Properties.getOrDefault(lazyRegexResultOriginalInput, thisObj, LAZY_REGEX_ORIGINAL_INPUT_ID, null);
     }
 
     public static final Comparator<Object> DEFAULT_JSARRAY_COMPARATOR = new DefaultJSArrayComparator();
@@ -187,8 +189,8 @@ public abstract class JSAbstractArray extends JSNonProxy {
             } else if (arg1 == Undefined.instance) {
                 return -1;
             }
-            String str0 = JSRuntime.toString(arg0);
-            String str1 = JSRuntime.toString(arg1);
+            TruffleString str0 = JSRuntime.toString(arg0);
+            TruffleString str1 = JSRuntime.toString(arg1);
             if (str0 == null) {
                 if (str1 == null) {
                     return 0;
@@ -197,7 +199,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
             } else if (str1 == null) {
                 return -1;
             }
-            return Boundaries.stringCompareTo(str0, str1);
+            return Strings.compareTo(str0, str1);
         }
     }
 
@@ -214,9 +216,9 @@ public abstract class JSAbstractArray extends JSNonProxy {
             } else if (i2 <= 0 && i1 > 0) {
                 return 1;
             }
-            String str0 = Integer.toString(i1);
-            String str1 = Integer.toString(i2);
-            return Boundaries.stringCompareTo(str0, str1);
+            TruffleString str0 = Strings.fromInt(i1);
+            TruffleString str1 = Strings.fromInt(i2);
+            return Strings.compareTo(str0, str1);
         }
     }
 
@@ -233,9 +235,9 @@ public abstract class JSAbstractArray extends JSNonProxy {
             } else if (d2 <= 0 && d1 > 0) {
                 return 1;
             }
-            String str0 = JSRuntime.doubleToString(d1);
-            String str1 = JSRuntime.doubleToString(d2);
-            return Boundaries.stringCompareTo(str0, str1);
+            TruffleString str0 = JSRuntime.doubleToString(d1);
+            TruffleString str1 = JSRuntime.doubleToString(d2);
+            return Strings.compareTo(str0, str1);
         }
     }
 
@@ -272,7 +274,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
     }
 
     @Override
-    public String getBuiltinToStringTag(DynamicObject object) {
+    public TruffleString getBuiltinToStringTag(DynamicObject object) {
         return getClassName(object);
     }
 
@@ -305,7 +307,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
     @Override
     public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         if (receiver != thisObj) {
-            return ordinarySetWithReceiver(thisObj, Boundaries.stringValueOf(index), value, receiver, isStrict, encapsulatingNode);
+            return ordinarySetWithReceiver(thisObj, Strings.fromLong(index), value, receiver, isStrict, encapsulatingNode);
         }
         assert receiver == thisObj;
         if (arrayGetArrayType(thisObj).hasElement(thisObj, index)) {
@@ -323,7 +325,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
 
         if (!JSObject.isExtensible(thisObj)) {
             if (isStrict) {
-                throw Errors.createTypeErrorNotExtensible(thisObj, Boundaries.stringValueOf(index));
+                throw Errors.createTypeErrorNotExtensible(thisObj, Strings.fromLong(index));
             }
             return true;
         }
@@ -333,7 +335,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
     private static boolean setPropertyPrototypes(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         // check prototype chain for accessors
         DynamicObject current = JSObject.getPrototype(thisObj);
-        String propertyName = null;
+        Object propertyName = null;
         while (current != Null.instance) {
             if (JSProxy.isJSProxy(current)) {
                 return JSObject.getJSClass(current).set(current, index, value, receiver, false, encapsulatingNode);
@@ -341,7 +343,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
             if (canHaveReadOnlyOrAccessorProperties(current)) {
                 if (JSObject.hasOwnProperty(current, index)) {
                     if (propertyName == null) {
-                        propertyName = Boundaries.stringValueOf(index);
+                        propertyName = Strings.fromLong(index);
                     }
                     PropertyDescriptor desc = JSObject.getOwnProperty(current, propertyName);
                     if (desc != null) {
@@ -391,7 +393,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
         if (array.hasElement(store, index)) {
             return array.getElement(store, index);
         }
-        return super.getOwnHelper(store, thisObj, Boundaries.stringValueOf(index), encapsulatingNode);
+        return super.getOwnHelper(store, thisObj, Strings.fromLong(index), encapsulatingNode);
     }
 
     /**
@@ -425,7 +427,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
         if (array.hasElement(thisObj, index)) {
             return true;
         }
-        return super.hasOwnProperty(thisObj, Boundaries.stringValueOf(index));
+        return super.hasOwnProperty(thisObj, Strings.fromLong(index));
     }
 
     @TruffleBoundary
@@ -445,8 +447,8 @@ public abstract class JSAbstractArray extends JSNonProxy {
             List<Object> list = new ArrayList<>(keyList.size());
             if (strings) {
                 keyList.forEach(k -> {
-                    assert !(k instanceof String && JSRuntime.isArrayIndex((String) k));
-                    if (k instanceof String) {
+                    assert !(Strings.isTString(k) && JSRuntime.isArrayIndexString((TruffleString) k));
+                    if (Strings.isTString(k)) {
                         list.add(k);
                     }
                 });
@@ -470,7 +472,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
             ScriptArray array = arrayGetArrayType(thisObj);
             long currentIndex = array.firstElementIndex(thisObj);
             while (currentIndex <= array.lastElementIndex(thisObj)) {
-                list.add(Boundaries.stringValueOf(currentIndex));
+                list.add(Strings.fromLong(currentIndex));
                 currentIndex = array.nextElementIndex(thisObj, currentIndex);
             }
         }
@@ -480,7 +482,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
             if (strings) {
                 int before = list.size();
                 keyList.forEach(k -> {
-                    if (k instanceof String && JSRuntime.isArrayIndex((String) k)) {
+                    if (Strings.isTString(k) && JSRuntime.isArrayIndexString((TruffleString) k)) {
                         list.add(k);
                     }
                 });
@@ -491,7 +493,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
                     });
                 }
                 keyList.forEach(k -> {
-                    if (k instanceof String && !JSRuntime.isArrayIndex((String) k)) {
+                    if (Strings.isTString(k) && !JSRuntime.isArrayIndexString((TruffleString) k)) {
                         list.add(k);
                     }
                 });
@@ -534,10 +536,10 @@ public abstract class JSAbstractArray extends JSNonProxy {
     @Override
     @TruffleBoundary
     public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor descriptor, boolean doThrow) {
-        if (key.equals(LENGTH)) {
+        if (Strings.isTString(key) && Strings.equals(LENGTH, (TruffleString) key)) {
             return defineOwnPropertyLength(thisObj, descriptor, doThrow);
-        } else if (key instanceof String && JSRuntime.isArrayIndex((String) key)) {
-            return defineOwnPropertyIndex(thisObj, (String) key, descriptor, doThrow);
+        } else if (Strings.isTString(key) && JSRuntime.isArrayIndexString((TruffleString) key)) {
+            return defineOwnPropertyIndex(thisObj, (TruffleString) key, descriptor, doThrow);
         } else {
             return super.defineOwnProperty(thisObj, key, descriptor, doThrow);
         }
@@ -594,7 +596,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
         long pos = startPos;
         while (pos > newLen) {
             pos--;
-            String key = String.valueOf(pos);
+            Object key = Strings.fromLong(pos);
             Property prop = DefinePropertyUtil.getPropertyByKey(thisObj, key);
             if (prop != null) {
                 if (JSProperty.isConfigurable(prop)) {
@@ -655,7 +657,8 @@ public abstract class JSAbstractArray extends JSNonProxy {
      *
      * @return whether the operation was successful
      */
-    protected boolean defineOwnPropertyIndex(DynamicObject thisObj, String name, PropertyDescriptor descriptor, boolean doThrow) {
+    protected boolean defineOwnPropertyIndex(DynamicObject thisObj, TruffleString name, PropertyDescriptor descriptor, boolean doThrow) {
+        assert Strings.isTString(name);
         long index = JSRuntime.toUInt32(name);
         if (index >= this.getLength(thisObj)) {
             PropertyDescriptor lenDesc = getOwnProperty(thisObj, LENGTH);
@@ -766,7 +769,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
     }
 
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+    public TruffleString toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return defaultToString(obj);
         } else {

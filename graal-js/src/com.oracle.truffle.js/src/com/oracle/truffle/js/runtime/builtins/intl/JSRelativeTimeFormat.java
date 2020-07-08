@@ -58,11 +58,13 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.intl.RelativeTimeFormatFunctionBuiltins;
 import com.oracle.truffle.js.builtins.intl.RelativeTimeFormatPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
@@ -77,8 +79,9 @@ import com.oracle.truffle.js.runtime.util.LazyValue;
 
 public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
-    public static final String CLASS_NAME = "RelativeTimeFormat";
-    public static final String PROTOTYPE_NAME = "RelativeTimeFormat.prototype";
+    public static final TruffleString CLASS_NAME = Strings.constant("RelativeTimeFormat");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("RelativeTimeFormat.prototype");
+    public static final TruffleString TO_STRING_TAG = Strings.constant("Intl.RelativeTimeFormat");
 
     public static final JSRelativeTimeFormat INSTANCE = new JSRelativeTimeFormat();
 
@@ -90,12 +93,12 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
+    public TruffleString getClassName(DynamicObject object) {
         return getClassName();
     }
 
@@ -105,7 +108,7 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
         DynamicObject relativeTimeFormatPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, relativeTimeFormatPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, relativeTimeFormatPrototype, RelativeTimeFormatPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putToStringTag(relativeTimeFormatPrototype, "Intl.RelativeTimeFormat");
+        JSObjectUtil.putToStringTag(relativeTimeFormatPrototype, TO_STRING_TAG);
         return relativeTimeFormatPrototype;
     }
 
@@ -139,11 +142,11 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
     }
 
     @TruffleBoundary
-    public static String format(DynamicObject relativeTimeFormatObj, double amount, String unit) {
+    public static TruffleString format(DynamicObject relativeTimeFormatObj, double amount, String unit) {
         ensureFiniteNumber(amount);
         InternalState state = getInternalState(relativeTimeFormatObj);
         RelativeDateTimeUnit icuUnit = singularRelativeTimeUnit("format", unit);
-        return innerFormat(amount, state, state.getRelativeDateTimeFormatter(), icuUnit);
+        return Strings.fromJavaString(innerFormat(amount, state, state.getRelativeDateTimeFormatter(), icuUnit));
     }
 
     private static String innerFormat(double amount, InternalState state, RelativeDateTimeFormatter relativeDateTimeFormatter, RelativeDateTimeUnit icuUnit) {
@@ -198,10 +201,10 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
         @Override
         DynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
             DynamicObject result = JSOrdinary.create(context, realm);
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.LOCALE, getLocale(), JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.STYLE, style, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.NUMERIC, numeric, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.NUMBERING_SYSTEM, getNumberingSystem(), JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(getLocale()), JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_STYLE, Strings.fromJavaString(style), JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_NUMERIC, Strings.fromJavaString(numeric), JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_NUMBERING_SYSTEM, Strings.fromJavaString(getNumberingSystem()), JSAttributes.getDefault());
             return result;
         }
 

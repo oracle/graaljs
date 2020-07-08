@@ -219,7 +219,7 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             JSRealm topLevelRealm = topLevelRealm(this);
             int realmIndex = toRealmIndexOrThrow(topLevelRealm, index);
             JSRealm selectedRealm = topLevelRealm.getFromRealmList(realmIndex);
-            String sourceText = JSRuntime.toString(code);
+            String sourceText = JSRuntime.toJavaString(code);
             Source source = Source.newBuilder(JavaScriptLanguage.ID, sourceText, Evaluator.EVAL_SOURCE_NAME).build();
             JSRealm currentV8Realm = topLevelRealm.getCurrentV8Realm();
             topLevelRealm.setCurrentV8Realm(selectedRealm);

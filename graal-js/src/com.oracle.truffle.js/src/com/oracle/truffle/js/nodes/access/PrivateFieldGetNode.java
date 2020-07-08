@@ -54,12 +54,15 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Properties;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -86,8 +89,8 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
     Object doField(DynamicObject target, HiddenKey key,
                     @CachedLibrary("target") DynamicObjectLibrary access,
                     @Cached BranchProfile errorBranch) {
-        if (access.containsKey(target, key)) {
-            return access.getOrDefault(target, key, Undefined.instance);
+        if (Properties.containsKey(access, target, key)) {
+            return Properties.getOrDefault(access, target, key, Undefined.instance);
         } else {
             errorBranch.enter();
             return missing(target, key);
@@ -119,8 +122,8 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
     }
 
     @TruffleBoundary
-    private String keyAsString() {
-        return keyNode.expressionToString();
+    private TruffleString keyAsString() {
+        return Strings.fromJavaString(keyNode.expressionToString());
     }
 
     @Override

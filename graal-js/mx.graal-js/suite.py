@@ -120,7 +120,6 @@ suite = {
         "com.oracle.truffle.js.annotations",
         "com.oracle.truffle.js.codec",
         "com.oracle.truffle.js.runtime.doubleconv",
-        "truffle:TRUFFLE_API",
         "truffle:ICU4J",
       ],
       "requires" : [
@@ -152,7 +151,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "sdk:GRAAL_SDK"
+        "truffle:TRUFFLE_API",
       ],
       "jacoco" : "include",
       "javaCompliance" : "11+",
@@ -186,7 +185,9 @@ suite = {
     "com.oracle.truffle.js.codec" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : [],
+      "dependencies" : [
+        "truffle:TRUFFLE_API",
+      ],
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "javaCompliance" : "11+",

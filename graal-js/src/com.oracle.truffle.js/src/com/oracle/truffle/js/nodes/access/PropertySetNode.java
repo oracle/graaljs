@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,6 +65,7 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.array.ArrayLengthNode.ArrayLengthWriteNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
@@ -75,6 +76,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -869,7 +871,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         protected boolean setValueInt(Object thisObj, int value, Object receiver, PropertySetNode root, boolean guard) {
             Object key = root.getKey();
             Object truffleObject = nullCheck(thisObj, key);
-            if (!(key instanceof String)) {
+            if (!Strings.isTString(key)) {
                 return false;
             }
             return performWriteMember(truffleObject, value, root);
@@ -879,7 +881,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         protected boolean setValueDouble(Object thisObj, double value, Object receiver, PropertySetNode root, boolean guard) {
             Object key = root.getKey();
             Object truffleObject = nullCheck(thisObj, key);
-            if (!(key instanceof String)) {
+            if (!Strings.isTString(key)) {
                 return false;
             }
             return performWriteMember(truffleObject, value, root);
@@ -889,7 +891,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
             Object key = root.getKey();
             Object truffleObject = nullCheck(thisObj, key);
-            if (!(key instanceof String)) {
+            if (!Strings.isTString(key)) {
                 return false;
             }
             Object exportedValue = export.execute(value);
@@ -897,11 +899,9 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         }
 
         private boolean performWriteMember(Object truffleObject, Object value, PropertySetNode root) {
-            String stringKey = (String) root.getKey();
-
             if (context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
                 try {
-                    interop.writeHashEntry(truffleObject, stringKey, value);
+                    interop.writeHashEntry(truffleObject, root.getKey(), value);
                     return true;
                 } catch (UnknownKeyException | UnsupportedMessageException | UnsupportedTypeException e) {
                     if (root.isStrict) {
@@ -918,6 +918,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                     return true;
                 }
             }
+            String stringKey = Strings.toJavaString((TruffleString) root.getKey());
             // strict mode always throws if the member is not writable
             if (root.isStrict || optimistic) {
                 try {
@@ -953,7 +954,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             assert context.isOptionNashornCompatibilityMode();
             TruffleLanguage.Env env = getRealm().getEnv();
             if (env.isHostObject(thisObj)) {
-                String setterKey = root.getAccessorKey("set");
+                TruffleString setterKey = root.getAccessorKey(Strings.SET);
                 if (setterKey == null) {
                     return false;
                 }
@@ -961,11 +962,11 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     setterInterop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
                 }
-                if (!setterInterop.isMemberInvocable(thisObj, setterKey)) {
+                if (!setterInterop.isMemberInvocable(thisObj, Strings.toJavaString(setterKey))) {
                     return false;
                 }
                 try {
-                    setterInterop.invokeMember(thisObj, setterKey, value);
+                    setterInterop.invokeMember(thisObj, Strings.toJavaString(setterKey), value);
                     return true;
                 } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
                     // silently ignore

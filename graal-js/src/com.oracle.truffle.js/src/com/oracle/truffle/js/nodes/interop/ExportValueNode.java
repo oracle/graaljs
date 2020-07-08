@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,14 @@
  */
 package com.oracle.truffle.js.nodes.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -56,12 +58,11 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.interop.InteropAsyncFunction;
 import com.oracle.truffle.js.runtime.interop.InteropBoundFunction;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * This node prepares the export of a value via Interop. It transforms values not allowed in Truffle
- * (e.g. {@link JSLazyString}) and binds Functions.
+ * and binds Functions.
  *
  * @see JSRuntime#exportValue(Object)
  */
@@ -148,8 +149,14 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected static String doString(String value, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
+    protected static TruffleString doString(TruffleString value, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         return value;
+    }
+
+    @TruffleBoundary
+    @Specialization
+    protected static TruffleString doJLString(@SuppressWarnings("unused") String value, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Specialization(guards = {"!isJSFunction(value)"}, replaces = "doObject")

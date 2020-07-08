@@ -45,14 +45,15 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.strings.TruffleString;
 
 public class JSConsoleUtil {
 
-    private Map<String, Integer> countMap;
-    private Map<String, Long> timeMap;
+    private Map<TruffleString, Integer> countMap;
+    private Map<TruffleString, Long> timeMap;
     private int consoleIndentation = 0;
 
-    public Map<String, Integer> getCountMap() {
+    public Map<TruffleString, Integer> getCountMap() {
         CompilerAsserts.neverPartOfCompilation();
         if (countMap == null) {
             countMap = new HashMap<>();
@@ -60,7 +61,7 @@ public class JSConsoleUtil {
         return countMap;
     }
 
-    public Map<String, Long> getTimeMap() {
+    public Map<TruffleString, Long> getTimeMap() {
         CompilerAsserts.neverPartOfCompilation();
         if (timeMap == null) {
             timeMap = new HashMap<>();

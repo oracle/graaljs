@@ -55,6 +55,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
@@ -67,6 +68,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
@@ -141,7 +143,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected CharSequence doString(CharSequence value) {
+    protected Object doString(TruffleString value) {
         return value;
     }
 
@@ -184,15 +186,15 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         return ordinaryToPrimitive.execute(object);
     }
 
-    private String getHintName() {
+    private Object getHintName() {
         switch (hint) {
             case Number:
-                return JSRuntime.HINT_NUMBER;
+                return Strings.HINT_NUMBER;
             case String:
-                return JSRuntime.HINT_STRING;
+                return Strings.HINT_STRING;
             case None:
             default:
-                return JSRuntime.HINT_DEFAULT;
+                return Strings.HINT_DEFAULT;
         }
     }
 
@@ -215,7 +217,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
             if (interop.isBoolean(object)) {
                 return interop.asBoolean(object);
             } else if (interop.isString(object)) {
-                return interop.asString(object);
+                return interop.asTruffleString(object);
             } else if (interop.isNumber(object)) {
                 if (interop.fitsInInt(object)) {
                     return interop.asInt(object);
@@ -259,37 +261,37 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private static Object formatJavaArray(Object object, InteropLibrary interop) {
+    private static TruffleString formatJavaArray(Object object, InteropLibrary interop) {
         assert isJavaArray(object, interop);
         // toDisplayString formats host arrays similar to Arrays.toString.
         return JSRuntime.toDisplayString(object, true, ToDisplayStringFormat.getArrayFormat());
     }
 
     @TruffleBoundary
-    private Object javaClassToString(Object object, InteropLibrary interop) {
+    private TruffleString javaClassToString(Object object, InteropLibrary interop) {
         try {
             String qualifiedName = InteropLibrary.getUncached().asString(interop.getMetaQualifiedName(object));
             if (getLanguage().getJSContext().isOptionNashornCompatibilityMode() && qualifiedName.endsWith("[]")) {
                 Object hostObject = getRealm().getEnv().asHostObject(object);
                 qualifiedName = ((Class<?>) hostObject).getName();
             }
-            return "class " + qualifiedName;
+            return Strings.fromJavaString("class " + qualifiedName);
         } catch (UnsupportedMessageException e) {
             throw Errors.createTypeErrorInteropException(object, e, "getTypeName", this);
         }
     }
 
     @TruffleBoundary
-    private String javaExceptionToString(Object object, InteropLibrary interop) {
+    private TruffleString javaExceptionToString(Object object, InteropLibrary interop) {
         try {
-            return InteropLibrary.getUncached().asString(interop.toDisplayString(object, true));
+            return InteropLibrary.getUncached().asTruffleString(interop.toDisplayString(object, true));
         } catch (UnsupportedMessageException e) {
             throw Errors.createTypeErrorInteropException(object, e, "toString", this);
         }
     }
 
     @Fallback
-    protected Object doFallback(Object value) {
+    protected TruffleString doFallback(Object value) {
         assert value != null;
         throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
     }

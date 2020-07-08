@@ -40,11 +40,14 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
+import static com.oracle.truffle.js.nodes.JSGuards.isString;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.binary.JSOverloadedBinaryNodeGen.DispatchBinaryOperatorNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
@@ -53,14 +56,12 @@ import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode.Hint;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 import com.oracle.truffle.js.runtime.objects.OperatorSet;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import static com.oracle.truffle.js.nodes.JSGuards.isString;
 
 /**
  * This node implements the semantics of a binary operator in the case when one of the two operands
@@ -77,7 +78,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
      * The name of the overloaded operator, used to lookup its definition in the user-provided table
      * of overloaded operators.
      */
-    private final String overloadedOperatorName;
+    private final TruffleString overloadedOperatorName;
     /**
      * Whether operands should be converted using ToNumericOperand (i.e. ToNumeric) or ToOperand
      * (i.e. ToPrimitive).
@@ -95,38 +96,38 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
      */
     private final boolean leftToRight;
 
-    protected JSOverloadedBinaryNode(String overloadedOperatorName, boolean numeric, Hint hint, boolean leftToRight) {
+    protected JSOverloadedBinaryNode(TruffleString overloadedOperatorName, boolean numeric, Hint hint, boolean leftToRight) {
         this.overloadedOperatorName = overloadedOperatorName;
         this.numeric = numeric;
         this.hint = hint;
         this.leftToRight = leftToRight;
     }
 
-    public static JSOverloadedBinaryNode create(String overloadedOperatorName, Hint hint) {
+    public static JSOverloadedBinaryNode create(TruffleString overloadedOperatorName, Hint hint) {
         return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, false, hint, true);
     }
 
-    public static JSOverloadedBinaryNode createHintNone(String overloadedOperatorName) {
+    public static JSOverloadedBinaryNode createHintNone(TruffleString overloadedOperatorName) {
         return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, false, Hint.None, true);
     }
 
-    public static JSOverloadedBinaryNode createHintNumber(String overloadedOperatorName) {
+    public static JSOverloadedBinaryNode createHintNumber(TruffleString overloadedOperatorName) {
         return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, false, Hint.Number, true);
     }
 
-    public static JSOverloadedBinaryNode createHintNumberLeftToRight(String overloadedOperatorName) {
+    public static JSOverloadedBinaryNode createHintNumberLeftToRight(TruffleString overloadedOperatorName) {
         return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, false, Hint.Number, true);
     }
 
-    public static JSOverloadedBinaryNode createHintNumberRightToLeft(String overloadedOperatorName) {
+    public static JSOverloadedBinaryNode createHintNumberRightToLeft(TruffleString overloadedOperatorName) {
         return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, false, Hint.Number, false);
     }
 
-    public static JSOverloadedBinaryNode createHintString(String overloadedOperatorName) {
+    public static JSOverloadedBinaryNode createHintString(TruffleString overloadedOperatorName) {
         return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, false, Hint.String, true);
     }
 
-    public static JSOverloadedBinaryNode createNumeric(String overloadedOperatorName) {
+    public static JSOverloadedBinaryNode createNumeric(TruffleString overloadedOperatorName) {
         return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, true, null, true);
     }
 
@@ -205,7 +206,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
         return dispatchBinaryOperatorNode.execute(leftOperand, rightOperand);
     }
 
-    protected String getOverloadedOperatorName() {
+    protected TruffleString getOverloadedOperatorName() {
         return overloadedOperatorName;
     }
 
@@ -218,11 +219,11 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
     }
 
     protected boolean isAddition() {
-        return overloadedOperatorName.equals("+");
+        return Strings.equals(Strings.SYMBOL_PLUS, overloadedOperatorName);
     }
 
     protected boolean isEquality() {
-        return overloadedOperatorName.equals("==");
+        return Strings.equals(Strings.SYMBOL_EQUALS_EQUALS, overloadedOperatorName);
     }
 
     /**
@@ -234,13 +235,13 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
     @ImportStatic(OperatorSet.class)
     public abstract static class DispatchBinaryOperatorNode extends JavaScriptBaseNode {
 
-        private final String overloadedOperatorName;
+        private final TruffleString overloadedOperatorName;
 
-        protected DispatchBinaryOperatorNode(String overloadedOperatorName) {
+        protected DispatchBinaryOperatorNode(TruffleString overloadedOperatorName) {
             this.overloadedOperatorName = overloadedOperatorName;
         }
 
-        public static DispatchBinaryOperatorNode create(String overloadedOperatorName) {
+        public static DispatchBinaryOperatorNode create(TruffleString overloadedOperatorName) {
             return DispatchBinaryOperatorNodeGen.create(overloadedOperatorName);
         }
 
@@ -332,7 +333,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
             if (isEquality()) {
                 return false;
             } else {
-                throw Errors.createTypeError(Boundaries.stringConcat("No overload found for ", getOverloadedOperatorName()), this);
+                throw Errors.createTypeErrorNoOverloadFound(getOverloadedOperatorName(), this);
             }
         }
 
@@ -345,16 +346,16 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
             return callNode.executeCall(JSArguments.create(Undefined.instance, operatorImplementation, left, right));
         }
 
-        protected String getOverloadedOperatorName() {
+        protected TruffleString getOverloadedOperatorName() {
             return overloadedOperatorName;
         }
 
         protected boolean isAddition() {
-            return overloadedOperatorName.equals("+");
+            return Strings.equals(Strings.SYMBOL_PLUS, overloadedOperatorName);
         }
 
         protected boolean isEquality() {
-            return overloadedOperatorName.equals("==");
+            return Strings.equals(Strings.SYMBOL_EQUALS_EQUALS, overloadedOperatorName);
         }
     }
 }

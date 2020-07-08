@@ -83,7 +83,7 @@ void GraalFunction::SetName(v8::Local<v8::String> name) {
 
 v8::Local<v8::Value> GraalFunction::GetName() const {
     JNI_CALL(jobject, java_name, Isolate(), GraalAccessMethod::function_get_name, Object, GetJavaObject());
-    GraalString* graal_name = GraalString::Allocate(Isolate(), (jstring) java_name);
+    GraalString* graal_name = GraalString::Allocate(Isolate(), java_name);
     return reinterpret_cast<v8::Value*> (graal_name);
 }
 
@@ -283,7 +283,7 @@ jobject GraalFunction::Call(jobject recv, jobjectArray arguments) {
 v8::ScriptOrigin GraalFunction::GetScriptOrigin() const {
     GraalIsolate* graal_isolate = Isolate();
     JNI_CALL(jobject, java_resource_name, graal_isolate, GraalAccessMethod::function_resource_name, Object, GetJavaObject());
-    GraalValue* resource_name = (java_resource_name == nullptr) ? graal_isolate->GetUndefined() : GraalString::Allocate(graal_isolate, (jstring) java_resource_name);
+    GraalValue* resource_name = (java_resource_name == nullptr) ? graal_isolate->GetUndefined() : GraalString::Allocate(graal_isolate, java_resource_name);
     return v8::ScriptOrigin(reinterpret_cast<v8::Value*> (resource_name));
 }
 

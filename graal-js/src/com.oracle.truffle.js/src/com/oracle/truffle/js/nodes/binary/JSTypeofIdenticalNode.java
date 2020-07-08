@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,6 +59,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantStringNode;
@@ -73,6 +74,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
@@ -118,33 +120,32 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
     }
 
     public static JSTypeofIdenticalNode create(JavaScriptNode childNode, JSConstantStringNode constStringNode) {
-        return create(childNode, (String) constStringNode.execute(null));
+        return create(childNode, (TruffleString) constStringNode.execute(null));
     }
 
-    public static JSTypeofIdenticalNode create(JavaScriptNode childNode, String string) {
+    public static JSTypeofIdenticalNode create(JavaScriptNode childNode, TruffleString string) {
         return JSTypeofIdenticalNodeGen.create(childNode, typeStringToEnum(string));
     }
 
-    private static Type typeStringToEnum(String string) {
-        switch (string) {
-            case JSNumber.TYPE_NAME:
-                return Type.Number;
-            case JSBigInt.TYPE_NAME:
-                return Type.BigInt;
-            case JSString.TYPE_NAME:
-                return Type.String;
-            case JSBoolean.TYPE_NAME:
-                return Type.Boolean;
-            case JSOrdinary.TYPE_NAME:
-                return Type.Object;
-            case Undefined.TYPE_NAME:
-                return Type.Undefined;
-            case JSFunction.TYPE_NAME:
-                return Type.Function;
-            case JSSymbol.TYPE_NAME:
-                return Type.Symbol;
-            default:
-                return Type.False;
+    private static Type typeStringToEnum(TruffleString string) {
+        if (Strings.equals(JSNumber.TYPE_NAME, string)) {
+            return Type.Number;
+        } else if (Strings.equals(JSBigInt.TYPE_NAME, string)) {
+            return Type.BigInt;
+        } else if (Strings.equals(JSString.TYPE_NAME, string)) {
+            return Type.String;
+        } else if (Strings.equals(JSBoolean.TYPE_NAME, string)) {
+            return Type.Boolean;
+        } else if (Strings.equals(JSOrdinary.TYPE_NAME, string)) {
+            return Type.Object;
+        } else if (Strings.equals(Undefined.TYPE_NAME, string)) {
+            return Type.Undefined;
+        } else if (Strings.equals(JSFunction.TYPE_NAME, string)) {
+            return Type.Function;
+        } else if (Strings.equals(JSSymbol.TYPE_NAME, string)) {
+            return Type.Symbol;
+        } else {
+            return Type.False;
         }
     }
 
@@ -162,7 +163,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
         if (materializedTags.contains(BinaryOperationTag.class) || materializedTags.contains(UnaryOperationTag.class) || materializedTags.contains(LiteralTag.class)) {
             Object[] info = parseMaterializationInfo();
             if (info == null) {
-                info = new Object[]{type.name().toLowerCase(), true, true};
+                info = new Object[]{Strings.fromJavaString(type.name().toLowerCase()), true, true};
             }
             JavaScriptNode lhs = JSConstantNode.create(info[0]);
             JavaScriptNode rhs = TypeOfNode.create(cloneUninitialized(getOperand(), materializedTags));
@@ -194,7 +195,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
     }
 
     private Object[] parseMaterializationInfo() {
-        String literal;
+        TruffleString literal;
         boolean identity;
         boolean typeofAsLeftOperand;
         JavaScriptLanguage language = getLanguageSafe();
@@ -287,7 +288,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
     }
 
     @Specialization
-    protected final boolean doString(@SuppressWarnings("unused") CharSequence value) {
+    protected final boolean doString(@SuppressWarnings("unused") TruffleString value) {
         return (type == Type.String);
     }
 

@@ -44,7 +44,8 @@ import java.util.ArrayList;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.js.runtime.Boundaries;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.Strings;
 
 /**
  * Helper for parsing replacement value parameters of String.prototype.[@@replace] and
@@ -52,7 +53,7 @@ import com.oracle.truffle.js.runtime.Boundaries;
  */
 public final class ReplaceStringParser<T> {
 
-    public interface Consumer<T> {
+    public interface Consumer<T, R> {
 
         void literal(T node, int start, int end);
 
@@ -64,10 +65,12 @@ public final class ReplaceStringParser<T> {
 
         void captureGroup(T node, int groupNumber, int literalStart, int literalEnd);
 
-        void namedCaptureGroup(T node, String groupName);
+        void namedCaptureGroup(T node, TruffleString groupName);
+
+        R getResult();
     }
 
-    private static final class TokenConsumer implements Consumer<Void> {
+    private static final class TokenConsumer implements Consumer<Void, Token[]> {
 
         private final ArrayList<Token> tokens = new ArrayList<>();
 
@@ -97,11 +100,12 @@ public final class ReplaceStringParser<T> {
         }
 
         @Override
-        public void namedCaptureGroup(Void node, String groupName) {
+        public void namedCaptureGroup(Void node, TruffleString groupName) {
             tokens.add(new NamedCaptureGroupToken(groupName));
         }
 
-        public Token[] getTokens() {
+        @Override
+        public Token[] getResult() {
             return tokens.toArray(new Token[0]);
         }
     }
@@ -176,41 +180,42 @@ public final class ReplaceStringParser<T> {
 
     public static class NamedCaptureGroupToken extends Token {
 
-        private final String groupName;
+        private final TruffleString groupNameStr;
 
-        public NamedCaptureGroupToken(String groupName) {
+        public NamedCaptureGroupToken(TruffleString groupName) {
             super(Kind.namedCaptureGroup);
-            this.groupName = groupName;
+            this.groupNameStr = groupName;
         }
 
-        public String getGroupName() {
-            return groupName;
+        public TruffleString getGroupName() {
+            return groupNameStr;
         }
     }
 
-    private final String replaceStr;
+    private final TruffleString replaceStr;
     private final int maxGroupNumber; // exclusive
     private final boolean parseNamedCaptureGroups;
     private int index = 0;
 
-    private ReplaceStringParser(String replaceStr, int maxGroupNumber, boolean parseNamedCaptureGroups) {
+    private ReplaceStringParser(TruffleString replaceStr, int maxGroupNumber, boolean parseNamedCaptureGroups) {
         this.replaceStr = replaceStr;
         this.maxGroupNumber = maxGroupNumber;
         this.parseNamedCaptureGroups = parseNamedCaptureGroups;
     }
 
-    public static <T> void process(String replaceStr, int maxGroupNumber, boolean parseNamedCaptureGroups, BranchProfile hasDollarProfile, Consumer<T> consumer, T node) {
+    public static <T, R> R process(TruffleString replaceStr, int maxGroupNumber, boolean parseNamedCaptureGroups, BranchProfile hasDollarProfile, Consumer<T, R> consumer, T node) {
         new ReplaceStringParser<T>(replaceStr, maxGroupNumber, parseNamedCaptureGroups).process(consumer, node, hasDollarProfile);
+        return consumer.getResult();
     }
 
     @TruffleBoundary
-    public static Token[] parse(String replaceStr, int maxGroupNumber, boolean parseNamedCaptureGroups) {
+    public static Token[] parse(TruffleString replaceStr, int maxGroupNumber, boolean parseNamedCaptureGroups) {
         TokenConsumer consumer = new TokenConsumer();
         new ReplaceStringParser<Void>(replaceStr, maxGroupNumber, parseNamedCaptureGroups).process(consumer, null, BranchProfile.create());
-        return consumer.getTokens();
+        return consumer.getResult();
     }
 
-    public static <T> void processParsed(Token[] tokens, Consumer<T> consumer, T node) {
+    public static <T, R> R processParsed(Token[] tokens, Consumer<T, R> consumer, T node) {
         for (Token t : tokens) {
             switch (t.getKind()) {
                 case literal:
@@ -233,27 +238,28 @@ public final class ReplaceStringParser<T> {
                     break;
             }
         }
+        return consumer.getResult();
     }
 
-    public void process(Consumer<T> consumer, T node, BranchProfile hasDollarProfile) {
+    public void process(Consumer<T, ?> consumer, T node, BranchProfile hasDollarProfile) {
         while (hasNext()) {
             parseNextDollar(consumer, node, hasDollarProfile);
         }
     }
 
     private boolean hasNext() {
-        return index < replaceStr.length();
+        return index < Strings.length(replaceStr);
     }
 
-    private void parseNextDollar(Consumer<T> consumer, T node, BranchProfile hasDollarProfile) {
+    private void parseNextDollar(Consumer<T, ?> consumer, T node, BranchProfile hasDollarProfile) {
         assert hasNext();
-        int dollarPos = replaceStr.indexOf('$', index);
-        if (dollarPos < 0 || dollarPos + 1 == replaceStr.length()) {
-            literal(consumer, node, replaceStr.length(), replaceStr.length());
+        int dollarPos = Strings.indexOf(replaceStr, '$', index);
+        if (dollarPos < 0 || dollarPos + 1 == Strings.length(replaceStr)) {
+            literal(consumer, node, Strings.length(replaceStr), Strings.length(replaceStr));
             return;
         }
         hasDollarProfile.enter();
-        char ch = replaceStr.charAt(dollarPos + 1);
+        char ch = Strings.charAt(replaceStr, dollarPos + 1);
         switch (ch) {
             case '$':
                 literal(consumer, node, dollarPos + 1, dollarPos + 2);
@@ -270,9 +276,9 @@ public final class ReplaceStringParser<T> {
             case '<':
                 if (parseNamedCaptureGroups) {
                     int groupNameStart = dollarPos + 2;
-                    int groupNameEnd = replaceStr.indexOf('>', groupNameStart);
+                    int groupNameEnd = Strings.indexOf(replaceStr, '>', groupNameStart);
                     if (groupNameEnd >= 0) {
-                        namedCaptureGroup(consumer, node, dollarPos, Boundaries.substring(replaceStr, groupNameStart, groupNameEnd), groupNameEnd + 1);
+                        namedCaptureGroup(consumer, node, dollarPos, Strings.substring(replaceStr, groupNameStart, groupNameEnd - groupNameStart), groupNameEnd + 1);
                         return;
                     }
                 }
@@ -280,8 +286,8 @@ public final class ReplaceStringParser<T> {
             default:
                 if (isDigit(ch)) {
                     int firstDigit = ch - '0';
-                    if (replaceStr.length() > (dollarPos + 2) && isDigit(replaceStr.charAt(dollarPos + 2))) {
-                        int groupNumber = firstDigit * 10 + (replaceStr.charAt(dollarPos + 2) - '0');
+                    if (Strings.length(replaceStr) > (dollarPos + 2) && isDigit(Strings.charAt(replaceStr, dollarPos + 2))) {
+                        int groupNumber = firstDigit * 10 + (Strings.charAt(replaceStr, dollarPos + 2) - '0');
                         if (0 < groupNumber && groupNumber < maxGroupNumber) {
                             captureGroup(consumer, node, dollarPos, groupNumber, dollarPos + 3);
                             return;
@@ -297,36 +303,36 @@ public final class ReplaceStringParser<T> {
         literal(consumer, node, dollarPos + 2, dollarPos + 2);
     }
 
-    private void literal(Consumer<T> consumer, T node, int literalEnd, int nextIndex) {
+    private void literal(Consumer<T, ?> consumer, T node, int literalEnd, int nextIndex) {
         consumer.literal(node, index, literalEnd);
         index = nextIndex;
     }
 
-    private void match(Consumer<T> consumer, T node, int literalEnd, int nextIndex) {
+    private void match(Consumer<T, ?> consumer, T node, int literalEnd, int nextIndex) {
         consumer.literal(node, index, literalEnd);
         consumer.match(node);
         index = nextIndex;
     }
 
-    private void matchHead(Consumer<T> consumer, T node, int literalEnd, int nextIndex) {
+    private void matchHead(Consumer<T, ?> consumer, T node, int literalEnd, int nextIndex) {
         consumer.literal(node, index, literalEnd);
         consumer.matchHead(node);
         index = nextIndex;
     }
 
-    private void matchTail(Consumer<T> consumer, T node, int literalEnd, int nextIndex) {
+    private void matchTail(Consumer<T, ?> consumer, T node, int literalEnd, int nextIndex) {
         consumer.literal(node, index, literalEnd);
         consumer.matchTail(node);
         index = nextIndex;
     }
 
-    private void captureGroup(Consumer<T> consumer, T node, int literalEnd, int groupNumber, int nextIndex) {
+    private void captureGroup(Consumer<T, ?> consumer, T node, int literalEnd, int groupNumber, int nextIndex) {
         consumer.literal(node, index, literalEnd);
         consumer.captureGroup(node, groupNumber, literalEnd, nextIndex);
         index = nextIndex;
     }
 
-    private void namedCaptureGroup(Consumer<T> consumer, T node, int literalEnd, String groupName, int nextIndex) {
+    private void namedCaptureGroup(Consumer<T, ?> consumer, T node, int literalEnd, TruffleString groupName, int nextIndex) {
         consumer.literal(node, index, literalEnd);
         consumer.namedCaptureGroup(node, groupName);
         index = nextIndex;

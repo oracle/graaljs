@@ -79,6 +79,8 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.DeleteAndSetLengthNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.FlattenIntoArrayNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayAtNodeGen;
@@ -156,7 +158,6 @@ import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.nodes.unary.JSIsArrayNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -164,6 +165,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.SparseArray;
@@ -1262,11 +1264,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         private final ConditionProfile isJSObjectProfile = ConditionProfile.createBinaryProfile();
 
-        private static final String JOIN = "join";
-
         public JSArrayToStringNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.joinPropertyNode = PropertyNode.createProperty(context, null, JOIN);
+            this.joinPropertyNode = PropertyNode.createProperty(context, null, Strings.JOIN);
         }
 
         private Object getJoinProperty(Object target) {
@@ -1276,7 +1276,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private Object getToStringProperty(Object target) {
             if (toStringPropertyNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                toStringPropertyNode = insert(PropertyNode.createProperty(getContext(), null, JSRuntime.TO_STRING));
+                toStringPropertyNode = insert(PropertyNode.createProperty(getContext(), null, Strings.TO_STRING));
             }
             return toStringPropertyNode.executeWithTarget(target);
         }
@@ -1324,11 +1324,11 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         private Object toStringForeign(Object arrayObj) {
             InteropLibrary interop = getInterop();
-            if (shouldTryOwnJoin(arrayObj) && interop.isMemberInvocable(arrayObj, JOIN)) {
+            if (shouldTryOwnJoin(arrayObj) && interop.isMemberInvocable(arrayObj, Strings.toJavaString(Strings.JOIN))) {
                 Object result;
                 try {
                     try {
-                        result = interop.invokeMember(arrayObj, JOIN);
+                        result = interop.invokeMember(arrayObj, Strings.toJavaString(Strings.JOIN));
                     } catch (AbstractTruffleException e) {
                         if (InteropLibrary.getUncached(e).getExceptionType(e) == ExceptionType.RUNTIME_ERROR) {
                             result = null;
@@ -1430,7 +1430,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return toBooleanNode.executeBoolean(target);
         }
 
-        protected String toString(Object target) {
+        protected TruffleString toString(Object target) {
             if (toStringNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toStringNode = insert(JSToStringNode.create());
@@ -1660,6 +1660,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     public abstract static class JSArrayJoinNode extends JSArrayOperation {
         @Child private JSToStringNode separatorToStringNode;
         @Child private JSToStringNode elementToStringNode;
+        @Child private TruffleString.ConcatNode stringConcatNode;
         private final ConditionProfile separatorNotEmpty = ConditionProfile.createBinaryProfile();
         private final ConditionProfile isZero = ConditionProfile.createBinaryProfile();
         private final ConditionProfile isOne = ConditionProfile.createBinaryProfile();
@@ -1669,6 +1670,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private final BranchProfile stackGrowProfile = BranchProfile.create();
         private final StringBuilderProfile stringBuilderProfile;
 
+        @Child private TruffleStringBuilder.AppendStringNode appendStringNode;
+        @Child private TruffleStringBuilder.ToStringNode builderToStringNode;
+
         public JSArrayJoinNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
             super(context, builtin, isTypedArrayImplementation);
             this.elementToStringNode = JSToStringNode.create();
@@ -1676,23 +1680,23 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected String join(Object thisObj, Object joinStr) {
+        protected TruffleString join(Object thisObj, Object joinStr) {
             final Object thisJSObject = toObjectOrValidateTypedArray(thisObj);
             final long length = getLength(thisJSObject);
-            final String joinSeparator = joinStr == Undefined.instance ? "," : getSeparatorToString().executeString(joinStr);
+            final TruffleString joinSeparator = joinStr == Undefined.instance ? Strings.COMMA : getSeparatorToString().executeString(joinStr);
 
             JSRealm realm = getRealm();
             if (!realm.joinStackPush(thisObj, stackGrowProfile)) {
                 // join is in progress on thisObj already => break the cycle
-                return "";
+                return Strings.EMPTY_STRING;
             }
             try {
                 if (isZero.profile(length == 0)) {
-                    return "";
+                    return Strings.EMPTY_STRING;
                 } else if (isOne.profile(length == 1)) {
                     return joinOne(thisJSObject);
                 } else {
-                    final boolean appendSep = separatorNotEmpty.profile(joinSeparator.length() > 0);
+                    final boolean appendSep = separatorNotEmpty.profile(Strings.length(joinSeparator) > 0);
                     if (isTwo.profile(length == 2)) {
                         return joinTwo(thisJSObject, joinSeparator, appendSep);
                     } else if (isSparse.profile(JSArray.isJSArray(thisJSObject) && arrayGetArrayType((DynamicObject) thisJSObject) instanceof SparseArray)) {
@@ -1714,40 +1718,62 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return separatorToStringNode;
         }
 
-        private String joinOne(Object thisObject) {
+        private TruffleString concat(TruffleString a, TruffleString b) {
+            if (stringConcatNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                stringConcatNode = insert(TruffleString.ConcatNode.create());
+            }
+            return Strings.concat(stringConcatNode, a, b);
+        }
+
+        private void append(TruffleStringBuilder sb, TruffleString s) {
+            if (appendStringNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                appendStringNode = insert(TruffleStringBuilder.AppendStringNode.create());
+            }
+            stringBuilderProfile.append(appendStringNode, sb, s);
+        }
+
+        private TruffleString builderToString(TruffleStringBuilder sb) {
+            if (builderToStringNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                builderToStringNode = insert(TruffleStringBuilder.ToStringNode.create());
+            }
+            return StringBuilderProfile.toString(builderToStringNode, sb);
+        }
+
+        private TruffleString joinOne(Object thisObject) {
             Object value = read(thisObject, 0);
             return toStringOrEmpty(value);
         }
 
-        private String joinTwo(Object thisObject, final String joinSeparator, final boolean appendSep) {
-            String first = toStringOrEmpty(read(thisObject, 0));
-            String second = toStringOrEmpty(read(thisObject, 1));
+        private TruffleString joinTwo(Object thisObject, final TruffleString joinSeparator, final boolean appendSep) {
+            TruffleString first = toStringOrEmpty(read(thisObject, 0));
+            TruffleString second = toStringOrEmpty(read(thisObject, 1));
 
-            long resultLength = first.length() + (appendSep ? joinSeparator.length() : 0L) + second.length();
+            long resultLength = Strings.length(first) + (appendSep ? Strings.length(joinSeparator) : 0L) + Strings.length(second);
             if (resultLength > getContext().getStringLengthLimit()) {
                 CompilerDirectives.transferToInterpreter();
                 throw Errors.createRangeErrorInvalidStringLength();
             }
 
-            final StringBuilder res = new StringBuilder((int) resultLength);
-            Boundaries.builderAppend(res, first);
+            TruffleString res = first;
             if (appendSep) {
-                Boundaries.builderAppend(res, joinSeparator);
+                res = concat(res, joinSeparator);
             }
-            Boundaries.builderAppend(res, second);
-            return Boundaries.builderToString(res);
+            return concat(res, second);
         }
 
-        private String joinLoop(Object thisJSObject, final long length, final String joinSeparator, final boolean appendSep) {
-            final StringBuilder res = stringBuilderProfile.newStringBuilder();
+        private TruffleString joinLoop(Object thisJSObject, final long length, final TruffleString joinSeparator, final boolean appendSep) {
+            TruffleStringBuilder sb = stringBuilderProfile.newStringBuilder();
             long i = 0;
             while (i < length) {
                 if (appendSep && i != 0) {
-                    stringBuilderProfile.append(res, joinSeparator);
+                    append(sb, joinSeparator);
                 }
                 Object value = read(thisJSObject, i);
-                String str = toStringOrEmpty(value);
-                stringBuilderProfile.append(res, str);
+                TruffleString str = toStringOrEmpty(value);
+                append(sb, str);
 
                 if (appendSep) {
                     i++;
@@ -1755,14 +1781,14 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     i = nextElementIndex(thisJSObject, i, length);
                 }
             }
-            return stringBuilderProfile.toString(res);
+            return builderToString(sb);
         }
 
-        private String toStringOrEmpty(Object value) {
+        private TruffleString toStringOrEmpty(Object value) {
             if (isValidEntry(value)) {
                 return elementToStringNode.executeString(value);
             } else {
-                return "";
+                return Strings.EMPTY_STRING;
             }
         }
 
@@ -1770,15 +1796,15 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return value != Undefined.instance && value != Null.instance;
         }
 
-        private String joinSparse(Object thisObject, long length, String joinSeparator, final boolean appendSep) {
+        private TruffleString joinSparse(Object thisObject, long length, TruffleString joinSeparator, final boolean appendSep) {
             SimpleArrayList<Object> converted = SimpleArrayList.create(length);
             long calculatedLength = 0;
             long i = 0;
             while (i < length) {
                 Object value = read(thisObject, i);
                 if (isValidEntry(value)) {
-                    String string = elementToStringNode.executeString(value);
-                    int stringLength = string.length();
+                    TruffleString string = elementToStringNode.executeString(value);
+                    int stringLength = Strings.length(string);
                     if (stringLength > 0) {
                         calculatedLength += stringLength;
                         converted.add(i, growProfile);
@@ -1788,33 +1814,33 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 i = nextElementIndex(thisObject, i, length);
             }
             if (appendSep) {
-                calculatedLength += (length - 1) * joinSeparator.length();
+                calculatedLength += (length - 1) * Strings.length(joinSeparator);
             }
             if (calculatedLength > getContext().getStringLengthLimit()) {
                 CompilerDirectives.transferToInterpreter();
                 throw Errors.createRangeErrorInvalidStringLength();
             }
             assert calculatedLength <= Integer.MAX_VALUE;
-            final StringBuilder res = stringBuilderProfile.newStringBuilder((int) calculatedLength);
+            TruffleStringBuilder sb = stringBuilderProfile.newStringBuilder((int) calculatedLength);
             long lastIndex = 0;
             for (int j = 0; j < converted.size(); j += 2) {
                 long index = (long) converted.get(j);
-                String value = (String) converted.get(j + 1);
+                Object value = converted.get(j + 1);
                 if (appendSep) {
                     for (long k = lastIndex; k < index; k++) {
-                        stringBuilderProfile.append(res, joinSeparator);
+                        append(sb, joinSeparator);
                     }
                 }
-                stringBuilderProfile.append(res, value);
+                append(sb, (TruffleString) value);
                 lastIndex = index;
             }
             if (appendSep) {
                 for (long k = lastIndex; k < length - 1; k++) {
-                    stringBuilderProfile.append(res, joinSeparator);
+                    append(sb, joinSeparator);
                 }
             }
-            assert res.length() == calculatedLength;
-            return stringBuilderProfile.toString(res);
+            assert StringBuilderProfile.length(sb) == calculatedLength;
+            return builderToString(sb);
         }
     }
 
@@ -1825,41 +1851,45 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private PropertyGetNode getToLocaleStringNode;
         @Child private JSFunctionCallNode callToLocaleStringNode;
 
+        @Child private TruffleStringBuilder.AppendCharUTF16Node appendCharNode;
+        @Child private TruffleStringBuilder.AppendStringNode appendStringNode;
+        @Child private TruffleStringBuilder.ToStringNode builderToStringNode;
+
         public JSArrayToLocaleStringNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
             super(context, builtin, isTypedArrayImplementation);
             this.stringBuilderProfile = StringBuilderProfile.create(context.getStringLengthLimit());
         }
 
         @Specialization
-        protected String toLocaleString(VirtualFrame frame, Object thisObj,
-                        @Cached("create()") JSToStringNode toStringNode) {
+        protected TruffleString toLocaleString(VirtualFrame frame, Object thisObj,
+                        @Cached JSToStringNode toStringNode) {
             Object arrayObj = toObjectOrValidateTypedArray(thisObj);
             long len = getLength(arrayObj);
             if (len == 0) {
-                return "";
+                return Strings.EMPTY_STRING;
             }
             JSRealm realm = getRealm();
             if (!realm.joinStackPush(thisObj, stackGrowProfile)) {
                 // join is in progress on thisObj already => break the cycle
-                return "";
+                return Strings.EMPTY_STRING;
             }
             try {
                 Object[] userArguments = JSArguments.extractUserArguments(frame.getArguments());
                 long k = 0;
-                StringBuilder r = stringBuilderProfile.newStringBuilder();
+                TruffleStringBuilder sb = stringBuilderProfile.newStringBuilder();
                 while (k < len) {
                     if (k > 0) {
-                        stringBuilderProfile.append(r, ',');
+                        append(sb, ',');
                     }
                     Object nextElement = read(arrayObj, k);
                     if (nextElement != Null.instance && nextElement != Undefined.instance) {
                         Object result = callToLocaleString(nextElement, userArguments);
-                        String resultString = toStringNode.executeString(result);
-                        stringBuilderProfile.append(r, resultString);
+                        TruffleString resultString = toStringNode.executeString(result);
+                        append(sb, resultString);
                     }
                     k++;
                 }
-                return stringBuilderProfile.toString(r);
+                return builderToString(sb);
             } finally {
                 realm.joinStackPop();
             }
@@ -1868,12 +1898,36 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private Object callToLocaleString(Object nextElement, Object[] userArguments) {
             if (getToLocaleStringNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getToLocaleStringNode = insert(PropertyGetNode.create("toLocaleString", false, getContext()));
+                getToLocaleStringNode = insert(PropertyGetNode.create(Strings.TO_LOCALE_STRING, false, getContext()));
                 callToLocaleStringNode = insert(JSFunctionCallNode.createCall());
             }
 
             Object toLocaleString = getToLocaleStringNode.getValue(nextElement);
             return callToLocaleStringNode.executeCall(JSArguments.create(nextElement, toLocaleString, userArguments));
+        }
+
+        private void append(TruffleStringBuilder sb, char c) {
+            if (appendCharNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                appendCharNode = insert(TruffleStringBuilder.AppendCharUTF16Node.create());
+            }
+            stringBuilderProfile.append(appendCharNode, sb, c);
+        }
+
+        private void append(TruffleStringBuilder sb, TruffleString s) {
+            if (appendStringNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                appendStringNode = insert(TruffleStringBuilder.AppendStringNode.create());
+            }
+            stringBuilderProfile.append(appendStringNode, sb, s);
+        }
+
+        private TruffleString builderToString(TruffleStringBuilder sb) {
+            if (builderToStringNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                builderToStringNode = insert(TruffleStringBuilder.ToStringNode.create());
+            }
+            return StringBuilderProfile.toString(builderToStringNode, sb);
         }
     }
 
@@ -2517,7 +2571,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private static JSFunctionData createOrGetFlattenCallFunctionData(JSContext context) {
-            return JSFunctionData.createCallOnly(context, new InnerFlattenCallNode(context, FlattenIntoArrayNode.create(context, false)).getCallTarget(), 0, "");
+            return JSFunctionData.createCallOnly(context, new InnerFlattenCallNode(context, FlattenIntoArrayNode.create(context, false)).getCallTarget(), 0, Strings.EMPTY_STRING);
         }
     }
 
@@ -2916,7 +2970,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
             return array;
         }
-
     }
 
     public abstract static class JSArrayReduceNode extends ArrayForEachIndexCallOperation {

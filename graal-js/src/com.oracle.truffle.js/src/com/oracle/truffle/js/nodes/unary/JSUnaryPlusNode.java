@@ -40,17 +40,19 @@
  */
 package com.oracle.truffle.js.nodes.unary;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
-
-import java.util.Set;
 
 @NodeInfo(shortName = "+")
 public abstract class JSUnaryPlusNode extends JSUnaryNode {
@@ -69,8 +71,8 @@ public abstract class JSUnaryPlusNode extends JSUnaryNode {
         return overloadedOperatorNode.execute(value);
     }
 
-    protected String getOverloadedOperatorName() {
-        return "pos";
+    protected TruffleString getOverloadedOperatorName() {
+        return Strings.POS;
     }
 
     @Specialization(guards = {"!hasOverloadedOperators(value)"})

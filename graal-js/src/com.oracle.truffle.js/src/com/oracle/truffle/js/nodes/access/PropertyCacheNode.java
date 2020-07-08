@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.access;
 
 import java.io.PrintStream;
 import java.lang.ref.WeakReference;
+import java.util.Locale;
 import java.util.concurrent.locks.Lock;
 
 import com.oracle.truffle.api.Assumption;
@@ -60,11 +61,13 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
@@ -76,7 +79,6 @@ import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -1389,8 +1391,8 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     }
 
     protected static boolean isNonIntegerIndex(Object key) {
-        assert !(key instanceof String) || JSRuntime.INFINITY_STRING.equals(key) || (JSRuntime.canonicalNumericIndexString((String) key) == Undefined.instance);
-        return JSRuntime.INFINITY_STRING.equals(key);
+        assert !Strings.isTString(key) || Strings.equals(Strings.INFINITY, (TruffleString) key) || (JSRuntime.canonicalNumericIndexString((TruffleString) key) == Undefined.instance);
+        return Strings.isTString(key) && Strings.equals(Strings.INFINITY, (TruffleString) key);
     }
 
     private void traceRewriteInsert(Node newNode, int cacheDepth) {
@@ -1421,16 +1423,15 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         }
     }
 
-    protected String getAccessorKey(String getset) {
-        return getAccessorKey(getset, getKey());
+    protected TruffleString getAccessorKey(TruffleString getset) {
+        return getAccessorKey(getset, (TruffleString) getKey());
     }
 
     @TruffleBoundary
-    protected static String getAccessorKey(String getset, Object key) {
-        assert JSRuntime.isString(key);
-        String origKey = key instanceof String ? (String) key : ((JSLazyString) key).toString();
-        if (origKey.length() > 0 && Character.isLetter(origKey.charAt(0))) {
-            return getset + origKey.substring(0, 1).toUpperCase() + origKey.substring(1);
+    protected static TruffleString getAccessorKey(TruffleString getset, TruffleString key) {
+        assert Strings.isTString(key);
+        if (Strings.length(key) > 0 && Character.isLetter(Strings.charAt(key, 0))) {
+            return Strings.concatAll(getset, Strings.toUpperCase(Strings.substring(key, 0, 1), Locale.US), Strings.substring(key, 1));
         }
         return null;
     }

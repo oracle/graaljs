@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.collections.EconomicMap;
 
 /**
@@ -78,7 +79,7 @@ public final class Scope {
     private static final int IS_CLASS_FIELD_INITIALIZER = 1 << 19;
 
     /** Symbol table - keys must be returned in the order they were put in. */
-    protected final EconomicMap<String, Symbol> symbols;
+    protected final EconomicMap<TruffleString, Symbol> symbols;
     protected List<Map.Entry<VarNode, Scope>> hoistedVarDeclarations;
     protected List<Map.Entry<VarNode, Scope>> hoistableBlockFunctionDeclarations;
 
@@ -172,7 +173,7 @@ public final class Scope {
      * @return an existing symbol with the specified name defined in the current block, or null if
      *         this block doesn't define a symbol with this name.
      */
-    public Symbol getExistingSymbol(final String name) {
+    public Symbol getExistingSymbol(final TruffleString name) {
         return symbols.get(name);
     }
 
@@ -181,7 +182,7 @@ public final class Scope {
      *
      * @param name the name of the symbol
      */
-    public boolean hasSymbol(final String name) {
+    public boolean hasSymbol(final TruffleString name) {
         return symbols.containsKey(name);
     }
 
@@ -231,7 +232,7 @@ public final class Scope {
      * @param annexB if true, ignore catch parameters
      * @param includeParameters include parameter scope?
      */
-    public boolean isLexicallyDeclaredName(final String varName, final boolean annexB, final boolean includeParameters) {
+    public boolean isLexicallyDeclaredName(final TruffleString varName, final boolean annexB, final boolean includeParameters) {
         for (Scope current = this; current != null; current = current.getParent()) {
             Symbol existingSymbol = current.getExistingSymbol(varName);
             if (existingSymbol != null && existingSymbol.isBlockScoped()) {
@@ -253,7 +254,7 @@ public final class Scope {
      *
      * @param varName the symbol name
      */
-    public Symbol findBlockScopedSymbolInFunction(String varName) {
+    public Symbol findBlockScopedSymbolInFunction(TruffleString varName) {
         for (Scope current = this; current != null; current = current.getParent()) {
             Symbol existingSymbol = current.getExistingSymbol(varName);
             if (existingSymbol != null) {
@@ -287,7 +288,7 @@ public final class Scope {
         for (Map.Entry<VarNode, Scope> entry : hoistedVarDeclarations) {
             VarNode varDecl = entry.getKey();
             Scope declScope = entry.getValue();
-            String varName = varDecl.getName().getName();
+            TruffleString varName = varDecl.getName().getName();
             for (Scope current = declScope; current != this; current = current.getParent()) {
                 Symbol existing = current.getExistingSymbol(varName);
                 if (existing != null && existing.isBlockScoped()) {
@@ -322,7 +323,7 @@ public final class Scope {
         next: for (Map.Entry<VarNode, Scope> entry : hoistableBlockFunctionDeclarations) {
             VarNode functionDecl = entry.getKey();
             Scope functionDeclScope = entry.getValue();
-            String varName = functionDecl.getName().getName();
+            TruffleString varName = functionDecl.getName().getName();
             for (Scope current = functionDeclScope.getParent(); current != null; current = current.getParent()) {
                 Symbol existing = current.getExistingSymbol(varName);
                 if (existing != null && (existing.isBlockScoped() && !existing.isCatchParameter())) {
@@ -346,7 +347,7 @@ public final class Scope {
      *
      * @return true if the private name was added, false if it was already declared (duplicate name)
      */
-    public boolean addPrivateName(String name, int symbolFlags) {
+    public boolean addPrivateName(TruffleString name, int symbolFlags) {
         assert isClassScope();
         // Register a declared private name.
         if (hasSymbol(name)) {
@@ -358,7 +359,7 @@ public final class Scope {
         }
     }
 
-    public boolean findPrivateName(String name) {
+    public boolean findPrivateName(TruffleString name) {
         for (Scope current = this; current != null; current = current.parent) {
             if (current.hasSymbol(name)) {
                 return true;
@@ -439,8 +440,8 @@ public final class Scope {
     @Override
     public String toString() {
         StringJoiner names = new StringJoiner(",", "(", ")");
-        for (String name : symbols.getKeys()) {
-            names.add(name);
+        for (TruffleString name : symbols.getKeys()) {
+            names.add(name.toJavaStringUncached());
         }
         return "[" + getScopeKindName() + "Scope" + names + (parent == null ? "" : ", " + parent + "") + "]";
     }

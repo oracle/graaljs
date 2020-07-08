@@ -82,6 +82,8 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.GlobalNashornExtensionParseToJSONNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.GlobalScriptingEXECNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalDecodeURINodeGen;
@@ -119,7 +121,6 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSLoadNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -130,6 +131,7 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -398,11 +400,11 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @TruffleBoundary
         @Specialization
-        protected String parseToJSON(Object code0, Object name0, Object location0) {
-            String code = JSRuntime.toString(code0);
-            String name = name0 == Undefined.instance ? "<unknown>" : JSRuntime.toString(name0);
+        protected TruffleString parseToJSON(Object code0, Object name0, Object location0) {
+            String code = JSRuntime.toJavaString(code0);
+            String name = name0 == Undefined.instance ? "<unknown>" : JSRuntime.toJavaString(name0);
             boolean location = JSRuntime.toBoolean(location0);
-            return getContext().getEvaluator().parseToJSON(getContext(), code, name, location);
+            return Strings.fromJavaString(getContext().getEvaluator().parseToJSON(getContext(), code, name, location));
         }
     }
 
@@ -416,8 +418,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization
         protected Object exec(Object cmd, Object input) {
-            String cmdStr = JSRuntime.toString(cmd);
-            String inputStr = input != Undefined.instance ? JSRuntime.toString(input) : null;
+            String cmdStr = JSRuntime.toJavaString(cmd);
+            String inputStr = input != Undefined.instance ? JSRuntime.toJavaString(input) : null;
             return execIntl(cmdStr, inputStr);
         }
 
@@ -439,17 +441,17 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             try {
                 TruffleProcessBuilder builder = env.newProcessBuilder(cmds);
 
-                Object envObj = JSObject.get(globalObj, "$ENV");
+                Object envObj = JSObject.get(globalObj, Strings.DOLLAR_ENV);
                 if (JSGuards.isJSObject(envObj)) {
                     DynamicObject dynEnvObj = (DynamicObject) envObj;
-                    Object pwd = JSObject.get(dynEnvObj, "PWD");
+                    Object pwd = JSObject.get(dynEnvObj, Strings.CAPS_PWD);
                     if (pwd != Undefined.instance) {
-                        builder.directory(env.getPublicTruffleFile(JSRuntime.toString(pwd)));
+                        builder.directory(env.getPublicTruffleFile(JSRuntime.toJavaString(pwd)));
                     }
 
                     builder.clearEnvironment(true);
-                    for (String key : JSObject.enumerableOwnNames(dynEnvObj)) {
-                        builder.environment(key, JSRuntime.toString(JSObject.get(dynEnvObj, key)));
+                    for (TruffleString key : JSObject.enumerableOwnNames(dynEnvObj)) {
+                        builder.environment(Strings.toJavaString(key), JSRuntime.toJavaString(JSObject.get(dynEnvObj, key)));
                     }
                 }
 
@@ -483,11 +485,12 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 throw Errors.createError(e.getMessage());
             }
 
-            JSObject.set(globalObj, "$OUT", outStr);
-            JSObject.set(globalObj, "$ERR", errStr);
-            JSObject.set(globalObj, "$EXIT", exitCode);
+            TruffleString outStrTS = Strings.fromJavaString(outStr);
+            JSObject.set(globalObj, Strings.$_OUT, outStrTS);
+            JSObject.set(globalObj, Strings.$_ERR, Strings.fromJavaString(errStr));
+            JSObject.set(globalObj, Strings.$_EXIT, exitCode);
 
-            return outStr;
+            return outStrTS;
         }
     }
 
@@ -499,7 +502,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Child private JSToStringNode toString1Node;
 
-        protected final String toString1(Object target) {
+        protected final TruffleString toString1(Object target) {
             if (toString1Node == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toString1Node = insert(JSToStringNode.create());
@@ -590,20 +593,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Child private JSLoadNode loadNode;
 
-        protected static final String EVAL_OBJ_FILE_NAME = "name";
-        protected static final String EVAL_OBJ_SOURCE = "script";
-
-        // nashorn load pseudo URL prefixes
-        private static final String LOAD_CLASSPATH = "classpath:";
-        private static final String LOAD_FX = "fx:";
-        private static final String LOAD_NASHORN = "nashorn:";
-        // nashorn default paths
-        private static final String RESOURCES_PATH = "resources/";
-        private static final String FX_RESOURCES_PATH = "resources/fx/";
-        private static final String NASHORN_BASE_PATH = "jdk/nashorn/internal/runtime/";
-        private static final String NASHORN_PARSER_JS = "nashorn:parser.js";
-        private static final String NASHORN_MOZILLA_COMPAT_JS = "nashorn:mozilla_compat.js";
-
         protected final Object runImpl(JSRealm realm, Source source) {
             if (loadNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -612,11 +601,11 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             return loadNode.executeLoad(source, realm);
         }
 
-        protected static ScriptNode loadStringImpl(JSContext ctxt, String name, String script) {
+        protected static ScriptNode loadStringImpl(JSContext ctxt, TruffleString name, TruffleString script) {
             CompilerAsserts.neverPartOfCompilation();
             long startTime = ctxt.getContextOptions().isProfileTime() ? System.nanoTime() : 0L;
             try {
-                return ctxt.getEvaluator().evalCompile(ctxt, script, name);
+                return ctxt.getEvaluator().evalCompile(ctxt, Strings.toJavaString(script), Strings.toJavaString(name));
             } finally {
                 if (ctxt.getContextOptions().isProfileTime()) {
                     ctxt.getTimeProfiler().printElapsed(startTime, "parsing " + name);
@@ -670,12 +659,23 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             return source;
         }
 
+        public static final String LOAD_CLASSPATH = "classpath:";
+        public static final String LOAD_FX = "fx:";
+        public static final String LOAD_NASHORN = "nashorn:";
+
+        public static final String RESOURCES_PATH = "resources/";
+        public static final String FX_RESOURCES_PATH = "resources/fx/";
+        public static final String NASHORN_BASE_PATH = "jdk/nashorn/internal/runtime/";
+        public static final String NASHORN_PARSER_JS = "nashorn:parser.js";
+        public static final String NASHORN_MOZILLA_COMPAT_JS = "nashorn:mozilla_compat.js";
+
         private Source sourceFromURI(String resource, JSRealm realm) {
             CompilerAsserts.neverPartOfCompilation();
             if (JSConfig.SubstrateVM) {
                 return null;
             }
-            if ((getContext().isOptionNashornCompatibilityMode() && (resource.startsWith(LOAD_NASHORN) || resource.startsWith(LOAD_CLASSPATH) || resource.startsWith(LOAD_FX))) ||
+            if ((getContext().isOptionNashornCompatibilityMode() &&
+                            (resource.startsWith(LOAD_NASHORN) || resource.startsWith(LOAD_CLASSPATH) || resource.startsWith(LOAD_FX))) ||
                             (getContext().isOptionLoadFromClasspath() && resource.startsWith(LOAD_CLASSPATH))) {
                 return sourceFromResourceURL(resource);
             }
@@ -711,7 +711,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             assert getContext().isOptionNashornCompatibilityMode() || getContext().isOptionLoadFromClasspath();
             InputStream stream = null;
             if (resource.startsWith(LOAD_NASHORN)) {
-                if (resource.equals(NASHORN_PARSER_JS) || resource.equals(NASHORN_MOZILLA_COMPAT_JS)) {
+                if (NASHORN_PARSER_JS.equals(resource) || NASHORN_MOZILLA_COMPAT_JS.equals(resource)) {
                     stream = JSContext.class.getResourceAsStream(RESOURCES_PATH + resource.substring(LOAD_NASHORN.length()));
                 }
             } else if (!JSConfig.SubstrateVM) {
@@ -753,7 +753,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization(guards = "!isUndefined(value)")
         protected static boolean isNaNGeneric(Object value,
-                        @Cached("create()") JSToDoubleNode toDoubleNode) {
+                        @Cached JSToDoubleNode toDoubleNode) {
             return isNaNDouble(toDoubleNode.executeDouble(value));
         }
 
@@ -785,7 +785,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization(guards = "!isUndefined(value)")
         protected static boolean isFiniteGeneric(Object value,
-                        @Cached("create()") JSToDoubleNode toDoubleNode) {
+                        @Cached JSToDoubleNode toDoubleNode) {
             return isFiniteDouble(toDoubleNode.executeDouble(value));
         }
 
@@ -801,6 +801,12 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
     public abstract static class JSGlobalParseFloatNode extends JSGlobalOperation {
         private final BranchProfile exponentBranch = BranchProfile.create();
         @Child protected JSTrimWhitespaceNode trimWhitespaceNode;
+        @Child protected TruffleString.RegionEqualByteIndexNode regionEqualsNode1;
+        @Child protected TruffleString.RegionEqualByteIndexNode regionEqualsNode2;
+        @Child protected TruffleString.RegionEqualByteIndexNode regionEqualsNode3;
+        @Child protected TruffleString.ReadCharUTF16Node charAtNode;
+        @Child protected TruffleString.SubstringByteIndexNode substringNode;
+        @Child protected TruffleString.ParseDoubleNode parseDoubleNode;
 
         public JSGlobalParseFloatNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -835,36 +841,44 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization
-        protected double parseFloatString(String value) {
+        protected double parseFloat(TruffleString value) {
             return parseFloatIntl(value);
         }
 
-        @Specialization(guards = {"!isJSNull(value)", "!isUndefined(value)"})
-        protected double parseFloatGeneric(TruffleObject value) {
+        @Specialization(guards = {"!isJSNull(value)", "!isUndefined(value)", "!isString(value)"})
+        protected double parseFloat(TruffleObject value) {
             return parseFloatIntl(toString1(value));
         }
 
-        private double parseFloatIntl(String inputString) {
-            String trimmedString = trimWhitespace(inputString);
+        private double parseFloatIntl(TruffleString inputString) {
+            TruffleString trimmedString = trimWhitespace(inputString);
             return parseFloatIntl2(trimmedString);
         }
 
-        @TruffleBoundary
-        private double parseFloatIntl2(String trimmedString) {
-            if (trimmedString.startsWith(JSRuntime.INFINITY_STRING) || trimmedString.startsWith(JSRuntime.POSITIVE_INFINITY_STRING)) {
+        private double parseFloatIntl2(TruffleString trimmedString) {
+            if (regionEqualsNode1 == null || regionEqualsNode2 == null || regionEqualsNode3 == null || charAtNode == null || substringNode == null || parseDoubleNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                regionEqualsNode1 = insert(TruffleString.RegionEqualByteIndexNode.create());
+                regionEqualsNode2 = insert(TruffleString.RegionEqualByteIndexNode.create());
+                regionEqualsNode3 = insert(TruffleString.RegionEqualByteIndexNode.create());
+                charAtNode = insert(TruffleString.ReadCharUTF16Node.create());
+                substringNode = insert(TruffleString.SubstringByteIndexNode.create());
+                parseDoubleNode = insert(TruffleString.ParseDoubleNode.create());
+            }
+            if (Strings.startsWith(regionEqualsNode1, trimmedString, Strings.INFINITY) || Strings.startsWith(regionEqualsNode2, trimmedString, Strings.POSITIVE_INFINITY)) {
                 return Double.POSITIVE_INFINITY;
-            } else if (trimmedString.startsWith(JSRuntime.NEGATIVE_INFINITY_STRING)) {
+            } else if (Strings.startsWith(regionEqualsNode3, trimmedString, Strings.NEGATIVE_INFINITY)) {
                 return Double.NEGATIVE_INFINITY;
             }
             try {
-                FloatParser parser = new FloatParser(trimmedString, exponentBranch);
+                FloatParser parser = new FloatParser(trimmedString, exponentBranch, charAtNode, substringNode, parseDoubleNode);
                 return parser.getResult();
-            } catch (NumberFormatException e) {
+            } catch (TruffleString.NumberFormatException e) {
                 return Double.NaN;
             }
         }
 
-        protected String trimWhitespace(String s) {
+        protected TruffleString trimWhitespace(TruffleString s) {
             if (trimWhitespaceNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 trimWhitespaceNode = insert(JSTrimWhitespaceNode.create());
@@ -901,7 +915,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization(guards = "!isUndefined(radix0)")
         protected Object parseIntInt(int value, Object radix0,
-                        @Cached("create()") BranchProfile needsRadixConversion) {
+                        @Cached BranchProfile needsRadixConversion) {
             int radix = toInt32(radix0);
             if (radix == 10 || radix == 0) {
                 return value;
@@ -937,7 +951,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization(guards = "hasRegularToString(value)")
         protected double parseIntDouble(double value, Object radix0,
-                        @Cached("create()") BranchProfile needsRadixConversion) {
+                        @Cached BranchProfile needsRadixConversion) {
             int radix = toInt32(radix0);
             if (radix == 0) {
                 radix = 10;
@@ -954,27 +968,27 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             }
         }
 
-        @Specialization(guards = {"radix == 10", "string.length() < 15"})
-        @TruffleBoundary
-        protected Object parseIntStringInt10(String string, @SuppressWarnings("unused") int radix) {
+        @Specialization(guards = {"radix == 10", "isString(string)", "stringLength(string) < 15"})
+        protected Object parseIntStringInt10(TruffleString string, @SuppressWarnings("unused") int radix,
+                        @Cached TruffleString.ReadCharUTF16Node readRawNode) {
             assert isShortStringInt10(string, radix);
 
             int pos = 0;
-            int lastIdx = string.length();
+            int lastIdx = Strings.length(string);
             boolean negate = false;
 
             if (lastIdx == 0) { // empty string
                 return Double.NaN;
             }
 
-            char firstChar = string.charAt(pos);
+            char firstChar = Strings.charAt(readRawNode, string, pos);
             if (!JSRuntime.isAsciiDigit(firstChar)) {
                 if (JSRuntime.isWhiteSpace(firstChar)) {
-                    pos = JSRuntime.firstNonWhitespaceIndex(string, false);
-                    if (string.length() <= pos) {
+                    pos = JSRuntime.firstNonWhitespaceIndex(string, false, readRawNode);
+                    if (Strings.length(string) <= pos) {
                         return Double.NaN;
                     }
-                    firstChar = string.charAt(pos);
+                    firstChar = Strings.charAt(readRawNode, string, pos);
                 }
                 if (firstChar == '-') {
                     pos++;
@@ -990,7 +1004,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             int firstPos = pos;
             long value = 0;
             while (pos < lastIdx) {
-                char c = string.charAt(pos);
+                char c = Strings.charAt(readRawNode, string, pos);
                 int cval = JSRuntime.valueInRadix10(c);
                 if (cval < 0) {
                     if (pos != firstPos) {
@@ -1019,18 +1033,20 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         protected static boolean isShortStringInt10(Object input, Object radix) {
-            return JSRuntime.isString(input) && JSRuntime.toStringIsString(input).length() < 15 && radix instanceof Integer && ((Integer) radix) == 10;
+            return Strings.isTString(input) && Strings.length((TruffleString) input) < 15 && radix instanceof Integer && ((Integer) radix) == 10;
         }
 
         @Specialization(guards = "!isShortStringInt10(input, radix0)")
         protected Object parseIntGeneric(Object input, Object radix0,
-                        @Cached("create()") JSToStringNode toStringNode,
-                        @Cached("create()") BranchProfile needsRadix16,
-                        @Cached("create()") BranchProfile needsDontFitLong) {
-            String inputStr = toStringNode.executeString(input);
+                        @Cached JSToStringNode toStringNode,
+                        @Cached BranchProfile needsRadix16,
+                        @Cached BranchProfile needsDontFitLong,
+                        @Cached TruffleString.ReadCharUTF16Node readRawNode,
+                        @Cached TruffleString.SubstringByteIndexNode substringNode) {
+            TruffleString inputStr = toStringNode.executeString(input);
 
-            int firstIdx = JSRuntime.firstNonWhitespaceIndex(inputStr, false);
-            int lastIdx = JSRuntime.lastNonWhitespaceIndex(inputStr, false) + 1;
+            int firstIdx = JSRuntime.firstNonWhitespaceIndex(inputStr, false, readRawNode);
+            int lastIdx = JSRuntime.lastNonWhitespaceIndex(inputStr, false, readRawNode) + 1;
 
             int radix = toInt32(radix0);
             if (lastIdx <= firstIdx) {
@@ -1038,7 +1054,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 return Double.NaN;
             }
 
-            char firstChar = inputStr.charAt(firstIdx);
+            char firstChar = Strings.charAt(readRawNode, inputStr, firstIdx);
             boolean negate = false;
             if (firstChar == '-') {
                 negate = true;
@@ -1049,7 +1065,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
             if (radix == 16 || radix == 0) {
                 needsRadix16.enter();
-                if (hasHexStart(inputStr, firstIdx, lastIdx)) {
+                if (hasHexStart(readRawNode, inputStr, firstIdx, lastIdx)) {
                     firstIdx += 2;
                     radix = 16; // could be 0
                 } else if (radix == 0) {
@@ -1060,7 +1076,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 return Double.NaN;
             }
 
-            int lastValidIdx = validStringLastIdx(inputStr, radix, firstIdx, lastIdx);
+            int lastValidIdx = validStringLastIdx(readRawNode, inputStr, radix, firstIdx, lastIdx);
             int len = lastValidIdx - firstIdx;
             if (len <= 0) {
                 needsNaN.enter();
@@ -1072,7 +1088,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                     // parseRawDontFitLong() can produce an incorrect result
                     // due to subtle rounding errors (for radix 10) but the spec.
                     // requires exact processing for this radix
-                    return parseDouble(Boundaries.substring(inputStr, firstIdx, lastValidIdx), negate);
+                    return parseDouble(Strings.substring(substringNode, inputStr, firstIdx, len), negate);
                 } else {
                     return JSRuntime.parseRawDontFitLong(inputStr, radix, firstIdx, lastValidIdx, negate);
                 }
@@ -1081,8 +1097,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @TruffleBoundary
-        private static double parseDouble(String s, boolean negate) {
-            double value = Double.parseDouble(s);
+        private static double parseDouble(TruffleString s, boolean negate) {
+            double value = Double.parseDouble(Strings.toJavaString(s));
             return negate ? -value : value;
         }
 
@@ -1130,20 +1146,19 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         // searches for '0x12345', assumes NO sign!
-        private static boolean hasHexStart(String inputString, int firstPos, int lastPos) {
+        private static boolean hasHexStart(TruffleString.ReadCharUTF16Node readRawNode, TruffleString inputString, int firstPos, int lastPos) {
             int length = lastPos - firstPos;
-            if (length >= 2 && inputString.charAt(firstPos) == '0') {
-                char c1 = inputString.charAt(firstPos + 1);
+            if (length >= 2 && Strings.charAt(readRawNode, inputString, firstPos) == '0') {
+                char c1 = Strings.charAt(readRawNode, inputString, firstPos + 1);
                 return (c1 == 'x' || c1 == 'X');
             }
             return false;
         }
 
-        @TruffleBoundary
-        private static int validStringLastIdx(String inputString, int radix, int firstIdx, int lastIdx) {
+        private static int validStringLastIdx(TruffleString.ReadCharUTF16Node readRawNode, TruffleString input, int radix, int firstIdx, int lastIdx) {
             int pos = firstIdx;
             while (pos < lastIdx) {
-                char c = inputString.charAt(pos);
+                char c = Strings.charAt(readRawNode, input, pos);
                 if (JSRuntime.valueInRadix(c, radix) == -1) {
                     break;
                 }
@@ -1168,7 +1183,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization
-        protected String encodeURI(Object value) {
+        protected TruffleString encodeURI(Object value) {
             return encoder.encode(toString1(value));
         }
     }
@@ -1188,7 +1203,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization
-        protected String decodeURI(Object value) {
+        protected Object decodeURI(Object value) {
             return decoder.decode(toString1(value));
         }
     }
@@ -1205,9 +1220,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization
-        protected Object indirectEvalString(String source) {
+        protected Object indirectEvalString(TruffleString source) {
             JSRealm realm = getRealm();
-            return parseIndirectEval(realm, source).runEval(callNode, realm);
+            return parseIndirectEval(realm, Strings.toJavaString(source)).runEval(callNode, realm);
         }
 
         @Specialization(guards = "isForeignObject(source)", limit = "3")
@@ -1215,7 +1230,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                         @CachedLibrary("source") InteropLibrary interop) {
             if (interop.isString(source)) {
                 try {
-                    return indirectEvalString(interop.asString(source));
+                    return indirectEvalString(interop.asTruffleString(source));
                 } catch (UnsupportedMessageException ex) {
                     throw Errors.createTypeErrorInteropException(source, ex, "asString", this);
                 }
@@ -1297,8 +1312,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization
-        protected String escape(Object value) {
-            String s = toString1(value);
+        protected TruffleString escape(Object value) {
+            TruffleString s = toString1(value);
             return unescape ? StringEscape.unescape(s) : StringEscape.escape(s);
         }
     }
@@ -1324,33 +1339,33 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @Specialization
         protected Object print(Object[] arguments) {
             // without a StringBuilder, synchronization fails testnashorn JDK-8041998.js
-            StringBuilder builder = new StringBuilder();
+            TruffleStringBuilder builder = Strings.builderCreate();
             JSConsoleUtil consoleUtil = getRealm().getConsoleUtil();
             if (consoleUtil.getConsoleIndentation() > 0) {
                 consoleIndentation.enter();
-                Boundaries.builderAppend(builder, consoleUtil.getConsoleIndentationString());
+                Strings.builderAppend(builder, consoleUtil.getConsoleIndentationString());
             }
             if (argumentsCount.profile(arguments.length == 1)) {
-                Boundaries.builderAppend(builder, toString1(arguments[0]));
+                Strings.builderAppend(builder, toString1(arguments[0]));
             } else {
                 for (int i = 0; i < arguments.length; i++) {
                     if (i != 0) {
-                        Boundaries.builderAppend(builder, ' ');
+                        Strings.builderAppend(builder, ' ');
                     }
-                    Boundaries.builderAppend(builder, toString1(arguments[i]));
+                    Strings.builderAppend(builder, toString1(arguments[i]));
                 }
             }
             return printIntl(builder);
         }
 
         @TruffleBoundary
-        private Object printIntl(StringBuilder builder) {
+        private Object printIntl(TruffleStringBuilder builder) {
             JSRealm realm = getRealm();
             if (!noNewLine) {
-                builder.append(JSRuntime.LINE_SEPARATOR);
+                Strings.builderAppend(builder, Strings.LINE_SEPARATOR);
             }
             PrintWriter writer = useErr ? realm.getErrorWriter() : realm.getOutputWriter();
-            writer.print(builder.toString());
+            writer.print(Strings.builderToString(builder));
             writer.flush();
             return Undefined.instance;
         }
@@ -1364,13 +1379,13 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization
-        protected Object loadString(String path, Object[] args) {
+        protected Object loadString(TruffleString path, Object[] args) {
             JSRealm realm = getRealm();
             return loadFromPath(path, realm, args);
         }
 
-        protected Object loadFromPath(String path, JSRealm realm, @SuppressWarnings("unused") Object[] args) {
-            Source source = sourceFromPath(path, realm);
+        protected Object loadFromPath(TruffleString path, JSRealm realm, @SuppressWarnings("unused") Object[] args) {
+            Source source = sourceFromPath(Strings.toJavaString(path), realm);
             return runImpl(realm, source);
         }
 
@@ -1391,7 +1406,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             if (unboxed == Null.instance) {
                 throw cannotLoadScript(scriptObj);
             }
-            String stringPath = toString1(unboxed);
+            TruffleString stringPath = toString1(unboxed);
             return loadFromPath(stringPath, realm, args);
         }
 
@@ -1405,9 +1420,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization(guards = "isJSObject(scriptObj)")
         protected Object loadScriptObj(DynamicObject scriptObj, Object[] args) {
-            if (JSObject.hasProperty(scriptObj, EVAL_OBJ_FILE_NAME) && JSObject.hasProperty(scriptObj, EVAL_OBJ_SOURCE)) {
-                Object scriptNameObj = JSObject.get(scriptObj, EVAL_OBJ_FILE_NAME);
-                Object sourceObj = JSObject.get(scriptObj, EVAL_OBJ_SOURCE);
+            if (JSObject.hasProperty(scriptObj, Strings.EVAL_OBJ_FILE_NAME) && JSObject.hasProperty(scriptObj, Strings.EVAL_OBJ_SOURCE)) {
+                Object scriptNameObj = JSObject.get(scriptObj, Strings.EVAL_OBJ_FILE_NAME);
+                Object sourceObj = JSObject.get(scriptObj, Strings.EVAL_OBJ_SOURCE);
                 return evalObjectLiteral(scriptNameObj, sourceObj, args);
             } else {
                 throw cannotLoadScript(scriptObj);
@@ -1434,7 +1449,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @TruffleBoundary(transferToInterpreterOnException = false)
-        protected Object evalImpl(JSRealm realm, String fileName, String source, @SuppressWarnings("unused") Object[] args) {
+        protected Object evalImpl(JSRealm realm, TruffleString fileName, TruffleString source, @SuppressWarnings("unused") Object[] args) {
             return loadStringImpl(getContext(), fileName, source).run(realm);
         }
     }
@@ -1451,7 +1466,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Override
         @TruffleBoundary(transferToInterpreterOnException = false)
-        protected Object evalImpl(JSRealm realm, String fileName, String source, Object[] args) {
+        protected Object evalImpl(JSRealm realm, TruffleString fileName, TruffleString source, Object[] args) {
             JSRealm childRealm = realm.createChildRealm();
             JSRealm mainRealm = JSRealm.getMain(this);
             JSRealm prevRealm = mainRealm.enterRealm(this, childRealm);
@@ -1467,7 +1482,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Override
         @TruffleBoundary
-        protected Object loadFromPath(String path, JSRealm realm, Object[] args) {
+        protected Object loadFromPath(TruffleString path, JSRealm realm, Object[] args) {
             JSRealm childRealm = realm.createChildRealm();
             JSRealm mainRealm = JSRealm.getMain(this);
             JSRealm prevRealm = mainRealm.enterRealm(this, childRealm);
@@ -1475,7 +1490,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 DynamicObject argumentsArray = JSArray.createConstant(getContext(), childRealm, args);
                 assert JSObject.getPrototype(argumentsArray) == childRealm.getArrayPrototype();
                 JSRuntime.createDataProperty(childRealm.getGlobalObject(), JSFunction.ARGUMENTS, argumentsArray);
-                Source source = sourceFromPath(path, childRealm);
+                Source source = sourceFromPath(Strings.toJavaString(path), childRealm);
                 return runImpl(childRealm, source);
             } finally {
                 mainRealm.leaveRealm(this, prevRealm);
@@ -1530,7 +1545,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization
         protected Object readLine(Object prompt) {
-            String promptString = null;
+            TruffleString promptString = null;
             if (prompt != Undefined.instance) {
                 promptString = toString1(prompt);
             }
@@ -1538,14 +1553,14 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @TruffleBoundary
-        private Object doReadLine(String promptString) {
+        private Object doReadLine(TruffleString promptString) {
             if (promptString != null) {
-                getRealm().getOutputWriter().print(promptString);
+                getRealm().getOutputWriter().print(Strings.toJavaString(promptString));
             }
             try {
                 final BufferedReader inReader = new BufferedReader(new InputStreamReader(getRealm().getEnv().in(), getContext().getCharset()));
                 String result = inReader.readLine();
-                return result == null ? (returnNullWhenEmpty ? Null.instance : Undefined.instance) : result;
+                return result == null ? (returnNullWhenEmpty ? Null.instance : Undefined.instance) : Strings.fromJavaString(result);
             } catch (Exception ex) {
                 throw Errors.createError(ex.getMessage());
             }
@@ -1557,11 +1572,11 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         CompilerAsserts.neverPartOfCompilation();
         try {
             String path;
-            if (JSRuntime.isString(arg)) {
-                path = arg.toString();
+            if (Strings.isTString(arg)) {
+                path = Strings.toJavaString((TruffleString) arg);
             } else {
                 // if arg is a java.io.File, invokes toString() (equivalent to getPath()).
-                path = JSRuntime.toString(arg);
+                path = JSRuntime.toJavaString(arg);
             }
 
             TruffleFile file = resolveRelativeFilePath(path, env);
@@ -1587,7 +1602,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization
         @TruffleBoundary(transferToInterpreterOnException = false)
-        protected String read(Object fileParam) {
+        protected TruffleString read(Object fileParam) {
             TruffleFile file = getFileFromArgument(fileParam, getRealm().getEnv());
 
             try {
@@ -1597,18 +1612,18 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             }
         }
 
-        private static String readImpl(BufferedReader reader) throws IOException {
-            final StringBuilder sb = new StringBuilder();
+        private static TruffleString readImpl(BufferedReader reader) throws IOException {
+            TruffleStringBuilder sb = Strings.builderCreate();
             final char[] arr = new char[BUFFER_SIZE];
             try {
                 int numChars;
                 while ((numChars = reader.read(arr, 0, arr.length)) > 0) {
-                    sb.append(arr, 0, numChars);
+                    Strings.builderAppend(sb, new String(arr, 0, numChars));
                 }
             } finally {
                 reader.close();
             }
-            return sb.toString();
+            return Strings.builderToString(sb);
         }
     }
 
@@ -1676,7 +1691,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                     Object hashKey = membersInterop.readArrayElement(members, i);
                     InteropLibrary keyInterop = InteropLibrary.getUncached(hashKey);
                     if (keyInterop.isString(hashKey)) {
-                        String stringKey = keyInterop.asString(hashKey);
+                        TruffleString stringKey = keyInterop.asTruffleString(hashKey);
                         Object value = DynamicObjectLibrary.getUncached().getOrDefault(globalObject, stringKey, Undefined.instance);
                         if ((value == Undefined.instance || value instanceof ScriptEngineGlobalScopeBindingsPropertyProxy &&
                                         ((ScriptEngineGlobalScopeBindingsPropertyProxy) value).get(globalObject) == Undefined.instance) &&
@@ -1693,11 +1708,11 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         private static class ScriptEngineGlobalScopeBindingsPropertyProxy implements PropertyProxy {
 
-            private final String key;
+            private final TruffleString key;
             private final Object globalContextBindings;
             private final InteropLibrary bindingsInterop;
 
-            ScriptEngineGlobalScopeBindingsPropertyProxy(String key, Object globalContextBindings, InteropLibrary bindingsInterop) {
+            ScriptEngineGlobalScopeBindingsPropertyProxy(TruffleString key, Object globalContextBindings, InteropLibrary bindingsInterop) {
                 this.key = key;
                 this.globalContextBindings = globalContextBindings;
                 this.bindingsInterop = bindingsInterop;

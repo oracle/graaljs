@@ -51,6 +51,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
@@ -133,7 +134,7 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
                 JavaScriptNode getterNode = JSConstantNode.create(getter);
                 JavaScriptNode setterNode = JSConstantNode.create(setter);
                 members.add(ObjectLiteralNode.newAccessorMember(name, false, attributes, getterNode, setterNode));
-            } else if (name instanceof String || name instanceof Symbol) {
+            } else if (name instanceof TruffleString || name instanceof Symbol) {
                 members.add(ObjectLiteralNode.newDataMember(name, false, attributes, valueNode));
             } else if (name instanceof HiddenKey) {
                 if (!template.hasPropertyHandler()) {

@@ -40,12 +40,12 @@
  */
 package com.oracle.truffle.js.nodes.unary;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-
-import java.util.Set;
 
 public abstract class IsIdenticalBooleanNode extends IsIdenticalBaseNode {
 

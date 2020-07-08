@@ -47,11 +47,11 @@ import static com.oracle.truffle.js.runtime.objects.JSAttributes.NOT_WRITABLE;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Properties;
 
 /**
  * Property objects represent the mapping between low-level stores and high-level data. The simplest
@@ -128,7 +128,7 @@ public class JSProperty {
                 } else {
                     assert isData(property);
                     assert !(value instanceof Accessor || value instanceof PropertyProxy);
-                    boolean success = DynamicObjectLibrary.getUncached().putIfPresent(store, property.getKey(), value);
+                    boolean success = Properties.putIfPresentUncached(store, property.getKey(), value);
                     assert success;
                     return true;
                 }

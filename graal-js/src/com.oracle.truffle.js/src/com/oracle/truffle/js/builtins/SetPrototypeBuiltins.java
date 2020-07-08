@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -77,6 +77,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
@@ -361,7 +362,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         protected final Object getAddFunction(Object object) {
             if (getAddNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getAddNode = insert(PropertyGetNode.create("add", false, getContext()));
+                getAddNode = insert(PropertyGetNode.create(Strings.ADD, false, getContext()));
             }
             return getAddNode.getValue(object);
         }
@@ -369,7 +370,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         protected final Object getRemoveFunction(Object object) {
             if (getRemoveNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getRemoveNode = insert(PropertyGetNode.create("delete", false, getContext()));
+                getRemoveNode = insert(PropertyGetNode.create(Strings.DELETE, false, getContext()));
             }
             return getRemoveNode.getValue(object);
         }
@@ -377,7 +378,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         protected final Object getHasFunction(Object object) {
             if (getHasNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getHasNode = insert(PropertyGetNode.create("has", false, getContext()));
+                getHasNode = insert(PropertyGetNode.create(Strings.HAS, false, getContext()));
             }
             return getHasNode.getValue(object);
         }

@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.binary;
 import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -52,7 +51,8 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantBooleanNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
@@ -68,11 +68,10 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 @NodeInfo(shortName = "===")
-@ImportStatic({JSRuntime.class, JSConfig.class})
+@ImportStatic({JSRuntime.class, JSConfig.class, JSGuards.class})
 public abstract class JSIdenticalNode extends JSCompareNode {
     protected static final int MAX_CLASSES = 3;
 
@@ -113,9 +112,9 @@ public abstract class JSIdenticalNode extends JSCompareNode {
         } else if (right instanceof JSConstantNullNode) {
             return IsNullNode.create(left, false);
         } else if (left instanceof JSConstantStringNode) {
-            return IsIdenticalStringNode.create((String) left.execute(null), right, true);
+            return IsIdenticalStringNode.create((TruffleString) left.execute(null), right, true);
         } else if (right instanceof JSConstantStringNode) {
-            return IsIdenticalStringNode.create((String) right.execute(null), left, false);
+            return IsIdenticalStringNode.create((TruffleString) right.execute(null), left, false);
         } else if (left instanceof JSConstantIntegerNode) {
             return IsIdenticalIntegerNode.create((int) left.execute(null), right, true);
         } else if (right instanceof JSConstantIntegerNode) {
@@ -231,53 +230,14 @@ public abstract class JSIdenticalNode extends JSCompareNode {
 
     @SuppressWarnings("unused")
     @Specialization(guards = "isReferenceEquals(a, b)")
-    protected static boolean doLazyStringReference(JSLazyString a, JSLazyString b) {
+    protected static boolean doTruffleStringIdentity(TruffleString a, TruffleString b) {
         return true;
     }
 
-    @Specialization(replaces = "doLazyStringReference")
-    protected static boolean doLazyString(JSLazyString a, JSLazyString b,
-                    @Cached("createBinaryProfile()") @Shared("flattenA") ConditionProfile flattenA,
-                    @Cached("createBinaryProfile()") @Shared("flattenB") ConditionProfile flattenB,
-                    @Cached("createBinaryProfile()") @Shared("sameLen") ConditionProfile len) {
-        if (len.profile(a.length() != b.length())) {
-            return false;
-        } else {
-            return a.toString(flattenA).equals(b.toString(flattenB));
-        }
-    }
-
-    @Specialization
-    protected static boolean doStringLazyString(String a, JSLazyString b,
-                    @Cached("createBinaryProfile()") @Shared("flattenB") ConditionProfile flattenB,
-                    @Cached("createBinaryProfile()") @Shared("sameLen") ConditionProfile len) {
-        if (len.profile(a.length() != b.length())) {
-            return false;
-        } else {
-            return a.equals(b.toString(flattenB));
-        }
-    }
-
-    @Specialization
-    protected static boolean doLazyStringString(JSLazyString a, String b,
-                    @Cached("createBinaryProfile()") @Shared("flattenA") ConditionProfile flattenA,
-                    @Cached("createBinaryProfile()") @Shared("sameLen") ConditionProfile len) {
-        if (len.profile(a.length() != b.length())) {
-            return false;
-        } else {
-            return a.toString(flattenA).equals(b);
-        }
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization(guards = "isReferenceEquals(a, b)")
-    protected static boolean doStringIdentity(String a, String b) {
-        return true;
-    }
-
-    @Specialization(replaces = "doStringIdentity")
-    protected static boolean doString(String a, String b) {
-        return a.equals(b);
+    @Specialization(replaces = "doTruffleStringIdentity")
+    protected static boolean doTruffleString(TruffleString a, TruffleString b,
+                    @Cached TruffleString.EqualNode equalsNode) {
+        return equalsNode.execute(a, b, TruffleString.Encoding.UTF_16);
     }
 
     @Specialization

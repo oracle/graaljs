@@ -46,8 +46,10 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -62,13 +64,13 @@ public abstract class JSPrimitive extends JSNonProxy implements PrototypeSupplie
 
         Object propertyValue = super.getHelper(store, thisObj, key, encapsulatingNode);
 
-        if (key instanceof String && allowJavaMembersFor(thisObj)) {
+        if (Strings.isTString(key) && allowJavaMembersFor(thisObj)) {
             JSContext context = JSObject.getJSContext(store);
             if (context.isOptionNashornCompatibilityMode()) {
                 JSRealm realm = JSRealm.get(null);
                 if (realm.isJavaInteropEnabled()) {
                     if (propertyValue == null) {
-                        return getJavaProperty(thisObj, (String) key, realm);
+                        return getJavaProperty(thisObj, Strings.toJavaString((TruffleString) key), realm);
                     }
                 }
             }
@@ -78,7 +80,7 @@ public abstract class JSPrimitive extends JSNonProxy implements PrototypeSupplie
     }
 
     private static Object getJavaProperty(Object thisObj, String name, JSRealm realm) {
-        String thisStr = (String) thisObj;
+        String thisStr = Strings.toJavaString((TruffleString) thisObj);
         Object boxedString = realm.getEnv().asBoxedGuestValue(thisStr);
         try {
             return InteropLibrary.getUncached().readMember(boxedString, name);
@@ -90,13 +92,13 @@ public abstract class JSPrimitive extends JSNonProxy implements PrototypeSupplie
     @TruffleBoundary
     @Override
     public Object getMethodHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
-        if (key instanceof String && allowJavaMembersFor(thisObj)) {
+        if (Strings.isTString(key) && allowJavaMembersFor(thisObj)) {
             JSContext context = JSObject.getJSContext(store);
             if (context.isOptionNashornCompatibilityMode()) {
                 JSRealm realm = JSRealm.get(null);
                 if (realm.isJavaInteropEnabled()) {
                     if (hasOwnProperty(store, key)) {
-                        Object method = getJavaMethod(thisObj, (String) key, realm);
+                        Object method = getJavaMethod(thisObj, Strings.toJavaString((TruffleString) key), realm);
                         if (method != null) {
                             return method;
                         }
@@ -109,7 +111,7 @@ public abstract class JSPrimitive extends JSNonProxy implements PrototypeSupplie
     }
 
     private static Object getJavaMethod(Object thisObj, String name, JSRealm realm) {
-        String thisStr = (String) thisObj;
+        String thisStr = Strings.toJavaString((TruffleString) thisObj);
         Object boxedString = realm.getEnv().asBoxedGuestValue(thisStr);
         try {
             return InteropLibrary.getUncached().readMember(boxedString, name);
@@ -119,6 +121,6 @@ public abstract class JSPrimitive extends JSNonProxy implements PrototypeSupplie
     }
 
     private static boolean allowJavaMembersFor(Object thisObj) {
-        return thisObj instanceof String;
+        return thisObj instanceof TruffleString;
     }
 }

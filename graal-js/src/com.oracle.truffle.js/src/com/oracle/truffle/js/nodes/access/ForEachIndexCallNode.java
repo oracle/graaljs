@@ -54,10 +54,10 @@ import com.oracle.truffle.js.nodes.array.JSArrayLastElementIndexNode;
 import com.oracle.truffle.js.nodes.array.JSArrayNextElementIndexNode;
 import com.oracle.truffle.js.nodes.array.JSArrayPreviousElementIndexNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -178,7 +178,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         if (isForeignArray) {
             return JSInteropUtil.readArrayElementOrDefault(target, index, Undefined.instance, getInterop(), toJSTypeNode, this);
         } else {
-            return JSInteropUtil.readMemberOrDefault(target, Boundaries.stringValueOf(index), Undefined.instance, getInterop(), toJSTypeNode, this);
+            return JSInteropUtil.readMemberOrDefault(target, Strings.fromLong(index), Undefined.instance, getInterop(), toJSTypeNode, this);
         }
     }
 

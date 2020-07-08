@@ -46,6 +46,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.InitErrorObjectNodeFactory.DefineStackPropertyNodeGen;
 import com.oracle.truffle.js.nodes.function.CreateMethodPropertyNode;
@@ -53,6 +54,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.GraalJSException.JSStackTraceElement;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -92,20 +94,20 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
         return new InitErrorObjectNode(context, defaultColumnNumber);
     }
 
-    public DynamicObject execute(DynamicObject errorObj, GraalJSException exception, String messageOpt) {
+    public DynamicObject execute(DynamicObject errorObj, GraalJSException exception, TruffleString messageOpt) {
         return execute(errorObj, exception, messageOpt, null);
     }
 
-    public DynamicObject execute(DynamicObject errorObj, GraalJSException exception, String messageOpt, DynamicObject errorsOpt) {
+    public DynamicObject execute(DynamicObject errorObj, GraalJSException exception, TruffleString messageOpt, DynamicObject errorsOpt) {
         return execute(errorObj, exception, messageOpt, errorsOpt, Undefined.instance);
     }
 
-    public DynamicObject execute(DynamicObject errorObj, GraalJSException exception, String messageOpt, DynamicObject errorsOpt, Object options) {
+    public DynamicObject execute(DynamicObject errorObj, GraalJSException exception, TruffleString messageOpt, DynamicObject errorsOpt, Object options) {
         if (messageOpt != null) {
-            setMessage.putWithFlags(errorObj, JSError.MESSAGE, messageOpt, JSError.MESSAGE_ATTRIBUTES);
+            Properties.putWithFlags(setMessage, errorObj, JSError.MESSAGE, messageOpt, JSError.MESSAGE_ATTRIBUTES);
         }
         if (errorsOpt != null) {
-            setErrorsNode().putWithFlags(errorObj, JSError.ERRORS_NAME, errorsOpt, JSError.ERRORS_ATTRIBUTES);
+            Properties.putWithFlags(setErrorsNode(), errorObj, JSError.ERRORS_NAME, errorsOpt, JSError.ERRORS_ATTRIBUTES);
         }
         if (context.getContextOptions().isErrorCauseEnabled() && options != Undefined.instance) {
             installErrorCause(errorObj, options);
@@ -151,7 +153,7 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
         @Specialization(limit = "3")
         void doCached(DynamicObject errorObj,
                         @CachedLibrary("errorObj") DynamicObjectLibrary objectLibrary) {
-            Property stackProperty = objectLibrary.getProperty(errorObj, JSError.STACK_NAME);
+            Property stackProperty = Properties.getProperty(objectLibrary, errorObj, JSError.STACK_NAME);
             int attrs = JSAttributes.getDefaultNotEnumerable();
             if (stackProperty != null) {
                 if (!JSProperty.isConfigurable(stackProperty)) {
@@ -161,7 +163,7 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
                     attrs = JSAttributes.getDefault();
                 }
             }
-            objectLibrary.putConstant(errorObj, JSError.STACK_NAME, JSError.STACK_PROXY, attrs | JSProperty.PROXY);
+            Properties.putConstant(objectLibrary, errorObj, JSError.STACK_NAME, JSError.STACK_PROXY, attrs | JSProperty.PROXY);
         }
     }
 }

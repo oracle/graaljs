@@ -40,20 +40,21 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringOrNumberNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
-
-import java.util.Set;
+import com.oracle.truffle.js.runtime.Strings;
 
 @NodeInfo(shortName = "<")
 public abstract class JSLessThanNode extends JSCompareNode {
@@ -98,28 +99,29 @@ public abstract class JSLessThanNode extends JSCompareNode {
     }
 
     @Specialization
-    protected boolean doString(String a, String b) {
-        return Boundaries.stringCompareTo(a, b) < 0;
+    protected boolean doString(TruffleString a, TruffleString b,
+                    @Cached TruffleString.CompareCharsUTF16Node compareNode) {
+        return Strings.compareTo(compareNode, a, b) < 0;
     }
 
     @Specialization
-    protected boolean doStringDouble(String a, double b) {
+    protected boolean doStringDouble(TruffleString a, double b) {
         return doDouble(stringToDouble(a), b);
     }
 
     @Specialization
-    protected boolean doDoubleString(double a, String b) {
+    protected boolean doDoubleString(double a, TruffleString b) {
         return doDouble(a, stringToDouble(b));
     }
 
     @Specialization
-    protected boolean doStringBigInt(String a, BigInt b) {
+    protected boolean doStringBigInt(TruffleString a, BigInt b) {
         BigInt aBigInt = JSRuntime.stringToBigInt(a);
         return (aBigInt == null) ? false : doBigInt(aBigInt, b);
     }
 
     @Specialization
-    protected boolean doBigIntString(BigInt a, String b) {
+    protected boolean doBigIntString(BigInt a, TruffleString b) {
         BigInt bBigInt = JSRuntime.stringToBigInt(b);
         return (bBigInt == null) ? false : doBigInt(a, bBigInt);
     }
@@ -167,8 +169,8 @@ public abstract class JSLessThanNode extends JSCompareNode {
         return toBooleanNode.executeBoolean(overloadedOperatorNode.execute(a, b));
     }
 
-    protected String getOverloadedOperatorName() {
-        return "<";
+    protected TruffleString getOverloadedOperatorName() {
+        return Strings.ANGLE_BRACKET_OPEN;
     }
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInt", "doDouble", "doString", "doStringDouble", "doDoubleString",

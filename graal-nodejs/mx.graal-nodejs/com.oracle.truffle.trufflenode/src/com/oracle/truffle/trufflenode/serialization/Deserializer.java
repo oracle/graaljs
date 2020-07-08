@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.trufflenode.serialization;
 
-import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -50,6 +49,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
@@ -250,7 +250,7 @@ public class Deserializer {
         }
     }
 
-    private String readString() {
+    private TruffleString readString() {
         SerializationTag tag = readTag();
         switch (tag) {
             case ONE_BYTE_STRING:
@@ -284,33 +284,23 @@ public class Deserializer {
         return new BigInt(bigInteger);
     }
 
-    private String readOneByteString() {
-        int charCount = readVarInt();
-        char[] chars = new char[charCount];
-        for (int i = 0; i < charCount; i++) {
-            byte b = buffer.get();
-            chars[i] = (char) (b & 0xff);
-        }
-        return new String(chars);
+    private TruffleString readOneByteString() {
+        return readString(TruffleString.Encoding.ISO_8859_1);
     }
 
-    private String readTwoByteString() {
-        return readString(Serializer.NATIVE_UTF16_ENCODING);
+    private TruffleString readTwoByteString() {
+        return readString(TruffleString.Encoding.UTF_16);
     }
 
-    private String readUTF8String() {
-        return readString("UTF-8");
+    private TruffleString readUTF8String() {
+        return readString(TruffleString.Encoding.UTF_8);
     }
 
-    private String readString(String encoding) {
+    private TruffleString readString(TruffleString.Encoding encoding) {
         int byteCount = readVarInt();
         byte[] bytes = new byte[byteCount];
         buffer.get(bytes);
-        try {
-            return new String(bytes, encoding);
-        } catch (UnsupportedEncodingException ueex) {
-            throw Errors.shouldNotReachHere();
-        }
+        return TruffleString.fromByteArrayUncached(bytes, encoding, false).switchEncodingUncached(TruffleString.Encoding.UTF_16);
     }
 
     private DynamicObject readDate(JSContext context, JSRealm realm) {
@@ -329,12 +319,12 @@ public class Deserializer {
     }
 
     private DynamicObject readJSString(JSContext context, JSRealm realm) {
-        String value = readString();
+        TruffleString value = readString();
         return assignId(JSString.create(context, realm, value));
     }
 
     private Object readJSRegExp(JSContext context, JSRealm realm) {
-        String pattern = readString();
+        TruffleString pattern = readString();
         int flags = readVarInt();
         return assignId(GraalJSAccess.regexpCreate(context, realm, pattern, flags));
     }

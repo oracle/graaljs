@@ -59,12 +59,14 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
@@ -80,19 +82,20 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
 
     public static final JSTemporalPlainDate INSTANCE = new JSTemporalPlainDate();
 
-    public static final String CLASS_NAME = "PlainDate";
-    public static final String PROTOTYPE_NAME = "PlainDate.prototype";
+    public static final TruffleString CLASS_NAME = Strings.constant("PlainDate");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("PlainDate.prototype");
+    public static final TruffleString TO_STRING_TAG = Strings.constant("Temporal.PlainDate");
 
     private JSTemporalPlainDate() {
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
-        return "Temporal.PlainDate";
+    public TruffleString getClassName(DynamicObject object) {
+        return TO_STRING_TAG;
     }
 
     @Override
-    public String getClassName() {
+    public TruffleString getClassName() {
         return CLASS_NAME;
     }
 
@@ -117,14 +120,13 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
         JSObjectUtil.putBuiltinAccessorProperty(prototype, IN_LEAP_YEAR, realm.lookupAccessor(TemporalPlainDatePrototypeBuiltins.BUILTINS, IN_LEAP_YEAR));
 
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalPlainDatePrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putToStringTag(prototype, "Temporal.PlainDate");
+        JSObjectUtil.putToStringTag(prototype, TO_STRING_TAG);
         return prototype;
     }
 
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
-        Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSTemporalPlainDate.INSTANCE, context);
-        return initialShape;
+        return JSObjectUtil.getProtoChildShape(prototype, JSTemporalPlainDate.INSTANCE, context);
     }
 
     @Override
@@ -155,7 +157,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
     }
 
     // 3.5.5
-    public static JSTemporalDurationRecord differenceISODate(long y1, long m1, long d1, long y2, long m2, long d2, String largestUnit) {
+    public static JSTemporalDurationRecord differenceISODate(long y1, long m1, long d1, long y2, long m2, long d2, TruffleString largestUnit) {
         assert largestUnit.equals(YEAR) || largestUnit.equals(MONTH) || largestUnit.equals(WEEK) || largestUnit.equals(DAY);
         if (largestUnit.equals(YEAR) || largestUnit.equals(MONTH)) {
             long sign = -TemporalUtil.compareISODate(y1, m1, d1, y2, m2, d2);
@@ -255,15 +257,15 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
     }
 
     @TruffleBoundary
-    public static String temporalDateToString(JSTemporalPlainDateObject date, String showCalendar) {
-        String yearString = TemporalUtil.padISOYear(date.getYear());
-        String monthString = String.format("%1$02d", date.getMonth());
-        String dayString = String.format("%1$02d", date.getDay());
+    public static TruffleString temporalDateToString(JSTemporalPlainDateObject date, TruffleString showCalendar) {
+        TruffleString yearString = TemporalUtil.padISOYear(date.getYear());
+        TruffleString monthString = Strings.format("%1$02d", date.getMonth());
+        TruffleString dayString = Strings.format("%1$02d", date.getDay());
 
-        String calendarID = JSRuntime.toString(date.getCalendar());
+        TruffleString calendarID = JSRuntime.toString(date.getCalendar());
         Object calendar = TemporalUtil.formatCalendarAnnotation(calendarID, showCalendar);
 
-        return String.format("%s-%s-%s%s", yearString, monthString, dayString, calendar);
+        return Strings.format("%s-%s-%s%s", yearString, monthString, dayString, calendar);
     }
 
 }

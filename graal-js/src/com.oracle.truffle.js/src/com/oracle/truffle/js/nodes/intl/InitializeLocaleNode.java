@@ -40,18 +40,20 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
-import java.util.MissingResourceException;
 import java.util.Locale;
+import java.util.MissingResourceException;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.intl.JSLocale;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
@@ -70,15 +72,15 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
 
     protected InitializeLocaleNode(JSContext context) {
         this.coerceOptionsToObjectNode = CoerceOptionsToObjectNodeGen.create(context);
-        this.getLanguageOption = GetStringOptionNode.create(context, IntlUtil.LANGUAGE, null, null);
-        this.getScriptOption = GetStringOptionNode.create(context, IntlUtil.SCRIPT, null, null);
-        this.getRegionOption = GetStringOptionNode.create(context, IntlUtil.REGION, null, null);
-        this.getCalendarOption = GetStringOptionNode.create(context, IntlUtil.CALENDAR, null, null);
-        this.getCollationOption = GetStringOptionNode.create(context, IntlUtil.COLLATION, null, null);
-        this.getHourCycleOption = GetStringOptionNode.create(context, IntlUtil.HOUR_CYCLE, new String[]{IntlUtil.H11, IntlUtil.H12, IntlUtil.H23, IntlUtil.H24}, null);
-        this.getCaseFirstOption = GetStringOptionNode.create(context, IntlUtil.CASE_FIRST, new String[]{IntlUtil.UPPER, IntlUtil.LOWER, IntlUtil.FALSE}, null);
-        this.getNumericOption = GetBooleanOptionNode.create(context, IntlUtil.NUMERIC, null);
-        this.getNumberingSystemOption = GetStringOptionNode.create(context, IntlUtil.NUMBERING_SYSTEM, null, null);
+        this.getLanguageOption = GetStringOptionNode.create(context, IntlUtil.KEY_LANGUAGE, null, null);
+        this.getScriptOption = GetStringOptionNode.create(context, IntlUtil.KEY_SCRIPT, null, null);
+        this.getRegionOption = GetStringOptionNode.create(context, IntlUtil.KEY_REGION, null, null);
+        this.getCalendarOption = GetStringOptionNode.create(context, IntlUtil.KEY_CALENDAR, null, null);
+        this.getCollationOption = GetStringOptionNode.create(context, IntlUtil.KEY_COLLATION, null, null);
+        this.getHourCycleOption = GetStringOptionNode.create(context, IntlUtil.KEY_HOUR_CYCLE, new String[]{IntlUtil.H11, IntlUtil.H12, IntlUtil.H23, IntlUtil.H24}, null);
+        this.getCaseFirstOption = GetStringOptionNode.create(context, IntlUtil.KEY_CASE_FIRST, new String[]{IntlUtil.UPPER, IntlUtil.LOWER, IntlUtil.FALSE}, null);
+        this.getNumericOption = GetBooleanOptionNode.create(context, IntlUtil.KEY_NUMERIC, null);
+        this.getNumberingSystemOption = GetStringOptionNode.create(context, IntlUtil.KEY_NUMBERING_SYSTEM, null, null);
     }
 
     public abstract DynamicObject executeInit(DynamicObject locale, Object tag, Object options);
@@ -88,7 +90,11 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    public DynamicObject initializeLocaleUsingString(DynamicObject localeObject, String tagArg, Object optionsArg) {
+    public DynamicObject initializeLocaleUsingString(DynamicObject localeObject, TruffleString tagArg, Object optionsArg) {
+        return initializeLocaleUsingJString(localeObject, Strings.toJavaString(tagArg), optionsArg);
+    }
+
+    private DynamicObject initializeLocaleUsingJString(DynamicObject localeObject, String tagArg, Object optionsArg) {
         try {
             DynamicObject options = coerceOptionsToObjectNode.execute(optionsArg);
             String tag = applyOptionsToTag(tagArg, options);
@@ -120,7 +126,7 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
     @Specialization(guards = "isJSLocale(tagArg)")
     public DynamicObject initializeLocaleUsingLocale(DynamicObject localeObject, DynamicObject tagArg, Object optionsArg) {
         JSLocale.InternalState state = JSLocale.getInternalState(tagArg);
-        return initializeLocaleUsingString(localeObject, state.getLocale(), optionsArg);
+        return initializeLocaleUsingJString(localeObject, state.getLocale(), optionsArg);
     }
 
     @Specialization(guards = {"isJSObject(tagArg)", "!isJSLocale(tagArg)"})

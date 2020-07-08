@@ -59,6 +59,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantAddNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantEqualsNodeGen;
@@ -84,6 +85,7 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
@@ -266,11 +268,11 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
             JSTemporalInstantObject other = (JSTemporalInstantObject) TemporalUtil.toTemporalInstant(getContext(), otherObj);
             DynamicObject options = getOptionsObject(optionsParam);
-            String smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND);
-            String defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(SECOND, smallestUnit);
-            String largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, defaultLargestUnit);
+            TruffleString smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND);
+            TruffleString defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(SECOND, smallestUnit);
+            TruffleString largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, defaultLargestUnit);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            String roundingMode = toTemporalRoundingMode(options, TRUNC);
+            TruffleString roundingMode = toTemporalRoundingMode(options, TRUNC);
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObjectNode, toNumber);
 
@@ -298,18 +300,18 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                 throw TemporalErrors.createTypeErrorOptionsUndefined();
             }
             DynamicObject roundTo;
-            if (JSRuntime.isString(roundToParam)) {
+            if (Strings.isTString(roundToParam)) {
                 roundTo = JSOrdinary.createWithNullPrototype(getContext());
                 JSRuntime.createDataPropertyOrThrow(roundTo, TemporalConstants.SMALLEST_UNIT, JSRuntime.toStringIsString(roundToParam));
             } else {
                 roundTo = getOptionsObject(roundToParam);
             }
-            String smallestUnit = toSmallestTemporalUnit(roundTo, TemporalUtil.listYMWD, null);
+            TruffleString smallestUnit = toSmallestTemporalUnit(roundTo, TemporalUtil.listYMWD, null);
             if (smallestUnit == null) {
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorSmallestUnitExpected();
             }
-            String roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND);
+            TruffleString roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND);
             double maximum;
             if (HOUR.equals(smallestUnit)) {
                 maximum = 24;
@@ -352,7 +354,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization
-        protected String toString(Object thisObj, Object optionsParam,
+        protected TruffleString toString(Object thisObj, Object optionsParam,
                         @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
             DynamicObject options = getOptionsObject(optionsParam);
@@ -362,7 +364,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                 timeZone = toTemporalTimeZone.executeDynamicObject(timeZoneRaw);
             }
             JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, getOptionNode());
-            String roundingMode = toTemporalRoundingMode(options, TRUNC);
+            TruffleString roundingMode = toTemporalRoundingMode(options, TRUNC);
             BigInt ns = instant.getNanoseconds();
             long roundedNs = TemporalUtil.roundTemporalInstant(ns, (long) precision.getIncrement(), precision.getUnit(), roundingMode);
             DynamicObject roundedInstant = JSTemporalInstant.create(getContext(), BigInt.valueOf(roundedNs));
@@ -378,7 +380,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
         @SuppressWarnings("unused")
         @Specialization
-        public String toLocaleString(Object thisObj) {
+        public TruffleString toLocaleString(Object thisObj) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
             return TemporalUtil.temporalInstantToString(getContext(), getRealm(), instant, Undefined.instance, AUTO);
         }

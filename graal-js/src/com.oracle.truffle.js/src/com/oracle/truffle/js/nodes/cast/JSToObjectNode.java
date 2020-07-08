@@ -51,6 +51,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -69,7 +70,6 @@ import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.Null;
 
 /**
@@ -140,12 +140,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected DynamicObject doJSLazyString(JSLazyString value) {
-        return JSString.create(getContext(), getRealm(), value);
-    }
-
-    @Specialization
-    protected DynamicObject doString(String value) {
+    protected DynamicObject doString(TruffleString value) {
         return JSString.create(getContext(), getRealm(), value);
     }
 

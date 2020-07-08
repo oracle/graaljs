@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -49,9 +51,8 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.util.Set;
 
 /**
  * Performs a private brand check. If the brand check succeeds, returns the target object, otherwise
@@ -78,7 +79,7 @@ public abstract class PrivateBrandCheckNode extends JSTargetableNode {
     @Specialization(guards = {"isJSObject(target)"}, limit = "3")
     Object doInstance(DynamicObject target, HiddenKey brandKey,
                     @CachedLibrary("target") DynamicObjectLibrary access) {
-        if (access.containsKey(target, brandKey)) {
+        if (Properties.containsKey(access, target, brandKey)) {
             return target;
         } else {
             return denied(target, brandKey);
