@@ -744,6 +744,10 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
             JSObjectUtil.changeFlags(thisObj, LENGTH, newAttr);
         }
 
+        if (!newWritable) {
+            setLengthNotWritable(thisObj);
+        }
+
         return true;
     }
 
