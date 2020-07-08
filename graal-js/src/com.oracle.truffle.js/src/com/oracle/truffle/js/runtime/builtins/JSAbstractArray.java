@@ -653,10 +653,11 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
      */
     private boolean defineOwnPropertyLength(DynamicObject thisObj, PropertyDescriptor descriptor, boolean doThrow) {
         if (!descriptor.hasValue()) {
-            if (descriptor.hasWritable() && !descriptor.getWritable()) {
+            boolean success = DefinePropertyUtil.ordinaryDefineOwnProperty(thisObj, LENGTH, descriptor, doThrow);
+            if (success && descriptor.hasWritable() && !descriptor.getWritable()) {
                 setLengthNotWritable(thisObj);
             }
-            return DefinePropertyUtil.ordinaryDefineOwnProperty(thisObj, LENGTH, descriptor, doThrow);
+            return success;
         }
 
         long newLen = JSRuntime.toUInt32(descriptor.getValue());
