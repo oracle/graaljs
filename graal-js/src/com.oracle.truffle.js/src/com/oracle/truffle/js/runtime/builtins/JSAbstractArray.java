@@ -715,31 +715,25 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
 
     private boolean definePropertyLength(DynamicObject thisObj, PropertyDescriptor descriptor, PropertyDescriptor currentDesc, long len, boolean doThrow) {
         assert JSRuntime.isValidArrayLength(len);
+        assert !currentDesc.getConfigurable();
         boolean currentWritable = currentDesc.getWritable();
         boolean currentEnumerable = currentDesc.getEnumerable();
-        boolean currentConfigurable = currentDesc.getConfigurable();
 
         boolean newWritable = descriptor.getIfHasWritable(currentWritable);
         boolean newEnumerable = descriptor.getIfHasEnumerable(currentEnumerable);
-        boolean newConfigurable = descriptor.getIfHasConfigurable(currentConfigurable);
+        boolean newConfigurable = descriptor.getIfHasConfigurable(false);
 
-        if (currentConfigurable) {
-            if (!currentWritable && !newWritable) {
-                return DefinePropertyUtil.reject(doThrow, LENGTH_PROPERTY_NOT_WRITABLE);
+        if (newConfigurable || (newEnumerable != currentEnumerable)) {
+            // ES2020 9.1.6.3, 4.a and 4.b
+            return DefinePropertyUtil.reject(doThrow, CANNOT_REDEFINE_PROPERTY_LENGTH);
+        }
+        if (currentWritable == newWritable && currentEnumerable == newEnumerable) {
+            if (!descriptor.hasValue() || len == getLength(thisObj)) {
+                return true; // nothing changed
             }
-        } else {
-            if (descriptor.getConfigurable() || (newEnumerable != currentEnumerable)) {
-                // ES2020 9.1.6.3, 4.a and 4.b
-                return DefinePropertyUtil.reject(doThrow, CANNOT_REDEFINE_PROPERTY_LENGTH);
-            }
-            if (currentWritable == newWritable && currentEnumerable == newEnumerable) {
-                if (!descriptor.hasValue() || len == getLength(thisObj)) {
-                    return true; // nothing changed
-                }
-            }
-            if (!currentWritable) {
-                return DefinePropertyUtil.reject(doThrow, LENGTH_PROPERTY_NOT_WRITABLE);
-            }
+        }
+        if (!currentWritable) {
+            return DefinePropertyUtil.reject(doThrow, LENGTH_PROPERTY_NOT_WRITABLE);
         }
 
         try {
