@@ -659,9 +659,9 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
             return DefinePropertyUtil.ordinaryDefineOwnProperty(thisObj, LENGTH, descriptor, doThrow);
         }
 
-        Number newLenNum = JSRuntime.toNumber(descriptor.getValue());
-        long newLen = JSRuntime.toUInt32(newLenNum);
-        if (JSRuntime.doubleValue(newLenNum) != newLen) {
+        long newLen = JSRuntime.toUInt32(descriptor.getValue());
+        Number numberLen = JSRuntime.toNumber(descriptor.getValue());
+        if (JSRuntime.doubleValue(numberLen) != newLen) {
             throw Errors.createRangeErrorInvalidArrayLength();
         }
         PropertyDescriptor lenDesc = getOwnProperty(thisObj, LENGTH);
