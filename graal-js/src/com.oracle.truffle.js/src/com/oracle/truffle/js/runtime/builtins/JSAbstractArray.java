@@ -637,7 +637,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     @TruffleBoundary
     public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor descriptor, boolean doThrow) {
         if (key.equals(LENGTH)) {
-            return defineOwnPropertyLength(thisObj, key, descriptor, doThrow);
+            return defineOwnPropertyLength(thisObj, descriptor, doThrow);
         } else if (key instanceof String && JSRuntime.isArrayIndex((String) key)) {
             return defineOwnPropertyIndex(thisObj, (String) key, descriptor, doThrow);
         } else {
@@ -651,12 +651,12 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
      *
      * @return whether the operation was successful
      */
-    private boolean defineOwnPropertyLength(DynamicObject thisObj, Object key, PropertyDescriptor descriptor, boolean doThrow) {
+    private boolean defineOwnPropertyLength(DynamicObject thisObj, PropertyDescriptor descriptor, boolean doThrow) {
         if (!descriptor.hasValue()) {
             if (descriptor.hasWritable() && !descriptor.getWritable()) {
                 setLengthNotWritable(thisObj);
             }
-            return DefinePropertyUtil.ordinaryDefineOwnProperty(thisObj, key, descriptor, doThrow);
+            return DefinePropertyUtil.ordinaryDefineOwnProperty(thisObj, LENGTH, descriptor, doThrow);
         }
 
         Number newLenNum = JSRuntime.toNumber(descriptor.getValue());
