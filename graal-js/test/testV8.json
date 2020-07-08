@@ -1078,9 +1078,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
-    "filePath" : "mjsunit/regress/regress-5669.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/regress/regress-575364.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
@@ -1581,10 +1578,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "mjsunit/regress/regress-crbug-823069.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "mjsunit/regress/regress-crbug-865892.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
@@ -1733,10 +1726,6 @@
     "filePath" : "mjsunit/regress/regress-wasm-crbug-618602.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
-  }, {
-    "filePath" : "mjsunit/regress/regress_967104.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
     "filePath" : "mjsunit/regress/wasm/loop-stack-check.js",
     "status" : "SKIP",
