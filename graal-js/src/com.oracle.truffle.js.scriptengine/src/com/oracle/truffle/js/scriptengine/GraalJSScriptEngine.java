@@ -412,18 +412,6 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         }
     }
 
-    Object evalCompiledScript(Value compiledScript, ScriptContext scriptContext) throws ScriptException {
-        GraalJSBindings engineBindings = getOrCreateGraalJSBindings(scriptContext);
-        Context polyglotContext = engineBindings.getContext();
-        updateDelegatingIOStreams(polyglotContext, scriptContext);
-        try {
-            engineBindings.importGlobalBindings(scriptContext);
-            return compiledScript.execute().as(Object.class);
-        } catch (PolyglotException e) {
-            throw new ScriptException(e);
-        }
-    }
-
     private GraalJSBindings getOrCreateGraalJSBindings(ScriptContext scriptContext) {
         Bindings engineB = scriptContext.getBindings(ScriptContext.ENGINE_SCOPE);
         if (engineB instanceof GraalJSBindings) {
@@ -561,12 +549,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     }
 
     private CompiledScript compile(Source source) throws ScriptException {
-        final Value compiledScript;
-        try {
-            compiledScript = getPolyglotContext().parse(source);
-        } catch (PolyglotException e) {
-            throw new ScriptException(e);
-        }
+        checkSyntax(source);
         return new CompiledScript() {
             @Override
             public ScriptEngine getEngine() {
@@ -575,9 +558,17 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
             @Override
             public Object eval(ScriptContext ctx) throws ScriptException {
-                return GraalJSScriptEngine.this.evalCompiledScript(compiledScript, ctx);
+                return GraalJSScriptEngine.this.eval(source, ctx);
             }
         };
+    }
+
+    private void checkSyntax(Source source) throws ScriptException {
+        try {
+            getPolyglotContext().parse(source);
+        } catch (PolyglotException pex) {
+            throw new ScriptException(pex);
+        }
     }
 
     private static class DelegatingInputStream extends InputStream implements Proxy {
