@@ -239,7 +239,6 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     private final GraalJSEngineFactory factory;
     private final Context.Builder contextConfig;
 
-    private volatile boolean closed;
     private boolean evalCalled;
 
     GraalJSScriptEngine(GraalJSEngineFactory factory) {
@@ -292,7 +291,6 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     @Override
     public void close() {
         getPolyglotContext().close();
-        closed = true;
     }
 
     /**
@@ -532,18 +530,12 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
     @Override
     public CompiledScript compile(String script) throws ScriptException {
-        if (closed) {
-            throw new IllegalStateException("Context already closed.");
-        }
         Source source = createSource(script, getContext());
         return compile(source);
     }
 
     @Override
     public CompiledScript compile(Reader reader) throws ScriptException {
-        if (closed) {
-            throw new IllegalStateException("Context already closed.");
-        }
         Source source = createSource(read(reader), getContext());
         return compile(source);
     }
