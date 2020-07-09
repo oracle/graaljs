@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -121,7 +121,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         } else if (value instanceof Boolean) {
             stringBuilderProfile.append(builder, (boolean) value ? JSBoolean.TRUE_NAME : JSBoolean.FALSE_NAME);
         } else if (JSRuntime.isString(value)) {
-            jsonQuote(builder, value.toString());
+            jsonQuote(stringBuilderProfile, builder, value.toString());
         } else if (JSRuntime.isNumber(value)) {
             appendNumber(builder, (Number) value);
         } else if (JSRuntime.isBigInt(value)) {
@@ -138,7 +138,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             jsonForeignObject(builder, data, value);
         } else if (JSRuntime.isJavaPrimitive(value)) {
             // call toString on Java objects, GR-3722
-            jsonQuote(builder, value.toString());
+            jsonQuote(stringBuilderProfile, builder, value.toString());
         } else {
             throw new RuntimeException("JSON.stringify: should never reach here, unknown type: " + value + " " + value.getClass());
         }
@@ -186,24 +186,24 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     @TruffleBoundary
     private Object jsonStrPrepareArray(JSONData data, int key, DynamicObject holder) {
         Object value = JSObject.get(holder, key);
-        return jsonStrPreparePart2(data, key, holder, value);
+        return jsonStrPreparePart2(data, String.valueOf(key), holder, value);
     }
 
     @TruffleBoundary
     private Object jsonStrPrepareForeign(JSONData data, int key, Object holder) {
         assert JSGuards.isForeignObject(holder);
         Object value = truffleRead(holder, key);
-        return jsonStrPreparePart2(data, key, holder, value);
+        return jsonStrPreparePart2(data, String.valueOf(key), holder, value);
     }
 
-    private Object jsonStrPreparePart2(JSONData data, Object key, Object holder, Object valueArg) {
+    private Object jsonStrPreparePart2(JSONData data, String key, Object holder, Object valueArg) {
         Object value = valueArg;
         if (JSRuntime.isObject(value) || JSRuntime.isBigInt(value)) {
-            value = jsonStrPrepareObject(JSRuntime.toPropertyKey(key), value);
+            value = jsonStrPrepareObject(key, value);
         }
 
         if (data.getReplacerFnObj() != null) {
-            value = JSRuntime.call(data.getReplacerFnObj(), holder, new Object[]{JSRuntime.toPropertyKey(key), value});
+            value = JSRuntime.call(data.getReplacerFnObj(), holder, new Object[]{key, value});
         }
         if (JSObject.isJSObject(value)) {
             return jsonStrPrepareJSObject((DynamicObject) value);
@@ -292,7 +292,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
                 } else {
                     appendSeparator(builder, data, indent);
                 }
-                jsonQuote(builder, name);
+                jsonQuote(stringBuilderProfile, builder, name);
                 appendColon(builder, data);
                 jsonStrExecute(builder, data, strPPrepared);
                 hasContent = true;
@@ -335,7 +335,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
                     } else {
                         appendSeparator(builder, data, indent);
                     }
-                    jsonQuote(builder, stringKey);
+                    jsonQuote(stringBuilderProfile, builder, stringKey);
                     appendColon(builder, data);
                     jsonStrExecute(builder, data, strPPrepared);
                     hasContent = true;
@@ -453,7 +453,8 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         }
     }
 
-    private void jsonQuote(StringBuilder builder, String value) {
+    @TruffleBoundary
+    public static void jsonQuote(StringBuilderProfile stringBuilderProfile, StringBuilder builder, String value) {
         stringBuilderProfile.append(builder, '"');
         for (int i = 0; i < value.length();) {
             char ch = value.charAt(i);
@@ -469,7 +470,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
                 } else if (ch == '\t') {
                     stringBuilderProfile.append(builder, "\\t");
                 } else {
-                    jsonQuoteUnicode(builder, ch);
+                    jsonQuoteUnicode(stringBuilderProfile, builder, ch);
                 }
             } else {
                 if (ch == '\\') {
@@ -486,11 +487,11 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
                             i++;
                         } else {
                             // unpaired high surrogate
-                            jsonQuoteSurrogate(builder, ch);
+                            jsonQuoteSurrogate(stringBuilderProfile, builder, ch);
                         }
                     } else {
                         // unpaired low surrogate
-                        jsonQuoteSurrogate(builder, ch);
+                        jsonQuoteSurrogate(stringBuilderProfile, builder, ch);
                     }
                 } else {
                     stringBuilderProfile.append(builder, ch);
@@ -501,17 +502,17 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         stringBuilderProfile.append(builder, '"');
     }
 
-    private void jsonQuoteUnicode(StringBuilder builder, char c) {
-        stringBuilderProfile.append(builder, "\\u00");
-        stringBuilderProfile.append(builder, Character.forDigit((c >> 4) & 0xF, 16));
-        stringBuilderProfile.append(builder, Character.forDigit(c & 0xF, 16));
+    private static void jsonQuoteUnicode(StringBuilderProfile profile, StringBuilder builder, char c) {
+        profile.append(builder, "\\u00");
+        profile.append(builder, Character.forDigit((c >> 4) & 0xF, 16));
+        profile.append(builder, Character.forDigit(c & 0xF, 16));
     }
 
-    private void jsonQuoteSurrogate(StringBuilder builder, char c) {
-        stringBuilderProfile.append(builder, "\\ud");
-        stringBuilderProfile.append(builder, Character.forDigit((c >> 8) & 0xF, 16));
-        stringBuilderProfile.append(builder, Character.forDigit((c >> 4) & 0xF, 16));
-        stringBuilderProfile.append(builder, Character.forDigit(c & 0xF, 16));
+    private static void jsonQuoteSurrogate(StringBuilderProfile profile, StringBuilder builder, char c) {
+        profile.append(builder, "\\ud");
+        profile.append(builder, Character.forDigit((c >> 8) & 0xF, 16));
+        profile.append(builder, Character.forDigit((c >> 4) & 0xF, 16));
+        profile.append(builder, Character.forDigit(c & 0xF, 16));
     }
 
     private Object truffleGetSize(Object obj) {

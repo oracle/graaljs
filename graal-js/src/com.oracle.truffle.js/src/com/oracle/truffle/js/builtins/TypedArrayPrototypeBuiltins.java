@@ -384,8 +384,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             assert JSArray.isJSFastArray(array);
             boolean sourceCondition = JSArray.isJSArray(array);
             boolean targetCondition = JSArrayBufferView.isJSArrayBufferView(thisObj);
-            ScriptArray sourceArray = arrayGetArrayType(array, sourceCondition);
-            TypedArray targetArray = JSArrayBufferView.typedArrayGetArrayType(thisObj, targetCondition);
+            ScriptArray sourceArray = sourceArrayProf.profile(arrayGetArrayType(array, sourceCondition));
+            TypedArray targetArray = targetArrayProf.profile(JSArrayBufferView.typedArrayGetArrayType(thisObj, targetCondition));
             long sourceLen = sourceArray.length(array, sourceCondition);
             rangeCheck(0, sourceLen, offset, targetArray.length(thisObj, targetCondition));
 

@@ -77,6 +77,7 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.StringBuilderProfile;
 
 /**
  * Contains builtins for {@linkplain JSON} function (constructor).
@@ -271,7 +272,22 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!isCallable(replacer)", "!isArray(replacer)"})
+        @Specialization(guards = {"isString(value)", "!isCallable(replacer)", "!isArray(replacer)"})
+        // GR-24628: JSON.stringify is frequently called with (just) a String argument
+        protected Object stringifyAStringNoReplacer(Object value, Object replacer, Object spaceParam,
+                        @Cached("createStringBuilderProfile()") StringBuilderProfile stringBuilderProfile) {
+            String str = JSRuntime.toStringIsString(value);
+            StringBuilder builder = new StringBuilder(str.length() + 8);
+            JSONStringifyStringNode.jsonQuote(stringBuilderProfile, builder, str);
+            return stringBuilderProfile.toString(builder);
+        }
+
+        protected StringBuilderProfile createStringBuilderProfile() {
+            return StringBuilderProfile.create(getContext().getStringLengthLimit());
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"!isString(value)", "!isCallable(replacer)", "!isArray(replacer)"})
         protected Object stringifyNoReplacer(Object value, Object replacer, Object spaceParam) {
             return stringifyIntl(value, spaceParam, null, null);
         }
