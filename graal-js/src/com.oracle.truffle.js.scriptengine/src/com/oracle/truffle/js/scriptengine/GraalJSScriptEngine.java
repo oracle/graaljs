@@ -388,12 +388,17 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         }
     }
 
+    private static void updateDelegatingIOStreams(Context polyglotContext, ScriptContext scriptContext) {
+        Value polyglotBindings = polyglotContext.getPolyglotBindings();
+        ((DelegatingOutputStream) polyglotBindings.getMember(OUT_SYMBOL).asProxyObject()).setWriter(scriptContext.getWriter());
+        ((DelegatingOutputStream) polyglotBindings.getMember(ERR_SYMBOL).asProxyObject()).setWriter(scriptContext.getErrorWriter());
+        ((DelegatingInputStream) polyglotBindings.getMember(IN_SYMBOL).asProxyObject()).setReader(scriptContext.getReader());
+    }
+
     private Object eval(Source source, ScriptContext scriptContext) throws ScriptException {
         GraalJSBindings engineBindings = getOrCreateGraalJSBindings(scriptContext);
         Context polyglotContext = engineBindings.getContext();
-        ((DelegatingOutputStream) polyglotContext.getPolyglotBindings().getMember(OUT_SYMBOL).asProxyObject()).setWriter(scriptContext.getWriter());
-        ((DelegatingOutputStream) polyglotContext.getPolyglotBindings().getMember(ERR_SYMBOL).asProxyObject()).setWriter(scriptContext.getErrorWriter());
-        ((DelegatingInputStream) polyglotContext.getPolyglotBindings().getMember(IN_SYMBOL).asProxyObject()).setReader(scriptContext.getReader());
+        updateDelegatingIOStreams(polyglotContext, scriptContext);
         try {
             if (!evalCalled) {
                 jrunscriptInitWorkaround(source, polyglotContext);
@@ -404,6 +409,18 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
             throw new ScriptException(e);
         } finally {
             evalCalled = true;
+        }
+    }
+
+    Object evalCompiledScript(Value compiledScript, ScriptContext scriptContext) throws ScriptException {
+        GraalJSBindings engineBindings = getOrCreateGraalJSBindings(scriptContext);
+        Context polyglotContext = engineBindings.getContext();
+        updateDelegatingIOStreams(polyglotContext, scriptContext);
+        try {
+            engineBindings.importGlobalBindings(scriptContext);
+            return compiledScript.execute().as(Object.class);
+        } catch (PolyglotException e) {
+            throw new ScriptException(e);
         }
     }
 
@@ -544,7 +561,12 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     }
 
     private CompiledScript compile(Source source) throws ScriptException {
-        checkSyntax(source);
+        final Value compiledScript;
+        try {
+            compiledScript = getPolyglotContext().parse(source);
+        } catch (PolyglotException e) {
+            throw new ScriptException(e);
+        }
         return new CompiledScript() {
             @Override
             public ScriptEngine getEngine() {
@@ -553,20 +575,9 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
             @Override
             public Object eval(ScriptContext ctx) throws ScriptException {
-                return GraalJSScriptEngine.this.eval(source, ctx);
+                return GraalJSScriptEngine.this.evalCompiledScript(compiledScript, ctx);
             }
         };
-    }
-
-    private void checkSyntax(Source source) throws ScriptException {
-        GraalJSBindings engineBindings = getOrCreateGraalJSBindings(context);
-        Context polyglotContext = engineBindings.getContext();
-        Value syntaxChecker = polyglotContext.getBindings("js").getMember("checkSyntaxForScriptEngine");
-        try {
-            syntaxChecker.execute(source.getCharacters());
-        } catch (PolyglotException pex) {
-            throw new ScriptException(pex);
-        }
     }
 
     private static class DelegatingInputStream extends InputStream implements Proxy {
