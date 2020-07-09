@@ -42,7 +42,11 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetRegexResult;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -64,6 +68,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropReadStringMemberNode;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResultNode;
@@ -275,15 +280,30 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         }
     }
 
+    private static final Comparator<Pair<Integer, String>> NAMED_GROUPS_COMPARATOR = new Comparator<Pair<Integer, String>>() {
+        @Override
+        public int compare(Pair<Integer, String> group1, Pair<Integer, String> group2) {
+            return group1.getFirst() - group2.getFirst();
+        }
+    };
+
     @TruffleBoundary
     public static JSObjectFactory buildGroupsFactory(JSContext ctx, Object namedCaptureGroups) {
         Shape groupsShape = ctx.getEmptyShapeNullPrototype();
         groupsShape = groupsShape.addProperty(GROUPS_RESULT_PROPERTY);
         groupsShape = groupsShape.addProperty(GROUPS_ORIGINAL_INPUT_PROPERTY);
         groupsShape = groupsShape.addProperty(GROUPS_IS_INDICES_PROPERTY);
-        for (Object key : JSInteropUtil.keys(namedCaptureGroups)) {
+        List<Object> keys = JSInteropUtil.keys(namedCaptureGroups);
+        List<Pair<Integer, String>> pairs = new ArrayList<>(keys.size());
+        for (Object key : keys) {
             String groupName = (String) key;
             int groupIndex = TRegexUtil.InteropReadIntMemberNode.getUncached().execute(namedCaptureGroups, groupName);
+            pairs.add(new Pair<>(groupIndex, groupName));
+        }
+        Collections.sort(pairs, NAMED_GROUPS_COMPARATOR);
+        for (Pair<Integer, String> pair : pairs) {
+            int groupIndex = pair.getFirst();
+            String groupName = pair.getSecond();
             Property groupProperty = JSObjectUtil.makeProxyProperty(groupName, new LazyNamedCaptureGroupProperty(groupName, groupIndex), JSAttributes.getDefault());
             groupsShape = groupsShape.addProperty(groupProperty);
         }
