@@ -48,7 +48,6 @@ import javax.script.SimpleScriptContext;
 
 import org.graalvm.polyglot.Engine;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.js.scriptengine.GraalJSScriptEngine;
@@ -99,7 +98,6 @@ public class TestScriptEngineInterop {
 
     }
 
-    @Ignore("GR-21918")
     @Test
     public void testClose() throws ScriptException {
         GraalJSScriptEngine engine = GraalJSScriptEngine.create();
