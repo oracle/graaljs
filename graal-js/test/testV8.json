@@ -686,10 +686,6 @@
     "status" : "PASS",
     "comment" : "Uses public fields"
   }, {
-    "filePath" : "mjsunit/harmony/regexp-named-captures.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
-  }, {
     "filePath" : "mjsunit/harmony/regexp-property-emoji-flag-sequence-generated.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
