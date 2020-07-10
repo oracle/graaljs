@@ -355,7 +355,7 @@ public class CommonJSRequireTest {
             if (!t.getClass().isAssignableFrom(PolyglotException.class)) {
                 throw new AssertionError("Unexpected exception " + t);
             }
-            assertEquals("SyntaxError: String quote expected", t.getMessage());
+            assertEquals("SyntaxError: Unexpected token n in JSON at position 1", t.getMessage());
         }
     }
 

@@ -98,7 +98,7 @@ public class TruffleJSONParser {
     }
 
     private String unexpectedEndOfInputMessage() {
-        return context.isOptionV8CompatibilityMode() ? "Unexpected end of JSON input" : "Unexpected end of input";
+        return context.isOptionNashornCompatibilityMode() ? "Unexpected end of input" : "Unexpected end of JSON input";
     }
 
     private Object parseJSONText() {
@@ -120,7 +120,7 @@ public class TruffleJSONParser {
         } else if (isObject(c)) {
             return parseJSONObject();
         }
-        return error("cannot parse JSONValue");
+        return unexpectedToken();
     }
 
     protected static boolean isNumber(char cur) {
@@ -147,7 +147,11 @@ public class TruffleJSONParser {
         if (get() != '}') {
             parseJSONMemberList(object);
             if (get() != '}') {
-                error("closing quote } expected");
+                if (get() == '"') {
+                    unexpectedString();
+                } else {
+                    unexpectedToken();
+                }
             }
         }
         read('}');
@@ -222,7 +226,11 @@ public class TruffleJSONParser {
 
     protected String parseJSONString() {
         if (!isStringQuote(get())) {
-            error("String quote expected");
+            if (isDigit(get())) {
+                unexpectedNumber();
+            } else {
+                unexpectedToken();
+            }
         }
         pos++; // don't skip whitespace here
         String str = parseJSONStringCharacters();
@@ -235,6 +243,10 @@ public class TruffleJSONParser {
 
     protected static boolean isStringQuote(char c) {
         return c == '"';
+    }
+
+    protected static boolean isDigit(char c) {
+        return '0' <= c && c <= '9';
     }
 
     protected String parseJSONStringCharacters() {
@@ -484,6 +496,21 @@ public class TruffleJSONParser {
         } else {
             throw Errors.createSyntaxError(message);
         }
+    }
+
+    private Object unexpectedToken() {
+        error("Unexpected token " + get() + " in JSON at position " + pos);
+        return null;
+    }
+
+    private Object unexpectedString() {
+        error("Unexpected string in JSON at position " + pos);
+        return null;
+    }
+
+    private Object unexpectedNumber() {
+        error("Unexpected number in JSON at position " + pos);
+        return null;
     }
 
     // ************************* Helper Functions ****************************************//
