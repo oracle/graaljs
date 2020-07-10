@@ -85,7 +85,6 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.GlobalNashornExtensionParseToJSONNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.GlobalScriptingEXECNodeGen;
-import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.GlobalSyntaxCheckForScriptEngineNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalDecodeURINodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalEncodeURINodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalExitNodeGen;
@@ -354,7 +353,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             readFully(1),
             exec(1), // $EXEC
             parseToJSON(3),
-            checkSyntaxForScriptEngine(1),
             importScriptEngineGlobalBindings(1);
 
             private final int length;
@@ -383,8 +381,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                     return GlobalNashornExtensionParseToJSONNodeGen.create(context, builtin, args().fixedArgs(3).createArgumentNodes(context));
                 case exec:
                     return GlobalScriptingEXECNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
-                case checkSyntaxForScriptEngine:
-                    return GlobalSyntaxCheckForScriptEngineNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                 case importScriptEngineGlobalBindings:
                     return JSGlobalImportScriptEngineGlobalBindingsNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context));
             }
@@ -1614,20 +1610,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 JSObjectUtil.defineDataProperty(store, key, value, JSAttributes.getDefault());
                 return true;
             }
-        }
-    }
-
-    public abstract static class GlobalSyntaxCheckForScriptEngineNode extends JSBuiltinNode {
-
-        public GlobalSyntaxCheckForScriptEngineNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        @TruffleBoundary(transferToInterpreterOnException = false)
-        protected final boolean checkSyntax(Object code) {
-            getContext().getEvaluator().parseScript(getContext(), code.toString());
-            return true;
         }
     }
 }
