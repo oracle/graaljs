@@ -65,7 +65,6 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.nodes.unary.JSIsArrayNode;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -160,11 +159,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
 
         @TruffleBoundary(transferToInterpreterOnException = false)
         private Object parseIntl(String jsonString) {
-            if (JSConfig.TruffleJSONParser) {
-                return new TruffleJSONParser(getContext()).parse(jsonString);
-            } else {
-                return getContext().getEvaluator().parseJSON(getContext(), jsonString);
-            }
+            return new TruffleJSONParser(getContext()).parse(jsonString);
         }
 
         @TruffleBoundary

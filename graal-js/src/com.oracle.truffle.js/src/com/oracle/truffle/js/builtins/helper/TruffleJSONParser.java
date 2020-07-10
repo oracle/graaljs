@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.builtins.helper;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -478,18 +477,13 @@ public class TruffleJSONParser {
     }
 
     protected Object error(String message) {
-        context.getEvaluator().parseJSON(context, parseStr);
-        // TruffleJSONParser expects an error, but the string got parsed
-        // without a problem using context.getEvaluator().parseJSON().
-        // So, there is a problem in the former or the latter parser.
-        throw Errors.createError("Internal error: " + message);
-    }
-
-    @TruffleBoundary
-    public static RuntimeException createSyntaxError(Exception ex, JSContext context) {
-        String msg = ex.getMessage().replace("\r\n", "\n");
-        throw context.isOptionNashornCompatibilityMode() ? Errors.createSyntaxError("Invalid JSON: " + msg)
-                        : Errors.createSyntaxError(msg);
+        if (context.isOptionNashornCompatibilityMode()) {
+            // use the Nashorn parser to get the proper error
+            context.getEvaluator().parseJSON(context, parseStr); // should throw
+            throw Errors.shouldNotReachHere("JSON parser did not throw error as expected");
+        } else {
+            throw Errors.createSyntaxError(message);
+        }
     }
 
     // ************************* Helper Functions ****************************************//

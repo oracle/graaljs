@@ -256,7 +256,7 @@ public final class GraalJSEvaluator implements JSParser {
     @Override
     public Object parseJSON(JSContext context, String jsonString) {
         CompilerAsserts.neverPartOfCompilation();
-        return GraalJSParserHelper.parseJSON(jsonString, context);
+        return GraalJSParserHelper.parseJSONNashorn(jsonString, context);
     }
 
     // JSParser methods below
