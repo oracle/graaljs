@@ -765,7 +765,15 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
                 DefinePropertyUtil.reject(doThrow, ARRAY_LENGTH_NOT_WRITABLE);
             }
         }
-        return JSObject.defineOwnProperty(makeSlowArray(thisObj), name, descriptor, doThrow);
+        boolean wasNotExtensible = !JSShape.isExtensible(thisObj.getShape());
+        boolean success = JSObject.defineOwnProperty(makeSlowArray(thisObj), name, descriptor, doThrow);
+        if (wasNotExtensible && JSShape.isExtensible(thisObj.getShape())) {
+            // not-extensible marker property is expected to be the last property; ensure it is.
+            thisObj.delete(JSShape.NOT_EXTENSIBLE_KEY);
+            preventExtensions(thisObj, false);
+            assert !JSObject.isExtensible(thisObj);
+        }
+        return success;
     }
 
     protected DynamicObject makeSlowArray(DynamicObject thisObj) {
