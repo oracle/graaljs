@@ -412,9 +412,6 @@
     "status" : "SKIP",
     "comment" : "type conversion for Interop suspicious"
   }, {
-    "filePath" : "basic/JDK-8066215.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "basic/JDK-8066226.js",
     "status" : "FAIL"
   }, {
