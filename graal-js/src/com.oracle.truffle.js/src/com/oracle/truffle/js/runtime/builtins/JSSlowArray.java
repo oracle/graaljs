@@ -52,6 +52,7 @@ import com.oracle.truffle.js.runtime.array.SparseArray;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 
@@ -141,12 +142,22 @@ public final class JSSlowArray extends JSAbstractArray {
         }
         ScriptArray arrayType = arrayGetArrayType(thisObj);
         if (arrayType.hasElement(thisObj, index) && !JSUserObject.INSTANCE.hasOwnProperty(thisObj, name)) {
-            // apply the default attributes to the property first
+            // replace with a regular property first
             JSContext context = JSObject.getJSContext(thisObj);
-            JSObjectUtil.putDataProperty(context, thisObj, name, get(thisObj, index), JSAttributes.getDefault());
-            if (arrayType.canDeleteElement(thisObj, index, false)) {
-                arraySetArrayType(thisObj, arrayType.deleteElement(thisObj, index, false));
+            boolean wasNotExtensible = !JSShape.isExtensible(thisObj.getShape());
+            if (wasNotExtensible) {
+                thisObj.delete(JSShape.NOT_EXTENSIBLE_KEY);
             }
+            JSObjectUtil.putDataProperty(context, thisObj, name, get(thisObj, index), JSAttributes.fromConfigurableEnumerableWritable(!arrayType.isSealed(), true, !arrayType.isFrozen()));
+            if (wasNotExtensible) {
+                // not-extensible marker property is expected to be the last property; ensure it is.
+                preventExtensions(thisObj, false);
+                assert !JSObject.isExtensible(thisObj);
+            }
+            // Using deleteElementImpl() instead of deleteElement() because the property
+            // should be removed even from sealed arrays (it is being replaced by
+            // by a regular data property defined above).
+            arraySetArrayType(thisObj, arrayType.deleteElementImpl(thisObj, index, false, false));
         }
 
         boolean succeeded = jsDefineProperty(thisObj, index, descriptor, false);
