@@ -58,7 +58,6 @@ import com.oracle.js.parser.ir.Scope;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.parser.internal.ir.debug.JSONWriter;
-import com.oracle.truffle.js.parser.json.JSONParser;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
@@ -228,18 +227,6 @@ public final class GraalJSParserHelper {
             }
         }
         throw Errors.createSyntaxError(((ErrorManager.StringBuilderErrorManager) errors).getOutput(), sourceLocation, isIncompleteSource);
-    }
-
-    // just in NashornCompat mode, for compatible error messages
-    public static Object parseJSONNashorn(String jsonString, JSContext context) throws ParserException {
-        assert context.isOptionNashornCompatibilityMode();
-        JSONParser jsonParser = new JSONParser(jsonString, context);
-        try {
-            return jsonParser.parse();
-        } catch (ParserException ex) {
-            String msg = ex.getMessage().replace("\r\n", "\n");
-            throw Errors.createSyntaxError("Invalid JSON: " + msg);
-        }
     }
 
     public static String parseToJSON(String code, String name, boolean includeLoc, JSParserOptions parserOptions) {
