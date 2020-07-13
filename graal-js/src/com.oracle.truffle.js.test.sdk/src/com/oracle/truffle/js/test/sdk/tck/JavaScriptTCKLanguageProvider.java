@@ -242,6 +242,11 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         ops.add(createPrefixOperator(context, "void", TypeDescriptor.NULL, ANY));
         // !
         ops.add(createPrefixOperator(context, "!", TypeDescriptor.BOOLEAN, ANY));
+
+        // a ? b : c
+        final Value conditional = eval(context, "(function (a,b,c) {return a ? b : c;})");
+        ops.add(Snippet.newBuilder("?:", conditional, TypeDescriptor.ANY).parameterTypes(TypeDescriptor.ANY, TypeDescriptor.ANY, TypeDescriptor.ANY).build());
+
         return Collections.unmodifiableList(ops);
     }
 
