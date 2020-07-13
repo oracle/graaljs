@@ -205,6 +205,8 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         ops.add(createBinaryOperator(context, "&&", ANY, ANY, ANY));
         // ||
         ops.add(createBinaryOperator(context, "||", ANY, ANY, ANY));
+        // ??
+        ops.add(createBinaryOperator(context, "??", ANY, ANY, ANY));
         // ==
         ops.add(createBinaryOperator(context, "==", TypeDescriptor.BOOLEAN, ANY, ANY));
         // !=
