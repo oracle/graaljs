@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -1147,6 +1148,39 @@ public final class JSRuntime {
         }
         sb.append(']');
         return sb.toString();
+    }
+
+    @TruffleBoundary
+    public static String javaArrayToString(Object array) {
+        return javaArrayToString(array, TO_STRING_MAX_DEPTH, true);
+    }
+
+    private static String javaArrayToString(Object javaArray, int depth, boolean allowSideEffects) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (javaArray == null) {
+            return "null";
+        }
+        if (depth <= 0) {
+            return "[...]";
+        }
+        int size = Array.getLength(javaArray) - 1;
+        if (size == -1) {
+            return "[]";
+        }
+        StringBuilder b = new StringBuilder();
+        b.append('[');
+        for (int i = 0;; i++) {
+            Object arrayValue = Array.get(javaArray, i);
+            if (JSGuards.isJavaArray(arrayValue)) {
+                b.append(javaArrayToString(arrayValue, depth - 1, allowSideEffects));
+            } else {
+                b.append(safeToString(arrayValue, depth, javaArray));
+            }
+            if (i == size) {
+                return b.append(']').toString();
+            }
+            b.append(", ");
+        }
     }
 
     private static String foreignObjectToString(Object truffleObject, int depth, boolean allowSideEffects) throws InteropException {

@@ -45,6 +45,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.io.ByteArrayOutputStream;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
@@ -59,6 +60,7 @@ import org.graalvm.polyglot.proxy.ProxyArray;
 import org.junit.Test;
 
 import com.oracle.truffle.js.test.JSTest;
+import com.oracle.truffle.js.test.polyglot.ForeignTestMap;
 
 /**
  * Various tests for accessing JavaScript array in Java and accessing appropriate Java objects as
@@ -241,8 +243,26 @@ public class InteropArrayTest {
         }
 
         @HostAccess.Export
+        public Value methodThatReturnsArrayAsValue() {
+            return Value.asValue(JAVA_ARRAY);
+        }
+
+        @HostAccess.Export
         public List<Integer> methodThatReturnsList() {
             return JAVA_LIST;
+        }
+
+        @HostAccess.Export
+        public Object createForeignMap() {
+            final ForeignTestMap map = new ForeignTestMap();
+            map.getContainer().put("x", 42);
+            map.getContainer().put("y", "foo");
+            return map;
+        }
+
+        @HostAccess.Export
+        public Object[] methodThatReturnsArrayWithJSObject(Object jsObject) {
+            return new Object[]{41, jsObject, "string", createForeignMap()};
         }
     }
 
@@ -356,6 +376,30 @@ public class InteropArrayTest {
                             "recreatedArray.push(arrayFromJava[i]);" +
                             "recreatedArray");
             commonCheck(v);
+        }
+    }
+
+    /**
+     * Test that a Java array returned from a Java method is printed as a JavaScript array.
+     */
+    @Test
+    public void testPrintJavaArrayInJS() {
+        HostAccess accessWithArrays = HostAccess.newBuilder(HostAccess.EXPLICIT).allowArrayAccess(true).build();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(accessWithArrays).out(baos).err(baos).build()) {
+            context.getBindings(ID).putMember("javaArray", new ToBePassedToJS());
+            context.eval(ID, "var arrayFromJava = javaArray.methodThatReturnsArrayWithJSObject(" +
+                            "{foo: 'bar', number: 42, f: function() { return 'yes';}, array: [2, 4, 8]});" +
+                            "console.log(arrayFromJava);");
+            assertEquals("[41, {foo: \"bar\", number: 42, f: function() { return 'yes';}, array: [2, 4, 8]}, \"string\", {x: 42, y: \"foo\"}]", baos.toString().trim());
+            baos.reset();
+            context.eval(ID, "var arrayFromJava = javaArray.methodThatReturnsArray();" +
+                            "console.log(arrayFromJava);");
+            assertEquals("[3, 4, 1, 5]", baos.toString().trim());
+            baos.reset();
+            context.eval(ID, "var arrayFromJavaAsValue = javaArray.methodThatReturnsArrayAsValue();" +
+                            "console.log(arrayFromJavaAsValue);");
+            assertEquals("[3, 4, 1, 5]", baos.toString().trim());
         }
     }
 
