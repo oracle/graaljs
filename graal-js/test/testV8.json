@@ -841,10 +841,6 @@
     "filePath" : "mjsunit/number-tostring-big-integer.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/object-prevent-extensions.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
     "filePath" : "mjsunit/object-seal.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
@@ -1329,10 +1325,6 @@
     "filePath" : "mjsunit/regress/regress-961709-classes.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-966460.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/regress/regress-982702.js",
     "ecmaVersion" : {
