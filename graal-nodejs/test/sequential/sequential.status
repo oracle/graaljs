@@ -30,7 +30,7 @@ test-worker-prof: FAIL
 
 [$system==solaris]
 
-# runs out of memory
+# Needs too many system resources (starts 80 child processes)
 test-child-process-pass-fd: SKIP
 
 [$system==macos]
@@ -42,6 +42,9 @@ test-timers-blocking-callback: SKIP
 
 # Triggers stack-overflow that may not be handled well
 test-fs-stat-sync-overflow: SKIP
+
+# Needs too many system resources (starts 80 child processes)
+test-child-process-pass-fd: SKIP
 
 ### Graal-specific end ###
 
