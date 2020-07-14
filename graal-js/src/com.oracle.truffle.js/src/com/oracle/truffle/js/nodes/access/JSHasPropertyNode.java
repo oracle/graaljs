@@ -174,8 +174,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
                     @Cached("create()") ForeignObjectPrototypeNode foreignObjectPrototypeNode,
                     @Cached("create()") JSHasPropertyNode hasInPrototype,
                     @CachedLanguage LanguageReference<JavaScriptLanguage> languageRef) {
-        if (!interop.isNull(object) && ((interop.hasMembers(object) && !interop.isBoolean(object) && !interop.isString(object) && !interop.isNumber(object)) || interop.hasArrayElements(object) ||
-                        (interop.isExecutable(object) && languageRef.get().getJSContext().getContextOptions().hasForeignObjectPrototype()))) {
+        if (isForeignValueOfTypeObject(object, interop)) {
             if (propertyName instanceof Number && interop.hasArrayElements(object)) {
                 long index = JSRuntime.longValue((Number) propertyName);
                 return index >= 0 && index < JSInteropUtil.getArraySize(object, interop, this);
@@ -192,6 +191,20 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
             }
         } else {
             throw Errors.createTypeErrorNotAnObject(object, this);
+        }
+    }
+
+    private static boolean isForeignValueOfTypeObject(Object object, InteropLibrary interop) {
+        if (interop.isNull(object)) {
+            return false;
+        } else if (interop.hasMembers(object) && !interop.isBoolean(object) && !interop.isString(object) && !interop.isNumber(object)) {
+            return true;
+        } else if (interop.hasArrayElements(object)) {
+            return true;
+        } else if (interop.isExecutable(object)) {
+            return true;
+        } else {
+            return false;
         }
     }
 

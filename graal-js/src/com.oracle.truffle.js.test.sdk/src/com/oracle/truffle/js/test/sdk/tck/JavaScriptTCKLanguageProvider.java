@@ -208,7 +208,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         // in
         ops.add(createBinaryOperator(context, "in", TypeDescriptor.BOOLEAN,
                         ANY,
-                        TypeDescriptor.union(TypeDescriptor.OBJECT, TypeDescriptor.ARRAY)));
+                        TypeDescriptor.union(TypeDescriptor.OBJECT, TypeDescriptor.ARRAY, TypeDescriptor.EXECUTABLE_ANY)));
         // instanceof
         ops.add(createBinaryOperator(context, "instanceof", TypeDescriptor.BOOLEAN, ANY, TypeDescriptor.META_OBJECT));
 
