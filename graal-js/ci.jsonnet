@@ -60,6 +60,17 @@ local common = import '../common.jsonnet';
     timelimit: '30:00',
   },
 
+  local nativeImageGraalTip = graalTip + {
+    local baseNativeImageCmd = ['mx', '--dynamicimports', '/substratevm', '--native-images=js'],
+    run+: [
+      ['git', 'clone', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/graalvm/js-benchmarks.git'], '../../js-benchmarks'],
+      baseNativeImageCmd + ['build'],
+      ['set-export', 'GRAALVM_HOME', baseNativeImageCmd + ['graalvm-home']],
+      ['${GRAALVM_HOME}/bin/js', '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'],
+      ['${GRAALVM_HOME}/bin/js', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
+    ],
+  },
+
   local benchmarkGraalTip = graalTip + {
     run+: [
       ['mx', '--dynamicimports', '/compiler', 'build', '--force-javac'],
@@ -100,6 +111,7 @@ local common = import '../common.jsonnet';
     graalJs + common.jdk8 + common.gate   + common.linux + gateGraalTip          + {environment+: {GATE_TAGS: 'shareengine'}}        + {name: 'js-gate-shareengine-graal-tip-jdk8-linux-amd64'},
     graalJs + common.jdk8 + common.gate   + common.linux + gateGraalTip          + {environment+: {GATE_TAGS: 'latestesversion'}}    + {name: 'js-gate-latestesversion-graal-tip-jdk8-linux-amd64'},
     graalJs + common.jdk8 + common.gate   + common.linux + gateGraalImport       + {environment+: {GATE_TAGS: 'tck,build'}}          + {name: 'js-gate-tck-build-graal-import-jdk8-linux-amd64'},
+    graalJs + common.jdk8 + common.gate   + common.linux + nativeImageGraalTip                                                       + {name: 'js-gate-native-image-graal-tip-jdk8-linux-amd64'},
 
     // jdk 8 - coverage
     graalJs + common.jdk8 + common.weekly + common.linux + gateCoverage          + {environment+: {GATE_TAGS: 'build,default,tck'}}  + {name: 'js-coverage-jdk8-linux-amd64'},
