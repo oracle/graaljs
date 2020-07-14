@@ -339,6 +339,8 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return "[object Array]";
             } else if (interop.isExecutable(thisObj) || interop.isInstantiable(thisObj)) {
                 return "[object Function]";
+            } else if (interop.isInstant(thisObj)) {
+                return "[object Date]";
             } else {
                 return "[object Object]";
             }
