@@ -90,9 +90,6 @@ public final class JSConfig {
     public static final int DictionaryObjectTransitionThreshold = 1024;
     public static final boolean MergeShapes = true;
 
-    // JSON options
-    public static final boolean TruffleJSONParser = true;
-
     // LazyString options
     public static final boolean LazyStrings = true;
     public static final int MinLazyStringLength = 20;

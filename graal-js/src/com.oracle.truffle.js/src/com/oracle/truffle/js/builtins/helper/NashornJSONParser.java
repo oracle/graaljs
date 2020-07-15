@@ -39,7 +39,7 @@
  * SOFTWARE.
  */
 
-package com.oracle.truffle.js.parser.json;
+package com.oracle.truffle.js.builtins.helper;
 
 import static com.oracle.js.parser.TokenType.STRING;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayType;
@@ -49,7 +49,6 @@ import com.oracle.js.parser.ECMAErrors;
 import com.oracle.js.parser.ErrorManager;
 import com.oracle.js.parser.JSErrorType;
 import com.oracle.js.parser.JSType;
-import com.oracle.js.parser.Lexer;
 import com.oracle.js.parser.ParserException;
 import com.oracle.js.parser.Source;
 import com.oracle.js.parser.Token;
@@ -69,7 +68,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
  *
  * See: 15.12.1.2 The JSON Syntactic Grammar
  */
-public class JSONParser {
+public class NashornJSONParser {
 
     private final String source;
     private final JSContext context;
@@ -92,50 +91,10 @@ public class JSONParser {
      * @param source the source
      * @param context the global object
      */
-    public JSONParser(final String source, final JSContext context) {
+    public NashornJSONParser(final String source, final JSContext context) {
         this.source = source;
         this.context = context;
         this.length = source.length();
-    }
-
-    /**
-     * Implementation of the Quote(value) operation as defined in the ECMAscript spec. It wraps a
-     * String value in double quotes and escapes characters within.
-     *
-     * @param value string to quote
-     *
-     * @return quoted and escaped string
-     */
-    public static String quote(final String value) {
-        final StringBuilder product = new StringBuilder();
-        product.append("\"");
-        for (final char ch : value.toCharArray()) {
-            if (ch < ' ') {
-                if (ch == '\b') {
-                    product.append("\\b");
-                } else if (ch == '\f') {
-                    product.append("\\f");
-                } else if (ch == '\n') {
-                    product.append("\\n");
-                } else if (ch == '\r') {
-                    product.append("\\r");
-                } else if (ch == '\t') {
-                    product.append("\\t");
-                } else {
-                    product.append(Lexer.unicodeEscape(ch));
-                }
-            } else {
-                if (ch == '\\') {
-                    product.append("\\\\");
-                } else if (ch == '"') {
-                    product.append("\\\"");
-                } else {
-                    product.append(ch);
-                }
-            }
-        }
-        product.append("\"");
-        return product.toString();
     }
 
     /**

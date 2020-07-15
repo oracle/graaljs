@@ -74,8 +74,6 @@ public interface Evaluator {
      */
     Object evaluate(JSRealm realm, Node lastNode, Source source, MaterializedFrame frame, Object thisObj, Object currEnv);
 
-    Object parseJSON(JSContext context, String jsonString);
-
     Integer[] parseDate(JSRealm realm, String date);
 
     String parseToJSON(JSContext context, String code, String name, boolean includeLoc);

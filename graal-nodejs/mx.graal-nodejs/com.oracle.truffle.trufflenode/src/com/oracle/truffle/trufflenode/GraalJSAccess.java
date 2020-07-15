@@ -135,6 +135,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.builtins.JSONBuiltins;
+import com.oracle.truffle.js.builtins.helper.TruffleJSONParser;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
@@ -3080,7 +3081,8 @@ public final class GraalJSAccess {
     }
 
     public Object jsonParse(Object context, Object string) {
-        return GraalJSParserHelper.parseJSON((String) string, ((JSRealm) context).getContext());
+        TruffleJSONParser parser = new TruffleJSONParser(((JSRealm) context).getContext());
+        return parser.parse((String) string);
     }
 
     public String jsonStringify(Object context, Object object, String gap) {

@@ -57,9 +57,7 @@ import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.js.parser.ir.Scope;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.js.builtins.helper.TruffleJSONParser;
 import com.oracle.truffle.js.parser.internal.ir.debug.JSONWriter;
-import com.oracle.truffle.js.parser.json.JSONParser;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
@@ -229,15 +227,6 @@ public final class GraalJSParserHelper {
             }
         }
         throw Errors.createSyntaxError(((ErrorManager.StringBuilderErrorManager) errors).getOutput(), sourceLocation, isIncompleteSource);
-    }
-
-    public static Object parseJSON(String jsonString, JSContext context) throws ParserException {
-        JSONParser jsonParser = new JSONParser(jsonString, context);
-        try {
-            return jsonParser.parse();
-        } catch (ParserException ex) {
-            throw TruffleJSONParser.createSyntaxError(ex, context);
-        }
     }
 
     public static String parseToJSON(String code, String name, boolean includeLoc, JSParserOptions parserOptions) {

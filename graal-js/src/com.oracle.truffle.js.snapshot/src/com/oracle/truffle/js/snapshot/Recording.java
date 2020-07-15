@@ -99,7 +99,7 @@ import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.parser.BinarySnapshotProvider;
 import com.oracle.truffle.js.parser.SnapshotProvider;
 import com.oracle.truffle.js.parser.env.Environment;
-import com.oracle.truffle.js.parser.json.JSONParser;
+import com.oracle.truffle.js.parser.json.JSONParserUtil;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -372,9 +372,9 @@ public class Recording {
             } else if (constant instanceof Long) {
                 stringified = String.valueOf(constant) + 'L';
             } else if (constant instanceof String) {
-                stringified = JSONParser.quote((String) constant);
+                stringified = JSONParserUtil.quote((String) constant);
             } else if (constant instanceof BigInt) {
-                stringified = typeName(BigInt.class) + ".valueOf(" + JSONParser.quote(constant.toString()) + ")";
+                stringified = typeName(BigInt.class) + ".valueOf(" + JSONParserUtil.quote(constant.toString()) + ")";
             } else if (constant.getClass().isEnum()) {
                 stringified = typeName(constant.getClass()) + "." + constant;
             } else if (constant == Dead.instance()) {
@@ -700,7 +700,7 @@ public class Recording {
         @Override
         public String rhs() {
             return String.format("%s.create(%s, null, null, null, %d, %s, %d)", typeName(JSFunctionData.class), context, functionData.getLength(),
-                            JSONParser.quote(functionData.getName()), functionData.getFlags());
+                            JSONParserUtil.quote(functionData.getName()), functionData.getFlags());
         }
 
         @Override
@@ -797,7 +797,7 @@ public class Recording {
 
         @Override
         public String toString() {
-            return node + ".setName(" + JSONParser.quote(name) + ")";
+            return node + ".setName(" + JSONParserUtil.quote(name) + ")";
         }
 
         @Override

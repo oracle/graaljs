@@ -40,6 +40,10 @@
  */
 package com.oracle.truffle.js.parser;
 
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_MIME_TYPE;
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
+import static com.oracle.truffle.js.runtime.JSConfig.ECMAScript2021;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -58,7 +62,6 @@ import com.oracle.js.parser.ir.Expression;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ExportEntry;
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -114,10 +117,6 @@ import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
-
-import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_MIME_TYPE;
-import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
-import static com.oracle.truffle.js.runtime.JSConfig.ECMAScript2021;
 
 /**
  * This is the main external entry into the GraalJS parser.
@@ -251,12 +250,6 @@ public final class GraalJSEvaluator implements JSParser {
         } catch (com.oracle.js.parser.ParserException e) {
             throw Errors.createSyntaxError(e.getMessage());
         }
-    }
-
-    @Override
-    public Object parseJSON(JSContext context, String jsonString) {
-        CompilerAsserts.neverPartOfCompilation();
-        return GraalJSParserHelper.parseJSON(jsonString, context);
     }
 
     // JSParser methods below

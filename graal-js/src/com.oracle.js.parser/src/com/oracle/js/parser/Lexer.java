@@ -148,20 +148,6 @@ public class Lexer extends Scanner {
 
     private static final int JAVASCRIPT_WHITESPACE_HIGH_START = JAVASCRIPT_WHITESPACE_HIGH.charAt(0);
 
-    public static String unicodeEscape(final char ch) {
-        final StringBuilder sb = new StringBuilder();
-
-        sb.append("\\u");
-
-        final String hex = Integer.toHexString(ch);
-        for (int i = hex.length(); i < 4; i++) {
-            sb.append('0');
-        }
-        sb.append(hex);
-
-        return sb.toString();
-    }
-
     /**
      * Constructor
      *

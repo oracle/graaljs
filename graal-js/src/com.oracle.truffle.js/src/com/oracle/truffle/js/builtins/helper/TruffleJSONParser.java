@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.builtins.helper;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.js.parser.ParserException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -99,7 +99,7 @@ public class TruffleJSONParser {
     }
 
     private String unexpectedEndOfInputMessage() {
-        return context.isOptionV8CompatibilityMode() ? "Unexpected end of JSON input" : "Unexpected end of input";
+        return context.isOptionNashornCompatibilityMode() ? "Unexpected end of input" : "Unexpected end of JSON input";
     }
 
     private Object parseJSONText() {
@@ -121,7 +121,7 @@ public class TruffleJSONParser {
         } else if (isObject(c)) {
             return parseJSONObject();
         }
-        return error("cannot parse JSONValue");
+        return unexpectedToken();
     }
 
     protected static boolean isNumber(char cur) {
@@ -148,7 +148,11 @@ public class TruffleJSONParser {
         if (get() != '}') {
             parseJSONMemberList(object);
             if (get() != '}') {
-                error("closing quote } expected");
+                if (get() == '"') {
+                    unexpectedString();
+                } else {
+                    unexpectedToken();
+                }
             }
         }
         read('}');
@@ -223,7 +227,11 @@ public class TruffleJSONParser {
 
     protected String parseJSONString() {
         if (!isStringQuote(get())) {
-            error("String quote expected");
+            if (isDigit(get())) {
+                unexpectedNumber();
+            } else {
+                unexpectedToken();
+            }
         }
         pos++; // don't skip whitespace here
         String str = parseJSONStringCharacters();
@@ -236,6 +244,10 @@ public class TruffleJSONParser {
 
     protected static boolean isStringQuote(char c) {
         return c == '"';
+    }
+
+    protected static boolean isDigit(char c) {
+        return '0' <= c && c <= '9';
     }
 
     protected String parseJSONStringCharacters() {
@@ -478,18 +490,34 @@ public class TruffleJSONParser {
     }
 
     protected Object error(String message) {
-        context.getEvaluator().parseJSON(context, parseStr);
-        // TruffleJSONParser expects an error, but the string got parsed
-        // without a problem using context.getEvaluator().parseJSON().
-        // So, there is a problem in the former or the latter parser.
-        throw Errors.createError("Internal error: " + message);
+        if (context.isOptionNashornCompatibilityMode()) {
+            // use the Nashorn parser to get the proper error
+            NashornJSONParser parser = new NashornJSONParser(parseStr, context);
+            try {
+                parser.parse(); // should throw
+            } catch (ParserException ex) {
+                String msg = ex.getMessage().replace("\r\n", "\n");
+                throw Errors.createSyntaxError("Invalid JSON: " + msg);
+            }
+            throw Errors.shouldNotReachHere("JSON parser did not throw error as expected");
+        } else {
+            throw Errors.createSyntaxError(message);
+        }
     }
 
-    @TruffleBoundary
-    public static RuntimeException createSyntaxError(Exception ex, JSContext context) {
-        String msg = ex.getMessage().replace("\r\n", "\n");
-        throw context.isOptionNashornCompatibilityMode() ? Errors.createSyntaxError("Invalid JSON: " + msg)
-                        : Errors.createSyntaxError(msg);
+    private Object unexpectedToken() {
+        error("Unexpected token " + get() + " in JSON at position " + pos);
+        return null;
+    }
+
+    private Object unexpectedString() {
+        error("Unexpected string in JSON at position " + pos);
+        return null;
+    }
+
+    private Object unexpectedNumber() {
+        error("Unexpected number in JSON at position " + pos);
+        return null;
     }
 
     // ************************* Helper Functions ****************************************//
