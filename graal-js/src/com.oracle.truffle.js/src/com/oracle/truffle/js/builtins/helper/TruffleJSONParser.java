@@ -78,7 +78,7 @@ public class TruffleJSONParser {
         this.len = parseStr.length();
         try {
             skipWhitespace();
-            Object result = parseJSONText();
+            Object result = parseJSONValue();
             skipWhitespace();
             if (posValid()) {
                 throw Errors.createSyntaxError("JSON cannot be fully parsed");
@@ -102,24 +102,21 @@ public class TruffleJSONParser {
         return context.isOptionNashornCompatibilityMode() ? "Unexpected end of input" : "Unexpected end of JSON input";
     }
 
-    private Object parseJSONText() {
-        return parseJSONValue();
-    }
-
     protected Object parseJSONValue() {
         char c = get();
-        if (c == 'n' && isNullLiteral()) {
+
+        if (isStringQuote(c)) {
+            return parseJSONString();
+        } else if (isObjectStart(c)) {
+            return parseJSONObject();
+        } else if (isArrayStart(c)) {
+            return parseJSONArray();
+        } else if (isNullLiteral(c)) {
             return parseNullLiteral();
-        } else if ((c == 't' || c == 'f') && isBooleanLiteral()) {
+        } else if (isBooleanLiteral(c)) {
             return parseBooleanLiteral();
         } else if (isNumber(c)) {
             return parseJSONNumber();
-        } else if (isString(c)) {
-            return parseJSONString();
-        } else if (isArray(c)) {
-            return parseJSONArray();
-        } else if (isObject(c)) {
-            return parseJSONObject();
         }
         return unexpectedToken();
     }
@@ -128,22 +125,19 @@ public class TruffleJSONParser {
         return cur == '-' || JSRuntime.isAsciiDigit(cur);
     }
 
-    protected static boolean isString(char c) {
-        return isStringQuote(c);
-    }
-
-    protected static boolean isObject(char c) {
+    protected static boolean isObjectStart(char c) {
         return c == '{';
     }
 
-    protected static boolean isArray(char c) {
+    protected static boolean isArrayStart(char c) {
         return c == '[';
     }
 
     private Object parseJSONObject() {
-        assert isObject(get());
+        assert isObjectStart(get());
         incDepth();
-        read(); // parseJSONValue ensures this char is a "{"
+        skipChar('{');
+        skipWhitespace();
         DynamicObject object = JSUserObject.create(context);
         if (get() != '}') {
             parseJSONMemberList(object);
@@ -155,7 +149,8 @@ public class TruffleJSONParser {
                 }
             }
         }
-        read('}');
+        skipChar('}');
+        skipWhitespace();
         decDepth();
         return object;
     }
@@ -164,7 +159,8 @@ public class TruffleJSONParser {
         Member member = parseJSONMember();
         JSRuntime.createDataProperty(object, member.getKey(), member.getValue());
         while (get() == ',') {
-            read();
+            skipChar(',');
+            skipWhitespace();
             member = parseJSONMember();
             JSRuntime.createDataProperty(object, member.getKey(), member.getValue());
         }
@@ -172,15 +168,17 @@ public class TruffleJSONParser {
 
     private Member parseJSONMember() {
         String jsonString = parseJSONString();
-        read(':');
+        expectChar(':');
+        skipWhitespace();
         Object jsonValue = parseJSONValue();
         return new Member(jsonString, jsonValue);
     }
 
     private Object parseJSONArray() {
-        assert isArray(get());
+        assert isArrayStart(get());
         incDepth();
-        read(); // parseJSONValue ensures this is a "["
+        skipChar('[');
+        skipWhitespace();
         DynamicObject array = JSArray.createEmptyZeroLength(context);
         if (get() != ']') {
             parseJSONElementList(array);
@@ -188,7 +186,8 @@ public class TruffleJSONParser {
                 error("closing quote ] expected");
             }
         }
-        read(']');
+        skipChar(']');
+        skipWhitespace();
         decDepth();
         return array;
     }
@@ -217,7 +216,8 @@ public class TruffleJSONParser {
         ScriptArray scriptArray = JSAbstractArray.arrayGetArrayType(arrayObject);
         scriptArray = scriptArray.setElement(arrayObject, index, parseJSONValue(), false);
         while (get() == ',') {
-            read();
+            skipChar(',');
+            skipWhitespace();
             index++;
             scriptArray = scriptArray.setElement(arrayObject, index, parseJSONValue(), false);
         }
@@ -233,12 +233,13 @@ public class TruffleJSONParser {
                 unexpectedToken();
             }
         }
-        pos++; // don't skip whitespace here
+        skipChar('"');
         String str = parseJSONStringCharacters();
         if (!isStringQuote(get())) {
             error("String quote expected");
         }
-        read();
+        skipChar('"');
+        skipWhitespace();
         return str;
     }
 
@@ -253,80 +254,79 @@ public class TruffleJSONParser {
     protected String parseJSONStringCharacters() {
         int startPos = pos;
         boolean hasEscapes = false;
-        boolean curIsEscaped = false;
+        int firstEscape = -1;
         char c = get();
-        while (c != '\"' || curIsEscaped) {
+        while (!isStringQuote(c)) {
             if (c < ' ') {
                 error("invalid string");
             } else if (c == '\\') {
+                if (!hasEscapes) {
+                    firstEscape = pos;
+                }
                 hasEscapes = true;
-                curIsEscaped = !curIsEscaped;
-            } else {
-                curIsEscaped = false;
+                skipChar('\\');
             }
-            pos++; // don't skip whitespace here
+            skipChar();
             c = get();
         }
         String s = parseStr.substring(startPos, pos);
         if (hasEscapes) {
-            return unquoteJSON(s);
+            return unquoteJSON(s, firstEscape - startPos);
         } else {
             return s;
         }
     }
 
-    protected String unquoteJSON(String string) {
-        int posBackslash = string.indexOf('\\');
-        if (posBackslash >= 0) {
-            int curPos = 0;
-            StringBuilder builder = new StringBuilder(string.length());
-            while (posBackslash >= 0) {
-                builder.append(string, curPos, posBackslash);
-                curPos = posBackslash;
-                char c = string.charAt(posBackslash + 1);
-                switch (c) {
-                    case '"':
-                        builder.append('"');
-                        break;
-                    case '\\':
-                        builder.append('\\');
-                        break;
-                    case 'b':
-                        builder.append('\b');
-                        break;
-                    case 'f':
-                        builder.append('\f');
-                        break;
-                    case 'n':
-                        builder.append('\n');
-                        break;
-                    case 'r':
-                        builder.append('\r');
-                        break;
-                    case 't':
-                        builder.append('\t');
-                        break;
-                    case '/':
-                        builder.append('/');
-                        break;
-                    case 'u':
-                        unquoteJSONUnicode(string, posBackslash, builder);
-                        curPos += 4; // 6 chars for this escape, 2 are added below
-                        break;
-                    default:
-                        error("wrong escape sequence");
-                        break;
-                }
-                curPos += 2; // valid for all escapes
-                posBackslash = string.indexOf('\\', curPos);
+    protected String unquoteJSON(String string, int posFirstBackslash) {
+        assert posFirstBackslash >= 0; // guaranteed by caller
+        int posBackslash = posFirstBackslash;
+
+        int curPos = 0;
+        StringBuilder builder = new StringBuilder(string.length());
+        while (posBackslash >= 0) {
+            builder.append(string, curPos, posBackslash);
+            curPos = posBackslash;
+            char c = string.charAt(posBackslash + 1);
+            switch (c) {
+                case '"':
+                    builder.append('"');
+                    break;
+                case '\\':
+                    builder.append('\\');
+                    break;
+                case 'b':
+                    builder.append('\b');
+                    break;
+                case 'f':
+                    builder.append('\f');
+                    break;
+                case 'n':
+                    builder.append('\n');
+                    break;
+                case 'r':
+                    builder.append('\r');
+                    break;
+                case 't':
+                    builder.append('\t');
+                    break;
+                case '/':
+                    builder.append('/');
+                    break;
+                case 'u':
+                    unquoteJSONUnicode(string, posBackslash, builder);
+                    curPos += 4; // 6 chars for this escape, 2 are added below
+                    break;
+                default:
+                    error("wrong escape sequence");
+                    break;
             }
-            if (curPos < string.length()) {
-                builder.append(string, curPos, string.length());
-            }
-            return builder.toString();
-        } else {
-            return string;
+            curPos += 2; // valid for all escapes
+            posBackslash = string.indexOf('\\', curPos);
         }
+        if (curPos < string.length()) {
+            builder.append(string, curPos, string.length());
+        }
+        return builder.toString();
     }
 
     protected int hexDigitValue(char c) {
@@ -350,7 +350,7 @@ public class TruffleJSONParser {
     protected Number parseJSONNumber() {
         int sign = 1;
         if (get() == '-') {
-            read();
+            skipChar();
             sign = -1;
         }
         if (!posValid()) {
@@ -369,14 +369,14 @@ public class TruffleJSONParser {
             } else if (pos == startPos && c == '0') {
                 firstPosIsZero = true;
             }
-            pos++; // don't skip whitespace
+            skipChar();
             if (!posValid()) {
                 break;
             }
             c = get(pos); // don't use cache here
         }
         if (pos == startPos) {
-            error("Expected number but found ident");
+            unexpectedToken();
         } else if (firstPosIsZero) {
             // "0" should be parsable, but "08" not
             if ((startPos + 1) < len) {
@@ -393,7 +393,7 @@ public class TruffleJSONParser {
         boolean hasExponent = false;
         if (posValid() && isExponentPart()) {
             hasExponent = true;
-            pos++; // reads the "E" without skipping whitespace
+            skipChar();
             readDigits();
         }
         final int endPos = pos;
@@ -431,10 +431,10 @@ public class TruffleJSONParser {
         int sign = 1;
         char cur = get();
         if (cur == '-') {
-            read();
+            skipChar('-');
             sign = -1;
         } else if (cur == '+') {
-            read();
+            skipChar('+');
             sign = 1;
         }
         if (!posValid()) {
@@ -443,7 +443,7 @@ public class TruffleJSONParser {
         cur = get();
         int startPos = pos;
         while (JSRuntime.isAsciiDigit(cur)) {
-            pos++; // don't skip whitespace
+            skipChar();
             if (!posValid()) {
                 break;
             }
@@ -459,27 +459,27 @@ public class TruffleJSONParser {
         return get() == 'e' || get() == 'E';
     }
 
-    protected boolean isNullLiteral() {
-        return isLiteral(NullLiteral);
+    protected boolean isNullLiteral(char c) {
+        return c == 'n' && isLiteral(NullLiteral, 1);
     }
 
     protected Object parseNullLiteral() {
-        assert isNullLiteral();
-        read("null");
+        assert isNullLiteral(get());
+        skipString("null");
         return Null.instance;
     }
 
-    protected boolean isBooleanLiteral() {
-        return isLiteral(BooleanTrueLiteral) || isLiteral(BooleanFalseLiteral);
+    protected boolean isBooleanLiteral(char c) {
+        return (c == 't' && isLiteral(BooleanTrueLiteral, 1)) || (c == 'f' && isLiteral(BooleanFalseLiteral, 1));
     }
 
     protected Object parseBooleanLiteral() {
-        assert isBooleanLiteral();
+        assert isBooleanLiteral(get());
         if (get() == 't') {
-            read("true");
+            skipString("true");
             return true;
         } else if (get() == 'f') {
-            read("false");
+            skipString("false");
             return false;
         }
         return error("cannot parse JSONBooleanLiteral");
@@ -530,25 +530,30 @@ public class TruffleJSONParser {
         return parseStr.charAt(posParam);
     }
 
-    protected void read() {
-        assert len > pos;
-        pos++;
-        skipWhitespace();
-    }
-
-    protected void read(String expected) {
+    // needs to be checked by the caller already that the content matches!
+    protected void skipString(String expected) {
         assert len >= pos + expected.length();
         assert parseStr.substring(pos, pos + expected.length()).equals(expected);
         pos += expected.length();
         skipWhitespace();
     }
 
-    protected void read(char expected) {
+    protected void expectChar(char expected) {
         if (get(pos) != expected) {
             error(expected + " expected");
         }
+        skipChar(expected);
+    }
+
+    protected void skipChar() {
+        assert posValid();
         pos++;
-        skipWhitespace();
+    }
+
+    // needs to be checked by the caller already that the content matches!
+    protected void skipChar(char expected) {
+        assert get(pos) == expected;
+        skipChar();
     }
 
     protected void skipWhitespace() {
@@ -562,14 +567,14 @@ public class TruffleJSONParser {
     }
 
     protected boolean isLiteral(char[] literal) {
+        return isLiteral(literal, 0);
+    }
+
+    protected boolean isLiteral(char[] literal, int startPos) {
         if (len < pos + literal.length) {
             return false;
         }
-        // fastpath for the cached current character
-        if (get() != literal[0]) {
-            return false;
-        }
-        for (int i = 1; i < literal.length; i++) {
+        for (int i = startPos; i < literal.length; i++) {
             if (get(pos + i) != literal[i]) {
                 return false;
             }
