@@ -1456,6 +1456,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         @Child protected JSFunctionCallNode callOnPrototypeNode;
         @Child protected PropertyGetNode getFunctionNode;
         @CompilationFinal private LanguageReference<JavaScriptLanguage> languageRef;
+        private final BranchProfile errorBranch = BranchProfile.create();
+        @CompilationFinal private boolean optimistic = true;
 
         ForeignInvokeNode(String functionName, int expectedArgumentCount) {
             super(expectedArgumentCount);
@@ -1473,35 +1475,60 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
              */
             if (JSGuards.isForeignObject(receiver)) {
                 assert JSArguments.getFunctionObject(arguments) == receiver;
-                try {
-                    callReturn = interop.invokeMember(receiver, functionName, callArguments);
-                } catch (UnknownIdentifierException | UnsupportedMessageException uiex) {
-                    JSContext context = getContext();
-                    if (context.getContextOptions().hasForeignObjectPrototype()) {
-                        if (foreignObjectPrototypeNode == null || getFunctionNode == null || callOnPrototypeNode == null) {
+                if (optimistic) {
+                    try {
+                        callReturn = interop.invokeMember(receiver, functionName, callArguments);
+                    } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                        if (getContext().getContextOptions().hasForeignObjectPrototype()) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
-                            getFunctionNode = insert(PropertyGetNode.create(functionName, context));
-                            callOnPrototypeNode = insert(JSFunctionCallNode.createCall());
+                            optimistic = false;
+                            callReturn = maybeInvokeFromPrototype(arguments, receiver);
+                        } else {
+                            errorBranch.enter();
+                            throw Errors.createTypeErrorInteropException(receiver, e, "invokeMember", functionName, this);
                         }
-                        DynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(receiver);
-                        Object function = getFunctionNode.getValue(prototype);
-                        callReturn = callOnPrototypeNode.executeCall(JSArguments.create(receiver, function, JSArguments.extractUserArguments(arguments)));
-                    } else {
-                        throw Errors.createTypeErrorInteropException(receiver, uiex, "invokeMember", functionName, this);
+                    } catch (UnsupportedTypeException | ArityException e) {
+                        errorBranch.enter();
+                        throw Errors.createTypeErrorInteropException(receiver, e, "invokeMember", functionName, this);
                     }
-                } catch (UnsupportedTypeException | ArityException e) {
-                    throw Errors.createTypeErrorInteropException(receiver, e, "invokeMember", functionName, this);
+                } else {
+                    if (interop.isMemberInvocable(receiver, functionName)) {
+                        try {
+                            callReturn = interop.invokeMember(receiver, functionName, callArguments);
+                        } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
+                            errorBranch.enter();
+                            throw Errors.createTypeErrorInteropException(receiver, e, "invokeMember", functionName, this);
+                        }
+                    } else {
+                        callReturn = maybeInvokeFromPrototype(arguments, receiver);
+                    }
                 }
             } else {
                 Object function = getForeignFunction(arguments);
                 try {
                     callReturn = interop.execute(function, callArguments);
                 } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                    errorBranch.enter();
                     throw Errors.createTypeErrorInteropException(function, e, "execute", this);
                 }
             }
             return convertForeignReturn(callReturn);
+        }
+
+        private Object maybeInvokeFromPrototype(Object[] arguments, Object receiver) {
+            if (foreignObjectPrototypeNode == null || getFunctionNode == null || callOnPrototypeNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
+                getFunctionNode = insert(PropertyGetNode.create(functionName, getContext()));
+                callOnPrototypeNode = insert(JSFunctionCallNode.createCall());
+            }
+            DynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(receiver);
+            Object function = getFunctionNode.getValue(prototype);
+            if (function == Undefined.instance) {
+                errorBranch.enter();
+                throw Errors.createTypeErrorInteropException(receiver, UnknownIdentifierException.create(functionName), "invokeMember", functionName, this);
+            }
+            return callOnPrototypeNode.executeCall(JSArguments.create(receiver, function, JSArguments.extractUserArguments(arguments)));
         }
 
         private JSContext getContext() {

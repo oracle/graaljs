@@ -908,10 +908,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         private final boolean isLength;
         private final boolean isMethod;
         private final boolean isGlobal;
-        @CompilationFinal private boolean optimistic = true;
         private final JSContext context;
         @Child private InteropLibrary interop;
         @Child private InteropLibrary getterInterop;
+
+        private final BranchProfile errorBranch = BranchProfile.create();
+        @CompilationFinal private boolean optimistic = true;
 
         public ForeignPropertyGetNode(Object key, boolean isMethod, boolean isGlobal, JSContext context) {
             super(new ForeignLanguageCheckNode());
@@ -926,6 +928,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         private Object foreignGet(Object thisObj, PropertyGetNode root) {
             Object key = root.getKey();
             if (interop.isNull(thisObj)) {
+                errorBranch.enter();
                 throw Errors.createTypeErrorCannotGetProperty(context, key, thisObj, isMethod, this);
             }
             if (!(key instanceof String)) {
@@ -936,16 +939,10 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             if (optimistic) {
                 try {
                     foreignResult = interop.readMember(thisObj, stringKey);
-                } catch (UnknownIdentifierException e) {
+                } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     optimistic = false;
-                    if (context.isOptionNashornCompatibilityMode()) {
-                        foreignResult = tryInvokeGetter(thisObj, root);
-                    } else {
-                        return maybeGetFromPrototype(thisObj, key);
-                    }
-                } catch (UnsupportedMessageException e) {
-                    return maybeGetFromPrototype(thisObj, key);
+                    foreignResult = fallback(thisObj, key, root, e instanceof UnknownIdentifierException);
                 }
             } else {
                 if (interop.isMemberReadable(thisObj, stringKey)) {
@@ -954,13 +951,19 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                         return Undefined.instance;
                     }
-                } else if (context.isOptionNashornCompatibilityMode()) {
-                    foreignResult = tryInvokeGetter(thisObj, root);
                 } else {
-                    return maybeGetFromPrototype(thisObj, key);
+                    foreignResult = fallback(thisObj, key, root, true);
                 }
             }
             return importValueNode.executeWithTarget(foreignResult);
+        }
+
+        private Object fallback(Object thisObj, Object key, PropertyGetNode root, boolean mayHaveMembers) {
+            if (mayHaveMembers && context.isOptionNashornCompatibilityMode()) {
+                return tryInvokeGetter(thisObj, root);
+            } else {
+                return maybeGetFromPrototype(thisObj, key);
+            }
         }
 
         private Object maybeGetFromPrototype(Object thisObj, Object key) {
@@ -1008,10 +1011,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             }
             try {
                 return getterInterop.invokeMember(thisObj, getterKey, JSArguments.EMPTY_ARGUMENTS_ARRAY);
-            } catch (UnknownIdentifierException e) {
-                return null;
-            } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
-                return Undefined.instance;
+            } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
+                return null; // try the next fallback
             }
         }
 
@@ -1019,6 +1020,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             try {
                 return JSRuntime.longToIntOrDouble(interop.getArraySize(thisObj));
             } catch (UnsupportedMessageException e) {
+                errorBranch.enter();
                 throw Errors.createTypeErrorInteropException(thisObj, e, "getArraySize", this);
             }
         }
