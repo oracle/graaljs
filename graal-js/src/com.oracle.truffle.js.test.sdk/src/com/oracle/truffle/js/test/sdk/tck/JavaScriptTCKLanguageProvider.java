@@ -205,6 +205,16 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         ops.add(createBinaryOperator(context, "&&", ANY, ANY, ANY));
         // ||
         ops.add(createBinaryOperator(context, "||", ANY, ANY, ANY));
+        // ??
+        ops.add(createBinaryOperator(context, "??", ANY, ANY, ANY));
+        // ==
+        ops.add(createBinaryOperator(context, "==", TypeDescriptor.BOOLEAN, ANY, ANY));
+        // !=
+        ops.add(createBinaryOperator(context, "!=", TypeDescriptor.BOOLEAN, ANY, ANY));
+        // ===
+        ops.add(createBinaryOperator(context, "===", TypeDescriptor.BOOLEAN, ANY, ANY));
+        // !==
+        ops.add(createBinaryOperator(context, "!==", TypeDescriptor.BOOLEAN, ANY, ANY));
         // in
         ops.add(createBinaryOperator(context, "in", TypeDescriptor.BOOLEAN,
                         ANY,
@@ -228,6 +238,15 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         ops.add(createPostfixOperator(context, "--", TypeDescriptor.NUMBER, ANY));
         // typeof
         ops.add(createPrefixOperator(context, "typeof", TypeDescriptor.STRING, ANY));
+        // void
+        ops.add(createPrefixOperator(context, "void", TypeDescriptor.NULL, ANY));
+        // !
+        ops.add(createPrefixOperator(context, "!", TypeDescriptor.BOOLEAN, ANY));
+
+        // a ? b : c
+        final Value conditional = eval(context, "(function (a,b,c) {return a ? b : c;})");
+        ops.add(Snippet.newBuilder("?:", conditional, TypeDescriptor.ANY).parameterTypes(TypeDescriptor.ANY, TypeDescriptor.ANY, TypeDescriptor.ANY).build());
+
         return Collections.unmodifiableList(ops);
     }
 
