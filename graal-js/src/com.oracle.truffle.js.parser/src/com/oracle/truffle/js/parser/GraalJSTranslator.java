@@ -2193,7 +2193,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     public JavaScriptNode enterCallNode(CallNode callNode) {
         JavaScriptNode function = transform(callNode.getFunction());
         JavaScriptNode[] args = transformArgs(callNode.getArgs());
-        function = filterOptionalChainTarget(function, callNode.isOptional());
+        if (callNode.isOptionalChain()) {
+            function = filterOptionalChainTarget(function, callNode.isOptional());
+        }
         JavaScriptNode call;
         if (callNode.isEval() && args.length >= 1) {
             call = createCallEvalNode(function, args);
