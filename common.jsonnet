@@ -1,18 +1,15 @@
+local jdks = (import "common.json").jdks;
+
 {
-  local labsjdk8 = {name: 'oraclejdk', version: '8u251+08-jvmci-20.2-b02', platformspecific: true},
-
-  local labsjdk_ce_11 = {name : 'labsjdk', version : 'ce-11.0.7+10-jvmci-20.2-b02', platformspecific: true},
-
   jdk8: {
     downloads+: {
-      JAVA_HOME: labsjdk8,
-      JDT: {name: 'ecj', version: '4.14.0', platformspecific: false},
+      JAVA_HOME: jdks.oraclejdk8,
     },
   },
 
   jdk11: {
     downloads+: {
-      JAVA_HOME: labsjdk_ce_11,
+      JAVA_HOME: jdks["labsjdk-ce-11"],
     },
   },
 
@@ -106,5 +103,44 @@
     packages+: {
       msvc : '==10.0',
     },
+  },
+
+  local gateCmd = ['mx', '--strict-compliance', 'gate', '-B=--force-deprecation-as-warning', '--strict-mode', '--tags', '${TAGS}'],
+
+  eclipse : {
+    downloads+: {
+      ECLIPSE: {name: 'eclipse', version: '4.14.0', platformspecific: true},
+      JDT: {name: 'ecj', version: '4.14.0', platformspecific: false},
+    },
+    environment+: {
+      ECLIPSE_EXE: '$ECLIPSE/eclipse',
+    },
+  },
+
+  build : {
+    run+: [
+      ['mx', 'build', '--force-javac'],
+    ],
+  },
+
+  buildCompiler : {
+    run+: [
+      ['mx', '--dynamicimports', '/compiler', 'build', '--force-javac'],
+    ],
+  },
+
+  gateTags : self.build + {
+    run+: [
+      gateCmd,
+    ],
+    timelimit: '30:00',
+  },
+
+  gateStyleFullBuild : self.eclipse + {
+    run+: [
+      ['set-export', 'TAGS', 'style,fullbuild'],
+      gateCmd,
+    ],
+    timelimit: '30:00',
   },
 }
