@@ -66,7 +66,12 @@ public final class OptionalChainNode extends JavaScriptNode {
     }
 
     public static JavaScriptNode createTarget(JavaScriptNode chainNode) {
-        return new OptionalChainNode(chainNode, chainNode instanceof DeletePropertyNode ? Boolean.TRUE : Undefined.instance);
+        Object result = (chainNode instanceof DeletePropertyNode) ? Boolean.TRUE : Undefined.instance;
+        if (chainNode instanceof JSTargetableNode) {
+            return new OptionalTargetableNode((JSTargetableNode) chainNode, result);
+        } else {
+            return new OptionalChainNode(chainNode, result);
+        }
     }
 
     public static JavaScriptNode createShortCircuit(JavaScriptNode expressionNode) {
@@ -118,6 +123,58 @@ public final class OptionalChainNode extends JavaScriptNode {
 
     public JavaScriptNode getAccessNode() {
         return accessNode;
+    }
+
+    public static final class OptionalTargetableNode extends JSTargetableNode {
+        private static final Object SHORT_CIRCUIT_MARKER = new Object();
+        @Child private JSTargetableNode delegateNode;
+        private final Object result;
+
+        protected OptionalTargetableNode(JSTargetableNode delegateNode, Object result) {
+            this.delegateNode = delegateNode;
+            this.result = result;
+        }
+
+        @Override
+        public JavaScriptNode getTarget() {
+            return delegateNode.getTarget();
+        }
+
+        @Override
+        public Object evaluateTarget(VirtualFrame frame) {
+            try {
+                return delegateNode.evaluateTarget(frame);
+            } catch (ShortCircuitException ex) {
+                return SHORT_CIRCUIT_MARKER;
+            }
+        }
+
+        @Override
+        public Object executeWithTarget(VirtualFrame frame, Object target) {
+            if (target == SHORT_CIRCUIT_MARKER) {
+                return result;
+            }
+            return delegateNode.executeWithTarget(frame, target);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            try {
+                return delegateNode.execute(frame);
+            } catch (ShortCircuitException ex) {
+                return result;
+            }
+        }
+
+        @Override
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new OptionalTargetableNode(cloneUninitialized(delegateNode, materializedTags), result);
+        }
+
+        public JavaScriptNode getDelegateNode() {
+            return delegateNode;
+        }
+
     }
 
     /**

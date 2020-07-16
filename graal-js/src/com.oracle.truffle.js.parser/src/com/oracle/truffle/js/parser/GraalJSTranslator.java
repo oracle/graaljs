@@ -2162,7 +2162,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode filterOptionalChainTarget(JavaScriptNode target, boolean optional) {
-        JavaScriptNode innerAccess = target instanceof OptionalChainNode ? ((OptionalChainNode) target).getAccessNode() : target;
+        JavaScriptNode innerAccess;
+        if (target instanceof OptionalChainNode) {
+            innerAccess = ((OptionalChainNode) target).getAccessNode();
+        } else if (target instanceof OptionalChainNode.OptionalTargetableNode) {
+            innerAccess = ((OptionalChainNode.OptionalTargetableNode) target).getDelegateNode();
+        } else {
+            innerAccess = target;
+        }
         if (optional) {
             innerAccess = factory.createOptionalChainShortCircuit(innerAccess);
         }

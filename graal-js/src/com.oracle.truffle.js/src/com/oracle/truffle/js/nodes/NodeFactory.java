@@ -585,7 +585,7 @@ public class NodeFactory {
 
     public JavaScriptNode createFunctionCall(@SuppressWarnings("unused") JSContext context, JavaScriptNode expression, JavaScriptNode[] arguments) {
         if (expression instanceof PropertyNode || expression instanceof ReadElementNode || expression instanceof WithVarWrapperNode || expression instanceof PrivateFieldGetNode ||
-                        expression instanceof OptionalChainNode.ShortCircuitTargetableNode) {
+                        expression instanceof OptionalChainNode.ShortCircuitTargetableNode || expression instanceof OptionalChainNode.OptionalTargetableNode) {
             assert !(expression instanceof PropertyNode) || ((PropertyNode) expression).isMethod();
             return JSFunctionCallNode.createInvoke((JSTargetableNode) expression, arguments, false, false);
         } else if (expression instanceof JSTargetableWrapperNode) {
