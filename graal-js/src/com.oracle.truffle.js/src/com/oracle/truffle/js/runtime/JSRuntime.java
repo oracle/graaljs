@@ -2816,7 +2816,7 @@ public final class JSRuntime {
 
     /**
      * Convert the value to a type valid in Graal.js, from something received via TruffleInterop.
-     * Use JSForeignToJSTypeNode where possible.
+     * Use ImportValueNode where possible.
      */
     @TruffleBoundary
     public static Object importValue(Object value) {
@@ -2831,7 +2831,7 @@ public final class JSRuntime {
             if (longIsRepresentableAsInt(longValue)) {
                 return (int) longValue;
             } else {
-                return BigInt.valueOf(longValue);
+                return longValue;
             }
         } else if (value instanceof Byte || value instanceof Short) {
             return ((Number) value).intValue();

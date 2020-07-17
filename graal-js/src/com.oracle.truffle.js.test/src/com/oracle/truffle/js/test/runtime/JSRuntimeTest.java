@@ -165,7 +165,7 @@ public class JSRuntimeTest extends JSTest {
         assertSame(42, JSRuntime.importValue((short) 42));
 
         assertSame(42, JSRuntime.importValue(42L));
-        assertEquals(BigInt.valueOf(Long.MAX_VALUE), JSRuntime.importValue(Long.MAX_VALUE));
+        assertEquals(Long.MAX_VALUE, JSRuntime.importValue(Long.MAX_VALUE));
         assertEquals(42.0, (double) JSRuntime.importValue((float) 42), BIGDELTA);
 
         try {
