@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -53,6 +54,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNodeGen.GetPropertyProxyValueNodeGen;
 import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNodeGen.UsesOrdinaryGetOwnPropertyNodeGen;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -86,7 +88,7 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
     private final ConditionProfile hasPropertyBranch = ConditionProfile.createBinaryProfile();
     private final ConditionProfile isDataPropertyBranch = ConditionProfile.createBinaryProfile();
     private final ConditionProfile isAccessorPropertyBranch = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile isProxyPropertyBranch = ConditionProfile.createBinaryProfile();
+    @Child private GetPropertyProxyValueNode getPropertyProxyValueNode;
 
     protected JSGetOwnPropertyNode(boolean needValue, boolean needEnumerability, boolean needConfigurability, boolean needWritability, boolean allowCaching) {
         this.needValue = needValue;
@@ -211,11 +213,19 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
     private Object getDataPropertyValue(DynamicObject thisObj, Property prop) {
         assert JSProperty.isData(prop);
         Object value = prop.get(thisObj, false);
-        if (isProxyPropertyBranch.profile(JSProperty.isProxy(prop))) {
-            return ((PropertyProxy) value).get(thisObj);
+        if (JSProperty.isProxy(prop)) {
+            return getPropertyProxyValue(thisObj, value);
         } else {
             return value;
         }
+    }
+
+    private Object getPropertyProxyValue(DynamicObject obj, Object propertyProxy) {
+        if (getPropertyProxyValueNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            getPropertyProxyValueNode = insert(GetPropertyProxyValueNodeGen.create());
+        }
+        return getPropertyProxyValueNode.execute(obj, propertyProxy);
     }
 
     @Specialization(guards = {"!jsclassProfile.getJSClass(thisObj).usesOrdinaryGetOwnProperty()", "!isJSArray(thisObj)", "!isJSString(thisObj)"}, limit = "1")
@@ -262,6 +272,26 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
         @Specialization(replaces = {"doCached"})
         static boolean doObjectPrototype(JSClass jsclass) {
             return jsclass.usesOrdinaryGetOwnProperty();
+        }
+    }
+
+    public abstract static class GetPropertyProxyValueNode extends JavaScriptBaseNode {
+
+        protected GetPropertyProxyValueNode() {
+        }
+
+        public abstract Object execute(DynamicObject obj, Object propertyProxy);
+
+        @Specialization(guards = {"propertyProxy.getClass() == cachedClass"}, limit = "5")
+        static Object doCached(DynamicObject obj, Object propertyProxy,
+                        @Cached(value = "propertyProxy.getClass()") Class<?> cachedClass) {
+            return ((PropertyProxy) cachedClass.cast(propertyProxy)).get(obj);
+        }
+
+        @TruffleBoundary
+        @Specialization(replaces = {"doCached"})
+        static Object doUncached(DynamicObject obj, Object propertyProxy) {
+            return ((PropertyProxy) propertyProxy).get(obj);
         }
     }
 }
