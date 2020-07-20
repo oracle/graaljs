@@ -98,9 +98,10 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
     protected UnmodifiableArrayList<? extends Object> enumerableOwnPropertyNames(DynamicObject thisObj,
                     @Cached JSClassProfile jsclassProfile,
                     @Cached ListSizeNode listSize,
-                    @Cached ListGetNode listGet) {
+                    @Cached ListGetNode listGet,
+                    @Cached HasOnlyShapePropertiesNode hasOnlyShapeProperties) {
         JSClass jsclass = jsclassProfile.getJSClass(thisObj);
-        if (hasFastShapesProfile.profile(keys && !values && JSConfig.FastOwnKeys && jsclass.hasOnlyShapeProperties(thisObj))) {
+        if (hasFastShapesProfile.profile(keys && !values && JSConfig.FastOwnKeys && hasOnlyShapeProperties.execute(thisObj, jsclass))) {
             return JSShape.getEnumerablePropertyNames(thisObj.getShape());
         } else {
             boolean isProxy = JSProxy.isProxy(thisObj);
