@@ -179,12 +179,12 @@ public final class Boundaries {
         return String.format(format, params);
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     public static int stringLastIndexOf(String s, String pattern) {
         return s.lastIndexOf(pattern);
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     public static int stringLastIndexOf(String s, String pattern, int startPos) {
         return s.lastIndexOf(pattern, startPos);
     }
