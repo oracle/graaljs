@@ -297,7 +297,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         public abstract boolean execute(DynamicObject object, JSClass jsclass);
 
-        @Specialization(guards = {"jsclass == cachedJSClass", "!isJSObjectPrototype(cachedJSClass)"}, limit = "3")
+        @Specialization(guards = {"jsclass == cachedJSClass", "!isJSObjectPrototype(cachedJSClass)"}, limit = "5")
         static boolean doCached(DynamicObject object, @SuppressWarnings("unused") JSClass jsclass,
                         @Cached(value = "jsclass") JSClass cachedJSClass) {
             return cachedJSClass.hasOnlyShapeProperties(object);

@@ -253,7 +253,7 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
 
         public abstract boolean execute(JSClass jsclass);
 
-        @Specialization(guards = {"jsclass == cachedJSClass"}, limit = "3")
+        @Specialization(guards = {"jsclass == cachedJSClass"}, limit = "7")
         static boolean doCached(@SuppressWarnings("unused") JSClass jsclass,
                         @Cached(value = "jsclass") JSClass cachedJSClass) {
             return cachedJSClass.usesOrdinaryGetOwnProperty();
