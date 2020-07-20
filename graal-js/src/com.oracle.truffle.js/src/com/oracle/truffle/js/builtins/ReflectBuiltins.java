@@ -64,6 +64,7 @@ import com.oracle.truffle.js.builtins.ReflectBuiltinsFactory.ReflectOwnKeysNodeG
 import com.oracle.truffle.js.builtins.ReflectBuiltinsFactory.ReflectPreventExtensionsNodeGen;
 import com.oracle.truffle.js.builtins.ReflectBuiltinsFactory.ReflectSetNodeGen;
 import com.oracle.truffle.js.builtins.ReflectBuiltinsFactory.ReflectSetPrototypeOfNodeGen;
+import com.oracle.truffle.js.nodes.access.FromPropertyDescriptorNode;
 import com.oracle.truffle.js.nodes.access.IsExtensibleNode;
 import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNode;
 import com.oracle.truffle.js.nodes.access.ToPropertyDescriptorNode;
@@ -356,12 +357,13 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
         @Specialization
         protected DynamicObject reflectGetOwnPropertyDescriptor(Object target, Object key,
-                        @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode,
-                        @Cached("create()") JSGetOwnPropertyNode getOwnPropertyNode) {
+                        @Cached JSToPropertyKeyNode toPropertyKeyNode,
+                        @Cached JSGetOwnPropertyNode getOwnPropertyNode,
+                        @Cached FromPropertyDescriptorNode fromPropertyDescriptorNode) {
             ensureJSObject(target);
             Object propertyKey = toPropertyKeyNode.execute(key);
             PropertyDescriptor desc = getOwnPropertyNode.execute((DynamicObject) target, propertyKey);
-            return JSRuntime.fromPropertyDescriptor(desc, getContext());
+            return fromPropertyDescriptorNode.execute(desc, getContext());
         }
     }
 

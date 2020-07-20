@@ -61,6 +61,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectAssignNodeGen;
@@ -87,6 +88,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
+import com.oracle.truffle.js.nodes.access.FromPropertyDescriptorNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.IsExtensibleNode;
@@ -330,12 +332,13 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Child private JSToPropertyKeyNode toPropertyKeyNode = JSToPropertyKeyNode.create();
         @Child private JSGetOwnPropertyNode getOwnPropertyNode = JSGetOwnPropertyNode.create();
+        @Child private FromPropertyDescriptorNode fromPropertyDescriptorNode = FromPropertyDescriptorNode.create();
 
         @Specialization(guards = {"isJSObject(thisObj)"})
         protected DynamicObject getJSObject(DynamicObject thisObj, Object property) {
             Object propertyKey = toPropertyKeyNode.execute(property);
             PropertyDescriptor desc = getOwnPropertyNode.execute(thisObj, propertyKey);
-            return JSRuntime.fromPropertyDescriptor(desc, getContext());
+            return fromPropertyDescriptorNode.execute(desc, getContext());
         }
 
         @Specialization(guards = {"isForeignObject(thisObj)"}, limit = "3")
@@ -353,7 +356,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                                             !interop.isMemberInternal(thisObj, member),
                                             interop.isMemberWritable(thisObj, member),
                                             interop.isMemberRemovable(thisObj, member));
-                            return JSRuntime.fromPropertyDescriptor(desc, getContext());
+                            return fromPropertyDescriptorNode.execute(desc, getContext());
                         }
                     }
                     long index = JSRuntime.propertyNameToArrayIndex(member);
@@ -364,7 +367,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                                             true,
                                             interop.isArrayElementWritable(thisObj, index),
                                             interop.isArrayElementRemovable(thisObj, index));
-                            return JSRuntime.fromPropertyDescriptor(desc, getContext());
+                            return fromPropertyDescriptorNode.execute(desc, getContext());
                         }
                     }
                 } catch (InteropException iex) {
@@ -383,6 +386,9 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public abstract static class ObjectGetOwnPropertyDescriptorsNode extends ObjectOperation {
+
+        @Child private FromPropertyDescriptorNode fromPropertyDescriptorNode = FromPropertyDescriptorNode.create();
+        @Child private DynamicObjectLibrary putPropDescNode = DynamicObjectLibrary.getFactory().createDispatched(5);
 
         public ObjectGetOwnPropertyDescriptorsNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -405,8 +411,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 assert JSRuntime.isPropertyKey(key);
                 PropertyDescriptor desc = getOwnPropertyNode.execute(thisObj, key);
                 if (desc != null) {
-                    DynamicObject propDesc = JSRuntime.fromPropertyDescriptor(desc, getContext());
-                    retObj.define(key, propDesc, JSAttributes.configurableEnumerableWritable());
+                    DynamicObject propDesc = fromPropertyDescriptorNode.execute(desc, getContext());
+                    putPropDescNode.putWithFlags(retObj, key, propDesc, JSAttributes.configurableEnumerableWritable());
                 }
             }
             return retObj;
@@ -434,8 +440,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                                             !interop.isMemberInternal(thisObj, member),
                                             interop.isMemberWritable(thisObj, member),
                                             interop.isMemberRemovable(thisObj, member));
-                            DynamicObject propDesc = JSRuntime.fromPropertyDescriptor(desc, getContext());
-                            result.define(member, propDesc, JSAttributes.configurableEnumerableWritable());
+                            DynamicObject propDesc = fromPropertyDescriptorNode.execute(desc, getContext());
+                            putPropDescNode.putWithFlags(result, member, propDesc, JSAttributes.configurableEnumerableWritable());
                         }
                     }
                 }
@@ -451,8 +457,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                                             true,
                                             interop.isArrayElementWritable(thisObj, i),
                                             interop.isArrayElementRemovable(thisObj, i));
-                            DynamicObject propDesc = JSRuntime.fromPropertyDescriptor(desc, getContext());
-                            result.define(Boundaries.stringValueOf(i), propDesc, JSAttributes.configurableEnumerableWritable());
+                            DynamicObject propDesc = fromPropertyDescriptorNode.execute(desc, getContext());
+                            putPropDescNode.putWithFlags(result, Boundaries.stringValueOf(i), propDesc, JSAttributes.configurableEnumerableWritable());
                         }
                     }
                 }
