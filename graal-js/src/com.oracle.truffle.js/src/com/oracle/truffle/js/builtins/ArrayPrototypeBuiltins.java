@@ -1723,28 +1723,25 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     public abstract static class JSArraySpliceNode extends JSArrayOperationWithToInt {
 
         @Child private DeletePropertyNode deletePropertyNode; // DeletePropertyOrThrow
-        @Child private GetPrototypeNode getPrototypeNode;
         private final BranchProfile branchA = BranchProfile.create();
         private final BranchProfile branchB = BranchProfile.create();
         private final BranchProfile branchDelete = BranchProfile.create();
         private final BranchProfile objectBranch = BranchProfile.create();
-        private final ConditionProfile arrayElementwise = ConditionProfile.createBinaryProfile();
         private final ConditionProfile argsLength0Profile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile argsLength1Profile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile offsetProfile = ConditionProfile.createBinaryProfile();
         private final BranchProfile needMoveDeleteBranch = BranchProfile.create();
         private final BranchProfile needInsertBranch = BranchProfile.create();
-        private final ValueProfile arrayTypeProfile = ValueProfile.createClassProfile();
         @Child private InteropLibrary arrayInterop;
 
         public JSArraySpliceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.deletePropertyNode = DeletePropertyNode.create(THROW_ERROR, context);
-            this.getPrototypeNode = GetPrototypeNode.create();
         }
 
         @Specialization
-        protected DynamicObject splice(Object thisArg, Object[] args) {
+        protected DynamicObject splice(Object thisArg, Object[] args,
+                        @Cached("create(getContext())") SpliceJSArrayNode spliceJSArray) {
             Object thisObj = toObject(thisArg);
             long len = getLength(thisObj);
 
@@ -1782,12 +1779,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             boolean isJSArray = JSArray.isJSArray(thisObj);
             if (isJSArray) {
                 DynamicObject dynObj = (DynamicObject) thisObj;
-                ScriptArray arrayType = arrayTypeProfile.profile(arrayGetArrayType(dynObj, isJSArray));
-                if (arrayElementwise.profile(mustUseElementwise(dynObj, arrayType))) {
-                    spliceJSArrayElementwise(dynObj, len, actualStart, actualDeleteCount, itemCount);
-                } else {
-                    spliceJSArrayBlockwise(dynObj, actualStart, actualDeleteCount, itemCount, arrayType);
-                }
+                ScriptArray arrayType = arrayGetArrayType(dynObj, isJSArray);
+                spliceJSArray.execute(dynObj, len, actualStart, actualDeleteCount, itemCount, arrayType, this);
             } else if (JSObject.isJSObject(thisObj)) {
                 objectBranch.enter();
                 spliceJSObject(thisObj, len, actualStart, actualDeleteCount, itemCount);
@@ -1805,9 +1798,45 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return aObj;
         }
 
-        private boolean mustUseElementwise(DynamicObject obj, ScriptArray array) {
-            return array instanceof SparseArray || array.isLengthNotWritable() || getPrototypeNode.executeJSObject(obj) != getContext().getRealm().getArrayPrototype() ||
-                            !getContext().getArrayPrototypeNoElementsAssumption().isValid() || (!getContext().getFastArrayAssumption().isValid() && JSSlowArray.isJSSlowArray(obj));
+        abstract static class SpliceJSArrayNode extends JavaScriptBaseNode {
+            final JSContext context;
+
+            SpliceJSArrayNode(JSContext context) {
+                this.context = context;
+            }
+
+            abstract void execute(DynamicObject array, long len, long actualStart, long actualDeleteCount, long itemCount, ScriptArray arrayType, JSArraySpliceNode parent);
+
+            @Specialization(guards = {"cachedArrayType.isInstance(arrayType)"}, limit = "5")
+            static void doCached(DynamicObject array, long len, long actualStart, long actualDeleteCount, long itemCount, ScriptArray arrayType, JSArraySpliceNode parent,
+                            @Cached("arrayType") ScriptArray cachedArrayType,
+                            @Cached GetPrototypeNode getPrototypeNode,
+                            @Cached ConditionProfile arrayElementwise) {
+                if (arrayElementwise.profile(parent.mustUseElementwise(array, cachedArrayType.cast(arrayType), getPrototypeNode))) {
+                    parent.spliceJSArrayElementwise(array, len, actualStart, actualDeleteCount, itemCount);
+                } else {
+                    parent.spliceJSArrayBlockwise(array, actualStart, actualDeleteCount, itemCount, cachedArrayType.cast(arrayType));
+                }
+            }
+
+            @Specialization(replaces = "doCached")
+            static void doUncached(DynamicObject array, long len, long actualStart, long actualDeleteCount, long itemCount, ScriptArray arrayType, JSArraySpliceNode parent,
+                            @Cached GetPrototypeNode getPrototypeNode,
+                            @Cached ConditionProfile arrayElementwise) {
+                if (arrayElementwise.profile(parent.mustUseElementwise(array, arrayType, getPrototypeNode))) {
+                    parent.spliceJSArrayElementwise(array, len, actualStart, actualDeleteCount, itemCount);
+                } else {
+                    parent.spliceJSArrayBlockwise(array, actualStart, actualDeleteCount, itemCount, arrayType);
+                }
+            }
+        }
+
+        final boolean mustUseElementwise(DynamicObject obj, ScriptArray array, GetPrototypeNode getPrototypeNode) {
+            return array instanceof SparseArray ||
+                            array.isLengthNotWritable() ||
+                            getPrototypeNode.executeJSObject(obj) != getContext().getRealm().getArrayPrototype() ||
+                            !getContext().getArrayPrototypeNoElementsAssumption().isValid() ||
+                            (!getContext().getFastArrayAssumption().isValid() && JSSlowArray.isJSSlowArray(obj));
         }
 
         private void spliceRead(Object thisObj, long actualStart, long actualDeleteCount, DynamicObject aObj, long length) {
@@ -1864,7 +1893,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private void spliceJSArrayElementwise(DynamicObject thisObj, long len, long actualStart, long actualDeleteCount, long itemCount) {
+        final void spliceJSArrayElementwise(DynamicObject thisObj, long len, long actualStart, long actualDeleteCount, long itemCount) {
             assert JSArray.isJSArray(thisObj); // contract
             if (itemCount < actualDeleteCount) {
                 branchA.enter();
@@ -1908,7 +1937,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private void spliceJSArrayBlockwise(DynamicObject thisObj, long actualStart, long actualDeleteCount, long itemCount, ScriptArray array) {
+        final void spliceJSArrayBlockwise(DynamicObject thisObj, long actualStart, long actualDeleteCount, long itemCount, ScriptArray array) {
             assert JSArray.isJSArray(thisObj); // contract
             if (itemCount < actualDeleteCount) {
                 branchA.enter();
