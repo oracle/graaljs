@@ -2959,7 +2959,8 @@ public class Parser extends AbstractParser {
      *
      * <pre>
      * ContinueStatement :
-     *      continue Identifier? ; // [no LineTerminator here]
+     *      continue ;
+     *      continue [no LineTerminator here] LabelIdentifier ;
      * </pre>
      */
     private void continueStatement() {
@@ -2969,17 +2970,24 @@ public class Parser extends AbstractParser {
         // CONTINUE tested in caller.
         nextOrEOL();
 
+        boolean seenEOL = (type == EOL);
+        if (seenEOL) {
+            next();
+        }
+
         ParserContextLabelNode labelNode = null;
 
         // SEMICOLON or label.
         switch (type) {
             case RBRACE:
             case SEMICOLON:
-            case EOL:
             case EOF:
                 break;
 
             default:
+                if (seenEOL) {
+                    break;
+                }
                 final IdentNode ident = labelIdentifier();
                 labelNode = lc.findLabel(ident.getName());
 
@@ -3008,7 +3016,8 @@ public class Parser extends AbstractParser {
      *
      * <pre>
      * BreakStatement :
-     *      break Identifier? ; // [no LineTerminator here]
+     *      break ;
+     *      break [no LineTerminator here] LabelIdentifier ;
      * </pre>
      */
     private void breakStatement() {
@@ -3018,17 +3027,24 @@ public class Parser extends AbstractParser {
         // BREAK tested in caller.
         nextOrEOL();
 
+        boolean seenEOL = (type == EOL);
+        if (seenEOL) {
+            next();
+        }
+
         ParserContextLabelNode labelNode = null;
 
         // SEMICOLON or label.
         switch (type) {
             case RBRACE:
             case SEMICOLON:
-            case EOL:
             case EOF:
                 break;
 
             default:
+                if (seenEOL) {
+                    break;
+                }
                 final IdentNode ident = labelIdentifier();
                 labelNode = lc.findLabel(ident.getName());
 
@@ -3058,7 +3074,8 @@ public class Parser extends AbstractParser {
      *
      * <pre>
      * ReturnStatement :
-     *      return Expression? ; // [no LineTerminator here]
+     *      return ;
+     *      return [no LineTerminator here] Expression ;
      * </pre>
      */
     private void returnStatement() {
@@ -3073,17 +3090,24 @@ public class Parser extends AbstractParser {
         // RETURN tested in caller.
         nextOrEOL();
 
+        boolean seenEOL = (type == EOL);
+        if (seenEOL) {
+            next();
+        }
+
         Expression expression = null;
 
         // SEMICOLON or expression.
         switch (type) {
             case RBRACE:
             case SEMICOLON:
-            case EOL:
             case EOF:
                 break;
 
             default:
+                if (seenEOL) {
+                    break;
+                }
                 expression = expression();
                 break;
         }
