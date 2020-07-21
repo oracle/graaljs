@@ -56,7 +56,6 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -616,20 +615,6 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         if (d == 0) {
             return 0; // also handles the -0.0
         }
-        throw Errors.createRangeErrorInvalidArrayLength();
-    }
-
-    public static long toArrayIndexOrRangeError(Number len, Number len32, BranchProfile profileError, BranchProfile profileDouble1, BranchProfile profileDouble2) {
-        double d32 = JSRuntime.doubleValue(len32, profileDouble1);
-        double d = JSRuntime.doubleValue(len, profileDouble2);
-
-        if (d32 == d) {
-            return len32.longValue();
-        }
-        if (d == 0) {
-            return 0; // also handles the -0.0
-        }
-        profileError.enter();
         throw Errors.createRangeErrorInvalidArrayLength();
     }
 

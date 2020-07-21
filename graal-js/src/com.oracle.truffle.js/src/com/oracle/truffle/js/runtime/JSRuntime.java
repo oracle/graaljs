@@ -1837,6 +1837,15 @@ public final class JSRuntime {
         return 0L <= longValue && longValue <= MAX_ARRAY_LENGTH; // <= 2^32-1, according to 15.4
     }
 
+    public static boolean isValidArrayLength(double doubleValue) {
+        long longValue = (long) doubleValue;
+        return doubleValue == longValue && isValidArrayLength(longValue);
+    }
+
+    public static boolean isValidArrayLength(int intValue) {
+        return intValue >= 0;
+    }
+
     public static boolean isIntegerIndex(long longValue) {
         return 0L <= longValue && longValue <= MAX_SAFE_INTEGER_LONG;
     }

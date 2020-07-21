@@ -133,6 +133,7 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.array.ArrayCreateNode;
+import com.oracle.truffle.js.nodes.cast.ToArrayLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSNumberToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSNumericToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
@@ -144,7 +145,6 @@ import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode.Hint;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
-import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
 import com.oracle.truffle.js.nodes.function.EvalNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -645,14 +645,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = "isOneNumberArg(args)", replaces = "constructArrayWithIntLength")
         protected DynamicObject constructWithLength(DynamicObject newTarget, Object[] args,
-                        @Cached("create()") JSToUInt32Node toUInt32Node,
-                        @Cached("create(getContext())") ArrayCreateNode arrayCreateNode,
-                        @Cached("create()") BranchProfile rangeErrorProfile,
-                        @Cached("create()") BranchProfile toArrayIndex1Profile,
-                        @Cached("create()") BranchProfile toArrayIndex2Profile) {
-            Number origLen = (Number) args[0]; // guard ensures this is a Number
-            Number origLen32 = (Number) toUInt32Node.execute(origLen);
-            long len = JSArray.toArrayIndexOrRangeError(origLen, origLen32, rangeErrorProfile, toArrayIndex1Profile, toArrayIndex2Profile);
+                        @Cached @SuppressWarnings("unused") ToArrayLengthNode toUint32Node,
+                        @Cached("create(getContext())") ArrayCreateNode arrayCreateNode) {
+            // GR-25017: @Bind this expression and guard on the result.
+            long len = toUint32Node.executeLong(args[0]);
             DynamicObject array = arrayCreateNode.execute(len);
             return swapPrototype(array, newTarget);
         }
