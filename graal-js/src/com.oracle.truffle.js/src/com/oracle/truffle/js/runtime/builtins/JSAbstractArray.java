@@ -599,18 +599,23 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         return list;
     }
 
-    protected static long toArrayIndexOrRangeError(Object obj) {
+    protected static long toArrayLengthOrRangeError(Object obj) {
         Number len = JSRuntime.toNumber(obj);
         Number len32 = JSRuntime.toUInt32(len);
-        return toArrayIndexOrRangeError(len, len32);
+        /*
+         * ArraySetLength, steps 3 and 4: if Desc.[[Value]] is an object then its valueOf method is
+         * called twice. This is legacy behaviour that was specified with this effect.
+         */
+        Number numberLen = JSRuntime.toNumber(obj);
+        return toArrayLengthOrRangeError(numberLen, len32);
     }
 
-    public static long toArrayIndexOrRangeError(Number len, Number len32) {
+    public static long toArrayLengthOrRangeError(Number len, Number len32) {
         double d32 = JSRuntime.doubleValue(len32);
         double d = JSRuntime.doubleValue(len);
 
         if (d32 == d) {
-            return len32.longValue();
+            return JSRuntime.longValue(len32);
         }
         if (d == 0) {
             return 0; // also handles the -0.0

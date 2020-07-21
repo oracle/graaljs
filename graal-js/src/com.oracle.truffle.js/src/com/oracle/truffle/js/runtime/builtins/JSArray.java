@@ -284,7 +284,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         if (value instanceof Integer && (int) value >= 0) {
             arrLength = (int) value;
         } else {
-            arrLength = toArrayIndexOrRangeError(value);
+            arrLength = toArrayLengthOrRangeError(value);
         }
 
         assert arrLength >= 0;
