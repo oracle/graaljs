@@ -273,7 +273,11 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         return shape;
     }
 
-    public static class DefaultJSArrayComparator implements Comparator<Object> {
+    public static final Comparator<Object> DEFAULT_JSARRAY_COMPARATOR = new DefaultJSArrayComparator();
+    public static final Comparator<Object> DEFAULT_JSARRAY_INTEGER_COMPARATOR = new DefaultJSArrayIntegerComparator();
+    public static final Comparator<Object> DEFAULT_JSARRAY_DOUBLE_COMPARATOR = new DefaultJSArrayDoubleComparator();
+
+    static final class DefaultJSArrayComparator implements Comparator<Object> {
         @Override
         public int compare(Object arg0, Object arg1) {
             if (arg0 == Undefined.instance) {
@@ -298,7 +302,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         }
     }
 
-    public static class DefaultJSArrayIntegerComparator implements Comparator<Object> {
+    static final class DefaultJSArrayIntegerComparator implements Comparator<Object> {
         @Override
         public int compare(Object arg0, Object arg1) {
             int i1 = (int) JSRuntime.toInteger((Number) arg0);
@@ -317,7 +321,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         }
     }
 
-    public static class DefaultJSArrayDoubleComparator implements Comparator<Object> {
+    static final class DefaultJSArrayDoubleComparator implements Comparator<Object> {
         @Override
         public int compare(Object arg0, Object arg1) {
             double d1 = JSRuntime.doubleValue((Number) arg0);

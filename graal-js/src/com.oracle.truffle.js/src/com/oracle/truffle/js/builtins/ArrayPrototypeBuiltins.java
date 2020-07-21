@@ -2621,20 +2621,19 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        @TruffleBoundary
         private Comparator<Object> getDefaultComparator(Object thisObj) {
             if (isTypedArrayImplementation) {
-                return new JSArrayBufferView.DefaultJSArrayBufferViewComparator();
+                return null; // use Comparable.compareTo (equivalent to Comparator.naturalOrder())
             } else {
                 if (JSArray.isJSArray(thisObj)) {
                     ScriptArray array = arrayGetArrayType((DynamicObject) thisObj);
                     if (array instanceof AbstractIntArray || array instanceof ConstantByteArray || array instanceof ConstantIntArray) {
-                        return new JSArray.DefaultJSArrayIntegerComparator();
+                        return JSArray.DEFAULT_JSARRAY_INTEGER_COMPARATOR;
                     } else if (array instanceof AbstractDoubleArray || array instanceof ConstantDoubleArray) {
-                        return new JSArray.DefaultJSArrayDoubleComparator();
+                        return JSArray.DEFAULT_JSARRAY_DOUBLE_COMPARATOR;
                     }
                 }
-                return new JSArray.DefaultJSArrayComparator();
+                return JSArray.DEFAULT_JSARRAY_COMPARATOR;
             }
         }
 

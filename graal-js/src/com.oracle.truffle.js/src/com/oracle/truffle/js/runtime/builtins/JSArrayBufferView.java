@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import java.nio.ByteBuffer;
-import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -655,14 +654,6 @@ public final class JSArrayBufferView extends JSBuiltinObject {
 
     private static void throwCannotRedefine() {
         throw Errors.createTypeError("Cannot redefine a property of an object with external array elements");
-    }
-
-    public static class DefaultJSArrayBufferViewComparator implements Comparator<Object> {
-        @SuppressWarnings("unchecked")
-        @Override
-        public int compare(Object first, Object second) {
-            return ((Comparable<Object>) first).compareTo(second);
-        }
     }
 
     @TruffleBoundary
