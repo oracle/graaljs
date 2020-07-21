@@ -122,10 +122,12 @@ import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
 import com.oracle.truffle.js.nodes.array.ArrayCreateNode;
 import com.oracle.truffle.js.nodes.array.ArrayLengthNode.ArrayLengthWriteNode;
+import com.oracle.truffle.js.nodes.array.JSArrayDeleteRangeNode;
 import com.oracle.truffle.js.nodes.array.JSArrayFirstElementIndexNode;
 import com.oracle.truffle.js.nodes.array.JSArrayLastElementIndexNode;
 import com.oracle.truffle.js.nodes.array.JSArrayNextElementIndexNode;
 import com.oracle.truffle.js.nodes.array.JSArrayPreviousElementIndexNode;
+import com.oracle.truffle.js.nodes.array.JSArrayToDenseObjectArrayNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.array.JSSetLengthNode;
 import com.oracle.truffle.js.nodes.array.TestArrayNode;
@@ -133,7 +135,6 @@ import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
-import com.oracle.truffle.js.nodes.cast.JSToObjectArrayNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.control.DeletePropertyNode;
@@ -2491,9 +2492,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     public abstract static class JSArraySortNode extends JSArrayOperation {
 
         @Child private DeletePropertyNode deletePropertyNode; // DeletePropertyOrThrow
-        private final BranchProfile arrayIsSparseBranch = BranchProfile.create();
-        private final BranchProfile arrayHasHolesBranch = BranchProfile.create();
-        private final BranchProfile arrayIsDefaultBranch = BranchProfile.create();
+        private final ConditionProfile isSparse = ConditionProfile.create();
         private final BranchProfile hasCompareFnBranch = BranchProfile.create();
         private final BranchProfile noCompareFnBranch = BranchProfile.create();
         private final BranchProfile growProfile = BranchProfile.create();
@@ -2506,44 +2505,27 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = "isJSFastArray(thisObj)", assumptions = "getContext().getArrayPrototypeNoElementsAssumption()")
         protected DynamicObject sortArray(final DynamicObject thisObj, final Object compare,
-                        @Cached("create(getContext())") JSToObjectArrayNode arrayToObjectArrayNode,
-                        @Cached("createClassProfile()") ValueProfile classProfile) {
+                        @Cached("create(getContext())") JSArrayToDenseObjectArrayNode arrayToObjectArrayNode,
+                        @Cached("create(getContext(), !getContext().isOptionV8CompatibilityMode())") JSArrayDeleteRangeNode arrayDeleteRangeNode) {
             checkCompareFunction(compare);
-            Object[] array;
-            ScriptArray scriptArray = classProfile.profile(arrayGetArrayType(thisObj));
             long len = getLength(thisObj);
 
-            if (scriptArray instanceof SparseArray) {
-                arrayIsSparseBranch.enter();
-                array = getArraySparse(thisObj, scriptArray, len);
-            } else if (scriptArray.isHolesType() || scriptArray.hasHoles(thisObj)) {
-                arrayHasHolesBranch.enter();
-                if (JSObject.isFrozen(thisObj)) {
-                    errorBranch.enter();
-                    throw Errors.createTypeError("cannot write to frozen object");
-                }
-                array = getArraySparse(thisObj, scriptArray, len);
-            } else {
-                arrayIsDefaultBranch.enter();
-                array = arrayToObjectArrayNode.executeObjectArray(thisObj);
+            if (len < 2) {
+                // nothing to do
+                return thisObj;
             }
 
+            ScriptArray scriptArray = arrayGetArrayType(thisObj);
+            Object[] array = arrayToObjectArrayNode.executeObjectArray(thisObj, scriptArray, len);
+
             sortIntl(getComparator(thisObj, compare), array);
+
             for (int i = 0; i < array.length; i++) {
                 write(thisObj, i, array[i]);
             }
 
-            if (scriptArray instanceof SparseArray) {
-                arrayIsSparseBranch.enter();
-                deleteSparse(thisObj, array.length, len);
-            } else if (scriptArray.isHolesType()) {
-                arrayHasHolesBranch.enter();
-                deleteSparse(thisObj, array.length, len);
-            } else {
-                arrayIsDefaultBranch.enter();
-                for (int i = array.length; i < len; i++) {
-                    delete(thisObj, i);
-                }
+            if (isSparse.profile(array.length < len)) {
+                arrayDeleteRangeNode.execute(thisObj, scriptArray, array.length, len);
             }
             return thisObj;
         }
@@ -2565,18 +2547,20 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             if (isJSObject.profile(JSObject.isJSObject(thisJSObj))) {
                 return sortJSObject(comparefn, (DynamicObject) thisJSObj);
             } else {
-                return sortTruffleObject(comparefn, thisJSObj);
+                return sortForeignObject(comparefn, thisJSObj);
             }
         }
 
         private DynamicObject sortJSObject(final Object comparefn, DynamicObject thisJSObj) {
-            if (JSObject.isFrozen(thisJSObj)) {
-                errorBranch.enter();
-                throw Errors.createTypeError("cannot write to frozen object");
-            }
             long len = getLength(thisJSObj);
+
+            if (len < 2) {
+                // nothing to do
+                return thisJSObj;
+            }
+
             Iterable<Object> keys = getKeys(thisJSObj);
-            Object[] array = objectToArray(thisJSObj, len, keys);
+            Object[] array = jsobjectToArray(thisJSObj, len, keys);
 
             Comparator<Object> comparator = getComparator(thisJSObj, comparefn);
             sortIntl(comparator, array);
@@ -2584,14 +2568,28 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             for (int i = 0; i < array.length; i++) {
                 write(thisJSObj, i, array[i]);
             }
-            deleteGenericElements(thisJSObj, array.length, len, keys);
+
+            if (isSparse.profile(array.length < len)) {
+                deleteGenericElements(thisJSObj, array.length, len, keys);
+            }
             return thisJSObj;
         }
 
-        public Object sortTruffleObject(Object comparefn, Object thisObj) {
+        public Object sortForeignObject(Object comparefn, Object thisObj) {
             assert JSGuards.isForeignObject(thisObj);
             long len = getLength(thisObj);
-            Object[] array = truffleobjectToArray(thisObj, len);
+
+            if (len < 2) {
+                // nothing to do
+                return thisObj;
+            }
+
+            if (len >= Integer.MAX_VALUE) {
+                errorBranch.enter();
+                throw Errors.createRangeErrorInvalidArrayLength();
+            }
+
+            Object[] array = foreignArrayToObjectArray(thisObj, (int) len);
 
             Comparator<Object> comparator = getComparator(thisObj, comparefn);
             sortIntl(comparator, array);
@@ -2652,25 +2650,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private void deleteSparse(DynamicObject thisObj, long start, long end) {
-            long pos = start;
-            while (pos < end) {
-                delete(thisObj, pos);
-                pos = nextElementIndex(thisObj, pos, end);
-            }
-        }
-
-        private Object[] getArraySparse(DynamicObject thisObj, ScriptArray scriptArray, long len) {
-            long pos = scriptArray.firstElementIndex(thisObj);
-            SimpleArrayList<Object> list = new SimpleArrayList<>();
-            while (pos <= scriptArray.lastElementIndex(thisObj)) {
-                assert scriptArray.hasElement(thisObj, pos);
-                list.add(scriptArray.getElement(thisObj, pos), growProfile);
-                pos = nextElementIndex(thisObj, pos, len);
-            }
-            return list.toArray(new Object[list.size()]);
-        }
-
         @TruffleBoundary
         private static void sortIntl(Comparator<Object> comparator, Object[] array) {
             try {
@@ -2725,7 +2704,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @TruffleBoundary
-        private Object[] objectToArray(DynamicObject thisObj, long len, Iterable<Object> keys) {
+        private Object[] jsobjectToArray(DynamicObject thisObj, long len, Iterable<Object> keys) {
             SimpleArrayList<Object> list = SimpleArrayList.create(len);
             for (Object key : keys) {
                 long index = JSRuntime.propertyKeyToArrayIndex(key);
@@ -2736,7 +2715,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return list.toArray();
         }
 
-        private Object[] truffleobjectToArray(Object thisObj, long len) {
+        private Object[] foreignArrayToObjectArray(Object thisObj, int len) {
             InteropLibrary interop = interopNode;
             ImportValueNode importValue = importValueNode;
             if (interop == null || importValue == null) {
@@ -2744,12 +2723,11 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 interopNode = interop = insert(InteropLibrary.getFactory().createDispatched(3));
                 importValueNode = importValue = insert(ImportValueNode.create());
             }
-            SimpleArrayList<Object> list = SimpleArrayList.create(len);
-            for (long index = 0; index < len; index++) {
-                Object element = JSInteropUtil.readArrayElementOrDefault(thisObj, index, Undefined.instance, interop, importValue, this);
-                list.add(element, growProfile);
+            Object[] array = new Object[len];
+            for (int index = 0; index < len; index++) {
+                array[index] = JSInteropUtil.readArrayElementOrDefault(thisObj, index, Undefined.instance, interop, importValue, this);
             }
-            return list.toArray();
+            return array;
         }
 
         @TruffleBoundary
