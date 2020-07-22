@@ -610,11 +610,7 @@ public abstract class JSBuiltinObject extends JSClass {
             return false;
         }
         if (JSShape.isPrototypeInShape(shape)) {
-            if (true) {
-                JSObjectUtil.setPrototypeImpl(thisObj, newPrototype);
-            } else {
-                DynamicObjectLibrary.getUncached().putConstant(thisObj, JSObject.HIDDEN_PROTO, newPrototype, 0);
-            }
+            JSObjectUtil.setPrototypeImpl(thisObj, newPrototype);
         } else {
             boolean success = DynamicObjectLibrary.getUncached().putIfPresent(thisObj, JSObject.HIDDEN_PROTO, newPrototype);
             assert success;

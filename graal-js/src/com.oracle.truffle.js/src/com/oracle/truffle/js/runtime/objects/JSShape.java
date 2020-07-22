@@ -219,9 +219,6 @@ public final class JSShape {
 
     public static boolean hasExternalProperties(Shape shape) {
         assert (shape.getDynamicType() == JSDictionaryObject.INSTANCE) == ((shape.getFlags() & EXTERNAL_PROPERTIES_FLAG) != 0);
-        if (false) {
-            return shape.getDynamicType() == JSDictionaryObject.INSTANCE;
-        }
         return (shape.getFlags() & EXTERNAL_PROPERTIES_FLAG) != 0;
     }
 
