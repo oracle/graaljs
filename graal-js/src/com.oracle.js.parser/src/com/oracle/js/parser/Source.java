@@ -320,7 +320,7 @@ public final class Source {
      */
     private int findBOLN(final int position) {
         final CharSequence d = data();
-        for (int i = position - 1; i > 0; i--) {
+        for (int i = position - 1; i >= 0; i--) {
             final char ch = d.charAt(i);
 
             if (ch == '\n' || ch == '\r') {
