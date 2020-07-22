@@ -126,11 +126,11 @@ public final class JSUserObject extends JSBuiltinObject implements PrototypeSupp
 
     @TruffleBoundary
     @Override
-    public String safeToString(DynamicObject obj, int depth, JSContext context) {
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
         if (context.isOptionNashornCompatibilityMode()) {
             return defaultToString(obj);
         } else {
-            return JSRuntime.objectToConsoleString(obj, null, depth);
+            return JSRuntime.objectToConsoleString(obj, null, depth, allowSideEffects);
         }
     }
 

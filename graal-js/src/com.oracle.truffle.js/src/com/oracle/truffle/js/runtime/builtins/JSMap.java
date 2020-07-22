@@ -168,12 +168,12 @@ public final class JSMap extends JSBuiltinObject implements JSConstructorFactory
 
     @Override
     @TruffleBoundary
-    public String safeToString(DynamicObject obj, int depth, JSContext context) {
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
         if (context.isOptionNashornCompatibilityMode()) {
             return "[" + getClassName() + "]";
         } else {
             JSHashMap map = JSMap.getInternalMap(obj);
-            return JSRuntime.collectionToConsoleString(obj, getClassName(obj), map, depth);
+            return JSRuntime.collectionToConsoleString(obj, getClassName(obj), map, depth, allowSideEffects);
         }
     }
 

@@ -890,26 +890,30 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static String safeToString(Object value) {
-        return safeToStringImpl(value, TO_STRING_MAX_DEPTH, null, false);
+        return toDisplayStringImpl(value, TO_STRING_MAX_DEPTH, null, false, false);
     }
 
     @TruffleBoundary
-    public static String safeToString(Object value, int currentDepth, Object parent, boolean quoteString) {
-        return safeToStringImpl(value, currentDepth - 1, parent, quoteString);
+    public static String toDisplayString(Object value, boolean allowSideEffects) {
+        return toDisplayStringImpl(value, TO_STRING_MAX_DEPTH, null, false, allowSideEffects);
     }
 
     @TruffleBoundary
-    public static String safeToString(Object value, int currentDepth, Object parent) {
-        return safeToStringImpl(value, currentDepth - 1, parent, true);
+    public static String toDisplayString(Object value, int currentDepth, Object parent, boolean allowSideEffects) {
+        return toDisplayStringImpl(value, currentDepth - 1, parent, true, allowSideEffects);
+    }
+
+    @TruffleBoundary
+    public static String toDisplayString(Object value, int currentDepth, Object parent, boolean quoteString, boolean allowSideEffects) {
+        return toDisplayStringImpl(value, currentDepth - 1, parent, quoteString, allowSideEffects);
     }
 
     /**
      * Converts the value to a String that can be print on the console and used in error messages.
-     * This method should not trigger side-effects!
      *
      * @param depth allowed recursion depth (0 = do not recurse)
      */
-    private static String safeToStringImpl(Object value, int depth, Object parent, boolean quoteString) {
+    private static String toDisplayStringImpl(Object value, int depth, Object parent, boolean quoteString, boolean allowSideEffects) {
         CompilerAsserts.neverPartOfCompilation();
         if (value == parent) {
             return "(this)";
@@ -923,7 +927,7 @@ public final class JSRuntime {
             String string = value.toString();
             return quoteString ? quote(string) : string;
         } else if (JSObject.isJSObject(value)) {
-            return JSObject.safeToString((DynamicObject) value, depth);
+            return JSObject.toDisplayString((DynamicObject) value, depth, allowSideEffects);
         } else if (value instanceof Symbol) {
             return value.toString();
         } else if (value instanceof BigInt) {
@@ -936,22 +940,22 @@ public final class JSRuntime {
                 return numberToString(number);
             }
         } else if (value instanceof InteropFunction) {
-            return safeToStringImpl(((InteropFunction) value).getFunction(), depth, parent, quoteString);
+            return toDisplayStringImpl(((InteropFunction) value).getFunction(), depth, parent, quoteString, allowSideEffects);
         } else if (value instanceof TruffleObject) {
             assert !isJSNative(value) : value;
-            return foreignToString(value, depth, false);
+            return foreignToString(value, depth, allowSideEffects);
         } else {
             return String.valueOf(value);
         }
     }
 
     @TruffleBoundary
-    public static String objectToConsoleString(DynamicObject obj, String name, int depth) {
-        return objectToConsoleString(obj, name, depth, null, null);
+    public static String objectToConsoleString(DynamicObject obj, String name, int depth, boolean allowSideEffects) {
+        return objectToConsoleString(obj, name, depth, null, null, allowSideEffects);
     }
 
     @TruffleBoundary
-    public static String objectToConsoleString(DynamicObject obj, String name, int depth, String[] internalKeys, Object[] internalValues) {
+    public static String objectToConsoleString(DynamicObject obj, String name, int depth, String[] internalKeys, Object[] internalValues, boolean allowSideEffects) {
         assert JSObject.isJSObject(obj) && !JSFunction.isJSFunction(obj) && !JSProxy.isProxy(obj);
         StringBuilder sb = new StringBuilder();
 
@@ -1041,7 +1045,7 @@ public final class JSRuntime {
             String valueStr = null;
             if (desc.isDataDescriptor()) {
                 Object value = desc.getValue();
-                valueStr = safeToString(value, depth, obj);
+                valueStr = toDisplayString(value, depth, obj, allowSideEffects);
             } else if (desc.isAccessorDescriptor()) {
                 valueStr = "accessor";
             } else {
@@ -1062,7 +1066,7 @@ public final class JSRuntime {
                 if (propertyCount > 0) {
                     sb.append(", ");
                 }
-                sb.append("[[").append(internalKeys[i]).append("]]: ").append(safeToString(internalValues[i], depth, obj));
+                sb.append("[[").append(internalKeys[i]).append("]]: ").append(toDisplayString(internalValues[i], depth, obj, allowSideEffects));
                 propertyCount++;
             }
         }
@@ -1083,7 +1087,7 @@ public final class JSRuntime {
             if (interop.isNull(value)) {
                 return "null";
             } else if (interop.hasArrayElements(value)) {
-                return foreignArrayToString(value, depth);
+                return foreignArrayToString(value, depth, allowSideEffects);
             } else if (interop.isString(value)) {
                 return interop.asString(value);
             } else if (interop.isBoolean(value)) {
@@ -1097,7 +1101,7 @@ public final class JSRuntime {
                 } else if (interop.fitsInDouble(value)) {
                     unboxed = interop.asDouble(value);
                 }
-                return JSRuntime.safeToString(unboxed, 0, null);
+                return JSRuntime.toDisplayString(unboxed, 0, null, allowSideEffects);
             } else if ((env = JavaScriptLanguage.getCurrentEnv()).isHostObject(value)) {
                 Object hostObject = env.asHostObject(value);
                 Class<?> clazz = hostObject.getClass();
@@ -1119,7 +1123,7 @@ public final class JSRuntime {
         }
     }
 
-    private static String foreignArrayToString(Object truffleObject, int depth) throws InteropException {
+    private static String foreignArrayToString(Object truffleObject, int depth, boolean allowSideEffects) throws InteropException {
         CompilerAsserts.neverPartOfCompilation();
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(truffleObject);
         assert interop.hasArrayElements(truffleObject);
@@ -1144,7 +1148,7 @@ public final class JSRuntime {
                 }
             }
             Object value = interop.readArrayElement(truffleObject, i);
-            sb.append(safeToString(value, depth, truffleObject));
+            sb.append(toDisplayString(value, depth, truffleObject, allowSideEffects));
         }
         sb.append(']');
         return sb.toString();
@@ -1174,7 +1178,7 @@ public final class JSRuntime {
             if (JSGuards.isJavaArray(arrayValue)) {
                 b.append(javaArrayToString(arrayValue, depth - 1, allowSideEffects));
             } else {
-                b.append(safeToString(arrayValue, depth, javaArray));
+                b.append(toDisplayString(arrayValue, depth, javaArray, allowSideEffects));
             }
             if (i == size) {
                 return b.append(']').toString();
@@ -1214,7 +1218,7 @@ public final class JSRuntime {
             Object value = objInterop.readMember(truffleObject, stringKey);
             sb.append(stringKey);
             sb.append(": ");
-            sb.append(safeToString(value, depth, truffleObject));
+            sb.append(toDisplayString(value, depth, truffleObject, allowSideEffects));
         }
         sb.append('}');
         return sb.toString();
@@ -1237,7 +1241,7 @@ public final class JSRuntime {
         return false;
     }
 
-    public static String collectionToConsoleString(DynamicObject obj, String name, JSHashMap map, int depth) {
+    public static String collectionToConsoleString(DynamicObject obj, String name, JSHashMap map, int depth, boolean allowSideEffects) {
         assert JSMap.isJSMap(obj) || JSSet.isJSSet(obj);
         assert name != null;
         int size = map.size();
@@ -1255,10 +1259,10 @@ public final class JSRuntime {
                     if (!isFirst) {
                         sb.append(", ");
                     }
-                    sb.append(safeToString(key, depth, obj));
+                    sb.append(toDisplayString(key, depth, obj, allowSideEffects));
                     if (isMap) {
                         sb.append(" => ");
-                        sb.append(safeToString(cursor.getValue(), depth, obj));
+                        sb.append(toDisplayString(cursor.getValue(), depth, obj, allowSideEffects));
                     }
                     isFirst = false;
                 }

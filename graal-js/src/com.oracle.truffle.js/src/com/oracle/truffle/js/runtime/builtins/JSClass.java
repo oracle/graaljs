@@ -329,13 +329,13 @@ public abstract class JSClass extends ObjectType {
     }
 
     /**
-     * A more informative but side-effect-free toString variant, mainly used for error messages.
+     * A more informative toString variant, mainly used for error messages.
      *
      * @param depth allowed nesting depth
      * @param context the current language context
      */
     @TruffleBoundary
-    public abstract String safeToString(DynamicObject object, int depth, JSContext context);
+    public abstract String toDisplayStringImpl(DynamicObject object, int depth, boolean allowSideEffects, JSContext context);
 
     public final boolean isInstance(DynamicObject object) {
         return isInstance(object, this);
@@ -1007,8 +1007,8 @@ public abstract class JSClass extends ObjectType {
     }
 
     @ExportMessage
-    static Object toDisplayString(DynamicObject receiver, @SuppressWarnings("unused") boolean allowSideEffects) {
-        return JSRuntime.safeToString(receiver);
+    static Object toDisplayString(DynamicObject receiver, boolean allowSideEffects) {
+        return JSRuntime.toDisplayString(receiver, allowSideEffects);
     }
 
     @ExportMessage

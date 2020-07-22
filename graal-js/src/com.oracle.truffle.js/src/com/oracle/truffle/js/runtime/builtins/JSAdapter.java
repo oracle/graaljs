@@ -300,7 +300,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     }
 
     @Override
-    public String safeToString(DynamicObject object, int depth, JSContext context) {
+    public String toDisplayStringImpl(DynamicObject object, int depth, boolean allowSideEffects, JSContext context) {
         return defaultToString(object);
     }
 

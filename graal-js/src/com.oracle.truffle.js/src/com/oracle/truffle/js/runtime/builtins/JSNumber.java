@@ -158,13 +158,13 @@ public final class JSNumber extends JSPrimitiveObject implements JSConstructorFa
 
     @TruffleBoundary
     @Override
-    public String safeToString(DynamicObject obj, int depth, JSContext context) {
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
         if (context.isOptionNashornCompatibilityMode()) {
-            return super.safeToString(obj, depth, context);
+            return super.toDisplayStringImpl(obj, depth, allowSideEffects, context);
         } else {
             Number primitiveValue = JSNumber.valueOf(obj);
             return JSRuntime.objectToConsoleString(obj, getBuiltinToStringTag(obj), depth,
-                            new String[]{JSRuntime.PRIMITIVE_VALUE}, new Object[]{primitiveValue});
+                            new String[]{JSRuntime.PRIMITIVE_VALUE}, new Object[]{primitiveValue}, allowSideEffects);
         }
     }
 

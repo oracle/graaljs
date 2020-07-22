@@ -570,13 +570,13 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     @Override
-    public String safeToString(DynamicObject obj, int depth, JSContext context) {
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
         if (context.isOptionNashornCompatibilityMode()) {
             return defaultToString(obj);
         } else {
             Object target = getTarget(obj);
             Object handler = getHandler(obj);
-            return "Proxy(" + JSRuntime.safeToString(target, depth, obj) + ", " + JSRuntime.safeToString(handler, depth, obj) + ")";
+            return "Proxy(" + JSRuntime.toDisplayString(target, depth, obj, allowSideEffects) + ", " + JSRuntime.toDisplayString(handler, depth, obj, allowSideEffects) + ")";
         }
     }
 

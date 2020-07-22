@@ -86,7 +86,7 @@ public final class JSObjectPrototype extends JSBuiltinObject {
     }
 
     @Override
-    public String safeToString(DynamicObject obj, int depth, JSContext context) {
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
         return defaultToString(obj);
     }
 
