@@ -141,8 +141,8 @@ suite = {
     },
 
     "TEST262" : {
-      "sha1" : "a94c10b605c00ccdeaae3d702446dc33331c7609",
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/test262-40a1a6f6.tar.bz2"],
+      "sha1" : "551f5233714aea646d97cfc97c1f4cc7f34bd683",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/test262-538fcd88.tar.bz2"],
     },
 
     "TESTNASHORN" : {
