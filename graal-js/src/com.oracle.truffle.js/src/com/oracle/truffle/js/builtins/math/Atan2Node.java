@@ -52,12 +52,12 @@ public abstract class Atan2Node extends MathOperation {
 
     @TruffleBoundary
     @Specialization
-    protected static double atan2(double a, double b) {
+    protected static double atan2Double(double a, double b) {
         return Math.atan2(a, b);
     }
 
     @Specialization
-    protected double atan2(Object a, Object b) {
-        return atan2(toDouble(a), toDouble(b));
+    protected double atan2Generic(Object a, Object b) {
+        return atan2Double(toDouble(a), toDouble(b));
     }
 }

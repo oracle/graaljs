@@ -201,11 +201,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         protected Object get(DynamicObject thisObj, Object key) {
             Object normalizedKey = normalize(key);
             Object value = JSMap.getInternalMap(thisObj).get(normalizedKey);
-            if (value != null) {
-                return value;
-            } else {
-                return Undefined.instance;
-            }
+            return JSRuntime.nullToUndefined(value);
         }
 
         @SuppressWarnings("unused")

@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.builtins.math;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
@@ -94,7 +95,7 @@ public abstract class MinNode extends MathOperation {
 
     @Specialization(guards = {"args.length == 2", "caseIntInt(args)"})
     protected static int min2ParamInt(Object[] args,
-                    @Cached("createBinaryProfile()") ConditionProfile minProfile) {
+                    @Shared("minProfile") @Cached("createBinaryProfile()") ConditionProfile minProfile) {
         int i1 = (int) args[0];
         int i2 = (int) args[1];
         return min(i1, i2, minProfile);
@@ -103,7 +104,7 @@ public abstract class MinNode extends MathOperation {
     @Specialization(guards = {"args.length == 2", "!caseIntInt(args)"})
     protected Object min2Param(Object[] args,
                     @Cached("createBinaryProfile()") ConditionProfile isIntBranch,
-                    @Cached("createBinaryProfile()") ConditionProfile minProfile,
+                    @Shared("minProfile") @Cached("createBinaryProfile()") ConditionProfile minProfile,
                     @Cached("create()") JSToNumberNode toNumber1Node,
                     @Cached("create()") JSToNumberNode toNumber2Node) {
         Number n1 = toNumber1Node.executeNumber(args[0]);
@@ -117,8 +118,24 @@ public abstract class MinNode extends MathOperation {
         }
     }
 
-    @Specialization(guards = "args.length >= 3")
-    protected double min(Object[] args) {
+    protected static boolean caseIntIntInt(Object[] args) {
+        assert args.length == 3;
+        return args[0] instanceof Integer && args[1] instanceof Integer && args[2] instanceof Integer;
+    }
+
+    @Specialization(guards = {"args.length == 3", "caseIntIntInt(args)"})
+    protected int min3ParamInt(Object[] args) {
+        return Math.min(Math.min((int) args[0], (int) args[1]), (int) args[2]);
+    }
+
+    @Specialization(guards = {"args.length == 3", "!caseIntIntInt(args)"})
+    protected double min3ParamOther(Object[] args) {
+        double smallest = minDoubleDouble(toDouble(args[0]), toDouble(args[1]));
+        return minDoubleDouble(smallest, toDouble(args[2]));
+    }
+
+    @Specialization(guards = "args.length >= 4")
+    protected double minGeneric(Object[] args) {
         double smallest = minDoubleDouble(toDouble(args[0]), toDouble(args[1]));
         for (int i = 2; i < args.length; i++) {
             smallest = minDoubleDouble(smallest, toDouble(args[i]));

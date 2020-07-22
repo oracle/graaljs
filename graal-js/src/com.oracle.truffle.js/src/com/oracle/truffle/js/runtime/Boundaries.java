@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -49,6 +47,8 @@ import java.util.Map;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicSet;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Utility class for calls to library methods that require a {@link TruffleBoundary}.
@@ -177,6 +177,23 @@ public final class Boundaries {
     @TruffleBoundary
     public static String stringFormat(String format, Object... params) {
         return String.format(format, params);
+    }
+
+    // a TruffleBoundary is NOT need for indexOf, as this is intrinisfied by GraalVM.
+    public static int stringIndexOf(String s, String pattern) {
+        return s.indexOf(pattern);
+    }
+
+    public static int stringIndexOf(String s, String pattern, int startPos) {
+        return s.indexOf(pattern, startPos);
+    }
+
+    public static int stringIndexOf(String s, char pattern) {
+        return s.indexOf(pattern);
+    }
+
+    public static int stringIndexOf(String s, char pattern, int startPos) {
+        return s.indexOf(pattern, startPos);
     }
 
     @TruffleBoundary(allowInlining = true)

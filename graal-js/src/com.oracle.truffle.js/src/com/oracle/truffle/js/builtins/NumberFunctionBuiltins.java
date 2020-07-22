@@ -112,12 +112,12 @@ public final class NumberFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = "!isDouble(arg)")
-        protected boolean isNaN(@SuppressWarnings("unused") Object arg) {
+        protected boolean isNaNNotDouble(@SuppressWarnings("unused") Object arg) {
             return false;
         }
 
         @Specialization
-        protected boolean isNaN(double arg) {
+        protected boolean isNaNDouble(double arg) {
             return Double.isNaN(arg);
         }
     }
@@ -181,12 +181,12 @@ public final class NumberFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected boolean isSafeInteger(@SuppressWarnings("unused") int arg) {
+        protected boolean isSafeIntegerInt(@SuppressWarnings("unused") int arg) {
             return true;
         }
 
         @Specialization
-        protected boolean isSafeInteger(double arg) {
+        protected boolean isSafeIntegerDouble(double arg) {
             if (Double.isNaN(arg) || !Double.isFinite(arg)) {
                 return false;
             }
@@ -198,7 +198,7 @@ public final class NumberFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = "!isNumber(arg)")
-        protected boolean isSafeInteger(@SuppressWarnings("unused") Object arg) {
+        protected boolean isSafeIntegerNotANumber(@SuppressWarnings("unused") Object arg) {
             return false;
         }
     }

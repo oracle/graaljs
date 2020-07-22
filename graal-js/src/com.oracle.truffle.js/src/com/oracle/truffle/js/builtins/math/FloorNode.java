@@ -64,12 +64,12 @@ public abstract class FloorNode extends MathOperation {
     }
 
     @Specialization
-    protected static int floor(int a) {
+    protected static int floorInt(int a) {
         return a;
     }
 
     @Specialization
-    protected static SafeInteger floor(SafeInteger a) {
+    protected static SafeInteger floorSafeInt(SafeInteger a) {
         return a;
     }
 

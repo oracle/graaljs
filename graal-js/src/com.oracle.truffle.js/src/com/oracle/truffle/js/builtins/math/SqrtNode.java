@@ -51,12 +51,12 @@ public abstract class SqrtNode extends MathOperation {
     }
 
     @Specialization
-    protected static double sqrt(double a) {
+    protected static double sqrtDouble(double a) {
         return Math.sqrt(a);
     }
 
     @Specialization
-    protected double sqrt(Object a) {
+    protected double sqrtGeneric(Object a) {
         return Math.sqrt(toDouble(a));
     }
 }

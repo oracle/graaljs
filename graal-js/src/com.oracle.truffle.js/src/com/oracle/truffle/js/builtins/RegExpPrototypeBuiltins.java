@@ -370,9 +370,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "isObjectNode.executeBoolean(thisObj)", limit = "1")
-        protected Object test(DynamicObject thisObj, Object input,
-                        @Cached("create()") @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
-                        @Cached("create()") JSToStringNode toStringNode,
+        protected Object testGeneric(DynamicObject thisObj, Object input,
+                        @Cached @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
+                        @Cached JSToStringNode toStringNode,
                         @Cached("create(getContext())") JSRegExpExecIntlNode regExpNode) {
             String inputStr = toStringNode.executeString(input);
             Object result = regExpNode.execute(thisObj, inputStr);
@@ -384,7 +384,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Fallback
-        protected Object test(Object thisNonObj, @SuppressWarnings("unused") Object input) {
+        protected Object testError(Object thisNonObj, @SuppressWarnings("unused") Object input) {
             throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.test", thisNonObj);
         }
 

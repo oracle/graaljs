@@ -52,12 +52,12 @@ public abstract class AcosNode extends MathOperation {
 
     @TruffleBoundary
     @Specialization
-    protected static double acos(double a) {
+    protected static double acosDouble(double a) {
         return Math.acos(a);
     }
 
     @Specialization
-    protected double acos(Object a) {
-        return acos(toDouble(a));
+    protected double acosGeneric(Object a) {
+        return acosDouble(toDouble(a));
     }
 }

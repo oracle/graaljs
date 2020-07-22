@@ -112,6 +112,7 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child private ReadElementNode readElementNode;
         private final ConditionProfile intIndexProfile;
         private final BranchProfile errorBranch;
+        private final ConditionProfile isTypedArrayProfile;
 
         public ArrayIteratorNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -123,6 +124,7 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             this.setNextIndexNode = PropertySetNode.createSetHidden(JSRuntime.ITERATOR_NEXT_INDEX, context);
             this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
             this.intIndexProfile = ConditionProfile.createBinaryProfile();
+            this.isTypedArrayProfile = ConditionProfile.createBinaryProfile();
             this.errorBranch = BranchProfile.create();
         }
 
@@ -136,7 +138,7 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             long index = getNextIndex(iterator);
             int itemKind = getIterationKind(iterator);
             long length;
-            if (JSArrayBufferView.isJSArrayBufferView(array)) {
+            if (isTypedArrayProfile.profile(JSArrayBufferView.isJSArrayBufferView(array))) {
                 DynamicObject typedArray = (DynamicObject) array;
                 if (JSArrayBufferView.hasDetachedBuffer(typedArray, getContext())) {
                     errorBranch.enter();

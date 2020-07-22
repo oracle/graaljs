@@ -333,7 +333,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         protected final double asDateMillis(Object thisDate) {
             if (isDate.profile(JSDate.isJSDate(thisDate))) {
-                return JSDate.getTimeMillisField(asDate(thisDate));
+                return JSDate.getTimeMillisField((DynamicObject) thisDate);
             }
             InteropLibrary interop = interopLibrary;
             if (interop == null) {

@@ -1078,7 +1078,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization(guards = {"args.length != 0"})
-        protected String callString(Object[] args,
+        protected String callStringGeneric(Object[] args,
                         @Cached("createSymbolToString()") JSToStringNode toStringNode) {
             return toStringNode.executeString(args[0]);
         }
@@ -2294,10 +2294,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             super(context, builtin);
         }
 
-        @Child private JSToStringNode toStringNode = JSToStringNode.createUndefinedToEmpty();
-
         @Specialization
-        protected Symbol callSymbol(Object value) {
+        protected Symbol callSymbolString(String value) {
+            return Symbol.create(value);
+        }
+
+        @Specialization(guards = "!isString(value)")
+        protected Symbol callSymbolGeneric(Object value,
+                        @Cached JSToStringNode toStringNode) {
             return Symbol.create(value == Undefined.instance ? null : toStringNode.executeString(value));
         }
     }

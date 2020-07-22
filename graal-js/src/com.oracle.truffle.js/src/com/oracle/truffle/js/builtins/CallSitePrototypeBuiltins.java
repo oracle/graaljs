@@ -185,7 +185,7 @@ public final class CallSitePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization
-        final Object getFunctionName(DynamicObject thisObj) {
+        final Object callSiteGet(DynamicObject thisObj) {
             JSStackTraceElement stackTraceElement = getStackTraceElement(thisObj);
             switch (method) {
                 case getFunction:

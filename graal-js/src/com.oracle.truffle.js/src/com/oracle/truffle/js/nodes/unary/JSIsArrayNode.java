@@ -96,7 +96,7 @@ public abstract class JSIsArrayNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"isJSProxy(object)"})
     protected boolean doJSProxy(DynamicObject object) {
-        return JSRuntime.isArray(object);
+        return JSRuntime.isProxyAnArray(object);
     }
 
     @Specialization(guards = {"isJSType(object)", "!isJSArray(object)", "!isJSProxy(object)"}, replaces = {"doIsArrayJSClass"})
