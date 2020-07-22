@@ -2692,14 +2692,30 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 } else {
                     retObj = JSRuntime.call(compFnObj, Undefined.instance, new Object[]{arg0, arg1});
                 }
-                double d = JSRuntime.toDouble(retObj);
+                int res = convertResult(retObj);
                 if (isTypedArrayImplementation) {
                     if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBufferObj)) {
                         errorBranch.enter();
                         throw Errors.createTypeErrorDetachedBuffer();
                     }
                 }
-                return d == 0 ? 0 : (d < 0 ? -1 : 1);
+                return res;
+            }
+
+            private int convertResult(Object retObj) {
+                if (retObj instanceof Integer) {
+                    return (int) retObj;
+                } else {
+                    double d = JSRuntime.toDouble(retObj);
+                    if (d < 0) {
+                        return -1;
+                    } else if (d > 0) {
+                        return 1;
+                    } else {
+                        // +/-0 or NaN
+                        return 0;
+                    }
+                }
             }
         }
 
