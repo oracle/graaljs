@@ -147,6 +147,7 @@ public final class GraalJSEvaluator implements JSParser {
         try {
             GraalJSParserHelper.checkFunctionSyntax(context, context.getParserOptions(), parameterList, wrappedBody, generatorFunction, asyncFunction, sourceName);
         } catch (com.oracle.js.parser.ParserException e) {
+            e.setLineNumber(e.getLineNumber() - 1); // undo the shift caused by the wrapping
             throw parserToJSError(null, e, context);
         }
         StringBuilder code = new StringBuilder();
