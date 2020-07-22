@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
@@ -94,11 +95,12 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
         doArrayIndexLong(target, index, value, receiver, jsclassProfile.getJSClass(target));
     }
 
-    @Specialization(guards = {"toArrayIndexNode.isArrayIndex(key)", "!isJSProxy(target)"}, replaces = {"doIntIndex"})
-    void doArrayIndex(DynamicObject target, Object key, Object value, Object receiver,
-                    @Cached("createNoToPropertyKey()") ToArrayIndexNode toArrayIndexNode,
+    @Specialization(guards = {"!isJSProxy(target)", "toArrayIndexNode.isResultArrayIndex(maybeIndex)"}, replaces = {"doIntIndex"})
+    void doArrayIndex(DynamicObject target, @SuppressWarnings("unused") Object key, Object value, Object receiver,
+                    @Cached("createNoToPropertyKey()") @SuppressWarnings("unused") ToArrayIndexNode toArrayIndexNode,
+                    @Bind("toArrayIndexNode.execute(key)") Object maybeIndex,
                     @Cached("create()") JSClassProfile jsclassProfile) {
-        long index = (long) toArrayIndexNode.execute(key);
+        long index = (long) maybeIndex;
         doArrayIndexLong(target, index, value, receiver, jsclassProfile.getJSClass(target));
     }
 

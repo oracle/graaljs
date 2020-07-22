@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
@@ -85,13 +86,14 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
         return JSObject.getOrDefault(target, index, receiver, defaultValue, jsclassProfile);
     }
 
-    @Specialization(guards = {"toArrayIndexNode.isArrayIndex(key)", "!isJSProxy(target)"}, replaces = {"doIntIndex"})
-    Object doArrayIndex(DynamicObject target, Object key, Object receiver, Object defaultValue,
+    @Specialization(guards = {"!isJSProxy(target)", "toArrayIndexNode.isResultArrayIndex(maybeIndex)"}, replaces = {"doIntIndex"})
+    Object doArrayIndex(DynamicObject target, @SuppressWarnings("unused") Object key, Object receiver, Object defaultValue,
                     @Cached("create()") RequireObjectCoercibleNode requireObjectCoercibleNode,
-                    @Cached("createNoToPropertyKey()") ToArrayIndexNode toArrayIndexNode,
+                    @Cached("createNoToPropertyKey()") @SuppressWarnings("unused") ToArrayIndexNode toArrayIndexNode,
+                    @Bind("toArrayIndexNode.execute(key)") Object maybeIndex,
                     @Cached("create()") JSClassProfile jsclassProfile) {
         requireObjectCoercibleNode.executeVoid(target);
-        long index = (long) toArrayIndexNode.execute(key);
+        long index = (long) maybeIndex;
         return JSObject.getOrDefault(target, index, receiver, defaultValue, jsclassProfile);
     }
 
