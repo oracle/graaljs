@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -183,4 +183,14 @@ public final class ParserException extends RuntimeException {
     public boolean isIncompleteSource() {
         return Token.descType(token) == TokenType.EOF;
     }
+
+    @Override
+    public String getMessage() {
+        String message = super.getMessage();
+        if (source != null) {
+            message = ErrorManager.format(message, source, line, column, token);
+        }
+        return message;
+    }
+
 }
