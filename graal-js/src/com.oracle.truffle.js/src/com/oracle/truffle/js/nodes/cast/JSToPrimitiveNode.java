@@ -214,6 +214,8 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
                 return toJSType.executeWithTarget(javaObject);
             } else if (realm.getContext().isOptionNashornCompatibilityMode() && javaObject instanceof Number) {
                 return JSRuntime.doubleValueVirtual((Number) javaObject);
+            } else if (JSGuards.isJavaArray(javaObject)) {
+                return JSRuntime.javaArrayToString(javaObject);
             } else {
                 return JSRuntime.toJSNull(Boundaries.javaToString(javaObject));
             }
