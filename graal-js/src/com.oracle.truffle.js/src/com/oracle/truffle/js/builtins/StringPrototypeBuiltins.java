@@ -817,6 +817,15 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return -1;
         }
 
+        @Specialization(guards = "isUndefined(position)")
+        protected int lastIndexOfString(String thisObj, String searchString, @SuppressWarnings("unused") Object position,
+                        @Cached("createBinaryProfile()") @Shared("searchStrZero") ConditionProfile searchStrZero,
+                        @Cached("createBinaryProfile()") @Shared("searchStrOne") ConditionProfile searchStrOne) {
+            int len = thisObj.length();
+            int pos = len;
+            return lastIndexOfImpl(thisObj, searchString, pos, searchStrZero, searchStrOne);
+        }
+
         @Specialization
         protected int lastIndexOfString(String thisObj, String searchString, int position,
                         @Cached("createBinaryProfile()") @Shared("searchStrZero") ConditionProfile searchStrZero,
