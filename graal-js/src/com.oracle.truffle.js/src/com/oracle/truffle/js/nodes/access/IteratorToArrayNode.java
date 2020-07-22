@@ -40,19 +40,19 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 /**
  * Absorb iterator to new array.
@@ -74,13 +74,14 @@ public abstract class IteratorToArrayNode extends JavaScriptNode {
     }
 
     @Specialization
-    protected Object doIterator(VirtualFrame frame, IteratorRecord iteratorRecord) {
-        List<Object> elements = new ArrayList<>();
+    protected Object doIterator(VirtualFrame frame, IteratorRecord iteratorRecord,
+                    @Cached BranchProfile growProfile) {
+        SimpleArrayList<Object> elements = new SimpleArrayList<>();
         Object value;
         while ((value = iteratorStepNode.execute(frame, iteratorRecord)) != null) {
-            Boundaries.listAdd(elements, value);
+            elements.add(value, growProfile);
         }
-        return JSArray.createZeroBasedObjectArray(context, Boundaries.listToArray(elements));
+        return JSArray.createZeroBasedObjectArray(context, elements.toArray());
     }
 
     public abstract Object execute(VirtualFrame frame, IteratorRecord iteratorRecord);
