@@ -557,19 +557,19 @@ public class Parser extends AbstractParser {
     }
 
     private void handleParseException(final Exception e) {
-        // Extract message from exception. The message will be in error
-        // message format.
-        String message = e.getMessage();
-
-        // If empty message.
-        if (message == null) {
-            message = e.toString();
-        }
-
         // Issue message.
         if (e instanceof ParserException) {
             errors.error((ParserException) e);
         } else {
+            // Extract message from exception. The message will be in error
+            // message format.
+            String message = e.getMessage();
+
+            // If empty message.
+            if (message == null) {
+                message = e.toString();
+            }
+
             errors.error(message);
         }
 
@@ -583,19 +583,19 @@ public class Parser extends AbstractParser {
      */
     private void recover(final Exception e) {
         if (e != null) {
-            // Extract message from exception. The message will be in error
-            // message format.
-            String message = e.getMessage();
-
-            // If empty message.
-            if (message == null) {
-                message = e.toString();
-            }
-
             // Issue message.
             if (e instanceof ParserException) {
                 errors.error((ParserException) e);
             } else {
+                // Extract message from exception. The message will be in error
+                // message format.
+                String message = e.getMessage();
+
+                // If empty message.
+                if (message == null) {
+                    message = e.toString();
+                }
+
                 errors.error(message);
             }
 
