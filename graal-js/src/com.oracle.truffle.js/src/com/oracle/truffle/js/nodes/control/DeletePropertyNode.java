@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.nodes.control;
 
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayType;
-import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArrayType;
 
 import java.util.Set;
 
@@ -59,10 +58,10 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
+import com.oracle.truffle.js.nodes.array.JSArrayDeleteIndexNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -74,7 +73,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
@@ -84,7 +82,7 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
  */
 @NodeInfo(shortName = "delete")
 public abstract class DeletePropertyNode extends JSTargetableNode {
-    private final boolean strict;
+    protected final boolean strict;
     protected final JSContext context;
     @Child @Executed protected JavaScriptNode targetNode;
     @Child @Executed protected JavaScriptNode propertyNode;
@@ -165,7 +163,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
                     @Cached("createBinaryProfile()") ConditionProfile arrayProfile,
                     @Cached("create()") ToArrayIndexNode toArrayIndexNode,
                     @Cached("createBinaryProfile()") ConditionProfile arrayIndexProfile,
-                    @Cached("createClassProfile()") ValueProfile arrayTypeProfile,
+                    @Cached("create(context, strict)") JSArrayDeleteIndexNode deleteArrayIndexNode,
                     @Cached("create()") JSClassProfile jsclassProfile,
                     @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
         final boolean isArray = isArrayNode.execute(targetObject);
@@ -175,13 +173,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
 
             if (arrayIndexProfile.profile(objIndex instanceof Long)) {
                 long longIndex = (long) objIndex;
-                ScriptArray array = arrayTypeProfile.profile(arrayGetArrayType(targetObject, isArray));
-                if (array.canDeleteElement(targetObject, longIndex, strict, isArray)) {
-                    arraySetArrayType(targetObject, array.deleteElement(targetObject, longIndex, strict, isArray));
-                    return true;
-                } else {
-                    return false;
-                }
+                return deleteArrayIndexNode.execute(targetObject, arrayGetArrayType(targetObject, isArray), longIndex, isArray);
             } else {
                 propertyKey = objIndex;
             }
