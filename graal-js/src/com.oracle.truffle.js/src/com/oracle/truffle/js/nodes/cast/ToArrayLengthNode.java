@@ -65,6 +65,10 @@ public abstract class ToArrayLengthNode extends JavaScriptBaseNode {
 
     public abstract long executeLong(Object value);
 
+    public boolean isTypeNumber(long result) {
+        return result != TYPE_NOT_NUMBER;
+    }
+
     @Specialization
     protected static long doInt(int value) {
         return value;
