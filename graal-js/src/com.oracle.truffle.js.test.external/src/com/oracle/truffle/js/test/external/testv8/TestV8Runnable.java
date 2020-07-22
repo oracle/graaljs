@@ -264,11 +264,10 @@ public class TestV8Runnable extends TestRunnable {
     }
 
     private void reportEnd(long startDate) {
-        long endDate = System.currentTimeMillis();
-        long executionTime = endDate - startDate;
+        long executionTime = System.currentTimeMillis() - startDate;
         synchronized (suite) {
             if (executionTime > LONG_RUNNING_TEST_SECONDS * 1000) {
-                System.out.println("Long running test finished: " + getTestFile().getFilePath() + " " + (endDate - startDate));
+                System.out.println("Long running test finished: " + getTestFile().getFilePath() + " " + executionTime);
             }
 
             suite.getActiveTests().remove(this);
