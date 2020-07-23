@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,56 +38,57 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.access;
+package com.oracle.truffle.js.nodes.array;
 
-import java.util.Set;
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArrayType;
 
+import java.util.Objects;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 /**
- * Absorb iterator to new array.
+ * Deletes an index from a JS array. Does not shrink the array.
+ *
+ * Used by {@code delete}.
  */
-public abstract class IteratorToArrayNode extends JavaScriptNode {
-    private final JSContext context;
-    @Child @Executed JavaScriptNode iteratorNode;
-    @Child private IteratorGetNextValueNode iteratorStepNode;
+public abstract class JSArrayDeleteIndexNode extends JavaScriptBaseNode {
 
-    protected IteratorToArrayNode(JSContext context, JavaScriptNode iteratorNode, IteratorGetNextValueNode iteratorStepNode) {
-        this.context = context;
-        this.iteratorNode = iteratorNode;
-        this.iteratorStepNode = iteratorStepNode;
+    protected final JSContext context;
+    protected final boolean strict;
+
+    protected JSArrayDeleteIndexNode(JSContext context, boolean strict) {
+        this.context = Objects.requireNonNull(context);
+        this.strict = strict;
     }
 
-    public static IteratorToArrayNode create(JSContext context, JavaScriptNode iterator) {
-        IteratorGetNextValueNode iteratorStep = IteratorGetNextValueNode.create(context, null, JSConstantNode.create(null), true);
-        return IteratorToArrayNodeGen.create(context, iterator, iteratorStep);
+    public static JSArrayDeleteIndexNode create(JSContext context, boolean strict) {
+        return JSArrayDeleteIndexNodeGen.create(context, strict);
     }
 
-    @Specialization
-    protected Object doIterator(VirtualFrame frame, IteratorRecord iteratorRecord,
-                    @Cached BranchProfile growProfile) {
-        SimpleArrayList<Object> elements = new SimpleArrayList<>();
-        Object value;
-        while ((value = iteratorStepNode.execute(frame, iteratorRecord)) != null) {
-            elements.add(value, growProfile);
+    public abstract boolean execute(DynamicObject array, ScriptArray arrayType, long index, boolean arrayGuard);
+
+    @Specialization(guards = {"cachedArrayType.isInstance(arrayType)"}, limit = "5")
+    protected boolean doCached(DynamicObject array, @SuppressWarnings("unused") ScriptArray arrayType, long index, boolean arrayGuard,
+                    @Cached("arrayType") @SuppressWarnings("unused") ScriptArray cachedArrayType) {
+        assert JSArray.isJSFastArray(array);
+        if (cachedArrayType.canDeleteElement(array, index, strict, arrayGuard)) {
+            arraySetArrayType(array, cachedArrayType.deleteElement(array, index, strict, arrayGuard));
+            return true;
+        } else {
+            return false;
         }
-        return JSArray.createZeroBasedObjectArray(context, elements.toArray());
     }
 
-    public abstract Object execute(VirtualFrame frame, IteratorRecord iteratorRecord);
-
-    @Override
-    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return IteratorToArrayNodeGen.create(context, cloneUninitialized(iteratorNode, materializedTags), cloneUninitialized(iteratorStepNode, materializedTags));
+    @TruffleBoundary
+    @Specialization(replaces = {"doCached"})
+    protected boolean doUncached(DynamicObject array, ScriptArray arrayType, long index, boolean arrayGuard) {
+        return doCached(array, arrayType, index, arrayGuard, arrayType);
     }
 }

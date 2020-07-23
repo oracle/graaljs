@@ -116,7 +116,7 @@ public class SimpleArrayList<E> {
     }
 
     private void ensureCapacity(int minCapacity, BranchProfile growProfile) {
-        if (elements.length < minCapacity) {
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, elements.length < minCapacity)) {
             growProfile.enter();
             ensureCapacityIntl(minCapacity);
         }

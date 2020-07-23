@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,54 +40,54 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import java.util.Set;
-
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Executed;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.util.SimpleArrayList;
+import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
-/**
- * Absorb iterator to new array.
- */
-public abstract class IteratorToArrayNode extends JavaScriptNode {
-    private final JSContext context;
-    @Child @Executed JavaScriptNode iteratorNode;
-    @Child private IteratorGetNextValueNode iteratorStepNode;
+@ImportStatic({JSObject.class})
+public abstract class HasOnlyShapePropertiesNode extends JavaScriptBaseNode {
 
-    protected IteratorToArrayNode(JSContext context, JavaScriptNode iteratorNode, IteratorGetNextValueNode iteratorStepNode) {
-        this.context = context;
-        this.iteratorNode = iteratorNode;
-        this.iteratorStepNode = iteratorStepNode;
+    protected HasOnlyShapePropertiesNode() {
     }
 
-    public static IteratorToArrayNode create(JSContext context, JavaScriptNode iterator) {
-        IteratorGetNextValueNode iteratorStep = IteratorGetNextValueNode.create(context, null, JSConstantNode.create(null), true);
-        return IteratorToArrayNodeGen.create(context, iterator, iteratorStep);
+    public static HasOnlyShapePropertiesNode create() {
+        return HasOnlyShapePropertiesNodeGen.create();
     }
 
-    @Specialization
-    protected Object doIterator(VirtualFrame frame, IteratorRecord iteratorRecord,
-                    @Cached BranchProfile growProfile) {
-        SimpleArrayList<Object> elements = new SimpleArrayList<>();
-        Object value;
-        while ((value = iteratorStepNode.execute(frame, iteratorRecord)) != null) {
-            elements.add(value, growProfile);
+    public final boolean execute(DynamicObject object) {
+        return execute(object, JSObject.getJSClass(object));
+    }
+
+    public abstract boolean execute(DynamicObject object, JSClass jsclass);
+
+    @Specialization(guards = {"jsclass == cachedJSClass", "!isJSObjectPrototype(cachedJSClass)"}, limit = "5")
+    static boolean doCached(DynamicObject object, @SuppressWarnings("unused") JSClass jsclass,
+                    @Cached(value = "jsclass") JSClass cachedJSClass) {
+        return cachedJSClass.hasOnlyShapeProperties(object);
+    }
+
+    @Specialization(guards = {"isJSObjectPrototype(jsclass)"})
+    static boolean doObjectPrototype(DynamicObject object, JSClass jsclass,
+                    @Cached("getJSContext(object)") JSContext context) {
+        if (context.getArrayPrototypeNoElementsAssumption().isValid()) {
+            assert jsclass.hasOnlyShapeProperties(object);
+            return true;
         }
-        return JSArray.createZeroBasedObjectArray(context, elements.toArray());
+        return JSObjectPrototype.INSTANCE.hasOnlyShapeProperties(object);
     }
 
-    public abstract Object execute(VirtualFrame frame, IteratorRecord iteratorRecord);
+    @Specialization(replaces = {"doCached", "doObjectPrototype"})
+    static boolean doUncached(DynamicObject object, JSClass jsclass) {
+        return jsclass.hasOnlyShapeProperties(object);
+    }
 
-    @Override
-    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return IteratorToArrayNodeGen.create(context, cloneUninitialized(iteratorNode, materializedTags), cloneUninitialized(iteratorStepNode, materializedTags));
+    static boolean isJSObjectPrototype(JSClass jsclass) {
+        return jsclass == JSObjectPrototype.INSTANCE;
     }
 }

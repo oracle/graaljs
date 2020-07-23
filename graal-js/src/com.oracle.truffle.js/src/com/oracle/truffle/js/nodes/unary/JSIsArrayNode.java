@@ -112,8 +112,8 @@ public abstract class JSIsArrayNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"!isJSType(object)", "!jsType"})
-    protected boolean doForeign(Object object,
-                    @CachedLibrary(limit = "3") InteropLibrary interop) {
+    protected boolean doPrimitiveOrForeign(Object object,
+                    @CachedLibrary(limit = "6") InteropLibrary interop) {
         return interop.hasArrayElements(object);
     }
 

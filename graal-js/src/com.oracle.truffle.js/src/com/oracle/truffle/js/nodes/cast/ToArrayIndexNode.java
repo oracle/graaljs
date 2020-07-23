@@ -60,8 +60,9 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
 
     public abstract long executeLong(Object operand) throws UnexpectedResultException;
 
-    public final boolean isArrayIndex(Object operand) {
-        return execute(operand) instanceof Long;
+    @SuppressWarnings("static-method")
+    public final boolean isResultArrayIndex(Object result) {
+        return result instanceof Long;
     }
 
     protected ToArrayIndexNode(boolean convertToPropertyKey) {

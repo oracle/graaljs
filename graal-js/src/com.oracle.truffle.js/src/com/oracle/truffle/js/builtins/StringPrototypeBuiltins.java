@@ -50,6 +50,7 @@ import java.util.Locale;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -800,8 +801,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         // search for a single-character string without position argument.
         // Use-case: path.js:normalizeString
         @Specialization(guards = {"isStringLength1(searchString)", "isUndefined(position)"})
-        protected int lastIndexOfString(String thisObj, String searchString, @SuppressWarnings("unused") DynamicObject position) {
-            return lastIndexOfChar(thisObj, searchString, thisObj.length() - 1);
+        protected int lastIndexOfChar(String thisObj, String searchString, @SuppressWarnings("unused") Object position) {
+            return lastIndexOfChar(thisObj, searchString, thisObj.length());
         }
 
         private static int lastIndexOfChar(String thisStr, String searchStr, int startPos) {
@@ -816,13 +817,31 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return -1;
         }
 
-        @Specialization(replaces = "lastIndexOfString")
+        @Specialization(guards = "isUndefined(position)")
+        protected int lastIndexOfString(String thisObj, String searchString, @SuppressWarnings("unused") Object position,
+                        @Cached("createBinaryProfile()") @Shared("searchStrZero") ConditionProfile searchStrZero,
+                        @Cached("createBinaryProfile()") @Shared("searchStrOne") ConditionProfile searchStrOne) {
+            int len = thisObj.length();
+            int pos = len;
+            return lastIndexOfImpl(thisObj, searchString, pos, searchStrZero, searchStrOne);
+        }
+
+        @Specialization
+        protected int lastIndexOfString(String thisObj, String searchString, int position,
+                        @Cached("createBinaryProfile()") @Shared("searchStrZero") ConditionProfile searchStrZero,
+                        @Cached("createBinaryProfile()") @Shared("searchStrOne") ConditionProfile searchStrOne) {
+            int len = thisObj.length();
+            int pos = within(position, 0, len);
+            return lastIndexOfImpl(thisObj, searchString, pos, searchStrZero, searchStrOne);
+        }
+
+        @Specialization(replaces = {"lastIndexOfChar", "lastIndexOfString"})
         protected int lastIndexOf(Object thisObj, Object searchString, Object position,
                         @Cached("create()") JSToStringNode toString2Node,
                         @Cached("create()") JSToNumberNode toNumberNode,
                         @Cached("createBinaryProfile()") ConditionProfile posNaN,
-                        @Cached("createBinaryProfile()") ConditionProfile searchStrZero,
-                        @Cached("createBinaryProfile()") ConditionProfile searchStrOne) {
+                        @Cached("createBinaryProfile()") @Shared("searchStrZero") ConditionProfile searchStrZero,
+                        @Cached("createBinaryProfile()") @Shared("searchStrOne") ConditionProfile searchStrOne) {
             requireObjectCoercible(thisObj);
             String thisStr = toString(thisObj);
             String searchStr = toString2Node.executeString(searchString);
@@ -836,6 +855,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             } else {
                 pos = within((int) dVal, 0, len);
             }
+            return lastIndexOfImpl(thisStr, searchStr, pos, searchStrZero, searchStrOne);
+        }
+
+        private static int lastIndexOfImpl(String thisStr, String searchStr, int pos, ConditionProfile searchStrZero, ConditionProfile searchStrOne) {
             if (searchStrZero.profile(searchStr.length() == 0)) {
                 return pos;
             } else if (searchStrOne.profile(searchStr.length() == 1)) {

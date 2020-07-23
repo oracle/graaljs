@@ -54,6 +54,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -133,6 +134,7 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.array.ArrayCreateNode;
+import com.oracle.truffle.js.nodes.cast.ToArrayLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSNumberToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSNumericToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
@@ -144,7 +146,6 @@ import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode.Hint;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
-import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
 import com.oracle.truffle.js.nodes.function.EvalNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -643,27 +644,22 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return swapPrototype(JSArray.createConstantEmptyArray(getContext(), arrayAllocationSite, length), newTarget);
         }
 
-        @Specialization(guards = "isOneNumberArg(args)", replaces = "constructArrayWithIntLength")
-        protected DynamicObject constructWithLength(DynamicObject newTarget, Object[] args,
-                        @Cached("create()") JSToUInt32Node toUInt32Node,
+        @Specialization(guards = {"args.length == 1", "toArrayLengthNode.isTypeNumber(len)"}, replaces = "constructArrayWithIntLength")
+        protected DynamicObject constructWithLength(DynamicObject newTarget, @SuppressWarnings("unused") Object[] args,
+                        @Cached @SuppressWarnings("unused") ToArrayLengthNode toArrayLengthNode,
                         @Cached("create(getContext())") ArrayCreateNode arrayCreateNode,
-                        @Cached("create()") BranchProfile rangeErrorProfile,
-                        @Cached("create()") BranchProfile toArrayIndex1Profile,
-                        @Cached("create()") BranchProfile toArrayIndex2Profile) {
-            Number origLen = (Number) args[0]; // guard ensures this is a Number
-            Number origLen32 = (Number) toUInt32Node.execute(origLen);
-            long len = JSArray.toArrayIndexOrRangeError(origLen, origLen32, rangeErrorProfile, toArrayIndex1Profile, toArrayIndex2Profile);
+                        @Bind("toArrayLengthNode.executeLong(firstArg(args))") long len) {
             DynamicObject array = arrayCreateNode.execute(len);
             return swapPrototype(array, newTarget);
         }
 
-        static Object firstArgument(Object[] arguments) {
+        static Object firstArg(Object[] arguments) {
             return arguments[0];
         }
 
         @Specialization(guards = "isOneForeignArg(args)", limit = "3")
         protected DynamicObject constructWithForeignArg(DynamicObject newTarget, Object[] args,
-                        @CachedLibrary("firstArgument(args)") InteropLibrary interop,
+                        @CachedLibrary("firstArg(args)") InteropLibrary interop,
                         @Cached("create(getContext())") ArrayCreateNode arrayCreateNode,
                         @Cached("createBinaryProfile()") ConditionProfile isNumber,
                         @Cached("create()") BranchProfile rangeErrorProfile) {

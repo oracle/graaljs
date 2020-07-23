@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import java.nio.ByteBuffer;
-import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -55,6 +54,8 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.TypedArrayFunctionBuiltins;
@@ -420,6 +421,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         JSFunctionData lengthGetterData = realm.getContext().getOrCreateBuiltinFunctionData(functionKey, (c) -> {
             return JSFunctionData.createCallOnly(c, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Child private ArrayBufferViewGetter getterNode = getter;
+                private final BranchProfile errorBranch = BranchProfile.create();
 
                 @Override
                 public Object execute(VirtualFrame frame) {
@@ -431,6 +433,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
                             return getter.apply(view, condition);
                         }
                     }
+                    errorBranch.enter();
                     throw Errors.createTypeError("method called on incompatible receiver");
                 }
             }), 0, "get " + key);
@@ -478,9 +481,11 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TypedArrayPrototypeBuiltins.BUILTINS);
         putArrayBufferViewPrototypeGetter(realm, prototype, LENGTH, BuiltinFunctionKey.ArrayBufferViewLength, new ArrayBufferViewGetter() {
+            private final ConditionProfile detachedBufferProfile = ConditionProfile.create();
+
             @Override
             public Object apply(DynamicObject view, boolean condition) {
-                if (JSArrayBufferView.hasDetachedBuffer(view, ctx)) {
+                if (detachedBufferProfile.profile(JSArrayBufferView.hasDetachedBuffer(view, ctx))) {
                     return 0;
                 }
                 return typedArrayGetLength(view, condition);
@@ -649,14 +654,6 @@ public final class JSArrayBufferView extends JSBuiltinObject {
 
     private static void throwCannotRedefine() {
         throw Errors.createTypeError("Cannot redefine a property of an object with external array elements");
-    }
-
-    public static class DefaultJSArrayBufferViewComparator implements Comparator<Object> {
-        @SuppressWarnings("unchecked")
-        @Override
-        public int compare(Object first, Object second) {
-            return ((Comparable<Object>) first).compareTo(second);
-        }
     }
 
     @TruffleBoundary

@@ -56,7 +56,6 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -274,7 +273,11 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         return shape;
     }
 
-    public static class DefaultJSArrayComparator implements Comparator<Object> {
+    public static final Comparator<Object> DEFAULT_JSARRAY_COMPARATOR = new DefaultJSArrayComparator();
+    public static final Comparator<Object> DEFAULT_JSARRAY_INTEGER_COMPARATOR = new DefaultJSArrayIntegerComparator();
+    public static final Comparator<Object> DEFAULT_JSARRAY_DOUBLE_COMPARATOR = new DefaultJSArrayDoubleComparator();
+
+    static final class DefaultJSArrayComparator implements Comparator<Object> {
         @Override
         public int compare(Object arg0, Object arg1) {
             if (arg0 == Undefined.instance) {
@@ -299,7 +302,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         }
     }
 
-    public static class DefaultJSArrayIntegerComparator implements Comparator<Object> {
+    static final class DefaultJSArrayIntegerComparator implements Comparator<Object> {
         @Override
         public int compare(Object arg0, Object arg1) {
             int i1 = (int) JSRuntime.toInteger((Number) arg0);
@@ -318,7 +321,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         }
     }
 
-    public static class DefaultJSArrayDoubleComparator implements Comparator<Object> {
+    static final class DefaultJSArrayDoubleComparator implements Comparator<Object> {
         @Override
         public int compare(Object arg0, Object arg1) {
             double d1 = JSRuntime.doubleValue((Number) arg0);
@@ -600,36 +603,27 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         return list;
     }
 
-    protected static long toArrayIndexOrRangeError(Object obj) {
+    protected static long toArrayLengthOrRangeError(Object obj) {
         Number len = JSRuntime.toNumber(obj);
         Number len32 = JSRuntime.toUInt32(len);
-        return toArrayIndexOrRangeError(len, len32);
+        /*
+         * ArraySetLength, steps 3 and 4: if Desc.[[Value]] is an object then its valueOf method is
+         * called twice. This is legacy behaviour that was specified with this effect.
+         */
+        Number numberLen = JSRuntime.toNumber(obj);
+        return toArrayLengthOrRangeError(numberLen, len32);
     }
 
-    public static long toArrayIndexOrRangeError(Number len, Number len32) {
+    public static long toArrayLengthOrRangeError(Number len, Number len32) {
         double d32 = JSRuntime.doubleValue(len32);
         double d = JSRuntime.doubleValue(len);
 
         if (d32 == d) {
-            return len32.longValue();
+            return JSRuntime.longValue(len32);
         }
         if (d == 0) {
             return 0; // also handles the -0.0
         }
-        throw Errors.createRangeErrorInvalidArrayLength();
-    }
-
-    public static long toArrayIndexOrRangeError(Number len, Number len32, BranchProfile profileError, BranchProfile profileDouble1, BranchProfile profileDouble2) {
-        double d32 = JSRuntime.doubleValue(len32, profileDouble1);
-        double d = JSRuntime.doubleValue(len, profileDouble2);
-
-        if (d32 == d) {
-            return len32.longValue();
-        }
-        if (d == 0) {
-            return 0; // also handles the -0.0
-        }
-        profileError.enter();
         throw Errors.createRangeErrorInvalidArrayLength();
     }
 

@@ -329,6 +329,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     public static final class PropertyProxySetNode extends LinkedPropertySetNode {
         private final Property property;
         private final boolean isStrict;
+        private final BranchProfile errorBranch = BranchProfile.create();
 
         public PropertyProxySetNode(Property property, AbstractShapeCheckNode shapeCheck, boolean isStrict) {
             super(shapeCheck);
@@ -342,6 +343,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             DynamicObject store = receiverCheck.getStore(thisObj);
             boolean ret = ((PropertyProxy) property.get(store, guard)).set(store, value);
             if (!ret && isStrict) {
+                errorBranch.enter();
                 throw Errors.createTypeErrorNotWritableProperty(property.getKey(), thisObj);
             }
             return true;
@@ -1199,6 +1201,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             DynamicObject store = receiverCheck.getStore(thisObj);
             boolean ret = ((PropertyProxy) property.get(store, guard)).set(store, value);
             if (!ret && isStrict) {
+                errorBranch.enter();
                 throw Errors.createTypeErrorNotWritableProperty(property.getKey(), thisObj);
             }
             return true;

@@ -44,7 +44,6 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -54,12 +53,11 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.PrimitiveValueProfile;
 import com.oracle.truffle.js.builtins.ForInIteratorPrototypeBuiltinsFactory.ForInIteratorPrototypeNextNodeGen;
-import com.oracle.truffle.js.builtins.ForInIteratorPrototypeBuiltinsFactory.HasOnlyShapePropertiesNodeGen;
 import com.oracle.truffle.js.builtins.helper.ListGetNode;
 import com.oracle.truffle.js.builtins.helper.ListSizeNode;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
+import com.oracle.truffle.js.nodes.access.HasOnlyShapePropertiesNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -281,45 +279,4 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
     }
 
-    @ImportStatic({JSObject.class})
-    public abstract static class HasOnlyShapePropertiesNode extends JavaScriptBaseNode {
-
-        protected HasOnlyShapePropertiesNode() {
-        }
-
-        public static HasOnlyShapePropertiesNode create() {
-            return HasOnlyShapePropertiesNodeGen.create();
-        }
-
-        public final boolean execute(DynamicObject object) {
-            return execute(object, JSObject.getJSClass(object));
-        }
-
-        public abstract boolean execute(DynamicObject object, JSClass jsclass);
-
-        @Specialization(guards = {"jsclass == cachedJSClass", "!isJSObjectPrototype(cachedJSClass)"}, limit = "3")
-        static boolean doCached(DynamicObject object, @SuppressWarnings("unused") JSClass jsclass,
-                        @Cached(value = "jsclass") JSClass cachedJSClass) {
-            return cachedJSClass.hasOnlyShapeProperties(object);
-        }
-
-        @Specialization(guards = {"isJSObjectPrototype(jsclass)"})
-        static boolean doObjectPrototype(DynamicObject object, JSClass jsclass,
-                        @Cached("getJSContext(object)") JSContext context) {
-            if (context.getArrayPrototypeNoElementsAssumption().isValid()) {
-                assert jsclass.hasOnlyShapeProperties(object);
-                return true;
-            }
-            return JSObjectPrototype.INSTANCE.hasOnlyShapeProperties(object);
-        }
-
-        @Specialization(replaces = {"doCached", "doObjectPrototype"})
-        static boolean doUncached(DynamicObject object, JSClass jsclass) {
-            return jsclass.hasOnlyShapeProperties(object);
-        }
-
-        static boolean isJSObjectPrototype(JSClass jsclass) {
-            return jsclass == JSObjectPrototype.INSTANCE;
-        }
-    }
 }

@@ -179,47 +179,47 @@ public final class Boundaries {
         return String.format(format, params);
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     public static int stringLastIndexOf(String s, String pattern) {
         return s.lastIndexOf(pattern);
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     public static int stringLastIndexOf(String s, String pattern, int startPos) {
         return s.lastIndexOf(pattern, startPos);
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     public static int stringLastIndexOf(String s, char pattern) {
         return s.lastIndexOf(pattern);
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     public static int stringLastIndexOf(String s, char pattern, int startPos) {
         return s.lastIndexOf(pattern, startPos);
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     public static int stringCompareTo(String a, String b) {
         return a.compareTo(b);
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     public static boolean stringStartsWith(String s, String pattern) {
         return s.startsWith(pattern);
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     public static boolean stringStartsWith(String s, String pattern, int startPos) {
         return s.startsWith(pattern, startPos);
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     public static boolean stringEndsWith(String s, String pattern) {
         return s.endsWith(pattern);
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     public static int stringCodePointAt(String s, int pos) {
         return s.codePointAt(pos);
     }
