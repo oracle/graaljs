@@ -43,12 +43,14 @@ package com.oracle.truffle.js.scriptengine.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.util.NoSuchElementException;
 
 import javax.script.Bindings;
 import javax.script.Compilable;
@@ -256,6 +258,25 @@ public class TestEngine {
         engine.getContext().setReader(input);
         Object result = engine.eval("readline()");
         assertEquals(text, result);
+    }
+
+    @Test
+    public void exceptionInCauseChain() {
+        try {
+            TestUtil.getEngineNashornCompat(manager).eval("new java.util.ArrayList().iterator().next()");
+            fail("ScriptException/NoSuchElementException expected");
+        } catch (ScriptException ex) {
+            boolean foundNoSuchElementException = false;
+            Throwable cause = ex.getCause();
+            while (cause != null) {
+                if (cause instanceof NoSuchElementException) {
+                    foundNoSuchElementException = true;
+                    break;
+                }
+                cause = cause.getCause();
+            }
+            assertTrue(foundNoSuchElementException);
+        }
     }
 
 }

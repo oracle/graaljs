@@ -404,10 +404,32 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
             engineBindings.importGlobalBindings(scriptContext);
             return polyglotContext.eval(source).as(Object.class);
         } catch (PolyglotException e) {
-            throw new ScriptException(e);
+            throw toScriptException(e);
         } finally {
             evalCalled = true;
         }
+    }
+
+    private static ScriptException toScriptException(PolyglotException ex) {
+        ScriptException sex;
+        if (ex.isHostException()) {
+            Throwable hostException = ex.asHostException();
+            // ScriptException (unlike almost any other exception) does not
+            // accept Throwable cause (requires the cause to be Exception)
+            Exception cause;
+            if (hostException instanceof Exception) {
+                cause = (Exception) hostException;
+            } else {
+                cause = new Exception(hostException);
+            }
+            // Make the host exception accessible through the cause chain
+            sex = new ScriptException(cause);
+            // Re-use the stack-trace of PolyglotException (with guest-language stack-frames)
+            sex.setStackTrace(ex.getStackTrace());
+        } else {
+            sex = new ScriptException(ex);
+        }
+        return sex;
     }
 
     private GraalJSBindings getOrCreateGraalJSBindings(ScriptContext scriptContext) {
@@ -462,7 +484,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         try {
             return thisValue.invokeMember(name, args).as(Object.class);
         } catch (PolyglotException e) {
-            throw new ScriptException(e);
+            throw toScriptException(e);
         }
     }
 
@@ -480,7 +502,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         try {
             return function.execute(args).as(Object.class);
         } catch (PolyglotException e) {
-            throw new ScriptException(e);
+            throw toScriptException(e);
         }
     }
 
@@ -559,7 +581,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         try {
             getPolyglotContext().parse(source);
         } catch (PolyglotException pex) {
-            throw new ScriptException(pex);
+            throw toScriptException(pex);
         }
     }
 
