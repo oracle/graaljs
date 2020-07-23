@@ -234,6 +234,11 @@ public final class SwitchNode extends StatementNode {
                 CompilerAsserts.partialEvaluationConstant(statementStartIndex);
                 CompilerAsserts.partialEvaluationConstant(statementEndIndex);
                 if (statementStartIndex != statementEndIndex) {
+                    // Optional hack to clear any conditional value out of the frame state.
+                    // Helps the compiler see the value is always true here, so it won't attempt to
+                    // emit extra code to compute it and keep it alive only for the frame state.
+                    caseFound = true;
+
                     for (int statementIndex = statementStartIndex; statementIndex < statementEndIndex; statementIndex++) {
                         result = statementsLocal[statementIndex].execute(frame);
                     }
