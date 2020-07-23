@@ -143,9 +143,11 @@ public final class GraalJSEvaluator implements JSParser {
      */
     @Override
     public ScriptNode parseFunction(JSContext context, String parameterList, String body, boolean generatorFunction, boolean asyncFunction, String sourceName) {
+        String wrappedBody = JSRuntime.LINE_SEPARATOR + body + JSRuntime.LINE_SEPARATOR;
         try {
-            GraalJSParserHelper.checkFunctionSyntax(context, context.getParserOptions(), parameterList, body, generatorFunction, asyncFunction, sourceName);
+            GraalJSParserHelper.checkFunctionSyntax(context, context.getParserOptions(), parameterList, wrappedBody, generatorFunction, asyncFunction, sourceName);
         } catch (com.oracle.js.parser.ParserException e) {
+            e.setLineNumber(e.getLineNumber() - 1); // undo the shift caused by the wrapping
             throw parserToJSError(null, e, context);
         }
         StringBuilder code = new StringBuilder();
@@ -167,9 +169,7 @@ public final class GraalJSEvaluator implements JSParser {
         code.append(parameterList);
         code.append(JSRuntime.LINE_SEPARATOR);
         code.append(") {");
-        code.append(JSRuntime.LINE_SEPARATOR);
-        code.append(body);
-        code.append(JSRuntime.LINE_SEPARATOR);
+        code.append(wrappedBody);
         code.append("})");
         Source source = Source.newBuilder(JavaScriptLanguage.ID, code.toString(), sourceName).build();
 

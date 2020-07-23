@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -280,8 +280,7 @@ public abstract class AbstractParser {
         final int position = Token.descPosition(errorToken);
         final int lineNum = source.getLine(position);
         final int columnNum = source.getColumn(position);
-        final String formatted = ErrorManager.format(message, source, lineNum, columnNum, errorToken);
-        return new ParserException(errorType, formatted, source, lineNum, columnNum, errorToken);
+        return new ParserException(errorType, message, source, lineNum, columnNum, errorToken);
     }
 
     /**
@@ -304,8 +303,7 @@ public abstract class AbstractParser {
     protected final ParserException error(final JSErrorType errorType, final String message) {
         final int position = Token.descPosition(token);
         final int column = source.getColumn(position);
-        final String formatted = ErrorManager.format(message, source, line, column, token);
-        return new ParserException(errorType, formatted, source, line, column, token);
+        return new ParserException(errorType, message, source, line, column, token);
     }
 
     /**

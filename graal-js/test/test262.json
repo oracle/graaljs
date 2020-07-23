@@ -1,9 +1,5 @@
 {
   "testFiles" : [ {
-    "filePath" : "annexB/built-ins/Function/createdynfn-no-line-terminator-html-close-comment-body.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
     "filePath" : "built-ins/Atomics/add/bigint/non-shared-bufferdata.js",
     "status" : "FAIL",
     "comment" : "new failures 2020-07-21"

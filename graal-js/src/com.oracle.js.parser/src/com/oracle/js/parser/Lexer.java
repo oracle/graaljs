@@ -2166,8 +2166,7 @@ public class Lexer extends Scanner {
         final int pos = Token.descPosition(token);
         final int lineNum = source.getLine(pos);
         final int columnNum = source.getColumn(pos);
-        final String formatted = ErrorManager.format(message, source, lineNum, columnNum, token);
-        throw new ParserException(JSErrorType.SyntaxError, formatted, source, lineNum, columnNum, token);
+        throw new ParserException(JSErrorType.SyntaxError, message, source, lineNum, columnNum, token);
     }
 
     /**

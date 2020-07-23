@@ -46,7 +46,6 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArr
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArrayType;
 
 import com.oracle.js.parser.ECMAErrors;
-import com.oracle.js.parser.ErrorManager;
 import com.oracle.js.parser.JSErrorType;
 import com.oracle.js.parser.JSType;
 import com.oracle.js.parser.ParserException;
@@ -420,8 +419,7 @@ public class NashornJSONParser {
         final Source src = Source.sourceFor("<json>", source);
         final int lineNum = src.getLine(pos);
         final int columnNum = src.getColumn(pos);
-        final String formatted = ErrorManager.format(message, src, lineNum, columnNum, token);
-        return new ParserException(JSErrorType.SyntaxError, formatted, src, lineNum, columnNum, token);
+        return new ParserException(JSErrorType.SyntaxError, message, src, lineNum, columnNum, token);
     }
 
     private ParserException error(final String message, final int start) {
