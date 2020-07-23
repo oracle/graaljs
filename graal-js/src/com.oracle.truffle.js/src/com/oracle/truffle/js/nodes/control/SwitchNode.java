@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.control;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -166,8 +167,8 @@ public final class SwitchNode extends StatementNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        int jumptableIdx = identifyTargetCase(frame);
-        return executeStatements(frame, jumptable[jumptableIdx]);
+        int statementStartIndex = identifyTargetCase(frame);
+        return executeStatements(frame, statementStartIndex);
     }
 
     @ExplodeLoop
@@ -178,7 +179,9 @@ public final class SwitchNode extends StatementNode {
                 break;
             }
         }
-        return i;
+        int statementStartIndex = jumptable[i];
+        CompilerAsserts.partialEvaluationConstant(statementStartIndex);
+        return statementStartIndex;
     }
 
     @ExplodeLoop
