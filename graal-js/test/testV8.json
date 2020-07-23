@@ -178,10 +178,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "intl/toStringTag.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
-  }, {
     "filePath" : "mjsunit/allocation-site-info.js",
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."

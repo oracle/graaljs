@@ -1896,14 +1896,6 @@
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
   }, {
-    "filePath" : "intl402/Collator/prototype/toStringTag/toString.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
-    "filePath" : "intl402/Collator/prototype/toStringTag/toStringTag.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
     "filePath" : "intl402/DateTimeFormat/constructor-options-order-timedate-style.js",
     "status" : "FAIL",
     "comment" : "new failures 2020-07-21"
@@ -1911,14 +1903,6 @@
     "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/hourCycle-default.js",
     "status" : "FAIL",
     "comment" : "new failures after 2020-03 update"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/toStringTag/toString.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/toStringTag/toStringTag.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
   }, {
     "filePath" : "intl402/DisplayNames/length.js",
     "status" : "FAIL",
@@ -1997,22 +1981,6 @@
     "comment" : "new failures 2020-07-21"
   }, {
     "filePath" : "intl402/NumberFormat/constructor-unit.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
-    "filePath" : "intl402/NumberFormat/prototype/toStringTag/configurable.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
-    "filePath" : "intl402/NumberFormat/prototype/toStringTag/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
-    "filePath" : "intl402/PluralRules/prototype/toStringTag/toString.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
-    "filePath" : "intl402/PluralRules/prototype/toStringTag/toStringTag.js",
     "status" : "FAIL",
     "comment" : "new failures 2020-07-21"
   }, {
