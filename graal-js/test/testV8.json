@@ -1489,8 +1489,8 @@
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-1105383.js",
-    "status" : "SKIP",
-    "comment" : "failing in noIC mode (GR-25091)"
+    "status" : "FAIL",
+    "comment" : "Off-spec: expects an error when overriding a global data property defined in the prototype of a global object"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-150545.js",
     "status" : "SKIP",
