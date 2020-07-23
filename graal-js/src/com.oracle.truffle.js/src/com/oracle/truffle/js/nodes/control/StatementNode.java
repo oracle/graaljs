@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.control;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -56,7 +57,7 @@ public abstract class StatementNode extends JavaScriptNode {
         try {
             return conditionNode.executeBoolean(frame);
         } catch (UnexpectedResultException ex) {
-            throw new AssertionError("the condition should always provide a boolean result");
+            throw Errors.shouldNotReachHere("the condition should always provide a boolean result");
         }
     }
 }
