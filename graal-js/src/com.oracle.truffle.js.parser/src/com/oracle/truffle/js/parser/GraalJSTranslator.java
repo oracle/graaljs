@@ -3163,17 +3163,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 }
                 continue;
             }
+            // Case clause must end in a break, continue, or terminal statement (return, throw).
             Statement lastStatement = statements.get(statements.size() - 1);
-            if (!isExceptionalControlFlowNode(lastStatement)) {
+            if (!lastStatement.hasTerminalFlags()) {
                 return false;
             }
         }
         return true;
-    }
-
-    private static boolean isExceptionalControlFlowNode(com.oracle.js.parser.ir.Node node) {
-        return node instanceof com.oracle.js.parser.ir.BreakNode || node instanceof com.oracle.js.parser.ir.ReturnNode ||
-                        node instanceof com.oracle.js.parser.ir.ContinueNode || node instanceof com.oracle.js.parser.ir.ThrowNode;
     }
 
     /**
