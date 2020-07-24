@@ -121,7 +121,7 @@ abstract class GlobalScopeTDZCheckNode extends GlobalScopeNode {
 
     final boolean isDead(Shape shape) {
         Property property = shape.getProperty(varName);
-        return property != null && property.getLocation().isDeclared();
+        return property != null && property.getLocation().isValue() && property.getLocation().get(null) == Dead.instance();
     }
 
     @Override

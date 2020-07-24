@@ -86,6 +86,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.Accessor;
+import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -1249,7 +1250,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     }
 
     private SetCacheNode createCachedDataPropertyNodeJSObject(DynamicObject thisObj, int depth, Object value, AbstractShapeCheckNode shapeCheck, Property property) {
-        assert !JSProperty.isConst(property) || (depth == 0 && isGlobal() && property.getLocation().isDeclared()) : "const assignment";
+        assert !JSProperty.isConst(property) || (depth == 0 && isGlobal() && property.getLocation().isValue() && property.getLocation().get(null) == Dead.instance()) : "const assignment";
         if (!JSProperty.isWritable(property)) {
             return new ReadOnlyPropertySetNode(shapeCheck, isStrict());
         } else if (superProperty) {
