@@ -40,10 +40,11 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -58,16 +59,12 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.util.Set;
 
 /**
  * This implements ECMA 9.8. ToString.
  */
-@ImportStatic(JSObject.class)
 public abstract class JSToStringNode extends JavaScriptBaseNode {
     protected static final int MAX_CLASSES = 3;
 
@@ -148,7 +145,7 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
         return doubleToStringNode.executeString(d);
     }
 
-    @Specialization(guards = "isJSObject(value)", replaces = "doUndefined")
+    @Specialization(guards = "isJSDynamicObject(value)", replaces = "doUndefined")
     protected String doJSObject(DynamicObject value,
                     @Cached("createHintString()") JSToPrimitiveNode toPrimitiveHintStringNode) {
         return (undefinedToEmpty && (value == Undefined.instance)) ? "" : getToStringNode().executeString(toPrimitiveHintStringNode.execute(value));

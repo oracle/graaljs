@@ -53,9 +53,8 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 
-@ImportStatic({JSObject.class, JSRuntime.class})
+@ImportStatic({JSRuntime.class})
 abstract class FlattenNode extends JavaScriptBaseNode {
     protected abstract Object execute(Object value);
 
@@ -104,7 +103,7 @@ abstract class FlattenNode extends JavaScriptBaseNode {
         return value;
     }
 
-    @Specialization(guards = "isJSObject(value)")
+    @Specialization(guards = "isJSDynamicObject(value)")
     protected static Object doJSObject(DynamicObject value) {
         return value;
     }
