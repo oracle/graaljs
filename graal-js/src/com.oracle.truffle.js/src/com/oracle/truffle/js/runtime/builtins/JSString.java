@@ -45,6 +45,9 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
@@ -373,6 +376,7 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
         return realm.getStringPrototype();
     }
 
+    @ExportLibrary(InteropLibrary.class)
     public static class StringObjectImpl extends JSValueObject {
         private final CharSequence string;
 
@@ -401,6 +405,17 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
         @Override
         public String getClassName() {
             return CLASS_NAME;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        final boolean isString() {
+            return true;
+        }
+
+        @ExportMessage
+        final String asString() {
+            return JSString.getString(this);
         }
     }
 

@@ -41,6 +41,9 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.BooleanPrototypeBuiltins;
@@ -64,6 +67,7 @@ public final class JSBoolean extends JSPrimitiveObject implements JSConstructorF
 
     public static final JSBoolean INSTANCE = new JSBoolean();
 
+    @ExportLibrary(InteropLibrary.class)
     public static class BooleanObjectImpl extends JSValueObject {
         public static final String CLASS_NAME = "Boolean";
         public static final String PROTOTYPE_NAME = "Boolean.prototype";
@@ -95,6 +99,17 @@ public final class JSBoolean extends JSPrimitiveObject implements JSConstructorF
 
         public static DynamicObject create(JSRealm realm, JSObjectFactory factory, boolean value) {
             return new BooleanObjectImpl(realm, factory, value);
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        final boolean isBoolean() {
+            return true;
+        }
+
+        @ExportMessage
+        final boolean asBoolean() {
+            return JSBoolean.valueOf(this);
         }
     }
 

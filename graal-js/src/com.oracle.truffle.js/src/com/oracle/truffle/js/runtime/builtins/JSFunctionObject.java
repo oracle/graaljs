@@ -40,12 +40,33 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.js.nodes.interop.ExportValueNode;
+import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
+import com.oracle.truffle.js.nodes.interop.JSInteropInstantiateNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSBasicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.truffleinterop.InteropFunction;
 
 @ExportLibrary(InteropLibrary.class)
 public abstract class JSFunctionObject extends JSBasicObject {
@@ -100,4 +121,117 @@ public abstract class JSFunctionObject extends JSBasicObject {
         return JSFunction.INSTANCE.getBuiltinToStringTag(this);
     }
 
+    @ExportMessage
+    public final boolean isExecutable(
+                    @Cached IsCallableNode isCallable) {
+        return isCallable.executeBoolean(this);
+    }
+
+    @ExportMessage
+    public final Object execute(Object[] args,
+                    @CachedLanguage JavaScriptLanguage language,
+                    @Cached JSInteropExecuteNode callNode,
+                    @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
+        language.interopBoundaryEnter(realm);
+        try {
+            Object result = callNode.execute(this, Undefined.instance, args);
+            return exportNode.execute(result);
+        } finally {
+            language.interopBoundaryExit(realm);
+        }
+    }
+
+    @ExportMessage
+    public final boolean isInstantiable() {
+        return JSRuntime.isConstructor(this);
+    }
+
+    @ExportMessage
+    public final Object instantiate(Object[] args,
+                    @CachedLanguage JavaScriptLanguage language,
+                    @Cached JSInteropInstantiateNode callNode,
+                    @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
+        language.interopBoundaryEnter(realm);
+        try {
+            Object result = callNode.execute(this, args);
+            return exportNode.execute(result);
+        } finally {
+            language.interopBoundaryExit(realm);
+        }
+    }
+
+    @ExportMessage
+    final boolean hasSourceLocation() {
+        return getSourceLocationImpl(this) != null;
+    }
+
+    @ExportMessage
+    final SourceSection getSourceLocation() throws UnsupportedMessageException {
+        SourceSection sourceSection = getSourceLocationImpl(this);
+        if (sourceSection == null) {
+            throw UnsupportedMessageException.create();
+        }
+        return sourceSection;
+    }
+
+    @TruffleBoundary
+    private static SourceSection getSourceLocationImpl(DynamicObject receiver) {
+        if (JSFunction.isJSFunction(receiver)) {
+            DynamicObject func = receiver;
+            CallTarget ct = JSFunction.getCallTarget(func);
+            if (JSFunction.isBoundFunction(func)) {
+                func = JSFunction.getBoundTargetFunction(func);
+                ct = JSFunction.getCallTarget(func);
+            }
+
+            if (ct instanceof RootCallTarget) {
+                return ((RootCallTarget) ct).getRootNode().getSourceSection();
+            }
+        }
+        return null;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    final boolean isMetaObject() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @TruffleBoundary
+    @ExportMessage(name = "getMetaQualifiedName")
+    @ExportMessage(name = "getMetaSimpleName")
+    final Object getMetaObjectName() {
+        Object name = JSRuntime.getDataProperty(this, JSFunction.NAME);
+        if (JSRuntime.isString(name)) {
+            return JSRuntime.javaToString(name);
+        }
+        return "";
+    }
+
+    @SuppressWarnings("static-method")
+    @TruffleBoundary
+    @ExportMessage
+    final boolean isMetaInstance(Object instance) {
+        Object constructorPrototype = JSRuntime.getDataProperty(this, JSObject.PROTOTYPE);
+        if (JSGuards.isJSObject(constructorPrototype)) {
+            Object obj = instance;
+            if (obj instanceof InteropFunction) {
+                obj = ((InteropFunction) obj).getFunction();
+            }
+            if (JSGuards.isJSObject(instance) && !JSProxy.isProxy(instance)) {
+                DynamicObject proto = JSObject.getPrototype((DynamicObject) instance);
+                while (proto != Null.instance) {
+                    if (proto == constructorPrototype) {
+                        return true;
+                    }
+                    if (JSProxy.isProxy(proto)) {
+                        break;
+                    }
+                    proto = JSObject.getPrototype(proto);
+                }
+            }
+        }
+        return false;
+    }
 }

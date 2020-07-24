@@ -40,6 +40,16 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.truffleinterop.JSMetaType;
+
+@ExportLibrary(InteropLibrary.class)
 public final class Nullish extends JSValue {
 
     public Nullish() {
@@ -64,5 +74,45 @@ public final class Nullish extends JSValue {
     @Override
     public String toString() {
         return "DynamicObject<" + getClassName() + ">@" + Integer.toHexString(hashCode());
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    final boolean isNull() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    final boolean hasLanguage() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    final Class<? extends TruffleLanguage<?>> getLanguage() {
+        return JavaScriptLanguage.class;
+    }
+
+    @ExportMessage
+    final Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return JSRuntime.safeToString(this);
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    final boolean hasMetaObject() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    final Object getMetaObject() {
+        if (JSGuards.isJSNull(this)) {
+            return JSMetaType.JS_NULL;
+        } else {
+            assert JSGuards.isUndefined(this);
+            return JSMetaType.JS_UNDEFINED;
+        }
     }
 }

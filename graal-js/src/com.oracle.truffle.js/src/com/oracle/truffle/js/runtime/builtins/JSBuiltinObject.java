@@ -155,7 +155,7 @@ public abstract class JSBuiltinObject extends JSClass {
         return ordinaryOwnPropertyKeys(thisObj, strings, symbols);
     }
 
-    protected static List<Object> ordinaryOwnPropertyKeys(DynamicObject thisObj) {
+    public static List<Object> ordinaryOwnPropertyKeys(DynamicObject thisObj) {
         return ordinaryOwnPropertyKeys(thisObj, true, true);
     }
 

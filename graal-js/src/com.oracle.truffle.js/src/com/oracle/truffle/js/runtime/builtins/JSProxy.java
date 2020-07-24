@@ -46,12 +46,25 @@ import java.util.List;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.ProxyFunctionBuiltins;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.interop.ExportValueNode;
+import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
+import com.oracle.truffle.js.nodes.interop.JSInteropInstantiateNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -91,6 +104,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     public static final HiddenKey REVOCABLE_PROXY = new HiddenKey("RevocableProxy");
     public static final HiddenKey REVOKED_CALLABLE = new HiddenKey("RevokedCallable");
 
+    @ExportLibrary(InteropLibrary.class)
     public static class ProxyObjectImpl extends JSClassObject {
         private Object proxyTarget;
         private DynamicObject proxyHandler;
@@ -122,6 +136,47 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
 
         public static DynamicObject create(JSRealm realm, JSObjectFactory factory, Object target, DynamicObject handler) {
             return new ProxyObjectImpl(realm, factory, target, handler);
+        }
+
+        @ExportMessage
+        public final boolean isExecutable(
+                        @Cached IsCallableNode isCallable) {
+            return isCallable.executeBoolean(this);
+        }
+
+        @ExportMessage
+        public final Object execute(Object[] args,
+                        @CachedLanguage JavaScriptLanguage language,
+                        @CachedContext(JavaScriptLanguage.class) JSRealm realm,
+                        @Cached JSInteropExecuteNode callNode,
+                        @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
+            language.interopBoundaryEnter(realm);
+            try {
+                Object result = callNode.execute(this, Undefined.instance, args);
+                return exportNode.execute(result);
+            } finally {
+                language.interopBoundaryExit(realm);
+            }
+        }
+
+        @ExportMessage
+        public final boolean isInstantiable() {
+            return JSRuntime.isConstructor(this);
+        }
+
+        @ExportMessage
+        public final Object instantiate(Object[] args,
+                        @CachedLanguage JavaScriptLanguage language,
+                        @CachedContext(JavaScriptLanguage.class) JSRealm realm,
+                        @Cached JSInteropInstantiateNode callNode,
+                        @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
+            language.interopBoundaryEnter(realm);
+            try {
+                Object result = callNode.execute(this, args);
+                return exportNode.execute(result);
+            } finally {
+                language.interopBoundaryExit(realm);
+            }
         }
     }
 
