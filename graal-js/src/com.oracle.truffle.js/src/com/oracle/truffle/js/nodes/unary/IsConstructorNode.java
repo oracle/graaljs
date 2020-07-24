@@ -75,7 +75,7 @@ public abstract class IsConstructorNode extends JavaScriptBaseNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"isJSType(other)", "!isJSFunction(other)", "!isJSProxy(other)"})
+    @Specialization(guards = {"isJSDynamicObject(other)", "!isJSFunction(other)", "!isJSProxy(other)"})
     protected static boolean doOther(Object other) {
         return false;
     }

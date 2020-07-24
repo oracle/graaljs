@@ -1270,7 +1270,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             return source;
         }
 
-        @Specialization(guards = "isJSType(object)")
+        @Specialization(guards = "isJSDynamicObject(object)")
         public DynamicObject indirectEvalJSType(DynamicObject object) {
             return object;
         }

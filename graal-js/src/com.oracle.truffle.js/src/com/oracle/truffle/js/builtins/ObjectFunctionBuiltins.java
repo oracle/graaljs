@@ -777,7 +777,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSType(thisObj)")
+        @Specialization(guards = "isJSDynamicObject(thisObj)")
         protected DynamicObject keysDynamicObject(DynamicObject thisObj) {
             UnmodifiableArrayList<? extends Object> keyList = enumerableOwnPropertyNames(toOrAsJSObject(thisObj));
             int len = keyList.size();
@@ -1188,7 +1188,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             throw Errors.createTypeErrorNotAnObject(target, this);
         }
 
-        @Specialization(guards = {"isJSObject(target)", "isJSType(source)"})
+        @Specialization(guards = {"isJSObject(target)", "isJSDynamicObject(source)"})
         protected DynamicObject bindPropertiesDynamicObject(DynamicObject target, DynamicObject source) {
             DynamicObject sourceObject = toJSObject(source);
             boolean extensible = JSObject.isExtensible(target, targetProfile);

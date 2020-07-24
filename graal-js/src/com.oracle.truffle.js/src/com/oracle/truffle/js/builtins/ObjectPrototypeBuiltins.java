@@ -227,7 +227,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSType(thisObj)")
+        @Specialization(guards = "isJSDynamicObject(thisObj)")
         protected DynamicObject valueOfJSObject(DynamicObject thisObj) {
             return toJSObject(thisObj);
         }
@@ -390,12 +390,12 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @TruffleBoundary
-        @Specialization(guards = "isJSType(object)", replaces = "cached")
+        @Specialization(guards = "isJSDynamicObject(object)", replaces = "cached")
         protected static String uncached(DynamicObject object) {
             return JSObject.getJSClass(object).getBuiltinToStringTag(object);
         }
 
-        @Specialization(guards = "!isJSType(object)")
+        @Specialization(guards = "!isJSDynamicObject(object)")
         protected static String foreign(@SuppressWarnings("unused") DynamicObject object) {
             return "Foreign";
         }

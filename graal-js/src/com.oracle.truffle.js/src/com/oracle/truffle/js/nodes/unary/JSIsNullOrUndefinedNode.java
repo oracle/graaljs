@@ -144,7 +144,7 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
     @SuppressWarnings("unused")
     @Specialization(guards = {"isJSObject", "object.getShape() == cachedShape"}, limit = "MAX_SHAPE_COUNT")
     protected static boolean doJSObjectCachedShape(DynamicObject object,
-                    @Cached("isJSType(object)") boolean isJSObject,
+                    @Cached("isJSDynamicObject(object)") boolean isJSObject,
                     @Cached("object.getShape()") Shape cachedShape) {
         assert !JSGuards.isNullOrUndefined(object);
         return false;
@@ -153,13 +153,13 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
     @SuppressWarnings("unused")
     @Specialization(guards = {"isJSObject", "object.getShape().getObjectType() == cachedType"}, replaces = {"doJSObjectCachedShape"}, limit = "MAX_TYPE_COUNT")
     protected static boolean doJSObjectCachedType(DynamicObject object,
-                    @Cached("isJSType(object)") boolean isJSObject,
+                    @Cached("isJSDynamicObject(object)") boolean isJSObject,
                     @Cached("object.getShape().getObjectType()") ObjectType cachedType) {
         assert !JSGuards.isNullOrUndefined(object);
         return false;
     }
 
-    @Specialization(guards = {"isJSType(object)"}, replaces = {"doJSObjectCachedType"})
+    @Specialization(guards = {"isJSDynamicObject(object)"}, replaces = {"doJSObjectCachedType"})
     protected static boolean doJSObject(DynamicObject object,
                     @Cached("createBinaryProfile()") ConditionProfile resultProfile) {
         return resultProfile.profile(!JSRuntime.isObject(object));
@@ -172,7 +172,7 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
         return false;
     }
 
-    @Specialization(guards = {"isJSType(operand)"}, replaces = {"doJSValueCached"})
+    @Specialization(guards = {"isJSDynamicObject(operand)"}, replaces = {"doJSValueCached"})
     protected static boolean doJSValueJSObject(DynamicObject operand) {
         return JSGuards.isNullOrUndefined(operand);
     }

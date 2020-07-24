@@ -118,14 +118,14 @@ public final class JSGuards {
     /**
      * Like isJSObject, but including Null and Undefined.
      */
-    public static boolean isJSType(Object value) {
+    public static boolean isJSDynamicObject(Object value) {
         return JSObject.isJSDynamicObject(value);
     }
 
     /**
      * Like isJSObject, but including Null and Undefined.
      */
-    public static boolean isJSType(DynamicObject value) {
+    public static boolean isJSDynamicObject(DynamicObject value) {
         return JSObject.isJSDynamicObject(value);
     }
 

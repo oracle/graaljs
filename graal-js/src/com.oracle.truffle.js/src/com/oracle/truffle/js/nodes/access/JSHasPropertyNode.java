@@ -139,18 +139,18 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
     }
 
     @ReportPolymorphism.Megamorphic
-    @Specialization(guards = {"isJSType(object)"}, replaces = {"objectStringCached", "arrayStringCached"})
+    @Specialization(guards = {"isJSDynamicObject(object)"}, replaces = {"objectStringCached", "arrayStringCached"})
     public boolean objectOrArrayString(DynamicObject object, String propertyName) {
         return hasPropertyGeneric(object, propertyName);
     }
 
     @ReportPolymorphism.Megamorphic
-    @Specialization(guards = {"isJSType(object)"})
+    @Specialization(guards = {"isJSDynamicObject(object)"})
     public boolean objectSymbol(DynamicObject object, Symbol propertyName) {
         return hasPropertyGeneric(object, propertyName);
     }
 
-    @Specialization(guards = {"isJSType(object)", "!isJSFastArray(object)"})
+    @Specialization(guards = {"isJSDynamicObject(object)", "!isJSFastArray(object)"})
     public boolean objectLong(DynamicObject object, long propertyIdx) {
         if (hasOwnProperty) {
             return JSObject.hasOwnProperty(object, propertyIdx, classProfile);
@@ -210,7 +210,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
     }
 
     @ReportPolymorphism.Megamorphic
-    @Specialization(guards = "isJSType(object)")
+    @Specialization(guards = "isJSDynamicObject(object)")
     public boolean objectObject(DynamicObject object, Object propertyName,
                     @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
         Object propertyKey = toPropertyKeyNode.execute(propertyName);

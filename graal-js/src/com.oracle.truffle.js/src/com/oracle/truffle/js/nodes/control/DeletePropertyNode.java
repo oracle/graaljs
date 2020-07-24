@@ -157,7 +157,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
 
     public abstract boolean executeEvaluated(Object objectResult, Object propertyResult);
 
-    @Specialization(guards = "isJSType(targetObject)")
+    @Specialization(guards = "isJSDynamicObject(targetObject)")
     protected final boolean doJSObject(DynamicObject targetObject, Object key,
                     @Cached("createIsFastArray()") IsArrayNode isArrayNode,
                     @Cached("createBinaryProfile()") ConditionProfile arrayProfile,

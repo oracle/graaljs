@@ -178,7 +178,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
         return object;
     }
 
-    @Specialization(guards = {"isJSType(object)", "!isCheckForNullOrUndefined()"}, replaces = "doJSObjectNoCheckShape")
+    @Specialization(guards = {"isJSDynamicObject(object)", "!isCheckForNullOrUndefined()"}, replaces = "doJSObjectNoCheckShape")
     protected DynamicObject doJSObjectNoCheck(DynamicObject object) {
         return object;
     }

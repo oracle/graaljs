@@ -257,7 +257,7 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     // null-or-undefined check on one element suffices
-    @Specialization(guards = {"!isNullOrUndefined(a)", "isJSType(a)", "isJSType(b)"})
+    @Specialization(guards = {"!isNullOrUndefined(a)", "isJSDynamicObject(a)", "isJSDynamicObject(b)"})
     protected static boolean doJSObject(DynamicObject a, DynamicObject b) {
         return a == b;
     }

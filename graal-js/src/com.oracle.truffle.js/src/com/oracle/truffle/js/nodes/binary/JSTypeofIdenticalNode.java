@@ -279,7 +279,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
         return (type == Type.String);
     }
 
-    @Specialization(guards = {"isJSType(value)"})
+    @Specialization(guards = {"isJSDynamicObject(value)"})
     protected final boolean doJSType(DynamicObject value,
                     @Cached("create()") BranchProfile proxyBranch) {
         if (type == Type.Number || type == Type.BigInt || type == Type.String || type == Type.Boolean || type == Type.Symbol || type == Type.False) {

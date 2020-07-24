@@ -120,7 +120,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
         return EnumerateNodeGen.create(context, values, requireIterable, cloneUninitialized(targetNode, materializedTags));
     }
 
-    @Specialization(guards = {"isJSType(iteratedObject)", "!isJSAdapter(iteratedObject)"})
+    @Specialization(guards = {"isJSDynamicObject(iteratedObject)", "!isJSAdapter(iteratedObject)"})
     protected DynamicObject doEnumerateObject(DynamicObject iteratedObject,
                     @Cached("createBinaryProfile()") ConditionProfile isObject) {
         if (isObject.profile(JSRuntime.isObject(iteratedObject))) {

@@ -72,7 +72,7 @@ public abstract class IsNullNode extends IsIdenticalBaseNode {
         return false;
     }
 
-    @Specialization(guards = {"!isJSType(operand)"}, limit = "INTEROP_LIMIT")
+    @Specialization(guards = {"!isJSDynamicObject(operand)"}, limit = "INTEROP_LIMIT")
     protected static boolean doCached(Object operand,
                     @CachedLibrary("operand") InteropLibrary interop) {
         assert operand != Undefined.instance;

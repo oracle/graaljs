@@ -91,7 +91,7 @@ public abstract class JSCollectionsNormalizeNode extends JavaScriptBaseNode {
         return value;
     }
 
-    @Specialization(guards = "isJSType(object)")
+    @Specialization(guards = "isJSDynamicObject(object)")
     public Object doDynamicObject(DynamicObject object) {
         return object;
     }
