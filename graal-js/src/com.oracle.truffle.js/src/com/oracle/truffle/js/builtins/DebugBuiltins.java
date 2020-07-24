@@ -72,7 +72,6 @@ import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugCreateSafeIntege
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugDumpCountersNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugDumpFunctionTreeNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugHeapDumpNodeGen;
-import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugInspectNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugIsHolesArrayNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugJSStackNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugLoadModuleNodeGen;
@@ -118,7 +117,6 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.object.DynamicObjectImpl;
 
 /**
  * Contains builtins for {@code Debug} object.
@@ -139,7 +137,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         dumpCounters(0),
         dumpFunctionTree(1),
         compileFunction(2),
-        inspect(2),
         printObject(1),
         toJavaString(1),
         srcattr(1),
@@ -188,8 +185,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 return DebugDumpFunctionTreeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case compileFunction:
                 return DebugCompileFunctionNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
-            case inspect:
-                return DebugInspectNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case printObject:
                 return DebugPrintObjectNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case toJavaString:
@@ -384,25 +379,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 }
             }
             COMPILE_HANDLE = compileHandle;
-        }
-    }
-
-    public abstract static class DebugInspectNode extends JSBuiltinNode {
-        public DebugInspectNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @TruffleBoundary
-        @Specialization
-        protected Object inspect(@SuppressWarnings("unused") Object thisObj, DynamicObject object, Object level0) {
-            int level = JSRuntime.toInt32(level0);
-            getContext().getRealm().getOutputWriter().println(((DynamicObjectImpl) object).debugDump(level));
-            return Undefined.instance;
-        }
-
-        @Specialization(guards = "!isDynamicObject(object)")
-        protected Object inspect(Object thisObj, @SuppressWarnings("unused") Object object, @SuppressWarnings("unused") Object level0) {
-            return thisObj;
         }
     }
 
