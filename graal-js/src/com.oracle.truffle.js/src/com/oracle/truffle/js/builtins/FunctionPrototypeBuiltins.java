@@ -46,6 +46,9 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -338,7 +341,21 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @SuppressWarnings("unused")
         @Specialization(guards = {"isES2019OrLater()", "!isJSFunction(fnObj)", "isCallable.executeBoolean(fnObj)"}, limit = "1")
         protected String toStringCallable(Object fnObj,
-                        @Cached @Shared("isCallable") IsCallableNode isCallable) {
+                        @Cached @Shared("isCallable") IsCallableNode isCallable,
+                        @CachedLibrary("fnObj") InteropLibrary interop) {
+            if (interop.hasExecutableName(fnObj)) {
+                try {
+                    Object name = interop.getExecutableName(fnObj);
+                    return getNameIntl(InteropLibrary.getFactory().getUncached().asString(name));
+                } catch (UnsupportedMessageException e) {
+                }
+            } else if (interop.isMetaObject(fnObj)) {
+                try {
+                    Object name = interop.getMetaSimpleName(fnObj);
+                    return getNameIntl(InteropLibrary.getFactory().getUncached().asString(name));
+                } catch (UnsupportedMessageException e) {
+                }
+            }
             return NATIVE_CODE_STR;
         }
 

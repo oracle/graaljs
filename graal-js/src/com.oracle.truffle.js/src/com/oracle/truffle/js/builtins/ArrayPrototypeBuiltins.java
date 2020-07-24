@@ -60,6 +60,7 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -143,6 +144,7 @@ import com.oracle.truffle.js.nodes.control.DeletePropertyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
@@ -1253,25 +1255,79 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
     public abstract static class JSArrayToStringNode extends BasicArrayOperation {
         @Child private PropertyNode joinPropertyNode;
-        @Child private JSFunctionCallNode callNode;
+        @Child private PropertyNode toStringPropertyNode;
+        @Child private JSFunctionCallNode callJoinNode;
+        @Child private JSFunctionCallNode callToStringNode;
+        @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
 
         private final ConditionProfile isJSObjectProfile = ConditionProfile.createBinaryProfile();
 
+        private static final String JOIN = "join";
+
         public JSArrayToStringNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.joinPropertyNode = PropertyNode.createProperty(getContext(), null, "join");
+            this.joinPropertyNode = PropertyNode.createProperty(context, null, JOIN);
         }
 
         private Object getJoinProperty(Object target) {
             return joinPropertyNode.executeWithTarget(target);
         }
 
-        private Object callJoin(Object target, Object function) {
-            if (callNode == null) {
+        private Object getToStringProperty(Object target) {
+            if (toStringPropertyNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                callNode = insert(JSFunctionCallNode.createCall());
+                toStringPropertyNode = insert(PropertyNode.createProperty(getContext(), null, JSRuntime.TO_STRING));
             }
-            return callNode.executeCall(JSArguments.createZeroArg(target, function));
+            return toStringPropertyNode.executeWithTarget(target);
+        }
+
+        private Object callJoin(Object target, Object function) {
+            if (callJoinNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                callJoinNode = insert(JSFunctionCallNode.createCall());
+            }
+            return callJoinNode.executeCall(JSArguments.createZeroArg(target, function));
+        }
+
+        private Object callToString(Object target, Object function) {
+            if (callToStringNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                callToStringNode = insert(JSFunctionCallNode.createCall());
+            }
+            return callToStringNode.executeCall(JSArguments.createZeroArg(target, function));
+        }
+
+        private DynamicObject getForeignObjectPrototype(Object truffleObject) {
+            assert JSRuntime.isForeignObject(truffleObject);
+            if (foreignObjectPrototypeNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
+            }
+            return foreignObjectPrototypeNode.executeDynamicObject(truffleObject);
+        }
+
+        private Object toStringForeign(Object arrayObj) {
+            InteropLibrary interop = InteropLibrary.getFactory().getUncached(arrayObj);
+
+            if (interop.hasMembers(arrayObj) && interop.isMemberInvocable(arrayObj, JOIN)) {
+                Object result;
+                try {
+                    result = interop.invokeMember(arrayObj, JOIN);
+                } catch (InteropException e) {
+                    result = null;
+                }
+                if (result != null) {
+                    return JSRuntime.importValue(result);
+                }
+            }
+
+            Object join = getJoinProperty(getForeignObjectPrototype(arrayObj));
+            if (isCallable(join)) {
+                return callJoin(arrayObj, join);
+            } else {
+                Object toString = getToStringProperty(getContext().getRealm().getObjectPrototype());
+                return callToString(arrayObj, toString);
+            }
         }
 
         @Specialization
@@ -1285,7 +1341,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     return JSObject.defaultToString((DynamicObject) arrayObj);
                 }
             } else {
-                return "[object Foreign]";
+                return toStringForeign(arrayObj);
             }
         }
     }
@@ -1644,7 +1700,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         private static boolean isValidEntry(Object thisObject, Object value) {
             // the last check here is to avoid recursion
-            return value != Undefined.instance && value != Null.instance && value != thisObject;
+            return value != Undefined.instance && value != Null.instance && (value instanceof JSObject ? value != thisObject
+                            : !InteropLibrary.getFactory().getUncached(thisObject).isIdentical(thisObject, value, InteropLibrary.getFactory().getUncached(value)));
         }
 
         private String joinSparse(Object thisObject, long length, String joinSeparator, final boolean appendSep) {

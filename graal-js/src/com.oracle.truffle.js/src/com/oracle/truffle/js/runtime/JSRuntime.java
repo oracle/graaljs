@@ -318,7 +318,7 @@ public final class JSRuntime {
                 return JSObject.toPrimitive((DynamicObject) value, hint);
             } else if (isForeignObject(value)) {
                 TruffleObject tObj = (TruffleObject) value;
-                return toPrimitiveFromForeign(tObj, TO_STRING_MAX_DEPTH);
+                return toPrimitiveFromForeign(tObj, hint);
             }
         }
         return value;
@@ -329,7 +329,7 @@ public final class JSRuntime {
      * Converts a foreign object to a primitive value.
      */
     @TruffleBoundary
-    public static Object toPrimitiveFromForeign(Object tObj, int depth) {
+    public static Object toPrimitiveFromForeign(Object tObj, String hint) {
         TruffleLanguage.Env env;
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(tObj);
         if (interop.isNull(tObj)) {
@@ -348,8 +348,54 @@ public final class JSRuntime {
         } else if (interop.isBoolean(tObj) || interop.isString(tObj) || interop.isNumber(tObj)) {
             return JSInteropUtil.toPrimitiveOrDefault(tObj, Null.instance, interop, null);
         } else {
-            return JSRuntime.foreignToString(tObj, depth, true);
+            return foreignOrdinaryToPrimitive(tObj, hint);
         }
+    }
+
+    @TruffleBoundary
+    private static Object foreignOrdinaryToPrimitive(Object obj, String hint) {
+        JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
+        InteropLibrary interop = InteropLibrary.getFactory().getUncached(obj);
+        String[] methodNames;
+        if (hint.equals(HINT_STRING)) {
+            methodNames = new String[]{TO_STRING, VALUE_OF};
+        } else {
+            assert JSRuntime.HINT_NUMBER.equals(hint);
+            methodNames = new String[]{VALUE_OF, TO_STRING};
+        }
+        DynamicObject proto;
+        if (interop.hasArrayElements(obj)) {
+            proto = realm.getArrayPrototype();
+        } else if (interop.isExecutable(obj)) {
+            proto = realm.getFunctionPrototype();
+        } else if (interop.isInstant(obj)) {
+            proto = realm.getDatePrototype();
+        } else {
+            proto = realm.getObjectPrototype();
+        }
+
+        for (String name : methodNames) {
+            if (interop.hasMembers(obj) && interop.isMemberInvocable(obj, name)) {
+                Object result;
+                try {
+                    result = importValue(interop.invokeMember(obj, name));
+                } catch (InteropException e) {
+                    result = null;
+                }
+                if (result != null && !isObject(result)) {
+                    return result;
+                }
+            }
+
+            Object method = JSObject.getMethod(proto, name);
+            if (isCallable(method)) {
+                Object result = call(method, obj, new Object[]{});
+                if (!isObject(result)) {
+                    return result;
+                }
+            }
+        }
+        throw Errors.createTypeErrorCannotConvertToPrimitiveValue();
     }
 
     /**
@@ -406,7 +452,7 @@ public final class JSRuntime {
         if (isObject(value)) {
             primitive = JSObject.toPrimitive((DynamicObject) value, HINT_NUMBER);
         } else if (isForeignObject(value)) {
-            primitive = toPrimitiveFromForeign(value, TO_STRING_MAX_DEPTH);
+            primitive = toPrimitiveFromForeign(value, HINT_NUMBER);
         } else {
             primitive = value;
         }
@@ -877,7 +923,7 @@ public final class JSRuntime {
             return toString(JSObject.toPrimitive((DynamicObject) value, HINT_STRING));
         } else if (value instanceof TruffleObject) {
             assert !isJSNative(value);
-            return toString(toPrimitiveFromForeign(value, TO_STRING_MAX_DEPTH));
+            return toString(toPrimitiveFromForeign(value, HINT_STRING));
         }
         throw toStringTypeError(value);
     }
@@ -1066,11 +1112,6 @@ public final class JSRuntime {
         }
         sb.append(isArrayLike ? ']' : '}');
         return sb.toString();
-    }
-
-    @TruffleBoundary
-    public static String foreignToString(Object value) {
-        return foreignToString(value, TO_STRING_MAX_DEPTH, true);
     }
 
     private static String foreignToString(Object value, int depth, boolean allowSideEffects) {
