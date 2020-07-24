@@ -371,7 +371,6 @@ public class JSContext {
     private final JSObjectFactory sharedArrayBufferFactory;
     private final JSObjectFactory finalizationRegistryFactory;
     @CompilationFinal(dimensions = 1) private final JSObjectFactory[] typedArrayFactories;
-    @CompilationFinal(dimensions = 1) private final JSObjectFactory[] directTypedArrayFactories;
 
     private final JSObjectFactory enumerateIteratorFactory;
     private final JSObjectFactory forInIteratorFactory;
@@ -505,10 +504,8 @@ public class JSContext {
         this.sharedArrayBufferFactory = isOptionSharedArrayBuffer() ? builder.create(JSSharedArrayBuffer.INSTANCE) : null;
         this.finalizationRegistryFactory = builder.create(JSFinalizationRegistry.INSTANCE);
         this.typedArrayFactories = new JSObjectFactory[TypedArray.factories(this).length];
-        this.directTypedArrayFactories = new JSObjectFactory[TypedArray.factories(this).length];
         for (TypedArrayFactory factory : TypedArray.factories(this)) {
-            directTypedArrayFactories[factory.getFactoryIndex()] = builder.create(factory, (c, p) -> JSArrayBufferView.makeInitialArrayBufferViewShape(c, p, true));
-            typedArrayFactories[factory.getFactoryIndex()] = builder.create(factory, (c, p) -> JSArrayBufferView.makeInitialArrayBufferViewShape(c, p, false));
+            typedArrayFactories[factory.getFactoryIndex()] = builder.create(factory, (c, p) -> JSArrayBufferView.makeInitialArrayBufferViewShape(c, p));
         }
 
         this.errorObjectFactories = new JSObjectFactory[JSErrorType.errorTypes().length];
@@ -788,10 +785,6 @@ public class JSContext {
 
     public final JSObjectFactory getArrayBufferFactory() {
         return arrayBufferFactory;
-    }
-
-    public final JSObjectFactory getDirectArrayBufferViewFactory(TypedArrayFactory factory) {
-        return directTypedArrayFactories[factory.getFactoryIndex()];
     }
 
     public final JSObjectFactory getDirectArrayBufferFactory() {

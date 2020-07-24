@@ -507,7 +507,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         @Specialization(guards = "isDefaultPrototype(proto)")
         DynamicObject doDefaultProto(DynamicObject arrayBuffer, TypedArray typedArray, int offset, int length, @SuppressWarnings("unused") DynamicObject proto) {
             assert !JSArrayBuffer.isDetachedBuffer(arrayBuffer);
-            JSObjectFactory objectFactory = typedArray.isDirect() ? context.getDirectArrayBufferViewFactory(factory) : context.getArrayBufferViewFactory(factory);
+            JSObjectFactory objectFactory = context.getArrayBufferViewFactory(factory);
             return JSArrayBufferView.createArrayBufferView(context, objectFactory, arrayBuffer, typedArray, offset, length);
         }
 

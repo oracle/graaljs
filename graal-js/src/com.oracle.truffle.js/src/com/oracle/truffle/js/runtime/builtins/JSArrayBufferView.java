@@ -337,7 +337,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         if (!context.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
             throw Errors.createTypeErrorDetachedBuffer();
         }
-        JSObjectFactory objectFactory = arrayType.isDirect() ? context.getDirectArrayBufferViewFactory(arrayType.getFactory()) : context.getArrayBufferViewFactory(arrayType.getFactory());
+        JSObjectFactory objectFactory = context.getArrayBufferViewFactory(arrayType.getFactory());
         return createArrayBufferView(context, objectFactory, arrayBuffer, arrayType, offset, length);
     }
 
@@ -411,9 +411,8 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         public abstract Object apply(DynamicObject view, boolean condition);
     }
 
-    public static Shape makeInitialArrayBufferViewShape(JSContext ctx, DynamicObject prototype, boolean direct) {
-        Shape childTree = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
-        return childTree;
+    public static Shape makeInitialArrayBufferViewShape(JSContext ctx, DynamicObject prototype) {
+        return JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
     }
 
     public static JSConstructor createConstructor(JSRealm realm, TypedArrayFactory factory, JSConstructor taConstructor) {
