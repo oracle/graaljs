@@ -202,12 +202,12 @@ public final class JSShape {
     }
 
     public static Shape.Builder newBuilder(JSContext context, JSClass jsclass) {
-        return Shape.newBuilder()//
-                        .layout(getLayout(jsclass))//
-                        .dynamicType(jsclass)//
-                        .sharedData(JSShape.makeJSSharedData(context))//
-                        .shapeFlags(getDefaultShapeFlags(jsclass))//
-                        .allowImplicitCastIntToDouble(true);
+        return Shape.newBuilder().//
+                        layout(getLayout(jsclass)).//
+                        dynamicType(jsclass).//
+                        sharedData(JSShape.makeJSSharedData(context)).//
+                        shapeFlags(getDefaultShapeFlags(jsclass)).//
+                        allowImplicitCastIntToDouble(true);
     }
 
     public static int getDefaultShapeFlags(JSClass jsclass) {

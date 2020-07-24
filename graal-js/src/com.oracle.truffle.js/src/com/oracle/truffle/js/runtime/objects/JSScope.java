@@ -619,7 +619,7 @@ public abstract class JSScope {
             this.scope = scope;
         }
 
-        final boolean isConst(String name, DynamicObjectLibrary access) {
+        boolean isConst(String name, DynamicObjectLibrary access) {
             return JSProperty.isConst(access.getProperty(scope, name));
         }
 

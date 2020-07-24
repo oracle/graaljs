@@ -171,9 +171,9 @@ public final class JSModuleNamespace extends JSBuiltinObject {
          * This property has the attributes { [[Writable]]: false, [[Enumerable]]: false,
          * [[Configurable]]: false }.
          */
-        initialShape = Shape.newBuilder(initialShape)//
-                        .addConstantProperty(JSObject.HIDDEN_PROTO, Null.instance, 0)//
-                        .addConstantProperty(Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.notConfigurableNotEnumerableNotWritable()).build();
+        initialShape = Shape.newBuilder(initialShape).//
+                        addConstantProperty(JSObject.HIDDEN_PROTO, Null.instance, 0).//
+                        addConstantProperty(Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.notConfigurableNotEnumerableNotWritable()).build();
         assert !JSShape.isExtensible(initialShape);
         return initialShape;
     }

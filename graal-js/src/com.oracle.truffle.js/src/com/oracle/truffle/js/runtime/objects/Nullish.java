@@ -77,36 +77,36 @@ public final class Nullish extends JSValue {
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    final boolean isNull() {
+    boolean isNull() {
         return true;
     }
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    final boolean hasLanguage() {
+    boolean hasLanguage() {
         return true;
     }
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    final Class<? extends TruffleLanguage<?>> getLanguage() {
+    Class<? extends TruffleLanguage<?>> getLanguage() {
         return JavaScriptLanguage.class;
     }
 
     @ExportMessage
-    final Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return this == Undefined.instance ? Undefined.NAME : Null.NAME;
     }
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    final boolean hasMetaObject() {
+    boolean hasMetaObject() {
         return true;
     }
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    final Object getMetaObject() {
+    Object getMetaObject() {
         if (JSGuards.isJSNull(this)) {
             return JSMetaType.JS_NULL;
         } else {
