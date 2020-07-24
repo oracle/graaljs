@@ -145,15 +145,11 @@ public final class JSSlowArray extends JSAbstractArray {
             // replace with a regular property first
             JSContext context = JSObject.getJSContext(thisObj);
             boolean wasNotExtensible = !JSShape.isExtensible(thisObj.getShape());
-            if (wasNotExtensible) {
-                thisObj.delete(JSShape.NOT_EXTENSIBLE_KEY);
-            }
             JSObjectUtil.putDataProperty(context, thisObj, name, get(thisObj, index), JSAttributes.fromConfigurableEnumerableWritable(!arrayType.isSealed(), true, !arrayType.isFrozen()));
             if (wasNotExtensible) {
-                // not-extensible marker property is expected to be the last property; ensure it is.
-                preventExtensions(thisObj, false);
-                assert !JSObject.isExtensible(thisObj);
+                assert !JSShape.isExtensible(thisObj.getShape());
             }
+
             // Using deleteElementImpl() instead of deleteElement() because the property
             // should be removed even from sealed arrays (it is being replaced by
             // by a regular data property defined above).
