@@ -1059,7 +1059,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            if (isJSObject.profile(JSObject.isJSObject(thisObj))) {
+            if (isJSObject.profile(JSObject.isJSDynamicObject(thisObj))) {
                 return getPropertyFromJSObject((DynamicObject) thisObj, receiver, defaultValue, root);
             } else {
                 if (isForeignObject.profile(JSGuards.isForeignObject(thisObj))) {
@@ -1513,7 +1513,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     @Override
     protected GetCacheNode createCachedPropertyNode(Property property, Object thisObj, int depth, Object value, GetCacheNode currentHead) {
         assert !isOwnProperty() || depth == 0;
-        if (!(JSObject.isDynamicObject(thisObj))) {
+        if (!(JSObject.isJSDynamicObject(thisObj))) {
             return createCachedPropertyNodeNotJSObject(property, thisObj, depth);
         }
 
@@ -1702,7 +1702,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return javaPropertyNode;
         }
 
-        if (JSObject.isDynamicObject(thisObj)) {
+        if (JSObject.isJSDynamicObject(thisObj)) {
             DynamicObject jsobject = (DynamicObject) thisObj;
             Shape cacheShape = jsobject.getShape();
             AbstractShapeCheckNode shapeCheck = createShapeCheckNode(cacheShape, jsobject, depth, false, false);

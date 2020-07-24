@@ -117,7 +117,7 @@ public final class JSPromise extends JSBuiltinObject implements JSConstructorFac
     }
 
     public static boolean isJSPromise(Object obj) {
-        return JSObject.isJSObject(obj) && isJSPromise((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSPromise((DynamicObject) obj);
     }
 
     public static boolean isJSPromise(DynamicObject obj) {

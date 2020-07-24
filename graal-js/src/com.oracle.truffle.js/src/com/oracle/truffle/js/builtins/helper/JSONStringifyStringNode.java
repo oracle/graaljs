@@ -126,7 +126,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             appendNumber(builder, (Number) value);
         } else if (JSRuntime.isBigInt(value)) {
             throw Errors.createTypeError("Do not know how to serialize a BigInt");
-        } else if (JSObject.isJSObject(value) && !JSRuntime.isCallableIsJSObject((DynamicObject) value)) {
+        } else if (JSObject.isJSDynamicObject(value) && !JSRuntime.isCallableIsJSObject((DynamicObject) value)) {
             DynamicObject valueObj = (DynamicObject) value;
             if (JSRuntime.isArray(valueObj)) {
                 jsonJA(builder, data, valueObj);
@@ -175,7 +175,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     @TruffleBoundary
     private Object jsonStrPrepare(JSONData data, String key, Object holder) {
         Object value;
-        if (JSObject.isJSObject(holder)) {
+        if (JSObject.isJSDynamicObject(holder)) {
             value = JSObject.get((DynamicObject) holder, key);
         } else {
             value = truffleRead(holder, key);
@@ -205,7 +205,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         if (data.getReplacerFnObj() != null) {
             value = JSRuntime.call(data.getReplacerFnObj(), holder, new Object[]{key, value});
         }
-        if (JSObject.isJSObject(value)) {
+        if (JSObject.isJSDynamicObject(value)) {
             return jsonStrPrepareJSObject((DynamicObject) value);
         } else if (value instanceof Symbol) {
             return Undefined.instance;
@@ -216,7 +216,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     }
 
     private static Object jsonStrPrepareJSObject(DynamicObject valueObj) {
-        assert JSObject.isJSObject(valueObj) : "JavaScript object expected, but foreign DynamicObject found";
+        assert JSObject.isJSDynamicObject(valueObj) : "JavaScript object expected, but foreign DynamicObject found";
         JSClass builtinClass = JSObject.getJSClass(valueObj);
         if (builtinClass == JSNumber.INSTANCE) {
             return JSRuntime.toNumber(valueObj);
@@ -265,7 +265,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         concatStart(builder, '{');
         boolean hasContent;
         if (data.getPropertyList() == null) {
-            if (JSObject.isJSObject(value)) {
+            if (JSObject.isJSDynamicObject(value)) {
                 hasContent = serializeJSONObjectProperties(builder, data, value, indent, JSObject.enumerableOwnNames((DynamicObject) value));
             } else {
                 hasContent = serializeForeignObjectProperties(builder, data, value, indent);
@@ -359,7 +359,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         Object lenObject;
         boolean isForeign = false;
         boolean isArray = false;
-        if (JSObject.isJSObject(value)) { // Array or Proxy
+        if (JSObject.isJSDynamicObject(value)) { // Array or Proxy
             lenObject = JSObject.get((DynamicObject) value, JSArray.LENGTH);
             if (JSArray.isJSArray(value)) {
                 isArray = true;

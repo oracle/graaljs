@@ -147,7 +147,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
             @Override
             public Object execute(VirtualFrame frame) {
                 Object obj = JSArguments.getThisObject(frame.getArguments());
-                if (JSObject.isJSObject(obj)) {
+                if (JSObject.isJSDynamicObject(obj)) {
                     DynamicObject buffer = (DynamicObject) obj;
                     if (isArrayBuffer.profile(isJSHeapArrayBuffer(buffer))) {
                         if (!context.getTypedArrayNotDetachedAssumption().isValid() && isDetachedBuffer(buffer)) {

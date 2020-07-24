@@ -523,7 +523,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         @Specialization
         protected boolean reflectSetPrototypeOf(Object target, Object proto) {
             ensureJSObject(target);
-            if (!(JSObject.isJSObject(proto) || proto == Null.instance) || proto == Undefined.instance) {
+            if (!(JSObject.isJSDynamicObject(proto) || proto == Null.instance) || proto == Undefined.instance) {
                 throw Errors.createTypeErrorInvalidPrototype(proto);
             }
             return JSObject.setPrototype((DynamicObject) target, (DynamicObject) proto);

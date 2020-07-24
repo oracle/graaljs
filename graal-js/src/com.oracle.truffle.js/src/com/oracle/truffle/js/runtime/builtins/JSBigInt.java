@@ -130,7 +130,7 @@ public final class JSBigInt extends JSPrimitiveObject implements JSConstructorFa
     }
 
     public static boolean isJSBigInt(Object obj) {
-        return JSObject.isJSObject(obj) && isJSBigInt((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSBigInt((DynamicObject) obj);
     }
 
     public static boolean isJSBigInt(DynamicObject obj) {

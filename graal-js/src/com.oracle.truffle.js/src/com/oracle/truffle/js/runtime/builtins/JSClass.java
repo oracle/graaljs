@@ -346,7 +346,7 @@ public abstract class JSClass extends ObjectType {
     }
 
     public static boolean isInstance(Object object, JSClass jsclass) {
-        return JSObject.isJSObject(object) && isInstance((DynamicObject) object, jsclass);
+        return JSObject.isJSDynamicObject(object) && isInstance((DynamicObject) object, jsclass);
     }
 
     public static boolean isInstance(DynamicObject object, JSClass jsclass) {
@@ -1075,7 +1075,7 @@ public abstract class JSClass extends ObjectType {
         } else if (JSGuards.isJSProxy(receiver)) {
             return JSMetaType.JS_PROXY;
         } else {
-            assert JSObject.isJSObject(receiver) && !JSGuards.isJSProxy(receiver);
+            assert JSObject.isJSDynamicObject(receiver) && !JSGuards.isJSProxy(receiver);
             DynamicObject proto = JSObject.getPrototype(receiver);
             Object metaObject = JSRuntime.getDataProperty(proto, JSObject.CONSTRUCTOR);
             if (metaObject != null && metaObject instanceof DynamicObject && isMetaObject((DynamicObject) metaObject)) {

@@ -113,7 +113,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     }
 
     public static boolean isJSAdapter(Object obj) {
-        return JSObject.isJSObject(obj) && isJSAdapter((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSAdapter((DynamicObject) obj);
     }
 
     public static boolean isJSAdapter(DynamicObject obj) {

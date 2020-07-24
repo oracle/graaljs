@@ -68,7 +68,7 @@ public abstract class AbstractJSObjectArray extends AbstractWritableArray {
     @Override
     public final ScriptArray setElementImpl(DynamicObject object, long index, Object value, boolean strict, boolean condition) {
         assert index >= 0;
-        if (injectBranchProbability(FASTPATH_PROBABILITY, JSObject.isDynamicObject(value) && isSupported(object, index, condition))) {
+        if (injectBranchProbability(FASTPATH_PROBABILITY, JSObject.isJSDynamicObject(value) && isSupported(object, index, condition))) {
             setSupported(object, (int) index, (DynamicObject) value, condition, ProfileHolder.empty());
             return this;
         } else {

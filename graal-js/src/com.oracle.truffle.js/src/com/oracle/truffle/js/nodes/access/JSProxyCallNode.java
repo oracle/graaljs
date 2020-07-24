@@ -133,7 +133,7 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
             Object newTarget = isNewTarget ? JSArguments.getNewTarget(arguments) : proxy;
             Object[] constructorArguments = JSArguments.extractUserArguments(arguments, isNewTarget ? 1 : 0);
             if (pxTrapFunProfile.profile(pxTrapFun == Undefined.instance)) {
-                if (!JSObject.isJSObject(pxTarget)) {
+                if (!JSObject.isJSDynamicObject(pxTarget)) {
                     return JSInteropUtil.construct(pxTarget, constructorArguments);
                 }
                 return callNode.executeCall(isNewTarget

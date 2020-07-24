@@ -91,7 +91,7 @@ public class AsyncIteratorNextNode extends AwaitNode {
         } else {
             setState(frame, 0);
             Object result = resumeAwait(frame);
-            if (!JSObject.isJSObject(result)) {
+            if (!JSObject.isJSDynamicObject(result)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorIterResultNotAnObject(result, this);
             }

@@ -110,7 +110,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     }
 
     public static boolean isJSNumberFormat(Object obj) {
-        return JSObject.isJSObject(obj) && isJSNumberFormat((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSNumberFormat((DynamicObject) obj);
     }
 
     public static boolean isJSNumberFormat(DynamicObject obj) {

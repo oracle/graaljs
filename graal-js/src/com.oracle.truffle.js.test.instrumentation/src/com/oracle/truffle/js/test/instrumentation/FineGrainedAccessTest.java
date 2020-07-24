@@ -478,13 +478,13 @@ public abstract class FineGrainedAccessTest {
     protected static final Consumer<Event> assertJSObjectInput = (e) -> {
         assertTrue(!JSFunction.isJSFunction(e.val));
         assertTrue(!JSArray.isJSArray(e.val));
-        assertTrue(JSObject.isJSObject(e.val));
+        assertTrue(JSObject.isJSDynamicObject(e.val));
     };
 
     protected static final Consumer<Event> assertJSPromiseInput = (e) -> {
         assertTrue(!JSFunction.isJSFunction(e.val));
         assertTrue(!JSArray.isJSArray(e.val));
-        assertTrue(JSObject.isJSObject(e.val));
+        assertTrue(JSObject.isJSDynamicObject(e.val));
         assertTrue(JSPromise.isJSPromise(e.val));
     };
 
@@ -493,7 +493,7 @@ public abstract class FineGrainedAccessTest {
     };
 
     protected static final Consumer<Event> assertJSArrayInput = (e) -> {
-        assertTrue(JSObject.isJSObject(e.val));
+        assertTrue(JSObject.isJSDynamicObject(e.val));
         assertTrue(JSArray.isJSArray(e.val));
     };
 
@@ -502,7 +502,7 @@ public abstract class FineGrainedAccessTest {
     };
 
     protected static final Consumer<Event> assertGlobalObjectInput = (e) -> {
-        assertTrue(JSObject.isJSObject(e.val));
+        assertTrue(JSObject.isJSDynamicObject(e.val));
         DynamicObject globalObject = JSObject.getJSContext((DynamicObject) e.val).getRealm().getGlobalObject();
         assertEquals(globalObject, e.val);
     };
@@ -527,7 +527,7 @@ public abstract class FineGrainedAccessTest {
     protected static final Consumer<Event> assertJSObjectReturn = (e) -> {
         assertTrue(e.val instanceof Object[]);
         Object[] vals = (Object[]) e.val;
-        assertTrue(JSObject.isJSObject(vals[0]));
+        assertTrue(JSObject.isJSDynamicObject(vals[0]));
         assertTrue(vals[0] != Undefined.instance);
         assertFalse(JSFunction.isJSFunction(vals[0]));
     };

@@ -161,7 +161,7 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
                 throw JSRuntime.rethrow((Throwable) completion.getValue());
             }
             Object innerResult = resumeAwait(frame);
-            if (!JSObject.isJSObject(innerResult)) {
+            if (!JSObject.isJSDynamicObject(innerResult)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorIterResultNotAnObject(innerResult, this);
             }

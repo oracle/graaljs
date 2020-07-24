@@ -182,7 +182,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
 
     public static boolean checkPropertyIsSettable(Object truffleTarget, Object key) {
         assert JSRuntime.isPropertyKey(key);
-        if (!JSObject.isJSObject(truffleTarget)) {
+        if (!JSObject.isJSDynamicObject(truffleTarget)) {
             return true; // best guess for foreign TruffleObject
         }
         DynamicObject target = (DynamicObject) truffleTarget;
@@ -293,7 +293,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         Object target = getTarget(proxy);
         Object trap = getTrapFromObject(handler, GET);
         if (trap == Undefined.instance) {
-            if (JSObject.isJSObject(target)) {
+            if (JSObject.isJSDynamicObject(target)) {
                 return JSObject.getJSClass((DynamicObject) target).getHelper((DynamicObject) target, receiver, key);
             } else {
                 return JSInteropUtil.readMemberOrDefault(target, key, null);
@@ -308,7 +308,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     @TruffleBoundary
     public static void checkProxyGetTrapInvariants(Object truffleTarget, Object key, Object trapResult) {
         assert JSRuntime.isPropertyKey(key);
-        if (!JSObject.isJSObject(truffleTarget)) {
+        if (!JSObject.isJSDynamicObject(truffleTarget)) {
             return; // best effort, cannot check for foreign objects
         }
         DynamicObject target = (DynamicObject) truffleTarget;
@@ -347,7 +347,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         Object target = getTarget(thisObj);
         Object trap = getTrapFromObject(handler, SET);
         if (trap == Undefined.instance) {
-            if (JSObject.isJSObject(target)) {
+            if (JSObject.isJSDynamicObject(target)) {
                 return JSObject.setWithReceiver((DynamicObject) target, key, value, receiver, isStrict);
             } else {
                 JSInteropUtil.writeMember(target, key, value);
@@ -372,7 +372,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         assert JSProxy.isProxy(proxy);
         assert JSRuntime.isPropertyKey(key);
         Object target = JSProxy.getTarget(proxy);
-        if (!JSObject.isJSObject(target)) {
+        if (!JSObject.isJSDynamicObject(target)) {
             return true;
         }
         PropertyDescriptor targetDesc = JSObject.getOwnProperty((DynamicObject) target, key);
@@ -419,7 +419,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         Object target = getTarget(thisObj);
         Object trap = getTrapFromObject(handler, HAS);
         if (trap == Undefined.instance) {
-            if (JSObject.isJSObject(target)) {
+            if (JSObject.isJSDynamicObject(target)) {
                 return JSObject.hasProperty((DynamicObject) target, key);
             } else {
                 return JSInteropUtil.hasProperty(target, key);
@@ -450,7 +450,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
 
         Object deleteFn = getTrapFromObject(handler, DELETE_PROPERTY);
         if (deleteFn == Undefined.instance) {
-            if (JSObject.isJSObject(target)) {
+            if (JSObject.isJSDynamicObject(target)) {
                 return JSObject.delete((DynamicObject) target, key, isStrict);
             } else {
                 return JSInteropUtil.remove(target, key);
@@ -464,7 +464,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             }
             return false;
         }
-        if (!JSObject.isJSObject(target)) {
+        if (!JSObject.isJSDynamicObject(target)) {
             return true;
         }
         PropertyDescriptor targetDesc = JSObject.getOwnProperty((DynamicObject) target, key);
@@ -492,7 +492,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         Object target = getTarget(thisObj);
         Object definePropertyFn = getTrapFromObject(handler, DEFINE_PROPERTY);
         if (definePropertyFn == Undefined.instance) {
-            if (JSObject.isJSObject(target)) {
+            if (JSObject.isJSDynamicObject(target)) {
                 return JSObject.defineOwnProperty((DynamicObject) target, key, desc, doThrow);
             } else {
                 JSInteropUtil.writeMember(target, key, Null.instance);
@@ -510,7 +510,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
                 return false;
             }
         }
-        if (!JSObject.isJSObject(target)) {
+        if (!JSObject.isJSDynamicObject(target)) {
             return true;
         }
         PropertyDescriptor targetDesc = JSObject.getOwnProperty((DynamicObject) target, key);
@@ -578,7 +578,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         Object target = getTarget(thisObj);
         Object preventExtensionsFn = getTrapFromObject(handler, PREVENT_EXTENSIONS);
         if (preventExtensionsFn == Undefined.instance) {
-            if (JSObject.isJSObject(target)) {
+            if (JSObject.isJSDynamicObject(target)) {
                 return JSObject.preventExtensions((DynamicObject) target, doThrow);
             } else {
                 return true; // unsupported foreign object
@@ -586,7 +586,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         }
         Object returnValue = JSRuntime.call(preventExtensionsFn, handler, new Object[]{target});
         boolean booleanTrapResult = JSRuntime.toBoolean(returnValue);
-        if (booleanTrapResult && JSObject.isJSObject(target)) {
+        if (booleanTrapResult && JSObject.isJSDynamicObject(target)) {
             boolean targetIsExtensible = JSObject.isExtensible((DynamicObject) target);
             if (targetIsExtensible) {
                 throw Errors.createTypeError("target is extensible");
@@ -605,7 +605,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         Object target = getTarget(thisObj);
         Object isExtensibleFn = getTrapFromObject(handler, IS_EXTENSIBLE);
         if (isExtensibleFn == Undefined.instance) {
-            if (JSObject.isJSObject(target)) {
+            if (JSObject.isJSDynamicObject(target)) {
                 return JSObject.isExtensible((DynamicObject) target);
             } else {
                 return true; // cannot check for foreign objects
@@ -613,7 +613,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         }
         Object returnValue = JSRuntime.call(isExtensibleFn, handler, new Object[]{target});
         boolean booleanTrapResult = JSRuntime.toBoolean(returnValue);
-        if (!JSObject.isJSObject(target)) {
+        if (!JSObject.isJSDynamicObject(target)) {
             return booleanTrapResult;
         }
         boolean targetResult = JSObject.isExtensible((DynamicObject) target);
@@ -628,7 +628,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     @Override
     public String getBuiltinToStringTag(DynamicObject object) {
         Object targetNonProxy = getTargetNonProxy(object);
-        if (JSObject.isJSObject(targetNonProxy)) {
+        if (JSObject.isJSDynamicObject(targetNonProxy)) {
             return JSObject.getJSClass((DynamicObject) targetNonProxy).getBuiltinToStringTag((DynamicObject) targetNonProxy);
         } else {
             return "Foreign";
@@ -679,7 +679,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         Object target = getTarget(thisObj);
         Object getPrototypeOfFn = getTrapFromObject(handler, GET_PROTOTYPE_OF);
         if (getPrototypeOfFn == Undefined.instance) {
-            if (JSObject.isJSObject(target)) {
+            if (JSObject.isJSDynamicObject(target)) {
                 return JSObject.getPrototype((DynamicObject) target);
             } else {
                 return Null.instance;
@@ -687,11 +687,11 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         }
 
         Object handlerProto = JSRuntime.call(getPrototypeOfFn, handler, new Object[]{target});
-        if (!JSObject.isJSObject(handlerProto) || handlerProto == Undefined.instance) {
+        if (!JSObject.isJSDynamicObject(handlerProto) || handlerProto == Undefined.instance) {
             throw Errors.createTypeError("object or null expected");
         }
         DynamicObject handlerProtoObj = (DynamicObject) handlerProto;
-        if (!JSObject.isJSObject(target)) {
+        if (!JSObject.isJSDynamicObject(target)) {
             return handlerProtoObj;
         }
         boolean extensibleTarget = JSObject.isExtensible((DynamicObject) target);
@@ -713,7 +713,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         Object target = getTarget(thisObj);
         Object setPrototypeOfFn = getTrapFromObject(handler, SET_PROTOTYPE_OF);
         if (setPrototypeOfFn == Undefined.instance) {
-            if (JSObject.isJSObject(target)) {
+            if (JSObject.isJSDynamicObject(target)) {
                 return JSObject.setPrototype((DynamicObject) target, newPrototype);
             } else {
                 return true; // cannot do for foreign Object
@@ -724,7 +724,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         if (!booleanTrapResult) {
             return false;
         }
-        if (!JSObject.isJSObject(target)) {
+        if (!JSObject.isJSDynamicObject(target)) {
             return true;
         }
         boolean targetIsExtensible = JSObject.isExtensible((DynamicObject) target);
@@ -749,7 +749,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         Object target = getTarget(thisObj);
         Object ownKeysFn = getTrapFromObject(handler, OWN_KEYS);
         if (ownKeysFn == Undefined.instance) {
-            if (JSObject.isJSObject(target)) {
+            if (JSObject.isJSDynamicObject(target)) {
                 return JSObject.ownPropertyKeys((DynamicObject) target);
             } else {
                 return JSInteropUtil.keys(target);
@@ -758,7 +758,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
 
         Object trapResultArray = JSRuntime.call(ownKeysFn, handler, new Object[]{target});
         List<Object> trapResult = JSRuntime.createListFromArrayLikeAllowSymbolString(trapResultArray);
-        if (!JSObject.isJSObject(target)) {
+        if (!JSObject.isJSDynamicObject(target)) {
             List<Object> uncheckedResultKeys = new ArrayList<>();
             Boundaries.listAddAll(uncheckedResultKeys, trapResult);
             return uncheckedResultKeys;
@@ -831,14 +831,14 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         Object target = getTarget(thisObj);
         Object getOwnPropertyFn = getTrapFromObject(handler, GET_OWN_PROPERTY_DESCRIPTOR);
         if (getOwnPropertyFn == Undefined.instance) {
-            if (JSObject.isJSObject(target)) {
+            if (JSObject.isJSDynamicObject(target)) {
                 return JSObject.getOwnProperty((DynamicObject) target, key);
             } else {
                 return null;
             }
         }
         Object trapResultObj = checkTrapReturnValue(JSRuntime.call(getOwnPropertyFn, handler, new Object[]{target, key}));
-        if (!JSObject.isJSObject(target)) {
+        if (!JSObject.isJSDynamicObject(target)) {
             return JSRuntime.toPropertyDescriptor(trapResultObj);
         }
 
@@ -882,7 +882,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     public static Object checkTrapReturnValue(Object trapResult) {
-        if (JSObject.isJSObject(trapResult) || trapResult == Undefined.instance) {
+        if (JSObject.isJSDynamicObject(trapResult) || trapResult == Undefined.instance) {
             return trapResult;
         } else {
             throw Errors.createTypeError("proxy must return an object");

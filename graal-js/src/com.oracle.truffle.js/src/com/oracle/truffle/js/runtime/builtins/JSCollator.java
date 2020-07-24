@@ -117,7 +117,7 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
     }
 
     public static boolean isJSCollator(Object obj) {
-        return JSObject.isJSObject(obj) && isJSCollator((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSCollator((DynamicObject) obj);
     }
 
     public static boolean isJSCollator(DynamicObject obj) {

@@ -138,7 +138,7 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
     }
 
     public static boolean isJSSharedArrayBuffer(Object obj) {
-        return JSObject.isJSObject(obj) && isJSSharedArrayBuffer((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSSharedArrayBuffer((DynamicObject) obj);
     }
 
     public static boolean isJSSharedArrayBuffer(DynamicObject obj) {

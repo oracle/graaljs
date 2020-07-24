@@ -218,7 +218,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
     }
 
     protected static boolean isCacheableObjectType(DynamicObject obj) {
-        return JSObject.isJSObject(obj) && (!JSRuntime.isNullOrUndefined(obj) &&
+        return JSObject.isJSDynamicObject(obj) && (!JSRuntime.isNullOrUndefined(obj) &&
                         !JSString.isJSString(obj) &&
                         !JSArray.isJSArray(obj) &&
                         !JSArgumentsObject.isJSArgumentsObject(obj) &&

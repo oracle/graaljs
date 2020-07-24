@@ -169,7 +169,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         }
 
         public static boolean isSharedBufferView(Object object) {
-            return JSObject.isJSObject(object) && isSharedBufferView((DynamicObject) object);
+            return JSObject.isJSDynamicObject(object) && isSharedBufferView((DynamicObject) object);
         }
 
         public static boolean isSharedBufferView(DynamicObject object) {
@@ -193,7 +193,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         }
 
         public static boolean isInt32SharedBufferView(Object object) {
-            return JSObject.isJSObject(object) && isInt32SharedBufferView((DynamicObject) object);
+            return JSObject.isJSDynamicObject(object) && isInt32SharedBufferView((DynamicObject) object);
         }
 
         public static boolean isInt32SharedBufferView(DynamicObject object) {
@@ -213,7 +213,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         }
 
         public static boolean isBigInt64SharedBufferView(Object object) {
-            return JSObject.isJSObject(object) && isBigInt64SharedBufferView((DynamicObject) object);
+            return JSObject.isJSDynamicObject(object) && isBigInt64SharedBufferView((DynamicObject) object);
         }
 
         /* ES8 24.4.1.2 ValidateAtomicAccess */

@@ -72,7 +72,7 @@ public final class JSLocale extends JSBuiltinObject implements JSConstructorFact
     }
 
     public static boolean isJSLocale(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSLocale((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSLocale((DynamicObject) obj);
     }
 
     public static boolean isJSLocale(DynamicObject obj) {

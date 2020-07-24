@@ -224,7 +224,7 @@ public final class JSRuntime {
             return JSBoolean.TYPE_NAME;
         } else if (value instanceof Symbol) {
             return JSSymbol.TYPE_NAME;
-        } else if (JSObject.isDynamicObject(value)) {
+        } else if (JSObject.isJSDynamicObject(value)) {
             DynamicObject object = (DynamicObject) value;
             if (JSProxy.isProxy(object)) {
                 Object target = JSProxy.getTarget(object);
@@ -263,7 +263,7 @@ public final class JSRuntime {
      * objects.
      */
     public static boolean isObject(Object vo) {
-        return JSObject.isDynamicObject(vo) && isObject((DynamicObject) vo);
+        return JSObject.isJSDynamicObject(vo) && isObject((DynamicObject) vo);
     }
 
     /**
@@ -279,7 +279,7 @@ public final class JSRuntime {
      * Returns whether {@code value} is JS {@code null} or {@code undefined}.
      */
     public static boolean isNullOrUndefined(Object value) {
-        return JSObject.isDynamicObject(value) && isNullOrUndefined((DynamicObject) value);
+        return JSObject.isJSDynamicObject(value) && isNullOrUndefined((DynamicObject) value);
     }
 
     /**
@@ -321,7 +321,7 @@ public final class JSRuntime {
         if (value == Null.instance || value == Undefined.instance) {
             return value;
         } else if (value instanceof TruffleObject) {
-            if (JSObject.isJSObject(value)) {
+            if (JSObject.isJSDynamicObject(value)) {
                 return JSObject.toPrimitive((DynamicObject) value, hint);
             } else if (isForeignObject(value)) {
                 TruffleObject tObj = (TruffleObject) value;
@@ -880,7 +880,7 @@ public final class JSRuntime {
             throw Errors.createTypeErrorCannotConvertToString("a Symbol value");
         } else if (value instanceof BigInt) {
             return value.toString();
-        } else if (JSObject.isJSObject(value)) {
+        } else if (JSObject.isJSDynamicObject(value)) {
             return toString(JSObject.toPrimitive((DynamicObject) value, HINT_STRING));
         } else if (value instanceof TruffleObject) {
             assert !isJSNative(value);
@@ -927,7 +927,7 @@ public final class JSRuntime {
         } else if (isString(value)) {
             String string = value.toString();
             return quoteString ? quote(string) : string;
-        } else if (JSObject.isJSObject(value)) {
+        } else if (JSObject.isJSDynamicObject(value)) {
             return JSObject.toDisplayString((DynamicObject) value, depth, allowSideEffects);
         } else if (value instanceof Symbol) {
             return value.toString();
@@ -957,7 +957,7 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static String objectToConsoleString(DynamicObject obj, String name, int depth, String[] internalKeys, Object[] internalValues, boolean allowSideEffects) {
-        assert JSObject.isJSObject(obj) && !JSFunction.isJSFunction(obj) && !JSProxy.isProxy(obj);
+        assert JSObject.isJSDynamicObject(obj) && !JSFunction.isJSFunction(obj) && !JSProxy.isProxy(obj);
         StringBuilder sb = new StringBuilder();
 
         if (name != null) {
@@ -1275,7 +1275,7 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static JSException toStringTypeError(Object value) {
-        String what = (value == null ? Null.NAME : (JSObject.isDynamicObject(value) ? JSObject.defaultToString((DynamicObject) value) : value.getClass().getName()));
+        String what = (value == null ? Null.NAME : (JSObject.isJSDynamicObject(value) ? JSObject.defaultToString((DynamicObject) value) : value.getClass().getName()));
         throw Errors.createTypeErrorCannotConvertToString(what);
     }
 
@@ -1449,7 +1449,7 @@ public final class JSRuntime {
      */
     public static TruffleObject toObject(JSContext ctx, Object value) {
         requireObjectCoercible(value, ctx);
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, JSObject.isDynamicObject(value))) {
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, JSObject.isJSDynamicObject(value))) {
             return (DynamicObject) value;
         }
         return toObjectFromPrimitive(ctx, value, true);
@@ -1522,7 +1522,7 @@ public final class JSRuntime {
             double da = doubleValue((Number) a);
             double db = doubleValue((Number) b);
             return da == db;
-        } else if (JSObject.isDynamicObject(a) && JSObject.isDynamicObject(b)) {
+        } else if (JSObject.isJSDynamicObject(a) && JSObject.isJSDynamicObject(b)) {
             return a == b;
         } else if (isJavaNumber(a) && isString(b)) {
             return equal(a, stringToNumber(b.toString()));
@@ -1560,7 +1560,7 @@ public final class JSRuntime {
     }
 
     public static boolean isForeignObject(TruffleObject value) {
-        return !JSObject.isJSObject(value) && !(value instanceof Symbol) && !(value instanceof JSLazyString) && !(value instanceof SafeInteger) &&
+        return !JSObject.isJSDynamicObject(value) && !(value instanceof Symbol) && !(value instanceof JSLazyString) && !(value instanceof SafeInteger) &&
                         !(value instanceof BigInt);
     }
 
@@ -1945,7 +1945,7 @@ public final class JSRuntime {
      * Is value a native JavaScript object or primitive?
      */
     public static boolean isJSNative(Object value) {
-        return JSObject.isJSObject(value) || isJSPrimitive(value);
+        return JSObject.isJSDynamicObject(value) || isJSPrimitive(value);
     }
 
     public static boolean isJSPrimitive(Object value) {
@@ -2369,7 +2369,7 @@ public final class JSRuntime {
     }
 
     public static boolean isCallableIsJSObject(DynamicObject value) {
-        assert JSObject.isJSObject(value);
+        assert JSObject.isJSDynamicObject(value);
         if (JSFunction.isJSFunction(value)) {
             return true;
         } else if (JSProxy.isProxy(value)) {
@@ -2654,7 +2654,7 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static JSRealm getFunctionRealm(Object obj, JSRealm currentRealm) {
-        if (JSObject.isDynamicObject(obj)) {
+        if (JSObject.isJSDynamicObject(obj)) {
             DynamicObject dynObj = (DynamicObject) obj;
             if (JSFunction.isJSFunction(dynObj)) {
                 if (JSFunction.isBoundFunction(dynObj)) {
@@ -2787,7 +2787,7 @@ public final class JSRuntime {
     }
 
     public static DynamicObject expectJSObject(Object to, BranchProfile errorBranch) {
-        if (!JSObject.isJSObject(to)) {
+        if (!JSObject.isJSDynamicObject(to)) {
             errorBranch.enter();
             throw Errors.createTypeErrorJSObjectExpected();
         }

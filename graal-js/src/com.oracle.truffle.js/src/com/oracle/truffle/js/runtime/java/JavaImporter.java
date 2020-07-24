@@ -83,7 +83,7 @@ public final class JavaImporter extends JSBuiltinObject implements JSConstructor
     }
 
     public static boolean isJavaImporter(Object obj) {
-        return JSObject.isJSObject(obj) && isJavaImporter((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJavaImporter((DynamicObject) obj);
     }
 
     public static boolean isJavaImporter(DynamicObject obj) {

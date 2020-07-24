@@ -89,7 +89,7 @@ public final class JSGlobalObject extends JSBuiltinObject {
     }
 
     public static boolean isJSGlobalObject(Object obj) {
-        return JSObject.isJSObject(obj) && isJSGlobalObject((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSGlobalObject((DynamicObject) obj);
     }
 
     public static boolean isJSGlobalObject(DynamicObject obj) {

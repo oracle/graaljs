@@ -145,7 +145,7 @@ public final class JSWeakSet extends JSBuiltinObject implements JSConstructorFac
     }
 
     public static boolean isJSWeakSet(Object obj) {
-        return JSObject.isJSObject(obj) && isJSWeakSet((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSWeakSet((DynamicObject) obj);
     }
 
     public static boolean isJSWeakSet(DynamicObject obj) {

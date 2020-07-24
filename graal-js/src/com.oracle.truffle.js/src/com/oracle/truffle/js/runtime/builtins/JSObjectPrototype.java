@@ -71,7 +71,7 @@ public final class JSObjectPrototype extends JSBuiltinObject {
     }
 
     public static boolean isJSObjectPrototype(Object obj) {
-        return JSObject.isJSObject(obj) && isJSObjectPrototype((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSObjectPrototype((DynamicObject) obj);
     }
 
     public static boolean isJSObjectPrototype(DynamicObject obj) {

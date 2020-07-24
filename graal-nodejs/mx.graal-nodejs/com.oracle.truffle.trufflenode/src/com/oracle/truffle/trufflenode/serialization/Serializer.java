@@ -240,7 +240,7 @@ public class Serializer {
             NativeAccess.throwDataCloneError(delegate, message);
         } else if (JSFunction.isJSFunction(object)) {
             NativeAccess.throwDataCloneError(delegate, JSRuntime.safeToString(object) + " could not be cloned.");
-        } else if (JSObject.isJSObject(object)) {
+        } else if (JSObject.isJSDynamicObject(object)) {
             DynamicObject dynamicObject = (DynamicObject) object;
             if (GraalJSAccess.internalFieldCount(dynamicObject) == 0) {
                 writeJSObject(dynamicObject);
@@ -385,7 +385,7 @@ public class Serializer {
     }
 
     private void writeJSObject(DynamicObject object) {
-        assert JSObject.isJSObject(object);
+        assert JSObject.isJSDynamicObject(object);
         writeTag(SerializationTag.BEGIN_JS_OBJECT);
         List<String> names = JSObject.enumerableOwnNames(object);
         writeJSObjectProperties(object, names);
@@ -394,7 +394,7 @@ public class Serializer {
     }
 
     private void writeJSObjectProperties(DynamicObject object, List<String> keys) {
-        assert JSObject.isJSObject(object);
+        assert JSObject.isJSDynamicObject(object);
         for (String key : keys) {
             if (JSRuntime.isArrayIndex(key)) {
                 writeIntOrDouble(Double.parseDouble(key));

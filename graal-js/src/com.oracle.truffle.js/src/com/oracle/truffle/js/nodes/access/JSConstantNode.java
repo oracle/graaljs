@@ -87,7 +87,7 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
             return createBigInt((BigInt) value);
         } else if (value instanceof SafeInteger) {
             return createSafeInteger((SafeInteger) value);
-        } else if (JSObject.isDynamicObject(value)) {
+        } else if (JSObject.isJSDynamicObject(value)) {
             return new JSConstantJSObjectNode((DynamicObject) value);
         } else {
             return new JSConstantObjectNode(value);

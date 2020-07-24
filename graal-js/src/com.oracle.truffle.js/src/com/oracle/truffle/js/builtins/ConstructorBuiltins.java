@@ -942,7 +942,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             boolean hasMatchSymbol = isRegExpNode.executeBoolean(pattern);
             if (isCall) {
                 // we are in the "call" case, i.e. NewTarget is undefined (before)
-                if (callIsRegExpProfile.profile(hasMatchSymbol && flags == Undefined.instance && JSObject.isJSObject(pattern))) {
+                if (callIsRegExpProfile.profile(hasMatchSymbol && flags == Undefined.instance && JSObject.isJSDynamicObject(pattern))) {
                     DynamicObject patternObj = (DynamicObject) pattern;
                     Object patternConstructor = getConstructor(patternObj);
                     if (constructorEquivalentProfile.profile(patternConstructor == getContext().getRealm().getRegExpConstructor())) {
@@ -2152,7 +2152,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                             return;
                         }
                         Object nextItem = getIteratorValue((DynamicObject) next);
-                        if (!JSObject.isDynamicObject(nextItem)) {
+                        if (!JSObject.isJSDynamicObject(nextItem)) {
                             errorBranch.enter();
                             throw Errors.createTypeErrorIteratorResultNotObject(nextItem, this);
                         }

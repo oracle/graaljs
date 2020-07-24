@@ -67,7 +67,7 @@ public class UnaryOperationTest extends FineGrainedAccessTest {
                 enter(ReadPropertyTag.class, (e3, prop) -> {
                     assertAttribute(e3, KEY, "Uint8Array");
                     prop.input((e4) -> {
-                        assertTrue(JSObject.isJSObject(e4.val));
+                        assertTrue(JSObject.isJSDynamicObject(e4.val));
                     });
                 }).exit();
                 unary.input(assertJSFunctionInput);

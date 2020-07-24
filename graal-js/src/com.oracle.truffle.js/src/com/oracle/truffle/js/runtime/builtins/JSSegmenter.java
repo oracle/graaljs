@@ -186,7 +186,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
     }
 
     public static boolean isJSSegmenter(Object obj) {
-        return JSObject.isJSObject(obj) && isJSSegmenter((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSSegmenter((DynamicObject) obj);
     }
 
     public static boolean isJSSegmenter(DynamicObject obj) {

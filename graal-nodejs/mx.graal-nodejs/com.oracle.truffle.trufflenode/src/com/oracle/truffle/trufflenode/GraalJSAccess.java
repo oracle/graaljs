@@ -401,7 +401,7 @@ public final class GraalJSAccess {
                 sharedBuffer.putDouble(((Number) value).doubleValue());
             }
             return NUMBER_VALUE;
-        } else if (JSObject.isJSObject(value)) {
+        } else if (JSObject.isJSDynamicObject(value)) {
             return valueTypeJSObject((DynamicObject) value, useSharedBuffer);
         } else if (JSRuntime.isForeignObject(value)) {
             return valueTypeForeignObject((TruffleObject) value, useSharedBuffer);
@@ -755,7 +755,7 @@ public final class GraalJSAccess {
     }
 
     public Object objectGetPrivate(Object object, Object key) {
-        if (!JSObject.isJSObject(object)) {
+        if (!JSObject.isJSDynamicObject(object)) {
             return null;
         }
         DynamicObject dynamicObject = (DynamicObject) object;
@@ -770,7 +770,7 @@ public final class GraalJSAccess {
     }
 
     public boolean objectDeletePrivate(Object object, Object key) {
-        if (!JSObject.isJSObject(object)) {
+        if (!JSObject.isJSDynamicObject(object)) {
             return true;
         }
         DynamicObject dynamicObject = (DynamicObject) object;
@@ -954,7 +954,7 @@ public final class GraalJSAccess {
 
     public Object objectGetOwnPropertyNames(Object object) {
         Object[] namesArray;
-        if (JSObject.isJSObject(object)) {
+        if (JSObject.isJSDynamicObject(object)) {
             DynamicObject dynamicObject = (DynamicObject) object;
             List<String> names = JSObject.enumerableOwnNames(dynamicObject);
             namesArray = names.toArray();
@@ -994,7 +994,7 @@ public final class GraalJSAccess {
                     boolean skipIndices, boolean skipSymbols, boolean skipStrings,
                     boolean keepNumbers) {
         Object[] propertyNames;
-        if (JSObject.isJSObject(object)) {
+        if (JSObject.isJSDynamicObject(object)) {
             Set<Object> keys = new LinkedHashSet<>();
             DynamicObject dynamicObject = (DynamicObject) object;
             do {
@@ -1154,7 +1154,7 @@ public final class GraalJSAccess {
     }
 
     public void objectSetIntegrityLevel(Object object, boolean freeze) {
-        if (JSObject.isJSObject(object)) {
+        if (JSObject.isJSDynamicObject(object)) {
             JSObject.setIntegrityLevel((DynamicObject) object, freeze, true);
         }
     }
@@ -1533,7 +1533,7 @@ public final class GraalJSAccess {
     }
 
     private GraalJSException exceptionObjectToException(Object exceptionObject) {
-        if (JSObject.isDynamicObject(exceptionObject)) {
+        if (JSObject.isJSDynamicObject(exceptionObject)) {
             GraalJSException exception = JSError.getException((DynamicObject) exceptionObject);
             if (exception != null) {
                 return exception;

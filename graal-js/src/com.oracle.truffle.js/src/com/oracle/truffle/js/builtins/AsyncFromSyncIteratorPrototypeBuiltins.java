@@ -318,7 +318,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                 promiseCapabilityReject(promiseCapability, e);
                 return promiseCapability.getPromise();
             }
-            if (!JSObject.isJSObject(returnResult)) {
+            if (!JSObject.isJSDynamicObject(returnResult)) {
                 promiseCapabilityReject(promiseCapability, Errors.createTypeErrorNotAnObject(returnResult));
                 return promiseCapability.getPromise();
             }

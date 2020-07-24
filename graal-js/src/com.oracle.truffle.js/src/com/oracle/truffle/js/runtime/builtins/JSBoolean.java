@@ -150,7 +150,7 @@ public final class JSBoolean extends JSPrimitiveObject implements JSConstructorF
     }
 
     public static boolean isJSBoolean(Object obj) {
-        return JSObject.isJSObject(obj) && isJSBoolean((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSBoolean((DynamicObject) obj);
     }
 
     public static boolean isJSBoolean(DynamicObject obj) {

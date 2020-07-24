@@ -101,7 +101,7 @@ public final class WithTargetNode extends JavaScriptNode {
      */
     private boolean isPropertyScopable(Object target) {
         if (context.getEcmaScriptVersion() >= 6) {
-            if (JSObject.isJSObject(target)) {
+            if (JSObject.isJSDynamicObject(target)) {
                 Object unscopables = withObjectGetUnscopables.getValue(target);
                 if (JSRuntime.isObject(unscopables)) {
                     boolean blocked = toBoolean.executeBoolean(unscopablesGetProperty.getValue(unscopables));

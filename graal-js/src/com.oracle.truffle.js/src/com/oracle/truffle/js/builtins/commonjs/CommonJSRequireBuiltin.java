@@ -250,7 +250,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
                 assert source != null;
                 String jsonString = source.getCharacters().toString();
                 Object jsonObj = JSFunction.call(JSArguments.create(parse, parse, jsonString));
-                if (JSObject.isJSObject(jsonObj)) {
+                if (JSObject.isJSDynamicObject(jsonObj)) {
                     return (DynamicObject) jsonObj;
                 }
             }
@@ -317,7 +317,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
     }
 
     private TruffleFile getModuleResolutionEntryPath(DynamicObject currentRequire, TruffleLanguage.Env env) {
-        if (JSObject.isJSObject(currentRequire)) {
+        if (JSObject.isJSDynamicObject(currentRequire)) {
             Object maybeFilename = JSObject.get(currentRequire, FILENAME_VAR_NAME);
             if (JSRuntime.isString(maybeFilename)) {
                 String fileName = JSRuntime.toStringIsString(maybeFilename);

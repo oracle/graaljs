@@ -1002,7 +1002,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
-            if (isObject.profile(JSObject.isJSObject(thisObj))) {
+            if (isObject.profile(JSObject.isJSDynamicObject(thisObj))) {
                 setValueInDynamicObject(thisObj, value, receiver, root);
             } else if (isStrictSymbol.profile(root.isStrict() && thisObj instanceof Symbol)) {
                 throw Errors.createTypeError("Cannot create property on symbol", this);
@@ -1230,7 +1230,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
      */
     @Override
     protected SetCacheNode createCachedPropertyNode(Property property, Object thisObj, int depth, Object value, SetCacheNode currentHead) {
-        if (JSObject.isDynamicObject(thisObj)) {
+        if (JSObject.isJSDynamicObject(thisObj)) {
             return createCachedPropertyNodeJSObject(property, (DynamicObject) thisObj, depth, value);
         } else {
             return createCachedPropertyNodeNotJSObject(property, thisObj, depth);
@@ -1331,7 +1331,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         if (specialized != null) {
             return specialized;
         }
-        if (JSObject.isDynamicObject(thisObj)) {
+        if (JSObject.isJSDynamicObject(thisObj)) {
             DynamicObject thisJSObj = (DynamicObject) thisObj;
             Shape cacheShape = thisJSObj.getShape();
             AbstractShapeCheckNode shapeCheck = createShapeCheckNode(cacheShape, thisJSObj, depth, false, true);
@@ -1407,7 +1407,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     @TruffleBoundary
     protected void globalPropertySetInStrictMode(Object thisObj) {
-        assert JSObject.isDynamicObject(thisObj) && context.getRealm().getGlobalObject() == thisObj;
+        assert JSObject.isJSDynamicObject(thisObj) && context.getRealm().getGlobalObject() == thisObj;
         throw Errors.createReferenceErrorNotDefined(context, getKey(), this);
     }
 

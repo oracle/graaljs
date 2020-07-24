@@ -604,7 +604,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         @Override
         public final void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSContext context) {
             Object value = valueNode.execute(frame);
-            if (JSObject.isDynamicObject(value)) {
+            if (JSObject.isJSDynamicObject(value)) {
                 if (value == Undefined.instance) {
                     return;
                 }

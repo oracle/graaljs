@@ -174,7 +174,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
 
     protected Object getElement(Object target, long index, boolean isForeign) {
         if (!isForeign) {
-            assert JSObject.isJSObject(target);
+            assert JSObject.isJSDynamicObject(target);
             return JSObject.get((DynamicObject) target, index, targetClassProfile);
         } else {
             return foreignRead(target, index);

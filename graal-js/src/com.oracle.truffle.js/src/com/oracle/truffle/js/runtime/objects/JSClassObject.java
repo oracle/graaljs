@@ -411,7 +411,7 @@ public abstract class JSClassObject extends JSDynamicObject {
         if (JSGuards.isJSProxy(this)) {
             return JSMetaType.JS_PROXY;
         } else {
-            assert JSObject.isJSObject(this) && !JSGuards.isJSProxy(this);
+            assert JSObject.isJSDynamicObject(this) && !JSGuards.isJSProxy(this);
             Object metaObject = JSRuntime.getDataProperty(this, JSObject.CONSTRUCTOR);
             if (metaObject != null && metaObject instanceof JSFunctionObject) {
                 return metaObject;

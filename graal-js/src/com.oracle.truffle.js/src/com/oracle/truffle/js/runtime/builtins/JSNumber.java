@@ -266,7 +266,7 @@ public final class JSNumber extends JSPrimitiveObject implements JSConstructorFa
     }
 
     public static boolean isJSNumber(Object obj) {
-        return JSObject.isJSObject(obj) && isJSNumber((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSNumber((DynamicObject) obj);
     }
 
     public static boolean isJSNumber(DynamicObject obj) {

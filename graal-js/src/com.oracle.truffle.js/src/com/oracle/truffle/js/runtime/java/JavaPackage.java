@@ -89,7 +89,7 @@ public final class JavaPackage extends JSBuiltinObject {
     }
 
     public static boolean isJavaPackage(Object obj) {
-        return JSObject.isJSObject(obj) && isJavaPackage((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJavaPackage((DynamicObject) obj);
     }
 
     public static boolean isJavaPackage(DynamicObject obj) {

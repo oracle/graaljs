@@ -79,7 +79,7 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
     }
 
     public static boolean isJSRelativeTimeFormat(Object obj) {
-        return JSObject.isJSObject(obj) && isJSRelativeTimeFormat((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSRelativeTimeFormat((DynamicObject) obj);
     }
 
     public static boolean isJSRelativeTimeFormat(DynamicObject obj) {

@@ -106,7 +106,7 @@ public class ArrayObjectsTest extends FineGrainedAccessTest {
         }).exit((e) -> {
             Object[] vals = (Object[]) e.val;
             assertTrue(vals.length == 4);
-            assertTrue(JSObject.isJSObject(vals[1]));
+            assertTrue(JSObject.isJSDynamicObject(vals[1]));
             assertTrue(!JSFunction.isJSFunction(vals[1]));
             assertTrue(JSFunction.isJSFunction(vals[2]));
             assertEquals(vals[3], 42);
@@ -130,7 +130,7 @@ public class ArrayObjectsTest extends FineGrainedAccessTest {
         }).exit((e) -> {
             Object[] vals = (Object[]) e.val;
             assertTrue(vals.length == 6);
-            assertTrue(JSObject.isJSObject(vals[1]));
+            assertTrue(JSObject.isJSDynamicObject(vals[1]));
             assertTrue(!JSFunction.isJSFunction(vals[1]));
             assertTrue(JSFunction.isJSFunction(vals[2]));
             assertEquals(vals[3], 42);

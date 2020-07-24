@@ -83,12 +83,12 @@ public abstract class JSArrayElementIndexNode extends JavaScriptBaseNode {
 
     protected final boolean isSuitableForEnumBasedProcessingUsingOwnKeys(Object object, long length) {
         return length > JSConfig.BigArrayThreshold && !JSArrayBufferView.isJSArrayBufferView(object) && !JSProxy.isProxy(object) &&
-                        ((JSArray.isJSArray(object) && context.getArrayPrototypeNoElementsAssumption().isValid()) || !JSObject.isJSObject(object) ||
+                        ((JSArray.isJSArray(object) && context.getArrayPrototypeNoElementsAssumption().isValid()) || !JSObject.isJSDynamicObject(object) ||
                                         JSObject.getPrototype((DynamicObject) object) == Null.instance);
     }
 
     protected static final boolean isSuitableForEnumBasedProcessing(Object object, long length) {
-        if (length <= JSConfig.BigArrayThreshold || !JSObject.isJSObject(object)) {
+        if (length <= JSConfig.BigArrayThreshold || !JSObject.isJSDynamicObject(object)) {
             return false;
         }
         DynamicObject chainObject = (DynamicObject) object;

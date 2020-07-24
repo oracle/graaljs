@@ -153,7 +153,7 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
     }
 
     public static boolean isJSSymbol(Object obj) {
-        return JSObject.isJSObject(obj) && isJSSymbol((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSSymbol((DynamicObject) obj);
     }
 
     public static boolean isJSSymbol(DynamicObject obj) {

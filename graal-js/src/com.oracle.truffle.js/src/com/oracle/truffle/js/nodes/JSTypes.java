@@ -91,7 +91,7 @@ public class JSTypes {
 
     @TypeCheck(DynamicObject.class)
     public static boolean isDynamicObject(Object value) {
-        return JSObject.isDynamicObject(value);
+        return JSObject.isJSDynamicObject(value);
     }
 
     @TypeCheck(JSLazyStringFlattened.class)

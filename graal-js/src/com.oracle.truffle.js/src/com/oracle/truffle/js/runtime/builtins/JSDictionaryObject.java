@@ -92,7 +92,7 @@ public final class JSDictionaryObject extends JSBuiltinObject {
     }
 
     public static boolean isJSDictionaryObject(Object obj) {
-        return JSObject.isJSObject(obj) && isJSDictionaryObject((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSDictionaryObject((DynamicObject) obj);
     }
 
     public static boolean isJSDictionaryObject(DynamicObject obj) {

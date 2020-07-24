@@ -1579,10 +1579,10 @@ public class JSContext {
                     return Undefined.instance;
                 }
                 Object value = JSArguments.getUserArgument(arguments, 0);
-                if (!JSObject.isJSObject(value) || value == Undefined.instance) {
+                if (!JSObject.isJSDynamicObject(value) || value == Undefined.instance) {
                     return Undefined.instance;
                 }
-                if (!JSObject.isJSObject(obj)) {
+                if (!JSObject.isJSDynamicObject(obj)) {
                     return Undefined.instance;
                 }
                 DynamicObject thisObj = (DynamicObject) obj;
@@ -1603,7 +1603,7 @@ public class JSContext {
             @Override
             public Object execute(VirtualFrame frame) {
                 Object obj = toObjectNode.execute(JSArguments.getThisObject(frame.getArguments()));
-                if (JSObject.isJSObject(obj)) {
+                if (JSObject.isJSDynamicObject(obj)) {
                     return getPrototypeNode.executeJSObject(obj);
                 }
                 return Null.instance;

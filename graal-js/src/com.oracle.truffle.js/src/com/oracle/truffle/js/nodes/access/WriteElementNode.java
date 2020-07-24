@@ -481,7 +481,7 @@ public class WriteElementNode extends JSTargetableNode {
 
     @SuppressWarnings("unchecked")
     private static WriteElementTypeCacheNode makeTypeCacheNode(Object target, WriteElementTypeCacheNode next) {
-        if (JSObject.isJSObject(target)) {
+        if (JSObject.isJSDynamicObject(target)) {
             return new JSObjectWriteElementTypeCacheNode(next);
         } else if (JSRuntime.isString(target)) {
             return new StringWriteElementTypeCacheNode(target.getClass(), next);
@@ -946,7 +946,7 @@ public class WriteElementNode extends JSTargetableNode {
                 } else if (value instanceof Double) {
                     inBoundsDoubleBranch.enter();
                     newArray = constantArray.createWriteableDouble(target, index, (double) value, arrayCondition, createWritableProfile);
-                } else if (JSObject.isDynamicObject(value)) {
+                } else if (JSObject.isJSDynamicObject(value)) {
                     inBoundsJSObjectBranch.enter();
                     newArray = constantArray.createWriteableJSObject(target, index, (DynamicObject) value, arrayCondition, createWritableProfile);
                 } else {
@@ -1170,7 +1170,7 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected boolean executeSetArray(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition, WriteElementNode root) {
             AbstractJSObjectArray jsobjectArray = (AbstractJSObjectArray) cast(array);
-            if (objectType.profile(JSObject.isDynamicObject(value))) {
+            if (objectType.profile(JSObject.isJSDynamicObject(value))) {
                 DynamicObject jsobjectValue = (DynamicObject) value;
                 return executeWithJSObjectValueInner(target, jsobjectArray, index, jsobjectValue, arrayCondition, root);
             } else {
@@ -1369,7 +1369,7 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected boolean executeSetArray(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition, WriteElementNode root) {
             HolesJSObjectArray holesArray = (HolesJSObjectArray) cast(array);
-            if (objectType.profile(JSObject.isDynamicObject(value))) {
+            if (objectType.profile(JSObject.isJSDynamicObject(value))) {
                 return executeWithJSObjectValueInner(target, holesArray, index, (DynamicObject) value, arrayCondition, root);
             } else {
                 return setArrayAndWrite(holesArray.toObject(target, index, value, arrayCondition), target, index, value, arrayCondition, root);
@@ -1821,7 +1821,7 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         public boolean guard(Object target) {
-            return targetClass.isInstance(target) && !JSObject.isJSObject(target);
+            return targetClass.isInstance(target) && !JSObject.isJSDynamicObject(target);
         }
 
         private void tryInvokeSetter(Object thisObj, String key, Object value, JSContext context) {

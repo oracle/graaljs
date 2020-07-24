@@ -304,7 +304,7 @@ public final class JSModuleNamespace extends JSBuiltinObject {
     }
 
     public static boolean isJSModuleNamespace(Object obj) {
-        return JSObject.isJSObject(obj) && isJSModuleNamespace((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSModuleNamespace((DynamicObject) obj);
     }
 
     public static boolean isJSModuleNamespace(DynamicObject obj) {

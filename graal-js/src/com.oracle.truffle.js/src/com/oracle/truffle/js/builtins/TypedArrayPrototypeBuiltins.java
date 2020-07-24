@@ -402,7 +402,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
             rangeCheck(0, srcLength, offset, targetArray.length(thisObj));
 
-            boolean isJSObject = JSObject.isJSObject(src);
+            boolean isJSObject = JSObject.isJSDynamicObject(src);
             for (int i = 0, j = offset; i < srcLength; i++, j++) {
                 Object value;
                 if (srcIsJSObject.profile(isJSObject)) {

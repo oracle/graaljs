@@ -301,7 +301,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
 
         private String getGap(Object spaceParam) {
             Object space = spaceParam;
-            if (JSObject.isDynamicObject(space)) {
+            if (JSObject.isJSDynamicObject(space)) {
                 if (JSNumber.isJSNumber(space)) {
                     space = toNumber(space);
                 } else if (JSString.isJSString(space)) {

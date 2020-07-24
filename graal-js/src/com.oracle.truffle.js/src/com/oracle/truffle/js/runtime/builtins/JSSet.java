@@ -187,7 +187,7 @@ public final class JSSet extends JSBuiltinObject implements JSConstructorFactory
     }
 
     public static boolean isJSSet(Object obj) {
-        return JSObject.isJSObject(obj) && isJSSet((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSSet((DynamicObject) obj);
     }
 
     public static boolean isJSSet(DynamicObject obj) {

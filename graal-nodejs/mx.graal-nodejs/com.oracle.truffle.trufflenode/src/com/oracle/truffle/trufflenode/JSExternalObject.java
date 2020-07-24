@@ -67,7 +67,7 @@ public final class JSExternalObject extends JSBuiltinObject {
     }
 
     public static boolean isJSExternalObject(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSExternalObject((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSExternalObject((DynamicObject) obj);
     }
 
     public static boolean isJSExternalObject(DynamicObject obj) {

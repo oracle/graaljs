@@ -66,7 +66,7 @@ public final class JSSlowArray extends JSAbstractArray {
     }
 
     public static boolean isJSSlowArray(Object obj) {
-        return JSObject.isJSObject(obj) && isJSSlowArray((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSSlowArray((DynamicObject) obj);
     }
 
     public static boolean isJSSlowArray(DynamicObject obj) {

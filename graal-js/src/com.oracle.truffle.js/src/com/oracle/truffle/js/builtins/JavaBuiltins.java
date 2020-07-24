@@ -607,7 +607,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
         @Specialization
         protected static boolean isScriptObject(Object obj) {
-            return JSObject.isJSObject(obj);
+            return JSObject.isJSDynamicObject(obj);
         }
     }
 

@@ -84,18 +84,7 @@ public final class JSObject {
     /**
      * Returns whether object is a DynamicObject of JavaScript.
      */
-    public static boolean isJSObject(Object object) {
-        return object instanceof JSDynamicObject;
-        //@formatter:off
-        //return isDynamicObject(object) && ((DynamicObject) object).getShape().getObjectType() instanceof JSClass;
-        //@formatter:on
-    }
-
-    /**
-     * Returns whether object is a DynamicObject. This includes objects from other language
-     * implementations as well.
-     */
-    public static boolean isDynamicObject(Object object) {
+    public static boolean isJSDynamicObject(Object object) {
         return object instanceof JSDynamicObject;
     }
 
@@ -145,7 +134,7 @@ public final class JSObject {
     @TruffleBoundary
     public static Object get(TruffleObject obj, Object key) {
         assert JSRuntime.isPropertyKey(key);
-        if (isJSObject(obj)) {
+        if (isJSDynamicObject(obj)) {
             return get((DynamicObject) obj, key);
         } else {
             return JSInteropUtil.readMemberOrDefault(obj, key, Undefined.instance);
@@ -154,7 +143,7 @@ public final class JSObject {
 
     @TruffleBoundary
     public static Object get(TruffleObject obj, long index) {
-        if (isJSObject(obj)) {
+        if (isJSDynamicObject(obj)) {
             return get((DynamicObject) obj, index);
         } else {
             return JSInteropUtil.readArrayElementOrDefault(obj, index, Undefined.instance);

@@ -92,7 +92,7 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
         Object target = JSProxy.getTarget(proxy);
         Object trapFun = trapGetter.executeWithTarget(handler);
         if (trapFunProfile.profile(trapFun == Undefined.instance)) {
-            if (JSObject.isJSObject(target)) {
+            if (JSObject.isJSDynamicObject(target)) {
                 return JSObject.hasProperty((DynamicObject) target, propertyKey);
             } else {
                 return JSInteropUtil.hasProperty(target, propertyKey);

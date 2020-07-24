@@ -489,7 +489,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             if (isArray(originalArray)) {
                 arraySpeciesIsArray.enter();
                 ctor = getConstructorProperty(originalArray);
-                if (JSObject.isJSObject(ctor)) {
+                if (JSObject.isJSDynamicObject(ctor)) {
                     DynamicObject ctorObj = (DynamicObject) ctor;
                     if (JSFunction.isJSFunction(ctorObj) && JSFunction.isConstructor(ctorObj)) {
                         JSRealm thisRealm = context.getRealm();
@@ -557,7 +557,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 defaultConstructorBranch.enter();
                 return defaultConstructor;
             }
-            if (!JSObject.isJSObject(c)) {
+            if (!JSObject.isJSDynamicObject(c)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorNotAnObject(c);
             }
@@ -1254,7 +1254,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected Object toString(Object thisObj) {
             Object arrayObj = toObject(thisObj);
-            if (isJSObjectProfile.profile(JSObject.isJSObject(arrayObj))) {
+            if (isJSObjectProfile.profile(JSObject.isJSDynamicObject(arrayObj))) {
                 Object join = getJoinProperty(arrayObj);
                 if (isCallable(join)) {
                     return callJoin(arrayObj, join);
@@ -1354,7 +1354,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 errorBranch.enter();
                 throwLengthError();
             }
-            if (optimizationsObservable.profile(JSProxy.isProxy(elObj) || !JSObject.isJSObject(elObj))) {
+            if (optimizationsObservable.profile(JSProxy.isProxy(elObj) || !JSObject.isJSDynamicObject(elObj))) {
                 // strictly to the standard implementation; traps could expose optimizations!
                 for (long k = 0; k < len2; k++) {
                     if (hasProperty(elObj, k)) {
@@ -1381,7 +1381,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             if (el == Undefined.instance || el == Null.instance) {
                 return false;
             }
-            if (JSObject.isJSObject(el)) {
+            if (JSObject.isJSDynamicObject(el)) {
                 DynamicObject obj = (DynamicObject) el;
                 Object spreadable = getSpreadableProperty(obj);
                 if (spreadable != Undefined.instance) {
@@ -1782,7 +1782,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 DynamicObject dynObj = (DynamicObject) thisObj;
                 ScriptArray arrayType = arrayGetArrayType(dynObj);
                 spliceJSArray.execute(dynObj, len, actualStart, actualDeleteCount, itemCount, arrayType, this);
-            } else if (JSObject.isJSObject(thisObj)) {
+            } else if (JSObject.isJSDynamicObject(thisObj)) {
                 objectBranch.enter();
                 spliceJSObject(thisObj, len, actualStart, actualDeleteCount, itemCount);
             } else {
@@ -2098,7 +2098,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             long resultLen = arrayGetLength(resultArray);
 
             Object obj = getArraySpeciesConstructorNode().typedArraySpeciesCreate(thisJSObj, JSRuntime.longToIntOrDouble(resultLen));
-            if (!JSObject.isJSObject(obj)) {
+            if (!JSObject.isJSDynamicObject(obj)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorNotAnObject(obj);
             }
@@ -2544,7 +2544,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached("createBinaryProfile()") ConditionProfile isJSObject) {
             checkCompareFunction(comparefn);
             Object thisJSObj = toObject(thisObj);
-            if (isJSObject.profile(JSObject.isJSObject(thisJSObj))) {
+            if (isJSObject.profile(JSObject.isJSDynamicObject(thisJSObj))) {
                 return sortJSObject(comparefn, (DynamicObject) thisJSObj);
             } else {
                 return sortForeignObject(comparefn, thisJSObj);

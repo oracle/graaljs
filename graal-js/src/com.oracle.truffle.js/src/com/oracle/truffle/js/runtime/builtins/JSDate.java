@@ -203,7 +203,7 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     }
 
     public static boolean isJSDate(Object obj) {
-        return JSObject.isJSObject(obj) && isJSDate((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSDate((DynamicObject) obj);
     }
 
     public static boolean isJSDate(DynamicObject obj) {

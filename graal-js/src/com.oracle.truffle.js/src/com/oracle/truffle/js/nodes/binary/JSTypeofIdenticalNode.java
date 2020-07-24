@@ -343,7 +343,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
             if (isFunction) {
                 return JSFunction.isJSFunction(target) || JSRuntime.isCallableForeign(target) || JSRuntime.isConstructorForeign(target);
             } else {
-                return (JSObject.isJSObject(target) && !JSFunction.isJSFunction(target)) ||
+                return (JSObject.isJSDynamicObject(target) && !JSFunction.isJSFunction(target)) ||
                                 (JSRuntime.isForeignObject(target) && !JSRuntime.isCallableForeign(target) && !JSRuntime.isConstructorForeign(target));
             }
         }

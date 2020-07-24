@@ -167,7 +167,7 @@ public final class JSMap extends JSBuiltinObject implements JSConstructorFactory
     }
 
     public static boolean isJSMap(Object obj) {
-        return JSObject.isJSObject(obj) && isJSMap((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSMap((DynamicObject) obj);
     }
 
     public static boolean isJSMap(DynamicObject obj) {

@@ -110,7 +110,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
     }
 
     public static boolean isJSDateTimeFormat(Object obj) {
-        return JSObject.isJSObject(obj) && isJSDateTimeFormat((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSDateTimeFormat((DynamicObject) obj);
     }
 
     public static boolean isJSDateTimeFormat(DynamicObject obj) {

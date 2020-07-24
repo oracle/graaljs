@@ -119,14 +119,14 @@ public final class JSGuards {
      * Like isJSObject, but including Null and Undefined.
      */
     public static boolean isJSType(Object value) {
-        return JSObject.isJSObject(value);
+        return JSObject.isJSDynamicObject(value);
     }
 
     /**
      * Like isJSObject, but including Null and Undefined.
      */
     public static boolean isJSType(DynamicObject value) {
-        return JSObject.isJSObject(value);
+        return JSObject.isJSDynamicObject(value);
     }
 
     public static boolean isTruffleObject(Object value) {
@@ -142,7 +142,7 @@ public final class JSGuards {
     }
 
     public static boolean isForeignObject(TruffleObject value) {
-        return !JSObject.isJSObject(value) && !(value instanceof Symbol) && !(value instanceof JSLazyString) && !(value instanceof SafeInteger) && !(value instanceof BigInt);
+        return !JSObject.isJSDynamicObject(value) && !(value instanceof Symbol) && !(value instanceof JSLazyString) && !(value instanceof SafeInteger) && !(value instanceof BigInt);
     }
 
     public static boolean isUndefined(Object value) {
@@ -154,7 +154,7 @@ public final class JSGuards {
     }
 
     public static boolean isDynamicObject(Object value) {
-        return JSObject.isDynamicObject(value);
+        return JSObject.isJSDynamicObject(value);
     }
 
     public static boolean isJSFunction(Object value) {
@@ -572,7 +572,7 @@ public final class JSGuards {
     }
 
     public static JSClass getJSClassChecked(DynamicObject object) {
-        if (JSObject.isJSObject(object)) {
+        if (JSObject.isJSDynamicObject(object)) {
             return JSObject.getJSClass(object);
         } else {
             return null;
@@ -600,7 +600,7 @@ public final class JSGuards {
     }
 
     public static boolean isNullOrUndefined(Object value) {
-        return JSObject.isDynamicObject(value) && isNullOrUndefined((DynamicObject) value);
+        return JSObject.isJSDynamicObject(value) && isNullOrUndefined((DynamicObject) value);
     }
 
     public static boolean isNullOrUndefined(DynamicObject value) {

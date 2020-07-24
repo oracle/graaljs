@@ -69,7 +69,7 @@ public final class JSDisplayNames extends JSBuiltinObject implements JSConstruct
     }
 
     public static boolean isJSDisplayNames(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSDisplayNames((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSDisplayNames((DynamicObject) obj);
     }
 
     public static boolean isJSDisplayNames(DynamicObject obj) {

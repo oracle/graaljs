@@ -447,7 +447,7 @@ public final class JSError extends JSBuiltinObject {
     }
 
     public static boolean isJSError(Object obj) {
-        return JSObject.isJSObject(obj) && isJSError((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSError((DynamicObject) obj);
     }
 
     public static boolean isJSError(DynamicObject obj) {

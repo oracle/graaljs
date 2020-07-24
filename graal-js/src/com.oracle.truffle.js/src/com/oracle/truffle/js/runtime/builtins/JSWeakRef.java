@@ -133,7 +133,7 @@ public final class JSWeakRef extends JSBuiltinObject implements JSConstructorFac
     }
 
     public static boolean isJSWeakRef(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSWeakRef((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSWeakRef((DynamicObject) obj);
     }
 
     public static boolean isJSWeakRef(DynamicObject obj) {

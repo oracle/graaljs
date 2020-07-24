@@ -306,7 +306,7 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
     }
 
     public static boolean isJSString(Object obj) {
-        return JSObject.isJSObject(obj) && isJSString((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSString((DynamicObject) obj);
     }
 
     public static boolean isJSString(DynamicObject obj) {

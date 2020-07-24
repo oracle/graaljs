@@ -141,7 +141,7 @@ public final class JSWeakMap extends JSBuiltinObject implements JSConstructorFac
     }
 
     public static boolean isJSWeakMap(Object obj) {
-        return JSObject.isJSObject(obj) && isJSWeakMap((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSWeakMap((DynamicObject) obj);
     }
 
     public static boolean isJSWeakMap(DynamicObject obj) {

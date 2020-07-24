@@ -151,7 +151,7 @@ public final class JSFinalizationRegistry extends JSBuiltinObject implements JSC
     }
 
     public static boolean isJSFinalizationRegistry(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSFinalizationRegistry((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSFinalizationRegistry((DynamicObject) obj);
     }
 
     public static boolean isJSFinalizationRegistry(DynamicObject obj) {

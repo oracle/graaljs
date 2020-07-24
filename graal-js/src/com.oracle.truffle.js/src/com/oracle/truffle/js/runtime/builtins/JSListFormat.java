@@ -73,7 +73,7 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
     }
 
     public static boolean isJSListFormat(Object obj) {
-        return JSObject.isJSObject(obj) && isJSListFormat((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSListFormat((DynamicObject) obj);
     }
 
     public static boolean isJSListFormat(DynamicObject obj) {

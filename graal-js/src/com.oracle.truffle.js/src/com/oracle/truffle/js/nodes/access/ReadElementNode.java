@@ -429,7 +429,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     @SuppressWarnings("unchecked")
     private static ReadElementTypeCacheNode makeTypeCacheNode(Object target, ReadElementTypeCacheNode next) {
-        if (JSObject.isJSObject(target)) {
+        if (JSObject.isJSDynamicObject(target)) {
             return new JSObjectReadElementTypeCacheNode(next);
         } else if (target instanceof JSLazyString) {
             return new LazyStringReadElementTypeCacheNode(next);
@@ -1652,7 +1652,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         public boolean guard(Object target) {
-            return targetClass.isInstance(target) && !JSObject.isJSObject(target);
+            return targetClass.isInstance(target) && !JSObject.isJSDynamicObject(target);
         }
     }
 

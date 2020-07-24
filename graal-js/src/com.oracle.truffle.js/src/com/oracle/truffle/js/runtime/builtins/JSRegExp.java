@@ -395,7 +395,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
 
     // non-standard according to ES2015, 7.2.8 IsRegExp (@@match check missing)
     public static boolean isJSRegExp(Object obj) {
-        return JSObject.isJSObject(obj) && isJSRegExp((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSRegExp((DynamicObject) obj);
     }
 
     // non-standard according to ES2015, 7.2.8 IsRegExp (@@match check missing)

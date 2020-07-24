@@ -163,7 +163,7 @@ public final class JSDataView extends JSBuiltinObject implements JSConstructorFa
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = JSArguments.getThisObject(frame.getArguments());
-                    if (JSObject.isJSObject(obj)) {
+                    if (JSObject.isJSDynamicObject(obj)) {
                         DynamicObject dataView = JSObject.castJSObject(obj);
                         if (isJSDataView(dataView)) {
                             return function.apply(dataView);
@@ -198,7 +198,7 @@ public final class JSDataView extends JSBuiltinObject implements JSConstructorFa
     }
 
     public static boolean isJSDataView(Object obj) {
-        return JSObject.isJSObject(obj) && isJSDataView((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSDataView((DynamicObject) obj);
     }
 
     public static boolean isJSDataView(DynamicObject obj) {

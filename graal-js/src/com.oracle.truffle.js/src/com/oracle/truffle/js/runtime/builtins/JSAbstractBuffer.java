@@ -61,7 +61,7 @@ public abstract class JSAbstractBuffer extends JSBuiltinObject {
     }
 
     public static boolean isJSAbstractHeapBuffer(Object obj) {
-        return JSObject.isJSObject(obj) && isJSAbstractHeapBuffer((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSAbstractHeapBuffer((DynamicObject) obj);
     }
 
     public static boolean isJSAbstractHeapBuffer(DynamicObject obj) {
@@ -69,7 +69,7 @@ public abstract class JSAbstractBuffer extends JSBuiltinObject {
     }
 
     public static boolean isJSAbstractBuffer(Object obj) {
-        return JSObject.isJSObject(obj) && isJSAbstractBuffer((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSAbstractBuffer((DynamicObject) obj);
     }
 
     public static boolean isJSAbstractBuffer(DynamicObject obj) {

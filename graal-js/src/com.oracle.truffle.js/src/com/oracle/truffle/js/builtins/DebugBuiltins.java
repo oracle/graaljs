@@ -275,7 +275,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         protected static Object clazz(Object obj) {
             if (obj instanceof Symbol) {
                 return Null.instance;
-            } else if (JSObject.isJSObject(obj)) {
+            } else if (JSObject.isJSDynamicObject(obj)) {
                 DynamicObject jsObj = (DynamicObject) obj;
                 if (JSObjectUtil.hasHiddenProperty(jsObj, JSRuntime.ITERATED_OBJECT_ID)) {
                     DynamicObject iteratedObj = (DynamicObject) JSObjectUtil.getHiddenProperty(jsObj, JSRuntime.ITERATED_OBJECT_ID);
@@ -408,7 +408,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 sb.append(key);
                 if (desc.isDataDescriptor()) {
                     Object value = JSObject.get(object, key);
-                    if (JSObject.isDynamicObject(value)) {
+                    if (JSObject.isJSDynamicObject(value)) {
                         if ((JSUserObject.isJSUserObject(value) || JSGlobalObject.isJSGlobalObject(value)) && !key.equals(JSObject.CONSTRUCTOR)) {
                             if (level < levelStop && !key.equals(JSObject.CONSTRUCTOR)) {
                                 value = debugPrint((DynamicObject) value, level + 1, levelStop);
@@ -483,7 +483,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @TruffleBoundary
         @Specialization
         protected Object arraytype(Object array) {
-            if (!(JSObject.isDynamicObject(array)) || !(JSObject.hasArray((DynamicObject) array))) {
+            if (!(JSObject.isJSDynamicObject(array)) || !(JSObject.hasArray((DynamicObject) array))) {
                 return "NOT_AN_ARRAY";
             }
             return JSObject.getArray((DynamicObject) array).getClass().getSimpleName();

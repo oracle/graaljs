@@ -69,14 +69,14 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
                 enter(LiteralTag.class).exit();
             }).input(42).exit();
         }).input((e) -> {
-            assertTrue(JSObject.isJSObject(e.val));
+            assertTrue(JSObject.isJSDynamicObject(e.val));
         }).exit();
         // a.x;
         enter(ReadPropertyTag.class, (e) -> {
             assertAttribute(e, KEY, "x");
             enter(ReadPropertyTag.class).input(assertGlobalObjectInput).exit();
         }).input((e) -> {
-            assertTrue(JSObject.isJSObject(e.val));
+            assertTrue(JSObject.isJSDynamicObject(e.val));
         }).exit();
     }
 

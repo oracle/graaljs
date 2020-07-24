@@ -371,7 +371,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = JSArguments.getThisObject(frame.getArguments());
-                    if (JSObject.isDynamicObject(obj)) {
+                    if (JSObject.isJSDynamicObject(obj)) {
                         DynamicObject view = JSObject.castJSObject(obj);
                         boolean condition = isJSArrayBufferView(view);
                         if (condition) {
@@ -446,7 +446,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = JSArguments.getThisObject(frame.getArguments());
-                    if (JSObject.isJSObject(obj)) {
+                    if (JSObject.isJSDynamicObject(obj)) {
                         DynamicObject view = JSObject.castJSObject(obj);
                         if (isJSArrayBufferView(view)) {
                             return typedArrayGetName(view);
@@ -484,7 +484,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
     }
 
     public static boolean isJSArrayBufferView(Object obj) {
-        return JSObject.isJSObject(obj) && isJSArrayBufferView((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSArrayBufferView((DynamicObject) obj);
     }
 
     public static boolean isJSArrayBufferView(DynamicObject obj) {

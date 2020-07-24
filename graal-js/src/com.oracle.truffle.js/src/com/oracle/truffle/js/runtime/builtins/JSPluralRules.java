@@ -71,7 +71,7 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
     }
 
     public static boolean isJSPluralRules(Object obj) {
-        return JSObject.isJSObject(obj) && isJSPluralRules((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSPluralRules((DynamicObject) obj);
     }
 
     public static boolean isJSPluralRules(DynamicObject obj) {

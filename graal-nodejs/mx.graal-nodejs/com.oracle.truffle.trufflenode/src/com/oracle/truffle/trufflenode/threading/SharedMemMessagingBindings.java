@@ -103,7 +103,7 @@ public final class SharedMemMessagingBindings extends JSBuiltinObject {
     }
 
     public static boolean isSharedMemMessagingBindings(Object obj) {
-        return JSObject.isDynamicObject(obj) && isSharedMemMessagingBindings((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isSharedMemMessagingBindings((DynamicObject) obj);
     }
 
     public static boolean isSharedMemMessagingBindings(DynamicObject obj) {

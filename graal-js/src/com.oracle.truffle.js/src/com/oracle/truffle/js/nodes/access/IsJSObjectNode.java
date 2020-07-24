@@ -101,7 +101,7 @@ public abstract class IsJSObjectNode extends JavaScriptBaseNode {
     // name-clash with JSObject.isJSObject. Different behavior around null/undefined.
     protected boolean guardIsJSObject(DynamicObject obj) {
         if (includeNullUndefined) {
-            return JSObject.isJSObject(obj);
+            return JSObject.isJSDynamicObject(obj);
         } else {
             return JSGuards.isJSObject(obj);
         }

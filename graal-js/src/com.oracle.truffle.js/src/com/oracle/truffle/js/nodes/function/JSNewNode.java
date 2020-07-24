@@ -177,7 +177,7 @@ public abstract class JSNewNode extends JavaScriptNode {
         Object target = JSProxy.getTarget(proxy);
         Object trap = JSProxy.getTrapFromObject(handler, JSProxy.CONSTRUCT);
         if (trap == Undefined.instance) {
-            if (JSObject.isJSObject(target)) {
+            if (JSObject.isJSDynamicObject(target)) {
                 // Construct(F=target, argumentsList=frame, newTarget=proxy)
                 int userArgumentCount = arguments.getCount(frame);
                 Object[] args = JSArguments.createInitialWithNewTarget(JSFunction.CONSTRUCT, target, proxy, userArgumentCount);

@@ -74,7 +74,7 @@ public class ObjectAllocationTest extends FineGrainedAccessTest {
                 }).exit();
             }).exit();
             write.input((e1) -> {
-                assertTrue(JSObject.isDynamicObject(e1.val));
+                assertTrue(JSObject.isJSDynamicObject(e1.val));
             });
         }).exit();
 
@@ -83,7 +83,7 @@ public class ObjectAllocationTest extends FineGrainedAccessTest {
             prop.input(assertGlobalObjectInput);
             enter(LiteralTag.class).exit();
             prop.input((e1) -> {
-                assertTrue(JSObject.isDynamicObject(e1.val));
+                assertTrue(JSObject.isJSDynamicObject(e1.val));
             });
         }).exit();
 
@@ -110,11 +110,11 @@ public class ObjectAllocationTest extends FineGrainedAccessTest {
                     assertAttribute(e2, LITERAL_TYPE, LiteralTag.Type.ObjectLiteral.name());
                 }).exit();
                 lit.input((e2) -> {
-                    assertTrue(JSObject.isDynamicObject(e2.val));
+                    assertTrue(JSObject.isJSDynamicObject(e2.val));
                 });
             }).exit();
             prop.input((e1) -> {
-                assertTrue(JSObject.isDynamicObject(e1.val));
+                assertTrue(JSObject.isJSDynamicObject(e1.val));
             });
         }).exit();
 
@@ -148,7 +148,7 @@ public class ObjectAllocationTest extends FineGrainedAccessTest {
                 });
             }).exit();
             prop.input((e1) -> {
-                assertTrue(JSObject.isDynamicObject(e1.val));
+                assertTrue(JSObject.isJSDynamicObject(e1.val));
             });
         }).exit();
     }

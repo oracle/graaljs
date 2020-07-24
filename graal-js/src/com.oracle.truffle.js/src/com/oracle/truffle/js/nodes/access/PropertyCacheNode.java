@@ -258,7 +258,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean accept(Object thisObj) {
-            return JSObject.isDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj);
+            return JSObject.isJSDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj);
         }
 
         @Override
@@ -361,7 +361,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean accept(Object thisObj) {
-            return JSObject.isDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj);
+            return JSObject.isJSDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj);
         }
 
         @Override
@@ -417,7 +417,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean accept(Object thisObj) {
-            return JSObject.isDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj);
+            return JSObject.isJSDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj);
         }
 
         @Override
@@ -473,7 +473,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                 return false;
             }
             assert expectedObj != null;
-            return JSObject.isDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj);
+            return JSObject.isJSDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj);
         }
 
         @Override
@@ -770,7 +770,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @ExplodeLoop
         @Override
         public boolean accept(Object thisObj) {
-            if (!JSObject.isDynamicObject(thisObj)) {
+            if (!JSObject.isJSDynamicObject(thisObj)) {
                 return false;
             }
             DynamicObject current = (DynamicObject) thisObj;
@@ -841,7 +841,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean accept(Object thisObj) {
-            if (JSObject.isDynamicObject(thisObj)) {
+            if (JSObject.isJSDynamicObject(thisObj)) {
                 DynamicObject jsobj = (DynamicObject) thisObj;
                 if (getShape().check(jsobj)) {
                     // Return the shape check of the prototype we're going to access.
@@ -1199,12 +1199,12 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         T specialized = null;
 
         DynamicObject store = null;
-        if (JSObject.isJSObject(thisObj)) {
+        if (JSObject.isJSDynamicObject(thisObj)) {
             if ((!JSAdapter.isJSAdapter(thisObj) && !JSProxy.isProxy(thisObj)) || key instanceof HiddenKey) {
                 store = (DynamicObject) thisObj;
             }
         } else if (JSRuntime.isForeignObject(thisObj)) {
-            assert !JSObject.isJSObject(thisObj);
+            assert !JSObject.isJSDynamicObject(thisObj);
             specialized = createTruffleObjectPropertyNode();
         } else {
             store = wrapPrimitive(thisObj, context);
@@ -1417,7 +1417,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     protected static final DynamicObject wrapPrimitive(Object thisObject, JSContext context) {
         // wrap primitives for lookup
         Object wrapper = JSRuntime.toObjectFromPrimitive(context, thisObject, false);
-        return JSObject.isDynamicObject(wrapper) ? (DynamicObject) wrapper : null;
+        return JSObject.isJSDynamicObject(wrapper) ? (DynamicObject) wrapper : null;
     }
 
     protected final AbstractShapeCheckNode createShapeCheckNode(Shape shape, DynamicObject thisObj, int depth, boolean isConstantObjectFinal, boolean isDefine) {

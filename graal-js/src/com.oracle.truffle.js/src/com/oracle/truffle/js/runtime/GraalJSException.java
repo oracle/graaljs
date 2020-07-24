@@ -439,7 +439,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
     }
 
     private static boolean isGlobalObject(Object object, JSRealm realm) {
-        return JSObject.isJSObject(object) && (realm != null) && (realm.getGlobalObject() == object);
+        return JSObject.isJSDynamicObject(object) && (realm != null) && (realm.getGlobalObject() == object);
     }
 
     private static JSStackTraceElement processForeignFrame(Node node, boolean strict, boolean inNashornMode, boolean async) {
@@ -587,7 +587,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                 if (thisObject == JSFunction.CONSTRUCT) {
                     return getFunctionName();
                 } else if (!JSRuntime.isNullOrUndefined(thisObject) && !global) {
-                    if (JSObject.isDynamicObject(thisObject)) {
+                    if (JSObject.isJSDynamicObject(thisObject)) {
                         return JSRuntime.getConstructorName((DynamicObject) thisObject);
                     } else if (JSRuntime.isJSPrimitive(thisObject)) {
                         return getPrimitiveConstructorName(thisObject);
@@ -636,7 +636,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             if (context.isOptionNashornCompatibilityMode()) {
                 return JSError.correctMethodName(functionName, context);
             }
-            if (JSRuntime.isNullOrUndefined(thisObj) || !JSObject.isJSObject(thisObj)) {
+            if (JSRuntime.isNullOrUndefined(thisObj) || !JSObject.isJSDynamicObject(thisObj)) {
                 return null;
             }
             if (!JSFunction.isJSFunction(functionObj)) {
@@ -776,7 +776,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         public boolean isConstructor() {
             if (thisObj == JSFunction.CONSTRUCT) {
                 return true;
-            } else if (!JSRuntime.isNullOrUndefined(thisObj) && JSObject.isJSObject(thisObj)) {
+            } else if (!JSRuntime.isNullOrUndefined(thisObj) && JSObject.isJSDynamicObject(thisObj)) {
                 Object constructor = JSRuntime.getDataProperty((DynamicObject) thisObj, JSObject.CONSTRUCTOR);
                 return constructor != null && constructor == functionObj;
             }

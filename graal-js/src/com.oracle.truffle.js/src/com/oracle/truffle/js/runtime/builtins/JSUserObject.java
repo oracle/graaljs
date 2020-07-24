@@ -146,7 +146,7 @@ public final class JSUserObject extends JSBuiltinObject implements PrototypeSupp
     }
 
     public static boolean isJSUserObject(Object obj) {
-        return JSObject.isJSObject(obj) && isJSUserObject((DynamicObject) obj);
+        return JSObject.isJSDynamicObject(obj) && isJSUserObject((DynamicObject) obj);
     }
 
     public static boolean isJSUserObject(DynamicObject obj) {
