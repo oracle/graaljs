@@ -454,4 +454,21 @@ public final class JSObjectUtil {
     public static DynamicObjectLibrary createDispatched(Object key) {
         return createDispatched(key, JSConfig.PropertyCacheLimit);
     }
+
+    public static <T extends DynamicObject> T copyProperties(T target, DynamicObject source) {
+        DynamicObjectLibrary objectLibrary = DynamicObjectLibrary.getUncached();
+        for (Property property : source.getShape().getPropertyListInternal(true)) {
+            Object key = property.getKey();
+            if (objectLibrary.containsKey(target, key)) {
+                continue;
+            }
+            Object value = objectLibrary.getOrDefault(source, key, null);
+            if (property.getLocation().isConstant()) {
+                objectLibrary.putConstant(target, key, value, property.getFlags());
+            } else {
+                objectLibrary.putWithFlags(target, key, value, property.getFlags());
+            }
+        }
+        return target;
+    }
 }

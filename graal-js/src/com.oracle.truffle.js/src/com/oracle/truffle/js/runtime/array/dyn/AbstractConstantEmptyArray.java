@@ -86,6 +86,11 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
     }
 
     @Override
+    public Object cloneArray(DynamicObject object) {
+        return ScriptArray.EMPTY_OBJECT_ARRAY;
+    }
+
+    @Override
     public boolean hasElement(DynamicObject object, long index, boolean condition) {
         return false;
     }

@@ -63,6 +63,8 @@ import com.oracle.truffle.js.runtime.PrepareStackTraceCallback;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSBasicObject;
+import com.oracle.truffle.js.runtime.objects.JSClassObject;
+import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -500,7 +502,7 @@ public final class JSError extends JSBuiltinObject {
         return context.isOptionNashornCompatibilityMode() ? "<program>" : "<anonymous>";
     }
 
-    public static class JSErrorImpl extends JSBasicObject {
+    public static class JSErrorImpl extends JSBasicObject implements JSCopyableObject {
         protected JSErrorImpl(Shape shape) {
             super(shape);
         }
@@ -515,6 +517,11 @@ public final class JSError extends JSBuiltinObject {
 
         public static DynamicObject create(JSRealm realm, JSObjectFactory factory) {
             return new JSErrorImpl(realm, factory);
+        }
+
+        @Override
+        protected JSClassObject copyWithoutProperties(Shape shape) {
+            return new JSErrorImpl(shape);
         }
     }
 }

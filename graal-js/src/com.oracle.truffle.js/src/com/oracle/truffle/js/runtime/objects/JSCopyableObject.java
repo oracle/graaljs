@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,30 +38,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins;
+package com.oracle.truffle.js.runtime.objects;
 
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.objects.JSClassObject;
+public interface JSCopyableObject {
 
-public final class JSOrdinaryObjectImpl extends JSOrdinaryObject {
-    @DynamicField Object o0;
-    @DynamicField Object o1;
-    @DynamicField Object o2;
-    @DynamicField Object o3;
-    @DynamicField long p0;
-    @DynamicField long p1;
-    @DynamicField long p2;
-
-    protected JSOrdinaryObjectImpl(Shape shape) {
-        super(shape);
+    default JSClassObject copy() {
+        JSClassObject thisObj = (JSClassObject) this;
+        return JSObjectUtil.copyProperties(thisObj.copyWithoutProperties(thisObj.getShape().getRoot()), thisObj);
     }
 
-    public static JSOrdinaryObjectImpl create(Shape shape) {
-        return new JSOrdinaryObjectImpl(shape);
-    }
-
-    @Override
-    protected JSClassObject copyWithoutProperties(Shape shape) {
-        return new JSOrdinaryObjectImpl(shape);
-    }
 }

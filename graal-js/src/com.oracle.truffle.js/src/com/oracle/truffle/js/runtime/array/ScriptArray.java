@@ -307,7 +307,7 @@ public abstract class ScriptArray {
 
     /**
      * Creates an Object[] from this array, of size array.length. Does not check the prototype
-     * chain, i.e. result can be wrong. Use JSArrayToObjectArrayNode for more correct results.
+     * chain, i.e. result can be wrong. Use JSToObjectArrayNode for more correct results.
      */
     public abstract Object[] toArray(DynamicObject object);
 

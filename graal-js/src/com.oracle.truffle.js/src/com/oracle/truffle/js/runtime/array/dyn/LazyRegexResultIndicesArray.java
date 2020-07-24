@@ -174,6 +174,11 @@ public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
     }
 
     @Override
+    public Object cloneArray(DynamicObject object) {
+        return getArray(object);
+    }
+
+    @Override
     protected DynamicArray withIntegrityLevel(int newIntegrityLevel) {
         return new LazyRegexResultIndicesArray(newIntegrityLevel, cache);
     }

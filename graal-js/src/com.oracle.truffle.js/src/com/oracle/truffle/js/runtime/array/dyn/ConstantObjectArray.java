@@ -126,6 +126,11 @@ public final class ConstantObjectArray extends AbstractConstantArray {
     }
 
     @Override
+    public Object cloneArray(DynamicObject object) {
+        return getArray(object);
+    }
+
+    @Override
     public long nextElementIndex(DynamicObject object, long index0, boolean condition) {
         if (!holes) {
             return super.nextElementIndex(object, index0, condition);

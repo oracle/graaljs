@@ -203,5 +203,10 @@ public abstract class AbstractIntArray extends AbstractWritableArray {
     }
 
     @Override
+    public Object cloneArray(DynamicObject object) {
+        return getArray(object).clone();
+    }
+
+    @Override
     protected abstract AbstractIntArray withIntegrityLevel(int newIntegrityLevel);
 }

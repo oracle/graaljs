@@ -194,6 +194,11 @@ public final class SparseArray extends DynamicArray {
         return newArray;
     }
 
+    @Override
+    public Object cloneArray(DynamicObject object) {
+        return arrayMap(object).clone();
+    }
+
     @TruffleBoundary
     @Override
     public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict, boolean condition) {

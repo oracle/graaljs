@@ -88,6 +88,11 @@ public final class ConstantByteArray extends AbstractConstantArray {
     }
 
     @Override
+    public Object cloneArray(DynamicObject object) {
+        return getArray(object);
+    }
+
+    @Override
     public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict, boolean condition) {
         return createWriteableInt(object, index, HolesIntArray.HOLE_VALUE, condition, ProfileHolder.empty()).deleteElementImpl(object, index, strict, condition);
     }

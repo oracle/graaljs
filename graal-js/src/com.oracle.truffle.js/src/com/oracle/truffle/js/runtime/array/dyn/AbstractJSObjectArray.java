@@ -186,6 +186,11 @@ public abstract class AbstractJSObjectArray extends AbstractWritableArray {
     }
 
     @Override
+    public Object cloneArray(DynamicObject object) {
+        return getArray(object).clone();
+    }
+
+    @Override
     protected abstract AbstractJSObjectArray withIntegrityLevel(int newIntegrityLevel);
 
     protected static DynamicObject checkNonNull(DynamicObject value) {

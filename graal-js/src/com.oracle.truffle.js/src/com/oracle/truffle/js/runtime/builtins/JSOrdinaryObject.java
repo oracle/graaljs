@@ -43,8 +43,9 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.objects.JSBasicObject;
+import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
 
-public abstract class JSOrdinaryObject extends JSBasicObject {
+public abstract class JSOrdinaryObject extends JSBasicObject implements JSCopyableObject {
 
     protected JSOrdinaryObject(Shape shape) {
         super(shape);

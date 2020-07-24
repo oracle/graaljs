@@ -181,5 +181,10 @@ public abstract class AbstractDoubleArray extends AbstractWritableArray {
     }
 
     @Override
+    public Object cloneArray(DynamicObject object) {
+        return getArray(object).clone();
+    }
+
+    @Override
     protected abstract AbstractDoubleArray withIntegrityLevel(int newIntegrityLevel);
 }

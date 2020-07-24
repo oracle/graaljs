@@ -60,6 +60,8 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultIndicesArray;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSBasicObject;
+import com.oracle.truffle.js.runtime.objects.JSClassObject;
+import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
@@ -153,7 +155,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         }
     }
 
-    public static class JSRegExpImpl extends JSBasicObject {
+    public static class JSRegExpImpl extends JSBasicObject implements JSCopyableObject {
         private Object compiledRegex;
         private JSObjectFactory groupsFactory;
         private final JSRealm realm;
@@ -211,15 +213,27 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         public static DynamicObject create(Shape shape, Object compiledRegex, JSRealm realm) {
             return new JSRegExpImpl(shape, compiledRegex, null, realm, false);
         }
+
+        @Override
+        protected JSClassObject copyWithoutProperties(Shape shape) {
+            return new JSRegExpImpl(shape, compiledRegex, groupsFactory, realm, legacyFeaturesEnabled);
+        }
     }
 
-    public static class RegExpGroupsObjectImpl extends JSBasicObject {
+    public static class RegExpGroupsObjectImpl extends JSBasicObject implements JSCopyableObject {
         private Object regexResult;
         private String input;
         private boolean isIndices;
 
         protected RegExpGroupsObjectImpl(JSRealm realm, JSObjectFactory factory, Object regexResult, String inputString, boolean isIndices) {
             super(realm, factory);
+            this.regexResult = regexResult;
+            this.input = inputString;
+            this.isIndices = isIndices;
+        }
+
+        protected RegExpGroupsObjectImpl(Shape shape, Object regexResult, String inputString, boolean isIndices) {
+            super(shape);
             this.regexResult = regexResult;
             this.input = inputString;
             this.isIndices = isIndices;
@@ -244,6 +258,11 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
 
         public static DynamicObject create(JSRealm realm, JSObjectFactory factory, Object regexResult, String inputString, boolean isIndices) {
             return new RegExpGroupsObjectImpl(realm, factory, regexResult, inputString, isIndices);
+        }
+
+        @Override
+        protected JSClassObject copyWithoutProperties(Shape shape) {
+            return new RegExpGroupsObjectImpl(shape, regexResult, input, isIndices);
         }
     }
 

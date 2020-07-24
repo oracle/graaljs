@@ -157,4 +157,9 @@ public class LazyArray extends AbstractConstantArray {
         }
         return array;
     }
+
+    @Override
+    public Object cloneArray(DynamicObject object) {
+        return arrayGetLazyList(object);
+    }
 }

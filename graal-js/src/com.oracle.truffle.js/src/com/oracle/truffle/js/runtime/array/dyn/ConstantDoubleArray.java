@@ -88,6 +88,11 @@ public final class ConstantDoubleArray extends AbstractConstantArray {
     }
 
     @Override
+    public Object cloneArray(DynamicObject object) {
+        return getArray(object);
+    }
+
+    @Override
     public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict, boolean condition) {
         return createWriteableDouble(object, index, HolesDoubleArray.HOLE_VALUE_DOUBLE, condition, ProfileHolder.empty()).deleteElementImpl(object, index, condition, condition);
     }
