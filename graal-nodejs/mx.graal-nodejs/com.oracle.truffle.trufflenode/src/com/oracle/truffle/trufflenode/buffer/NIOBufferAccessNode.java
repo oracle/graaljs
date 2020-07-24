@@ -71,7 +71,7 @@ public abstract class NIOBufferAccessNode extends JSBuiltinNode {
         this.getLenNode = ArrayBufferViewGetByteLengthNodeGen.create(context);
     }
 
-    protected static DynamicObject getArrayBuffer(DynamicObject target, boolean condition) {
+    protected static DynamicObject getArrayBuffer(DynamicObject target) {
         assert JSArrayBufferView.isJSArrayBufferView(target) : "Target object must be a JSArrayBufferView";
         DynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
         assert JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer) || JSSharedArrayBuffer.isJSSharedArrayBuffer(arrayBuffer) : "Target buffer must be a DirectArrayBuffer";
@@ -87,7 +87,7 @@ public abstract class NIOBufferAccessNode extends JSBuiltinNode {
         }
     }
 
-    protected int getOffset(DynamicObject target, boolean condition) {
+    protected int getOffset(DynamicObject target) {
         int byteOffset = JSArrayBufferView.getByteOffset(target, getContext());
         return byteOffset;
     }
