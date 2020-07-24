@@ -46,7 +46,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.truffleinterop.JSMetaType;
 
 @ExportLibrary(InteropLibrary.class)
@@ -96,7 +95,7 @@ public final class Nullish extends JSValue {
 
     @ExportMessage
     final Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        return JSRuntime.safeToString(this);
+        return this == Undefined.instance ? Undefined.NAME : Null.NAME;
     }
 
     @SuppressWarnings("static-method")
