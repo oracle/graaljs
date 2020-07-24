@@ -3060,29 +3060,22 @@ public final class GraalJSAccess {
             Object arrayBuffer = arrayBufferNew(context, 4);
             Object typedArray = uint8ArrayNew(arrayBuffer, 2, 1);
 
-            try {
-                String byteBuffer = findObjectFieldName(arrayBuffer, JSArrayBuffer.getDirectByteBuffer((DynamicObject) arrayBuffer));
-                String buffer = findObjectFieldName(typedArray, arrayBuffer);
-
-                return new Object[]{arrayBuffer.getClass(), byteBuffer, typedArray.getClass(), buffer};
-            } catch (Exception e) {
-                // fall through
-            }
+            return new Object[]{
+                            findDeclaredField(arrayBuffer.getClass(), "byteBuffer"),
+                            findDeclaredField(typedArray.getClass(), "arrayBuffer"),
+            };
         }
         return null;
     }
 
-    private static String findObjectFieldName(Object object, Object search) throws Exception {
-        if (!JSConfig.SubstrateVM) {
-            Field[] declaredFields = object.getClass().getDeclaredFields();
-            for (Field field : declaredFields) {
-                if (field.getType() != Object.class) {
-                    continue;
-                }
-                field.setAccessible(true);
-                if (field.get(object) == search) {
-                    return field.getName();
-                }
+    private static Field findDeclaredField(Class<?> bottom, String fieldName) {
+        for (Class<?> cls = bottom; cls != null && cls != Object.class; cls = cls.getSuperclass()) {
+            try {
+                return cls.getDeclaredField(fieldName);
+            } catch (NoSuchFieldException e) {
+                continue;
+            } catch (SecurityException e) {
+                break;
             }
         }
         return null;
