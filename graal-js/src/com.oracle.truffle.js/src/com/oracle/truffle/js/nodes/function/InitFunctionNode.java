@@ -89,21 +89,20 @@ public class InitFunctionNode extends JavaScriptBaseNode {
         this.nameFlags = nameAttributes | JSProperty.PROXY;
         this.setNameNode = JSObjectUtil.createDispatched(JSFunction.NAME, JSConfig.PropertyCacheLimit);
 
+        boolean argumentsCaller = false;
         int argumentsCallerAttributes = 0;
         if (context.getEcmaScriptVersion() >= 6) {
             if (!strictProperties) {
-                if (context.isOptionV8CompatibilityMode()) {
-                    argumentsCallerAttributes = JSAttributes.notConfigurableNotEnumerableNotWritable() | JSProperty.PROXY;
-                } else {
-                    argumentsCallerAttributes = JSAttributes.notConfigurableNotEnumerableNotWritable();
-                }
+                argumentsCaller = true;
+                argumentsCallerAttributes = JSAttributes.notConfigurableNotEnumerableNotWritable();
             }
         } else {
             if (strictProperties) {
+                argumentsCaller = true;
                 argumentsCallerAttributes = JSAttributes.notConfigurableNotEnumerable() | JSProperty.ACCESSOR;
             }
         }
-        if (argumentsCallerAttributes != 0) {
+        if (argumentsCaller) {
             this.setArgumentsNode = JSObjectUtil.createDispatched(JSFunction.ARGUMENTS, JSConfig.PropertyCacheLimit);
             this.setCallerNode = JSObjectUtil.createDispatched(JSFunction.CALLER, JSConfig.PropertyCacheLimit);
         }
@@ -148,8 +147,8 @@ public class InitFunctionNode extends JavaScriptBaseNode {
         if (context.getEcmaScriptVersion() >= 6) {
             if (!strictProperties) {
                 if (context.isOptionV8CompatibilityMode()) {
-                    setArgumentsNode.putConstant(function, JSFunction.ARGUMENTS, context.getArgumentsPropertyProxy(), argumentsCallerFlags);
-                    setCallerNode.putConstant(function, JSFunction.CALLER, context.getCallerPropertyProxy(), argumentsCallerFlags);
+                    setArgumentsNode.putConstant(function, JSFunction.ARGUMENTS, context.getArgumentsPropertyProxy(), argumentsCallerFlags | JSProperty.PROXY);
+                    setCallerNode.putConstant(function, JSFunction.CALLER, context.getCallerPropertyProxy(), argumentsCallerFlags | JSProperty.PROXY);
                 } else {
                     setArgumentsNode.putConstant(function, JSFunction.ARGUMENTS, Undefined.instance, argumentsCallerFlags);
                     setCallerNode.putConstant(function, JSFunction.CALLER, Undefined.instance, argumentsCallerFlags);
