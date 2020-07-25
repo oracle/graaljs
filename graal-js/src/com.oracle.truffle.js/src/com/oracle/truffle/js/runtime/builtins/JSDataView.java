@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.function.Function;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -94,6 +95,11 @@ public final class JSDataView extends JSBuiltinObject implements JSConstructorFa
         public static JSDataViewImpl create(Shape shape, JSArrayBufferImpl arrayBuffer, int length, int offset) {
             return new JSDataViewImpl(shape, arrayBuffer, length, offset);
         }
+
+        public static JSDataViewImpl create(JSRealm realm, JSObjectFactory factory, JSArrayBufferImpl arrayBuffer, int length, int offset) {
+            CompilerAsserts.partialEvaluationConstant(factory);
+            return factory.initProto(new JSDataViewImpl(factory.getShape(realm), arrayBuffer, length, offset), realm);
+        }
     }
 
     public static int typedArrayGetLength(DynamicObject thisObj) {
@@ -120,7 +126,7 @@ public final class JSDataView extends JSBuiltinObject implements JSConstructorFa
         // (arrayBuffer, length, offset)
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getDataViewFactory();
-        DynamicObject dataView = JSDataViewImpl.create(factory.getShape(realm), (JSArrayBufferImpl) arrayBuffer, length, offset);
+        DynamicObject dataView = JSDataViewImpl.create(realm, factory, (JSArrayBufferImpl) arrayBuffer, length, offset);
         assert JSArrayBuffer.isJSHeapArrayBuffer(arrayBuffer) || JSArrayBuffer.isJSDirectOrSharedArrayBuffer(arrayBuffer);
         assert isJSDataView(dataView);
         return context.trackAllocation(dataView);
