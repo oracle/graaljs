@@ -40,9 +40,13 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GlobalObjectNode;
@@ -57,8 +61,6 @@ import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
-
-import java.util.Set;
 
 /**
  * Implementation of ECMAScript 5.1, 10.4.3 Entering Function Code, for non-strict callees.
@@ -136,8 +138,12 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
         return JSSymbol.create(context, value);
     }
 
-    @Specialization(guards = "isForeignObject(object)")
-    protected Object doForeignObject(Object object) {
+    @Specialization(guards = "isForeignObject(object)", limit = "5")
+    protected Object doForeignObject(Object object,
+                    @CachedLibrary("object") InteropLibrary interop) {
+        if (interop.isNull(object)) {
+            return GlobalObjectNode.getGlobalObject(context);
+        }
         return object;
     }
 
