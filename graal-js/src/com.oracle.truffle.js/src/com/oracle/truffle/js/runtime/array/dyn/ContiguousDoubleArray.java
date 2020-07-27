@@ -63,23 +63,23 @@ public final class ContiguousDoubleArray extends AbstractContiguousDoubleArray {
     }
 
     @Override
-    protected int prepareInBounds(DynamicObject object, int index, boolean condition, ProfileHolder profile) {
-        return prepareInBoundsContiguous(object, index, condition, profile);
+    protected int prepareInBounds(DynamicObject object, int index, ProfileHolder profile) {
+        return prepareInBoundsContiguous(object, index, profile);
     }
 
     @Override
-    protected int prepareSupported(DynamicObject object, int index, boolean condition, ProfileHolder profile) {
-        return prepareSupportedContiguous(object, index, condition, profile);
+    protected int prepareSupported(DynamicObject object, int index, ProfileHolder profile) {
+        return prepareSupportedContiguous(object, index, profile);
     }
 
     @Override
-    public boolean isSupported(DynamicObject object, long index, boolean condition) {
+    public boolean isSupported(DynamicObject object, long index) {
         return isSupportedContiguous(object, index);
     }
 
     @Override
-    public ContiguousObjectArray toObject(DynamicObject object, long index, Object value, boolean condition) {
-        double[] array = getArray(object, condition);
+    public ContiguousObjectArray toObject(DynamicObject object, long index, Object value) {
+        double[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         int arrayOffset = getArrayOffset(object);
@@ -94,10 +94,10 @@ public final class ContiguousDoubleArray extends AbstractContiguousDoubleArray {
     }
 
     @Override
-    public ZeroBasedDoubleArray toNonContiguous(DynamicObject object, int index, Object value, boolean condition, ProfileHolder profile) {
-        setSupported(object, index, (double) value, condition, profile);
+    public ZeroBasedDoubleArray toNonContiguous(DynamicObject object, int index, Object value, ProfileHolder profile) {
+        setSupported(object, index, (double) value, profile);
 
-        double[] array = getArray(object, condition);
+        double[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         ZeroBasedDoubleArray newArray = ZeroBasedDoubleArray.makeZeroBasedDoubleArray(object, length, usedLength, array, integrityLevel);
@@ -108,8 +108,8 @@ public final class ContiguousDoubleArray extends AbstractContiguousDoubleArray {
     }
 
     @Override
-    public HolesDoubleArray toHoles(DynamicObject object, long index, Object value, boolean condition) {
-        double[] array = getArray(object, condition);
+    public HolesDoubleArray toHoles(DynamicObject object, long index, Object value) {
+        double[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         int arrayOffset = getArrayOffset(object);

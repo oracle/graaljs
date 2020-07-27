@@ -114,7 +114,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
     }
 
     private boolean checkInteger(DynamicObject object, long index, ScriptArray arrayType) {
-        if (hasElementProfile.profile(arrayType.hasElement(object, index, JSArray.isJSFastArray(object)))) {
+        if (hasElementProfile.profile(arrayType.hasElement(object, index))) {
             return true;
         } else {
             return objectLong(object, index);

@@ -916,7 +916,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"isArray(object)", "longIsRepresentableAsInt(longLength)"})
         protected static void setArrayLength(DynamicObject object, long longLength,
                         @Cached("createArrayLengthWriteNode()") ArrayLengthWriteNode arrayLengthWriteNode) {
-            arrayLengthWriteNode.executeVoid(object, (int) longLength, isArray(object));
+            arrayLengthWriteNode.executeVoid(object, (int) longLength);
         }
 
         protected static final ArrayLengthWriteNode createArrayLengthWriteNode() {
@@ -1021,7 +1021,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         protected static boolean isArrayWithoutHoles(DynamicObject thisObj, IsArrayNode isArrayNode, TestArrayNode hasHolesNode) {
             boolean isArray = isArrayNode.execute(thisObj);
-            return isArray && !hasHolesNode.executeBoolean(thisObj, isArray);
+            return isArray && !hasHolesNode.executeBoolean(thisObj);
         }
 
         @Specialization(guards = {"isArrayWithoutHoles(thisObj, isArrayNode, hasHolesNode)"}, limit = "1")
@@ -1048,7 +1048,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         protected static boolean isArrayWithHoles(DynamicObject thisObj, IsArrayNode isArrayNode, TestArrayNode hasHolesNode) {
             boolean isArray = isArrayNode.execute(thisObj);
-            return isArray && hasHolesNode.executeBoolean(thisObj, isArray) && !isSparseArray(thisObj);
+            return isArray && hasHolesNode.executeBoolean(thisObj) && !isSparseArray(thisObj);
         }
 
         @Specialization(guards = {"isArrayWithHoles(thisObj, isArrayNode, hasHolesNode)"}, limit = "1")
@@ -1158,7 +1158,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         protected boolean isFastPath(Object thisObj) {
             boolean isArray = isArrayNode.execute(thisObj);
-            return isArray && !hasHolesNode.executeBoolean((DynamicObject) thisObj, isArray);
+            return isArray && !hasHolesNode.executeBoolean((DynamicObject) thisObj);
         }
 
         private long unshiftHoleless(DynamicObject thisObj, Object[] args) {
@@ -2996,7 +2996,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             long lower = 0;
             long upper = length - 1;
             boolean isArray = isArrayNode.execute(array);
-            boolean hasHoles = isArray && hasHolesNode.executeBoolean((DynamicObject) array, isArray);
+            boolean hasHoles = isArray && hasHolesNode.executeBoolean((DynamicObject) array);
 
             while (lower <= upper) {
                 boolean lowerExists;

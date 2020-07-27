@@ -75,21 +75,21 @@ public abstract class JSArrayPreviousElementIndexNode extends JSArrayElementInde
     public abstract long executeLong(Object object, long currentIndex, boolean isArray);
 
     @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "getArrayType(object) == cachedArrayType",
-                    "!cachedArrayType.hasHoles(object, isArray)"}, limit = "MAX_CACHED_ARRAY_TYPES")
-    public long doWithoutHolesCached(DynamicObject object, long currentIndex, boolean isArray,
+                    "!cachedArrayType.hasHoles(object)"}, limit = "MAX_CACHED_ARRAY_TYPES")
+    public long doWithoutHolesCached(DynamicObject object, long currentIndex, @SuppressWarnings("unused") boolean isArray,
                     @Cached("getArrayTypeIfArray(object, isArray)") ScriptArray cachedArrayType) {
         assert isSupportedArray(object) && cachedArrayType == getArrayType(object);
-        return cachedArrayType.previousElementIndex(object, currentIndex, isArray);
+        return cachedArrayType.previousElementIndex(object, currentIndex);
     }
 
-    @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "!hasHoles(object, isArray)"}, replaces = "doWithoutHolesCached")
-    public long doWithoutHolesUncached(DynamicObject object, long currentIndex, boolean isArray) {
+    @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "!hasHoles(object)"}, replaces = "doWithoutHolesCached")
+    public long doWithoutHolesUncached(DynamicObject object, long currentIndex, @SuppressWarnings("unused") boolean isArray) {
         assert isSupportedArray(object);
-        return getArrayType(object).previousElementIndex(object, currentIndex, isArray);
+        return getArrayType(object).previousElementIndex(object, currentIndex);
     }
 
     @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "getArrayType(object) == cachedArrayType",
-                    "cachedArrayType.hasHoles(object, isArray)"}, limit = "MAX_CACHED_ARRAY_TYPES")
+                    "cachedArrayType.hasHoles(object)"}, limit = "MAX_CACHED_ARRAY_TYPES")
     public long previousWithHolesCached(DynamicObject object, long currentIndex, boolean isArray,
                     @Cached("getArrayTypeIfArray(object, isArray)") ScriptArray cachedArrayType,
                     @Cached("create(context)") JSArrayPreviousElementIndexNode previousElementIndexNode,
@@ -98,7 +98,7 @@ public abstract class JSArrayPreviousElementIndexNode extends JSArrayElementInde
         return holesArrayImpl(object, currentIndex, isArray, cachedArrayType, previousElementIndexNode, isMinusOne);
     }
 
-    @Specialization(guards = {"isArray", "hasPrototypeElements(object) || hasHoles(object, isArray)"}, replaces = "previousWithHolesCached")
+    @Specialization(guards = {"isArray", "hasPrototypeElements(object) || hasHoles(object)"}, replaces = "previousWithHolesCached")
     public long previousWithHolesUncached(DynamicObject object, long currentIndex, boolean isArray,
                     @Cached("create(context)") JSArrayPreviousElementIndexNode previousElementIndexNode,
                     @Cached("createBinaryProfile()") ConditionProfile isMinusOne,
@@ -108,9 +108,9 @@ public abstract class JSArrayPreviousElementIndexNode extends JSArrayElementInde
         return holesArrayImpl(object, currentIndex, isArray, arrayType, previousElementIndexNode, isMinusOne);
     }
 
-    private long holesArrayImpl(DynamicObject object, long currentIndex, boolean isArray, ScriptArray array,
+    private long holesArrayImpl(DynamicObject object, long currentIndex, @SuppressWarnings("unused") boolean isArray, ScriptArray array,
                     JSArrayPreviousElementIndexNode previousElementIndexNode, ConditionProfile isMinusOne) {
-        long previousIndex = array.previousElementIndex(object, currentIndex, isArray);
+        long previousIndex = array.previousElementIndex(object, currentIndex);
         long minusOne = (currentIndex - 1);
         if (isMinusOne.profile(previousIndex == minusOne)) {
             return previousIndex;

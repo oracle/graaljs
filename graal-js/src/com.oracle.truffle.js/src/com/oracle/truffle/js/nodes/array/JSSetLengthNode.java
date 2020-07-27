@@ -76,7 +76,7 @@ public abstract class JSSetLengthNode extends JavaScriptBaseNode {
     @Specialization(guards = "isArray(object)")
     protected static int setArrayLength(DynamicObject object, int length,
                     @Cached("create(isStrict)") ArrayLengthWriteNode arrayLengthWriteNode) {
-        arrayLengthWriteNode.executeVoid(object, length, isArray(object));
+        arrayLengthWriteNode.executeVoid(object, length);
         return length;
     }
 

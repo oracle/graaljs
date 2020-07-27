@@ -65,30 +65,30 @@ public abstract class AbstractObjectArray extends AbstractWritableArray {
     public abstract void setInBoundsFast(DynamicObject object, int index, Object value, boolean condition);
 
     @Override
-    public final ScriptArray setElementImpl(DynamicObject object, long index, Object value, boolean strict, boolean condition) {
+    public final ScriptArray setElementImpl(DynamicObject object, long index, Object value, boolean strict) {
         assert index >= 0;
-        if (injectBranchProbability(FASTPATH_PROBABILITY, isSupported(object, index, condition))) {
+        if (injectBranchProbability(FASTPATH_PROBABILITY, isSupported(object, index))) {
             assert value != null;
-            setSupported(object, (int) index, value, condition);
+            setSupported(object, (int) index, value);
             return this;
         } else {
-            return rewrite(object, index, value, condition).setElementImpl(object, index, value, strict, condition);
+            return rewrite(object, index, value).setElementImpl(object, index, value, strict);
         }
     }
 
-    private ScriptArray rewrite(DynamicObject object, long index, Object value, boolean condition) {
+    private ScriptArray rewrite(DynamicObject object, long index, Object value) {
         if (isSupportedContiguous(object, index)) {
-            return toContiguous(object, index, value, condition);
+            return toContiguous(object, index, value);
         } else if (isSupportedHoles(object, index)) {
-            return toHoles(object, index, value, condition);
+            return toHoles(object, index, value);
         } else {
             return toSparse(object, index, value);
         }
     }
 
     @Override
-    public Object getInBoundsFast(DynamicObject object, int index, boolean condition) {
-        return getInBoundsFastObject(object, index, condition);
+    public Object getInBoundsFast(DynamicObject object, int index) {
+        return getInBoundsFastObject(object, index);
     }
 
     @Override
@@ -97,26 +97,22 @@ public abstract class AbstractObjectArray extends AbstractWritableArray {
     }
 
     protected static Object[] getArray(DynamicObject object) {
-        return getArray(object, arrayCondition());
+        return CompilerDirectives.castExact(arrayGetArray(object), Object[].class);
     }
 
-    protected static Object[] getArray(DynamicObject object, boolean condition) {
-        return arrayCast(arrayGetArray(object), Object[].class, condition);
-    }
+    public abstract Object getInBoundsFastObject(DynamicObject object, int index);
 
-    public abstract Object getInBoundsFastObject(DynamicObject object, int index, boolean condition);
-
-    public final void setInBounds(DynamicObject object, int index, Object value, boolean condition, ProfileHolder profile) {
-        getArray(object, condition)[prepareInBounds(object, index, condition, profile)] = checkNonNull(value);
+    public final void setInBounds(DynamicObject object, int index, Object value, ProfileHolder profile) {
+        getArray(object)[prepareInBounds(object, index, profile)] = checkNonNull(value);
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBounds", index, value);
         }
     }
 
-    public final void setSupported(DynamicObject object, int index, Object value, boolean condition) {
-        int preparedIndex = prepareSupported(object, index, condition, ProfileHolder.empty());
+    public final void setSupported(DynamicObject object, int index, Object value) {
+        int preparedIndex = prepareSupported(object, index, ProfileHolder.empty());
 
-        getArray(object, condition)[preparedIndex] = checkNonNull(value);
+        getArray(object)[preparedIndex] = checkNonNull(value);
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("Supported", index, value);
         }
@@ -143,38 +139,38 @@ public abstract class AbstractObjectArray extends AbstractWritableArray {
     }
 
     @Override
-    protected final boolean isHolePrepared(DynamicObject object, int preparedIndex, boolean condition) {
-        return HolesObjectArray.isHoleValue(getArray(object, condition)[preparedIndex]);
+    protected final boolean isHolePrepared(DynamicObject object, int preparedIndex) {
+        return HolesObjectArray.isHoleValue(getArray(object)[preparedIndex]);
     }
 
     @Override
-    protected final int getArrayCapacity(DynamicObject object, boolean condition) {
-        return getArray(object, condition).length;
+    protected final int getArrayCapacity(DynamicObject object) {
+        return getArray(object).length;
     }
 
     @Override
-    protected final void resizeArray(DynamicObject object, int newCapacity, int oldCapacity, int offset, boolean condition) {
+    protected final void resizeArray(DynamicObject object, int newCapacity, int oldCapacity, int offset) {
         Object[] newArray = new Object[newCapacity];
-        System.arraycopy(getArray(object, condition), 0, newArray, offset, oldCapacity);
+        System.arraycopy(getArray(object), 0, newArray, offset, oldCapacity);
         arraySetArray(object, newArray);
     }
 
     @Override
-    public abstract AbstractObjectArray toHoles(DynamicObject object, long index, Object value, boolean condition);
+    public abstract AbstractObjectArray toHoles(DynamicObject object, long index, Object value);
 
     @Override
-    public final AbstractWritableArray toDouble(DynamicObject object, long index, double value, boolean condition) {
+    public final AbstractWritableArray toDouble(DynamicObject object, long index, double value) {
         return this;
     }
 
     @Override
-    public final AbstractWritableArray toObject(DynamicObject object, long index, Object value, boolean condition) {
+    public final AbstractWritableArray toObject(DynamicObject object, long index, Object value) {
         return this;
     }
 
     @Override
-    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict, boolean condition) {
-        return toHoles(object, index, null, condition).deleteElementImpl(object, index, strict, condition);
+    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict) {
+        return toHoles(object, index, null).deleteElementImpl(object, index, strict);
     }
 
     @Override

@@ -62,39 +62,39 @@ public abstract class AbstractIntArray extends AbstractWritableArray {
     }
 
     @Override
-    public final ScriptArray setElementImpl(DynamicObject object, long index, Object value, boolean strict, boolean condition) {
+    public final ScriptArray setElementImpl(DynamicObject object, long index, Object value, boolean strict) {
         assert index >= 0;
-        if (injectBranchProbability(FASTPATH_PROBABILITY, value instanceof Integer && isSupported(object, index, condition))) {
+        if (injectBranchProbability(FASTPATH_PROBABILITY, value instanceof Integer && isSupported(object, index))) {
             int intValue = (int) value;
             if (injectBranchProbability(SLOWPATH_PROBABILITY, intValue == HolesIntArray.HOLE_VALUE)) {
-                return toObject(object, index, value, condition).setElementImpl(object, index, value, strict, condition);
+                return toObject(object, index, value).setElementImpl(object, index, value, strict);
             }
-            setSupported(object, (int) index, intValue, condition, ProfileHolder.empty());
+            setSupported(object, (int) index, intValue, ProfileHolder.empty());
             return this;
         } else {
-            return rewrite(object, index, value, condition).setElementImpl(object, index, value, strict, condition);
+            return rewrite(object, index, value).setElementImpl(object, index, value, strict);
         }
     }
 
-    private ScriptArray rewrite(DynamicObject object, long index, Object value, boolean condition) {
+    private ScriptArray rewrite(DynamicObject object, long index, Object value) {
         if (value instanceof Integer) {
             if (isSupportedContiguous(object, index)) {
-                return toContiguous(object, index, value, condition);
+                return toContiguous(object, index, value);
             } else if (isSupportedHoles(object, index)) {
-                return toHoles(object, index, value, condition);
+                return toHoles(object, index, value);
             } else {
                 return toSparse(object, index, value);
             }
         } else if (value instanceof Double) {
-            return toDouble(object, index, (double) value, condition);
+            return toDouble(object, index, (double) value);
         } else {
-            return toObject(object, index, value, condition);
+            return toObject(object, index, value);
         }
     }
 
     @Override
-    public Object getInBoundsFast(DynamicObject object, int index, boolean condition) {
-        return getInBoundsFastInt(object, index, condition);
+    public Object getInBoundsFast(DynamicObject object, int index) {
+        return getInBoundsFastInt(object, index);
     }
 
     @Override
@@ -103,27 +103,23 @@ public abstract class AbstractIntArray extends AbstractWritableArray {
     }
 
     protected static int[] getArray(DynamicObject object) {
-        return getArray(object, arrayCondition());
-    }
-
-    protected static int[] getArray(DynamicObject object, boolean condition) {
-        return arrayCast(arrayGetArray(object), int[].class, condition);
+        return (int[]) arrayGetArray(object);
     }
 
     @Override
-    public abstract int getInBoundsFastInt(DynamicObject object, int index, boolean condition);
+    public abstract int getInBoundsFastInt(DynamicObject object, int index);
 
-    public abstract void setInBoundsFast(DynamicObject object, int index, int value, boolean condition);
+    public abstract void setInBoundsFast(DynamicObject object, int index, int value);
 
-    public final void setInBounds(DynamicObject object, int index, int value, boolean condition, ProfileHolder profile) {
-        getArray(object, condition)[prepareInBounds(object, index, condition, profile)] = value;
+    public final void setInBounds(DynamicObject object, int index, int value, ProfileHolder profile) {
+        getArray(object)[prepareInBounds(object, index, profile)] = value;
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBounds", index, value);
         }
     }
 
-    public final void setSupported(DynamicObject object, int index, int value, boolean condition, ProfileHolder profile) {
-        int preparedIndex = prepareSupported(object, index, condition, profile);
+    public final void setSupported(DynamicObject object, int index, int value, ProfileHolder profile) {
+        int preparedIndex = prepareSupported(object, index, profile);
         getArray(object)[preparedIndex] = value;
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("Supported", index, value);
@@ -144,34 +140,34 @@ public abstract class AbstractIntArray extends AbstractWritableArray {
     }
 
     @Override
-    protected final boolean isHolePrepared(DynamicObject object, int preparedIndex, boolean condition) {
-        return HolesIntArray.isHoleValue(getArray(object, condition)[preparedIndex]);
+    protected final boolean isHolePrepared(DynamicObject object, int preparedIndex) {
+        return HolesIntArray.isHoleValue(getArray(object)[preparedIndex]);
     }
 
     @Override
-    protected final int getArrayCapacity(DynamicObject object, boolean condition) {
-        return getArray(object, condition).length;
+    protected final int getArrayCapacity(DynamicObject object) {
+        return getArray(object).length;
     }
 
     @Override
-    protected final void resizeArray(DynamicObject object, int newCapacity, int oldCapacity, int offset, boolean condition) {
+    protected final void resizeArray(DynamicObject object, int newCapacity, int oldCapacity, int offset) {
         int[] newArray = new int[newCapacity];
-        System.arraycopy(getArray(object, condition), 0, newArray, offset, oldCapacity);
+        System.arraycopy(getArray(object), 0, newArray, offset, oldCapacity);
         arraySetArray(object, newArray);
     }
 
     @Override
-    public abstract AbstractWritableArray toHoles(DynamicObject object, long index, Object value, boolean condition);
+    public abstract AbstractWritableArray toHoles(DynamicObject object, long index, Object value);
 
     @Override
-    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict, boolean condition) {
-        return toHoles(object, index, HolesIntArray.HOLE_VALUE, condition).deleteElementImpl(object, index, strict, condition);
+    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict) {
+        return toHoles(object, index, HolesIntArray.HOLE_VALUE).deleteElementImpl(object, index, strict);
     }
 
-    protected abstract HolesObjectArray toObjectHoles(DynamicObject object, boolean condition);
+    protected abstract HolesObjectArray toObjectHoles(DynamicObject object);
 
-    protected static Object[] convertToObject(DynamicObject object, boolean condition) {
-        int[] array = getArray(object, condition);
+    protected static Object[] convertToObject(DynamicObject object) {
+        int[] array = getArray(object);
         int usedLength = getUsedLength(object);
         Object[] obj = new Object[array.length];
         for (int i = 0; i < usedLength; i++) {
@@ -180,8 +176,8 @@ public abstract class AbstractIntArray extends AbstractWritableArray {
         return obj;
     }
 
-    protected static boolean containsHoleValue(DynamicObject object, boolean condition) {
-        int[] array = getArray(object, condition);
+    protected static boolean containsHoleValue(DynamicObject object) {
+        int[] array = getArray(object);
         int usedLength = getUsedLength(object);
         for (int i = 0; i < usedLength; i++) {
             if (array[i] == HolesIntArray.HOLE_VALUE) {

@@ -166,14 +166,13 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
                     @Cached("create(context, strict)") JSArrayDeleteIndexNode deleteArrayIndexNode,
                     @Cached("create()") JSClassProfile jsclassProfile,
                     @Shared("toPropertyKey") @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
-        final boolean isArray = isArrayNode.execute(targetObject);
         final Object propertyKey;
-        if (arrayProfile.profile(isArray)) {
+        if (arrayProfile.profile(isArrayNode.execute(targetObject))) {
             Object objIndex = toArrayIndexNode.execute(key);
 
             if (arrayIndexProfile.profile(objIndex instanceof Long)) {
                 long longIndex = (long) objIndex;
-                return deleteArrayIndexNode.execute(targetObject, arrayGetArrayType(targetObject), longIndex, isArray);
+                return deleteArrayIndexNode.execute(targetObject, arrayGetArrayType(targetObject), longIndex);
             } else {
                 propertyKey = objIndex;
             }

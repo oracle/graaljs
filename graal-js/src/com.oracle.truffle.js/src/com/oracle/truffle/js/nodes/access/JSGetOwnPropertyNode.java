@@ -123,7 +123,7 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
         if (JSRuntime.isArrayIndex(idx)) {
             ScriptArray array = typeProfile.profile(JSAbstractArray.arrayGetArrayType(thisObj));
             if (array.hasElement(thisObj, idx)) {
-                Object value = needValue ? array.getElement(thisObj, idx, JSArray.isJSArray(thisObj)) : null;
+                Object value = needValue ? array.getElement(thisObj, idx) : null;
                 return PropertyDescriptor.createData(value, true, needWritability && !array.isFrozen(), needConfigurability && !array.isSealed());
             }
         }

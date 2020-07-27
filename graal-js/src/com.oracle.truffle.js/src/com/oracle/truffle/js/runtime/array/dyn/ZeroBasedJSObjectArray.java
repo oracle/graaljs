@@ -69,48 +69,48 @@ public final class ZeroBasedJSObjectArray extends AbstractJSObjectArray {
     }
 
     @Override
-    public boolean isSupported(DynamicObject object, long index, boolean condition) {
+    public boolean isSupported(DynamicObject object, long index) {
         return isSupportedZeroBased(object, (int) index);
     }
 
     @Override
-    public DynamicObject getInBoundsFastJSObject(DynamicObject object, int index, boolean condition) {
-        return castNonNull(getArray(object, condition)[index]);
+    public DynamicObject getInBoundsFastJSObject(DynamicObject object, int index) {
+        return castNonNull(getArray(object)[index]);
     }
 
     @Override
     public void setInBoundsFast(DynamicObject object, int index, DynamicObject value, boolean condition) {
-        getArray(object, condition)[index] = checkNonNull(value);
+        getArray(object)[index] = checkNonNull(value);
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBoundsFast", index, value);
         }
     }
 
     @Override
-    protected int prepareInBoundsFast(DynamicObject object, long index, boolean condition) {
+    protected int prepareInBoundsFast(DynamicObject object, long index) {
         return (int) index;
     }
 
     @Override
-    protected int prepareInBounds(DynamicObject object, int index, boolean condition, ProfileHolder profile) {
+    protected int prepareInBounds(DynamicObject object, int index, ProfileHolder profile) {
         prepareInBoundsZeroBased(object, index, profile);
         return index;
     }
 
     @Override
-    protected int prepareSupported(DynamicObject object, int index, boolean condition, ProfileHolder profile) {
-        prepareSupportedZeroBased(object, index, condition, profile);
+    protected int prepareSupported(DynamicObject object, int index, ProfileHolder profile) {
+        prepareSupportedZeroBased(object, index, profile);
         return index;
     }
 
     @Override
-    protected void setLengthLess(DynamicObject object, long length, boolean condition, ProfileHolder profile) {
+    protected void setLengthLess(DynamicObject object, long length, ProfileHolder profile) {
         setLengthLessZeroBased(object, length, profile);
     }
 
     @Override
-    public ContiguousJSObjectArray toContiguous(DynamicObject object, long index, Object value, boolean condition) {
-        DynamicObject[] array = getArray(object, condition);
+    public ContiguousJSObjectArray toContiguous(DynamicObject object, long index, Object value) {
+        DynamicObject[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         ContiguousJSObjectArray newArray = ContiguousJSObjectArray.makeContiguousJSObjectArray(object, length, array, 0, 0, usedLength, integrityLevel);
@@ -121,8 +121,8 @@ public final class ZeroBasedJSObjectArray extends AbstractJSObjectArray {
     }
 
     @Override
-    public HolesJSObjectArray toHoles(DynamicObject object, long index, Object value, boolean condition) {
-        DynamicObject[] array = getArray(object, condition);
+    public HolesJSObjectArray toHoles(DynamicObject object, long index, Object value) {
+        DynamicObject[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         HolesJSObjectArray newArray = HolesJSObjectArray.makeHolesJSObjectArray(object, length, array, 0, 0, usedLength, 0, integrityLevel);
@@ -133,8 +133,8 @@ public final class ZeroBasedJSObjectArray extends AbstractJSObjectArray {
     }
 
     @Override
-    public ZeroBasedObjectArray toObject(DynamicObject object, long index, Object value, boolean condition) {
-        DynamicObject[] array = getArray(object, condition);
+    public ZeroBasedObjectArray toObject(DynamicObject object, long index, Object value) {
+        DynamicObject[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         Object[] doubleCopy = ArrayCopy.jsobjectToObject(array, 0, usedLength);
@@ -174,7 +174,7 @@ public final class ZeroBasedJSObjectArray extends AbstractJSObjectArray {
     }
 
     @Override
-    public boolean hasHoles(DynamicObject object, boolean condition) {
+    public boolean hasHoles(DynamicObject object) {
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         return usedLength < length;
@@ -186,7 +186,7 @@ public final class ZeroBasedJSObjectArray extends AbstractJSObjectArray {
     }
 
     @Override
-    public long nextElementIndex(DynamicObject object, long index, boolean condition) {
+    public long nextElementIndex(DynamicObject object, long index) {
         return nextElementIndexZeroBased(object, index);
     }
 }

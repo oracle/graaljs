@@ -63,8 +63,8 @@ public abstract class JSArrayElementIndexNode extends JavaScriptBaseNode {
         this.context = context;
     }
 
-    protected static boolean hasHoles(DynamicObject object, boolean isArray) {
-        return JSObject.getArray(object).hasHoles(object, isArray);
+    protected static boolean hasHoles(DynamicObject object) {
+        return JSObject.getArray(object).hasHoles(object);
     }
 
     protected static ScriptArray getArrayType(DynamicObject object) {

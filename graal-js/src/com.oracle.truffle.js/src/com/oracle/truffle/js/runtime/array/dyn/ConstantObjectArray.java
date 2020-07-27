@@ -76,7 +76,7 @@ public final class ConstantObjectArray extends AbstractConstantArray {
     }
 
     @Override
-    public boolean hasElement(DynamicObject object, long index, boolean condition) {
+    public boolean hasElement(DynamicObject object, long index) {
         if (index >= 0 && index < getArray(object).length) {
             return !holes || getArray(object)[(int) index] != null;
         }
@@ -84,7 +84,7 @@ public final class ConstantObjectArray extends AbstractConstantArray {
     }
 
     @Override
-    public Object getElementInBounds(DynamicObject object, int index, boolean condition) {
+    public Object getElementInBounds(DynamicObject object, int index) {
         Object value = getElementInBoundsDirect(object, index);
         if (holes && value == null) {
             return Undefined.instance;
@@ -101,7 +101,7 @@ public final class ConstantObjectArray extends AbstractConstantArray {
     }
 
     @Override
-    public boolean hasHoles(DynamicObject object, boolean condition) {
+    public boolean hasHoles(DynamicObject object) {
         return holes;
     }
 
@@ -131,9 +131,9 @@ public final class ConstantObjectArray extends AbstractConstantArray {
     }
 
     @Override
-    public long nextElementIndex(DynamicObject object, long index0, boolean condition) {
+    public long nextElementIndex(DynamicObject object, long index0) {
         if (!holes) {
-            return super.nextElementIndex(object, index0, condition);
+            return super.nextElementIndex(object, index0);
         }
         int index = (int) index0;
         do {
@@ -143,9 +143,9 @@ public final class ConstantObjectArray extends AbstractConstantArray {
     }
 
     @Override
-    public long previousElementIndex(DynamicObject object, long index0, boolean condition) {
+    public long previousElementIndex(DynamicObject object, long index0) {
         if (!holes) {
-            return super.previousElementIndex(object, index0, condition);
+            return super.previousElementIndex(object, index0);
         }
         int index = (int) index0;
         do {
@@ -180,32 +180,32 @@ public final class ConstantObjectArray extends AbstractConstantArray {
     }
 
     @Override
-    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict, boolean condition) {
-        return createWriteableObject(object, index, null, condition, ProfileHolder.empty()).deleteElementImpl(object, index, strict, condition);
+    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict) {
+        return createWriteableObject(object, index, null, ProfileHolder.empty()).deleteElementImpl(object, index, strict);
     }
 
     @Override
-    public ScriptArray setLengthImpl(DynamicObject object, long length, boolean condition, ProfileHolder profile) {
-        return createWriteableObject(object, length - 1, null, condition, ProfileHolder.empty()).setLengthImpl(object, length, condition, profile);
+    public ScriptArray setLengthImpl(DynamicObject object, long length, ProfileHolder profile) {
+        return createWriteableObject(object, length - 1, null, ProfileHolder.empty()).setLengthImpl(object, length, profile);
     }
 
     @Override
-    public AbstractObjectArray createWriteableInt(DynamicObject object, long index, int value, boolean condition, ProfileHolder profile) {
-        return createWriteableObject(object, index, value, condition, profile);
+    public AbstractObjectArray createWriteableInt(DynamicObject object, long index, int value, ProfileHolder profile) {
+        return createWriteableObject(object, index, value, profile);
     }
 
     @Override
-    public AbstractObjectArray createWriteableDouble(DynamicObject object, long index, double value, boolean condition, ProfileHolder profile) {
-        return createWriteableObject(object, index, value, condition, profile);
+    public AbstractObjectArray createWriteableDouble(DynamicObject object, long index, double value, ProfileHolder profile) {
+        return createWriteableObject(object, index, value, profile);
     }
 
     @Override
-    public AbstractObjectArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, boolean condition, ProfileHolder profile) {
-        return createWriteableObject(object, index, value, condition, profile);
+    public AbstractObjectArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, ProfileHolder profile) {
+        return createWriteableObject(object, index, value, profile);
     }
 
     @Override
-    public AbstractObjectArray createWriteableObject(DynamicObject object, long index, Object value, boolean condition, ProfileHolder profile) {
+    public AbstractObjectArray createWriteableObject(DynamicObject object, long index, Object value, ProfileHolder profile) {
         Object[] array = getArray(object);
         AbstractObjectArray newArray;
         if (holes) {

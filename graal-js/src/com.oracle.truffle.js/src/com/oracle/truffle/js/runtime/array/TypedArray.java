@@ -82,7 +82,7 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     @Override
-    public final TypedArray setLengthImpl(DynamicObject object, long len, boolean condition, ProfileHolder profile) {
+    public final TypedArray setLengthImpl(DynamicObject object, long len, ProfileHolder profile) {
         return this;
     }
 
@@ -97,12 +97,12 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     @Override
-    public final long nextElementIndex(DynamicObject object, long index, boolean condition) {
+    public final long nextElementIndex(DynamicObject object, long index) {
         return index + 1;
     }
 
     @Override
-    public final long previousElementIndex(DynamicObject object, long index, boolean condition) {
+    public final long previousElementIndex(DynamicObject object, long index) {
         return index - 1;
     }
 
@@ -117,12 +117,12 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     @Override
-    public final ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict, boolean condition) {
+    public final ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict) {
         return this;
     }
 
     @Override
-    public final boolean hasElement(DynamicObject object, long index, boolean condition) {
+    public final boolean hasElement(DynamicObject object, long index) {
         return 0 <= index && index < length(object);
     }
 
@@ -174,7 +174,7 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     @Override
-    public boolean hasHoles(DynamicObject object, boolean condition) {
+    public boolean hasHoles(DynamicObject object) {
         return false;
     }
 
@@ -264,8 +264,8 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Object getElement(DynamicObject object, long index, boolean condition) {
-            if (hasElement(object, index, condition)) {
+        public Object getElement(DynamicObject object, long index) {
+            if (hasElement(object, index)) {
                 return getInt(object, (int) index);
             } else {
                 return Undefined.instance;
@@ -273,14 +273,14 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Object getElementInBounds(DynamicObject object, long index, boolean condition) {
-            assert hasElement(object, index, condition);
+        public Object getElementInBounds(DynamicObject object, long index) {
+            assert hasElement(object, index);
             return getInt(object, (int) index);
         }
 
         @Override
-        public TypedIntArray<T> setElementImpl(DynamicObject object, long index, Object value, boolean strict, boolean condition) {
-            if (hasElement(object, index, condition)) {
+        public TypedIntArray<T> setElementImpl(DynamicObject object, long index, Object value, boolean strict) {
+            if (hasElement(object, index)) {
                 setInt(object, (int) index, JSRuntime.toInt32(value));
             }
             return this;
@@ -428,8 +428,8 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public TypedIntArray<T> setElementImpl(DynamicObject object, long index, Object value, boolean strict, boolean condition) {
-            if (hasElement(object, index, condition)) {
+        public TypedIntArray<T> setElementImpl(DynamicObject object, long index, Object value, boolean strict) {
+            if (hasElement(object, index)) {
                 setInt(object, (int) index, toInt(JSRuntime.toDouble(value)));
             }
             return this;
@@ -686,8 +686,8 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Object getElement(DynamicObject object, long index, boolean condition) {
-            if (hasElement(object, index, condition)) {
+        public Object getElement(DynamicObject object, long index) {
+            if (hasElement(object, index)) {
                 int value = getInt(object, (int) index);
                 return toUint32(value);
             } else {
@@ -704,8 +704,8 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Object getElementInBounds(DynamicObject object, long index, boolean condition) {
-            assert hasElement(object, index, condition);
+        public Object getElementInBounds(DynamicObject object, long index) {
+            assert hasElement(object, index);
             return toUint32(getInt(object, (int) index));
         }
     }
@@ -773,8 +773,8 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Object getElement(DynamicObject object, long index, boolean condition) {
-            if (hasElement(object, index, condition)) {
+        public Object getElement(DynamicObject object, long index) {
+            if (hasElement(object, index)) {
                 return getBigInt(object, (int) index);
             } else {
                 return Undefined.instance;
@@ -782,14 +782,14 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Object getElementInBounds(DynamicObject object, long index, boolean condition) {
-            assert hasElement(object, index, condition);
+        public Object getElementInBounds(DynamicObject object, long index) {
+            assert hasElement(object, index);
             return getBigInt(object, (int) index);
         }
 
         @Override
-        public TypedBigIntArray<T> setElementImpl(DynamicObject object, long index, Object value, boolean strict, boolean condition) {
-            if (hasElement(object, index, condition)) {
+        public TypedBigIntArray<T> setElementImpl(DynamicObject object, long index, Object value, boolean strict) {
+            if (hasElement(object, index)) {
                 setBigInt(object, (int) index, JSRuntime.toBigInt(value));
             }
             return this;
@@ -938,8 +938,8 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public final Object getElement(DynamicObject object, long index, boolean condition) {
-            if (hasElement(object, index, condition)) {
+        public final Object getElement(DynamicObject object, long index) {
+            if (hasElement(object, index)) {
                 return getDouble(object, (int) index);
             } else {
                 return Undefined.instance;
@@ -947,14 +947,14 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public Object getElementInBounds(DynamicObject object, long index, boolean condition) {
-            assert hasElement(object, index, condition);
+        public Object getElementInBounds(DynamicObject object, long index) {
+            assert hasElement(object, index);
             return getDouble(object, (int) index);
         }
 
         @Override
-        public final TypedFloatArray<T> setElementImpl(DynamicObject object, long index, Object value, boolean strict, boolean condition) {
-            if (hasElement(object, index, condition)) {
+        public final TypedFloatArray<T> setElementImpl(DynamicObject object, long index, Object value, boolean strict) {
+            if (hasElement(object, index)) {
                 setDouble(object, (int) index, JSRuntime.toDouble(value));
             }
             return this;

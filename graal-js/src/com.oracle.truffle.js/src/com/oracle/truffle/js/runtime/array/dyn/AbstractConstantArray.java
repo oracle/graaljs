@@ -53,36 +53,36 @@ public abstract class AbstractConstantArray extends DynamicArray {
     }
 
     @Override
-    public final ScriptArray setElementImpl(DynamicObject object, long index, Object value, boolean strict, boolean condition) {
+    public final ScriptArray setElementImpl(DynamicObject object, long index, Object value, boolean strict) {
         if (index <= Integer.MAX_VALUE) {
             if (value instanceof Integer) {
-                return createWriteableInt(object, index, (int) value, condition, ProfileHolder.empty()).setElementImpl(object, index, value, strict, condition);
+                return createWriteableInt(object, index, (int) value, ProfileHolder.empty()).setElementImpl(object, index, value, strict);
             } else if (value instanceof Double) {
-                return createWriteableDouble(object, index, (double) value, condition, ProfileHolder.empty()).setElementImpl(object, index, value, strict, condition);
+                return createWriteableDouble(object, index, (double) value, ProfileHolder.empty()).setElementImpl(object, index, value, strict);
             } else {
-                return createWriteableObject(object, index, value, condition, ProfileHolder.empty()).setElementImpl(object, index, value, strict, condition);
+                return createWriteableObject(object, index, value, ProfileHolder.empty()).setElementImpl(object, index, value, strict);
             }
         } else {
-            return SparseArray.makeSparseArray(object, this).setElementImpl(object, index, value, strict, condition);
+            return SparseArray.makeSparseArray(object, this).setElementImpl(object, index, value, strict);
         }
     }
 
     @Override
-    public final Object getElement(DynamicObject object, long index, boolean condition) {
+    public final Object getElement(DynamicObject object, long index) {
         if (isInBoundsFast(object, index)) {
-            return getElementInBounds(object, (int) index, condition);
+            return getElementInBounds(object, (int) index);
         } else {
             return Undefined.instance;
         }
     }
 
     @Override
-    public final Object getElementInBounds(DynamicObject object, long index, boolean condition) {
+    public final Object getElementInBounds(DynamicObject object, long index) {
         assert isInBoundsFast(object, index);
-        return getElementInBounds(object, (int) index, condition);
+        return getElementInBounds(object, (int) index);
     }
 
-    public abstract Object getElementInBounds(DynamicObject object, int index, boolean condition);
+    public abstract Object getElementInBounds(DynamicObject object, int index);
 
     @Override
     public final long length(DynamicObject object) {
@@ -100,7 +100,7 @@ public abstract class AbstractConstantArray extends DynamicArray {
     }
 
     @Override
-    public long nextElementIndex(DynamicObject object, long index, boolean condition) {
+    public long nextElementIndex(DynamicObject object, long index) {
         if (index >= lastElementIndex(object)) {
             return JSRuntime.MAX_SAFE_INTEGER_LONG;
         }
@@ -108,7 +108,7 @@ public abstract class AbstractConstantArray extends DynamicArray {
     }
 
     @Override
-    public long previousElementIndex(DynamicObject object, long index, boolean condition) {
+    public long previousElementIndex(DynamicObject object, long index) {
         return index - 1;
     }
 
@@ -120,13 +120,13 @@ public abstract class AbstractConstantArray extends DynamicArray {
         return firstElementIndex(object) <= index && index <= lastElementIndex(object);
     }
 
-    public abstract AbstractWritableArray createWriteableDouble(DynamicObject object, long index, double value, boolean condition, ProfileHolder profile);
+    public abstract AbstractWritableArray createWriteableDouble(DynamicObject object, long index, double value, ProfileHolder profile);
 
-    public abstract AbstractWritableArray createWriteableInt(DynamicObject object, long index, int value, boolean condition, ProfileHolder profile);
+    public abstract AbstractWritableArray createWriteableInt(DynamicObject object, long index, int value, ProfileHolder profile);
 
-    public abstract AbstractWritableArray createWriteableObject(DynamicObject object, long index, Object value, boolean condition, ProfileHolder profile);
+    public abstract AbstractWritableArray createWriteableObject(DynamicObject object, long index, Object value, ProfileHolder profile);
 
-    public abstract AbstractWritableArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, boolean condition, ProfileHolder profile);
+    public abstract AbstractWritableArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, ProfileHolder profile);
 
     protected interface CreateWritableProfileAccess extends ProfileAccess {
         default boolean lengthZero(ProfileHolder profile, boolean condition) {
@@ -154,7 +154,7 @@ public abstract class AbstractConstantArray extends DynamicArray {
     }
 
     @Override
-    public boolean hasHoles(DynamicObject object, boolean condition) {
+    public boolean hasHoles(DynamicObject object) {
         return false;
     }
 }

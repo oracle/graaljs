@@ -64,7 +64,7 @@ public final class ConstantByteArray extends AbstractConstantArray {
     }
 
     @Override
-    public Object getElementInBounds(DynamicObject object, int index, boolean condition) {
+    public Object getElementInBounds(DynamicObject object, int index) {
         return getElementByte(object, index);
     }
 
@@ -78,7 +78,7 @@ public final class ConstantByteArray extends AbstractConstantArray {
     }
 
     @Override
-    public boolean hasElement(DynamicObject object, long index, boolean condition) {
+    public boolean hasElement(DynamicObject object, long index) {
         return index >= 0 && index < getArray(object).length;
     }
 
@@ -93,17 +93,17 @@ public final class ConstantByteArray extends AbstractConstantArray {
     }
 
     @Override
-    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict, boolean condition) {
-        return createWriteableInt(object, index, HolesIntArray.HOLE_VALUE, condition, ProfileHolder.empty()).deleteElementImpl(object, index, strict, condition);
+    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict) {
+        return createWriteableInt(object, index, HolesIntArray.HOLE_VALUE, ProfileHolder.empty()).deleteElementImpl(object, index, strict);
     }
 
     @Override
-    public ScriptArray setLengthImpl(DynamicObject object, long length, boolean condition, ProfileHolder profile) {
-        return createWriteableInt(object, length - 1, HolesIntArray.HOLE_VALUE, condition, ProfileHolder.empty()).setLengthImpl(object, length, condition, profile);
+    public ScriptArray setLengthImpl(DynamicObject object, long length, ProfileHolder profile) {
+        return createWriteableInt(object, length - 1, HolesIntArray.HOLE_VALUE, ProfileHolder.empty()).setLengthImpl(object, length, profile);
     }
 
     @Override
-    public ZeroBasedIntArray createWriteableInt(DynamicObject object, long index, int value, boolean condition, ProfileHolder profile) {
+    public ZeroBasedIntArray createWriteableInt(DynamicObject object, long index, int value, ProfileHolder profile) {
         int[] intCopy = ArrayCopy.byteToInt(getArray(object));
         ZeroBasedIntArray newArray = ZeroBasedIntArray.makeZeroBasedIntArray(object, intCopy.length, intCopy.length, intCopy, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
@@ -113,7 +113,7 @@ public final class ConstantByteArray extends AbstractConstantArray {
     }
 
     @Override
-    public ZeroBasedDoubleArray createWriteableDouble(DynamicObject object, long index, double value, boolean condition, ProfileHolder profile) {
+    public ZeroBasedDoubleArray createWriteableDouble(DynamicObject object, long index, double value, ProfileHolder profile) {
         double[] doubleCopy = ArrayCopy.byteToDouble(getArray(object));
         ZeroBasedDoubleArray newArray = ZeroBasedDoubleArray.makeZeroBasedDoubleArray(object, doubleCopy.length, doubleCopy.length, doubleCopy, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
@@ -123,12 +123,12 @@ public final class ConstantByteArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractWritableArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, boolean condition, ProfileHolder profile) {
-        return createWriteableObject(object, index, value, condition, profile);
+    public AbstractWritableArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, ProfileHolder profile) {
+        return createWriteableObject(object, index, value, profile);
     }
 
     @Override
-    public ZeroBasedObjectArray createWriteableObject(DynamicObject object, long index, Object value, boolean condition, ProfileHolder profile) {
+    public ZeroBasedObjectArray createWriteableObject(DynamicObject object, long index, Object value, ProfileHolder profile) {
         Object[] doubleCopy = ArrayCopy.byteToObject(getArray(object));
         ZeroBasedObjectArray newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, doubleCopy.length, doubleCopy.length, doubleCopy, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {

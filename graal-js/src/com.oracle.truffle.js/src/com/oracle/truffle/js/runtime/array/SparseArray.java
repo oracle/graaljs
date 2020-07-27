@@ -102,14 +102,14 @@ public final class SparseArray extends DynamicArray {
 
     @TruffleBoundary
     @Override
-    public Object getElement(DynamicObject object, long index, boolean condition) {
+    public Object getElement(DynamicObject object, long index) {
         Object value = arrayMap(object).get(index);
         return value != null ? value : Undefined.instance;
     }
 
     @TruffleBoundary
     @Override
-    public Object getElementInBounds(DynamicObject object, long index, boolean condition) {
+    public Object getElementInBounds(DynamicObject object, long index) {
         Object value = arrayMap(object).get(index);
         assert value != null;
         return value;
@@ -117,7 +117,7 @@ public final class SparseArray extends DynamicArray {
 
     @TruffleBoundary
     @Override
-    public ScriptArray setElementImpl(DynamicObject object, long index, Object value, boolean strict, boolean condition) {
+    public ScriptArray setElementImpl(DynamicObject object, long index, Object value, boolean strict) {
         arrayMap(object).put(index, value);
         if (index >= length(object)) {
             arraySetLength(object, index + 1);
@@ -141,7 +141,7 @@ public final class SparseArray extends DynamicArray {
 
     @TruffleBoundary
     @Override
-    public SparseArray setLengthImpl(DynamicObject object, long len, boolean condition, ProfileHolder profile) {
+    public SparseArray setLengthImpl(DynamicObject object, long len, ProfileHolder profile) {
         arraySetLength(object, len);
         arrayMap(object).tailMap(len).clear();
         return this;
@@ -169,14 +169,14 @@ public final class SparseArray extends DynamicArray {
 
     @TruffleBoundary
     @Override
-    public long nextElementIndex(DynamicObject object, long index, boolean condition) {
+    public long nextElementIndex(DynamicObject object, long index) {
         Long nextIndex = arrayMap(object).higherKey(index);
         return nextIndex != null ? nextIndex.longValue() : JSRuntime.MAX_SAFE_INTEGER_LONG;
     }
 
     @TruffleBoundary
     @Override
-    public long previousElementIndex(DynamicObject object, long index, boolean condition) {
+    public long previousElementIndex(DynamicObject object, long index) {
         Long nextIndex = arrayMap(object).lowerKey(index);
         return nextIndex != null ? nextIndex.longValue() : -1;
     }
@@ -201,14 +201,14 @@ public final class SparseArray extends DynamicArray {
 
     @TruffleBoundary
     @Override
-    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict, boolean condition) {
+    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict) {
         arrayMap(object).remove(index);
         return this;
     }
 
     @TruffleBoundary
     @Override
-    public boolean hasElement(DynamicObject object, long index, boolean condition) {
+    public boolean hasElement(DynamicObject object, long index) {
         return arrayMap(object).containsKey(index);
     }
 
@@ -218,7 +218,7 @@ public final class SparseArray extends DynamicArray {
     }
 
     @Override
-    public boolean hasHoles(DynamicObject object, boolean condition) {
+    public boolean hasHoles(DynamicObject object) {
         return true;
     }
 
@@ -231,18 +231,18 @@ public final class SparseArray extends DynamicArray {
         long delta = end - start + 1;
         long pos = start;
         if (!hasElement(object, pos)) {
-            pos = nextElementIndex(object, pos, arrayCondition());
+            pos = nextElementIndex(object, pos);
         }
         // delete the elements in the removed range
         while (pos <= end) {
-            deleteElementImpl(object, pos, false, arrayCondition());
-            pos = nextElementIndex(object, pos, arrayCondition());
+            deleteElementImpl(object, pos, false);
+            pos = nextElementIndex(object, pos);
         }
         // move all element higher downwards
         while (pos < length(object)) {
             setElement(object, pos - delta, getElement(object, pos), false);
-            deleteElementImpl(object, pos, false, arrayCondition());
-            pos = nextElementIndex(object, pos, arrayCondition());
+            deleteElementImpl(object, pos, false);
+            pos = nextElementIndex(object, pos);
         }
         return this;
     }
@@ -253,13 +253,13 @@ public final class SparseArray extends DynamicArray {
 
         long pos = length(object);
         if (!hasElement(object, pos)) {
-            pos = previousElementIndex(object, pos, arrayCondition());
+            pos = previousElementIndex(object, pos);
         }
         // move all element higher upwards
         while (pos >= offset) {
             setElement(object, pos + size, getElement(object, pos), false);
-            deleteElementImpl(object, pos, false, arrayCondition());
-            pos = previousElementIndex(object, pos, arrayCondition());
+            deleteElementImpl(object, pos, false);
+            pos = previousElementIndex(object, pos);
         }
         return this;
     }

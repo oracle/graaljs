@@ -63,23 +63,23 @@ public final class ContiguousJSObjectArray extends AbstractContiguousJSObjectArr
     }
 
     @Override
-    protected int prepareInBounds(DynamicObject object, int index, boolean condition, ProfileHolder profile) {
-        return prepareInBoundsContiguous(object, index, condition, profile);
+    protected int prepareInBounds(DynamicObject object, int index, ProfileHolder profile) {
+        return prepareInBoundsContiguous(object, index, profile);
     }
 
     @Override
-    protected int prepareSupported(DynamicObject object, int index, boolean condition, ProfileHolder profile) {
-        return prepareSupportedContiguous(object, index, condition, profile);
+    protected int prepareSupported(DynamicObject object, int index, ProfileHolder profile) {
+        return prepareSupportedContiguous(object, index, profile);
     }
 
     @Override
-    public boolean isSupported(DynamicObject object, long index, boolean condition) {
+    public boolean isSupported(DynamicObject object, long index) {
         return isSupportedContiguous(object, index);
     }
 
     @Override
-    public HolesJSObjectArray toHoles(DynamicObject object, long index, Object value, boolean condition) {
-        DynamicObject[] array = getArray(object, condition);
+    public HolesJSObjectArray toHoles(DynamicObject object, long index, Object value) {
+        DynamicObject[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         int arrayOffset = getArrayOffset(object);
@@ -93,10 +93,10 @@ public final class ContiguousJSObjectArray extends AbstractContiguousJSObjectArr
     }
 
     @Override
-    public ZeroBasedJSObjectArray toNonContiguous(DynamicObject object, int index, Object value, boolean condition, ProfileHolder profile) {
-        setSupported(object, index, (DynamicObject) value, condition, profile);
+    public ZeroBasedJSObjectArray toNonContiguous(DynamicObject object, int index, Object value, ProfileHolder profile) {
+        setSupported(object, index, (DynamicObject) value, profile);
 
-        DynamicObject[] array = getArray(object, condition);
+        DynamicObject[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         ZeroBasedJSObjectArray newArray = ZeroBasedJSObjectArray.makeZeroBasedJSObjectArray(object, length, usedLength, array, integrityLevel);
@@ -107,8 +107,8 @@ public final class ContiguousJSObjectArray extends AbstractContiguousJSObjectArr
     }
 
     @Override
-    public ContiguousObjectArray toObject(DynamicObject object, long index, Object value, boolean condition) {
-        DynamicObject[] array = getArray(object, condition);
+    public ContiguousObjectArray toObject(DynamicObject object, long index, Object value) {
+        DynamicObject[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         int arrayOffset = getArrayOffset(object);

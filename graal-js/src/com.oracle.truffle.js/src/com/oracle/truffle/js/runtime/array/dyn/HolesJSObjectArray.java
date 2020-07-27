@@ -84,47 +84,47 @@ public final class HolesJSObjectArray extends AbstractContiguousJSObjectArray {
         throw Errors.shouldNotReachHere("should not call this method, use setInBounds(Non)Hole");
     }
 
-    public boolean isHoleFast(DynamicObject object, int index, boolean condition) {
+    public boolean isHoleFast(DynamicObject object, int index) {
         int internalIndex = (int) (index - getIndexOffset(object));
-        return isHolePrepared(object, internalIndex, condition);
+        return isHolePrepared(object, internalIndex);
     }
 
-    public void setInBoundsFastHole(DynamicObject object, int index, DynamicObject value, boolean condition) {
+    public void setInBoundsFastHole(DynamicObject object, int index, DynamicObject value) {
         int internalIndex = (int) (index - getIndexOffset(object));
-        assert isHolePrepared(object, internalIndex, condition);
+        assert isHolePrepared(object, internalIndex);
         incrementHolesCount(object, -1);
-        setInBoundsFastIntl(object, index, internalIndex, value, condition);
+        setInBoundsFastIntl(object, index, internalIndex, value);
     }
 
-    public void setInBoundsFastNonHole(DynamicObject object, int index, DynamicObject value, boolean condition) {
+    public void setInBoundsFastNonHole(DynamicObject object, int index, DynamicObject value) {
         int internalIndex = (int) (index - getIndexOffset(object));
-        assert !isHolePrepared(object, internalIndex, condition);
-        setInBoundsFastIntl(object, index, internalIndex, value, condition);
+        assert !isHolePrepared(object, internalIndex);
+        setInBoundsFastIntl(object, index, internalIndex, value);
     }
 
-    private void setInBoundsFastIntl(DynamicObject object, int index, int internalIndex, DynamicObject value, boolean condition) {
-        getArray(object, condition)[internalIndex] = checkNonNull(value);
+    private void setInBoundsFastIntl(DynamicObject object, int index, int internalIndex, DynamicObject value) {
+        getArray(object)[internalIndex] = checkNonNull(value);
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBoundsFast", index, value);
         }
     }
 
     @Override
-    public boolean containsHoles(DynamicObject object, long index, boolean condition) {
+    public boolean containsHoles(DynamicObject object, long index) {
         return arrayGetHoleCount(object) > 0 || !isInBoundsFast(object, index);
     }
 
     @Override
-    public AbstractJSObjectArray toNonHoles(DynamicObject object, long index, Object value, boolean condition) {
-        assert !containsHoles(object, index, condition);
-        DynamicObject[] array = getArray(object, condition);
+    public AbstractJSObjectArray toNonHoles(DynamicObject object, long index, Object value) {
+        assert !containsHoles(object, index);
+        DynamicObject[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         int arrayOffset = getArrayOffset(object);
         long indexOffset = getIndexOffset(object);
 
         AbstractJSObjectArray newArray;
-        setInBoundsFastNonHole(object, (int) index, (DynamicObject) value, arrayCondition());
+        setInBoundsFastNonHole(object, (int) index, (DynamicObject) value);
         if (isInBoundsFast(object, 0)) {
             newArray = ZeroBasedJSObjectArray.makeZeroBasedJSObjectArray(object, length, usedLength, array, integrityLevel);
         } else {
@@ -137,8 +137,8 @@ public final class HolesJSObjectArray extends AbstractContiguousJSObjectArray {
     }
 
     @Override
-    public AbstractWritableArray toObject(DynamicObject object, long index, Object value, boolean condition) {
-        DynamicObject[] array = getArray(object, condition);
+    public AbstractWritableArray toObject(DynamicObject object, long index, Object value) {
+        DynamicObject[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         int arrayOffset = getArrayOffset(object);
@@ -159,23 +159,23 @@ public final class HolesJSObjectArray extends AbstractContiguousJSObjectArray {
     }
 
     @Override
-    public int prepareInBounds(DynamicObject object, int index, boolean condition, ProfileHolder profile) {
-        return prepareInBoundsHoles(object, index, condition, profile);
+    public int prepareInBounds(DynamicObject object, int index, ProfileHolder profile) {
+        return prepareInBoundsHoles(object, index, profile);
     }
 
     @Override
-    public boolean isSupported(DynamicObject object, long index, boolean condition) {
+    public boolean isSupported(DynamicObject object, long index) {
         return isSupportedHoles(object, index);
     }
 
     @Override
-    public int prepareSupported(DynamicObject object, int index, boolean condition, ProfileHolder profile) {
-        return prepareSupportedHoles(object, index, condition, profile);
+    public int prepareSupported(DynamicObject object, int index, ProfileHolder profile) {
+        return prepareSupportedHoles(object, index, profile);
     }
 
     @Override
-    public Object getInBoundsFast(DynamicObject object, int index, boolean condition) {
-        DynamicObject value = getInBoundsFastJSObject(object, index, condition);
+    public Object getInBoundsFast(DynamicObject object, int index) {
+        DynamicObject value = getInBoundsFastJSObject(object, index);
         if (HolesJSObjectArray.isHoleValue(value)) {
             return Undefined.instance;
         }
@@ -183,7 +183,7 @@ public final class HolesJSObjectArray extends AbstractContiguousJSObjectArray {
     }
 
     @Override
-    public HolesJSObjectArray toHoles(DynamicObject object, long index, Object value, boolean condition) {
+    public HolesJSObjectArray toHoles(DynamicObject object, long index, Object value) {
         return this;
     }
 
@@ -192,23 +192,23 @@ public final class HolesJSObjectArray extends AbstractContiguousJSObjectArray {
     }
 
     @Override
-    public long nextElementIndex(DynamicObject object, long index0, boolean condition) {
-        return nextElementIndexHoles(object, index0, condition);
+    public long nextElementIndex(DynamicObject object, long index0) {
+        return nextElementIndexHoles(object, index0);
     }
 
     @Override
-    public long previousElementIndex(DynamicObject object, long index0, boolean condition) {
-        return previousElementIndexHoles(object, index0, condition);
+    public long previousElementIndex(DynamicObject object, long index0) {
+        return previousElementIndexHoles(object, index0);
     }
 
     @Override
-    public boolean hasElement(DynamicObject object, long index, boolean condition) {
-        return super.hasElement(object, index, condition) && !isHolePrepared(object, prepareInBoundsFast(object, (int) index, condition), condition);
+    public boolean hasElement(DynamicObject object, long index) {
+        return super.hasElement(object, index) && !isHolePrepared(object, prepareInBoundsFast(object, (int) index));
     }
 
     @Override
-    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict, boolean condition) {
-        return deleteElementHoles(object, index, condition);
+    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict) {
+        return deleteElementHoles(object, index);
     }
 
     @Override

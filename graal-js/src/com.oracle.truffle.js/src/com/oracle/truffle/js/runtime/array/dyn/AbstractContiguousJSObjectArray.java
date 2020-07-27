@@ -56,25 +56,25 @@ public abstract class AbstractContiguousJSObjectArray extends AbstractJSObjectAr
     }
 
     @Override
-    public DynamicObject getInBoundsFastJSObject(DynamicObject object, int index, boolean condition) {
-        return castNonNull(getArray(object, condition)[(int) (index - getIndexOffset(object))]);
+    public DynamicObject getInBoundsFastJSObject(DynamicObject object, int index) {
+        return castNonNull(getArray(object)[(int) (index - getIndexOffset(object))]);
     }
 
     @Override
     public void setInBoundsFast(DynamicObject object, int index, DynamicObject value, boolean condition) {
-        getArray(object, condition)[(int) (index - getIndexOffset(object))] = checkNonNull(value);
+        getArray(object)[(int) (index - getIndexOffset(object))] = checkNonNull(value);
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBoundsFast", index, value);
         }
     }
 
     @Override
-    protected final void setLengthLess(DynamicObject object, long length, boolean condition, ProfileHolder profile) {
-        setLengthLessContiguous(object, length, condition, profile);
+    protected final void setLengthLess(DynamicObject object, long length, ProfileHolder profile) {
+        setLengthLessContiguous(object, length, profile);
     }
 
     @Override
-    protected final int prepareInBoundsFast(DynamicObject object, long index, boolean condition) {
+    protected final int prepareInBoundsFast(DynamicObject object, long index) {
         return (int) (index - getIndexOffset(object));
     }
 
@@ -109,7 +109,7 @@ public abstract class AbstractContiguousJSObjectArray extends AbstractJSObjectAr
     }
 
     @Override
-    public boolean hasHoles(DynamicObject object, boolean condition) {
+    public boolean hasHoles(DynamicObject object) {
         return true;
     }
 

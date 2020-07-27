@@ -1218,7 +1218,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 errorBranch.enter();
                 throw Errors.createRangeErrorInvalidArrayLength();
             }
-            arrayLengthWrite.executeVoid(store, value, guard);
+            arrayLengthWrite.executeVoid(store, value);
             return true;
         }
     }

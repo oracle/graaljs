@@ -56,7 +56,7 @@ public final class ConstantEmptyArray extends AbstractConstantEmptyArray {
     }
 
     @Override
-    public ScriptArray setLengthImpl(DynamicObject object, long length, boolean condition, ProfileHolder profile) {
+    public ScriptArray setLengthImpl(DynamicObject object, long length, ProfileHolder profile) {
         setCapacity(object, length);
         return this;
     }

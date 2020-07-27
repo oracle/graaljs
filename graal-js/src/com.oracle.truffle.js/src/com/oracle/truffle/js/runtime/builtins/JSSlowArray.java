@@ -153,7 +153,7 @@ public final class JSSlowArray extends JSAbstractArray {
             // Using deleteElementImpl() instead of deleteElement() because the property
             // should be removed even from sealed arrays (it is being replaced by
             // by a regular data property defined above).
-            arraySetArrayType(thisObj, arrayType.deleteElementImpl(thisObj, index, false, false));
+            arraySetArrayType(thisObj, arrayType.deleteElementImpl(thisObj, index, false));
         }
 
         boolean succeeded = jsDefineProperty(thisObj, index, descriptor, false);

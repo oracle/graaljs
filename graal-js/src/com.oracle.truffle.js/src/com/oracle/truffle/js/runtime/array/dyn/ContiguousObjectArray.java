@@ -63,23 +63,23 @@ public final class ContiguousObjectArray extends AbstractContiguousObjectArray {
     }
 
     @Override
-    protected int prepareInBounds(DynamicObject object, int index, boolean condition, ProfileHolder profile) {
-        return prepareInBoundsContiguous(object, index, condition, profile);
+    protected int prepareInBounds(DynamicObject object, int index, ProfileHolder profile) {
+        return prepareInBoundsContiguous(object, index, profile);
     }
 
     @Override
-    protected int prepareSupported(DynamicObject object, int index, boolean condition, ProfileHolder profile) {
-        return prepareSupportedContiguous(object, index, condition, profile);
+    protected int prepareSupported(DynamicObject object, int index, ProfileHolder profile) {
+        return prepareSupportedContiguous(object, index, profile);
     }
 
     @Override
-    public boolean isSupported(DynamicObject object, long index, boolean condition) {
+    public boolean isSupported(DynamicObject object, long index) {
         return isSupportedContiguous(object, index);
     }
 
     @Override
-    public HolesObjectArray toHoles(DynamicObject object, long index, Object value, boolean condition) {
-        Object[] array = getArray(object, condition);
+    public HolesObjectArray toHoles(DynamicObject object, long index, Object value) {
+        Object[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         int arrayOffset = getArrayOffset(object);
@@ -92,10 +92,10 @@ public final class ContiguousObjectArray extends AbstractContiguousObjectArray {
     }
 
     @Override
-    public ZeroBasedObjectArray toNonContiguous(DynamicObject object, int index, Object value, boolean condition, ProfileHolder profile) {
-        setSupported(object, index, value, condition);
+    public ZeroBasedObjectArray toNonContiguous(DynamicObject object, int index, Object value, ProfileHolder profile) {
+        setSupported(object, index, value);
 
-        Object[] array = getArray(object, condition);
+        Object[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         ZeroBasedObjectArray newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, length, usedLength, array, integrityLevel);
