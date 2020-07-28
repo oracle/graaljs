@@ -1715,6 +1715,13 @@ public final class JSRuntime {
         return desc;
     }
 
+    public static int valueInRadix10(char c) {
+        if (isAsciiDigit(c)) {
+            return c - '0';
+        }
+        return -1;
+    }
+
     public static int valueInRadix(char c, int radix) {
         int val = valueInRadixIntl(c);
         return val < radix ? val : -1;
@@ -2238,12 +2245,58 @@ public final class JSRuntime {
      */
     @TruffleBoundary
     public static Number parseRawFitsLong(String string, int radix) {
-        return parseRawFitsLong(string, radix, string.length());
+        return parseRawFitsLong(string, radix, 0, string.length());
     }
 
     @TruffleBoundary
-    public static Number parseRawFitsLong(String string, int radix, int len) {
-        return parseRawFitsLong(string, radix, 0, len);
+    /**
+     * In contrast to {@link parseRawFitsLong} this assumes that radix is 10 and startPos=0. In
+     * addition, it stops at the first non-valid [0-9] character. Thus we only need one loop instead
+     * of two.
+     */
+    public static Number parseValidPartFitsLongRadix10(String string) {
+        int pos = 0;
+        boolean negate = false;
+
+        char firstChar = string.charAt(pos);
+        if (firstChar == '-') {
+            pos++;
+            negate = true;
+        } else if (firstChar == '+') {
+            pos++;
+        }
+        if (pos == string.length()) {
+            return Double.NaN;
+        }
+
+        int firstPos = pos;
+        long value = 0;
+        while (pos < string.length()) {
+            char c = string.charAt(pos);
+            int cval = JSRuntime.valueInRadix10(c);
+            if (cval < 0) {
+                if (pos != firstPos) {
+                    break;
+                } else {
+                    return Double.NaN;
+                }
+            }
+            value *= 10;
+            value += cval;
+            pos++;
+        }
+        if (value == 0 && negate && string.charAt(1) == '0') {
+            return -0.0;
+        }
+
+        assert value >= 0;
+        long signedValue = negate ? -value : value;
+
+        if (value <= Integer.MAX_VALUE) {
+            return (int) signedValue;
+        } else {
+            return (double) signedValue;
+        }
     }
 
     @TruffleBoundary
@@ -2298,12 +2351,7 @@ public final class JSRuntime {
      */
     @TruffleBoundary
     public static double parseRawDontFitLong(String string, int radix) {
-        return parseRawDontFitLong(string, radix, string.length());
-    }
-
-    @TruffleBoundary
-    public static double parseRawDontFitLong(String string, int radix, int len) {
-        return parseRawDontFitLong(string, radix, 0, len);
+        return parseRawDontFitLong(string, radix, 0, string.length());
     }
 
     @TruffleBoundary
@@ -2450,11 +2498,7 @@ public final class JSRuntime {
         if (JSArray.isJSArray(obj)) {
             return true;
         } else if (JSProxy.isProxy(obj)) {
-            DynamicObject proxy = (DynamicObject) obj;
-            if (JSProxy.isRevoked(proxy)) {
-                throw Errors.createTypeErrorProxyRevoked();
-            }
-            return isArrayProxy(proxy);
+            return isProxyAnArray((DynamicObject) obj);
         } else if (isForeignObject(obj)) {
             return InteropLibrary.getFactory().getUncached().hasArrayElements(obj);
         }
@@ -2462,7 +2506,16 @@ public final class JSRuntime {
     }
 
     @TruffleBoundary
-    private static boolean isArrayProxy(DynamicObject proxy) {
+    public static boolean isProxyAnArray(DynamicObject proxy) {
+        assert JSProxy.isProxy(proxy);
+        if (JSProxy.isRevoked(proxy)) {
+            throw Errors.createTypeErrorProxyRevoked();
+        }
+        return isArrayProxyRecurse(proxy);
+    }
+
+    @TruffleBoundary
+    private static boolean isArrayProxyRecurse(DynamicObject proxy) {
         return isArray(JSProxy.getTarget(proxy));
     }
 

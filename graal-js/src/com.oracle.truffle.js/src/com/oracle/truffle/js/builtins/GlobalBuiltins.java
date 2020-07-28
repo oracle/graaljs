@@ -71,6 +71,7 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -742,23 +743,23 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization
-        protected static boolean isNaN(@SuppressWarnings("unused") int value) {
+        protected static boolean isNaNInt(@SuppressWarnings("unused") int value) {
             return false;
         }
 
         @Specialization
-        protected static boolean isNaN(double value) {
+        protected static boolean isNaNDouble(double value) {
             return Double.isNaN(value);
         }
 
         @Specialization(guards = "!isUndefined(value)")
-        protected static boolean isNaN(Object value,
+        protected static boolean isNaNGeneric(Object value,
                         @Cached("create()") JSToDoubleNode toDoubleNode) {
-            return isNaN(toDoubleNode.executeDouble(value));
+            return isNaNDouble(toDoubleNode.executeDouble(value));
         }
 
         @Specialization(guards = "isUndefined(value)")
-        protected static boolean isNaN(@SuppressWarnings("unused") Object value) {
+        protected static boolean isNaNUndefined(@SuppressWarnings("unused") Object value) {
             return true;
         }
     }
@@ -774,23 +775,23 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization
-        protected static boolean isFinite(@SuppressWarnings("unused") int value) {
+        protected static boolean isFiniteInt(@SuppressWarnings("unused") int value) {
             return true;
         }
 
         @Specialization
-        protected static boolean isFinite(double value) {
+        protected static boolean isFiniteDouble(double value) {
             return !Double.isInfinite(value) && !Double.isNaN(value);
         }
 
         @Specialization(guards = "!isUndefined(value)")
-        protected static boolean isFinite(Object value,
+        protected static boolean isFiniteGeneric(Object value,
                         @Cached("create()") JSToDoubleNode toDoubleNode) {
-            return isFinite(toDoubleNode.executeDouble(value));
+            return isFiniteDouble(toDoubleNode.executeDouble(value));
         }
 
         @Specialization(guards = "isUndefined(value)")
-        protected static boolean isFinite(@SuppressWarnings("unused") Object value) {
+        protected static boolean isFiniteUndefined(@SuppressWarnings("unused") Object value) {
             return false;
         }
     }
@@ -807,12 +808,12 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization
-        protected int parseFloat(int value) {
+        protected int parseFloatInt(int value) {
             return value;
         }
 
         @Specialization
-        protected double parseFloat(double value, @Cached("createBinaryProfile()") ConditionProfile negativeZero) {
+        protected double parseFloatDouble(double value, @Cached("createBinaryProfile()") ConditionProfile negativeZero) {
             if (negativeZero.profile(JSRuntime.isNegativeZero(value))) {
                 return 0;
             }
@@ -820,7 +821,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization
-        protected double parseFloat(@SuppressWarnings("unused") boolean value) {
+        protected double parseFloatBoolean(@SuppressWarnings("unused") boolean value) {
             return Double.NaN;
         }
 
@@ -835,12 +836,12 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization
-        protected double parseFloat(String value) {
+        protected double parseFloatString(String value) {
             return parseFloatIntl(value);
         }
 
         @Specialization(guards = {"!isJSNull(value)", "!isUndefined(value)"})
-        protected double parseFloat(TruffleObject value) {
+        protected double parseFloatGeneric(TruffleObject value) {
             return parseFloatIntl(toString1(value));
         }
 
@@ -900,7 +901,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization(guards = "!isUndefined(radix0)")
-        protected Object parseInt(int thing, Object radix0,
+        protected Object parseIntInt(int thing, Object radix0,
                         @Cached("create()") BranchProfile needsRadixConversion) {
             int radix = toInt32(radix0);
             if (radix == 10 || radix == 0) {
@@ -920,7 +921,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization(guards = {"hasRegularToString(thing)", "isUndefined(radix0)"})
-        protected double parseIntNoRadix(double thing, @SuppressWarnings("unused") Object radix0) {
+        protected double parseIntDoubleNoRadix(double thing, @SuppressWarnings("unused") Object radix0) {
             return JSRuntime.truncateDouble2(thing);
         }
 
@@ -936,7 +937,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization(guards = "hasRegularToString(thing)")
-        protected double parseInt(double thing, Object radix0,
+        protected double parseIntDouble(double thing, Object radix0,
                         @Cached("create()") BranchProfile needsRadixConversion) {
             int radix = toInt32(radix0);
             if (radix == 0) {
@@ -954,10 +955,26 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             }
         }
 
-        @Specialization
+        @Specialization(guards = {"radix == 10", "thing.length() < 15"})
+        protected Object parseIntStringInt10(String thing, @SuppressWarnings("unused") int radix,
+                        @Shared("trimWhitespace") @Cached("create()") JSTrimWhitespaceNode trimWhitespaceNode) {
+            assert isShortStringInt10(thing, radix);
+            String inputString = trimWhitespaceNode.executeString(thing);
+            if (inputString.length() <= 0) {
+                needsNaN.enter();
+                return Double.NaN;
+            }
+            return JSRuntime.parseValidPartFitsLongRadix10(inputString);
+        }
+
+        protected static boolean isShortStringInt10(Object thing, Object radix) {
+            return JSRuntime.isString(thing) && JSRuntime.toStringIsString(thing).length() < 15 && radix instanceof Integer && ((Integer) radix) == 10;
+        }
+
+        @Specialization(guards = "!isShortStringInt10(thing, radix0)")
         protected Object parseIntGeneric(Object thing, Object radix0,
                         @Cached("create()") JSToStringNode toStringNode,
-                        @Cached("create()") JSTrimWhitespaceNode trimWhitespaceNode,
+                        @Shared("trimWhitespace") @Cached("create()") JSTrimWhitespaceNode trimWhitespaceNode,
                         @Cached("create()") BranchProfile needsRadix16,
                         @Cached("create()") BranchProfile needsDontFitLong,
                         @Cached("create()") BranchProfile needsTrimming) {
@@ -1001,10 +1018,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                     // requires exact processing for this radix
                     return parseDouble(Boundaries.substring(inputString, 0, len));
                 } else {
-                    return JSRuntime.parseRawDontFitLong(inputString, radix, len);
+                    return JSRuntime.parseRawDontFitLong(inputString, radix, 0, len);
                 }
             }
-            return JSRuntime.parseRawFitsLong(inputString, radix, len);
+            return JSRuntime.parseRawFitsLong(inputString, radix, 0, len);
         }
 
         @TruffleBoundary

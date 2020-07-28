@@ -53,7 +53,7 @@ public abstract class AbsNode extends MathOperation {
     }
 
     @Specialization(rewriteOn = ArithmeticException.class)
-    protected static int abs(int a, @Cached("createBinaryProfile()") ConditionProfile negative) throws ArithmeticException {
+    protected static int absInt(int a, @Cached("createBinaryProfile()") ConditionProfile negative) throws ArithmeticException {
         return negative.profile(a < 0) ? Math.subtractExact(0, a) : a;
     }
 
@@ -63,12 +63,12 @@ public abstract class AbsNode extends MathOperation {
     }
 
     @Specialization
-    protected static double abs(double a) {
+    protected static double absDouble(double a) {
         return Math.abs(a);
     }
 
     @Specialization
-    protected double abs(Object a) {
-        return abs(toDouble(a));
+    protected double absGeneric(Object a) {
+        return absDouble(toDouble(a));
     }
 }

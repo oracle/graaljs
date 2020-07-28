@@ -288,7 +288,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = "!isJSObject(object)")
-        protected DynamicObject getPrototypeOf(Object object) {
+        protected DynamicObject getPrototypeOfNonObject(Object object) {
             if (getContext().getEcmaScriptVersion() < 6) {
                 if (JSRuntime.isJSPrimitive(object)) {
                     throw Errors.createTypeErrorNotAnObject(object);
@@ -319,7 +319,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = "isJSObject(object)")
-        protected DynamicObject getPrototypeOf(DynamicObject object,
+        protected DynamicObject getPrototypeOfJSObject(DynamicObject object,
                         @Cached("create()") GetPrototypeNode getPrototypeNode) {
             return getPrototypeNode.executeJSObject(object);
         }
@@ -593,21 +593,21 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = {"isJSObject(prototype)", "isJSObject(properties)"})
-        protected DynamicObject create(VirtualFrame frame, DynamicObject prototype, DynamicObject properties) {
+        protected DynamicObject createObjectObject(VirtualFrame frame, DynamicObject prototype, DynamicObject properties) {
             DynamicObject ret = createObjectWithPrototype(frame, prototype);
             intlDefineProperties(ret, properties);
             return ret;
         }
 
         @Specialization(guards = {"isJSObject(prototype)", "!isJSNull(properties)"})
-        protected DynamicObject create(VirtualFrame frame, DynamicObject prototype, Object properties) {
+        protected DynamicObject createObjectNotNull(VirtualFrame frame, DynamicObject prototype, Object properties) {
             DynamicObject ret = createObjectWithPrototype(frame, prototype);
             return objectDefineProperties(ret, properties);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJSObject(prototype)", "isJSNull(properties)"})
-        protected DynamicObject createNull(DynamicObject prototype, Object properties) {
+        protected DynamicObject createObjectNull(DynamicObject prototype, Object properties) {
             throw Errors.createTypeErrorNotObjectCoercible(properties, null, getContext());
         }
 
@@ -635,8 +635,15 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Child private JSToPropertyKeyNode toPropertyKeyNode = JSToPropertyKeyNode.create();
 
-        @Specialization
-        protected DynamicObject defineProperty(Object thisObj, Object property, Object attributes) {
+        @Specialization(guards = "isJSObject(thisObj)")
+        protected DynamicObject definePropertyJSObjectString(DynamicObject thisObj, String property, Object attributes) {
+            PropertyDescriptor desc = toPropertyDescriptor(attributes);
+            JSRuntime.definePropertyOrThrow(thisObj, property, desc);
+            return thisObj;
+        }
+
+        @Specialization(replaces = "definePropertyJSObjectString")
+        protected DynamicObject definePropertyGeneric(Object thisObj, Object property, Object attributes) {
             DynamicObject object = asJSObject(thisObj);
             PropertyDescriptor desc = toPropertyDescriptor(attributes);
             Object propertyKey = toPropertyKeyNode.execute(property);
@@ -656,8 +663,13 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             super(context, builtin);
         }
 
-        @Specialization
-        protected DynamicObject defineProperties(Object thisObj, Object properties) {
+        @Specialization(guards = {"isJSObject(thisObj)", "isJSObject(properties)"})
+        protected DynamicObject definePropertiesObjectObject(DynamicObject thisObj, DynamicObject properties) {
+            return intlDefineProperties(thisObj, properties);
+        }
+
+        @Specialization(replaces = "definePropertiesObjectObject")
+        protected DynamicObject definePropertiesGeneric(Object thisObj, Object properties) {
             DynamicObject object = asJSObject(thisObj);
             return intlDefineProperties(object, toJSObject(properties));
         }
@@ -669,13 +681,13 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = "isJSObject(thisObj)")
-        protected boolean isExtensible(DynamicObject thisObj,
-                        @Cached("create()") IsExtensibleNode isExtensibleNode) {
+        protected boolean isExtensibleObject(DynamicObject thisObj,
+                        @Cached IsExtensibleNode isExtensibleNode) {
             return isExtensibleNode.executeBoolean(thisObj);
         }
 
         @Specialization(guards = "!isJSObject(thisObj)")
-        protected boolean isExtensible(Object thisObj) {
+        protected boolean isExtensibleNonObject(Object thisObj) {
             if (getContext().getEcmaScriptVersion() < 6) {
                 throw createTypeErrorCalledOnNonObject(thisObj);
             }
@@ -689,13 +701,13 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = "isJSObject(thisObj)")
-        protected DynamicObject preventExtensions(DynamicObject thisObj) {
+        protected DynamicObject preventExtensionsObject(DynamicObject thisObj) {
             JSObject.preventExtensions(thisObj, true);
             return thisObj;
         }
 
         @Specialization(guards = "!isJSObject(thisObj)")
-        protected Object preventExtensions(Object thisObj) {
+        protected Object preventExtensionsNonObject(Object thisObj) {
             if (getContext().getEcmaScriptVersion() < 6) {
                 throw createTypeErrorCalledOnNonObject(thisObj);
             }
@@ -776,32 +788,32 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected DynamicObject keys(Symbol symbol) {
+        protected DynamicObject keysSymbol(Symbol symbol) {
             return keysDynamicObject(toOrAsJSObject(symbol));
         }
 
         @Specialization
-        protected DynamicObject keys(JSLazyString string) {
+        protected DynamicObject keysString(JSLazyString string) {
             return keysDynamicObject(toOrAsJSObject(string));
         }
 
         @Specialization
-        protected DynamicObject keys(SafeInteger largeInteger) {
+        protected DynamicObject keysSafeInt(SafeInteger largeInteger) {
             return keysDynamicObject(toOrAsJSObject(largeInteger));
         }
 
         @Specialization
-        protected DynamicObject keys(BigInt bigInt) {
+        protected DynamicObject keysBigInt(BigInt bigInt) {
             return keysDynamicObject(toOrAsJSObject(bigInt));
         }
 
         @Specialization(guards = "!isTruffleObject(thisObj)")
-        protected DynamicObject keys(Object thisObj) {
+        protected DynamicObject keysOther(Object thisObj) {
             return keysDynamicObject(toOrAsJSObject(thisObj));
         }
 
         @Specialization(guards = "isForeignObject(obj)", limit = "3")
-        protected DynamicObject keys(Object obj,
+        protected DynamicObject keysForeign(Object obj,
                         @CachedLibrary("obj") InteropLibrary interop,
                         @CachedLibrary(limit = "3") InteropLibrary members,
                         @Cached BranchProfile growProfile) {

@@ -51,12 +51,12 @@ public abstract class AcoshNode extends MathOperation {
     }
 
     @Specialization
-    protected static double acosh(double x) {
+    protected static double acoshDouble(double x) {
         return Math.log(x + Math.sqrt(x * x - 1));
     }
 
     @Specialization
-    protected double acosh(Object a) {
-        return acosh(toDouble(a));
+    protected double acoshGeneric(Object a) {
+        return acoshDouble(toDouble(a));
     }
 }

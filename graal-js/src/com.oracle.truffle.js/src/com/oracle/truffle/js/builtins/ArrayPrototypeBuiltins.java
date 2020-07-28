@@ -257,7 +257,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             case pop:
                 return JSArrayPopNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case slice:
-                return JSArraySliceNodeGen.create(context, builtin, false, args().withThis().varArgs().createArgumentNodes(context));
+                return JSArraySliceNodeGen.create(context, builtin, false, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case shift:
                 return JSArrayShiftNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case unshift:
@@ -870,7 +870,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected Object pop(Object thisObj,
+        protected Object popGeneric(Object thisObj,
                         @Cached("create(getContext())") DeleteAndSetLengthNode deleteAndSetLength,
                         @Cached("createBinaryProfile()") ConditionProfile lengthIsZero) {
             final Object thisObject = toObject(thisObj);
@@ -964,17 +964,17 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private final ConditionProfile offsetProfile2 = ConditionProfile.createBinaryProfile();
 
         @Specialization
-        protected Object slice(Object thisObj, Object[] args,
+        protected Object sliceGeneric(Object thisObj, Object begin, Object end,
                         @Cached("create()") JSToIntegerAsLongNode toIntegerAsLong) {
             Object thisArrayObj = toObject(thisObj);
             long len = getLength(thisArrayObj);
-            long startPos = args.length > 0 ? JSRuntime.getOffset(toIntegerAsLong.executeLong(args[0]), len, offsetProfile1) : 0;
+            long startPos = begin != Undefined.instance ? JSRuntime.getOffset(toIntegerAsLong.executeLong(begin), len, offsetProfile1) : 0;
 
             long endPos;
-            if (args.length <= 1 || args[1] == Undefined.instance) {
+            if (end == Undefined.instance) {
                 endPos = len;
             } else {
-                endPos = JSRuntime.getOffset(toIntegerAsLong.executeLong(args[1]), len, offsetProfile2);
+                endPos = JSRuntime.getOffset(toIntegerAsLong.executeLong(end), len, offsetProfile2);
             }
 
             long size = startPos <= endPos ? endPos - startPos : 0;
@@ -1188,7 +1188,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = "isFastPath(thisObj)", replaces = "unshiftInt")
-        protected double unshift(DynamicObject thisObj, Object[] args) {
+        protected double unshiftDouble(DynamicObject thisObj, Object[] args) {
             return unshiftHoleless(thisObj, args);
         }
 

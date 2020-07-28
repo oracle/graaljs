@@ -55,7 +55,7 @@ public abstract class AsinhNode extends MathOperation {
     private final ConditionProfile isNegative = ConditionProfile.createBinaryProfile();
 
     @Specialization
-    protected double asinh(double x) {
+    protected double asinhDouble(double x) {
         if (JSRuntime.isNegativeZero(x)) {
             return -0.0;
         }
@@ -74,7 +74,7 @@ public abstract class AsinhNode extends MathOperation {
     }
 
     @Specialization
-    protected double asinh(Object a) {
-        return asinh(toDouble(a));
+    protected double asinhGeneric(Object a) {
+        return asinhDouble(toDouble(a));
     }
 }

@@ -228,37 +228,37 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "isJSType(thisObj)")
-        protected DynamicObject valueOf(DynamicObject thisObj) {
+        protected DynamicObject valueOfJSObject(DynamicObject thisObj) {
             return toJSObject(thisObj);
         }
 
         @Specialization
-        protected DynamicObject valueOf(Symbol thisObj) {
+        protected DynamicObject valueOfSymbol(Symbol thisObj) {
             return toJSObject(thisObj);
         }
 
         @Specialization
-        protected DynamicObject valueOf(JSLazyString thisObj) {
+        protected DynamicObject valueOfLazyString(JSLazyString thisObj) {
             return toJSObject(thisObj);
         }
 
         @Specialization
-        protected DynamicObject valueOf(SafeInteger thisObj) {
+        protected DynamicObject valueOfSafeInteger(SafeInteger thisObj) {
             return toJSObject(thisObj);
         }
 
         @Specialization
-        protected DynamicObject valueOf(BigInt thisObj) {
+        protected DynamicObject valueOfBigInt(BigInt thisObj) {
             return toJSObject(thisObj);
         }
 
         @Specialization(guards = "!isTruffleObject(thisObj)")
-        protected DynamicObject valueOf(Object thisObj) {
+        protected DynamicObject valueOfOther(Object thisObj) {
             return toJSObject(thisObj);
         }
 
         @Specialization(guards = "isForeignObject(thisObj)")
-        protected Object valueOf(Object thisObj,
+        protected Object valueOfForeign(Object thisObj,
                         @CachedLibrary(limit = "3") InteropLibrary interop) {
             if (interop.isNull(thisObj)) {
                 throw Errors.createTypeErrorNotObjectCoercible(thisObj, null, getContext());

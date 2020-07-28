@@ -71,7 +71,7 @@ public abstract class RoundNode extends MathOperation {
     }
 
     @Specialization
-    protected static int round(int a) {
+    protected static int roundInt(int a) {
         return a;
     }
 

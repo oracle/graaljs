@@ -192,7 +192,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @Specialization(guards = {"isJSWeakMap(thisObj)", "isJSObject(key)"})
-        protected Object get(DynamicObject thisObj, DynamicObject key) {
+        protected Object getGeneric(DynamicObject thisObj, DynamicObject key) {
             Object value = Boundaries.mapGet(JSWeakMap.getInternalWeakMap(thisObj), key);
             if (value != null) {
                 return value;

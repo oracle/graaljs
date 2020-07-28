@@ -199,7 +199,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "fast path")
         @Specialization(guards = "isJSFunction(thisFnObj)")
-        protected DynamicObject bind(DynamicObject thisFnObj, Object thisArg, Object[] args) {
+        protected DynamicObject bindFunction(DynamicObject thisFnObj, Object thisArg, Object[] args) {
             DynamicObject proto = getPrototypeNode.executeJSObject(thisFnObj);
 
             DynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), thisFnObj, thisArg, args, proto, isAsyncProfile, setProtoProfile);
@@ -284,7 +284,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isJSFunction(thisObj)", "!isJSProxy(thisObj)"})
-        protected DynamicObject bind(Object thisObj, Object thisArg, Object[] arg) {
+        protected DynamicObject bindError(Object thisObj, Object thisArg, Object[] arg) {
             throw Errors.createTypeErrorNotAFunction(thisObj);
         }
 

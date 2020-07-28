@@ -52,12 +52,12 @@ public abstract class AsinNode extends MathOperation {
 
     @TruffleBoundary
     @Specialization
-    protected static double asin(double a) {
+    protected static double asinDouble(double a) {
         return Math.asin(a);
     }
 
     @Specialization
-    protected double asin(Object a) {
-        return asin(toDouble(a));
+    protected double asinGeneric(Object a) {
+        return asinDouble(toDouble(a));
     }
 }

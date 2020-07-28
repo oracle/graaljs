@@ -190,7 +190,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             case sort:
                 return JSArraySortNodeGen.create(context, builtin, true, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case slice:
-                return JSArraySliceNodeGen.create(context, builtin, true, args().withThis().varArgs().createArgumentNodes(context));
+                return JSArraySliceNodeGen.create(context, builtin, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case every:
                 return JSArrayEveryNodeGen.create(context, builtin, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case copyWithin:

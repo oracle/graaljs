@@ -251,7 +251,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             case concat:
                 return JSStringConcatNodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
             case indexOf:
-                return JSStringIndexOfNodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
+                return JSStringIndexOfNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case lastIndexOf:
                 return JSStringLastIndexOfNodeGen.create(context, builtin, args().withThis().fixedArgs(2).varArgs().createArgumentNodes(context));
             case localeCompare:
@@ -262,7 +262,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 }
             case match:
                 if (context.getEcmaScriptVersion() >= 6) {
-                    return JSStringMatchNodeGen.create(context, builtin, false, args().withThis().varArgs().createArgumentNodes(context));
+                    return JSStringMatchNodeGen.create(context, builtin, false, args().withThis().fixedArgs(1).createArgumentNodes(context));
                 } else {
                     return JSStringMatchES5NodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
                 }
@@ -276,7 +276,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSStringReplaceAllNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case search:
                 if (context.getEcmaScriptVersion() >= 6) {
-                    return JSStringSearchNodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
+                    return JSStringSearchNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
                 } else {
                     return JSStringSearchES5NodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
                 }
@@ -327,7 +327,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSStringNormalizeNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
 
             case matchAll:
-                return JSStringMatchNodeGen.create(context, builtin, true, args().withThis().varArgs().createArgumentNodes(context));
+                return JSStringMatchNodeGen.create(context, builtin, true, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case padStart:
                 return JSStringPadNodeGen.create(context, builtin, true, args().withThis().varArgs().createArgumentNodes(context));
             case padEnd:
@@ -758,29 +758,34 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        @Specialization
-        protected int indexOf(String thisStr, Object[] args) {
-            String searchStr = toString(JSRuntime.getArgOrUndefined(args, 0));
-            return indexOfIntl(args, thisStr, searchStr);
+        @Specialization(guards = "isUndefined(position)")
+        protected int indexOfStringUndefined(String thisStr, String searchStr, @SuppressWarnings("unused") Object position) {
+            return Boundaries.stringIndexOf(thisStr, searchStr);
         }
 
-        @Specialization(replaces = "indexOf")
-        protected int indexOfGeneric(Object thisObj, Object[] args,
+        @Specialization
+        protected int indexOfStringInt(String thisStr, String searchStr, int position) {
+            return indexOfIntl(thisStr, searchStr, position);
+        }
+
+        @Specialization(replaces = {"indexOfStringInt"})
+        // replace only the StringInt specialization that duplicates code
+        protected int indexOfGeneric(Object thisObj, Object searchObj, Object position,
                         @Cached("create()") JSToStringNode toString2Node) {
             requireObjectCoercible(thisObj);
             String thisStr = toString(thisObj);
-            String searchStr = toString2Node.executeString(JSRuntime.getArgOrUndefined(args, 0));
-            return indexOfIntl(args, thisStr, searchStr);
+            String searchStr = toString2Node.executeString(searchObj);
+            return indexOfIntl(thisStr, searchStr, position);
         }
 
-        private int indexOfIntl(Object[] args, String thisStr, String searchStr) {
+        private int indexOfIntl(String thisStr, String searchStr, Object position) {
             int startPos;
-            if (hasPos.profile(args.length >= 2)) {
-                startPos = Math.min(toIntegerAsInt(args[1]), thisStr.length());
+            if (hasPos.profile(position != Undefined.instance)) {
+                startPos = Math.min(toIntegerAsInt(position), thisStr.length());
             } else {
                 startPos = 0;
             }
-            return thisStr.indexOf(searchStr, startPos);
+            return Boundaries.stringIndexOf(thisStr, searchStr, startPos);
         }
     }
 
@@ -909,16 +914,12 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return toString2Node.executeString(obj);
         }
 
-        @Specialization
-        protected Object splitGeneric(Object thisObj, Object separator, Object limit) {
-            if (getContext().getEcmaScriptVersion() < 6) {
-                return splitES5(thisObj, separator, limit);
-            } else {
-                return splitES6(thisObj, separator, limit);
-            }
+        protected boolean isES6OrNewer() {
+            return getContext().getEcmaScriptVersion() >= 6;
         }
 
-        private Object splitES5(Object thisObj, Object separator, Object limitObj) {
+        @Specialization(guards = "!isES6OrNewer()")
+        protected Object splitES5(Object thisObj, Object separator, Object limitObj) {
             requireObjectCoercible(thisObj);
             String thisStr = toString(thisObj);
             int limit = getLimit(limitObj);
@@ -935,7 +936,17 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
         }
 
-        private Object splitES6(Object thisObj, Object separator, Object limit) {
+        protected boolean isFastPath(Object thisObj, Object separator, Object limit) {
+            return JSRuntime.isString(thisObj) && JSRuntime.isString(separator) && limit == Undefined.instance;
+        }
+
+        @Specialization(guards = {"isES6OrNewer()", "isFastPath(thisStr, sepStr, limit)"})
+        protected Object splitES6StrStrUndefined(String thisStr, String sepStr, @SuppressWarnings("unused") DynamicObject limit) {
+            return split(thisStr, Integer.MAX_VALUE, STRING_SPLITTER, sepStr);
+        }
+
+        @Specialization(guards = {"isES6OrNewer()", "!isFastPath(thisObj, separator, limit)"})
+        protected Object splitES6Generic(Object thisObj, Object separator, Object limit) {
             requireObjectCoercible(thisObj);
             if (isSpecialProfile.profile(!(separator == Undefined.instance || separator == Null.instance))) {
                 Object splitter = getMethod(separator, Symbol.SYMBOL_SPLIT);
@@ -1227,7 +1238,12 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return builtinReplaceString(searchValue, replaceValue, thisObj, null);
         }
 
-        @Specialization(replaces = {"replaceString", "replaceStringCached"})
+        // have a guard instead of a replaces, that removes the other specializations
+        protected boolean isStringString(Object arg1, Object arg2) {
+            return JSRuntime.isString(arg1) && JSRuntime.isString(arg2);
+        }
+
+        @Specialization(guards = "!isStringString(searchValue, replaceValue)")
         protected Object replaceGeneric(Object thisObj, Object searchValue, Object replaceValue) {
             requireObjectCoercible(thisObj);
             Object searchVal = searchValueProfile.profile(searchValue);
@@ -1293,6 +1309,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     public abstract static class JSStringReplaceAllNode extends JSStringReplaceBaseNode {
         private final ConditionProfile isSearchValueEmpty = ConditionProfile.createBinaryProfile();
         private final ConditionProfile isRegExp = ConditionProfile.createBinaryProfile();
+        private final BranchProfile errorBranch = BranchProfile.create();
 
         @Child private IsRegExpNode isRegExpNode;
         @Child private PropertyGetNode getFlagsNode;
@@ -1338,6 +1355,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     Object flags = getFlags(searchValue);
                     requireObjectCoercible(flags);
                     if (toString(flags).indexOf('g') == -1) {
+                        errorBranch.enter();
                         throw Errors.createTypeError("Only global regexps allowed");
                     }
                 }
@@ -1579,6 +1597,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 Boundaries.builderAppend(sb, input, thisIndex, resultAccessor.captureGroupStart(result, 0));
                 replacer.appendReplacement(sb, input, result, groupCount, replaceValue);
                 if (sb.length() > getContext().getStringLengthLimit()) {
+                    CompilerDirectives.transferToInterpreter();
                     throw Errors.createRangeErrorInvalidStringLength();
                 }
                 thisIndex = resultAccessor.captureGroupEnd(result, 0);
@@ -1790,19 +1809,19 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "isJSString(thisStr)")
-        protected String toString(DynamicObject thisStr, @Cached("createStringToString(getContext())") JSStringToStringNode nestedToString) {
+        protected String toStringString(DynamicObject thisStr, @Cached("createStringToString(getContext())") JSStringToStringNode nestedToString) {
             // using nested toString node to specialize on exact type of the CharSequence
             return nestedToString.executeString(JSString.getCharSequence(thisStr));
         }
 
         @Specialization
         @TruffleBoundary
-        protected String toString(CharSequence thisStr) {
+        protected String toStringCharseq(CharSequence thisStr) {
             return thisStr.toString();
         }
 
         @Specialization(guards = {"!isString(thisObj)", "!isJSString(thisObj)"})
-        protected String toString(@SuppressWarnings("unused") Object thisObj) {
+        protected String toStringGeneric(@SuppressWarnings("unused") Object thisObj) {
             // unlike other String.prototype.[function]s, toString is NOT generic
             throw Errors.createTypeError("string object expected");
         }
@@ -1821,6 +1840,11 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
+        protected String toLowerCaseString(String thisStr) {
+            return toLowerCaseIntl(thisStr);
+        }
+
+        @Specialization(replaces = "toLowerCaseString")
         protected String toLowerCase(Object thisObj) {
             requireObjectCoercible(thisObj);
             String thisStr = toString(thisObj);
@@ -1905,7 +1929,12 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected String toUpperCase(Object thisObj) {
+        protected String toUpperCaseString(String thisStr) {
+            return toUpperCaseIntl(thisStr);
+        }
+
+        @Specialization(replaces = "toUpperCaseString")
+        protected String toUpperCaseGeneric(Object thisObj) {
             requireObjectCoercible(thisObj);
             String thisStr = toString(thisObj);
             return toUpperCaseIntl(thisStr);
@@ -1929,8 +1958,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected Object search(Object thisObj, Object... args) {
-            Object regex = JSRuntime.getArgOrUndefined(args, 0);
+        protected Object search(Object thisObj, Object regex) {
             assert getContext().getEcmaScriptVersion() >= 6;
             requireObjectCoercible(thisObj);
             if (isSpecialProfile.profile(!(regex == Undefined.instance || regex == Null.instance))) {
@@ -2014,7 +2042,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(replaces = {"substrInt", "substrLenUndef"})
-        protected String substr(Object thisObj, Object start, Object length) {
+        protected String substrGeneric(Object thisObj, Object start, Object length) {
             requireObjectCoercible(thisObj);
             String thisStr = toString(thisObj);
             int startInt = toIntegerAsInt(start);
@@ -2047,22 +2075,24 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private CreateRegExpNode createRegExpNode;
         @Child private IsRegExpNode isRegExpNode;
         @Child private PropertyGetNode getFlagsNode;
+        private final BranchProfile errorBranch;
         private final boolean matchAll;
 
         protected JSStringMatchNode(JSContext context, JSBuiltin builtin, boolean matchAll) {
             super(context, builtin);
             this.matchAll = matchAll;
+            this.errorBranch = matchAll ? BranchProfile.create() : null;
         }
 
         @Specialization
-        protected Object match(Object thisObj, Object... args) {
-            Object regex = JSRuntime.getArgOrUndefined(args, 0);
+        protected Object match(Object thisObj, Object regex) {
             requireObjectCoercible(thisObj);
             if (isSpecialProfile.profile(!(regex == Undefined.instance || regex == Null.instance))) {
                 if (matchAll && getIsRegExpNode().executeBoolean(regex)) {
                     Object flags = getFlags(regex);
                     requireObjectCoercible(flags);
                     if (toString(flags).indexOf('g') == -1) {
+                        errorBranch.enter();
                         throw Errors.createTypeError("Regular expression passed to matchAll() is missing 'g' flag.");
                     }
                 }
@@ -2197,8 +2227,14 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
+        protected String trimString(String thisStr,
+                        @Shared("trimWhitespace") @Cached JSTrimWhitespaceNode trimWhitespaceNode) {
+            return trimWhitespaceNode.executeString(thisStr);
+        }
+
+        @Specialization
         protected String trimObject(Object thisObj,
-                        @Cached("create()") JSTrimWhitespaceNode trimWhitespaceNode) {
+                        @Shared("trimWhitespace") @Cached JSTrimWhitespaceNode trimWhitespaceNode) {
             requireObjectCoercible(thisObj);
             return trimWhitespaceNode.executeString(toString(thisObj));
         }
@@ -2330,7 +2366,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      */
     public abstract static class JSStringSliceNode extends JSStringOperation {
         private final ConditionProfile canReturnEmpty = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isUndefined = ConditionProfile.createBinaryProfile();
         private final ConditionProfile offsetProfile1 = ConditionProfile.createBinaryProfile();
         private final ConditionProfile offsetProfile2 = ConditionProfile.createBinaryProfile();
 
@@ -2339,7 +2374,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected String sliceString(String str, int start, int end) {
+        protected String sliceStringIntInt(String str, int start, int end) {
             int len = str.length();
             int istart = JSRuntime.getOffset(start, len, offsetProfile1);
             int iend = JSRuntime.getOffset(end, len, offsetProfile2);
@@ -2350,14 +2385,26 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
         }
 
-        @Specialization(replaces = "sliceString")
-        protected String sliceObject(Object thisObj, int start, int end) {
+        @Specialization(replaces = {"sliceStringIntInt"})
+        protected String sliceObjectIntInt(Object thisObj, int start, int end) {
             requireObjectCoercible(thisObj);
-            return sliceString(toString(thisObj), start, end);
+            return sliceStringIntInt(toString(thisObj), start, end);
         }
 
-        @Specialization(replaces = {"sliceString", "sliceObject"})
-        protected String slice(Object thisObj, Object start, Object end) {
+        @Specialization(guards = "isUndefined(end)")
+        protected String sliceStringIntUndefined(String str, int start, @SuppressWarnings("unused") Object end) {
+            int len = str.length();
+            int istart = JSRuntime.getOffset(start, len, offsetProfile1);
+            if (canReturnEmpty.profile(len > istart)) {
+                return Boundaries.substring(str, istart, len);
+            } else {
+                return "";
+            }
+        }
+
+        @Specialization(replaces = {"sliceStringIntInt", "sliceObjectIntInt", "sliceStringIntUndefined"})
+        protected String sliceGeneric(Object thisObj, Object start, Object end,
+                        @Cached("createBinaryProfile()") ConditionProfile isUndefined) {
             requireObjectCoercible(thisObj);
             String s = toString(thisObj);
 
@@ -2401,7 +2448,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected boolean startsWith(Object thisObj, Object searchString, Object position,
+        protected boolean startsWithGeneric(Object thisObj, Object searchString, Object position,
                         @Cached("create()") JSToStringNode toString2Node,
                         @Cached("create(getContext())") IsRegExpNode isRegExpNode) {
             requireObjectCoercible(thisObj);
@@ -2433,8 +2480,22 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         private final BranchProfile noStringBranch = BranchProfile.create();
 
+        @Specialization(guards = "isUndefined(position)")
+        protected boolean endsWithStringUndefined(String thisStr, String searchStr, @SuppressWarnings("unused") Object position) {
+            int fromIndex = thisStr.length();
+            if (searchStr.length() <= 0) {
+                return true;
+            }
+            if (fromIndex >= thisStr.length()) {
+                fromIndex = thisStr.length();
+            } else if (fromIndex < 0) {
+                return false;
+            }
+            return endsWithIntl(thisStr, searchStr, fromIndex);
+        }
+
         @Specialization
-        protected boolean endsWith(Object thisObj, Object searchString, Object position,
+        protected boolean endsWithGeneric(Object thisObj, Object searchString, Object position,
                         @Cached("create()") JSToStringNode toString2Node,
                         @Cached("create(getContext())") IsRegExpNode isRegExpNode) {
             requireObjectCoercible(thisObj);
@@ -2453,6 +2514,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             } else if (fromIndex < 0) {
                 return false;
             }
+            return endsWithIntl(thisStr, searchStr, fromIndex);
+        }
+
+        private static boolean endsWithIntl(String thisStr, String searchStr, int fromIndex) {
             int foundIndex = Boundaries.stringLastIndexOf(thisStr, searchStr, fromIndex);
             return foundIndex >= 0 && foundIndex == fromIndex - searchStr.length();
         }
@@ -2470,8 +2535,13 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         private final BranchProfile noStringBranch = BranchProfile.create();
 
+        @Specialization(guards = "isUndefined(position)")
+        protected boolean includesString(String thisStr, String searchStr, @SuppressWarnings("unused") Object position) {
+            return Boundaries.stringIndexOf(thisStr, searchStr) != -1;
+        }
+
         @Specialization
-        protected boolean includes(Object thisObj, Object searchString, Object position,
+        protected boolean includesGeneric(Object thisObj, Object searchString, Object position,
                         @Cached("create()") JSToStringNode toString2Node,
                         @Cached("create(getContext())") IsRegExpNode isRegExpNode) {
             requireObjectCoercible(thisObj);
@@ -2482,7 +2552,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
             String searchStr = toString2Node.executeString(searchString);
             int fromIndex = toIntegerAsInt(position);
-            return thisStr.indexOf(searchStr, fromIndex) != -1;
+            return Boundaries.stringIndexOf(thisStr, searchStr, fromIndex) != -1;
         }
     }
 
