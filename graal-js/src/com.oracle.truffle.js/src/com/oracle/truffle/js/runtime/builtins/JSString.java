@@ -68,6 +68,7 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
+import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 import com.oracle.truffle.js.runtime.util.IteratorUtil;
 
 public final class JSString extends JSPrimitiveObject implements JSConstructorFactory.Default.WithFunctions {
@@ -341,15 +342,13 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
         return false;
     }
 
+    @TruffleBoundary
     @Override
     public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
         assert JSRuntime.isPropertyKey(key) : key.getClass().getName();
         long idx = JSRuntime.propertyKeyToArrayIndex(key);
         if (idx >= 0 && idx < getStringLength(thisObj)) {
-            if (doThrow) {
-                throw createTypeErrorCannotRedefineStringIndex(key);
-            }
-            return false;
+            return DefinePropertyUtil.isCompatiblePropertyDescriptor(isExtensible(thisObj), desc, stringGetIndexProperty(thisObj, key), doThrow);
         }
         return super.defineOwnProperty(thisObj, key, desc, doThrow);
     }
