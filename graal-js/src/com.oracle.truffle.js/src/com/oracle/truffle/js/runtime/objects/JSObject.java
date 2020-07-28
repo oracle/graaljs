@@ -88,12 +88,15 @@ public final class JSObject {
         return object instanceof JSDynamicObject;
     }
 
-    public static DynamicObject castJSObject(Object object) {
-        return ((JSDynamicObject) object);
+    /**
+     * Returns whether object is a proper JavaScript Object.
+     */
+    public static boolean isJSObject(Object object) {
+        return JSRuntime.isObject(object);
     }
 
-    public static boolean isJSObjectClass(Class<?> clazz) {
-        return JSDynamicObject.class.isAssignableFrom(clazz);
+    public static DynamicObject castJSObject(Object object) {
+        return ((JSDynamicObject) object);
     }
 
     public static JSClass getJSClass(DynamicObject obj) {
