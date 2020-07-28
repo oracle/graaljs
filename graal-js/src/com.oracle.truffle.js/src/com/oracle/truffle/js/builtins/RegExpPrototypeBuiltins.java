@@ -51,6 +51,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -878,6 +879,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private PropertyGetNode getIndexNode;
         @Child private PropertyGetNode getGroupsNode;
         @Child private TRegexUtil.TRegexResultAccessor readLazyLengthNode;
+        @Child private DynamicObjectLibrary lazyRegexResultNode;
         @Child private JSToLengthNode toLengthNode;
         @Child private JSToIntegerAsIntNode toIntegerNode;
         @Child private JSToStringNode toString2Node;
@@ -920,6 +922,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.isCallableNode = IsCallableNode.create();
             this.hasLazyRegexResultNode = HasHiddenKeyCacheNode.create(JSArray.LAZY_REGEX_RESULT_ID);
             this.stringBuilderProfile = StringBuilderProfile.create(context.getStringLengthLimit());
+            this.lazyRegexResultNode = DynamicObjectLibrary.getFactory().createDispatched(5);
         }
 
         @Specialization(guards = {"cachedReplaceValue.equals(replaceValue)"})
@@ -1345,7 +1348,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 readLazyLengthNode = insert(TRegexUtil.TRegexResultAccessor.create());
             }
-            return readLazyLengthNode.captureGroupLength(JSAbstractArray.arrayGetRegexResult(obj), 0);
+            return readLazyLengthNode.captureGroupLength(JSAbstractArray.arrayGetRegexResult(obj, lazyRegexResultNode), 0);
         }
 
         private PropertyGetNode getGetUnicodeNode() {

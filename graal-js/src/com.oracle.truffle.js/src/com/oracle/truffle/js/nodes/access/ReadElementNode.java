@@ -61,6 +61,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -991,16 +992,20 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     private static class LazyRegexResultArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
-        @Child TRegexUtil.TRegexMaterializeResultNode materializeResultNode;
+        @Child private TRegexUtil.TRegexMaterializeResultNode materializeResultNode;
+        @Child private DynamicObjectLibrary lazyRegexResultNode;
+        @Child private DynamicObjectLibrary lazyRegexResultOriginalInputNode;
 
         LazyRegexResultArrayReadElementCacheNode(ScriptArray arrayType, ArrayReadElementCacheNode next) {
             super(arrayType, next);
         }
 
         private TRegexUtil.TRegexMaterializeResultNode getMaterializeResultNode() {
-            if (materializeResultNode == null) {
+            if (materializeResultNode == null || lazyRegexResultNode == null || lazyRegexResultOriginalInputNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 materializeResultNode = insert(TRegexUtil.TRegexMaterializeResultNode.create());
+                lazyRegexResultNode = insert(DynamicObjectLibrary.getFactory().createDispatched(5));
+                lazyRegexResultOriginalInputNode = insert(DynamicObjectLibrary.getFactory().createDispatched(5));
             }
             return materializeResultNode;
         }
@@ -1009,7 +1014,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             LazyRegexResultArray lazyRegexResultArray = (LazyRegexResultArray) array;
             if (inBounds.profile(lazyRegexResultArray.hasElement(target, (int) index))) {
-                return LazyRegexResultArray.materializeGroup(getMaterializeResultNode(), target, (int) index);
+                return LazyRegexResultArray.materializeGroup(getMaterializeResultNode(), target, (int) index, lazyRegexResultNode, lazyRegexResultOriginalInputNode);
             } else {
                 return readOutOfBounds(target, index, receiver, defaultValue, context);
             }

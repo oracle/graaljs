@@ -49,6 +49,7 @@ import java.util.TreeMap;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.js.runtime.Boundaries;
@@ -159,13 +160,13 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         return ArrayAccess.SINGLETON.getAllocationSite(thisObj);
     }
 
-    public static Object arrayGetRegexResult(DynamicObject thisObj) {
+    public static Object arrayGetRegexResult(DynamicObject thisObj, DynamicObjectLibrary lazyRegexResult) {
         assert JSArray.isJSArray(thisObj) && JSArray.arrayGetArrayType(thisObj) == LazyRegexResultArray.LAZY_REGEX_RESULT_ARRAY;
-        return JSDynamicObject.getOrNull(thisObj, LAZY_REGEX_RESULT_ID);
+        return lazyRegexResult.getOrDefault(thisObj, LAZY_REGEX_RESULT_ID, null);
     }
 
-    public static String arrayGetRegexResultOriginalInput(DynamicObject thisObj) {
-        return (String) JSDynamicObject.getOrNull(thisObj, LAZY_REGEX_ORIGINAL_INPUT_ID);
+    public static String arrayGetRegexResultOriginalInput(DynamicObject thisObj, DynamicObjectLibrary lazyRegexResultOriginalInput) {
+        return (String) lazyRegexResultOriginalInput.getOrDefault(thisObj, LAZY_REGEX_ORIGINAL_INPUT_ID, null);
     }
 
     public static final Comparator<Object> DEFAULT_JSARRAY_COMPARATOR = new DefaultJSArrayComparator();
