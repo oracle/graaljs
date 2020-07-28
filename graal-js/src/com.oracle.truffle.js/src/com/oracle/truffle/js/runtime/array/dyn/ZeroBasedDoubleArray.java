@@ -74,7 +74,7 @@ public final class ZeroBasedDoubleArray extends AbstractDoubleArray {
     }
 
     @Override
-    public void setInBoundsFast(DynamicObject object, int index, double value, boolean condition) {
+    public void setInBoundsFast(DynamicObject object, int index, double value) {
         getArray(object)[index] = value;
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBoundsFast", index, value);

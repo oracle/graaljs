@@ -80,7 +80,7 @@ public final class HolesJSObjectArray extends AbstractContiguousJSObjectArray {
     }
 
     @Override
-    public void setInBoundsFast(DynamicObject object, int index, DynamicObject value, boolean condition) {
+    public void setInBoundsFast(DynamicObject object, int index, DynamicObject value) {
         throw Errors.shouldNotReachHere("should not call this method, use setInBounds(Non)Hole");
     }
 

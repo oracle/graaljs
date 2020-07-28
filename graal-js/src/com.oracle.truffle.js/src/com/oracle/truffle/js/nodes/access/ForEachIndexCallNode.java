@@ -130,13 +130,13 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
     public final Object executeForEachIndex(Object target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult) {
         boolean isArray = isArrayNode.execute(target);
         if (isArray && context.getArrayPrototypeNoElementsAssumption().isValid()) {
-            return executeForEachIndexFast((DynamicObject) target, callback, callbackThisArg, fromIndex, length, isArray, initialResult);
+            return executeForEachIndexFast((DynamicObject) target, callback, callbackThisArg, fromIndex, length, initialResult);
         } else {
             return executeForEachIndexSlow(target, callback, callbackThisArg, fromIndex, length, initialResult);
         }
     }
 
-    protected abstract Object executeForEachIndexFast(DynamicObject target, Object callback, Object callbackThisArg, long fromIndex, long length, boolean arrayCondition, Object initialResult);
+    protected abstract Object executeForEachIndexFast(DynamicObject target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult);
 
     protected abstract Object executeForEachIndexSlow(Object target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult);
 
@@ -195,8 +195,8 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         }
     }
 
-    protected final Object readElementInBounds(DynamicObject target, long index, boolean arrayCondition) {
-        return readElementNode.executeArrayGet(target, JSObject.getArray(target), index, target, Undefined.instance, arrayCondition, context);
+    protected final Object readElementInBounds(DynamicObject target, long index) {
+        return readElementNode.executeArrayGet(target, JSObject.getArray(target), index, target, Undefined.instance, context);
     }
 
     protected final boolean hasProperty(Object target, long index) {
@@ -217,13 +217,13 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         }
 
         @Override
-        protected Object executeForEachIndexFast(DynamicObject target, Object callback, Object callbackThisArg, long fromIndex, long length, boolean arrayCondition, Object initialResult) {
+        protected Object executeForEachIndexFast(DynamicObject target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult) {
             long index = fromIndexZero.profile(fromIndex == 0) ? firstElementIndex(target, length) : nextElementIndex(target, fromIndex - 1, length);
             Object currentResult = initialResult;
             if (index < length) {
                 needLoop.enter();
                 while (index < length && index <= lastElementIndex(target, length)) {
-                    Object value = readElementInBounds(target, index, arrayCondition);
+                    Object value = readElementInBounds(target, index);
                     Object callbackResult = callback(index, value, target, callback, callbackThisArg, currentResult);
                     MaybeResult<Object> maybeResult = maybeResultNode.apply(index, value, callbackResult, currentResult);
                     checkHasDetachedBuffer(target);
@@ -279,7 +279,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         }
 
         @Override
-        protected Object executeForEachIndexFast(DynamicObject target, Object callback, Object callbackThisArg, long fromIndex, long length, boolean arrayCondition, Object initialResult) {
+        protected Object executeForEachIndexFast(DynamicObject target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult) {
             assert fromIndex < length;
             long index = previousElementIndex(target, fromIndex + 1);
             // NB: cannot rely on lastElementIndex here: can be > length (e.g. arguments object)
@@ -287,7 +287,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
             if (index >= 0) {
                 needLoop.enter();
                 while (index >= 0 && index >= firstElementIndex(target, length)) {
-                    Object value = readElementInBounds(target, index, arrayCondition);
+                    Object value = readElementInBounds(target, index);
                     Object callbackResult = callback(index, value, target, callback, callbackThisArg, currentResult);
                     MaybeResult<Object> maybeResult = maybeResultNode.apply(index, value, callbackResult, currentResult);
                     checkHasDetachedBuffer(target);

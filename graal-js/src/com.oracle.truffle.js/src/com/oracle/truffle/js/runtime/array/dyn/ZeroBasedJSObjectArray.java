@@ -79,7 +79,7 @@ public final class ZeroBasedJSObjectArray extends AbstractJSObjectArray {
     }
 
     @Override
-    public void setInBoundsFast(DynamicObject object, int index, DynamicObject value, boolean condition) {
+    public void setInBoundsFast(DynamicObject object, int index, DynamicObject value) {
         getArray(object)[index] = checkNonNull(value);
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBoundsFast", index, value);

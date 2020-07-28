@@ -86,7 +86,7 @@ public final class HolesDoubleArray extends AbstractContiguousDoubleArray {
     }
 
     @Override
-    public void setInBoundsFast(DynamicObject object, int index, double value, boolean condition) {
+    public void setInBoundsFast(DynamicObject object, int index, double value) {
         throw Errors.shouldNotReachHere("should not call this method, use setInBounds(Non)Hole");
     }
 

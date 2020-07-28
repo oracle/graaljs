@@ -62,7 +62,7 @@ public abstract class AbstractObjectArray extends AbstractWritableArray {
         return HolesObjectArray.makeHolesObjectArray(object, length, (Object[]) array, indexOffset, arrayOffset, usedLength, holeCount, integrityLevel);
     }
 
-    public abstract void setInBoundsFast(DynamicObject object, int index, Object value, boolean condition);
+    public abstract void setInBoundsFast(DynamicObject object, int index, Object value);
 
     @Override
     public final ScriptArray setElementImpl(DynamicObject object, long index, Object value, boolean strict) {
