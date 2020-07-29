@@ -80,10 +80,7 @@ public final class SwitchNode extends StatementNode {
     @Children private final JavaScriptNode[] statements;
 
     private SwitchNode(JavaScriptNode[] caseExpressions, int[] jumptable, JavaScriptNode[] statements) {
-        this.caseExpressions = new JavaScriptNode[caseExpressions.length];
-        for (int i = 0; i < caseExpressions.length; i++) {
-            this.caseExpressions[i] = caseExpressions[i];
-        }
+        this.caseExpressions = caseExpressions;
         this.jumptable = jumptable;
         assert caseExpressions.length == jumptable.length - 1;
         this.statements = statements;
