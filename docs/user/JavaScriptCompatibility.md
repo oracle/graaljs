@@ -20,7 +20,7 @@ GraalVM JavaScript provides the following function objects in the global scope a
 Array, ArrayBuffer, Boolean, DataView, Date, Error, Function, JSON, Map, Math, Number, Object, Promise, Proxy, Reflect, RegExp, Set, SharedArrayBuffer, String, Symbol, TypedArray, WeakMap, WeakSet
 
 Additional objects are available under flags, for instance `Intl` (flag: `--js.intl-402`).
-Run `js --help` or `js --help:languages` for the list of available flags. 
+Run `js --help` or `js --help:languages` for the list of available flags.
 
 Several of these function objects and some of their members are only available when a certain version of the spec is selected for execution.
 For a list of methods provided, inspect the ECMAScript specification.
@@ -173,6 +173,8 @@ $ js --experimental-options --js.scripting=true
 ```
 
 In scripting mode, several properties and functions are added to the global object, including [readFully](#readfile), [readLine](#readline), `$ARG`, `$ENV`, and `$EXEC`.
+
+We provide migration guides for code previously targeted to the [Nashorn](https://github.com/graalvm/graaljs/blob/master/docs/user/NashornMigrationGuide.md) or [Rhino](https://github.com/graalvm/graaljs/blob/master/docs/user/RhinoMigrationGuide.md) engines.
 
 ## GraalVM JavaScript Extensions
 

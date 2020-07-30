@@ -1,13 +1,13 @@
 # Differences Between Node.js and Java Embeddings
 
 GraalVM's JavaScript engine is a fully-compliant ECMA2020 language runtime.
-As such, it can run JavaScript code in a variety of embedding scenarios, including the Oracle [RDBMS](https://www.graalvm.org/docs/examples/mle-oracle/), any Java-based application, and Node.js.
+As such, it can run JavaScript code in a variety of embedding scenarios, including the Oracle [RDBMS](https://www.graalvm.org/docs/examples/mle-oracle/), any Java-based application and Node.js.
 
 Depending on the GraalVM's JavaScript embedding scenario, applications have access to different built-in capabilities.
 For example, Node.js applications running on GraalVM's JavaScript engine have access to all of Node.js' APIs, including built-in Node.js' modules such as `'fs'`, `'http'`, etc.
-Conversely, JavaScript code embedded in a Java application has access to limited capabilities, as specified through the [Context API](https://www.graalvm.org/docs/reference-manual/embed/), and do _not_ have access to Node.js' built-in modules.
+Conversely, JavaScript code embedded in a Java application has access to limited capabilities, as specified through the [Context API](https://www.graalvm.org/docs/reference-manual/embed/), and do _not_ have access to Node.js built-in modules.
 
-In this document we focus on the main differences between a Node.js application and a GraalVM JavaScript application embedded in Java.
+This guide describes the main differences between a Node.js application and a GraalVM JavaScript application embedded in Java.
 
 ## Context Creation
 
@@ -32,7 +32,7 @@ The object is not available by default, and can be enabled in the following way:
 ```
 Context.create("js").withHostInterop()
 ```
-More details on the Java interoperability capabilities of GraalVM JavaScript are available in [docs/user/JavaInterop.md](https://github.com/graalvm/graaljs/blob/master/docs/user/JavaInterop.md).
+More details on the Java interoperability capabilities of GraalVM JavaScript are available in the [Java Interoperability](https://github.com/graalvm/graaljs/blob/master/docs/user/JavaInteroperability.md) guide.
 
 ## Multithreading
 
@@ -56,8 +56,7 @@ This can be done in the following way:
 1. In Node.js, the classpath can be modified using the `--jvm.cp` option.
 2. In Java, the default Java's `-cp` option can be used.
 
-More details on GraalVM command line options are available in [docs/user/Options.md](https://github.com/graalvm/graaljs/blob/master/docs/user/Options.md).
-
+More details on GraalVM command line options are available in the [Options](https://github.com/graalvm/graaljs/blob/master/docs/user/Options.md) guide.
 
 ## JavaScript Modules
 

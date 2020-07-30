@@ -22,10 +22,10 @@ This way, GraalVM JavaScript is executed on a traditional JVM and allows full Ja
 #### Classpath
 To load Java classes you need to have them on the Java classpath.
 You can specify the classpath with the `--vm.classpath=<classpath>` option (or short: `--vm.cp=<classpath>`).
-
+```
     node --jvm --vm.cp=/my/class/path
     js --jvm --vm.cp=/my/class/path
-
+```
 The method `Java.addToClasspath()` can be used to programmatically add to the classpath at runtime.
 
 ### Polyglot Context
@@ -40,12 +40,12 @@ Context context = Context.newBuilder("js").
 context.eval("js", jsSourceCode);
 ```
 
-See [graalvm.org](http://www.graalvm.org/docs/reference-manual/polyglot/) for more details.
+See the [Polyglot Programming](https://www.graalvm.org/docs/reference-manual/polyglot-programming/) reference for more details.
 
 ### ScriptEngine (JSR 223)
 The `org.graalvm.polyglot.Context` is the preferred execution method for interoperability with languages and tool of the GraalVM.
 In addition, GraalVM JavaScript is fully compatible with JSR 223 and supports the `ScriptEngine API`.
-Internally, the GraalVM JavaScript ScriptEngine wraps a [polyglot context instance](http://www.graalvm.org/docs/reference-manual/polyglot/).
+Internally, the GraalVM JavaScript ScriptEngine wraps a polyglot context instance.
 
 ```java
 ScriptEngine eng = new ScriptEngineManager().getEngineByName("graal.js");

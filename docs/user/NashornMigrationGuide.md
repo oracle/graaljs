@@ -3,8 +3,9 @@
 The the Nashorn engine has been deprecated in JDK 11 as part of [JEP 335](https://openjdk.java.net/jeps/335) and is scheduled to be removed from future JDK releases as part of [JEP 372](https://openjdk.java.net/jeps/372).
 GraalVM JavaScript can step in as a replacement for code previously executed on the Nashorn engine.
 It provides all the features previously provided by Nashorn, with many being available by default, some behind flags, some requiring minor modifications to your source code.
-This document serves as migration guide for code previously targeted to the Nashorn engine.
-See the [JavaInterop.md](JavaInterop.md) for an overview of supported Java interoperability features.
+
+This guide serves as migration guide for code previously targeted to the Nashorn engine.
+See the [Java Interoperability](JavaInteroperability.md) guide for an overview of supported Java interoperability features.
 
 Both Nashorn and GraalVM JavaScript support a similar set of syntax and semantics for Java interoperability.
 One notable difference is that GraalVM JavaScript takes a _secure by default_ approach, meaning some features need to be explicitly enabled that were available by default on Nashorn.
@@ -17,18 +18,20 @@ Nashorn features available by default (dependent on [security settings](#Secure-
 * Java package globals: `Packages`, `java`, `javafx`, `javax`, `com`, `org`, `edu`
 
 ## Nashorn Compatibility Mode
+
 GraalVM JavaScript provides a Nashorn compatibility mode.
 Some of the functionality necessary for Nashorn compatibility is only available when the `js.nashorn-compat` option is enabled.
 This is the case for Nashorn-specific extensions that GraalVM JavaScript does not want to expose by default.
 Note that you have to enable [experimental options](Options.md#stable-and-experimental-options) to use this flag.
-Further note that setting this flag defeats the [secure by default](#Secure-by-default) approach of GraalVM JavaScript in some cases, e.g. when operating on a legacy `ScriptEngine`.
+Further note that setting this flag defeats the [secure by default](#Secure-by-default) approach of GraalVM JavaScript in some cases, e.g., when operating on a legacy `ScriptEngine`.
 
-The `js.nashorn-compat` option can be set using a command line option:
+The `js.nashorn-compat` option can be set:
+1. by using a command line option:
 ```
 $ js --experimental-options --js.nashorn-compat=true
 ```
 
-Or using the polyglot API:
+2. by using the polyglot API:
 ```java
 import org.graalvm.polyglot.Context;
 
@@ -37,7 +40,7 @@ try (Context context = Context.newBuilder().allowExperimentalOptions(true).optio
 }
 ```
 
-Or using a system property when starting a Java application (remember to enable `allowExperimentalOptions` on the `Context.Builder` in your application as well):
+3. by using a system property when starting a Java application (remember to enable `allowExperimentalOptions` on the `Context.Builder` in your application as well):
 ```
 $ java -Dpolyglot.js.nashorn-compat=true MyApplication
 ```
@@ -221,4 +224,4 @@ GraalVM JavaScript provides a `print` builtin function compatible with Nashorn.
 
 Note that GraalVM JavaScript also provides a `console.log` function.
 This is an alias for `print` in pure JavaScript mode, but uses an implementation provided by Node.js when running in Node mode.
-Behavior around Java objects differs for `console.log` in Node mode as Node.js does not implement special treatment for such objects.
+The behaviour around Java objects differs for `console.log` in Node mode as Node.js does not implement special treatment for such objects.

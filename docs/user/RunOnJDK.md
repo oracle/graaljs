@@ -1,7 +1,7 @@
 # Run GraalVM JavaScript on a Stock JDK
 
 GraalVM JavaScript is optimized for execution as part of GraalVM or in an embedding scenario built on the GraalVM.
-This guarantees best possible performance by using the [GraalVM Compiler](https://github.com/oracle/graal) as the optimizing compiler and potentially [GraalVM Native Image](https://github.com/oracle/graal/tree/master/substratevm) to ahead-of-time compile the engine into a native binary.
+This guarantees best possible performance by using the [GraalVM Compiler](https://github.com/oracle/graal) as the optimizing compiler and potentially [GraalVM Native Image](https://www.graalvm.org/docs/reference-manual/graalvm-native-image/) to ahead-of-time compile the engine into a native binary.
 
 As GraalVM JavaScript is a Java application, it is possible to execute it on a stock Java VM like OpenJDK.
 When executed without the GraalVM Compiler as optimizing compiler, performance of GraalVM JavaScript will be significantly worse.
@@ -22,21 +22,20 @@ In essence, the example pom file activates JVMCI to install additional JIT compi
 
 ### GraalVM JavaScript without Maven - JAR files from GraalVM
 To work without Maven, the JAR files from a GraalVM release can be used as well.
-GraalVM is available on the [Oracle Technology Network](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html) (the Enterprise Edition) and on [GitHub](https://github.com/oracle/graal/releases) (the Community Edition).
-Both editions' files can be used.
+GraalVM is available [Enterprise](https://www.oracle.com/downloads/graalvm-downloads.html) and [Community](https://github.com/oracle/graal/releases) Editions. Both editions' files can be used.
 
 The relevant files are:
-* $GRAALVM/jre/languages/js/graaljs.jar - core component of GraalVM JavaScript (always required)
-* $GRAALVM/jre/tools/regex/tregex.jar - Graal's regular expression engine (always required)
-* $GRAALVM/jre/lib/boot/graal-sdk.jar - Graal's SDK to implement languages (always required)
-* $GRAALVM/jre/lib/truffle/truffle-api.jar - Graal's Truffle API, to implement language interpreters (always required)
-* $GRAALVM/jre/lib/graalvm/graaljs-launcher.jar - GraalVM JavaScript's command line interpreter (optional)
-* $GRAALVM/jre/lib/graalvm/launcher-common.jar - Common launcher code shared by all languages (required by graaljs-launcher.jar)
-* $GRAALVM/jre/lib/boot/graaljs-scriptengine.jar - GraalVM JavaScript's ScriptEngine/JSR 223 support (optional)
+* _$GRAALVM/jre/languages/js/graaljs.jar_ - core component of GraalVM JavaScript (always required)
+* _$GRAALVM/jre/tools/regex/tregex.jar_ - Graal's regular expression engine (always required)
+* _$GRAALVM/jre/lib/boot/graal-sdk.jar_ - Graal's SDK to implement languages (always required)
+* _$GRAALVM/jre/lib/truffle/truffle-api.jar_ - Graal's Truffle API, to implement language interpreters (always required)
+* _$GRAALVM/jre/lib/graalvm/graaljs-launcher.jar_ - GraalVM JavaScript's command line interpreter (optional)
+* _$GRAALVM/jre/lib/graalvm/launcher-common.jar_ - Common launcher code shared by all languages (required by _graaljs-launcher.jar_)
+* _$GRAALVM/jre/lib/boot/graaljs-scriptengine.jar_ - GraalVM JavaScript's ScriptEngine/JSR 223 support (optional)
 
 ## GraalVM JavaScript on JDK 8
 The following command line executes GraalVM JavaScript on a JDK 8, starting a JavaScript console.
-Note that this variant does not include the Graal Compiler as optimizing compiler, so the perfomance of GraalVM JavaScript will be supoptimal.
+Note that this variant does not include the Graal Compiler as optimizing compiler, so the performance of GraalVM JavaScript will be supoptimal.
 See the JDK 11 example below how to improve on this.
 
 *On Linux*
@@ -91,7 +90,7 @@ GRAALVM=/path/to/GraalVM
 The Maven example as given above is the preferred way to start on JDK 11.
 Working without Maven, you have to provide the JAR files manually and provide them to the Java command.
 Using --upgrade-module-path executes GraalVM JavaScript with the GraalVM Compiler as optimizing compiler, guaranteeing best performance.
-For that, a [GraalVM Compiler](https://github.com/oracle/graal) built with JDK 11 is required.
+For that, the [GraalVM Compiler](https://github.com/oracle/graal) built with JDK 11 is required.
 
 ```
 GRAALVM=/path/to/GraalVM
