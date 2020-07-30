@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.control;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -77,15 +78,25 @@ public final class SwitchNode extends StatementNode {
      */
     @CompilationFinal(dimensions = 1) private final int[] jumptable;
     @Children private final JavaScriptNode[] statements;
+    private final boolean ordered;
 
     private SwitchNode(JavaScriptNode[] caseExpressions, int[] jumptable, JavaScriptNode[] statements) {
-        this.caseExpressions = new JavaScriptNode[caseExpressions.length];
-        for (int i = 0; i < caseExpressions.length; i++) {
-            this.caseExpressions[i] = caseExpressions[i];
-        }
+        this.caseExpressions = caseExpressions;
         this.jumptable = jumptable;
         assert caseExpressions.length == jumptable.length - 1;
         this.statements = statements;
+        this.ordered = isMonotonicallyIncreasing(jumptable);
+    }
+
+    private static boolean isMonotonicallyIncreasing(int[] table) {
+        for (int i = 0; i < table.length - 1; i++) {
+            int start = table[i];
+            int end = table[i + 1];
+            if (start > end) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public static SwitchNode create(JavaScriptNode[] caseExpressions, int[] jumptable, JavaScriptNode[] statements) {
@@ -166,8 +177,16 @@ public final class SwitchNode extends StatementNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        int jumptableIdx = identifyTargetCase(frame);
-        return executeStatements(frame, jumptable[jumptableIdx]);
+        if (ordered) {
+            return executeOrdered(frame);
+        } else {
+            return executeDefault(frame);
+        }
+    }
+
+    private Object executeDefault(VirtualFrame frame) {
+        int statementStartIndex = identifyTargetCase(frame);
+        return executeStatements(frame, statementStartIndex);
     }
 
     @ExplodeLoop
@@ -178,7 +197,9 @@ public final class SwitchNode extends StatementNode {
                 break;
             }
         }
-        return i;
+        int statementStartIndex = jumptable[i];
+        CompilerAsserts.partialEvaluationConstant(statementStartIndex);
+        return statementStartIndex;
     }
 
     @ExplodeLoop
@@ -188,6 +209,48 @@ public final class SwitchNode extends StatementNode {
             if (statementIndex >= statementStartIndex) {
                 result = statements[statementIndex].execute(frame);
             }
+        }
+        return result;
+    }
+
+    @ExplodeLoop
+    private Object executeOrdered(VirtualFrame frame) {
+        final JavaScriptNode[] caseExpressionsLocal = caseExpressions;
+        final JavaScriptNode[] statementsLocal = statements;
+        final int[] jumptableLocal = jumptable;
+
+        boolean caseFound = false;
+        Object result = EMPTY;
+
+        int jumptableIdx;
+        for (jumptableIdx = 0; jumptableIdx < caseExpressionsLocal.length; jumptableIdx++) {
+            if (executeConditionAsBoolean(frame, caseExpressionsLocal[jumptableIdx])) {
+                caseFound = true;
+            }
+
+            if (caseFound) {
+                int statementStartIndex = jumptableLocal[jumptableIdx];
+                int statementEndIndex = jumptableLocal[jumptableIdx + 1];
+                CompilerAsserts.partialEvaluationConstant(statementStartIndex);
+                CompilerAsserts.partialEvaluationConstant(statementEndIndex);
+                if (statementStartIndex != statementEndIndex) {
+                    // Optional hack to clear any conditional value out of the frame state.
+                    // Helps the compiler see the value is always true here, so it won't attempt to
+                    // emit extra code to compute it and keep it alive only for the frame state.
+                    caseFound = true;
+
+                    for (int statementIndex = statementStartIndex; statementIndex < statementEndIndex; statementIndex++) {
+                        result = statementsLocal[statementIndex].execute(frame);
+                    }
+                }
+            }
+        }
+
+        // default case
+        int statementStartIndex = jumptableLocal[jumptableIdx];
+        CompilerAsserts.partialEvaluationConstant(statementStartIndex);
+        for (int statementIndex = statementStartIndex; statementIndex < statementsLocal.length; statementIndex++) {
+            result = statementsLocal[statementIndex].execute(frame);
         }
         return result;
     }
