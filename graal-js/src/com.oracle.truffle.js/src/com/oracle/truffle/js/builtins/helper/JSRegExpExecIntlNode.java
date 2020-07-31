@@ -379,7 +379,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             DynamicObject resultArray = JSArray.createLazyRegexArray(context, groupCount);
             setRegexResultNode.setValue(resultArray, regexResult);
             setRegexOriginalInputNode.setValue(resultArray, inputStr);
-            setIndexNode.putWithFlags(resultArray, JSRegExp.INDEX, JSRegExp.LAZY_INDEX_PROXY, JSAttributes.getDefault() | JSProperty.PROXY);
+            setIndexNode.putConstant(resultArray, JSRegExp.INDEX, JSRegExp.LAZY_INDEX_PROXY, JSAttributes.getDefault() | JSProperty.PROXY);
             setInputNode.put(resultArray, JSRegExp.INPUT, inputStr);
             setGroupsNode.put(resultArray, JSRegExp.GROUPS, groups);
             if (context.isOptionRegexpMatchIndices()) {
