@@ -484,11 +484,11 @@ public final class JSArrayBufferView extends JSBuiltinObject {
     }
 
     public static boolean isJSArrayBufferView(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSArrayBufferView((DynamicObject) obj);
+        return obj instanceof JSTypedArrayImpl;
     }
 
     public static boolean isJSArrayBufferView(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSTypedArrayImpl;
     }
 
     public static boolean isBigIntArrayBufferView(DynamicObject obj) {
