@@ -65,7 +65,7 @@ import com.oracle.truffle.js.runtime.builtins.Builtin;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinaryObjectImpl;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinaryObject;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 
 /**
@@ -105,7 +105,7 @@ public final class JSObjectUtil {
             obj = JSUserObject.createInitWithInstancePrototype(prototype, context);
         } else {
             Shape initialShape = prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, JSUserObject.INSTANCE, context);
-            obj = JSOrdinaryObjectImpl.create(initialShape);
+            obj = JSOrdinaryObject.create(initialShape);
         }
         return obj;
     }

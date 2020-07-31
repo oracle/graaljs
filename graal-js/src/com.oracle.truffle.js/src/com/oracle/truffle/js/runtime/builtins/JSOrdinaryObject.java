@@ -51,6 +51,10 @@ public abstract class JSOrdinaryObject extends JSBasicObject implements JSCopyab
         super(shape);
     }
 
+    public static JSOrdinaryObject create(Shape shape) {
+        return new JSOrdinaryObjectImpl(shape);
+    }
+
     @Override
     public String getClassName() {
         return JSUserObject.CLASS_NAME;

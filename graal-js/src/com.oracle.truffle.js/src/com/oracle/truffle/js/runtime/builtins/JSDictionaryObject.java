@@ -413,7 +413,7 @@ public final class JSDictionaryObject extends JSBuiltinObject {
     public static DynamicObject create(JSContext context) {
         JSObjectFactory factory = context.getDictionaryObjectFactory();
         JSRealm realm = context.getRealm();
-        DynamicObject obj = JSOrdinaryObjectImpl.create(factory.getShape(realm));
+        DynamicObject obj = JSOrdinaryObject.create(factory.getShape(realm));
         factory.initProto(obj, realm);
         JSObjectUtil.putHiddenProperty(obj, HASHMAP_PROPERTY_NAME, newHashMap());
         return context.trackAllocation(obj);

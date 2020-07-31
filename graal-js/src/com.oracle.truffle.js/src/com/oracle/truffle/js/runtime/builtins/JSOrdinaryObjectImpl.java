@@ -56,10 +56,6 @@ public final class JSOrdinaryObjectImpl extends JSOrdinaryObject {
         super(shape);
     }
 
-    public static JSOrdinaryObjectImpl create(Shape shape) {
-        return new JSOrdinaryObjectImpl(shape);
-    }
-
     @Override
     protected JSClassObject copyWithoutProperties(Shape shape) {
         return new JSOrdinaryObjectImpl(shape);
