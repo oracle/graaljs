@@ -89,75 +89,75 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
 
     public static ScriptArray arrayGetArrayType(DynamicObject thisObj) {
         assert JSArray.isJSArray(thisObj) || JSArgumentsObject.isJSArgumentsObject(thisObj) || JSObjectPrototype.isJSObjectPrototype(thisObj);
-        return ArrayAccess.SINGLETON.getArrayType(thisObj);
+        return arrayAccess().getArrayType(thisObj);
     }
 
     public static long arrayGetLength(DynamicObject thisObj) {
-        return ArrayAccess.SINGLETON.getLength(thisObj);
+        return arrayAccess().getLength(thisObj);
     }
 
     public static int arrayGetUsedLength(DynamicObject thisObj) {
-        return ArrayAccess.SINGLETON.getUsedLength(thisObj);
+        return arrayAccess().getUsedLength(thisObj);
     }
 
     public static long arrayGetIndexOffset(DynamicObject thisObj) {
-        return ArrayAccess.SINGLETON.getIndexOffset(thisObj);
+        return arrayAccess().getIndexOffset(thisObj);
     }
 
     public static int arrayGetArrayOffset(DynamicObject thisObj) {
-        return ArrayAccess.SINGLETON.getArrayOffset(thisObj);
+        return arrayAccess().getArrayOffset(thisObj);
     }
 
     public static void arraySetArrayType(DynamicObject thisObj, ScriptArray arrayType) {
-        ArrayAccess.SINGLETON.setArrayType(thisObj, arrayType);
+        arrayAccess().setArrayType(thisObj, arrayType);
     }
 
     public static void arraySetLength(DynamicObject thisObj, int length) {
         assert length >= 0;
-        ArrayAccess.SINGLETON.setLength(thisObj, length);
+        arrayAccess().setLength(thisObj, length);
     }
 
     public static void arraySetLength(DynamicObject thisObj, long length) {
         assert JSRuntime.isValidArrayLength(length);
-        ArrayAccess.SINGLETON.setLength(thisObj, length);
+        arrayAccess().setLength(thisObj, length);
     }
 
     public static void arraySetUsedLength(DynamicObject thisObj, int usedLength) {
         assert usedLength >= 0;
-        ArrayAccess.SINGLETON.setUsedLength(thisObj, usedLength);
+        arrayAccess().setUsedLength(thisObj, usedLength);
     }
 
     public static void arraySetIndexOffset(DynamicObject thisObj, long indexOffset) {
-        ArrayAccess.SINGLETON.setIndexOffset(thisObj, indexOffset);
+        arrayAccess().setIndexOffset(thisObj, indexOffset);
     }
 
     public static void arraySetArrayOffset(DynamicObject thisObj, int arrayOffset) {
         assert arrayOffset >= 0;
-        ArrayAccess.SINGLETON.setArrayOffset(thisObj, arrayOffset);
+        arrayAccess().setArrayOffset(thisObj, arrayOffset);
     }
 
     public static Object arrayGetArray(DynamicObject thisObj) {
         assert JSObject.hasArray(thisObj);
-        return ArrayAccess.SINGLETON.getArray(thisObj);
+        return arrayAccess().getArray(thisObj);
     }
 
     public static void arraySetArray(DynamicObject thisObj, Object array) {
         assert JSObject.hasArray(thisObj);
         assert array != null && (array.getClass().isArray() || array instanceof TreeMap<?, ?>);
-        ArrayAccess.SINGLETON.setArray(thisObj, array);
+        arrayAccess().setArray(thisObj, array);
     }
 
     public static int arrayGetHoleCount(DynamicObject thisObj) {
-        return ArrayAccess.SINGLETON.getHoleCount(thisObj);
+        return arrayAccess().getHoleCount(thisObj);
     }
 
     public static void arraySetHoleCount(DynamicObject thisObj, int holeCount) {
         assert holeCount >= 0;
-        ArrayAccess.SINGLETON.setHoleCount(thisObj, holeCount);
+        arrayAccess().setHoleCount(thisObj, holeCount);
     }
 
     public static ArrayAllocationSite arrayGetAllocationSite(DynamicObject thisObj) {
-        return ArrayAccess.SINGLETON.getAllocationSite(thisObj);
+        return arrayAccess().getAllocationSite(thisObj);
     }
 
     public static Object arrayGetRegexResult(DynamicObject thisObj, DynamicObjectLibrary lazyRegexResult) {
@@ -239,8 +239,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     protected JSAbstractArray() {
     }
 
-    @SuppressWarnings("static-method")
-    protected final ArrayAccess arrayAccess() {
+    protected static final ArrayAccess arrayAccess() {
         return ArrayAccess.SINGLETON;
     }
 

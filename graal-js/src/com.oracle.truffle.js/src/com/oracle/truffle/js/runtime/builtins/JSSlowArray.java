@@ -164,7 +164,7 @@ public final class JSSlowArray extends JSAbstractArray {
         return true;
     }
 
-    private boolean jsDefineProperty(DynamicObject thisObj, long index, PropertyDescriptor descriptor, boolean doThrow) {
+    private static boolean jsDefineProperty(DynamicObject thisObj, long index, PropertyDescriptor descriptor, boolean doThrow) {
         ScriptArray internalArray = arrayAccess().getArrayType(thisObj);
         boolean copyValue = (internalArray.hasElement(thisObj, index) && (!descriptor.hasValue() && !descriptor.hasGet()));
         boolean succeed = DefinePropertyUtil.ordinaryDefineOwnProperty(thisObj, Boundaries.stringValueOf(index), descriptor, doThrow);
