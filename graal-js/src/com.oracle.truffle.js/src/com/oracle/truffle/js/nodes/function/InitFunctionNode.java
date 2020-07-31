@@ -133,11 +133,11 @@ public class InitFunctionNode extends JavaScriptBaseNode {
 
     public final DynamicObject execute(DynamicObject function, int length, String name) {
         // setLengthNode.putWithFlags(function, JSFunction.LENGTH, length, lengthFlags);
-        setLengthNode.putWithFlags(function, JSFunction.LENGTH, JSFunction.LENGTH_PROXY, lengthFlags);
+        setLengthNode.putConstant(function, JSFunction.LENGTH, JSFunction.LENGTH_PROXY, lengthFlags);
         assert JSFunction.getFunctionData(function).isBound() || length == (int) JSFunction.LENGTH_PROXY.get(function);
 
         // setNameNode.putWithFlags(function, JSFunction.NAME, name, nameFlags);
-        setNameNode.putWithFlags(function, JSFunction.NAME, JSFunction.NAME_PROXY, nameFlags);
+        setNameNode.putConstant(function, JSFunction.NAME, JSFunction.NAME_PROXY, nameFlags);
         assert JSFunction.getFunctionData(function).isBound() || name.equals(JSFunction.NAME_PROXY.get(function));
 
         if (setPrototypeNode != null) {
