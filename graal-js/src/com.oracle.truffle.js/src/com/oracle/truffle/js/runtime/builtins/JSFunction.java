@@ -722,11 +722,11 @@ public final class JSFunction extends JSBuiltinObject {
     public static final DynamicObject CONSTRUCT = PlaceholderValue.CONSTRUCT;
 
     public static boolean isJSFunction(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSFunction((DynamicObject) obj);
+        return obj instanceof JSFunctionObject;
     }
 
     public static boolean isJSFunction(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSFunctionObject;
     }
 
     // ##### Generator functions
