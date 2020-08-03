@@ -587,6 +587,14 @@ public final class JSGuards {
         }
     }
 
+    public static Class<?> getClassIfJSObject(Object object) {
+        if (isJSObject(object)) {
+            return object.getClass();
+        } else {
+            return null;
+        }
+    }
+
     public static boolean isReferenceEquals(Object a, Object b) {
         return a == b;
     }

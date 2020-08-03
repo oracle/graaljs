@@ -56,7 +56,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
-import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
@@ -88,8 +87,8 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "1")
-    protected DynamicObject doJSObjectCached(DynamicObject object,
-                    @Cached("getJSClassIfObject(object)") JSClass cachedClass) {
+    protected Object doJSObjectCached(Object object,
+                    @Cached("getClassIfJSObject(object)") Class<?> cachedClass) {
         return object;
     }
 
