@@ -45,11 +45,9 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.builtins.JSClass;
 
 /**
  * ES6 7.2.2 IsArray(argument).
@@ -57,8 +55,6 @@ import com.oracle.truffle.js.runtime.builtins.JSClass;
  * @see IsArrayNode
  */
 public abstract class JSIsArrayNode extends JavaScriptBaseNode {
-    protected static final int MAX_SHAPE_COUNT = 1;
-    protected static final int MAX_JSCLASS_COUNT = 1;
 
     final boolean jsType;
 
@@ -69,28 +65,16 @@ public abstract class JSIsArrayNode extends JavaScriptBaseNode {
     public abstract boolean execute(Object operand);
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"cachedIsJSObject", "!cachedIsProxy", "cachedShape.check(object)"}, limit = "MAX_SHAPE_COUNT")
-    protected static boolean doIsArrayShape(DynamicObject object,
-                    @Cached("object.getShape()") Shape cachedShape,
-                    @Cached("isJSObject(object)") boolean cachedIsJSObject, // ignore non-JS objects
-                    @Cached("isJSArray(object)") boolean cachedIsArray,
-                    @Cached("isJSProxy(object)") boolean cachedIsProxy) {
-        // (aw) must do the shape check again to preserve the unsafe condition,
-        // otherwise we could just do: return cachedResult;
-        return cachedIsArray && cachedShape.check(object);
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"!cachedIsProxy", "cachedClass != null", "cachedClass.isInstance(object)"}, replaces = "doIsArrayShape", limit = "MAX_JSCLASS_COUNT")
-    protected static boolean doIsArrayJSClass(DynamicObject object,
-                    @Cached("getJSClassChecked(object)") JSClass cachedClass,
+    @Specialization(guards = {"!cachedIsProxy", "cachedClass != null", "cachedClass.isInstance(object)"}, limit = "1")
+    protected static boolean doIsArrayClass(Object object,
+                    @Cached("getClassIfJSDynamicObject(object)") Class<?> cachedClass,
                     @Cached("isJSArray(object)") boolean cachedIsArray,
                     @Cached("isJSProxy(object)") boolean cachedIsProxy) {
         return cachedIsArray;
     }
 
-    @Specialization(guards = {"isJSArray(object)"}, replaces = {"doIsArrayJSClass"})
-    protected boolean doJSArray(@SuppressWarnings("unused") DynamicObject object) {
+    @Specialization(guards = {"isJSArray(object)"}, replaces = {"doIsArrayClass"})
+    protected boolean doJSArray(@SuppressWarnings("unused") Object object) {
         return true;
     }
 
@@ -99,7 +83,7 @@ public abstract class JSIsArrayNode extends JavaScriptBaseNode {
         return JSRuntime.isProxyAnArray(object);
     }
 
-    @Specialization(guards = {"isJSDynamicObject(object)", "!isJSArray(object)", "!isJSProxy(object)"}, replaces = {"doIsArrayJSClass"})
+    @Specialization(guards = {"isJSDynamicObject(object)", "!isJSArray(object)", "!isJSProxy(object)"}, replaces = {"doIsArrayClass"})
     protected boolean doJSObject(DynamicObject object) {
         assert !JSRuntime.isArray(object);
         return false;
