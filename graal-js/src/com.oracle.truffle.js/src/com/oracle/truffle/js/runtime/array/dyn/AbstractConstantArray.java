@@ -45,6 +45,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.SparseArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class AbstractConstantArray extends DynamicArray {
@@ -126,7 +127,7 @@ public abstract class AbstractConstantArray extends DynamicArray {
 
     public abstract AbstractWritableArray createWriteableObject(DynamicObject object, long index, Object value, ProfileHolder profile);
 
-    public abstract AbstractWritableArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, ProfileHolder profile);
+    public abstract AbstractWritableArray createWriteableJSObject(DynamicObject object, long index, JSDynamicObject value, ProfileHolder profile);
 
     protected interface CreateWritableProfileAccess extends ProfileAccess {
         default boolean lengthZero(ProfileHolder profile, boolean condition) {

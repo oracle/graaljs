@@ -51,6 +51,7 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * LazyArray is a backing class for a JSArray that allows array elements to be supplied on demand
@@ -122,7 +123,7 @@ public class LazyArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractWritableArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, ProfileHolder profile) {
+    public AbstractWritableArray createWriteableJSObject(DynamicObject object, long index, JSDynamicObject value, ProfileHolder profile) {
         return createWriteableObject(object, index, value, profile);
     }
 

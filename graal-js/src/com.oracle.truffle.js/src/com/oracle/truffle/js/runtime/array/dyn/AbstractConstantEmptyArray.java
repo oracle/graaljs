@@ -51,6 +51,7 @@ import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
@@ -188,9 +189,9 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractJSObjectArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, ProfileHolder profile) {
+    public AbstractJSObjectArray createWriteableJSObject(DynamicObject object, long index, JSDynamicObject value, ProfileHolder profile) {
         int capacity = lengthInt(object);
-        DynamicObject[] initialArray = new DynamicObject[calcNewArraySize(capacity, profile)];
+        JSDynamicObject[] initialArray = new JSDynamicObject[calcNewArraySize(capacity, profile)];
         AbstractJSObjectArray newArray;
         if (CREATE_WRITABLE_PROFILE.indexZero(profile, index == 0)) {
             newArray = ZeroBasedJSObjectArray.makeZeroBasedJSObjectArray(object, capacity, 0, initialArray, integrityLevel);
@@ -204,7 +205,7 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
         return newArray;
     }
 
-    private AbstractJSObjectArray createWritableJSObjectContiguous(DynamicObject object, int capacity, long index, DynamicObject[] initialArray, ProfileHolder profile) {
+    private AbstractJSObjectArray createWritableJSObjectContiguous(DynamicObject object, int capacity, long index, JSDynamicObject[] initialArray, ProfileHolder profile) {
         long length = Math.max(index + 1, capacity);
         int arrayOffset = 0;
         long indexOffset = index;

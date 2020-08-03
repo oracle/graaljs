@@ -123,6 +123,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSlowArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
@@ -948,7 +949,7 @@ public class WriteElementNode extends JSTargetableNode {
                     newArray = constantArray.createWriteableDouble(target, index, (double) value, createWritableProfile);
                 } else if (JSObject.isJSDynamicObject(value)) {
                     inBoundsJSObjectBranch.enter();
-                    newArray = constantArray.createWriteableJSObject(target, index, (DynamicObject) value, createWritableProfile);
+                    newArray = constantArray.createWriteableJSObject(target, index, (JSDynamicObject) value, createWritableProfile);
                 } else {
                     inBoundsObjectBranch.enter();
                     newArray = constantArray.createWriteableObject(target, index, value, createWritableProfile);
@@ -1171,14 +1172,14 @@ public class WriteElementNode extends JSTargetableNode {
         protected boolean executeSetArray(DynamicObject target, ScriptArray array, long index, Object value, WriteElementNode root) {
             AbstractJSObjectArray jsobjectArray = (AbstractJSObjectArray) cast(array);
             if (objectType.profile(JSObject.isJSDynamicObject(value))) {
-                DynamicObject jsobjectValue = (DynamicObject) value;
+                JSDynamicObject jsobjectValue = (JSDynamicObject) value;
                 return executeWithJSObjectValueInner(target, jsobjectArray, index, jsobjectValue, root);
             } else {
                 return setArrayAndWrite(jsobjectArray.toObject(target, index, value), target, index, value, root);
             }
         }
 
-        private boolean executeWithJSObjectValueInner(DynamicObject target, AbstractJSObjectArray jsobjectArray, long index, DynamicObject jsobjectValue, WriteElementNode root) {
+        private boolean executeWithJSObjectValueInner(DynamicObject target, AbstractJSObjectArray jsobjectArray, long index, JSDynamicObject jsobjectValue, WriteElementNode root) {
             assert !(jsobjectArray instanceof HolesJSObjectArray);
             int iIndex = (int) index;
             if (nonHolesArrayNeedsSlowSet(target, jsobjectArray, index, root)) {
@@ -1369,13 +1370,13 @@ public class WriteElementNode extends JSTargetableNode {
         protected boolean executeSetArray(DynamicObject target, ScriptArray array, long index, Object value, WriteElementNode root) {
             HolesJSObjectArray holesArray = (HolesJSObjectArray) cast(array);
             if (objectType.profile(JSObject.isJSDynamicObject(value))) {
-                return executeWithJSObjectValueInner(target, holesArray, index, (DynamicObject) value, root);
+                return executeWithJSObjectValueInner(target, holesArray, index, (JSDynamicObject) value, root);
             } else {
                 return setArrayAndWrite(holesArray.toObject(target, index, value), target, index, value, root);
             }
         }
 
-        private boolean executeWithJSObjectValueInner(DynamicObject target, HolesJSObjectArray jsobjectArray, long index, DynamicObject value, WriteElementNode root) {
+        private boolean executeWithJSObjectValueInner(DynamicObject target, HolesJSObjectArray jsobjectArray, long index, JSDynamicObject value, WriteElementNode root) {
             if (holesArrayNeedsSlowSet(target, jsobjectArray, index, root)) {
                 return false;
             }

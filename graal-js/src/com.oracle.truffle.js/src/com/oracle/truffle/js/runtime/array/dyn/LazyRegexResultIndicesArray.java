@@ -144,7 +144,7 @@ public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractObjectArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, ProfileHolder profile) {
+    public AbstractObjectArray createWriteableJSObject(DynamicObject object, long index, JSDynamicObject value, ProfileHolder profile) {
         return createWriteableObject(object, index, value, profile);
     }
 

@@ -42,7 +42,7 @@ package com.oracle.truffle.js.runtime.array.dyn;
 
 import java.util.Arrays;
 
-import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 final class ArrayCopy {
 
@@ -179,21 +179,21 @@ final class ArrayCopy {
         return newArray;
     }
 
-    static DynamicObject[] jsobjectToJSObject(DynamicObject[] array) {
+    static JSDynamicObject[] jsobjectToJSObject(JSDynamicObject[] array) {
         return jsobjectToJSObject(array, array.length);
     }
 
-    static DynamicObject[] jsobjectToJSObject(DynamicObject[] array, int usedLength) {
-        DynamicObject[] newArray = new DynamicObject[usedLength];
+    static JSDynamicObject[] jsobjectToJSObject(JSDynamicObject[] array, int usedLength) {
+        JSDynamicObject[] newArray = new JSDynamicObject[usedLength];
         System.arraycopy(array, 0, newArray, 0, usedLength);
         return newArray;
     }
 
-    static Object[] jsobjectToObjectHoles(DynamicObject[] array, int arrayOffset, int usedLength) {
+    static Object[] jsobjectToObjectHoles(JSDynamicObject[] array, int arrayOffset, int usedLength) {
         return jsobjectToObject(array, arrayOffset, usedLength);
     }
 
-    static Object[] jsobjectToObject(DynamicObject[] array, int arrayOffset, int usedLength) {
+    static Object[] jsobjectToObject(JSDynamicObject[] array, int arrayOffset, int usedLength) {
         Object[] newArray = new Object[array.length];
         System.arraycopy(array, arrayOffset, newArray, arrayOffset, usedLength);
         return newArray;

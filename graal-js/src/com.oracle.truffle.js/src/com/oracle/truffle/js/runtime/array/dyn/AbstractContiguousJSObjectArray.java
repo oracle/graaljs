@@ -48,6 +48,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetInd
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public abstract class AbstractContiguousJSObjectArray extends AbstractJSObjectArray {
 
@@ -61,7 +62,7 @@ public abstract class AbstractContiguousJSObjectArray extends AbstractJSObjectAr
     }
 
     @Override
-    public void setInBoundsFast(DynamicObject object, int index, DynamicObject value) {
+    public void setInBoundsFast(DynamicObject object, int index, JSDynamicObject value) {
         getArray(object)[(int) (index - getIndexOffset(object))] = checkNonNull(value);
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBoundsFast", index, value);

@@ -43,12 +43,14 @@ package com.oracle.truffle.js.runtime.array.dyn;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public final class ContiguousJSObjectArray extends AbstractContiguousJSObjectArray {
 
     private static final ContiguousJSObjectArray CONTIGUOUS_JSOBJECT_ARRAY = new ContiguousJSObjectArray(INTEGRITY_LEVEL_NONE, createCache());
 
-    public static ContiguousJSObjectArray makeContiguousJSObjectArray(DynamicObject object, long length, DynamicObject[] array, long indexOffset, int arrayOffset, int usedLength, int integrityLevel) {
+    public static ContiguousJSObjectArray makeContiguousJSObjectArray(DynamicObject object, long length, JSDynamicObject[] array, long indexOffset, int arrayOffset, int usedLength,
+                    int integrityLevel) {
         ContiguousJSObjectArray arrayType = createContiguousJSObjectArray().setIntegrityLevel(integrityLevel);
         setArrayProperties(object, array, length, usedLength, indexOffset, arrayOffset);
         return arrayType;
@@ -79,7 +81,7 @@ public final class ContiguousJSObjectArray extends AbstractContiguousJSObjectArr
 
     @Override
     public HolesJSObjectArray toHoles(DynamicObject object, long index, Object value) {
-        DynamicObject[] array = getArray(object);
+        JSDynamicObject[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         int arrayOffset = getArrayOffset(object);
@@ -94,9 +96,9 @@ public final class ContiguousJSObjectArray extends AbstractContiguousJSObjectArr
 
     @Override
     public ZeroBasedJSObjectArray toNonContiguous(DynamicObject object, int index, Object value, ProfileHolder profile) {
-        setSupported(object, index, (DynamicObject) value, profile);
+        setSupported(object, index, (JSDynamicObject) value, profile);
 
-        DynamicObject[] array = getArray(object);
+        JSDynamicObject[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         ZeroBasedJSObjectArray newArray = ZeroBasedJSObjectArray.makeZeroBasedJSObjectArray(object, length, usedLength, array, integrityLevel);
@@ -108,7 +110,7 @@ public final class ContiguousJSObjectArray extends AbstractContiguousJSObjectArr
 
     @Override
     public ContiguousObjectArray toObject(DynamicObject object, long index, Object value) {
-        DynamicObject[] array = getArray(object);
+        JSDynamicObject[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         int arrayOffset = getArrayOffset(object);

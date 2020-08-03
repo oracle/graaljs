@@ -50,6 +50,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public abstract class AbstractJSObjectArray extends AbstractWritableArray {
@@ -60,16 +61,16 @@ public abstract class AbstractJSObjectArray extends AbstractWritableArray {
 
     @Override
     AbstractWritableArray sameTypeHolesArray(DynamicObject object, int length, Object array, long indexOffset, int arrayOffset, int usedLength, int holeCount) {
-        return HolesJSObjectArray.makeHolesJSObjectArray(object, length, (DynamicObject[]) array, indexOffset, arrayOffset, usedLength, holeCount, integrityLevel);
+        return HolesJSObjectArray.makeHolesJSObjectArray(object, length, (JSDynamicObject[]) array, indexOffset, arrayOffset, usedLength, holeCount, integrityLevel);
     }
 
-    public abstract void setInBoundsFast(DynamicObject object, int index, DynamicObject value);
+    public abstract void setInBoundsFast(DynamicObject object, int index, JSDynamicObject value);
 
     @Override
     public final ScriptArray setElementImpl(DynamicObject object, long index, Object value, boolean strict) {
         assert index >= 0;
         if (injectBranchProbability(FASTPATH_PROBABILITY, JSObject.isJSDynamicObject(value) && isSupported(object, index))) {
-            setSupported(object, (int) index, (DynamicObject) value, ProfileHolder.empty());
+            setSupported(object, (int) index, (JSDynamicObject) value, ProfileHolder.empty());
             return this;
         } else {
             return rewrite(object, index, value).setElementImpl(object, index, value, strict);
@@ -93,23 +94,23 @@ public abstract class AbstractJSObjectArray extends AbstractWritableArray {
 
     @Override
     int getArrayLength(Object array) {
-        return ((DynamicObject[]) array).length;
+        return ((JSDynamicObject[]) array).length;
     }
 
-    protected static DynamicObject[] getArray(DynamicObject object) {
-        return CompilerDirectives.castExact(arrayGetArray(object), DynamicObject[].class);
+    protected static JSDynamicObject[] getArray(DynamicObject object) {
+        return CompilerDirectives.castExact(arrayGetArray(object), JSDynamicObject[].class);
     }
 
     public abstract DynamicObject getInBoundsFastJSObject(DynamicObject object, int index);
 
-    public final void setInBounds(DynamicObject object, int index, DynamicObject value, ProfileHolder profile) {
+    public final void setInBounds(DynamicObject object, int index, JSDynamicObject value, ProfileHolder profile) {
         getArray(object)[prepareInBounds(object, index, profile)] = checkNonNull(value);
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBounds", index, value);
         }
     }
 
-    public final void setSupported(DynamicObject object, int index, DynamicObject value, ProfileHolder profile) {
+    public final void setSupported(DynamicObject object, int index, JSDynamicObject value, ProfileHolder profile) {
         int preparedIndex = prepareSupported(object, index, profile);
         getArray(object)[preparedIndex] = checkNonNull(value);
         if (JSConfig.TraceArrayWrites) {
@@ -119,7 +120,7 @@ public abstract class AbstractJSObjectArray extends AbstractWritableArray {
 
     @Override
     void fillWithHoles(Object array, int fromIndex, int toIndex) {
-        DynamicObject[] objectArray = (DynamicObject[]) array;
+        JSDynamicObject[] objectArray = (JSDynamicObject[]) array;
         for (int i = fromIndex; i < toIndex; i++) {
             objectArray[i] = null;
         }
@@ -149,7 +150,7 @@ public abstract class AbstractJSObjectArray extends AbstractWritableArray {
 
     @Override
     protected final void resizeArray(DynamicObject object, int newCapacity, int oldCapacity, int offset) {
-        DynamicObject[] newArray = new DynamicObject[newCapacity];
+        JSDynamicObject[] newArray = new JSDynamicObject[newCapacity];
         System.arraycopy(getArray(object), 0, newArray, offset, oldCapacity);
         arraySetArray(object, newArray);
     }
@@ -172,13 +173,13 @@ public abstract class AbstractJSObjectArray extends AbstractWritableArray {
 
     @Override
     protected final void moveRangePrepared(DynamicObject object, int src, int dst, int len) {
-        DynamicObject[] array = getArray(object);
+        JSDynamicObject[] array = getArray(object);
         System.arraycopy(array, src, array, dst, len);
     }
 
     @Override
     public final Object allocateArray(int length) {
-        return new DynamicObject[length];
+        return new JSDynamicObject[length];
     }
 
     @Override
@@ -189,7 +190,7 @@ public abstract class AbstractJSObjectArray extends AbstractWritableArray {
     @Override
     protected abstract AbstractJSObjectArray withIntegrityLevel(int newIntegrityLevel);
 
-    protected static DynamicObject checkNonNull(DynamicObject value) {
+    protected static JSDynamicObject checkNonNull(JSDynamicObject value) {
         assert value != null;
         return value;
     }

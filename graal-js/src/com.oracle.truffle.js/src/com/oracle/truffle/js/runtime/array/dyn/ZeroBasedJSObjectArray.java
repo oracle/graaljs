@@ -47,6 +47,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetUse
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public final class ZeroBasedJSObjectArray extends AbstractJSObjectArray {
 
@@ -79,7 +80,7 @@ public final class ZeroBasedJSObjectArray extends AbstractJSObjectArray {
     }
 
     @Override
-    public void setInBoundsFast(DynamicObject object, int index, DynamicObject value) {
+    public void setInBoundsFast(DynamicObject object, int index, JSDynamicObject value) {
         getArray(object)[index] = checkNonNull(value);
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBoundsFast", index, value);
@@ -110,7 +111,7 @@ public final class ZeroBasedJSObjectArray extends AbstractJSObjectArray {
 
     @Override
     public ContiguousJSObjectArray toContiguous(DynamicObject object, long index, Object value) {
-        DynamicObject[] array = getArray(object);
+        JSDynamicObject[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         ContiguousJSObjectArray newArray = ContiguousJSObjectArray.makeContiguousJSObjectArray(object, length, array, 0, 0, usedLength, integrityLevel);
@@ -122,7 +123,7 @@ public final class ZeroBasedJSObjectArray extends AbstractJSObjectArray {
 
     @Override
     public HolesJSObjectArray toHoles(DynamicObject object, long index, Object value) {
-        DynamicObject[] array = getArray(object);
+        JSDynamicObject[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         HolesJSObjectArray newArray = HolesJSObjectArray.makeHolesJSObjectArray(object, length, array, 0, 0, usedLength, 0, integrityLevel);
@@ -134,7 +135,7 @@ public final class ZeroBasedJSObjectArray extends AbstractJSObjectArray {
 
     @Override
     public ZeroBasedObjectArray toObject(DynamicObject object, long index, Object value) {
-        DynamicObject[] array = getArray(object);
+        JSDynamicObject[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         Object[] doubleCopy = ArrayCopy.jsobjectToObject(array, 0, usedLength);
@@ -162,7 +163,7 @@ public final class ZeroBasedJSObjectArray extends AbstractJSObjectArray {
 
     @Override
     public ScriptArray removeRangeImpl(DynamicObject object, long start, long end) {
-        DynamicObject[] array = getArray(object);
+        JSDynamicObject[] array = getArray(object);
         int usedLength = getUsedLength(object);
         System.arraycopy(array, (int) end, array, (int) start, Math.max(0, (int) (usedLength - end)));
         return this;

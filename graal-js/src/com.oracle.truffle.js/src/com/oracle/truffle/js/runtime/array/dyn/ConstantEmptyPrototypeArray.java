@@ -45,6 +45,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
@@ -83,7 +84,7 @@ public final class ConstantEmptyPrototypeArray extends AbstractConstantEmptyArra
     }
 
     @Override
-    public AbstractJSObjectArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, ProfileHolder profile) {
+    public AbstractJSObjectArray createWriteableJSObject(DynamicObject object, long index, JSDynamicObject value, ProfileHolder profile) {
         getArrayPrototypeNoElementsAssumption(object).invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
         return super.createWriteableJSObject(object, index, value, profile);
     }

@@ -49,6 +49,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class HolesJSObjectArray extends AbstractContiguousJSObjectArray {
@@ -59,7 +60,7 @@ public final class HolesJSObjectArray extends AbstractContiguousJSObjectArray {
         super(integrityLevel, cache);
     }
 
-    public static HolesJSObjectArray makeHolesJSObjectArray(DynamicObject object, int length, DynamicObject[] array, long indexOffset, int arrayOffset, int usedLength, int holeCount,
+    public static HolesJSObjectArray makeHolesJSObjectArray(DynamicObject object, int length, JSDynamicObject[] array, long indexOffset, int arrayOffset, int usedLength, int holeCount,
                     int integrityLevel) {
         HolesJSObjectArray arrayType = createHolesJSObjectArray().setIntegrityLevel(integrityLevel);
         setArrayProperties(object, array, length, usedLength, indexOffset, arrayOffset);
@@ -80,7 +81,7 @@ public final class HolesJSObjectArray extends AbstractContiguousJSObjectArray {
     }
 
     @Override
-    public void setInBoundsFast(DynamicObject object, int index, DynamicObject value) {
+    public void setInBoundsFast(DynamicObject object, int index, JSDynamicObject value) {
         throw Errors.shouldNotReachHere("should not call this method, use setInBounds(Non)Hole");
     }
 
@@ -89,20 +90,20 @@ public final class HolesJSObjectArray extends AbstractContiguousJSObjectArray {
         return isHolePrepared(object, internalIndex);
     }
 
-    public void setInBoundsFastHole(DynamicObject object, int index, DynamicObject value) {
+    public void setInBoundsFastHole(DynamicObject object, int index, JSDynamicObject value) {
         int internalIndex = (int) (index - getIndexOffset(object));
         assert isHolePrepared(object, internalIndex);
         incrementHolesCount(object, -1);
         setInBoundsFastIntl(object, index, internalIndex, value);
     }
 
-    public void setInBoundsFastNonHole(DynamicObject object, int index, DynamicObject value) {
+    public void setInBoundsFastNonHole(DynamicObject object, int index, JSDynamicObject value) {
         int internalIndex = (int) (index - getIndexOffset(object));
         assert !isHolePrepared(object, internalIndex);
         setInBoundsFastIntl(object, index, internalIndex, value);
     }
 
-    private void setInBoundsFastIntl(DynamicObject object, int index, int internalIndex, DynamicObject value) {
+    private void setInBoundsFastIntl(DynamicObject object, int index, int internalIndex, JSDynamicObject value) {
         getArray(object)[internalIndex] = checkNonNull(value);
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBoundsFast", index, value);
@@ -117,14 +118,14 @@ public final class HolesJSObjectArray extends AbstractContiguousJSObjectArray {
     @Override
     public AbstractJSObjectArray toNonHoles(DynamicObject object, long index, Object value) {
         assert !containsHoles(object, index);
-        DynamicObject[] array = getArray(object);
+        JSDynamicObject[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         int arrayOffset = getArrayOffset(object);
         long indexOffset = getIndexOffset(object);
 
         AbstractJSObjectArray newArray;
-        setInBoundsFastNonHole(object, (int) index, (DynamicObject) value);
+        setInBoundsFastNonHole(object, (int) index, (JSDynamicObject) value);
         if (isInBoundsFast(object, 0)) {
             newArray = ZeroBasedJSObjectArray.makeZeroBasedJSObjectArray(object, length, usedLength, array, integrityLevel);
         } else {
@@ -138,7 +139,7 @@ public final class HolesJSObjectArray extends AbstractContiguousJSObjectArray {
 
     @Override
     public AbstractWritableArray toObject(DynamicObject object, long index, Object value) {
-        DynamicObject[] array = getArray(object);
+        JSDynamicObject[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         int arrayOffset = getArrayOffset(object);

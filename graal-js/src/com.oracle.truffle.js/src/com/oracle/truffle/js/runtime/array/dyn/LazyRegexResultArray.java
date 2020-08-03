@@ -50,6 +50,7 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
 public final class LazyRegexResultArray extends AbstractConstantArray {
@@ -135,7 +136,7 @@ public final class LazyRegexResultArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractObjectArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, ProfileHolder profile) {
+    public AbstractObjectArray createWriteableJSObject(DynamicObject object, long index, JSDynamicObject value, ProfileHolder profile) {
         return createWriteableObject(object, index, value, profile);
     }
 

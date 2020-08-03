@@ -47,6 +47,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public final class ConstantByteArray extends AbstractConstantArray {
     private static final ConstantByteArray CONSTANT_BYTE_ARRAY = new ConstantByteArray(INTEGRITY_LEVEL_NONE, createCache());
@@ -123,7 +124,7 @@ public final class ConstantByteArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractWritableArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, ProfileHolder profile) {
+    public AbstractWritableArray createWriteableJSObject(DynamicObject object, long index, JSDynamicObject value, ProfileHolder profile) {
         return createWriteableObject(object, index, value, profile);
     }
 
