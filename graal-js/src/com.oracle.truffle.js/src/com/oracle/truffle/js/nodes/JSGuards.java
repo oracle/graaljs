@@ -595,6 +595,14 @@ public final class JSGuards {
         }
     }
 
+    public static Class<?> getClassIfJSDynamicObject(Object object) {
+        if (isJSDynamicObject(object)) {
+            return object.getClass();
+        } else {
+            return null;
+        }
+    }
+
     public static boolean isReferenceEquals(Object a, Object b) {
         return a == b;
     }
