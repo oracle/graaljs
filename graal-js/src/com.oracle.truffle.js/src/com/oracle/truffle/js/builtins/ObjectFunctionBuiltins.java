@@ -557,7 +557,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             JSClass descsClass = JSObject.getJSClass(descs);
             for (Object key : descsClass.ownPropertyKeys(descs)) {
                 PropertyDescriptor keyDesc = descsClass.getOwnProperty(descs, key);
-                if (keyDesc.getEnumerable()) {
+                if (keyDesc != null && keyDesc.getEnumerable()) {
                     PropertyDescriptor desc = toPropertyDescriptor(descsClass.get(descs, key));
                     Boundaries.listAdd(descriptors, new Pair<>(key, desc));
                 }
