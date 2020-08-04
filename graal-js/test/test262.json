@@ -230,10 +230,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2020-07-21"
   }, {
-    "filePath" : "built-ins/Object/defineProperties/proxy-no-ownkeys-returned-keys-order.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
     "filePath" : "built-ins/Promise/all/invoke-resolve-get-error.js",
     "status" : "FAIL",
     "comment" : "new failures 2020-07-21"

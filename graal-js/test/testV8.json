@@ -1808,10 +1808,6 @@
     "status" : "FAIL",
     "comment" : "Function calls that use spread operator do not have the number of arguments limited by a constant but by the stack-size."
   }, {
-    "filePath" : "mjsunit/regress/regress-v8-7682.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "mjsunit/regress/regress-v8-7848.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
