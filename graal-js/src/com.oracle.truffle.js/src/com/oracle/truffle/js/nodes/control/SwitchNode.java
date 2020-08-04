@@ -246,11 +246,6 @@ public final class SwitchNode extends StatementNode {
             CompilerAsserts.partialEvaluationConstant(statementEndIndex);
             if (statementStartIndex != statementEndIndex) {
                 if (conditionProfilesLocal[jumptableIdx].profile(caseFound)) {
-                    // Optional hack to clear any conditional value out of the frame state.
-                    // Helps the compiler see the value is always true here, so it won't attempt to
-                    // emit extra code to compute it and keep it alive only for the frame state.
-                    caseFound = true;
-
                     for (int statementIndex = statementStartIndex; statementIndex < statementEndIndex; statementIndex++) {
                         result = statementsLocal[statementIndex].execute(frame);
                     }
