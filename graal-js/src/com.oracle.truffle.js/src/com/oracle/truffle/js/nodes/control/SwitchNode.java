@@ -224,7 +224,7 @@ public final class SwitchNode extends StatementNode {
 
         int jumptableIdx;
         for (jumptableIdx = 0; jumptableIdx < caseExpressionsLocal.length; jumptableIdx++) {
-            if (executeConditionAsBoolean(frame, caseExpressionsLocal[jumptableIdx])) {
+            if (caseFound || executeConditionAsBoolean(frame, caseExpressionsLocal[jumptableIdx])) {
                 caseFound = true;
             }
 
