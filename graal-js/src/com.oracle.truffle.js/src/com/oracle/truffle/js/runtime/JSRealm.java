@@ -241,8 +241,8 @@ public class JSRealm {
     private final DynamicObject mathObject;
     private DynamicObject realmBuiltinObject;
     private Object evalFunctionObject;
-    private Object applyFunctionObject;
-    private Object callFunctionObject;
+    private final Object applyFunctionObject;
+    private final Object callFunctionObject;
     private Object reflectApplyFunctionObject;
     private Object reflectConstructFunctionObject;
     private Object commonJSRequireFunctionObject;
@@ -416,6 +416,9 @@ public class JSRealm {
         JSObjectUtil.putFunctionsFromContainer(this, this.objectPrototype, JSObjectPrototype.BUILTINS);
         this.functionConstructor = JSFunction.createFunctionConstructor(this);
         JSFunction.fillFunctionPrototype(this);
+
+        this.applyFunctionObject = JSDynamicObject.getOrNull(getFunctionPrototype(), "apply");
+        this.callFunctionObject = JSDynamicObject.getOrNull(getFunctionPrototype(), "call");
 
         JSConstructor ctor;
         ctor = JSArray.createConstructor(this);
@@ -1153,8 +1156,6 @@ public class JSRealm {
         JSObjectUtil.putFunctionsFromContainer(this, global, GlobalBuiltins.GLOBAL_FUNCTIONS);
 
         this.evalFunctionObject = JSObject.get(global, JSGlobalObject.EVAL_NAME);
-        this.applyFunctionObject = JSObject.get(getFunctionPrototype(), "apply");
-        this.callFunctionObject = JSObject.get(getFunctionPrototype(), "call");
         DynamicObject jsonBuiltin = (DynamicObject) JSObject.get(global, "JSON");
         this.jsonParseFunctionObject = JSObject.get(jsonBuiltin, "parse");
 
