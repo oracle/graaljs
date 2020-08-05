@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,29 @@
  */
 package com.oracle.truffle.js.test.instrumentation.sourcesections;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
+
+import com.oracle.truffle.js.runtime.JSConfig;
 
 public class SwitchStatementsTest extends SourceSectionInstrumentationTest {
 
+    private boolean savedSwitchConfigValue;
+
+    @Before
+    public void before() {
+        savedSwitchConfigValue = JSConfig.OptimizeNoFallthroughSwitch;
+    }
+
+    @After
+    public void after() {
+        JSConfig.OptimizeNoFallthroughSwitch = savedSwitchConfigValue;
+    }
+
     @Test
     public void basicDeclarations() {
+        JSConfig.OptimizeNoFallthroughSwitch = true;
         String src = "var bar = 0;" +
                         "switch ('foo') {" +
                         "case 'bar':" +

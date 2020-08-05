@@ -49,6 +49,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
@@ -71,21 +72,23 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 public final class SwitchNode extends StatementNode {
 
     @Children private final JavaScriptNode[] caseExpressions;
+    @Children private final JavaScriptNode[] statements;
     /**
      * jumptable[i] has the index of the first statement that should be executed if
      * caseExpression[i] equals switchExpression. jumptable[jumptable.length-1] is always the
      * statement index of the default case.
      */
     @CompilationFinal(dimensions = 1) private final int[] jumptable;
-    @Children private final JavaScriptNode[] statements;
+    @CompilationFinal(dimensions = 1) private final ConditionProfile[] conditionProfiles;
     private final boolean ordered;
 
     private SwitchNode(JavaScriptNode[] caseExpressions, int[] jumptable, JavaScriptNode[] statements) {
-        this.caseExpressions = caseExpressions;
-        this.jumptable = jumptable;
         assert caseExpressions.length == jumptable.length - 1;
+        this.caseExpressions = caseExpressions;
         this.statements = statements;
+        this.jumptable = jumptable;
         this.ordered = isMonotonicallyIncreasing(jumptable);
+        this.conditionProfiles = createConditionProfiles(caseExpressions.length);
     }
 
     private static boolean isMonotonicallyIncreasing(int[] table) {
@@ -97,6 +100,14 @@ public final class SwitchNode extends StatementNode {
             }
         }
         return true;
+    }
+
+    private static ConditionProfile[] createConditionProfiles(int length) {
+        ConditionProfile[] a = new ConditionProfile[length];
+        for (int i = 0; i < length; i++) {
+            a[i] = ConditionProfile.createCountingProfile();
+        }
+        return a;
     }
 
     public static SwitchNode create(JavaScriptNode[] caseExpressions, int[] jumptable, JavaScriptNode[] statements) {
@@ -218,27 +229,23 @@ public final class SwitchNode extends StatementNode {
         final JavaScriptNode[] caseExpressionsLocal = caseExpressions;
         final JavaScriptNode[] statementsLocal = statements;
         final int[] jumptableLocal = jumptable;
+        final ConditionProfile[] conditionProfilesLocal = conditionProfiles;
 
         boolean caseFound = false;
         Object result = EMPTY;
 
         int jumptableIdx;
         for (jumptableIdx = 0; jumptableIdx < caseExpressionsLocal.length; jumptableIdx++) {
-            if (executeConditionAsBoolean(frame, caseExpressionsLocal[jumptableIdx])) {
+            if (caseFound || executeConditionAsBoolean(frame, caseExpressionsLocal[jumptableIdx])) {
                 caseFound = true;
             }
 
-            if (caseFound) {
-                int statementStartIndex = jumptableLocal[jumptableIdx];
-                int statementEndIndex = jumptableLocal[jumptableIdx + 1];
-                CompilerAsserts.partialEvaluationConstant(statementStartIndex);
-                CompilerAsserts.partialEvaluationConstant(statementEndIndex);
-                if (statementStartIndex != statementEndIndex) {
-                    // Optional hack to clear any conditional value out of the frame state.
-                    // Helps the compiler see the value is always true here, so it won't attempt to
-                    // emit extra code to compute it and keep it alive only for the frame state.
-                    caseFound = true;
-
+            int statementStartIndex = jumptableLocal[jumptableIdx];
+            int statementEndIndex = jumptableLocal[jumptableIdx + 1];
+            CompilerAsserts.partialEvaluationConstant(statementStartIndex);
+            CompilerAsserts.partialEvaluationConstant(statementEndIndex);
+            if (statementStartIndex != statementEndIndex) {
+                if (conditionProfilesLocal[jumptableIdx].profile(caseFound)) {
                     for (int statementIndex = statementStartIndex; statementIndex < statementEndIndex; statementIndex++) {
                         result = statementsLocal[statementIndex].execute(frame);
                     }

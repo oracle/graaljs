@@ -40,17 +40,33 @@
  */
 package com.oracle.truffle.js.test.instrumentation;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
+import com.oracle.truffle.js.runtime.JSConfig;
 
 public class SwitchStatementTest extends FineGrainedAccessTest {
 
+    private boolean savedSwitchConfigValue;
+
+    @Before
+    public void before() {
+        savedSwitchConfigValue = JSConfig.OptimizeNoFallthroughSwitch;
+    }
+
+    @After
+    public void after() {
+        JSConfig.OptimizeNoFallthroughSwitch = savedSwitchConfigValue;
+    }
+
     @Test
-    public void desugaredSwitch() {
+    public void desugaredSwitchBreak() {
+        JSConfig.OptimizeNoFallthroughSwitch = true;
         // Graal.js converts certain switch statements to if-then-else chains. This generates nested
         // events.
         String src = "var a = 42;" +
@@ -88,7 +104,40 @@ public class SwitchStatementTest extends FineGrainedAccessTest {
     }
 
     @Test
+    public void normalSwitchBreak() {
+        JSConfig.OptimizeNoFallthroughSwitch = false;
+        String src = "var a = 42;" +
+                        "switch (a) {\n" +
+                        "  case 1:" +
+                        "    break;" +
+                        "  case 42:" +
+                        "    42;" +
+                        "    break;" +
+                        "  default:" +
+                        "}";
+
+        evalWithTags(src, new Class[]{
+                        ControlFlowRootTag.class,
+                        ControlFlowBranchTag.class,
+                        ControlFlowBlockTag.class
+        }, new Class[]{/* no input events */});
+
+        enter(ControlFlowRootTag.class, (e, r) -> {
+            // first case condition is false
+            enter(ControlFlowBranchTag.class).exit(assertReturnValue(false));
+            // second case returns true
+            enter(ControlFlowBranchTag.class).exit(assertReturnValue(true));
+            // we enter the 'case 2' branch
+            enter(ControlFlowBlockTag.class, (e3, b2) -> {
+                enter(ControlFlowBranchTag.class).exitExceptional();
+                // the branch returns. The statement evaluates '42'
+            }).exitExceptional();
+        }).exitExceptional();
+    }
+
+    @Test
     public void desugaredSwitchDefault() {
+        JSConfig.OptimizeNoFallthroughSwitch = true;
         // Graal.js converts certain switch statements to if-then-else chains. This generates nested
         // events.
         String src = "var a = 42;" +
@@ -114,7 +163,7 @@ public class SwitchStatementTest extends FineGrainedAccessTest {
             enter(ControlFlowBlockTag.class, (e1) -> {
                 // a nested if is executed for the second case
                 enter(ControlFlowRootTag.class, (e2) -> {
-                    // second case returns true
+                    // second case returns false
                     enter(ControlFlowBranchTag.class).exit(assertReturnValue(false));
                     // the innermost 'else' is the default branch
                     enter(ControlFlowBlockTag.class, (e3) -> {
@@ -123,6 +172,34 @@ public class SwitchStatementTest extends FineGrainedAccessTest {
                 }).exit();
             }).exit();
         }).exit();
+    }
+
+    @Test
+    public void normalSwitchDefault() {
+        JSConfig.OptimizeNoFallthroughSwitch = false;
+        String src = "var a = 42;" +
+                        "switch (a) {\n" +
+                        "  case 1:" +
+                        "    break;" +
+                        "  case 2:" +
+                        "    break;" +
+                        "  default:" +
+                        "    42;" +
+                        "}";
+
+        evalWithTags(src, new Class[]{
+                        ControlFlowRootTag.class,
+                        ControlFlowBranchTag.class,
+                        ControlFlowBlockTag.class
+        }, new Class[]{/* no input events */});
+
+        enter(ControlFlowRootTag.class, (e) -> {
+            // first case condition is false
+            enter(ControlFlowBranchTag.class).exit(assertReturnValue(false));
+            // second case condition is false
+            enter(ControlFlowBranchTag.class).exit(assertReturnValue(false));
+            // default case returns 42
+        }).exit(assertReturnValue(42));
     }
 
     @Test
@@ -192,6 +269,7 @@ public class SwitchStatementTest extends FineGrainedAccessTest {
 
     @Test
     public void desugaredSwitchNoBreak() {
+        JSConfig.OptimizeNoFallthroughSwitch = true;
         String src = "var a = 42;" +
                         "switch (a) {" +
                         "  case 1:" +
@@ -206,5 +284,31 @@ public class SwitchStatementTest extends FineGrainedAccessTest {
                         ControlFlowRootTag.class,
                         ControlFlowBranchTag.class
         }, new Class[]{/* no input events */});
+    }
+
+    @Test
+    public void normalSwitchNoBreak() {
+        JSConfig.OptimizeNoFallthroughSwitch = false;
+        String src = "var a = 42;" +
+                        "switch (a) {" +
+                        "  case 1:" +
+                        "    ;" +
+                        "  case 2:" +
+                        "    ;" +
+                        "  default:" +
+                        "    42;" +
+                        "}";
+
+        evalWithTags(src, new Class[]{
+                        ControlFlowRootTag.class,
+                        ControlFlowBranchTag.class
+        }, new Class[]{/* no input events */});
+
+        enter(ControlFlowRootTag.class, (e, r) -> {
+            // case 1 is false
+            enter(ControlFlowBranchTag.class).exit(assertReturnValue(false));
+            // case 2 is false
+            enter(ControlFlowBranchTag.class).exit(assertReturnValue(false));
+        }).exit(assertReturnValue(42));
     }
 }

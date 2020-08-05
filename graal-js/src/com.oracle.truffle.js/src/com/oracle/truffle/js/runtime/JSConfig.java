@@ -100,7 +100,7 @@ public final class JSConfig {
     public static final boolean ReturnValueInFrame = true;
     public static final boolean LocalVarIncDecNode = true;
     public static final boolean OptimizeApplyArguments = true;
-    public static final boolean OptimizeNoFallthroughSwitch = true;
+    public static boolean OptimizeNoFallthroughSwitch = false;
     public static final boolean ManyBlockScopes = false;
     public static final boolean YieldResultInFrame = true;
     public static final boolean LazyFunctionData = true;
