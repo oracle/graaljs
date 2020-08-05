@@ -247,7 +247,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         DateTimeFormat(0),
         RelativeTimeFormat(0),
         Segmenter(0),
-        DisplayNames(0),
+        DisplayNames(2),
         Locale(1),
 
         Error(1),

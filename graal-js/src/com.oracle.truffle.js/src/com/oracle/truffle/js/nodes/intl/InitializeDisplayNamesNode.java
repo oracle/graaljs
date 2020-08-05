@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSDisplayNames;
@@ -54,7 +55,7 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
 public abstract class InitializeDisplayNamesNode extends JavaScriptBaseNode {
     private final JSContext context;
     @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
-    @Child CreateOptionsObjectNode createOptionsNode;
+    @Child JSToObjectNode toObjectNode;
     @Child GetStringOptionNode getLocaleMatcherOption;
     @Child GetStringOptionNode getStyleOption;
     @Child GetStringOptionNode getTypeOption;
@@ -64,7 +65,7 @@ public abstract class InitializeDisplayNamesNode extends JavaScriptBaseNode {
     protected InitializeDisplayNamesNode(JSContext context) {
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
-        this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
+        this.toObjectNode = JSToObjectNode.createToObject(context);
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
         this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.STYLE, new String[]{IntlUtil.NARROW, IntlUtil.SHORT, IntlUtil.LONG}, IntlUtil.LONG);
         this.getTypeOption = GetStringOptionNode.create(context, IntlUtil.TYPE, new String[]{IntlUtil.LANGUAGE, IntlUtil.REGION, IntlUtil.SCRIPT, IntlUtil.CURRENCY}, IntlUtil.LANGUAGE);
@@ -81,7 +82,7 @@ public abstract class InitializeDisplayNamesNode extends JavaScriptBaseNode {
     public DynamicObject initializeDisplayNames(DynamicObject displayNamesObject, Object localesArg, Object optionsArg) {
         try {
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
-            DynamicObject options = createOptionsNode.execute(optionsArg);
+            Object options = toObjectNode.execute(optionsArg);
 
             getLocaleMatcherOption.executeValue(options);
             String optStyle = getStyleOption.executeValue(options);
