@@ -48,6 +48,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.test.JSTest;
 
 public class ParseIntTest {
@@ -65,4 +66,73 @@ public class ParseIntTest {
         }
     }
 
+    @Test
+    public void testSpecializations() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Value result;
+
+            // parseIntStringInt10
+            result = context.eval(ID, "parseInt('12345', 10)");
+            assertTrue(result.fitsInInt());
+            assertEquals(12345, result.asInt());
+
+            result = context.eval(ID, "parseInt('3', 10)"); // check short input
+            assertTrue(result.fitsInInt());
+            assertEquals(3, result.asInt());
+
+            // parseIntStringInt10 with whitespace
+            result = context.eval(ID, "parseInt('\t 12345 \t', 10)");
+            assertTrue(result.fitsInInt());
+            assertEquals(12345, result.asInt());
+
+            // parseIntGeneric
+            result = context.eval(ID, "parseInt('12345', 9)");
+            assertTrue(result.fitsInInt());
+            assertEquals(8303, result.asInt());
+
+            // parseIntGeneric with whitespace
+            result = context.eval(ID, "parseInt('\t 12345 \t', 9)");
+            assertTrue(result.fitsInInt());
+            assertEquals(8303, result.asInt());
+
+            // parseIntGeneric with whitespace and hexStart
+            result = context.eval(ID, "parseInt('\t -0xABCDEF \t', 16)");
+            assertTrue(result.fitsInInt());
+            assertEquals(-11259375, result.asInt());
+
+            result = context.eval(ID, "parseInt('\t 3 \t', 16)"); // check short input
+            assertTrue(result.fitsInInt());
+            assertEquals(3, result.asInt());
+
+            result = context.eval(ID, "parseInt('0x  ', 16)"); // check invalid hex
+            assertTrue(result.fitsInDouble());
+            assertTrue(Double.isNaN(result.asDouble()));
+        }
+    }
+
+    @Test
+    public void testLongs() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            assertEquals(-1234567890L, parseInt("-1234567890", 10, context).asLong());
+            assertEquals(1234567890L, parseInt("+1234567890", 10, context).asLong());
+            assertEquals(1234567890L, parseInt("1234567890", 10, context).asLong());
+            assertEquals(162254319L, parseInt("9abcdef", 16, context).asLong());
+
+            assertEquals(9223372036854778000d, parseInt("1104332401304422434310342411", 5, context).asDouble(), 0.000001);
+        }
+    }
+
+    @Test
+    public void testNegativeZero() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            assertTrue(JSRuntime.isNegativeZero(parseInt("-0.000001", 10, context).asDouble()));
+            assertTrue(JSRuntime.isNegativeZero(parseInt("-0.0000000000000001", 10, context).asDouble()));
+            assertTrue(JSRuntime.isNegativeZero(parseInt("-0", 10, context).asDouble()));
+            assertTrue(JSRuntime.isNegativeZero(parseInt("-000000000000000000", 16, context).asDouble()));
+        }
+    }
+
+    private static Value parseInt(String string, int radix, Context context) {
+        return context.eval(ID, "parseInt('" + string + "', " + radix + ");");
+    }
 }

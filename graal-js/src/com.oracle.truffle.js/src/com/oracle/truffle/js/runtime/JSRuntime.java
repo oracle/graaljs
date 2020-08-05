@@ -1820,6 +1820,9 @@ public final class JSRuntime {
 
     @SuppressWarnings("unused")
     public static boolean isWhiteSpace(char cp) {
+        if (isAsciiDigit(cp)) {
+            return false; // fastpath
+        }
         return (0x0009 <= cp && cp <= 0x000D) || (0x2000 <= cp && cp <= 0x200A) || cp == 0x0020 || cp == 0x00A0 || cp == 0x1680 || cp == 0x2028 || cp == 0x2029 || cp == 0x202F ||
                         cp == 0x205F || cp == 0x3000 || cp == 0xFEFF || (JSConfig.U180EWhitespace && cp == 0x180E);
     }
@@ -2239,90 +2242,17 @@ public final class JSRuntime {
         return negative ? -result : result;
     }
 
-    /**
-     * Parse a string to a double. Use a long value during parsing, thus you need to ensure the
-     * result and intermediate values fit into a long. Returned types are int or double.
-     */
     @TruffleBoundary
-    public static Number parseRawFitsLong(String string, int radix) {
-        return parseRawFitsLong(string, radix, 0, string.length());
-    }
-
-    @TruffleBoundary
-    /**
-     * In contrast to {@link parseRawFitsLong} this assumes that radix is 10 and startPos=0. In
-     * addition, it stops at the first non-valid [0-9] character. Thus we only need one loop instead
-     * of two.
-     */
-    public static Number parseValidPartFitsLongRadix10(String string) {
-        int pos = 0;
-        boolean negate = false;
-
-        char firstChar = string.charAt(pos);
-        if (firstChar == '-') {
-            pos++;
-            negate = true;
-        } else if (firstChar == '+') {
-            pos++;
-        }
-        if (pos == string.length()) {
-            return Double.NaN;
-        }
-
-        int firstPos = pos;
-        long value = 0;
-        while (pos < string.length()) {
-            char c = string.charAt(pos);
-            int cval = JSRuntime.valueInRadix10(c);
-            if (cval < 0) {
-                if (pos != firstPos) {
-                    break;
-                } else {
-                    return Double.NaN;
-                }
-            }
-            value *= 10;
-            value += cval;
-            pos++;
-        }
-        if (value == 0 && negate && string.charAt(1) == '0') {
-            return -0.0;
-        }
-
-        assert value >= 0;
-        long signedValue = negate ? -value : value;
-
-        if (value <= Integer.MAX_VALUE) {
-            return (int) signedValue;
-        } else {
-            return (double) signedValue;
-        }
-    }
-
-    @TruffleBoundary
-    public static Number parseRawFitsLong(String string, int radix, int startPos, int endPos) {
+    public static Number parseRawFitsLong(String string, int radix, int startPos, int endPos, boolean negate) {
         assert startPos < endPos;
         int pos = startPos;
-        boolean negate = false;
 
-        char firstChar = string.charAt(pos);
-        if (firstChar == '-') {
-            pos++;
-            negate = true;
-        } else if (firstChar == '+') {
-            pos++;
-        }
-        if (pos == endPos) {
-            return Double.NaN;
-        }
-
-        int firstPos = pos;
         long value = 0;
         while (pos < endPos) {
             char c = string.charAt(pos);
             int cval = JSRuntime.valueInRadix(c, radix);
             if (cval < 0) {
-                if (pos != firstPos) {
+                if (pos != startPos) {
                     break;
                 } else {
                     return Double.NaN;
@@ -2332,7 +2262,7 @@ public final class JSRuntime {
             value += cval;
             pos++;
         }
-        if (value == 0 && negate && string.charAt(startPos + 1) == '0') {
+        if (value == 0 && negate && string.charAt(startPos) == '0') {
             return -0.0;
         }
 
@@ -2346,38 +2276,17 @@ public final class JSRuntime {
         }
     }
 
-    /**
-     * Parse a string to a double. Use a double value during parsing.
-     */
     @TruffleBoundary
-    public static double parseRawDontFitLong(String string, int radix) {
-        return parseRawDontFitLong(string, radix, 0, string.length());
-    }
-
-    @TruffleBoundary
-    public static double parseRawDontFitLong(String string, int radix, int startPos, int endPos) {
+    public static double parseRawDontFitLong(String string, int radix, int startPos, int endPos, boolean negate) {
         assert startPos < endPos;
         int pos = startPos;
-        boolean negate = false;
 
-        char firstChar = string.charAt(pos);
-        if (firstChar == '-') {
-            pos++;
-            negate = true;
-        } else if (firstChar == '+') {
-            pos++;
-        }
-        if (pos == endPos) {
-            return Double.NaN;
-        }
-
-        int firstPos = pos;
         double value = 0;
         while (pos < endPos) {
             char c = string.charAt(pos);
             int cval = JSRuntime.valueInRadix(c, radix);
             if (cval < 0) {
-                if (pos != firstPos) {
+                if (pos != startPos) {
                     break;
                 } else {
                     return Double.NaN;
@@ -2386,9 +2295,6 @@ public final class JSRuntime {
             value *= radix;
             value += cval;
             pos++;
-        }
-        if (value == 0 && negate && string.charAt(startPos + 1) == '0') {
-            return -0.0;
         }
 
         assert value >= 0;

@@ -71,7 +71,6 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -955,16 +954,64 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             }
         }
 
-        @Specialization(guards = {"radix == 10", "thing.length() < 15"})
-        protected Object parseIntStringInt10(String thing, @SuppressWarnings("unused") int radix,
-                        @Shared("trimWhitespace") @Cached("create()") JSTrimWhitespaceNode trimWhitespaceNode) {
-            assert isShortStringInt10(thing, radix);
-            String inputString = trimWhitespaceNode.executeString(thing);
-            if (inputString.length() <= 0) {
-                needsNaN.enter();
-                return Double.NaN;
+        @Specialization(guards = {"radix == 10", "string.length() < 15"})
+        @TruffleBoundary
+        protected Object parseIntStringInt10(String string, @SuppressWarnings("unused") int radix) {
+            assert isShortStringInt10(string, radix);
+
+            int pos = 0;
+            int lastIdx = string.length();
+            boolean negate = false;
+
+            char firstChar = string.charAt(pos);
+            if (!JSRuntime.isAsciiDigit(firstChar)) {
+                if (JSRuntime.isWhiteSpace(firstChar)) {
+                    pos = JSRuntime.firstNonWhitespaceIndex(string, false);
+                    if (string.length() <= pos) {
+                        return Double.NaN;
+                    }
+                    firstChar = string.charAt(pos);
+                }
+                if (firstChar == '-') {
+                    pos++;
+                    negate = true;
+                } else if (firstChar == '+') {
+                    pos++;
+                }
+                if (pos >= lastIdx) {
+                    return Double.NaN;
+                }
             }
-            return JSRuntime.parseValidPartFitsLongRadix10(inputString);
+
+            int firstPos = pos;
+            long value = 0;
+            while (pos < lastIdx) {
+                char c = string.charAt(pos);
+                int cval = JSRuntime.valueInRadix10(c);
+                if (cval < 0) {
+                    if (pos != firstPos) {
+                        break;
+                    } else {
+                        return Double.NaN;
+                    }
+                }
+                value *= 10;
+                value += cval;
+                pos++;
+            }
+
+            if (value == 0 && negate) {
+                return -0.0; // long case below cannot handle negative zero
+            }
+
+            assert value >= 0;
+            long signedValue = negate ? -value : value;
+
+            if (value <= Integer.MAX_VALUE) {
+                return (int) signedValue;
+            } else {
+                return (double) signedValue;
+            }
         }
 
         protected static boolean isShortStringInt10(Object thing, Object radix) {
@@ -974,28 +1021,32 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @Specialization(guards = "!isShortStringInt10(thing, radix0)")
         protected Object parseIntGeneric(Object thing, Object radix0,
                         @Cached("create()") JSToStringNode toStringNode,
-                        @Shared("trimWhitespace") @Cached("create()") JSTrimWhitespaceNode trimWhitespaceNode,
                         @Cached("create()") BranchProfile needsRadix16,
-                        @Cached("create()") BranchProfile needsDontFitLong,
-                        @Cached("create()") BranchProfile needsTrimming) {
-            String inputString = trimWhitespaceNode.executeString(toStringNode.executeString(thing));
+                        @Cached("create()") BranchProfile needsDontFitLong) {
+            String inputStr = toStringNode.executeString(thing);
+
+            int firstIdx = JSRuntime.firstNonWhitespaceIndex(inputStr, false);
+            int lastIdx = JSRuntime.lastNonWhitespaceIndex(inputStr, false) + 1;
+
             int radix = toInt32(radix0);
-            if (inputString.length() <= 0) {
+            if (lastIdx <= firstIdx) {
                 needsNaN.enter();
                 return Double.NaN;
             }
 
+            char firstChar = inputStr.charAt(firstIdx);
+            boolean negate = false;
+            if (firstChar == '-') {
+                negate = true;
+                firstIdx++;
+            } else if (firstChar == '+') {
+                firstIdx++;
+            }
+
             if (radix == 16 || radix == 0) {
                 needsRadix16.enter();
-                if (hasHexStart(inputString)) {
-                    needsTrimming.enter();
-                    if (inputString.charAt(0) == '0') {
-                        inputString = Boundaries.substring(inputString, 2);
-                    } else {
-                        String sign = Boundaries.substring(inputString, 0, 1);
-                        String number = Boundaries.substring(inputString, 3);
-                        inputString = JSRuntime.stringConcat(sign, number);
-                    }
+                if (hasHexStart(inputStr, firstIdx, lastIdx)) {
+                    firstIdx += 2;
                     radix = 16; // could be 0
                 } else if (radix == 0) {
                     radix = 10;
@@ -1005,7 +1056,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 return Double.NaN;
             }
 
-            int len = validStringLength(inputString, radix);
+            int len = validStringLength(inputStr, radix, firstIdx, lastIdx);
             if (len <= 0) {
                 needsNaN.enter();
                 return Double.NaN;
@@ -1016,17 +1067,18 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                     // parseRawDontFitLong() can produce an incorrect result
                     // due to subtle rounding errors (for radix 10) but the spec.
                     // requires exact processing for this radix
-                    return parseDouble(Boundaries.substring(inputString, 0, len));
+                    return parseDouble(Boundaries.substring(inputStr, firstIdx, lastIdx), negate);
                 } else {
-                    return JSRuntime.parseRawDontFitLong(inputString, radix, 0, len);
+                    return JSRuntime.parseRawDontFitLong(inputStr, radix, firstIdx, lastIdx, negate);
                 }
             }
-            return JSRuntime.parseRawFitsLong(inputString, radix, 0, len);
+            return JSRuntime.parseRawFitsLong(inputStr, radix, firstIdx, lastIdx, negate);
         }
 
         @TruffleBoundary
-        private static double parseDouble(String s) {
-            return Double.parseDouble(s);
+        private static double parseDouble(String s, boolean negate) {
+            double value = Double.parseDouble(s);
+            return negate ? -value : value;
         }
 
         private static Object convertToRadix(int thing, int radix) {
@@ -1072,43 +1124,27 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             return negative ? -result : result;
         }
 
-        private static boolean hasHexStart(String inputString) {
-            int length = inputString.length();
-            if (length >= 2 && inputString.charAt(0) == '0') {
-                char c1 = inputString.charAt(1);
+        // searches for '0x12345', assumes NO sign!
+        private static boolean hasHexStart(String inputString, int firstPos, int lastPos) {
+            int length = lastPos - firstPos;
+            if (length >= 2 && inputString.charAt(firstPos) == '0') {
+                char c1 = inputString.charAt(firstPos + 1);
                 return (c1 == 'x' || c1 == 'X');
-            } else if (length >= 3 && inputString.charAt(1) == '0') {
-                char c0 = inputString.charAt(0);
-                if (c0 == '-' || c0 == '+') {
-                    char c2 = inputString.charAt(2);
-                    return (c2 == 'x' || c2 == 'X');
-                }
             }
             return false;
         }
 
         @TruffleBoundary
-        private static int validStringLength(String thing, int radix) {
-            boolean hasSign = false;
-            int pos = 0;
-            if (!thing.isEmpty()) {
-                char c = thing.charAt(0);
-                if (c == '+' || c == '-') {
-                    hasSign = true;
-                    pos++;
-                }
-            }
-            while (pos < thing.length()) {
+        private static int validStringLength(String thing, int radix, int firstIdx, int lastIdx) {
+            int pos = firstIdx;
+            while (pos < lastIdx) {
                 char c = thing.charAt(pos);
                 if (JSRuntime.valueInRadix(c, radix) == -1) {
                     break;
                 }
                 pos++;
             }
-            if (pos == 1 && hasSign) {
-                pos = 0; // sign only
-            }
-            return pos;
+            return pos - firstIdx;
         }
     }
 
