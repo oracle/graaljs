@@ -45,9 +45,10 @@ import static com.oracle.truffle.api.CompilerDirectives.injectBranchProbability;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArray;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArray;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 
@@ -198,10 +199,10 @@ public abstract class AbstractObjectArray extends AbstractWritableArray {
     }
 
     protected Object castNonNull(Object value) {
-        if (JSConfig.MarkElementsNonNull && value == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw Errors.shouldNotReachHere();
+        if (JSConfig.MarkElementsNonNull) {
+            return Objects.requireNonNull(value);
+        } else {
+            return value;
         }
-        return value;
     }
 }
