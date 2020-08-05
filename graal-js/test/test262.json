@@ -1900,14 +1900,6 @@
     "status" : "FAIL",
     "comment" : "new failures after 2020-03 update"
   }, {
-    "filePath" : "intl402/DisplayNames/length.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
-    "filePath" : "intl402/DisplayNames/options-type-invalid-throws.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
     "filePath" : "intl402/Intl/getCanonicalLocales/complex-language-subtag-replacement.js",
     "status" : "FAIL",
     "comment" : "new failures 2020-07-21"
