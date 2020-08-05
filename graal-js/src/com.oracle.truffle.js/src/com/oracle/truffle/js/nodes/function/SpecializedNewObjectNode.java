@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -106,8 +107,8 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"!isBuiltin", "isConstructor", "!context.isMultiContext()", "isJSObject(cachedPrototype)", "prototype == cachedPrototype"}, limit = "context.getPropertyCacheLimit()")
-    public DynamicObject doCachedProto(@SuppressWarnings("unused") DynamicObject target, @SuppressWarnings("unused") DynamicObject prototype,
-                    @Cached("prototype") @SuppressWarnings("unused") DynamicObject cachedPrototype,
+    public DynamicObject doCachedProto(@SuppressWarnings("unused") DynamicObject target, @SuppressWarnings("unused") Object prototype,
+                    @Cached("prototype") @SuppressWarnings("unused") Object cachedPrototype,
                     @Cached("getProtoChildShape(prototype)") Shape shape) {
         return JSUserObject.create(context, shape);
     }
@@ -121,9 +122,16 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
         return JSUserObject.create(context, shape);
     }
 
+    @Specialization(guards = {"!isBuiltin", "isConstructor", "context.isMultiContext()", "prototypeClass != null", "prototypeClass.isInstance(prototype)"}, limit = "1")
+    public DynamicObject createWithProtoCachedClass(@SuppressWarnings("unused") DynamicObject target, Object prototype,
+                    @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode,
+                    @Cached("getClassIfJSObject(prototype)") Class<?> prototypeClass) {
+        return createWithProto(target, (DynamicObject) prototypeClass.cast(prototype), setProtoNode);
+    }
+
     @Specialization(guards = {"!isBuiltin", "isConstructor", "context.isMultiContext()", "isJSObject(prototype)"})
     public DynamicObject createWithProto(@SuppressWarnings("unused") DynamicObject target, DynamicObject prototype,
-                    @CachedLibrary(limit = "3") DynamicObjectLibrary setProtoNode) {
+                    @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode) {
         DynamicObject object = JSUserObject.createWithoutPrototype(context);
         setProtoNode.put(object, JSObject.HIDDEN_PROTO, prototype);
         return object;
