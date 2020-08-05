@@ -157,6 +157,11 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             return shape;
         }
 
+        @Override
+        public boolean accept(Object thisObj) {
+            return shape.getLayout().getType().isInstance(thisObj) && shape.check((DynamicObject) thisObj);
+        }
+
         public int getDepth() {
             return 0;
         }
@@ -257,13 +262,8 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         }
 
         @Override
-        public boolean accept(Object thisObj) {
-            return JSObject.isJSDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj);
-        }
-
-        @Override
         public DynamicObject getStore(Object thisObj) {
-            return JSObject.castJSObject(thisObj);
+            return getShape().getLayout().getType().cast(thisObj);
         }
 
         @Override
@@ -360,11 +360,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         }
 
         @Override
-        public boolean accept(Object thisObj) {
-            return JSObject.isJSDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj);
-        }
-
-        @Override
         public DynamicObject getStore(Object thisObj) {
             return prototype;
         }
@@ -413,11 +408,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                 shapeCheckNodes[i] = new AssumptionShapeCheckNode(depthShape, key, context, true, stablePrototypeAssumption);
             }
             this.prototype = depthProto;
-        }
-
-        @Override
-        public boolean accept(Object thisObj) {
-            return JSObject.isJSDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj);
         }
 
         @Override
@@ -473,7 +463,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                 return false;
             }
             assert expectedObj != null;
-            return JSObject.isJSDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj);
+            return super.accept(thisObj);
         }
 
         @Override
