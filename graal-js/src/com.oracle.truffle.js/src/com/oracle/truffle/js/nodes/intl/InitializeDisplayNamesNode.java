@@ -68,7 +68,7 @@ public abstract class InitializeDisplayNamesNode extends JavaScriptBaseNode {
         this.toObjectNode = JSToObjectNode.createToObject(context);
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
         this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.STYLE, new String[]{IntlUtil.NARROW, IntlUtil.SHORT, IntlUtil.LONG}, IntlUtil.LONG);
-        this.getTypeOption = GetStringOptionNode.create(context, IntlUtil.TYPE, new String[]{IntlUtil.LANGUAGE, IntlUtil.REGION, IntlUtil.SCRIPT, IntlUtil.CURRENCY}, IntlUtil.LANGUAGE);
+        this.getTypeOption = GetStringOptionNode.create(context, IntlUtil.TYPE, new String[]{IntlUtil.LANGUAGE, IntlUtil.REGION, IntlUtil.SCRIPT, IntlUtil.CURRENCY}, null);
         this.getFallbackOption = GetStringOptionNode.create(context, IntlUtil.FALLBACK, new String[]{IntlUtil.CODE, IntlUtil.NONE}, IntlUtil.CODE);
     }
 
@@ -87,6 +87,10 @@ public abstract class InitializeDisplayNamesNode extends JavaScriptBaseNode {
             getLocaleMatcherOption.executeValue(options);
             String optStyle = getStyleOption.executeValue(options);
             String optType = getTypeOption.executeValue(options);
+            if (optType == null) {
+                errorBranch.enter();
+                throw Errors.createTypeError("'type' option not specified");
+            }
             String optFallback = getFallbackOption.executeValue(options);
             JSDisplayNames.InternalState state = JSDisplayNames.getInternalState(displayNamesObject);
             JSDisplayNames.setupInternalState(context, state, locales, optStyle, optType, optFallback);
