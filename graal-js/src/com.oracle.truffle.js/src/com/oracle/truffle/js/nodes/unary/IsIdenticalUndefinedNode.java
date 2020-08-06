@@ -54,7 +54,7 @@ public abstract class IsIdenticalUndefinedNode extends IsIdenticalBaseNode {
     }
 
     @Specialization
-    protected boolean doDynamicObject(Object a) {
+    protected boolean doObject(Object a) {
         return a == Undefined.instance;
     }
 
