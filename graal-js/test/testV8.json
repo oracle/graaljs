@@ -1034,6 +1034,14 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
+    "filePath" : "mjsunit/regress/regress-1020031.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests, disabled on SVM (GR-25389)"
+  }, {
     "filePath" : "mjsunit/regress/regress-1034394.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
