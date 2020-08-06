@@ -222,10 +222,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2020-07-21"
   }, {
-    "filePath" : "built-ins/NativeErrors/AggregateError/prototype/errors-absent-on-prototype.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
     "filePath" : "built-ins/Promise/all/invoke-resolve-get-error.js",
     "status" : "FAIL",
     "comment" : "new failures 2020-07-21"

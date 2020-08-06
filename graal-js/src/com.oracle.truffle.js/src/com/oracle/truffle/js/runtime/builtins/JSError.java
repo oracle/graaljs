@@ -43,32 +43,25 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.util.EnumSet;
 import java.util.Objects;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.CallSitePrototypeBuiltins;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.ErrorFunctionBuiltins;
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Boundaries;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.GraalJSException.JSStackTraceElement;
-import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.PrepareStackTraceCallback;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -89,7 +82,6 @@ public final class JSError extends JSBuiltinObject {
     public static final String STACK_NAME = "stack";
     public static final HiddenKey FORMATTED_STACK_NAME = new HiddenKey("FormattedStack");
     public static final String ERRORS_NAME = "errors";
-    public static final HiddenKey AGGREGATE_ERRORS_NAME = new HiddenKey("AggregateErrors");
     public static final String PREPARE_STACK_TRACE_NAME = "prepareStackTrace";
     public static final String LINE_NUMBER_PROPERTY_NAME = "lineNumber";
     public static final String COLUMN_NUMBER_PROPERTY_NAME = "columnNumber";
@@ -110,7 +102,7 @@ public final class JSError extends JSBuiltinObject {
         // Error
         Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
         MESSAGE_PROPERTY = JSObjectUtil.makeDataProperty(MESSAGE, allocator.locationForType(Object.class, EnumSet.of(LocationModifier.NonNull)), JSAttributes.getDefaultNotEnumerable());
-        AGGREGATE_ERRORS_PROPERTY = JSObjectUtil.makeHiddenProperty(AGGREGATE_ERRORS_NAME, allocator.locationForType(Object[].class, EnumSet.of(LocationModifier.NonNull)));
+        AGGREGATE_ERRORS_PROPERTY = JSObjectUtil.makeDataProperty(ERRORS_NAME, allocator.locationForType(Object.class, EnumSet.of(LocationModifier.NonNull)), JSAttributes.getDefaultNotEnumerable());
     }
     static {
         // CallSite
@@ -188,9 +180,6 @@ public final class JSError extends JSBuiltinObject {
         DynamicObject proto = errorType == JSErrorType.Error ? realm.getObjectPrototype() : realm.getErrorPrototype(JSErrorType.Error);
 
         DynamicObject errorPrototype = JSObject.createInit(realm, proto, ctx.getEcmaScriptVersion() < 6 ? INSTANCE : JSUserObject.INSTANCE);
-        if (errorType == JSErrorType.AggregateError) {
-            JSObjectUtil.putConstantAccessorProperty(ctx, errorPrototype, ERRORS_NAME, createErrorsGetterFunction(realm), Undefined.instance);
-        }
         JSObjectUtil.putDataProperty(ctx, errorPrototype, MESSAGE, "", JSAttributes.getDefaultNotEnumerable());
 
         if (errorType == JSErrorType.Error) {
@@ -502,33 +491,6 @@ public final class JSError extends JSBuiltinObject {
 
     public static String getAnonymousFunctionNameStackTrace(JSContext context) {
         return context.isOptionNashornCompatibilityMode() ? "<program>" : "<anonymous>";
-    }
-
-    public static Object[] getAggregateErrors(DynamicObject obj) {
-        return (Object[]) obj.get(AGGREGATE_ERRORS_NAME);
-    }
-
-    private static DynamicObject createErrorsGetterFunction(JSRealm realm) {
-        JSContext context = realm.getContext();
-        JSFunctionData getterData = context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.ErrorGetAggregateErrors, (c) -> {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
-                private final BranchProfile errorBranch = BranchProfile.create();
-
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object obj = frame.getArguments()[0];
-                    if (JSObject.isJSObject(obj) && getAggregateErrors((DynamicObject) obj) != null) {
-                        Object[] value = JSError.getAggregateErrors((DynamicObject) obj);
-                        return JSArray.createConstantObjectArray(context, value);
-                    } else {
-                        errorBranch.enter();
-                        throw Errors.createTypeError("AggregateError expected");
-                    }
-                }
-            });
-            return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + ERRORS_NAME);
-        });
-        return JSFunction.create(realm, getterData);
     }
 
 }
