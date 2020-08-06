@@ -1870,10 +1870,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         @Cached("create(getContext())") IteratorValueNode getIteratorValueNode,
                         @Cached("create(NEXT, getContext())") PropertyGetNode getNextMethodNode,
                         @Cached("create()") BranchProfile growProfile) {
+            String message = messageObj == Undefined.instance ? null : toStringNode.executeString(messageObj);
             Object usingIterator = getIteratorMethodNode.executeWithTarget(errorsObj);
             SimpleArrayList<Object> errors = GetIteratorNode.iterableToList(errorsObj, usingIterator, iteratorCallNode, isObjectNode, iteratorStepNode, getIteratorValueNode, getNextMethodNode, this,
                             growProfile);
-            String message = messageObj == Undefined.instance ? null : toStringNode.executeString(messageObj);
             DynamicObject errorObj;
             JSContext context = getContext();
             JSRealm realm = context.getRealm();
