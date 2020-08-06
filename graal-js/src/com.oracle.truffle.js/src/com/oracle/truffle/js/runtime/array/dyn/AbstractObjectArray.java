@@ -98,7 +98,12 @@ public abstract class AbstractObjectArray extends AbstractWritableArray {
     }
 
     protected static Object[] getArray(DynamicObject object) {
-        return CompilerDirectives.castExact(arrayGetArray(object), Object[].class);
+        Object array = arrayGetArray(object);
+        if (array.getClass() == Object[].class) {
+            return CompilerDirectives.castExact(array, Object[].class);
+        } else {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
     }
 
     public abstract Object getInBoundsFastObject(DynamicObject object, int index);

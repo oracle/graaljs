@@ -99,7 +99,12 @@ public abstract class AbstractJSObjectArray extends AbstractWritableArray {
     }
 
     protected static JSDynamicObject[] getArray(DynamicObject object) {
-        return CompilerDirectives.castExact(arrayGetArray(object), JSDynamicObject[].class);
+        Object array = arrayGetArray(object);
+        if (array.getClass() == JSDynamicObject[].class) {
+            return CompilerDirectives.castExact(array, JSDynamicObject[].class);
+        } else {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
     }
 
     public abstract DynamicObject getInBoundsFastJSObject(DynamicObject object, int index);

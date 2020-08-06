@@ -45,6 +45,7 @@ import static com.oracle.truffle.api.CompilerDirectives.injectBranchProbability;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArray;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArray;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -104,7 +105,12 @@ public abstract class AbstractDoubleArray extends AbstractWritableArray {
     }
 
     protected static double[] getArray(DynamicObject object) {
-        return (double[]) arrayGetArray(object);
+        Object array = arrayGetArray(object);
+        if (array.getClass() == double[].class) {
+            return (double[]) array;
+        } else {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
     }
 
     public final void setInBounds(DynamicObject object, int index, double value, ProfileHolder profile) {
