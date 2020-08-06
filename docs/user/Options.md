@@ -5,7 +5,7 @@ GraalVM JavaScript can be configured with several options provided when starting
 ### GraalVM JavaScript Launcher Options
 
 These options are to control the behaviour of the `js` launcher.
-* `-e, --eval CODE `: valuate the passed in JavaScript source code, then exit the engine.
+* `-e, --eval CODE `: evaluate the passed in JavaScript source code, then exit the engine.
 ```
 js -e 'print(1+2);'
 ```
@@ -20,6 +20,7 @@ js -f myfile.js
 
 These options are to configure the behaviour of the GraalVM JavaScript engine.
 Depending on how the engine is started, the options can be passed to the launcher or programmatically.
+Note that most of these options are experimental and require an `--experimental-options` flag.
 
 To the launcher, the options are passed with `--js.<option-name>=<value>`:
 
@@ -27,7 +28,7 @@ To the launcher, the options are passed with `--js.<option-name>=<value>`:
 js --js.ecmascript-version=6
 ```
 
-The following options are currently supported:
+The following options are currently available:
    * `--js.annex-b`: enable ECMAScript Annex B web compatibility features. Boolean value, default is `true`.
    * `--js.array-sort-inherited`: define whether `Array.protoype.sort` should sort inherited keys (implementation-defined behavior). Boolean value, default is `true`.
    * `--js.atomics`: enable *ES2017 Atomics*. Boolean value, default is `true`.

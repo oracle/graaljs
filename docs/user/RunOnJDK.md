@@ -22,7 +22,7 @@ In essence, the example pom file activates JVMCI to install additional JIT compi
 
 ### GraalVM JavaScript without Maven - JAR files from GraalVM
 To work without Maven, the JAR files from a GraalVM release can be used as well.
-GraalVM is available [Enterprise](https://www.oracle.com/downloads/graalvm-downloads.html) and [Community](https://github.com/oracle/graal/releases) Editions. Both editions' files can be used.
+GraalVM is available as [Enterprise](https://www.oracle.com/downloads/graalvm-downloads.html) and [Community](https://github.com/oracle/graal/releases) Editions. Both editions' files can be used.
 
 The relevant files are:
 * _$GRAALVM/jre/languages/js/graaljs.jar_ - core component of GraalVM JavaScript (always required)
@@ -95,7 +95,7 @@ For that, the [GraalVM Compiler](https://github.com/oracle/graal) built with JDK
 ```
 GRAALVM=/path/to/GraalVM
 GRAAL_JDK11=/path/to/Graal
-/path/to/jdk-11/bin/java -XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCI -XX:+UseJVMCICompiler --module-path=$GRAAL_JDK11/graal/sdk/mxbuild/modules/org.graalvm.graal_sdk.jar:$GRAAL_JDK11/graal/truffle/mxbuild/modules/com.oracle.truffle.truffle_api.jar --upgrade-module-path=$GRAAL_HOME/graal/compiler/mxbuild/modules/jdk.internal.vm.compiler.jar:$GRAAL_HOME/graal/compiler/mxbuild/modules/jdk.internal.vm.compiler.management.jar -cp $GRAALVM/jre/lib/graalvm/launcher-common.jar:$GRAALVM/jre/lib/graalvm/graaljs-launcher.jar:$GRAALVM/jre/languages/js/graaljs.jar:$GRAALVM/jre/lib/truffle/truffle-api.jar:$GRAALVM/jre/lib/boot/graal-sdk.jar:$GRAALVM/jre/lib/boot/graaljs-scriptengine.jar:$GRAALVM/jre/tools/regex/tregex.jar -Dgraal.TraceTruffleCompilation=true com.oracle.truffle.js.shell.JSLauncher
+/path/to/jdk-11/bin/java -XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCI -XX:+UseJVMCICompiler --module-path=$GRAAL_JDK11/graal/sdk/mxbuild/modules/org.graalvm.graal_sdk.jar:$GRAAL_JDK11/graal/truffle/mxbuild/modules/com.oracle.truffle.truffle_api.jar --upgrade-module-path=$GRAAL_HOME/graal/compiler/mxbuild/modules/jdk.internal.vm.compiler.jar:$GRAAL_HOME/graal/compiler/mxbuild/modules/jdk.internal.vm.compiler.management.jar -cp $GRAALVM/jre/lib/graalvm/launcher-common.jar:$GRAALVM/jre/lib/graalvm/graaljs-launcher.jar:$GRAALVM/jre/languages/js/graaljs.jar:$GRAALVM/jre/lib/truffle/truffle-api.jar:$GRAALVM/jre/lib/boot/graal-sdk.jar:$GRAALVM/jre/lib/boot/graaljs-scriptengine.jar:$GRAALVM/jre/tools/regex/tregex.jar com.oracle.truffle.js.shell.JSLauncher
 ```
 
 ### Inspecting the setup - is the GraalVM Compiler used as JIT compiler?

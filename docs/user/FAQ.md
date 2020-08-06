@@ -31,7 +31,7 @@ In addition, GraalVM uses the following approaches to check and retain compatibi
 * automated mass-testing of modules using _mocha_: in order to test a large set of modules, GraalVM is tested against 95k modules that use the mocha test framework. Using mocha allows automating the process of executing the test and comprehending the test result.
 * manual testing of popular modules: a select list of npm modules is tested in a manual test setup. These highly-relevant modules are tested in a more sophisticated manner.
 
-### My application used to run on Nashorn, it does not work on GraalVM JavaScript
+### My application used to run on Nashorn, it does not work on GraalVM JavaScript?
 Reason:
 * GraalVM JavaScript tries to be compatible to the ECMAScript specification, as well as competing engines (including Nashorn). In some cases, this is a contradicting requirement; then, ECMAScript is given precedence. Also, there are cases where GraalVM Javascript is not exactly replicating Nashorn features intentionally, e.g. for security reasons.
 
@@ -51,7 +51,7 @@ Solution:
 * While the objects don't have the methods of the prototype assigned, you can explicitly call them, e.g. `Array.prototype.call.sort(myArray)`.
 * We offer the experimental option `js.experimental-foreign-object-prototype`. When enabled, objects on the JavaScript side get the most prototype (e.g. `Array.prototype`, `Function.prototype`, `Object.prototype`) set and can thus behave more similarly to native JavaScript objects of the respective type. Normal JavaScript precedence rules apply here, e.g. own properties (of the Java object in that case) take precedence over and hide properties from the prototype.
 
-Note that the JavaScript builtin functions e.g., from `Array.prototype` can be called on the respective Java types, those functions expect JavaScript semantics.
+Note that while the JavaScript builtin functions e.g., from `Array.prototype` can be called on the respective Java types, those functions expect JavaScript semantics.
 This for instance means that operations might fail (typically with a `TypeError`: `Message not supported`) when an operation is not supported in Java.
 Consider `Array.prototype.push` as an example: while arrays can grow in size in JavaScript, they are fixed-size in Java, thus pushing a value is semantically not possible and will fail.
 In such cases, you can wrap the Java object and handle that case explicitly.
@@ -82,13 +82,13 @@ Solution:
 ### How to achieve the best peak performance?
 Here are a few tips you can follow to analyse and improve peak performance:
 
-* When measuring, ensure you have given the GraalVM compiler enough time to compile all hot methods before starting to measure peak performance. A useful command line option for that is `--vm.Dgraal.TraceTruffleCompilation=true` -- this outputs a message whenever a (JavaScript) method is compiled. As long as this still prints frequently, measurement should not yet start.
+* When measuring, ensure you have given the GraalVM compiler enough time to compile all hot methods before starting to measure peak performance. A useful command line option for that is `--engine.TraceCompilation=true` -- this outputs a message whenever a (JavaScript) method is compiled. As long as this still prints frequently, measurement should not yet start.
 * Compare the performance between the Native Image and the JVM mode if possible. Depending on the characteristics of your application, one or the other might show better peak performance.
 * The Polyglot API comes with several tools and options to inspect the performance of your application:
     * `--cpusampler` and `--cputracer` will print a list of the hottest methods when the application is terminated. Use that list to figure out where most time is spent in your application.
     * `--experimental-options --memtracer` can help you understand the memory allocations of your application. Refer to the [Profiling Command Line Tool](https://www.graalvm.org/docs/tools/profiler) reference for more detail.
 
-### What is the difference between running GraalVM's JavaScript in a Native Image compared to the JVM?_
+### What is the difference between running GraalVM's JavaScript in a Native Image compared to the JVM?
 In essence, the JavaScript engine of GraalVM is a plain Java application.
 Running it on any JVM (JDK 8 or higher) is possible, but, for a better result, it should be GraalVM or a compatible JVMCI-enabled JDK using the GraalVM compiler.
 This mode gives the JavaScript engine full access to Java at runtime, but also requires the JVM to first (just-in-time) compile the JavaScript engine when executed, just like any other Java application.
