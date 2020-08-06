@@ -97,7 +97,8 @@ public class TestV8Runnable extends TestRunnable {
     }));
     private static final Set<String> ES2022_FLAGS = new HashSet<>(Arrays.asList(new String[]{
                     "--harmony-regexp-match-indices",
-                    "--harmony-top-level-await"
+                    "--harmony-top-level-await",
+                    "--harmony-atomics-waitasync"
     }));
 
     private static final String FLAGS_PREFIX = "// Flags: ";

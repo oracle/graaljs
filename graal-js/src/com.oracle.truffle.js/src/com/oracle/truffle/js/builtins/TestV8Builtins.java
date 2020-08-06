@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -53,6 +54,8 @@ import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugContinueInInterpreterNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugStringCompareNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugTypedArrayDetachBufferNodeGen;
+import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8AtomicsNumUnresolvedAsyncPromisesForTestingNodeGen;
+import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8AtomicsNumWaitersForTestingNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ConstructDoubleNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8CreateAsyncFromSyncIteratorNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8DoublePartNodeGen;
@@ -66,9 +69,11 @@ import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToNumberNodeGe
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToPrimitiveNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToStringNodeGen;
 import com.oracle.truffle.js.builtins.helper.GCNodeGen;
+import com.oracle.truffle.js.builtins.helper.SharedMemorySync;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
 import com.oracle.truffle.js.nodes.cast.JSToLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
@@ -77,13 +82,17 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.JSAgentWaiterList.JSAgentWaiterListEntry;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSTestV8;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -120,7 +129,10 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         toNumber(1),
         toPrimitive(1),
         toPrimitiveString(1),
-        toPrimitiveNumber(1);
+        toPrimitiveNumber(1),
+
+        atomicsNumWaitersForTesting(2),
+        atomicsNumUnresolvedAsyncPromisesForTesting(2);
 
         private final int length;
 
@@ -180,6 +192,10 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
                 return TestV8ToNumberNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case toLength:
                 return TestV8ToLengthNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case atomicsNumWaitersForTesting:
+                return TestV8AtomicsNumWaitersForTestingNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+            case atomicsNumUnresolvedAsyncPromisesForTesting:
+                return TestV8AtomicsNumUnresolvedAsyncPromisesForTestingNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
         }
         return null;
     }
@@ -412,6 +428,75 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
             }
             embedderData.add(callback);
             return Undefined.instance;
+        }
+    }
+
+    public abstract static class TestV8AtomicsBaseNode extends JSBuiltinNode {
+        public TestV8AtomicsBaseNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        protected DynamicObject ensureSharedArray(Object maybeTarget) {
+            if (JSArrayBufferView.isJSArrayBufferView(maybeTarget)) {
+                DynamicObject buffer = JSArrayBufferView.getArrayBuffer((DynamicObject) maybeTarget);
+                if (JSSharedArrayBuffer.isJSSharedArrayBuffer(buffer)) {
+                    return (DynamicObject) maybeTarget;
+                }
+            }
+            throw createTypeErrorNotSharedArray();
+        }
+
+        @TruffleBoundary
+        protected final JSException createTypeErrorNotSharedArray() {
+            return Errors.createTypeError("Cannot execute on non-shared array.", this);
+        }
+
+        @TruffleBoundary
+        protected static final JSException createRangeErrorSharedArray(Object idx) {
+            return Errors.createRangeError("Range error with index : " + idx);
+        }
+
+        protected static int validateAtomicAccess(DynamicObject target, long convertedIndex, Object originalIndex) {
+            int length = JSArrayBufferView.typedArrayGetLength(target);
+            assert convertedIndex >= 0;
+            if (convertedIndex >= length) {
+                throw createRangeErrorSharedArray(originalIndex);
+            }
+            return (int) convertedIndex;
+        }
+
+    }
+
+    public abstract static class TestV8AtomicsNumWaitersForTestingNode extends TestV8AtomicsBaseNode {
+
+        public TestV8AtomicsNumWaitersForTestingNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object numWaiters(Object maybeTarget, Object index,
+                        @Cached("create()") JSToIndexNode toIndexNode) {
+            DynamicObject target = ensureSharedArray(maybeTarget);
+            int i = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
+            JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
+            return wl.size();
+        }
+
+    }
+
+    public abstract static class TestV8AtomicsNumUnresolvedAsyncPromisesForTestingNode extends TestV8AtomicsBaseNode {
+
+        public TestV8AtomicsNumUnresolvedAsyncPromisesForTestingNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object numUnresolvedAsyncPromises(Object maybeTarget, Object index,
+                        @Cached("create()") JSToIndexNode toIndexNode) {
+            DynamicObject target = ensureSharedArray(maybeTarget);
+            int i = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
+            JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
+            return getContext().getJSAgent().getAsyncWaitersToBeResolved(wl);
         }
     }
 

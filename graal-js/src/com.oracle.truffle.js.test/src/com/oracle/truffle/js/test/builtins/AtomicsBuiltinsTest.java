@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,4 +80,53 @@ public class AtomicsBuiltinsTest {
         }
     }
 
+    @Test
+    public void testInfiniteWaitAsyncNotAwoken() {
+        // Atomics.waitAsync() should not freeze when not awoken
+        Context.Builder builder = JSTest.newContextBuilder();
+        builder.option(JSContextOptions.TEST262_MODE_NAME, "true");
+        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022");
+        try (Context context = builder.build()) {
+            String code = "const sab = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * 4);\n" //
+                            + "const i32a = new Int32Array(sab);\n" //
+                            + "const result = Atomics.waitAsync(i32a, 0, 0);" //
+                            + "result;"; //
+            Value result = context.eval(JavaScriptLanguage.ID, code);
+            Assert.assertTrue(result.hasMember("value"));
+            Assert.assertTrue(result.hasMember("async"));
+            Assert.assertTrue(result.getMember("async").asBoolean());
+        }
+    }
+
+    @Test
+    public void testWaitAsyncNotifyNonZeroOffsetViews() {
+        Context.Builder builder = JSTest.newContextBuilder();
+        builder.option(JSContextOptions.TEST262_MODE_NAME, "true");
+        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022");
+        try (Context context = builder.build()) {
+            String code = "const sab = new SharedArrayBuffer(32);\n" //
+                            + "const arr1 = new Int32Array(sab, 4, 4);\n" //
+                            + "const arr2 = new Int32Array(sab, 8, 3);\n" //
+                            + "Atomics.waitAsync(arr1, 2, 0, 1000);\n" //
+                            + "const result = Atomics.notify(arr2, 1, 1);" //
+                            + "result;"; //
+            Value result = context.eval(JavaScriptLanguage.ID, code);
+            Assert.assertEquals(1, result.asInt());
+        }
+    }
+
+    @Test
+    public void testWaitAsyncSmallPositiveRealTimeout() {
+        Context.Builder builder = JSTest.newContextBuilder();
+        builder.option(JSContextOptions.TEST262_MODE_NAME, "true");
+        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022");
+        try (Context context = builder.build()) {
+            String code = "const sab = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * 4);\n" //
+                            + "const i32a = new Int32Array(sab);\n" //
+                            + "const result = Atomics.waitAsync(i32a, 0, 0, 0.01).async;" //
+                            + "result;"; //
+            Value result = context.eval(JavaScriptLanguage.ID, code);
+            Assert.assertTrue(result.asBoolean());
+        }
+    }
 }

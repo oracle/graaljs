@@ -818,8 +818,12 @@ function v8SetAllowAtomicsWait() {
     throw new Error("v8 internal method not implemented");
 }
 
-function v8AtomicsNumWaitersForTesting() {
-    throw new Error("v8 internal method not implemented");
+function v8AtomicsNumWaitersForTesting(array, index) {
+    return TestV8.atomicsNumWaitersForTesting(array, index);
+}
+
+function v8AtomicsNumUnresolvedAsyncPromisesForTesting(array, index) {
+    return TestV8.atomicsNumUnresolvedAsyncPromisesForTesting(array, index);
 }
 
 function v8SerializeWasmModule() {

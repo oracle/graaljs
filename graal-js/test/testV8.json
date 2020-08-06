@@ -663,35 +663,19 @@
   }, {
     "filePath" : "mjsunit/harmony/atomics-waitasync-1thread-2timeout.js",
     "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
+    "comment" : "new test failures (update 2020-07-22), Worker not defined"
   }, {
     "filePath" : "mjsunit/harmony/atomics-waitasync-1thread-buffer-out-of-scope-timeout.js",
     "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
-  }, {
-    "filePath" : "mjsunit/harmony/atomics-waitasync-1thread-promise-out-of-scope.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
+    "comment" : "new test failures (update 2020-07-22), Worker not defined"
   }, {
     "filePath" : "mjsunit/harmony/atomics-waitasync-1thread-timeout.js",
     "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
+    "comment" : "new test failures (update 2020-07-22), Worker not defined"
   }, {
     "filePath" : "mjsunit/harmony/atomics-waitasync-1thread-timeouts-and-no-timeouts.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
-  }, {
-    "filePath" : "mjsunit/harmony/atomics-waitasync-1thread-wake-up-all.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
-  }, {
-    "filePath" : "mjsunit/harmony/atomics-waitasync-1thread-wake-up-fifo.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
-  }, {
-    "filePath" : "mjsunit/harmony/atomics-waitasync-1thread-wake-up-simple.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
+    "status" : "SKIP",
+    "comment" : "new test failures (update 2020-07-22), fails randomly"
   }, {
     "filePath" : "mjsunit/harmony/atomics-waitasync-worker-shutdown-before-wait-finished-2-waits.js",
     "status" : "FAIL",
@@ -703,15 +687,11 @@
   }, {
     "filePath" : "mjsunit/harmony/atomics-waitasync-worker-shutdown-before-wait-finished-no-timeout.js",
     "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
+    "comment" : "new test failures (update 2020-07-22), Worker not defined"
   }, {
     "filePath" : "mjsunit/harmony/atomics-waitasync-worker-shutdown-before-wait-finished-timeout.js",
     "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
-  }, {
-    "filePath" : "mjsunit/harmony/atomics-waitasync.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
+    "comment" : "new test failures (update 2020-07-22), Worker not defined"
   }, {
     "filePath" : "mjsunit/harmony/bigint/regressions.js",
     "status" : "FAIL",

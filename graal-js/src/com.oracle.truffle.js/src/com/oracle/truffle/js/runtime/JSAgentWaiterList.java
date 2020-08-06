@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,8 @@
 package com.oracle.truffle.js.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -79,7 +81,7 @@ public class JSAgentWaiterList {
         globalMonitor.unlock();
     }
 
-    public static final class JSAgentWaiterListEntry extends ConcurrentLinkedQueue<Integer> {
+    public static final class JSAgentWaiterListEntry extends ConcurrentLinkedQueue<WaiterRecord> {
 
         private static final long serialVersionUID = 2655886588267252886L;
 
@@ -98,7 +100,86 @@ public class JSAgentWaiterList {
         public void unlock() {
             indexMonitor.unlock();
         }
+    }
 
+    public static final class WaiterRecord {
+
+        private final int agentSignifier;
+        private final PromiseCapabilityRecord promiseCapability;
+        private final double timeout;
+        private String result;
+        private final JSAgentWaiterListEntry wl;
+        private final JSAgent agent;
+
+        private long creationTimestamp;
+        private boolean notified;
+
+        private WaiterRecord(int agentSignifier, PromiseCapabilityRecord promiseCapability, double timeout, String result, JSAgentWaiterListEntry wl, JSAgent agent) {
+            this.agentSignifier = agentSignifier;
+            this.promiseCapability = promiseCapability;
+            this.timeout = timeout;
+            this.result = result;
+            this.wl = wl;
+            this.agent = agent;
+
+            this.notified = false;
+        }
+
+        public static WaiterRecord create(int agentSignifier, PromiseCapabilityRecord promiseCapability, double timeout, String result, JSAgentWaiterListEntry wl, JSAgent agent) {
+            return new WaiterRecord(agentSignifier, promiseCapability, timeout, result, wl, agent);
+        }
+
+        public int getAgentSignifier() {
+            return agentSignifier;
+        }
+
+        public PromiseCapabilityRecord getPromiseCapability() {
+            return promiseCapability;
+        }
+
+        public double getTimeout() {
+            return timeout;
+        }
+
+        public String getResult() {
+            return result;
+        }
+
+        public void setResult(String result) {
+            this.result = result;
+        }
+
+        public JSAgentWaiterListEntry getWaiterListEntry() {
+            return wl;
+        }
+
+        public void setCreationTime(long timeMillis) {
+            creationTimestamp = timeMillis;
+        }
+
+        public long getCreationTime() {
+            return creationTimestamp;
+        }
+
+        public void setNotified() {
+            assert !notified;
+            notified = true;
+        }
+
+        public boolean isReadyToResolve() {
+            return notified || isTimedOut();
+        }
+
+        private boolean isTimedOut() {
+            assert !notified;
+            long current = System.nanoTime() / JSRealm.NANOSECONDS_PER_MILLISECOND;
+            long elapsed = current - creationTimestamp;
+            return elapsed >= timeout;
+        }
+
+        public void enqueueInAgent() {
+            agent.enqueueWaitAsyncPromiseJob(this);
+        }
     }
 
 }

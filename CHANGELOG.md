@@ -10,6 +10,7 @@ The main focus is on user-observable behavior of the engine.
 * Adopted new buffer interop support, allowing foreign buffers to be used with typed arrays and `DataView`, without copying. Likewise enables `ArrayBuffer` to be used in other languages.
 * Experimental option `js.array-sort-inherited` was removed. Values visible through holes in array(-like) object are always sorted according to the latest version of ECMAScript specification.
 * Updated ICU4J library to version 68.2.
+* Implemented the [Atomics.waitAsync](https://github.com/tc39/proposal-atomics-wait-async) proposal. It is available in ECMAScript 2022 mode (`--js.ecmascript-version=2022`).
 
 ## Version 21.0.0
 * ECMAScript 2021 mode/features enabled by default.

@@ -95,6 +95,7 @@ public class Test262Runnable extends TestRunnable {
                     "Array.prototype.values",
                     "ArrayBuffer",
                     "Atomics",
+                    "Atomics.waitAsync",
                     "BigInt",
                     "DataView",
                     "DataView.prototype.getFloat32",
@@ -223,7 +224,6 @@ public class Test262Runnable extends TestRunnable {
                     "top-level-await",
     }));
     private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
-                    "Atomics.waitAsync",
                     "Intl.DateTimeFormat-dayPeriod",
                     "Intl.DateTimeFormat-formatRange",
                     "Intl.DateTimeFormat-fractionalSecondDigits",
@@ -236,6 +236,7 @@ public class Test262Runnable extends TestRunnable {
                     "Array.prototype.at",
                     "String.prototype.at",
                     "TypedArray.prototype.at",
+                    "Atomics.waitAsync",
                     "class-fields-private",
                     "class-fields-public",
                     "class-methods-private",
@@ -325,6 +326,7 @@ public class Test262Runnable extends TestRunnable {
         if (suite.getConfig().isExtLauncher()) {
             return runExternalLauncher(ecmaVersion, testSource, negative, asyncTest, strict, module, negativeExpectedMessage, harnessSources, extraOptions, byteArrayOutputStream, outputStream);
         } else {
+            Thread.currentThread().setName("Test262 Main Thread");
             return runInJVM(ecmaVersion, file, testSource, negative, asyncTest, negativeExpectedMessage, harnessSources, extraOptions, byteArrayOutputStream, outputStream);
         }
     }
