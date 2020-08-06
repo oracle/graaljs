@@ -97,12 +97,12 @@ public class ArrayAccess {
     }
 
     public Object getArray(Object thisObj) {
-        return ((JSArrayBase) thisObj).theArray;
+        return ((JSArrayBase) thisObj).getArray();
     }
 
     public void setArray(Object thisObj, Object array) {
         assert array != null && (array.getClass().isArray() || array instanceof TreeMap<?, ?>);
-        ((JSArrayBase) thisObj).theArray = array;
+        ((JSArrayBase) thisObj).setArray(array);
     }
 
     public int getHoleCount(Object thisObj) {

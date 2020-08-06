@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
@@ -50,7 +52,7 @@ public abstract class JSArrayBase extends JSBasicObject implements JSArrayLike {
     protected JSArrayBase(Shape shape, ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
         super(shape);
         assert JSRuntime.isRepresentableAsUnsignedInt(length);
-        this.theArray = array;
+        this.theArray = Objects.requireNonNull(array);
         this.arrayType = arrayType;
         this.length = (int) length;
         this.usedLength = usedLength;
@@ -81,5 +83,13 @@ public abstract class JSArrayBase extends JSBasicObject implements JSArrayLike {
 
     public final void setArrayType(ScriptArray arrayType) {
         this.arrayType = arrayType;
+    }
+
+    public final Object getArray() {
+        return theArray;
+    }
+
+    public final void setArray(Object theArray) {
+        this.theArray = Objects.requireNonNull(theArray);
     }
 }
