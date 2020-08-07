@@ -1056,7 +1056,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 return Double.NaN;
             }
 
-            int len = validStringLength(inputStr, radix, firstIdx, lastIdx);
+            int lastValidIdx = validStringLastIdx(inputStr, radix, firstIdx, lastIdx);
+            int len = lastValidIdx - firstIdx;
             if (len <= 0) {
                 needsNaN.enter();
                 return Double.NaN;
@@ -1067,12 +1068,12 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                     // parseRawDontFitLong() can produce an incorrect result
                     // due to subtle rounding errors (for radix 10) but the spec.
                     // requires exact processing for this radix
-                    return parseDouble(Boundaries.substring(inputStr, firstIdx, lastIdx), negate);
+                    return parseDouble(Boundaries.substring(inputStr, firstIdx, lastValidIdx), negate);
                 } else {
-                    return JSRuntime.parseRawDontFitLong(inputStr, radix, firstIdx, lastIdx, negate);
+                    return JSRuntime.parseRawDontFitLong(inputStr, radix, firstIdx, lastValidIdx, negate);
                 }
             }
-            return JSRuntime.parseRawFitsLong(inputStr, radix, firstIdx, lastIdx, negate);
+            return JSRuntime.parseRawFitsLong(inputStr, radix, firstIdx, lastValidIdx, negate);
         }
 
         @TruffleBoundary
@@ -1135,7 +1136,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @TruffleBoundary
-        private static int validStringLength(String thing, int radix, int firstIdx, int lastIdx) {
+        private static int validStringLastIdx(String thing, int radix, int firstIdx, int lastIdx) {
             int pos = firstIdx;
             while (pos < lastIdx) {
                 char c = thing.charAt(pos);
@@ -1144,7 +1145,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 }
                 pos++;
             }
-            return pos - firstIdx;
+            return pos;
         }
     }
 
