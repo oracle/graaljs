@@ -42,11 +42,12 @@ package com.oracle.truffle.js.nodes.binary;
 
 import static com.oracle.truffle.js.nodes.JSGuards.isString;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -69,10 +70,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 
-import java.util.Set;
-
 @NodeInfo(shortName = "+")
-@ReportPolymorphism
 public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
 
     @CompilationFinal boolean truncate;
