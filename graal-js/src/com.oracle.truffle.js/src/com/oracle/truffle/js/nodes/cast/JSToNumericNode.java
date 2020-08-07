@@ -76,11 +76,7 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
         if (child instanceof JSConstantNode) {
             Object constantOperand = ((JSConstantNode) child).getValue();
             if (constantOperand != null && !(constantOperand instanceof Symbol) && JSRuntime.isJSPrimitive(constantOperand)) {
-                if (constantOperand instanceof BigInt) {
-                    return JSConstantNode.createBigInt((BigInt) constantOperand);
-                } else {
-                    return JSConstantNode.createInt(JSRuntime.toInt32(constantOperand));
-                }
+                return JSConstantNode.create(JSRuntime.toNumeric(constantOperand));
             }
         }
         return JSToNumericWrapperNodeGen.create(child);
