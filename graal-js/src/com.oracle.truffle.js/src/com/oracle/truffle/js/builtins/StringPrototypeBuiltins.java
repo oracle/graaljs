@@ -2697,9 +2697,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             int len = toIntegerAsInt(args[0]);
             if (len <= thisStr.length()) {
                 return thisStr;
-            } else if (len > getContext().getStringLengthLimit()) {
-                CompilerDirectives.transferToInterpreter();
-                throw Errors.createRangeErrorInvalidStringLength();
             }
             String fillStr;
             if (args.length <= 1 || args[1] == Undefined.instance) {
@@ -2709,6 +2706,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 if (fillStr.isEmpty()) {
                     return thisStr; // explicit empty string
                 }
+            }
+            if (len > getContext().getStringLengthLimit()) {
+                CompilerDirectives.transferToInterpreter();
+                throw Errors.createRangeErrorInvalidStringLength();
             }
             return padIntl(thisStr, fillStr, len);
         }
