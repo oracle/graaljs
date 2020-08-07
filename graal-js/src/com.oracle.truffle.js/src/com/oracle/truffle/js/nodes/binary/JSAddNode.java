@@ -83,6 +83,9 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
     }
 
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right, boolean truncate) {
+        if (right instanceof JSConstantNumericUnitNode) {
+            return JSAddSubNumericUnitNode.create(left, true, truncate);
+        }
         if (JSConfig.UseSuperOperations) {
             if (left instanceof JSConstantIntegerNode && right instanceof JSConstantIntegerNode) {
                 int leftValue = ((JSConstantIntegerNode) left).executeInt(null);
@@ -98,9 +101,6 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
                 Object leftValue = ((JSConstantNode) left).execute(null);
                 return JSAddConstantLeftNumberNodeGen.create((Number) leftValue, right, truncate);
             }
-        }
-        if (right instanceof JSConstantNumericUnitNode) {
-            return JSAddSubNumericUnitNode.create(left, true, truncate);
         }
         return JSAddNodeGen.create(truncate, left, right);
     }
