@@ -2565,10 +2565,6 @@
     "runInIsolation" : true,
     "comment" : "Out of memory even when run together with other memory-intense tests"
   }, {
-    "filePath" : "mjsunit/string-pad.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "mjsunit/switch.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
