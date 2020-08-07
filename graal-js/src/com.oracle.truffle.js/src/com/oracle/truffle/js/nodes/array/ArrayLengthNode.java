@@ -61,7 +61,6 @@ import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 @ImportStatic(ScriptArray.class)
-@ReportPolymorphism
 public abstract class ArrayLengthNode extends JavaScriptBaseNode {
 
     protected static final int MAX_TYPE_COUNT = 4;
@@ -127,6 +126,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
         }
     }
 
+    @ReportPolymorphism
     public abstract static class ArrayLengthWriteNode extends ArrayLengthNode {
         public static ArrayLengthWriteNode create(boolean strict) {
             return SetArrayLengthNodeGen.create(strict);
