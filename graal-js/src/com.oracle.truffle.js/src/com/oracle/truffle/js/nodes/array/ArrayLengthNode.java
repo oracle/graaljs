@@ -45,7 +45,6 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArr
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -126,7 +125,6 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
         }
     }
 
-    @ReportPolymorphism
     public abstract static class ArrayLengthWriteNode extends ArrayLengthNode {
         public static ArrayLengthWriteNode create(boolean strict) {
             return SetArrayLengthNodeGen.create(strict);
