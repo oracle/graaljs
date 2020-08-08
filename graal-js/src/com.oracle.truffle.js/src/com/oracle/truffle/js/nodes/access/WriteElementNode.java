@@ -638,9 +638,6 @@ public class WriteElementNode extends JSTargetableNode {
                 ArrayWriteElementCacheNode newCacheNode = makeArrayCacheNode(target, array, currentHead);
                 insert(newCacheNode);
                 arrayWriteElementNode = newCacheNode;
-                if (currentHead != null) {
-                    reportPolymorphicSpecialize();
-                }
                 if (!newCacheNode.guard(target, array)) {
                     throw Errors.shouldNotReachHere();
                 }
