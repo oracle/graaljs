@@ -104,9 +104,26 @@ public class ParseIntTest {
             assertTrue(result.fitsInInt());
             assertEquals(3, result.asInt());
 
-            result = context.eval(ID, "parseInt('0x  ', 16)"); // check invalid hex
+            // parseIntGeneric with hexStart
+            result = context.eval(ID, "parseInt('  0xA  ', 16)");
+            assertTrue(result.fitsInInt());
+            assertEquals(10, result.asInt());
+        }
+    }
+
+    @Test
+    public void testInvalid() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Value result;
+
+            result = context.eval(ID, "parseInt('0x  ', 16)");
             assertTrue(result.fitsInDouble());
             assertTrue(Double.isNaN(result.asDouble()));
+
+            // identify valid part of string
+            result = context.eval(ID, "parseInt('  1234---  ', 10)");
+            assertTrue(result.fitsInInt());
+            assertEquals(1234, result.asInt());
         }
     }
 
@@ -134,5 +151,19 @@ public class ParseIntTest {
 
     private static Value parseInt(String string, int radix, Context context) {
         return context.eval(ID, "parseInt('" + string + "', " + radix + ");");
+    }
+
+    @Test
+    public void testGR25478() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Value result = context.eval(ID, "parseInt('18446462598732840000\" at LowLevelInterpreter.asm:194', 10)");
+            assertTrue(result.fitsInDouble());
+            assertEquals(18446462598732840000d, result.asDouble(), 0.000001);
+
+            result = context.eval(ID, "parseInt('-10000000000000', 10)");
+            assertTrue(result.fitsInDouble());
+            assertEquals(-10000000000000d, result.asDouble(), 0.000001);
+
+        }
     }
 }
