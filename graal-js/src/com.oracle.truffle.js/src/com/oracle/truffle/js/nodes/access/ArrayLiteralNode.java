@@ -465,18 +465,19 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
             Object[] primitiveArray = new Object[elements.length];
             int holeCount = 0;
             int arrayOffset = 0;
-            int usedLength = 0;
+            int lastNonEmpty = -1;
             for (int i = 0; i < elements.length; i++) {
                 if (elements[i] instanceof EmptyNode) {
                     holeCount++;
                     if (i == arrayOffset) {
-                        arrayOffset = i + 1;
+                        arrayOffset++;
                     }
                 } else {
                     primitiveArray[i] = elements[i].execute(frame);
-                    usedLength = i + 1 - arrayOffset;
+                    lastNonEmpty = i;
                 }
             }
+            int usedLength = lastNonEmpty + 1 - arrayOffset;
             return JSArray.createZeroBasedHolesObjectArray(context, primitiveArray, usedLength, arrayOffset, holeCount);
         }
 
