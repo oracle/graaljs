@@ -5160,7 +5160,7 @@ public class Parser extends AbstractParser {
             value = new TernaryNode(Token.recast(paramToken, TERNARY), test, new JoinPredecessorExpression(initializer), new JoinPredecessorExpression(param));
         }
         BinaryNode assignment = new BinaryNode(Token.recast(paramToken, ASSIGN_INIT), target, value);
-        function.addParameterInitialization(paramLine, assignment, initializer != null);
+        function.addParameterInitialization(paramLine, assignment, initializer != null, isRest);
     }
 
     private void verifyDestructuringParameterBindingPattern(final Expression pattern, final long paramToken, final int paramLine) {
