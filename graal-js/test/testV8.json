@@ -768,10 +768,6 @@
     "status" : "FAIL",
     "comment" : "new test failures (update 2020-07-22)"
   }, {
-    "filePath" : "mjsunit/harmony/promise-any.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
-  }, {
     "filePath" : "mjsunit/harmony/public-instance-class-fields.js",
     "ecmaVersion" : {
       "minVersion" : 12

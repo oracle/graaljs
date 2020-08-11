@@ -221,7 +221,6 @@ public class JSContext {
         CollatorCaseSensitiveCompare,
         CollatorCompare,
         DateTimeFormatFormat,
-        ErrorGetAggregateErrors,
         NumberFormatFormat,
         ProxyRevokerFunction,
         PromiseResolveFunction,
@@ -506,7 +505,7 @@ public class JSContext {
                 errorObjectFactories[type.ordinal()] = builder.create(JSErrorType.AggregateError,
                                 (c, p) -> JSError.addAggregateErrorsPropertyToShape(JSError.INSTANCE.makeInitialShape(c, p)));
                 errorWithMessageObjectFactories[type.ordinal()] = builder.create(JSErrorType.AggregateError,
-                                (c, p) -> JSError.addMessagePropertyToShape(JSError.addAggregateErrorsPropertyToShape(JSError.INSTANCE.makeInitialShape(c, p))));
+                                (c, p) -> JSError.addAggregateErrorsPropertyToShape(JSError.addMessagePropertyToShape(JSError.INSTANCE.makeInitialShape(c, p))));
             } else {
                 errorObjectFactories[type.ordinal()] = builder.create(type, JSError.INSTANCE::makeInitialShape);
                 errorWithMessageObjectFactories[type.ordinal()] = builder.create(type, (c, p) -> JSError.addMessagePropertyToShape(JSError.INSTANCE.makeInitialShape(c, p)));

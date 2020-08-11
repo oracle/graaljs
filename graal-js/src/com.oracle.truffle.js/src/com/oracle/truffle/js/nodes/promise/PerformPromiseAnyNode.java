@@ -58,6 +58,7 @@ import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
@@ -117,7 +118,7 @@ public class PerformPromiseAnyNode extends PerformPromiseCombinatorNode {
                 iteratorRecord.setDone(true);
                 remainingElementsCount.value--;
                 if (remainingElementsCount.value == 0) {
-                    throw Errors.createAggregateError(errors.toArray(), context);
+                    throw Errors.createAggregateError(JSArray.createConstantObjectArray(context, errors.toArray()), context);
                 }
                 return resultCapability.getPromise();
             }
@@ -161,7 +162,8 @@ public class PerformPromiseAnyNode extends PerformPromiseCombinatorNode {
                 args.errors.set(args.index, error);
                 args.remainingElements.value--;
                 if (args.remainingElements.value == 0) {
-                    Object argumentObject = JSObject.create(context, context.getErrorFactory(JSErrorType.AggregateError, false), (Object) args.errors.toArray());
+                    Object errorsArray = JSArray.createConstantObjectArray(context, args.errors.toArray());
+                    Object argumentObject = JSObject.create(context, context.getErrorFactory(JSErrorType.AggregateError, false), errorsArray);
                     return callReject.executeCall(JSArguments.createOneArg(Undefined.instance, args.capability.getReject(), argumentObject));
                 }
                 return Undefined.instance;

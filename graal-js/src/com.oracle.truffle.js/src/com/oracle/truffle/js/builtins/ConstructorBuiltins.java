@@ -1877,11 +1877,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             DynamicObject errorObj;
             JSContext context = getContext();
             JSRealm realm = context.getRealm();
-            Object errorsArray = errors.toArray();
+            Object errorsArray = JSArray.createConstantObjectArray(context, errors.toArray());
             if (message == null) {
                 errorObj = JSObject.create(context, context.getErrorFactory(JSErrorType.AggregateError, false), errorsArray);
             } else {
-                errorObj = JSObject.create(context, context.getErrorFactory(JSErrorType.AggregateError, true), errorsArray, message);
+                errorObj = JSObject.create(context, context.getErrorFactory(JSErrorType.AggregateError, true), message, errorsArray);
             }
             swapPrototype(errorObj, newTarget);
 
