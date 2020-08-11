@@ -465,18 +465,19 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
             Object[] primitiveArray = new Object[elements.length];
             int holeCount = 0;
             int arrayOffset = 0;
-            int usedLength = 0;
+            int lastNonEmpty = -1;
             for (int i = 0; i < elements.length; i++) {
                 if (elements[i] instanceof EmptyNode) {
                     holeCount++;
                     if (i == arrayOffset) {
-                        arrayOffset = i + 1;
+                        arrayOffset++;
                     }
                 } else {
                     primitiveArray[i] = elements[i].execute(frame);
-                    usedLength = i + 1 - arrayOffset;
+                    lastNonEmpty = i;
                 }
             }
+            int usedLength = lastNonEmpty + 1 - arrayOffset;
             return JSArray.createZeroBasedHolesObjectArray(context, primitiveArray, usedLength, arrayOffset, holeCount);
         }
 
@@ -562,7 +563,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
             SimpleArrayList<Object> evaluatedElements = new SimpleArrayList<>(elements.length + JSConfig.SpreadArgumentPlaceholderCount);
             int holeCount = 0;
             int arrayOffset = 0;
-            int usedLength = 0;
+            int lastNonEmptyPlusOne = 0;
             for (int i = 0; i < elements.length; i++) {
                 Node node = elements[i];
                 if (elements[i] instanceof WrapperNode) {
@@ -572,15 +573,19 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
                     evaluatedElements.add(null, growProfile);
                     holeCount++;
                     if (i == arrayOffset) {
-                        arrayOffset = i + 1;
+                        arrayOffset++;
                     }
                 } else if (node instanceof SpreadArrayNode) {
-                    usedLength += ((SpreadArrayNode) node).executeToList(frame, evaluatedElements, growProfile);
+                    int count = ((SpreadArrayNode) node).executeToList(frame, evaluatedElements, growProfile);
+                    if (count != 0) {
+                        lastNonEmptyPlusOne = evaluatedElements.size();
+                    }
                 } else {
                     evaluatedElements.add(elements[i].execute(frame), growProfile);
-                    usedLength++;
+                    lastNonEmptyPlusOne = evaluatedElements.size();
                 }
             }
+            int usedLength = lastNonEmptyPlusOne - arrayOffset;
             return JSArray.createZeroBasedHolesObjectArray(context, evaluatedElements.toArray(), usedLength, arrayOffset, holeCount);
         }
 
