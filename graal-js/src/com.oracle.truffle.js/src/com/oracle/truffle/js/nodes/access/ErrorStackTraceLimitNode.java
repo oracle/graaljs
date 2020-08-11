@@ -41,22 +41,20 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 
 public abstract class ErrorStackTraceLimitNode extends JavaScriptBaseNode {
-    @Child private RealmNode realmNode;
+    private final JSContext context;
     @Child private PropertyGetNode getStackTraceLimit;
     @Child private JSToIntegerAsIntNode toInteger;
 
     protected ErrorStackTraceLimitNode(JSContext context) {
-        this.realmNode = RealmNode.create(context);
+        this.context = context;
         this.getStackTraceLimit = PropertyGetNode.create(JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, false, context);
         this.toInteger = JSToIntegerAsIntNode.create();
     }
@@ -66,12 +64,11 @@ public abstract class ErrorStackTraceLimitNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    public int doInt(VirtualFrame frame) {
-        JSRealm realm = realmNode.execute(frame);
-        DynamicObject errorConstructor = realm.getErrorConstructor(JSErrorType.Error);
+    public int doInt() {
+        DynamicObject errorConstructor = context.getRealm().getErrorConstructor(JSErrorType.Error);
         return Math.max(0, toInteger.executeInt(getStackTraceLimit.getValue(errorConstructor)));
     }
 
-    public abstract int executeInt(VirtualFrame frame);
+    public abstract int executeInt();
 
 }

@@ -1811,17 +1811,17 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization
-        protected DynamicObject constructError(VirtualFrame frame, DynamicObject newTarget, String message) {
-            return constructErrorImpl(frame, newTarget, message);
+        protected DynamicObject constructError(DynamicObject newTarget, String message) {
+            return constructErrorImpl(newTarget, message);
         }
 
         @Specialization
-        protected DynamicObject constructError(VirtualFrame frame, DynamicObject newTarget, Object message,
+        protected DynamicObject constructError(DynamicObject newTarget, Object message,
                         @Cached("create()") JSToStringNode toStringNode) {
-            return constructErrorImpl(frame, newTarget, message == Undefined.instance ? null : toStringNode.executeString(message));
+            return constructErrorImpl(newTarget, message == Undefined.instance ? null : toStringNode.executeString(message));
         }
 
-        private DynamicObject constructErrorImpl(VirtualFrame frame, DynamicObject newTarget, String message) {
+        private DynamicObject constructErrorImpl(DynamicObject newTarget, String message) {
             DynamicObject errorObj;
             JSContext context = getContext();
             JSRealm realm = context.getRealm();
@@ -1832,7 +1832,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
             swapPrototype(errorObj, newTarget);
 
-            int stackTraceLimit = stackTraceLimitNode.executeInt(frame);
+            int stackTraceLimit = stackTraceLimitNode.executeInt();
             DynamicObject errorFunction = realm.getErrorConstructor(errorType);
             GraalJSException exception = JSException.createCapture(errorType, message, errorObj, realm, stackTraceLimit, errorFunction);
             return initErrorObjectNode.execute(errorObj, exception);
@@ -1861,7 +1861,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization
-        protected DynamicObject constructError(VirtualFrame frame, DynamicObject newTarget, Object errorsObj, Object messageObj,
+        protected DynamicObject constructError(DynamicObject newTarget, Object errorsObj, Object messageObj,
                         @Cached("create()") JSToStringNode toStringNode,
                         @Cached("createGetIteratorMethod()") GetMethodNode getIteratorMethodNode,
                         @Cached("createCall()") JSFunctionCallNode iteratorCallNode,
@@ -1885,7 +1885,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
             swapPrototype(errorObj, newTarget);
 
-            int stackTraceLimit = stackTraceLimitNode.executeInt(frame);
+            int stackTraceLimit = stackTraceLimitNode.executeInt();
             DynamicObject errorFunction = realm.getErrorConstructor(JSErrorType.AggregateError);
             GraalJSException exception = JSException.createCapture(JSErrorType.AggregateError, message, errorObj, realm, stackTraceLimit, errorFunction);
             return initErrorObjectNode.execute(errorObj, exception);
