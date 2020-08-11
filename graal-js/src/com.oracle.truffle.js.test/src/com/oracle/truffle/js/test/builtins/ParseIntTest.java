@@ -116,6 +116,10 @@ public class ParseIntTest {
         try (Context context = JSTest.newContextBuilder().build()) {
             Value result;
 
+            result = context.eval(ID, "parseInt('', 10)");
+            assertTrue(result.fitsInDouble());
+            assertTrue(Double.isNaN(result.asDouble()));
+
             result = context.eval(ID, "parseInt('0x  ', 16)");
             assertTrue(result.fitsInDouble());
             assertTrue(Double.isNaN(result.asDouble()));

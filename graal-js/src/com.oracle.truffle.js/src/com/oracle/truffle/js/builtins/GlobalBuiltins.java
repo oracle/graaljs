@@ -963,6 +963,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             int lastIdx = string.length();
             boolean negate = false;
 
+            if (lastIdx == 0) { // empty string
+                return Double.NaN;
+            }
+
             char firstChar = string.charAt(pos);
             if (!JSRuntime.isAsciiDigit(firstChar)) {
                 if (JSRuntime.isWhiteSpace(firstChar)) {
