@@ -384,10 +384,10 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         addParameterBinding(varNode.getName());
     }
 
-    public void addParameterInitialization(int lineNumber, Expression assignment, boolean isDefault) {
+    public void addParameterInitialization(int lineNumber, Expression assignment, boolean isDefault, boolean isRest) {
         ensureParameterBlock();
         parameterBlock.appendStatement(new ExpressionStatement(lineNumber, assignment.getToken(), assignment.getFinish(), assignment));
-        recordParameter(isDefault, false, true);
+        recordParameter(isDefault, isRest, true);
     }
 
     private void ensureParameterBlock() {
