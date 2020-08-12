@@ -45,7 +45,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.js.test.JSTest;
@@ -58,6 +60,16 @@ public class JSONParseTest {
             Value result = context.eval(ID, "JSON.parse('9007199254740992')");
             assertTrue(result.fitsInDouble());
             assertEquals(9007199254740992d, result.asDouble(), 0.0);
+        }
+    }
+
+    @Test
+    public void testJSONParseFail() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            context.eval(ID, "JSON.parse('- 43')");
+            Assert.fail("failure expected");
+        } catch (PolyglotException ex) {
+            assertTrue(ex.isSyntaxError());
         }
     }
 
