@@ -1216,7 +1216,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
             if (JSConfig.DictionaryObject && JSDictionaryObject.isJSDictionaryObject(store)) {
                 // TODO: could probably specialize on shape as well.
-                return rewriteToGeneric(currentHead, "dictionary object");
+                return rewriteToGeneric(currentHead, cachedCount, "dictionary object");
             }
 
             if (JSConfig.MergeShapes && cachedCount > 0) {
@@ -1250,7 +1250,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         }
 
         if (cachedCount >= context.getPropertyCacheLimit() || (specialized != null && specialized.isGeneric())) {
-            return rewriteToGeneric(currentHead, "cache limit reached");
+            return rewriteToGeneric(currentHead, cachedCount, "cache limit reached");
         }
 
         if (specialized == null) {
@@ -1285,6 +1285,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         if (invalidationAssumption == null) {
             invalidationAssumption = Truffle.getRuntime().createAssumption("PropertyCacheNode");
             cacheAssumptionInitializedCount.inc();
+            reportPolymorphicSpecialize();
         }
         return null;
     }
@@ -1298,17 +1299,16 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     }
 
     private T insertCached(T specialized, T currentHead, int cachedCount) {
-        if (cachedCount > 0) {
-            reportPolymorphicSpecialize();
-            polymorphicCount.inc();
-        }
-
         assert currentHead == this.cacheNode;
         // insert specialization at the front
         invalidateCache();
         insert(specialized);
         specialized.setNext(currentHead);
         this.cacheNode = specialized;
+
+        if (cachedCount > 0) {
+            polymorphicCount.inc();
+        }
         traceRewriteInsert(specialized, cachedCount);
         if (JSConfig.TracePolymorphicPropertyAccess && cachedCount > 0) {
             System.out.printf("POLYMORPHIC PROPERTY ACCESS key='%s' %s\n%s\n---\n", key, getEncapsulatingSourceSection(), specialized.debugString());
@@ -1316,19 +1316,22 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         return specialized;
     }
 
-    protected T rewriteToGeneric(T currentHead, String reason) {
-        megamorphicCount.inc();
-        if (JSConfig.TraceMegamorphicPropertyAccess) {
-            System.out.printf("MEGAMORPHIC PROPERTY ACCESS key='%s' %s\n%s\n---\n", key, getEncapsulatingSourceSection(), currentHead.debugString());
-        }
-
+    protected T rewriteToGeneric(T currentHead, int cachedCount, String reason) {
         assert currentHead == this.cacheNode;
         // replace the entire cache with the generic case
         T newNode = createGenericPropertyNode();
         invalidateCache();
         insert(newNode);
         this.cacheNode = newNode;
+
+        if (cachedCount > 0 && cachedCount >= context.getPropertyCacheLimit()) {
+            megamorphicCount.inc();
+            reportPolymorphicSpecialize();
+        }
         traceRewriteMegamorphic(newNode, reason);
+        if (JSConfig.TraceMegamorphicPropertyAccess) {
+            System.out.printf("MEGAMORPHIC PROPERTY ACCESS key='%s' %s\n%s\n---\n", key, getEncapsulatingSourceSection(), currentHead.debugString());
+        }
         return newNode;
     }
 

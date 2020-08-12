@@ -241,7 +241,6 @@ public class WritePropertyNode extends JSTargetableWriteNode {
                 executeIntEvaluated(target, value, receiver);
             } catch (UnexpectedResultException e) {
                 valueState = VALUE_OBJECT;
-                reportPolymorphicSpecialize();
                 executeEvaluated(target, e.getResult(), receiver);
             }
         } else if (vs == VALUE_DOUBLE) {
@@ -250,7 +249,6 @@ public class WritePropertyNode extends JSTargetableWriteNode {
                 executeDoubleEvaluated(target, value, receiver);
             } catch (UnexpectedResultException e) {
                 valueState = VALUE_OBJECT;
-                reportPolymorphicSpecialize();
                 executeEvaluated(target, e.getResult(), receiver);
             }
         } else {
@@ -268,11 +266,9 @@ public class WritePropertyNode extends JSTargetableWriteNode {
             executeIntEvaluated(target, (int) value, receiver);
         } else if (value instanceof Double) {
             valueState = VALUE_DOUBLE;
-            reportPolymorphicSpecialize();
             executeDoubleEvaluated(target, (double) value, receiver);
         } else {
             valueState = VALUE_OBJECT;
-            reportPolymorphicSpecialize();
             executeEvaluated(target, value, receiver);
         }
     }
