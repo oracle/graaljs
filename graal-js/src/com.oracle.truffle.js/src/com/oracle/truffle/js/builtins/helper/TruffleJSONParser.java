@@ -393,8 +393,7 @@ public class TruffleJSONParser {
         boolean hasExponent = false;
         if (posValid() && isExponentPart()) {
             hasExponent = true;
-            skipChar();
-            readDigits();
+            skipExponent();
         }
         final int endPos = pos;
         skipWhitespace(); // after the number
@@ -427,15 +426,13 @@ public class TruffleJSONParser {
         return Double.parseDouble(valueStr) * sign;
     }
 
-    protected int readDigits() {
-        int sign = 1;
+    protected void skipExponent() {
+        skipChar(); // e or E
         char cur = get();
         if (cur == '-') {
             skipChar('-');
-            sign = -1;
         } else if (cur == '+') {
             skipChar('+');
-            sign = 1;
         }
         if (!posValid()) {
             error(MALFORMED_NUMBER);
@@ -452,7 +449,6 @@ public class TruffleJSONParser {
         if (pos == startPos) {
             error("Expected number but found ident");
         }
-        return sign * Integer.parseInt(parseStr.substring(startPos, pos));
     }
 
     protected boolean isExponentPart() {
