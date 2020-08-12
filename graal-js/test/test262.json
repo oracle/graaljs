@@ -2076,25 +2076,7 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
   }, {
-    "filePath" : "language/statements/for-in/head-const-bound-names-fordecl-tdz.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/for-in/head-let-bound-names-fordecl-tdz.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/for-in/scope-head-lex-open.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/for-of/head-const-bound-names-fordecl-tdz.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/for-of/head-let-bound-names-fordecl-tdz.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/statements/for-of/head-lhs-let.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/for-of/scope-head-lex-open.js",
     "status" : "FAIL"
   } ]
 }

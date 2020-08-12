@@ -517,9 +517,6 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests, disabled on SVM (GR-21828)"
   }, {
-    "filePath" : "mjsunit/es6/regress/regress-2322.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/es6/regress/regress-576662.js",
     "status" : "FAIL"
   }, {
