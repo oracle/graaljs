@@ -2829,8 +2829,7 @@ public class Parser extends AbstractParser {
             if (outer != null) {
                 restoreBlock(outer);
                 if (body != null) {
-                    final int blockFlags = isForOf ? Block.IS_FOR_OF_BLOCK : 0;
-                    appendStatement(new BlockStatement(forLine, new Block(outer.getToken(), body.getFinish(), blockFlags, outer.getScope(), outer.getStatements())));
+                    appendStatement(new BlockStatement(forLine, new Block(outer.getToken(), body.getFinish(), 0, outer.getScope(), outer.getStatements())));
                 }
             }
         }
