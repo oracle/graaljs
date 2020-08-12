@@ -97,19 +97,14 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
     public static final int IS_SWITCH_BLOCK = 1 << 7;
 
     /**
-     * Marks the variable declaration block for a for-of loop.
-     */
-    public static final int IS_FOR_OF_BLOCK = 1 << 8;
-
-    /**
      * Is this an expression block (class or do expression) that should return its completion value.
      */
-    public static final int IS_EXPRESSION_BLOCK = 1 << 9;
+    public static final int IS_EXPRESSION_BLOCK = 1 << 8;
 
     /**
      * Marks the module body block.
      */
-    public static final int IS_MODULE_BODY = 1 << 10;
+    public static final int IS_MODULE_BODY = 1 << 9;
 
     /**
      * Constructor
@@ -380,10 +375,6 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
 
     public boolean isSwitchBlock() {
         return getFlag(IS_SWITCH_BLOCK);
-    }
-
-    public boolean isForOfBlock() {
-        return getFlag(IS_FOR_OF_BLOCK);
     }
 
     public boolean isExpressionBlock() {

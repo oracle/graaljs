@@ -2785,7 +2785,7 @@ public class Parser extends AbstractParser {
                         }
                         init = varDeclList.firstBinding;
                         assert init instanceof IdentNode || isDestructuringLhs(init);
-                        if (varType == CONST) {
+                        if (varType == CONST || varType == LET) {
                             flags |= ForNode.PER_ITERATION_SCOPE;
                         }
                     } else {
@@ -2816,9 +2816,12 @@ public class Parser extends AbstractParser {
         } finally {
             lc.pop(forNode);
 
-            for (final Statement var : forNode.getStatements()) {
-                assert var instanceof VarNode;
-                appendStatement(var);
+            boolean skipVars = (flags & ForNode.PER_ITERATION_SCOPE) != 0 && (isForOf || isForAwaitOf || (flags & ForNode.IS_FOR_IN) != 0);
+            if (!skipVars) {
+                for (final Statement var : forNode.getStatements()) {
+                    assert var instanceof VarNode;
+                    appendStatement(var);
+                }
             }
             if (body != null) {
                 appendStatement(new ForNode(forLine, forToken, body.getFinish(), body, (forNode.getFlags() | flags), init, test, modify));
@@ -2826,8 +2829,7 @@ public class Parser extends AbstractParser {
             if (outer != null) {
                 restoreBlock(outer);
                 if (body != null) {
-                    final int blockFlags = isForOf ? Block.IS_FOR_OF_BLOCK : 0;
-                    appendStatement(new BlockStatement(forLine, new Block(outer.getToken(), body.getFinish(), blockFlags, outer.getScope(), outer.getStatements())));
+                    appendStatement(new BlockStatement(forLine, new Block(outer.getToken(), body.getFinish(), 0, outer.getScope(), outer.getStatements())));
                 }
             }
         }
