@@ -130,17 +130,6 @@ public class TestLanguage extends TruffleLanguage<LanguageContext> {
         }
     }
 
-    @SuppressWarnings("deprecation")
-    @Override
-    protected Object getLanguageGlobal(LanguageContext context) {
-        if (wrapper) {
-            delegate.languageInstance = this;
-            return delegate.getLanguageGlobal(context);
-        } else {
-            return null;
-        }
-    }
-
     @Override
     protected void finalizeContext(LanguageContext context) {
         if (wrapper) {
