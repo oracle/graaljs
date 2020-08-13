@@ -150,9 +150,69 @@ TypeError: execute on JavaObject[Main$$Lambda$62/953082513@4c60d6e9 (Main$$Lambd
 ```
 
 Reason:
-* you are trying to execute an operation (a message) on a polyglot object that this object does now handle. E.g., you are calling `Value.execute()` on a non-executable object.
+* You are trying to execute an operation (a message) on a polyglot object that this object does not handle. E.g., you are calling `Value.execute()` on a non-executable object.
+* A security setting (e.g., `org.graalvm.polyglot.HostAccess`) might prevent the operation.
 
 Solution:
 * Ensure the object (type) in question does handle the respective message.
 * Specifically, ensure the JavaScript operation you try to execute on a Java type is possible semantically in Java. For instance, while you can `push` a value to an array in JavaScript and thus automatically grow the array, arrays in Java are of fixed length and trying to push to them will result in a `Message not supported` failure. You might want to wrap Java objects for such cases, e.g. as a `ProxyArray`.
 * Ensure access to the class is permitted, by having `@HostAccess.Export` on your class and/or the `Context.Builder.allowHostAccess()` set to a permissive setting. See [JavaDoc of org.graalvm.polyglot.Context](https://graalvm.org/truffle/javadoc/org/graalvm/polyglot/Context.html).
+* Are you trying to call a Java Lambda expression or Functional Interface? Annotating the proper method with `@HostAccess.Export` can be a pitfall. While you can annotate the method the functional interface refers to, the interface itself (or the Lambda class created in the background) fails to be properly annotated and recognized as _exported_. See below for examples highlighting the problem and a working solution.
+
+An example that triggers a `Message not supported` error with certain `HostAccess` settings, e.g. `HostAccess.EXPLICIT`:
+```java
+{
+  ...
+  Value jsFn = ...; //a JS function expecting a function as argument
+  jsFn.execute((Function<Integer, Integer>)this::javaFn); //called with a functional interface as argument
+  ...
+}
+
+@Export
+public Object javaFn(Object x) { ... }
+
+@Export
+public Callable<Integer> lambda42 = () -> 42;
+```
+
+In the example above, the method `javaFn` is seemingly annotated with `@Export`, but the functional interface passed to `jsFn` is _not_, as the functional interface behaves like a wrapper around `javaFn`, thus hiding the annotation.
+Neither is `lambda42` properly annotated - that pattern annotates the _field_ `lambda42`, not its executable function in the generated lambda class.
+
+In order to add the `@Export` annotation to a functional interface, use this pattern instead:
+
+```java
+import java.util.function.Function;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.HostAccess;
+
+public class FAQ {
+  public static void main(String[] args) {
+    try(Context ctx = Context.newBuilder().allowHostAccess(HostAccess.EXPLICIT).build()) {
+      Value jsFn = ctx.eval("js", "f => function() { return f(arguments); }");
+      Value javaFn = jsFn.execute(new MyExportedFunction());
+      System.out.println("finished: " + javaFn.execute());
+    }
+  }
+
+  @FunctionalInterface
+  public static class MyExportedFunction implements Function<Object, String> {
+    @Override
+    @HostAccess.Export
+    public String apply(Object s) {
+      return "passed";
+    }
+  };
+}
+```
+
+Another option is to allow access to `java.function.Function`'s `apply` method.
+However, note that this allows access to _ALL_ instances of this interface - in most production setups, this will be too permissive and open potential security holes.
+
+```java
+HostAccess ha = HostAccess.newBuilder(HostAccess.EXPLICIT)
+  //warning: too permissive for use in production!
+  .allowAccess(Function.class.getMethod("apply", Object.class))
+  .build();
+
+```
