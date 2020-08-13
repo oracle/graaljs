@@ -50,11 +50,10 @@ final class ByteArraySupport {
 
     static final ByteArrayAccess LITTLE_ENDIAN_ORDER = new LittleEndianByteArrayAccess();
     static final ByteArrayAccess BIG_ENDIAN_ORDER = new BigEndianByteArrayAccess();
-    static final ByteArrayAccess NATIVE_ORDER = ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN ? BIG_ENDIAN_ORDER : LITTLE_ENDIAN_ORDER;
+    static final ByteArrayAccess NATIVE_ORDER = new VarHandleNativeOrderByteArrayAccess();
 }
 
 final class VarHandleNativeOrderByteArrayAccess extends ByteArrayAccess {
-    private static final VarHandle INT8 = MethodHandles.arrayElementVarHandle(byte[].class);
     private static final VarHandle INT16 = MethodHandles.byteArrayViewVarHandle(short[].class, ByteOrder.nativeOrder());
     private static final VarHandle INT32 = MethodHandles.byteArrayViewVarHandle(int[].class, ByteOrder.nativeOrder());
     private static final VarHandle INT64 = MethodHandles.byteArrayViewVarHandle(long[].class, ByteOrder.nativeOrder());
@@ -63,7 +62,7 @@ final class VarHandleNativeOrderByteArrayAccess extends ByteArrayAccess {
 
     @Override
     public int getInt8(byte[] buffer, int offset, int index, int bytesPerElement) {
-        return (byte) INT8.get(buffer, byteIndex(offset, index, bytesPerElement));
+        return buffer[byteIndex(offset, index, bytesPerElement)];
     }
 
     @Override
@@ -93,7 +92,7 @@ final class VarHandleNativeOrderByteArrayAccess extends ByteArrayAccess {
 
     @Override
     public void putInt8(byte[] buffer, int offset, int index, int bytesPerElement, int value) {
-        INT8.set(buffer, byteIndex(offset, index, bytesPerElement), (byte) value);
+        buffer[byteIndex(offset, index, bytesPerElement)] = (byte) value;
     }
 
     @Override
