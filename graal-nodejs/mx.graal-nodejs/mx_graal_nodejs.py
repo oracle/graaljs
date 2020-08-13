@@ -34,6 +34,7 @@ from mx import BinarySuite, TimeStampFile
 from mx_gate import Task
 from argparse import ArgumentParser
 from os.path import exists, join, isdir, pathsep, sep
+from mx_graal_js import get_jdk
 
 _suite = mx.suite('graal-nodejs')
 _current_os = mx.get_os()
@@ -511,13 +512,13 @@ def _setEnvVar(name, val, env=None):
         _env[name] = val
 
 def _java_home():
-    return mx.get_jdk().home
+    return get_jdk().home
 
 def _java_compliance():
-    return mx.get_jdk().javaCompliance
+    return get_jdk().javaCompliance
 
 def _has_jvmci():
-    return mx.get_jdk().tag == 'jvmci'
+    return get_jdk().tag == 'jvmci'
 
 def _jre_dir():
     return join(_java_home(), 'jre') if _java_compliance() < '1.9' else _java_home()
