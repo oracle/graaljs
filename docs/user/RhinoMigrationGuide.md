@@ -1,7 +1,7 @@
 # Migration Guide from Rhino to GraalVM JavaScript
 
 This document serves as migration guide for code previously targeted to the Rhino engine.
-See the [JavaInterop.md](JavaInterop.md) for an overview of supported Java interoperability features.
+See the [Java Interoperability](JavaInteroperability.md) guide for an overview of supported features.
 
 ### Overview
 Both Rhino and GraalVM JavaScript support a similar set of syntax and semantics for Java interoperability.
