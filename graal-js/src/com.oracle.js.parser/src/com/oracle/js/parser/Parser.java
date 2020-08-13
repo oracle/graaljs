@@ -2664,6 +2664,8 @@ public class Parser extends AbstractParser {
         int flags = 0;
         boolean isForOf = false;
         boolean isForAwaitOf = false;
+        // used for lookahead != let checks in "for (await) of" grammar
+        boolean initStartsWithLet = false;
 
         try {
             // FOR tested in caller.
@@ -2713,6 +2715,7 @@ public class Parser extends AbstractParser {
                         break;
                     }
 
+                    initStartsWithLet = (type == LET);
                     init = expression(false, inGeneratorFunction(), inAsyncFunction(), true);
                     break;
             }
@@ -2754,9 +2757,9 @@ public class Parser extends AbstractParser {
                     break;
 
                 case OF:
-                    if (ES8_FOR_AWAIT_OF && isForAwaitOf) {
+                    if (ES8_FOR_AWAIT_OF && isForAwaitOf && !initStartsWithLet) {
                         // fall through
-                    } else if (ES6_FOR_OF) {
+                    } else if (ES6_FOR_OF && !initStartsWithLet) {
                         isForOf = true;
                         // fall through
                     } else {
