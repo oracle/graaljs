@@ -63,7 +63,6 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-@ReportPolymorphism
 public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
     protected final JSContext context;
     protected final boolean isBuiltin;
@@ -112,6 +111,7 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
     }
 
     /** Many different prototypes. */
+    @ReportPolymorphism.Megamorphic
     @Specialization(guards = {"!isBuiltin", "isConstructor", "!context.isMultiContext()", "isJSObject(prototype)"}, replaces = "doCachedProto")
     public DynamicObject doUncachedProto(@SuppressWarnings("unused") DynamicObject target, DynamicObject prototype,
                     @Cached("create()") BranchProfile slowBranch) {
