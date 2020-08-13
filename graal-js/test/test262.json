@@ -2075,8 +2075,5 @@
     "filePath" : "language/statements/class/elements/syntax/early-errors/grammar-special-meth-ctor-async-meth.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "language/statements/for-of/head-lhs-let.js",
-    "status" : "FAIL"
   } ]
 }

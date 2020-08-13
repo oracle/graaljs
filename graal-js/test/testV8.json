@@ -423,9 +423,6 @@
     "filePath" : "mjsunit/es6/block-eval-var-over-let.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/block-let-contextual-sloppy.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/es6/block-let-semantics-sloppy.js",
     "status" : "FAIL"
   }, {
