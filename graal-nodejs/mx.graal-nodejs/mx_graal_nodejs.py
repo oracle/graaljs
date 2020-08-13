@@ -431,7 +431,7 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
     _setEnvVar('LAUNCHER_COMMON_JAR_PATH', mx.distribution('sdk:LAUNCHER_COMMON').path)
     _setEnvVar('TRUFFLENODE_JAR_PATH', mx.distribution('TRUFFLENODE').path)
     node_jvm_cp = (os.environ['NODE_JVM_CLASSPATH'] + pathsep) if 'NODE_JVM_CLASSPATH' in os.environ else ''
-    node_cp = node_jvm_cp + mx.classpath(['TRUFFLENODE'] + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:AGENTSCRIPT'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
+    node_cp = node_jvm_cp + mx.classpath(['TRUFFLENODE'] + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
     _setEnvVar('NODE_JVM_CLASSPATH', node_cp)
 
     prevPATH = os.environ['PATH']
