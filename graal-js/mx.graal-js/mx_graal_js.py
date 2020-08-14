@@ -36,8 +36,10 @@ from mx_unittest import unittest
 
 _suite = mx.suite('graal-js')
 
-def get_jdk():
-    if mx.suite('compiler', fatalIfMissing=False):
+def get_jdk(forBuild=False):
+    # Graal.nodejs requires a JDK at build time, to be passed as argument to `./configure`.
+    # GraalJVMCIJDKConfig (`tag='jvmci'`) is not available until all required jars are built.
+    if not forBuild and mx.suite('compiler', fatalIfMissing=False):
         return mx.get_jdk(tag='jvmci')
     else:
         return mx.get_jdk()

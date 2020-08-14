@@ -173,7 +173,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
                 '--without-snapshot',
                 '--without-node-snapshot',
                 '--without-node-code-cache',
-                '--java-home', _java_home()
+                '--java-home', _java_home(forBuild=True)
                 ] + debug + shared_library + lazy_generator + extra_flags,
                 cwd=_suite.dir, print_cmd=True, env=build_env)
 
@@ -511,14 +511,14 @@ def _setEnvVar(name, val, env=None):
         mx.logv('Setting environment variable %s=%s' % (name, val))
         _env[name] = val
 
-def _java_home():
-    return get_jdk().home
+def _java_home(forBuild=False):
+    return get_jdk(forBuild=forBuild).home
 
-def _java_compliance():
-    return get_jdk().javaCompliance
+def _java_compliance(forBuild=False):
+    return get_jdk(forBuild=forBuild).javaCompliance
 
-def _has_jvmci():
-    return get_jdk().tag == 'jvmci'
+def _has_jvmci(forBuild=False):
+    return get_jdk(forBuild=forBuild).tag == 'jvmci'
 
 def _jre_dir():
     return join(_java_home(), 'jre') if _java_compliance() < '1.9' else _java_home()
