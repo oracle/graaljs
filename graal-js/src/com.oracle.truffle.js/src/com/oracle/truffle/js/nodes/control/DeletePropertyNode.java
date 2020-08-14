@@ -202,14 +202,20 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     }
 
     @Specialization
-    protected static boolean doString(String target, Object property,
+    protected boolean doString(String target, Object property,
                     @Cached("create()") ToArrayIndexNode toArrayIndexNode) {
         Object objIndex = toArrayIndexNode.execute(property);
+        boolean result;
         if (objIndex instanceof Long) {
             long index = (Long) objIndex;
-            return (index < 0) || (target.length() <= index);
+            result = (index < 0) || (target.length() <= index);
+        } else {
+            result = !JSString.LENGTH.equals(objIndex);
         }
-        return !JSString.LENGTH.equals(objIndex);
+        if (strict && !result) {
+            throw Errors.createTypeError("cannot delete index");
+        }
+        return result;
     }
 
     @Specialization(guards = {"isForeignObject(target)"})
