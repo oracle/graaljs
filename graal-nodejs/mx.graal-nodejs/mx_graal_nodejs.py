@@ -427,8 +427,8 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
         mx.warn("Running on the JVM.\nIf you want to run on SubstrateVM, you need to dynamically import both '/substratevm' and '/vm'.\nExample: 'mx --env svm node'")
 
     _setEnvVar('JAVA_HOME', _java_home())
-    if mx.suite('compiler', fatalIfMissing=False) is None:
-        _setEnvVar('GRAAL_SDK_JAR_PATH', mx.distribution('sdk:GRAAL_SDK').path)
+    # if mx.suite('compiler', fatalIfMissing=False) is None:
+    #     _setEnvVar('GRAAL_SDK_JAR_PATH', mx.distribution('sdk:GRAAL_SDK').path)
     _setEnvVar('LAUNCHER_COMMON_JAR_PATH', mx.distribution('sdk:LAUNCHER_COMMON').path)
     _setEnvVar('TRUFFLENODE_JAR_PATH', mx.distribution('TRUFFLENODE').path)
     node_jvm_cp = (os.environ['NODE_JVM_CLASSPATH'] + pathsep) if 'NODE_JVM_CLASSPATH' in os.environ else ''
@@ -437,13 +437,6 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
 
     prevPATH = os.environ['PATH']
     _setEnvVar('PATH', "%s%s%s" % (join(_suite.mxDir, 'fake_launchers'), pathsep, prevPATH))
-
-    if _has_jvmci() and add_graal_vm_args:
-        if mx.suite('graal-enterprise', fatalIfMissing=False):
-            # explicitly require the enterprise compiler configuration
-            vmArgs += ['-Dgraal.CompilerConfiguration=enterprise']
-        if mx.suite('compiler', fatalIfMissing=False):
-            vmArgs += ['-Djvmci.Compiler=graal', '-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI']
 
     if isinstance(_suite, BinarySuite):
         mx.logv('%s is a binary suite' % _suite.name)
