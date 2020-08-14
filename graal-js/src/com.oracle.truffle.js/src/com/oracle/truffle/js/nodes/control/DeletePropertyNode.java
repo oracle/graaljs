@@ -165,7 +165,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
                     @Cached("createBinaryProfile()") ConditionProfile arrayIndexProfile,
                     @Cached("create(context, strict)") JSArrayDeleteIndexNode deleteArrayIndexNode,
                     @Cached("create()") JSClassProfile jsclassProfile,
-                    @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
+                    @Shared("toPropertyKey") @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
         final boolean isArray = isArrayNode.execute(targetObject);
         final Object propertyKey;
         if (arrayProfile.profile(isArray)) {
@@ -185,25 +185,31 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
 
     @SuppressWarnings("unused")
     @Specialization
-    protected static boolean doSymbol(Symbol target, Object property) {
+    protected static boolean doSymbol(Symbol target, Object property,
+                    @Shared("toPropertyKey") @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
+        toPropertyKeyNode.execute(property);
         return true;
     }
 
     @SuppressWarnings("unused")
     @Specialization
-    protected static boolean doSafeInteger(SafeInteger target, Object property) {
+    protected static boolean doSafeInteger(SafeInteger target, Object property,
+                    @Shared("toPropertyKey") @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
+        toPropertyKeyNode.execute(property);
         return true;
     }
 
     @SuppressWarnings("unused")
     @Specialization
-    protected static boolean doBigInt(BigInt target, Object property) {
+    protected static boolean doBigInt(BigInt target, Object property,
+                    @Shared("toPropertyKey") @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
+        toPropertyKeyNode.execute(property);
         return true;
     }
 
     @Specialization
     protected boolean doString(String target, Object property,
-                    @Cached("create()") ToArrayIndexNode toArrayIndexNode) {
+                    @Shared("toArrayIndex") @Cached("create()") ToArrayIndexNode toArrayIndexNode) {
         Object objIndex = toArrayIndexNode.execute(property);
         boolean result;
         if (objIndex instanceof Long) {
@@ -265,22 +271,22 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     @Specialization(guards = {"isForeignObject(target)", "!isString(key)", "!isNumber(key)"})
     protected Object foreignObject(Object target, Object key,
                     @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop,
-                    @CachedLibrary(limit = "3") InteropLibrary interopKey) {
-        try {
-            if (interopKey.isString(key)) {
-                return member(target, interopKey.asString(key), interop);
-            } else if (interopKey.fitsInInt(key)) {
-                return arrayElementInt(target, interopKey.asInt(key), interop);
-            }
-            return false;
-        } catch (UnsupportedMessageException e) {
-            return false;
+                    @Shared("toArrayIndex") @Cached("create()") ToArrayIndexNode toArrayIndexNode) {
+        Object index = toArrayIndexNode.execute(key);
+        if (index instanceof String) {
+            return member(target, (String) index, interop);
+        } else if (index instanceof Long) {
+            return arrayElementLong(target, (Long) index, interop);
+        } else {
+            return true;
         }
     }
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"!isTruffleObject(target)", "!isString(target)"})
-    public boolean doOther(Object target, Object property) {
+    public boolean doOther(Object target, Object property,
+                    @Shared("toPropertyKey") @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
+        toPropertyKeyNode.execute(property);
         return true;
     }
 
