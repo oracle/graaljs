@@ -76,7 +76,7 @@ public class TestLanguage extends TruffleLanguage<LanguageContext> {
         }
     }
 
-    private static volatile TestLanguage delegate = new TestLanguage();
+    private static volatile TestLanguage delegate = new TestLanguage(false);
     protected final boolean wrapper;
     protected TestLanguage languageInstance;
 
@@ -84,6 +84,10 @@ public class TestLanguage extends TruffleLanguage<LanguageContext> {
 
     public TestLanguage() {
         this.wrapper = getClass() == TestLanguage.class;
+    }
+
+    private TestLanguage(boolean wrapper) {
+        this.wrapper = wrapper;
     }
 
     private static <T extends TestLanguage> T setDelegate(T delegate) {
@@ -123,17 +127,6 @@ public class TestLanguage extends TruffleLanguage<LanguageContext> {
                 onCreate.accept(c);
             }
             return c;
-        }
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    protected Object getLanguageGlobal(LanguageContext context) {
-        if (wrapper) {
-            delegate.languageInstance = this;
-            return delegate.getLanguageGlobal(context);
-        } else {
-            return null;
         }
     }
 

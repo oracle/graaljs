@@ -109,7 +109,7 @@ public class InnerContextTest {
     }
 
     @Test
-    public void testInnerWithoutOuterJSContextWithIntrop() throws Exception {
+    public void testInnerWithoutOuterJSContextWithInterop() throws Exception {
         try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new TestLanguage() {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {

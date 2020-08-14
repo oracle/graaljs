@@ -36,6 +36,14 @@ from mx_unittest import unittest
 
 _suite = mx.suite('graal-js')
 
+def get_jdk(forBuild=False):
+    # Graal.nodejs requires a JDK at build time, to be passed as argument to `./configure`.
+    # GraalJVMCIJDKConfig (`tag='jvmci'`) is not available until all required jars are built.
+    if not forBuild and mx.suite('compiler', fatalIfMissing=False):
+        return mx.get_jdk(tag='jvmci')
+    else:
+        return mx.get_jdk()
+
 class GraalJsDefaultTags:
     default = 'default'
     tck = 'tck'
@@ -159,12 +167,12 @@ def _js_cmd_line(args, main_class, default_cp=None, append_default_args=True):
 
 def graaljs_cmd_line(args, append_default_args=True):
     default_cp = mx.classpath(['GRAALJS_LAUNCHER', 'GRAALJS']
-            + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:AGENTSCRIPT', 'tools:TRUFFLE_WARMUP_ESTIMATOR'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
+            + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT', 'tools:TRUFFLE_WARMUP_ESTIMATOR'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
     return _js_cmd_line(args, main_class=mx.distribution('GRAALJS_LAUNCHER').mainClass, default_cp=[default_cp], append_default_args=append_default_args)
 
 def js(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     """Run the REPL or a JavaScript program with Graal.js"""
-    return mx.run_java(graaljs_cmd_line(args), nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
+    return mx.run_java(graaljs_cmd_line(args), nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, jdk=get_jdk())
 
 def nashorn(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     """Run the REPL or a JavaScript program with Nashorn"""
@@ -196,7 +204,7 @@ def _run_test_suite(location, library_names, custom_args, default_vm_args, max_h
     _vm_args = _append_default_js_vm_args(vm_args=_vm_args, max_heap=max_heap, stack_size=stack_size)
     _cp = mx.classpath(['TRUFFLE_JS_TESTS'] + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
     _vm_args = ['-ea', '-esa', '-cp', _cp] + default_vm_args + _vm_args
-    return mx.run_java(_vm_args + [main_class] + _prog_args, nonZeroIsFatal=nonZeroIsFatal, cwd=cwd)
+    return mx.run_java(_vm_args + [main_class] + _prog_args, nonZeroIsFatal=nonZeroIsFatal, cwd=cwd, jdk=get_jdk())
 
 def test262(args, nonZeroIsFatal=True):
     """run the test262 conformance suite"""

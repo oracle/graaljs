@@ -34,6 +34,7 @@ from mx import BinarySuite, TimeStampFile
 from mx_gate import Task
 from argparse import ArgumentParser
 from os.path import exists, join, isdir, pathsep, sep
+from mx_graal_js import get_jdk
 
 _suite = mx.suite('graal-nodejs')
 _current_os = mx.get_os()
@@ -172,7 +173,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
                 '--without-snapshot',
                 '--without-node-snapshot',
                 '--without-node-code-cache',
-                '--java-home', _java_home()
+                '--java-home', _java_home(forBuild=True)
                 ] + debug + shared_library + lazy_generator + extra_flags,
                 cwd=_suite.dir, print_cmd=True, env=build_env)
 
@@ -426,23 +427,16 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
         mx.warn("Running on the JVM.\nIf you want to run on SubstrateVM, you need to dynamically import both '/substratevm' and '/vm'.\nExample: 'mx --env svm node'")
 
     _setEnvVar('JAVA_HOME', _java_home())
-    if mx.suite('compiler', fatalIfMissing=False) is None:
-        _setEnvVar('GRAAL_SDK_JAR_PATH', mx.distribution('sdk:GRAAL_SDK').path)
+    # if mx.suite('compiler', fatalIfMissing=False) is None:
+    #     _setEnvVar('GRAAL_SDK_JAR_PATH', mx.distribution('sdk:GRAAL_SDK').path)
     _setEnvVar('LAUNCHER_COMMON_JAR_PATH', mx.distribution('sdk:LAUNCHER_COMMON').path)
     _setEnvVar('TRUFFLENODE_JAR_PATH', mx.distribution('TRUFFLENODE').path)
     node_jvm_cp = (os.environ['NODE_JVM_CLASSPATH'] + pathsep) if 'NODE_JVM_CLASSPATH' in os.environ else ''
-    node_cp = node_jvm_cp + mx.classpath(['TRUFFLENODE'] + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:AGENTSCRIPT'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
+    node_cp = node_jvm_cp + mx.classpath(['TRUFFLENODE'] + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
     _setEnvVar('NODE_JVM_CLASSPATH', node_cp)
 
     prevPATH = os.environ['PATH']
     _setEnvVar('PATH', "%s%s%s" % (join(_suite.mxDir, 'fake_launchers'), pathsep, prevPATH))
-
-    if _has_jvmci() and add_graal_vm_args:
-        if mx.suite('graal-enterprise', fatalIfMissing=False):
-            # explicitly require the enterprise compiler configuration
-            vmArgs += ['-Dgraal.CompilerConfiguration=enterprise']
-        if mx.suite('compiler', fatalIfMissing=False):
-            vmArgs += ['-Djvmci.Compiler=graal', '-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI']
 
     if isinstance(_suite, BinarySuite):
         mx.logv('%s is a binary suite' % _suite.name)
@@ -510,14 +504,14 @@ def _setEnvVar(name, val, env=None):
         mx.logv('Setting environment variable %s=%s' % (name, val))
         _env[name] = val
 
-def _java_home():
-    return mx.get_jdk().home
+def _java_home(forBuild=False):
+    return get_jdk(forBuild=forBuild).home
 
-def _java_compliance():
-    return mx.get_jdk().javaCompliance
+def _java_compliance(forBuild=False):
+    return get_jdk(forBuild=forBuild).javaCompliance
 
-def _has_jvmci():
-    return mx.get_jdk().tag == 'jvmci'
+def _has_jvmci(forBuild=False):
+    return get_jdk(forBuild=forBuild).tag == 'jvmci'
 
 def _jre_dir():
     return join(_java_home(), 'jre') if _java_compliance() < '1.9' else _java_home()
