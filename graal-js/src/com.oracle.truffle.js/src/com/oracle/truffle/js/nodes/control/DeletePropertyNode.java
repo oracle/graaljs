@@ -227,12 +227,15 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     @Specialization(guards = {"isForeignObject(target)"})
     protected boolean member(Object target, String name,
                     @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
-        try {
-            interop.removeMember(target, name);
-            return true;
-        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-            return false;
+        if (interop.isMemberExisting(target, name)) {
+            try {
+                interop.removeMember(target, name);
+                return true;
+            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                return false;
+            }
         }
+        return true;
     }
 
     @Specialization(guards = {"isForeignObject(target)"})
@@ -252,7 +255,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         try {
             length = interop.getArraySize(target);
         } catch (UnsupportedMessageException e) {
-            return false;
+            return true;
         }
         // Foreign arrays cannot have holes, so we do not support deleting elements.
         // Therefore, we treat them like Typed Arrays: array elements are not configurable
