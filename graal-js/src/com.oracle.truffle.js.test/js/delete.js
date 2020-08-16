@@ -45,4 +45,14 @@ toPropertyKeyCheck(javaObject);
 
 assertTrue(delete javaObject[Symbol()]);
 
+var point = new java.awt.Point();
+assertSame(false, delete point.x);
+assertSame(true, delete point.z);
+assertSame(true, delete point[0]);
+
+assertThrows(function() {
+    "use strict";
+    delete point.x;
+}, TypeError);
+
 true;
