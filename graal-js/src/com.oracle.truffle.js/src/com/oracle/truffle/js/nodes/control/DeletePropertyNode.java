@@ -232,6 +232,9 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
                 interop.removeMember(target, name);
                 return true;
             } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                if (strict) {
+                    throw Errors.createTypeErrorCannotDeletePropertyOf(name, target);
+                }
                 return false;
             }
         }
