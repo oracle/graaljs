@@ -373,9 +373,8 @@ public final class JSArrayBufferView extends JSBuiltinObject {
                     Object obj = JSArguments.getThisObject(frame.getArguments());
                     if (JSObject.isJSDynamicObject(obj)) {
                         DynamicObject view = JSObject.castJSObject(obj);
-                        boolean condition = isJSArrayBufferView(view);
-                        if (condition) {
-                            return getter.apply(view, condition);
+                        if (isJSArrayBufferView(view)) {
+                            return getter.apply(view);
                         }
                     }
                     errorBranch.enter();
@@ -388,7 +387,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
     }
 
     private abstract static class ArrayBufferViewGetter extends Node {
-        public abstract Object apply(DynamicObject view, boolean condition);
+        public abstract Object apply(DynamicObject view);
     }
 
     public static Shape makeInitialArrayBufferViewShape(JSContext ctx, DynamicObject prototype) {
@@ -416,7 +415,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
             private final ConditionProfile detachedBufferProfile = ConditionProfile.create();
 
             @Override
-            public Object apply(DynamicObject view, boolean condition) {
+            public Object apply(DynamicObject view) {
                 if (detachedBufferProfile.profile(JSArrayBufferView.hasDetachedBuffer(view, ctx))) {
                     return 0;
                 }
@@ -425,19 +424,19 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         });
         putArrayBufferViewPrototypeGetter(realm, prototype, BUFFER, BuiltinFunctionKey.ArrayBufferViewBuffer, new ArrayBufferViewGetter() {
             @Override
-            public Object apply(DynamicObject view, boolean condition) {
+            public Object apply(DynamicObject view) {
                 return getArrayBuffer(view);
             }
         });
         putArrayBufferViewPrototypeGetter(realm, prototype, BYTE_LENGTH, BuiltinFunctionKey.ArrayBufferViewByteLength, new ArrayBufferViewGetter() {
             @Override
-            public Object apply(DynamicObject view, boolean condition) {
+            public Object apply(DynamicObject view) {
                 return getByteLength(view, ctx);
             }
         });
         putArrayBufferViewPrototypeGetter(realm, prototype, BYTE_OFFSET, BuiltinFunctionKey.ArrayBufferViewByteByteOffset, new ArrayBufferViewGetter() {
             @Override
-            public Object apply(DynamicObject view, boolean condition) {
+            public Object apply(DynamicObject view) {
                 return getByteOffset(view, ctx);
             }
         });
