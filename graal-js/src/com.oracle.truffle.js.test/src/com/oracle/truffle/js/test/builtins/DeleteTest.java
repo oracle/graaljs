@@ -97,13 +97,13 @@ public class DeleteTest extends JSTest {
         map.getContainer().put("1.5", "test");
         testHelper.getPolyglotContext().getBindings(ID).putMember("foreign", map);
 
-        assertEquals(false, testHelper.run("delete foreign.nonExistentProperty;"));
+        assertEquals(true, testHelper.run("delete foreign.nonExistentProperty;"));
         assertEquals(true, testHelper.run("delete foreign.foo;"));
-        assertEquals(false, testHelper.run("delete foreign[1];"));
-        assertEquals(false, testHelper.run("delete foreign[1.5];"));
-        assertEquals(false, testHelper.run("delete foreign[foreign];"));
-        assertEquals(false, testHelper.run("delete foreign[new String('test')];"));
-        assertEquals(false, testHelper.run("delete foreign[new Number(123)];"));
+        assertEquals(true, testHelper.run("delete foreign[1];"));
+        assertEquals(true, testHelper.run("delete foreign[1.5];"));
+        assertEquals(true, testHelper.run("delete foreign[foreign];"));
+        assertEquals(true, testHelper.run("delete foreign[new String('test')];"));
+        assertEquals(true, testHelper.run("delete foreign[new Number(123)];"));
     }
 
     @Test
