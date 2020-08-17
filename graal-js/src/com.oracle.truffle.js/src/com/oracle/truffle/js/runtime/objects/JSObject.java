@@ -95,10 +95,6 @@ public final class JSObject {
         return JSRuntime.isObject(object);
     }
 
-    public static DynamicObject castJSObject(Object object) {
-        return ((JSDynamicObject) object);
-    }
-
     public static JSClass getJSClass(DynamicObject obj) {
         return JSShape.getJSClass(obj.getShape());
     }

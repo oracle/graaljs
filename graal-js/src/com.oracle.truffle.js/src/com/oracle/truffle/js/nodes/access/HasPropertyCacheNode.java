@@ -58,6 +58,7 @@ import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
@@ -278,8 +279,9 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
         assert !isOwnProperty() || depth == 0;
         ReceiverCheckNode check;
         if (JSObject.isJSDynamicObject(thisObj)) {
-            Shape cacheShape = ((DynamicObject) thisObj).getShape();
-            check = createShapeCheckNode(cacheShape, (DynamicObject) thisObj, depth, false, false);
+            JSDynamicObject thisJSObj = (JSDynamicObject) thisObj;
+            Shape cacheShape = thisJSObj.getShape();
+            check = createShapeCheckNode(cacheShape, thisJSObj, depth, false, false);
         } else {
             check = createPrimitiveReceiverCheck(thisObj, depth);
         }
@@ -293,7 +295,7 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
             return specialized;
         }
         if (JSObject.isJSDynamicObject(thisObj)) {
-            DynamicObject thisJSObj = (DynamicObject) thisObj;
+            JSDynamicObject thisJSObj = (JSDynamicObject) thisObj;
             Shape cacheShape = thisJSObj.getShape();
             AbstractShapeCheckNode shapeCheck = createShapeCheckNode(cacheShape, thisJSObj, depth, false, false);
             ReceiverCheckNode receiverCheck = (depth == 0) ? new JSClassCheckNode(JSObject.getJSClass(thisJSObj)) : shapeCheck;

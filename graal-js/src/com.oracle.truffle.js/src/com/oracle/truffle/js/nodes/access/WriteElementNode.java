@@ -535,9 +535,8 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root) {
-            DynamicObject targetObject = JSObject.castJSObject(target);
-            boolean arrayCondition = isArrayNode.execute(targetObject);
-            if (arrayProfile.profile(arrayCondition)) {
+            JSDynamicObject targetObject = ((JSDynamicObject) target);
+            if (arrayProfile.profile(isArrayNode.execute(targetObject))) {
                 ScriptArray array = JSObject.getArray(targetObject);
                 Object objIndex = toArrayIndex(index);
 
@@ -564,9 +563,8 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root) {
-            DynamicObject targetObject = JSObject.castJSObject(target);
-            boolean arrayCondition = isArrayNode.execute(targetObject);
-            if (arrayProfile.profile(arrayCondition)) {
+            JSDynamicObject targetObject = ((JSDynamicObject) target);
+            if (arrayProfile.profile(isArrayNode.execute(targetObject))) {
                 ScriptArray array = JSObject.getArray(targetObject);
 
                 if (intOrStringIndexProfile.profile(index >= 0)) {

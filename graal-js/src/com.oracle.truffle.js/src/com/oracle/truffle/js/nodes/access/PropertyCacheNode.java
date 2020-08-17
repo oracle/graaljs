@@ -77,6 +77,7 @@ import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.java.adapter.JavaSuperAdapter;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
@@ -314,7 +315,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public DynamicObject getStore(Object thisObj) {
-            return JSObject.castJSObject(thisObj);
+            return ((JSDynamicObject) thisObj);
         }
 
         @Override
@@ -448,9 +449,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      */
     protected static final class ConstantObjectShapeCheckNode extends AbstractShapeCheckNode implements ConstantObjectReceiverCheck {
         private final Assumption shapeValidAssumption;
-        private final WeakReference<DynamicObject> expectedObjectRef;
+        private final WeakReference<JSDynamicObject> expectedObjectRef;
 
-        public ConstantObjectShapeCheckNode(Shape shape, DynamicObject thisObj) {
+        public ConstantObjectShapeCheckNode(Shape shape, JSDynamicObject thisObj) {
             super(shape);
             this.shapeValidAssumption = shape.getValidAssumption();
             this.expectedObjectRef = new WeakReference<>(thisObj);
@@ -458,7 +459,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean accept(Object thisObj) {
-            DynamicObject expectedObj = this.expectedObjectRef.get();
+            JSDynamicObject expectedObj = this.expectedObjectRef.get();
             if (thisObj != expectedObj) {
                 return false;
             }
@@ -468,7 +469,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public DynamicObject getStore(Object thisObj) {
-            return JSObject.castJSObject(thisObj);
+            return ((JSDynamicObject) thisObj);
         }
 
         @Override
@@ -501,9 +502,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         private final Assumption shapeValidAssumption;
         private final Assumption unchangedAssumption;
-        private final WeakReference<DynamicObject> expectedObjectRef;
+        private final WeakReference<JSDynamicObject> expectedObjectRef;
 
-        public ConstantObjectAssumptionShapeCheckNode(Shape shape, DynamicObject thisObj, Object key, JSContext context) {
+        public ConstantObjectAssumptionShapeCheckNode(Shape shape, JSDynamicObject thisObj, Object key, JSContext context) {
             super(shape, context);
             this.shapeValidAssumption = shape.getValidAssumption();
             this.unchangedAssumption = JSShape.getPropertyAssumption(shape, key);
@@ -512,13 +513,13 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean accept(Object thisObj) {
-            DynamicObject expectedObj = this.expectedObjectRef.get();
+            JSDynamicObject expectedObj = this.expectedObjectRef.get();
             return thisObj == expectedObj;
         }
 
         @Override
         public DynamicObject getStore(Object thisObj) {
-            return JSObject.castJSObject(thisObj);
+            return ((JSDynamicObject) thisObj);
         }
 
         @Override
@@ -561,11 +562,11 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         private final Assumption shapeValidAssumption;
         private final Assumption shapeUnchangedAssumption;
-        private final WeakReference<DynamicObject> expectedObjectRef;
+        private final WeakReference<JSDynamicObject> expectedObjectRef;
         private final WeakReference<DynamicObject> prototype;
         @Children private final AssumptionShapeCheckNode[] shapeCheckNodes;
 
-        public ConstantObjectPrototypeChainShapeCheckNode(Shape shape, DynamicObject thisObj, Object key, int depth, JSContext context) {
+        public ConstantObjectPrototypeChainShapeCheckNode(Shape shape, JSDynamicObject thisObj, Object key, int depth, JSContext context) {
             super(shape, context);
             this.shapeValidAssumption = shape.getValidAssumption();
             this.shapeUnchangedAssumption = JSShape.getPropertyAssumption(shape, key);
@@ -585,7 +586,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean accept(Object thisObj) {
-            DynamicObject expectedObj = this.expectedObjectRef.get();
+            JSDynamicObject expectedObj = this.expectedObjectRef.get();
             if (thisObj != expectedObj) {
                 return false;
             }
@@ -654,10 +655,10 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         private final Assumption stableProtoAssumption;
         private final Assumption protoShapeValidAssumption;
         private final Assumption protoUnchangedAssumption;
-        private final WeakReference<DynamicObject> expectedObjectRef;
+        private final WeakReference<JSDynamicObject> expectedObjectRef;
         private final WeakReference<DynamicObject> prototype;
 
-        public ConstantObjectPrototypeShapeCheckNode(Shape shape, DynamicObject thisObj, Object key, JSContext context) {
+        public ConstantObjectPrototypeShapeCheckNode(Shape shape, JSDynamicObject thisObj, Object key, JSContext context) {
             super(shape, context);
             this.shapeValidAssumption = shape.getValidAssumption();
             this.unchangedAssumption = JSShape.getPropertyAssumption(shape, key);
@@ -672,7 +673,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean accept(Object thisObj) {
-            DynamicObject expectedObj = this.expectedObjectRef.get();
+            JSDynamicObject expectedObj = this.expectedObjectRef.get();
             if (thisObj != expectedObj) {
                 return false;
             }
@@ -1407,10 +1408,10 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     protected static final DynamicObject wrapPrimitive(Object thisObject, JSContext context) {
         // wrap primitives for lookup
         Object wrapper = JSRuntime.toObjectFromPrimitive(context, thisObject, false);
-        return JSObject.isJSDynamicObject(wrapper) ? (DynamicObject) wrapper : null;
+        return JSObject.isJSDynamicObject(wrapper) ? ((JSDynamicObject) wrapper) : null;
     }
 
-    protected final AbstractShapeCheckNode createShapeCheckNode(Shape shape, DynamicObject thisObj, int depth, boolean isConstantObjectFinal, boolean isDefine) {
+    protected final AbstractShapeCheckNode createShapeCheckNode(Shape shape, JSDynamicObject thisObj, int depth, boolean isConstantObjectFinal, boolean isDefine) {
         if (depth == 0) {
             return createShapeCheckNodeDepth0(shape, thisObj, isConstantObjectFinal, isDefine);
         } else if (depth == 1) {
@@ -1420,7 +1421,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         }
     }
 
-    private AbstractShapeCheckNode createShapeCheckNodeDepth0(Shape shape, DynamicObject thisObj, boolean isConstantObjectFinal, boolean isDefine) {
+    private AbstractShapeCheckNode createShapeCheckNodeDepth0(Shape shape, JSDynamicObject thisObj, boolean isConstantObjectFinal, boolean isDefine) {
         // if isDefine is true, shape change is imminent, so don't use assumption
         if (isGlobal() && JSConfig.SkipGlobalShapeCheck && !isDefine && isPropertyAssumptionCheckEnabled() && JSShape.getPropertyAssumption(shape, key).isValid()) {
             return new AssumptionShapeCheckNode(shape, key, getContext());
@@ -1437,7 +1438,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         }
     }
 
-    private AbstractShapeCheckNode createShapeCheckNodeDepth1(Shape shape, DynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
+    private AbstractShapeCheckNode createShapeCheckNodeDepth1(Shape shape, JSDynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
         assert depth == 1;
         if (JSConfig.SkipPrototypeShapeCheck && prototypesInShape(thisObj, depth) && propertyAssumptionsValid(thisObj, depth, isConstantObjectFinal)) {
             return isConstantObjectFinal
@@ -1449,7 +1450,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         }
     }
 
-    private AbstractShapeCheckNode createShapeCheckNodeDeeper(Shape shape, DynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
+    private AbstractShapeCheckNode createShapeCheckNodeDeeper(Shape shape, JSDynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
         assert depth > 1;
         if (JSConfig.SkipPrototypeShapeCheck && prototypesInShape(thisObj, depth) && propertyAssumptionsValid(thisObj, depth, isConstantObjectFinal)) {
             return isConstantObjectFinal

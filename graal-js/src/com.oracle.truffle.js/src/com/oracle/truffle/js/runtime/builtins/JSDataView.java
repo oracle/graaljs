@@ -54,7 +54,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -169,11 +168,8 @@ public final class JSDataView extends JSBuiltinObject implements JSConstructorFa
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = JSArguments.getThisObject(frame.getArguments());
-                    if (JSObject.isJSDynamicObject(obj)) {
-                        DynamicObject dataView = JSObject.castJSObject(obj);
-                        if (isJSDataView(dataView)) {
-                            return function.apply(dataView);
-                        }
+                    if (isJSDataView(obj)) {
+                        return function.apply((JSDataViewImpl) obj);
                     }
                     throw Errors.createTypeErrorNotADataView();
                 }
@@ -204,11 +200,11 @@ public final class JSDataView extends JSBuiltinObject implements JSConstructorFa
     }
 
     public static boolean isJSDataView(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSDataView((DynamicObject) obj);
+        return obj instanceof JSDataViewImpl;
     }
 
     public static boolean isJSDataView(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSDataViewImpl;
     }
 
     @Override

@@ -371,11 +371,8 @@ public final class JSArrayBufferView extends JSBuiltinObject {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = JSArguments.getThisObject(frame.getArguments());
-                    if (JSObject.isJSDynamicObject(obj)) {
-                        DynamicObject view = JSObject.castJSObject(obj);
-                        if (isJSArrayBufferView(view)) {
-                            return getter.apply(view);
-                        }
+                    if (isJSArrayBufferView(obj)) {
+                        return getter.apply((JSTypedArrayImpl) obj);
                     }
                     errorBranch.enter();
                     throw Errors.createTypeError("method called on incompatible receiver");
@@ -445,11 +442,8 @@ public final class JSArrayBufferView extends JSBuiltinObject {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = JSArguments.getThisObject(frame.getArguments());
-                    if (JSObject.isJSDynamicObject(obj)) {
-                        DynamicObject view = JSObject.castJSObject(obj);
-                        if (isJSArrayBufferView(view)) {
-                            return typedArrayGetName(view);
-                        }
+                    if (isJSArrayBufferView(obj)) {
+                        return typedArrayGetName((JSTypedArrayImpl) obj);
                     }
                     return Undefined.instance;
                 }

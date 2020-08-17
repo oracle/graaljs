@@ -1517,7 +1517,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return createCachedPropertyNodeNotJSObject(property, thisObj, depth);
         }
 
-        Shape cacheShape = ((DynamicObject) thisObj).getShape();
+        JSDynamicObject thisJSObj = (JSDynamicObject) thisObj;
+        Shape cacheShape = thisJSObj.getShape();
 
         if ((JSProperty.isData(property) && !JSProperty.isProxy(property) || JSProperty.isAccessor(property)) &&
                         (property.getLocation().isFinal() || property.getLocation().isAssumedFinal())) {
@@ -1545,17 +1546,17 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             }
 
             if (JSProperty.isData(property) && !JSProperty.isProxy(property)) {
-                if (isEligibleForFinalSpecialization(cacheShape, (DynamicObject) thisObj, depth, isConstantObjectFinal)) {
-                    return createFinalSpecialization(property, cacheShape, (DynamicObject) thisObj, depth, isConstantObjectFinal);
+                if (isEligibleForFinalSpecialization(cacheShape, thisJSObj, depth, isConstantObjectFinal)) {
+                    return createFinalSpecialization(property, cacheShape, thisJSObj, depth, isConstantObjectFinal);
                 }
             } else if (JSProperty.isAccessor(property)) {
-                if (isEligibleForFinalSpecialization(cacheShape, (DynamicObject) thisObj, depth, isConstantObjectFinal)) {
-                    return createFinalAccessorSpecialization(property, cacheShape, (DynamicObject) thisObj, depth, isConstantObjectFinal);
+                if (isEligibleForFinalSpecialization(cacheShape, thisJSObj, depth, isConstantObjectFinal)) {
+                    return createFinalAccessorSpecialization(property, cacheShape, thisJSObj, depth, isConstantObjectFinal);
                 }
             }
         }
 
-        AbstractShapeCheckNode shapeCheck = createShapeCheckNode(cacheShape, (DynamicObject) thisObj, depth, false, false);
+        AbstractShapeCheckNode shapeCheck = createShapeCheckNode(cacheShape, thisJSObj, depth, false, false);
         if (JSProperty.isData(property)) {
             return createSpecializationFromDataProperty(property, shapeCheck, context);
         } else {
@@ -1647,7 +1648,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
     }
 
-    private GetCacheNode createFinalSpecialization(Property property, Shape cacheShape, DynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
+    private GetCacheNode createFinalSpecialization(Property property, Shape cacheShape, JSDynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
         AbstractShapeCheckNode finalShapeCheckNode = createShapeCheckNode(cacheShape, thisObj, depth, isConstantObjectFinal, false);
         finalShapeCheckNode.adoptChildren();
         DynamicObject store = finalShapeCheckNode.getStore(thisObj);
@@ -1669,7 +1670,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
     }
 
-    private GetCacheNode createFinalAccessorSpecialization(Property property, Shape cacheShape, DynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
+    private GetCacheNode createFinalAccessorSpecialization(Property property, Shape cacheShape, JSDynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
         AbstractShapeCheckNode finalShapeCheckNode = createShapeCheckNode(cacheShape, thisObj, depth, isConstantObjectFinal, false);
         finalShapeCheckNode.adoptChildren();
         DynamicObject store = finalShapeCheckNode.getStore(thisObj);
@@ -1703,7 +1704,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
 
         if (JSObject.isJSDynamicObject(thisObj)) {
-            DynamicObject jsobject = (DynamicObject) thisObj;
+            JSDynamicObject jsobject = (JSDynamicObject) thisObj;
             Shape cacheShape = jsobject.getShape();
             AbstractShapeCheckNode shapeCheck = createShapeCheckNode(cacheShape, jsobject, depth, false, false);
             ReceiverCheckNode receiverCheck = (depth == 0) ? new JSClassCheckNode(JSObject.getJSClass(jsobject)) : shapeCheck;
@@ -1739,7 +1740,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
     }
 
-    private GetCacheNode createUndefinedJSObjectPropertyNode(DynamicObject jsobject, int depth) {
+    private GetCacheNode createUndefinedJSObjectPropertyNode(JSDynamicObject jsobject, int depth) {
         AbstractShapeCheckNode shapeCheck = createShapeCheckNode(jsobject.getShape(), jsobject, depth, false, false);
         if (JSRuntime.isObject(jsobject)) {
             if (context.isOptionNashornCompatibilityMode() && !(key instanceof Symbol)) {
