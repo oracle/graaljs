@@ -616,11 +616,11 @@ public final class JSGuards {
     }
 
     public static boolean isNullOrUndefined(Object value) {
-        return JSObject.isJSDynamicObject(value) && isNullOrUndefined((DynamicObject) value);
+        return JSRuntime.isNullOrUndefined(value);
     }
 
     public static boolean isNullOrUndefined(DynamicObject value) {
-        return value.getShape().getObjectType() == Null.NULL_CLASS;
+        return JSRuntime.isNullOrUndefined(value);
     }
 
     public static boolean isJSObjectShape(Shape shape) {

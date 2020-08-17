@@ -84,6 +84,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.Nullish;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyReference;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -290,14 +291,14 @@ public final class JSRuntime {
      * Returns whether {@code value} is JS {@code null} or {@code undefined}.
      */
     public static boolean isNullOrUndefined(Object value) {
-        return JSObject.isJSDynamicObject(value) && isNullOrUndefined((DynamicObject) value);
+        return value instanceof Nullish;
     }
 
     /**
      * Returns whether {@code value} is JS {@code null} or {@code undefined}.
      */
     public static boolean isNullOrUndefined(DynamicObject value) {
-        return value.getShape().getObjectType() == Null.NULL_CLASS;
+        return value instanceof Nullish;
     }
 
     /**
