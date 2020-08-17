@@ -79,73 +79,73 @@ public class TryFinallyNode extends StatementNode implements ResumableNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        Object result;
-        boolean abort = false;
+        Object result = null;
+        Throwable throwable;
         try {
             result = tryBlock.execute(frame);
+            throwable = null;
         } catch (ControlFlowException cfe) {
-            throw cfe;
+            throwable = cfe;
         } catch (Throwable ex) {
             catchBranch.enter();
-            if (!TryCatchNode.shouldCatch(ex, typeProfile)) {
-                abort = true;
-            }
-            throw ex;
-        } finally {
-            if (!abort) {
-                finallyBlock.execute(frame);
+            if (TryCatchNode.shouldCatch(ex, typeProfile)) {
+                throwable = ex;
+            } else {
+                // skip finally block
+                throw ex;
             }
         }
+
+        finallyBlock.executeVoid(frame);
+
+        if (throwable != null) {
+            throw JSRuntime.rethrow(throwable);
+        }
+        assert result != null;
         return result;
     }
 
     @Override
     public Object resume(VirtualFrame frame) {
+        Object result = EMPTY;
+        Throwable throwable = null;
         Object state = getStateAndReset(frame);
         if (state == Undefined.instance) {
-            Object result;
-            boolean yieldedInTry = false;
-            boolean abort = false;
-            Throwable ex = null;
             try {
-                try {
-                    result = tryBlock.execute(frame);
-                } catch (YieldException e) {
-                    yieldedInTry = true;
-                    throw e;
-                } catch (ControlFlowException cfe) {
-                    ex = cfe;
-                    throw cfe;
-                } catch (Throwable ex2) {
-                    catchBranch.enter();
-                    if (!TryCatchNode.shouldCatch(ex2, typeProfile)) {
-                        abort = true;
-                    }
-                    ex = ex2;
-                    throw ex2;
-                }
-            } finally {
-                if (!abort && !yieldedInTry) {
-                    try {
-                        finallyBlock.execute(frame);
-                    } catch (YieldException e) {
-                        setState(frame, ex);
-                        throw e;
-                    }
-                }
-            }
-            return result;
-        } else {
-            try {
-                finallyBlock.execute(frame);
+                result = tryBlock.execute(frame);
             } catch (YieldException e) {
-                setState(frame, state);
+                // not executing finally block
                 throw e;
+            } catch (ControlFlowException cfe) {
+                throwable = cfe;
+            } catch (Throwable ex) {
+                catchBranch.enter();
+                if (TryCatchNode.shouldCatch(ex, typeProfile)) {
+                    throwable = ex;
+                } else {
+                    // skip finally block
+                    throw ex;
+                }
             }
-            if (state != null) {
-                JSRuntime.rethrow((Throwable) state);
+        } else {
+            // resuming into finally block
+            if (state instanceof Throwable) {
+                throwable = (Throwable) state;
             }
-            return EMPTY;
         }
+
+        try {
+            finallyBlock.execute(frame);
+        } catch (YieldException e) {
+            setState(frame, throwable);
+            throw e;
+        }
+
+        if (throwable != null) {
+            throw JSRuntime.rethrow(throwable);
+        }
+        // Since we're in a generator function, we may ignore the result and return undefined;
+        // otherwise we'd have to remember the result when yielding from the finally block.
+        return result;
     }
 }
