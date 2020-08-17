@@ -48,10 +48,6 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.ObjectType;
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
@@ -60,7 +56,6 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode
 import com.oracle.truffle.js.nodes.binary.JSEqualNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
@@ -71,8 +66,6 @@ import com.oracle.truffle.js.runtime.objects.JSLazyString;
  *
  */
 public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
-    protected static final int MAX_SHAPE_COUNT = 1;
-    protected static final int MAX_TYPE_COUNT = 1;
     protected static final int MAX_CLASSES = 3;
 
     private final boolean isLeft;
@@ -142,27 +135,17 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"isJSObject", "object.getShape() == cachedShape"}, limit = "MAX_SHAPE_COUNT")
-    protected static boolean doJSObjectCachedShape(DynamicObject object,
-                    @Cached("isJSDynamicObject(object)") boolean isJSObject,
-                    @Cached("object.getShape()") Shape cachedShape) {
+    @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "1")
+    protected static boolean doJSObjectCached(Object object,
+                    @Cached("getClassIfJSObject(object)") Class<?> cachedClass) {
         assert !JSGuards.isNullOrUndefined(object);
         return false;
     }
 
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"isJSObject", "object.getShape().getObjectType() == cachedType"}, replaces = {"doJSObjectCachedShape"}, limit = "MAX_TYPE_COUNT")
-    protected static boolean doJSObjectCachedType(DynamicObject object,
-                    @Cached("isJSDynamicObject(object)") boolean isJSObject,
-                    @Cached("object.getShape().getObjectType()") ObjectType cachedType) {
+    @Specialization(guards = {"isJSObject(object)"}, replaces = {"doJSObjectCached"})
+    protected static boolean doJSObject(Object object) {
         assert !JSGuards.isNullOrUndefined(object);
         return false;
-    }
-
-    @Specialization(guards = {"isJSDynamicObject(object)"}, replaces = {"doJSObjectCachedType"})
-    protected static boolean doJSObject(DynamicObject object,
-                    @Cached("createBinaryProfile()") ConditionProfile resultProfile) {
-        return resultProfile.profile(!JSRuntime.isObject(object));
     }
 
     @SuppressWarnings("unused")
@@ -172,17 +155,12 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
         return false;
     }
 
-    @Specialization(guards = {"isJSDynamicObject(operand)"}, replaces = {"doJSValueCached"})
-    protected static boolean doJSValueJSObject(DynamicObject operand) {
-        return JSGuards.isNullOrUndefined(operand);
-    }
-
     @Specialization(guards = {"!isTruffleObject(operand)"}, replaces = {"doJSValueCached"})
     protected static boolean doJSValue(@SuppressWarnings("unused") Object operand) {
         return false;
     }
 
-    @Specialization(guards = "isForeignObject(operand)", limit = "1")
+    @Specialization(guards = "isForeignObject(operand)", limit = "5")
     protected boolean doForeign(Object operand,
                     @CachedLibrary("operand") InteropLibrary interop) {
         return interop.isNull(operand);
