@@ -922,8 +922,8 @@ public final class JSFunction extends JSBuiltinObject {
         Shape initialShape = makeBaseFunctionShape(context, prototype);
         initialShape = initialShape.addProperty(isAsync ? ASYNC_GENERATOR_FUNCTION_MARKER_PROPERTY : GENERATOR_FUNCTION_MARKER_PROPERTY);
         initialShape = addLengthProxyProperty(initialShape, context);
-        initialShape = addPrototypeProxyProperty(initialShape, false);
         initialShape = addNameProxyProperty(initialShape);
+        initialShape = addPrototypeProxyProperty(initialShape, false);
         return initialShape;
     }
 
