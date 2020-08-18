@@ -60,7 +60,6 @@ import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
  * @see JSShapeData
  */
 public final class JSShape {
-    public static final HiddenKey NOT_EXTENSIBLE_KEY = new HiddenKey("\uf001!extensible");
 
     public static final int NOT_EXTENSIBLE_FLAG = 1 << 0;
     public static final int SEALED_FLAG = 1 << 1;
@@ -111,7 +110,6 @@ public final class JSShape {
     }
 
     public static boolean isExtensible(Shape shape) {
-        // return shape.getLastProperty() != NOT_EXTENSIBLE_PROPERTY;
         return (shape.getFlags() & NOT_EXTENSIBLE_FLAG) == 0;
     }
 
@@ -120,7 +118,6 @@ public final class JSShape {
     }
 
     public static Property getPrototypeProperty(Shape shape) {
-        // return getSharedData(shape).getPrototypeProperty();
         return shape.getProperty(JSObject.HIDDEN_PROTO);
     }
 

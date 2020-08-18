@@ -659,7 +659,6 @@ public abstract class JSObject extends JSDynamicObject {
         } else {
             return ((JSTypedArrayObject) obj).getArrayType();
         }
-        // return ((JSArrayLike) obj).getArrayType();
     }
 
     public static void setArray(DynamicObject obj, ScriptArray array) {
