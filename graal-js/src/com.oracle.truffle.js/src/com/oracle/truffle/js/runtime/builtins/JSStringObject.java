@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,18 +40,53 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.objects.JSValueObject;
 
-public class JSFunctionImpl extends JSFunctionObject {
+@ExportLibrary(InteropLibrary.class)
+public final class JSStringObject extends JSValueObject {
+    private final CharSequence string;
 
-    protected JSFunctionImpl(Shape shape, JSFunctionData functionData, MaterializedFrame enclosingFrame, JSRealm realm, Object classPrototype) {
-        super(shape, functionData, enclosingFrame, realm, classPrototype);
+    protected JSStringObject(Shape shape, CharSequence string) {
+        super(shape);
+        this.string = string;
     }
 
-    public static JSFunctionImpl create(Shape shape, JSFunctionData functionData, MaterializedFrame enclosingFrame, JSRealm realm, Object classPrototype) {
-        return new JSFunctionImpl(shape, functionData, enclosingFrame, realm, classPrototype);
+    protected JSStringObject(JSRealm realm, JSObjectFactory factory, CharSequence string) {
+        super(realm, factory);
+        this.string = string;
     }
 
+    public CharSequence getCharSequence() {
+        return string;
+    }
+
+    public static DynamicObject create(Shape shape, CharSequence value) {
+        return new JSStringObject(shape, value);
+    }
+
+    public static DynamicObject create(JSRealm realm, JSObjectFactory factory, CharSequence value) {
+        return new JSStringObject(realm, factory, value);
+    }
+
+    @Override
+    public String getClassName() {
+        return JSString.CLASS_NAME;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public boolean isString() {
+        return true;
+    }
+
+    @ExportMessage
+    public String asString() {
+        return JSString.getString(this);
+    }
 }

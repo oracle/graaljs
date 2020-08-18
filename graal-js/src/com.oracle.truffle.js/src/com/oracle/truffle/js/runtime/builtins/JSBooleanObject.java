@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,56 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.objects.JSValueObject;
 
-public interface JSArrayLike {
-    ScriptArray getArrayType();
+@ExportLibrary(InteropLibrary.class)
+public final class JSBooleanObject extends JSValueObject {
+    public static final String CLASS_NAME = "Boolean";
+    public static final String PROTOTYPE_NAME = "Boolean.prototype";
+
+    private final boolean value;
+
+    protected JSBooleanObject(Shape shape, boolean value) {
+        super(shape);
+        this.value = value;
+    }
+
+    protected JSBooleanObject(JSRealm realm, JSObjectFactory factory, boolean value) {
+        super(realm, factory);
+        this.value = value;
+    }
+
+    public boolean getBooleanValue() {
+        return value;
+    }
+
+    @Override
+    public String getClassName() {
+        return CLASS_NAME;
+    }
+
+    public static DynamicObject create(Shape shape, boolean value) {
+        return new JSBooleanObject(shape, value);
+    }
+
+    public static DynamicObject create(JSRealm realm, JSObjectFactory factory, boolean value) {
+        return new JSBooleanObject(realm, factory, value);
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public boolean isBoolean() {
+        return true;
+    }
+
+    @ExportMessage
+    public boolean asBoolean() {
+        return JSBoolean.valueOf(this);
+    }
 }

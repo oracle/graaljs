@@ -333,7 +333,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         assert !shareable;
 
         JSRealm realm = context.getRealm();
-        DynamicObject obj = JSTypedArrayImpl.create(objectFactory.getShape(realm), arrayType, (JSArrayBufferImpl) arrayBuffer, length, offset);
+        DynamicObject obj = JSTypedArrayObject.create(objectFactory.getShape(realm), arrayType, (JSArrayBufferObject) arrayBuffer, length, offset);
         objectFactory.initProto(obj, realm);
         assert JSArrayBuffer.isJSAbstractBuffer(arrayBuffer);
         assert isJSArrayBufferView(obj);
@@ -354,10 +354,10 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         JSContext context = realm.getContext();
         byte[] byteArray = new byte[0];
         JSObjectFactory bufferFactory = context.getArrayBufferFactory();
-        DynamicObject emptyArrayBuffer = bufferFactory.initProto(JSArrayBufferImpl.createHeapArrayBuffer(bufferFactory.getShape(realm), byteArray), realm);
+        DynamicObject emptyArrayBuffer = bufferFactory.initProto(JSArrayBufferObject.createHeapArrayBuffer(bufferFactory.getShape(realm), byteArray), realm);
         TypedArray arrayType = factory.createArrayType(context.isOptionDirectByteBuffer(), false);
         Shape shape = JSShape.createPrototypeShape(context, INSTANCE, taPrototype);
-        DynamicObject prototype = JSTypedArrayImpl.create(shape, arrayType, (JSArrayBufferImpl) emptyArrayBuffer, 0, 0);
+        DynamicObject prototype = JSTypedArrayObject.create(shape, arrayType, (JSArrayBufferObject) emptyArrayBuffer, 0, 0);
         JSObjectUtil.setOrVerifyPrototype(context, prototype, taPrototype);
         return prototype;
     }
@@ -372,7 +372,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
                 public Object execute(VirtualFrame frame) {
                     Object obj = JSArguments.getThisObject(frame.getArguments());
                     if (isJSArrayBufferView(obj)) {
-                        return getter.apply((JSTypedArrayImpl) obj);
+                        return getter.apply((JSTypedArrayObject) obj);
                     }
                     errorBranch.enter();
                     throw Errors.createTypeError("method called on incompatible receiver");
@@ -443,7 +443,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
                 public Object execute(VirtualFrame frame) {
                     Object obj = JSArguments.getThisObject(frame.getArguments());
                     if (isJSArrayBufferView(obj)) {
-                        return typedArrayGetName((JSTypedArrayImpl) obj);
+                        return typedArrayGetName((JSTypedArrayObject) obj);
                     }
                     return Undefined.instance;
                 }
@@ -477,11 +477,11 @@ public final class JSArrayBufferView extends JSBuiltinObject {
     }
 
     public static boolean isJSArrayBufferView(Object obj) {
-        return obj instanceof JSTypedArrayImpl;
+        return obj instanceof JSTypedArrayObject;
     }
 
     public static boolean isJSArrayBufferView(DynamicObject obj) {
-        return obj instanceof JSTypedArrayImpl;
+        return obj instanceof JSTypedArrayObject;
     }
 
     public static boolean isBigIntArrayBufferView(DynamicObject obj) {

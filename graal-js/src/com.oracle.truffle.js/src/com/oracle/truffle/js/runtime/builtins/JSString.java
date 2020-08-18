@@ -45,9 +45,6 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
@@ -67,7 +64,6 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
-import com.oracle.truffle.js.runtime.objects.JSValueObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
@@ -103,7 +99,7 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
     }
 
     public static DynamicObject create(JSContext context, CharSequence value) {
-        DynamicObject stringObj = StringObjectImpl.create(context.getRealm(), context.getStringFactory(), value);
+        DynamicObject stringObj = JSStringObject.create(context.getRealm(), context.getStringFactory(), value);
         assert isJSString(stringObj);
         return context.trackAllocation(stringObj);
     }
@@ -120,7 +116,7 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
 
     public static CharSequence getCharSequence(DynamicObject obj) {
         assert isJSString(obj);
-        return ((com.oracle.truffle.js.runtime.builtins.JSString.StringObjectImpl) obj).getCharSequence();
+        return ((com.oracle.truffle.js.runtime.builtins.JSStringObject) obj).getCharSequence();
     }
 
     public static String getString(DynamicObject obj) {
@@ -247,7 +243,7 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
     public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
         Shape protoShape = JSShape.createPrototypeShape(ctx, INSTANCE, realm.getObjectPrototype());
-        DynamicObject prototype = StringObjectImpl.create(protoShape, "");
+        DynamicObject prototype = JSStringObject.create(protoShape, "");
         JSObjectUtil.setOrVerifyPrototype(ctx, prototype, realm.getObjectPrototype());
 
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
@@ -374,49 +370,6 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getStringPrototype();
-    }
-
-    @ExportLibrary(InteropLibrary.class)
-    public static class StringObjectImpl extends JSValueObject {
-        private final CharSequence string;
-
-        protected StringObjectImpl(Shape shape, CharSequence string) {
-            super(shape);
-            this.string = string;
-        }
-
-        protected StringObjectImpl(JSRealm realm, JSObjectFactory factory, CharSequence string) {
-            super(realm, factory);
-            this.string = string;
-        }
-
-        public CharSequence getCharSequence() {
-            return string;
-        }
-
-        public static DynamicObject create(Shape shape, CharSequence value) {
-            return new StringObjectImpl(shape, value);
-        }
-
-        public static DynamicObject create(JSRealm realm, JSObjectFactory factory, CharSequence value) {
-            return new StringObjectImpl(realm, factory, value);
-        }
-
-        @Override
-        public String getClassName() {
-            return CLASS_NAME;
-        }
-
-        @SuppressWarnings("static-method")
-        @ExportMessage
-        final boolean isString() {
-            return true;
-        }
-
-        @ExportMessage
-        final String asString() {
-            return JSString.getString(this);
-        }
     }
 
 }

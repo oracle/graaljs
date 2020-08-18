@@ -46,32 +46,18 @@ import java.util.List;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.CachedLanguage;
-import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.ProxyFunctionBuiltins;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.nodes.interop.ExportValueNode;
-import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
-import com.oracle.truffle.js.nodes.interop.JSInteropInstantiateNode;
-import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.objects.JSClassObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -103,82 +89,6 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
 
     public static final HiddenKey REVOCABLE_PROXY = new HiddenKey("RevocableProxy");
     public static final HiddenKey REVOKED_CALLABLE = new HiddenKey("RevokedCallable");
-
-    @ExportLibrary(InteropLibrary.class)
-    public static class ProxyObjectImpl extends JSClassObject {
-        private Object proxyTarget;
-        private DynamicObject proxyHandler;
-
-        protected ProxyObjectImpl(JSRealm realm, JSObjectFactory factory, Object proxyTarget, DynamicObject proxyHandler) {
-            super(realm, factory);
-            this.proxyTarget = proxyTarget;
-            this.proxyHandler = proxyHandler;
-        }
-
-        protected ProxyObjectImpl(Shape shape, Object proxyTarget, DynamicObject proxyHandler) {
-            super(shape);
-            this.proxyTarget = proxyTarget;
-            this.proxyHandler = proxyHandler;
-        }
-
-        public DynamicObject getProxyHandler() {
-            return proxyHandler;
-        }
-
-        public Object getProxyTarget() {
-            return proxyTarget;
-        }
-
-        public void revoke() {
-            this.proxyHandler = Null.instance;
-            this.proxyTarget = Null.instance;
-        }
-
-        public static DynamicObject create(JSRealm realm, JSObjectFactory factory, Object target, DynamicObject handler) {
-            return new ProxyObjectImpl(realm, factory, target, handler);
-        }
-
-        @ExportMessage
-        public final boolean isExecutable(
-                        @Cached IsCallableNode isCallable) {
-            return isCallable.executeBoolean(this);
-        }
-
-        @ExportMessage
-        public final Object execute(Object[] args,
-                        @CachedLanguage JavaScriptLanguage language,
-                        @CachedContext(JavaScriptLanguage.class) JSRealm realm,
-                        @Cached JSInteropExecuteNode callNode,
-                        @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
-            language.interopBoundaryEnter(realm);
-            try {
-                Object result = callNode.execute(this, Undefined.instance, args);
-                return exportNode.execute(result);
-            } finally {
-                language.interopBoundaryExit(realm);
-            }
-        }
-
-        @ExportMessage
-        public final boolean isInstantiable() {
-            return JSRuntime.isConstructor(this);
-        }
-
-        @ExportMessage
-        public final Object instantiate(Object[] args,
-                        @CachedLanguage JavaScriptLanguage language,
-                        @CachedContext(JavaScriptLanguage.class) JSRealm realm,
-                        @Cached JSInteropInstantiateNode callNode,
-                        @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
-            language.interopBoundaryEnter(realm);
-            try {
-                Object result = callNode.execute(this, args);
-                return exportNode.execute(result);
-            } finally {
-                language.interopBoundaryExit(realm);
-            }
-        }
-    }
 
     public static boolean checkPropertyIsSettable(Object truffleTarget, Object key) {
         assert JSRuntime.isPropertyKey(key);
@@ -212,12 +122,12 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     public static DynamicObject create(JSContext context, Object target, DynamicObject handler) {
-        return ProxyObjectImpl.create(context.getRealm(), context.getProxyFactory(), target, handler);
+        return JSProxyObject.create(context.getRealm(), context.getProxyFactory(), target, handler);
     }
 
     public static Object getTarget(DynamicObject obj) {
         assert isProxy(obj);
-        return ((ProxyObjectImpl) obj).getProxyTarget();
+        return ((JSProxyObject) obj).getProxyTarget();
     }
 
     /**
@@ -234,7 +144,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
 
     public static DynamicObject getHandler(DynamicObject obj) {
         assert isProxy(obj);
-        return ((ProxyObjectImpl) obj).getProxyHandler();
+        return ((JSProxyObject) obj).getProxyHandler();
     }
 
     public static DynamicObject getHandlerChecked(DynamicObject obj) {
@@ -258,18 +168,18 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     public static void revoke(DynamicObject obj) {
         assert JSProxy.isProxy(obj);
         try {
-            ((ProxyObjectImpl) obj).revoke();
+            ((JSProxyObject) obj).revoke();
         } catch (Exception ex) {
             throw Errors.createTypeError("cannot revoke proxy");
         }
     }
 
     public static boolean isProxy(Object obj) {
-        return obj instanceof ProxyObjectImpl;
+        return obj instanceof JSProxyObject;
     }
 
     public static boolean isProxy(DynamicObject obj) {
-        return obj instanceof ProxyObjectImpl;
+        return obj instanceof JSProxyObject;
     }
 
     @TruffleBoundary

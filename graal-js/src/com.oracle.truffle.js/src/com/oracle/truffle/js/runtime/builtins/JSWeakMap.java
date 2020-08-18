@@ -60,25 +60,21 @@ public final class JSWeakMap extends JSBuiltinObject implements JSConstructorFac
     public static final String CLASS_NAME = "WeakMap";
     public static final String PROTOTYPE_NAME = CLASS_NAME + ".prototype";
 
-    public static class WeakMapImpl extends JSBasicObject {
+    public static final class Instance extends JSBasicObject {
         private final Map<DynamicObject, Object> weakHashMap;
 
-        protected WeakMapImpl(JSRealm realm, JSObjectFactory factory, Map<DynamicObject, Object> weakHashMap) {
+        protected Instance(JSRealm realm, JSObjectFactory factory, Map<DynamicObject, Object> weakHashMap) {
             super(realm, factory);
             this.weakHashMap = weakHashMap;
         }
 
-        protected WeakMapImpl(Shape shape, Map<DynamicObject, Object> weakHashMap) {
+        protected Instance(Shape shape, Map<DynamicObject, Object> weakHashMap) {
             super(shape);
             this.weakHashMap = weakHashMap;
         }
 
         public Map<DynamicObject, Object> getWeakHashMap() {
             return weakHashMap;
-        }
-
-        public static WeakMapImpl create(JSRealm realm, JSObjectFactory factory, Map<DynamicObject, Object> weakHashMap) {
-            return new WeakMapImpl(realm, factory, weakHashMap);
         }
     }
 
@@ -88,7 +84,7 @@ public final class JSWeakMap extends JSBuiltinObject implements JSConstructorFac
     public static DynamicObject create(JSContext context) {
         WeakMap weakMap = new WeakMap();
         JSRealm realm = context.getRealm();
-        DynamicObject obj = WeakMapImpl.create(realm, context.getWeakMapFactory(), weakMap);
+        DynamicObject obj = new Instance(realm, context.getWeakMapFactory(), weakMap);
         assert isJSWeakMap(obj);
         return context.trackAllocation(obj);
     }
@@ -96,8 +92,7 @@ public final class JSWeakMap extends JSBuiltinObject implements JSConstructorFac
     @SuppressWarnings("unchecked")
     public static Map<DynamicObject, Object> getInternalWeakMap(DynamicObject obj) {
         assert isJSWeakMap(obj);
-        // return (Map<DynamicObject, Object>) WEAKMAP_PROPERTY.get(obj, isJSWeakMap(obj));
-        return ((WeakMapImpl) obj).getWeakHashMap();
+        return ((Instance) obj).getWeakHashMap();
     }
 
     @Override

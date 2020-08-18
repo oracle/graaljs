@@ -65,7 +65,7 @@ public final class JSGlobalObject extends JSBuiltinObject {
         JSContext context = realm.getContext();
         Shape globalObjectShape = makeGlobalObjectShape(context, objectPrototype);
 
-        DynamicObject global = new GlobalObject(globalObjectShape);
+        DynamicObject global = new Instance(globalObjectShape);
         JSObjectUtil.setOrVerifyPrototype(context, global, objectPrototype);
 
         JSObjectUtil.putToStringTag(global, CLASS_NAME);
@@ -85,7 +85,7 @@ public final class JSGlobalObject extends JSBuiltinObject {
 
     public static DynamicObject createGlobalScope(JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
-        return new GlobalObject(context.getGlobalScopeShape());
+        return new Instance(context.getGlobalScopeShape());
     }
 
     public static boolean isJSGlobalObject(Object obj) {
@@ -101,8 +101,8 @@ public final class JSGlobalObject extends JSBuiltinObject {
         return CLASS_NAME;
     }
 
-    public static final class GlobalObject extends JSBasicObject {
-        protected GlobalObject(Shape shape) {
+    public static final class Instance extends JSBasicObject {
+        protected Instance(Shape shape) {
             super(shape);
         }
 

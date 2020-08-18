@@ -444,17 +444,17 @@ public final class JSFunction extends JSBuiltinObject {
 
     public static Object getBoundThis(DynamicObject function) {
         assert isBoundFunction(function);
-        return ((JSBoundFunctionImpl) function).getBoundThis();
+        return ((JSFunctionObject.Bound) function).getBoundThis();
     }
 
     public static DynamicObject getBoundTargetFunction(DynamicObject function) {
         assert isBoundFunction(function);
-        return ((JSBoundFunctionImpl) function).getBoundTargetFunction();
+        return ((JSFunctionObject.Bound) function).getBoundTargetFunction();
     }
 
     public static Object[] getBoundArguments(DynamicObject function) {
         assert isBoundFunction(function);
-        return ((JSBoundFunctionImpl) function).getBoundArguments();
+        return ((JSFunctionObject.Bound) function).getBoundArguments();
     }
 
     public static Object getLexicalThis(DynamicObject thisObj) {
@@ -616,7 +616,7 @@ public final class JSFunction extends JSBuiltinObject {
     public static DynamicObject createFunctionPrototype(JSRealm realm, DynamicObject objectPrototype) {
         JSContext context = realm.getContext();
         Shape protoShape = JSShape.createPrototypeShape(context, INSTANCE, objectPrototype);
-        DynamicObject proto = JSFunctionImpl.create(protoShape, createEmptyFunctionData(context), JSFrameUtil.NULL_MATERIALIZED_FRAME, realm, CLASS_PROTOTYPE_PLACEHOLDER);
+        DynamicObject proto = JSFunctionObject.create(protoShape, createEmptyFunctionData(context), JSFrameUtil.NULL_MATERIALIZED_FRAME, realm, CLASS_PROTOTYPE_PLACEHOLDER);
         JSObjectUtil.setOrVerifyPrototype(context, proto, objectPrototype);
         JSObjectUtil.putDataProperty(context, proto, LENGTH, 0, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putDataProperty(context, proto, NAME, "", JSAttributes.configurableNotEnumerableNotWritable());

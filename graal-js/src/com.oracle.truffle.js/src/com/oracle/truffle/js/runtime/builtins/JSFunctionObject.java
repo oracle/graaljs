@@ -60,6 +60,7 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropInstantiateNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSBasicObject;
@@ -161,12 +162,12 @@ public abstract class JSFunctionObject extends JSBasicObject {
     }
 
     @ExportMessage
-    final boolean hasSourceLocation() {
+    public final boolean hasSourceLocation() {
         return getSourceLocationImpl(this) != null;
     }
 
     @ExportMessage
-    final SourceSection getSourceLocation() throws UnsupportedMessageException {
+    public final SourceSection getSourceLocation() throws UnsupportedMessageException {
         SourceSection sourceSection = getSourceLocationImpl(this);
         if (sourceSection == null) {
             throw UnsupportedMessageException.create();
@@ -193,7 +194,7 @@ public abstract class JSFunctionObject extends JSBasicObject {
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    final boolean isMetaObject() {
+    public final boolean isMetaObject() {
         return true;
     }
 
@@ -201,7 +202,7 @@ public abstract class JSFunctionObject extends JSBasicObject {
     @TruffleBoundary
     @ExportMessage(name = "getMetaQualifiedName")
     @ExportMessage(name = "getMetaSimpleName")
-    final Object getMetaObjectName() {
+    public final Object getMetaObjectName() {
         Object name = JSRuntime.getDataProperty(this, JSFunction.NAME);
         if (JSRuntime.isString(name)) {
             return JSRuntime.javaToString(name);
@@ -212,7 +213,7 @@ public abstract class JSFunctionObject extends JSBasicObject {
     @SuppressWarnings("static-method")
     @TruffleBoundary
     @ExportMessage
-    final boolean isMetaInstance(Object instance) {
+    public final boolean isMetaInstance(Object instance) {
         Object constructorPrototype = JSRuntime.getDataProperty(this, JSObject.PROTOTYPE);
         if (JSGuards.isJSObject(constructorPrototype)) {
             Object obj = instance;
@@ -233,5 +234,46 @@ public abstract class JSFunctionObject extends JSBasicObject {
             }
         }
         return false;
+    }
+
+    public static JSFunctionObject create(Shape shape, JSFunctionData functionData, MaterializedFrame enclosingFrame, JSRealm realm, Object classPrototype) {
+        return new Unbound(shape, functionData, enclosingFrame, realm, classPrototype);
+    }
+
+    public static JSFunctionObject createBound(Shape shape, JSFunctionData functionData, JSRealm realm, Object classPrototype,
+                    DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
+        return new Bound(shape, functionData, realm, classPrototype, boundTargetFunction, boundThis, boundArguments);
+    }
+
+    public static final class Unbound extends JSFunctionObject {
+        protected Unbound(Shape shape, JSFunctionData functionData, MaterializedFrame enclosingFrame, JSRealm realm, Object classPrototype) {
+            super(shape, functionData, enclosingFrame, realm, classPrototype);
+        }
+    }
+
+    public static final class Bound extends JSFunctionObject {
+        protected Bound(Shape shape, JSFunctionData functionData, JSRealm realm, Object classPrototype,
+                        DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
+            super(shape, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, realm, classPrototype);
+            this.boundTargetFunction = boundTargetFunction;
+            this.boundThis = boundThis;
+            this.boundArguments = boundArguments;
+        }
+
+        private DynamicObject boundTargetFunction;
+        private Object boundThis;
+        private Object[] boundArguments;
+
+        public DynamicObject getBoundTargetFunction() {
+            return boundTargetFunction;
+        }
+
+        public Object getBoundThis() {
+            return boundThis;
+        }
+
+        public Object[] getBoundArguments() {
+            return boundArguments;
+        }
     }
 }

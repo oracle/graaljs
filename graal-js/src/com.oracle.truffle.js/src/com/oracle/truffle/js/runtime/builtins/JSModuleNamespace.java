@@ -61,8 +61,6 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSBasicObject;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -79,54 +77,6 @@ public final class JSModuleNamespace extends JSBuiltinObject {
     public static final JSModuleNamespace INSTANCE = new JSModuleNamespace();
 
     public static final String CLASS_NAME = "Module";
-
-    public static class JSModuleNamespaceObject extends JSBasicObject {
-        /**
-         * [[Module]]. Module Record.
-         *
-         * The Module Record whose exports this namespace exposes.
-         */
-        private final JSModuleRecord module;
-
-        /**
-         * [[Exports]]. List of String.
-         *
-         * A List containing the String values of the exported names exposed as own properties of
-         * this object. The list is ordered as if an Array of those String values had been sorted
-         * using Array.prototype.sort using SortCompare as comparefn.
-         */
-        private final Map<String, ExportResolution> exports;
-
-        protected JSModuleNamespaceObject(Shape shape, JSModuleRecord module, Map<String, ExportResolution> exports) {
-            super(shape);
-            this.module = module;
-            this.exports = exports;
-        }
-
-        public JSModuleRecord getModule() {
-            return module;
-        }
-
-        public Map<String, ExportResolution> getExports() {
-            return exports;
-        }
-
-        public static DynamicObject create(JSRealm realm, JSObjectFactory factory, JSModuleRecord module, Map<String, ExportResolution> exports) {
-            JSModuleNamespaceObject obj = new JSModuleNamespaceObject(factory.getShape(realm), module, exports);
-            factory.initProto(obj, realm);
-            return obj;
-        }
-
-        @Override
-        public String getClassName() {
-            return CLASS_NAME;
-        }
-
-        @Override
-        public boolean setPrototypeOf(JSDynamicObject newPrototype) {
-            return newPrototype == Null.instance;
-        }
-    }
 
     private JSModuleNamespace() {
     }

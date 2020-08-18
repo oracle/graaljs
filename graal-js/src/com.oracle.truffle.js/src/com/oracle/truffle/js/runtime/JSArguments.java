@@ -41,7 +41,7 @@
 package com.oracle.truffle.js.runtime;
 
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionImpl;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 
 public final class JSArguments {
@@ -126,7 +126,7 @@ public final class JSArguments {
     }
 
     public static MaterializedFrame getEnclosingFrame(Object[] arguments) {
-        return ((JSFunctionImpl) getFunctionObject(arguments)).getEnclosingFrame();
+        return ((JSFunctionObject.Unbound) getFunctionObject(arguments)).getEnclosingFrame();
     }
 
     public static void arraycopy(Object[] src, int srcPos, Object[] dest, int destPos, int length) {

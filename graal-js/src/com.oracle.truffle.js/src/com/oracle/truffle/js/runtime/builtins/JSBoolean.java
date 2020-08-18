@@ -41,9 +41,6 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.BooleanPrototypeBuiltins;
@@ -55,7 +52,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
-import com.oracle.truffle.js.runtime.objects.JSValueObject;
 
 public final class JSBoolean extends JSPrimitiveObject implements JSConstructorFactory.Default {
 
@@ -67,57 +63,11 @@ public final class JSBoolean extends JSPrimitiveObject implements JSConstructorF
 
     public static final JSBoolean INSTANCE = new JSBoolean();
 
-    @ExportLibrary(InteropLibrary.class)
-    public static class BooleanObjectImpl extends JSValueObject {
-        public static final String CLASS_NAME = "Boolean";
-        public static final String PROTOTYPE_NAME = "Boolean.prototype";
-
-        private final boolean value;
-
-        protected BooleanObjectImpl(Shape shape, boolean value) {
-            super(shape);
-            this.value = value;
-        }
-
-        protected BooleanObjectImpl(JSRealm realm, JSObjectFactory factory, boolean value) {
-            super(realm, factory);
-            this.value = value;
-        }
-
-        public boolean getBooleanValue() {
-            return value;
-        }
-
-        @Override
-        public String getClassName() {
-            return CLASS_NAME;
-        }
-
-        public static DynamicObject create(Shape shape, boolean value) {
-            return new BooleanObjectImpl(shape, value);
-        }
-
-        public static DynamicObject create(JSRealm realm, JSObjectFactory factory, boolean value) {
-            return new BooleanObjectImpl(realm, factory, value);
-        }
-
-        @SuppressWarnings("static-method")
-        @ExportMessage
-        final boolean isBoolean() {
-            return true;
-        }
-
-        @ExportMessage
-        final boolean asBoolean() {
-            return JSBoolean.valueOf(this);
-        }
-    }
-
     private JSBoolean() {
     }
 
     public static DynamicObject create(JSContext context, boolean value) {
-        DynamicObject obj = BooleanObjectImpl.create(context.getRealm(), context.getBooleanFactory(), value);
+        DynamicObject obj = JSBooleanObject.create(context.getRealm(), context.getBooleanFactory(), value);
         assert isJSBoolean(obj);
         return context.trackAllocation(obj);
     }
@@ -126,7 +76,7 @@ public final class JSBoolean extends JSPrimitiveObject implements JSConstructorF
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
         Shape protoShape = JSShape.createPrototypeShape(realm.getContext(), INSTANCE, realm.getObjectPrototype());
-        DynamicObject booleanPrototype = BooleanObjectImpl.create(protoShape, false);
+        DynamicObject booleanPrototype = JSBooleanObject.create(protoShape, false);
         JSObjectUtil.setOrVerifyPrototype(ctx, booleanPrototype, realm.getObjectPrototype());
 
         JSObjectUtil.putConstructorProperty(ctx, booleanPrototype, ctor);
@@ -146,7 +96,7 @@ public final class JSBoolean extends JSPrimitiveObject implements JSConstructorF
 
     public static boolean valueOf(DynamicObject obj) {
         assert isJSBoolean(obj);
-        return ((BooleanObjectImpl) obj).getBooleanValue();
+        return ((JSBooleanObject) obj).getBooleanValue();
     }
 
     public static boolean isJSBoolean(Object obj) {

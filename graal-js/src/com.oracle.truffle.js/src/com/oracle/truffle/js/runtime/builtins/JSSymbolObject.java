@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,52 +40,29 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.util.Objects;
-
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSBasicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 
-/**
- * Common class for Intl objects as well as JavaImporter and JavaPackage objects.
- *
- * @see JSCollator
- * @see JSDateTimeFormat
- * @see JSDisplayNames
- * @see JSListFormat
- * @see JSLocale
- * @see JSNumberFormat
- * @see JSPluralRules
- * @see JSRelativeTimeFormat
- * @see JSSegmenter
- */
-public class IntlObject extends JSBasicObject {
-    private final Object internalState;
+public final class JSSymbolObject extends JSBasicObject {
+    private final Symbol symbol;
 
-    protected IntlObject(Shape shape, Object internalState) {
+    protected JSSymbolObject(JSRealm realm, JSObjectFactory factory, Symbol symbol) {
+        super(realm, factory);
+        this.symbol = symbol;
+    }
+
+    protected JSSymbolObject(Shape shape, Symbol symbol) {
         super(shape);
-        this.internalState = Objects.requireNonNull(internalState);
+        this.symbol = symbol;
     }
 
-    @SuppressWarnings("unchecked")
-    public <T> T getInternalState() {
-        return (T) internalState;
+    public Symbol getSymbol() {
+        return symbol;
     }
 
-    public static IntlObject create(Shape shape, Object internalState) {
-        assert shape.getProperty(JSObject.HIDDEN_PROTO) != null && shape.getProperty(JSObject.HIDDEN_PROTO).getLocation().isConstant();
-        return new IntlObject(shape, internalState);
-    }
-
-    public static IntlObject create(JSContext context, JSObjectFactory factory, Object internalState) {
-        return create(context.getRealm(), factory, internalState);
-    }
-
-    public static IntlObject create(JSRealm realm, JSObjectFactory factory, Object internalState) {
-        IntlObject obj = new IntlObject(factory.getShape(realm), internalState);
-        factory.initProto(obj, realm);
-        return obj;
+    public static JSSymbolObject create(JSRealm realm, JSObjectFactory factory, Symbol symbol) {
+        return new JSSymbolObject(realm, factory, symbol);
     }
 }

@@ -56,7 +56,6 @@ import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -79,14 +78,14 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
     }
 
     public static DynamicObject create(JSContext context, Symbol symbol) {
-        DynamicObject mapObj = SymbolObjectImpl.create(context.getRealm(), context.getSymbolFactory(), symbol);
+        DynamicObject mapObj = JSSymbolObject.create(context.getRealm(), context.getSymbolFactory(), symbol);
         assert isJSSymbol(mapObj);
         return context.trackAllocation(mapObj);
     }
 
     public static Symbol getSymbolData(DynamicObject symbolWrapper) {
         assert JSSymbol.isJSSymbol(symbolWrapper);
-        return ((SymbolObjectImpl) symbolWrapper).getSymbol();
+        return ((JSSymbolObject) symbolWrapper).getSymbol();
     }
 
     @Override
@@ -163,28 +162,6 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getSymbolPrototype();
-    }
-
-    public static class SymbolObjectImpl extends JSBasicObject {
-        private final Symbol symbol;
-
-        protected SymbolObjectImpl(JSRealm realm, JSObjectFactory factory, Symbol symbol) {
-            super(realm, factory);
-            this.symbol = symbol;
-        }
-
-        protected SymbolObjectImpl(Shape shape, Symbol symbol) {
-            super(shape);
-            this.symbol = symbol;
-        }
-
-        public Symbol getSymbol() {
-            return symbol;
-        }
-
-        public static SymbolObjectImpl create(JSRealm realm, JSObjectFactory factory, Symbol symbol) {
-            return new SymbolObjectImpl(realm, factory, symbol);
-        }
     }
 
 }

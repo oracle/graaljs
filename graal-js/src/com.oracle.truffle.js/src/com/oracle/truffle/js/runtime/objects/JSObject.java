@@ -60,7 +60,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBase;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
-import com.oracle.truffle.js.runtime.builtins.JSTypedArrayImpl;
+import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
@@ -458,7 +458,7 @@ public final class JSObject {
         if (obj instanceof JSArrayBase) {
             return ((JSArrayBase) obj).getArrayType();
         } else {
-            return ((JSTypedArrayImpl) obj).getArrayType();
+            return ((JSTypedArrayObject) obj).getArrayType();
         }
         // return ((JSArrayLike) obj).getArrayType();
     }

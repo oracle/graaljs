@@ -52,7 +52,7 @@ public abstract class JSAbstractBuffer extends JSBuiltinObject {
 
     public static byte[] getByteArray(DynamicObject thisObj) {
         assert isJSAbstractHeapBuffer(thisObj);
-        return JSArrayBufferImpl.getByteArray(thisObj);
+        return JSArrayBufferObject.getByteArray(thisObj);
     }
 
     public static int getByteLength(DynamicObject thisObj) {

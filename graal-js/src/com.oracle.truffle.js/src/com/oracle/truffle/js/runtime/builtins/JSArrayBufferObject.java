@@ -49,12 +49,12 @@ import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
-public abstract class JSArrayBufferImpl extends JSBasicObject {
+public abstract class JSArrayBufferObject extends JSBasicObject {
 
     public static final String CLASS_NAME = "ArrayBuffer";
     public static final String PROTOTYPE_NAME = CLASS_NAME + ".prototype";
 
-    protected JSArrayBufferImpl(Shape shape) {
+    protected JSArrayBufferObject(Shape shape) {
         super(shape);
     }
 
@@ -67,7 +67,7 @@ public abstract class JSArrayBufferImpl extends JSBasicObject {
 
     public static byte[] getByteArray(DynamicObject thisObj) {
         assert JSAbstractBuffer.isJSAbstractHeapBuffer(thisObj);
-        return ((HeapArrayBuffer) thisObj).getByteArray();
+        return ((Heap) thisObj).getByteArray();
     }
 
     public static int getByteLength(DynamicObject thisObj) {
@@ -80,26 +80,26 @@ public abstract class JSArrayBufferImpl extends JSBasicObject {
     }
 
     public static void setDirectByteBuffer(DynamicObject thisObj, ByteBuffer buffer) {
-        ((AbstractDirectArrayBuffer) thisObj).setByteBuffer(buffer);
+        ((DirectBase) thisObj).setByteBuffer(buffer);
     }
 
     public static ByteBuffer getDirectByteBuffer(DynamicObject thisObj) {
         assert JSArrayBuffer.isJSDirectArrayBuffer(thisObj) || JSSharedArrayBuffer.isJSSharedArrayBuffer(thisObj);
-        return DirectByteBufferHelper.cast(((AbstractDirectArrayBuffer) thisObj).getByteBuffer());
+        return DirectByteBufferHelper.cast(((DirectBase) thisObj).getByteBuffer());
     }
 
     public static JSAgentWaiterList getWaiterList(DynamicObject thisObj) {
-        return ((SharedArrayBuffer) thisObj).getWaiterList();
+        return ((Shared) thisObj).getWaiterList();
     }
 
     public static void setWaiterList(DynamicObject thisObj, JSAgentWaiterList waiterList) {
-        ((SharedArrayBuffer) thisObj).setWaiterList(waiterList);
+        ((Shared) thisObj).setWaiterList(waiterList);
     }
 
-    public static class HeapArrayBuffer extends JSArrayBufferImpl {
+    public static final class Heap extends JSArrayBufferObject {
         byte[] byteArray;
 
-        protected HeapArrayBuffer(Shape shape, byte[] byteArray) {
+        protected Heap(Shape shape, byte[] byteArray) {
             super(shape);
             this.byteArray = byteArray;
         }
@@ -114,10 +114,10 @@ public abstract class JSArrayBufferImpl extends JSBasicObject {
         }
     }
 
-    public abstract static class AbstractDirectArrayBuffer extends JSArrayBufferImpl {
+    public abstract static class DirectBase extends JSArrayBufferObject {
         ByteBuffer byteBuffer;
 
-        protected AbstractDirectArrayBuffer(Shape shape, ByteBuffer byteBuffer) {
+        protected DirectBase(Shape shape, ByteBuffer byteBuffer) {
             super(shape);
             this.byteBuffer = byteBuffer;
         }
@@ -134,8 +134,8 @@ public abstract class JSArrayBufferImpl extends JSBasicObject {
         public abstract void detachArrayBuffer();
     }
 
-    public static class DirectArrayBuffer extends AbstractDirectArrayBuffer {
-        protected DirectArrayBuffer(Shape shape, ByteBuffer byteBuffer) {
+    public static final class Direct extends DirectBase {
+        protected Direct(Shape shape, ByteBuffer byteBuffer) {
             super(shape, byteBuffer);
         }
 
@@ -145,10 +145,10 @@ public abstract class JSArrayBufferImpl extends JSBasicObject {
         }
     }
 
-    public static class SharedArrayBuffer extends AbstractDirectArrayBuffer {
+    public static final class Shared extends DirectBase {
         JSAgentWaiterList waiterList;
 
-        protected SharedArrayBuffer(Shape shape, ByteBuffer byteBuffer, JSAgentWaiterList waiterList) {
+        protected Shared(Shape shape, ByteBuffer byteBuffer, JSAgentWaiterList waiterList) {
             super(shape, byteBuffer);
             this.waiterList = waiterList;
         }
@@ -168,14 +168,14 @@ public abstract class JSArrayBufferImpl extends JSBasicObject {
     }
 
     public static DynamicObject createHeapArrayBuffer(Shape shape, byte[] byteArray) {
-        return new HeapArrayBuffer(shape, byteArray);
+        return new Heap(shape, byteArray);
     }
 
     public static DynamicObject createDirectArrayBuffer(Shape shape, ByteBuffer byteBuffer) {
-        return new DirectArrayBuffer(shape, byteBuffer);
+        return new Direct(shape, byteBuffer);
     }
 
     public static DynamicObject createSharedArrayBuffer(Shape shape, ByteBuffer byteBuffer, JSAgentWaiterList waiterList) {
-        return new SharedArrayBuffer(shape, byteBuffer, waiterList);
+        return new Shared(shape, byteBuffer, waiterList);
     }
 }

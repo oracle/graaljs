@@ -42,7 +42,6 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.function.Function;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -68,47 +67,14 @@ public final class JSDataView extends JSBuiltinObject implements JSConstructorFa
     private static final String BUFFER = "buffer";
     private static final String BYTE_OFFSET = "byteOffset";
 
-    public static class JSDataViewImpl extends JSArrayBufferViewBase {
-
-        protected JSDataViewImpl(Shape shape, JSArrayBufferImpl arrayBuffer, int length, int offset) {
-            super(shape, arrayBuffer, length, offset);
-        }
-
-        @Override
-        public String getClassName() {
-            return CLASS_NAME;
-        }
-
-        public static DynamicObject getArrayBuffer(DynamicObject thisObj) {
-            return ((JSDataViewImpl) thisObj).getArrayBuffer();
-        }
-
-        public static int getLength(DynamicObject thisObj) {
-            return ((JSDataViewImpl) thisObj).length;
-        }
-
-        public static int getOffset(DynamicObject thisObj) {
-            return ((JSDataViewImpl) thisObj).offset;
-        }
-
-        public static JSDataViewImpl create(Shape shape, JSArrayBufferImpl arrayBuffer, int length, int offset) {
-            return new JSDataViewImpl(shape, arrayBuffer, length, offset);
-        }
-
-        public static JSDataViewImpl create(JSRealm realm, JSObjectFactory factory, JSArrayBufferImpl arrayBuffer, int length, int offset) {
-            CompilerAsserts.partialEvaluationConstant(factory);
-            return factory.initProto(new JSDataViewImpl(factory.getShape(realm), arrayBuffer, length, offset), realm);
-        }
-    }
-
     public static int typedArrayGetLength(DynamicObject thisObj) {
         assert JSDataView.isJSDataView(thisObj);
-        return JSDataViewImpl.getLength(thisObj);
+        return JSDataViewObject.getLength(thisObj);
     }
 
     public static int typedArrayGetOffset(DynamicObject thisObj) {
         assert JSDataView.isJSDataView(thisObj);
-        return JSDataViewImpl.getOffset(thisObj);
+        return JSDataViewObject.getOffset(thisObj);
     }
 
     private JSDataView() {
@@ -116,7 +82,7 @@ public final class JSDataView extends JSBuiltinObject implements JSConstructorFa
 
     public static DynamicObject getArrayBuffer(DynamicObject thisObj) {
         assert JSDataView.isJSDataView(thisObj);
-        return JSDataViewImpl.getArrayBuffer(thisObj);
+        return JSDataViewObject.getArrayBuffer(thisObj);
     }
 
     public static DynamicObject createDataView(JSContext context, DynamicObject arrayBuffer, int offset, int length) {
@@ -125,7 +91,7 @@ public final class JSDataView extends JSBuiltinObject implements JSConstructorFa
         // (arrayBuffer, length, offset)
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getDataViewFactory();
-        DynamicObject dataView = JSDataViewImpl.create(realm, factory, (JSArrayBufferImpl) arrayBuffer, length, offset);
+        DynamicObject dataView = JSDataViewObject.create(realm, factory, (JSArrayBufferObject) arrayBuffer, length, offset);
         assert JSArrayBuffer.isJSHeapArrayBuffer(arrayBuffer) || JSArrayBuffer.isJSDirectOrSharedArrayBuffer(arrayBuffer);
         assert isJSDataView(dataView);
         return context.trackAllocation(dataView);
@@ -169,7 +135,7 @@ public final class JSDataView extends JSBuiltinObject implements JSConstructorFa
                 public Object execute(VirtualFrame frame) {
                     Object obj = JSArguments.getThisObject(frame.getArguments());
                     if (isJSDataView(obj)) {
-                        return function.apply((JSDataViewImpl) obj);
+                        return function.apply((JSDataViewObject) obj);
                     }
                     throw Errors.createTypeErrorNotADataView();
                 }
@@ -200,11 +166,11 @@ public final class JSDataView extends JSBuiltinObject implements JSConstructorFa
     }
 
     public static boolean isJSDataView(Object obj) {
-        return obj instanceof JSDataViewImpl;
+        return obj instanceof JSDataViewObject;
     }
 
     public static boolean isJSDataView(DynamicObject obj) {
-        return obj instanceof JSDataViewImpl;
+        return obj instanceof JSDataViewObject;
     }
 
     @Override

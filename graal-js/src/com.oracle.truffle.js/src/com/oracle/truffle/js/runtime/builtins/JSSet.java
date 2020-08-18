@@ -56,8 +56,8 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.builtins.JSMap.MapImpl;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -83,7 +83,7 @@ public final class JSSet extends JSBuiltinObject implements JSConstructorFactory
     }
 
     public static DynamicObject create(JSContext context) {
-        DynamicObject obj = MapImpl.create(context.getRealm(), context.getSetFactory(), new JSHashMap());
+        DynamicObject obj = new Instance(context.getRealm(), context.getSetFactory(), new JSHashMap());
         assert isJSSet(obj);
         return context.trackAllocation(obj);
     }
@@ -108,7 +108,7 @@ public final class JSSet extends JSBuiltinObject implements JSConstructorFactory
 
     public static JSHashMap getInternalSet(DynamicObject obj) {
         assert isJSSet(obj);
-        return ((MapImpl) obj).getMap();
+        return ((Instance) obj).getMap();
     }
 
     public static int getSetSize(DynamicObject obj) {
@@ -198,4 +198,23 @@ public final class JSSet extends JSBuiltinObject implements JSConstructorFactory
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getSetPrototype();
     }
+
+    public static final class Instance extends JSBasicObject {
+        private final JSHashMap map;
+
+        protected Instance(JSRealm realm, JSObjectFactory factory, JSHashMap map) {
+            super(realm, factory);
+            this.map = map;
+        }
+
+        protected Instance(Shape shape, JSHashMap map) {
+            super(shape);
+            this.map = map;
+        }
+
+        public JSHashMap getMap() {
+            return map;
+        }
+    }
+
 }

@@ -51,7 +51,6 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSValueObject;
 
 public final class JSBigInt extends JSPrimitiveObject implements JSConstructorFactory.Default.WithFunctions {
 
@@ -61,48 +60,18 @@ public final class JSBigInt extends JSPrimitiveObject implements JSConstructorFa
 
     public static final JSBigInt INSTANCE = new JSBigInt();
 
-    public static class JSBigIntObjectImpl extends JSValueObject {
-        public static final String CLASS_NAME = "Number";
-        public static final String PROTOTYPE_NAME = "Number.prototype";
-
-        private final BigInt value;
-
-        protected JSBigIntObjectImpl(JSRealm realm, JSObjectFactory factory, BigInt value) {
-            super(realm, factory);
-            this.value = value;
-        }
-
-        protected JSBigIntObjectImpl(Shape shape, BigInt value) {
-            super(shape);
-            this.value = value;
-        }
-
-        public BigInt getBigIntValue() {
-            return value;
-        }
-
-        @Override
-        public String getClassName() {
-            return CLASS_NAME;
-        }
-
-        public static DynamicObject create(JSRealm realm, JSObjectFactory factory, BigInt value) {
-            return new JSBigIntObjectImpl(realm, factory, value);
-        }
-    }
-
     private JSBigInt() {
     }
 
     public static DynamicObject create(JSContext context, BigInt value) {
-        DynamicObject obj = JSBigIntObjectImpl.create(context.getRealm(), context.getBigIntFactory(), value);
+        DynamicObject obj = JSBigIntObject.create(context.getRealm(), context.getBigIntFactory(), value);
         assert isJSBigInt(obj);
         return context.trackAllocation(obj);
     }
 
     private static BigInt getBigIntegerField(DynamicObject obj) {
         assert isJSBigInt(obj);
-        return ((JSBigIntObjectImpl) obj).getBigIntValue();
+        return ((JSBigIntObject) obj).getBigIntValue();
     }
 
     public static BigInt valueOf(DynamicObject obj) {

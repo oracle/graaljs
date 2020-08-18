@@ -58,25 +58,21 @@ public final class JSWeakRef extends JSBuiltinObject implements JSConstructorFac
     public static final String CLASS_NAME = "WeakRef";
     public static final String PROTOTYPE_NAME = "WeakRef.prototype";
 
-    public static class WeakRefImpl extends JSBasicObject {
+    public static final class Instance extends JSBasicObject {
         private final TruffleWeakReference<Object> weakReference;
 
-        protected WeakRefImpl(JSRealm realm, JSObjectFactory factory, TruffleWeakReference<Object> weakReference) {
+        protected Instance(JSRealm realm, JSObjectFactory factory, TruffleWeakReference<Object> weakReference) {
             super(realm, factory);
             this.weakReference = weakReference;
         }
 
-        protected WeakRefImpl(Shape shape, TruffleWeakReference<Object> weakReference) {
+        protected Instance(Shape shape, TruffleWeakReference<Object> weakReference) {
             super(shape);
             this.weakReference = weakReference;
         }
 
         public TruffleWeakReference<Object> getWeakReference() {
             return weakReference;
-        }
-
-        public static WeakRefImpl create(JSRealm realm, JSObjectFactory factory, TruffleWeakReference<Object> weakReference) {
-            return new WeakRefImpl(realm, factory, weakReference);
         }
     }
 
@@ -85,7 +81,7 @@ public final class JSWeakRef extends JSBuiltinObject implements JSConstructorFac
 
     public static DynamicObject create(JSContext context, Object referent) {
         TruffleWeakReference<Object> weakReference = new TruffleWeakReference<>(referent);
-        DynamicObject obj = WeakRefImpl.create(context.getRealm(), context.getWeakRefFactory(), weakReference);
+        DynamicObject obj = new Instance(context.getRealm(), context.getWeakRefFactory(), weakReference);
         assert isJSWeakRef(obj);
         // Used for KeepDuringJob(target) in the specification
         context.addWeakRefTargetToSet(referent);
@@ -94,7 +90,7 @@ public final class JSWeakRef extends JSBuiltinObject implements JSConstructorFac
 
     public static TruffleWeakReference<?> getInternalWeakRef(DynamicObject obj) {
         assert isJSWeakRef(obj);
-        return ((WeakRefImpl) obj).getWeakReference();
+        return ((Instance) obj).getWeakReference();
     }
 
     @Override

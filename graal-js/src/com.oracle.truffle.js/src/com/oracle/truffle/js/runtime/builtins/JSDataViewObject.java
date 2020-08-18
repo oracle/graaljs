@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,35 +40,40 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.objects.JSBasicObject;
-import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
+import com.oracle.truffle.js.runtime.JSRealm;
 
-public abstract class JSOrdinaryObject extends JSBasicObject implements JSCopyableObject {
+public final class JSDataViewObject extends JSArrayBufferViewBase {
 
-    protected JSOrdinaryObject(Shape shape) {
-        super(shape);
-    }
-
-    public static JSOrdinaryObject create(Shape shape) {
-        return new JSOrdinaryObjectImpl(shape);
+    protected JSDataViewObject(Shape shape, JSArrayBufferObject arrayBuffer, int length, int offset) {
+        super(shape, arrayBuffer, length, offset);
     }
 
     @Override
     public String getClassName() {
-        return JSUserObject.CLASS_NAME;
+        return JSDataView.CLASS_NAME;
     }
 
-    @TruffleBoundary
-    @Override
-    public Object getValue(long index) {
-        // convert index only once
-        return getValue(String.valueOf(index));
+    public static DynamicObject getArrayBuffer(DynamicObject thisObj) {
+        return ((JSDataViewObject) thisObj).getArrayBuffer();
     }
 
-    @Override
-    public boolean hasOnlyShapeProperties() {
-        return true;
+    public static int getLength(DynamicObject thisObj) {
+        return ((JSDataViewObject) thisObj).length;
+    }
+
+    public static int getOffset(DynamicObject thisObj) {
+        return ((JSDataViewObject) thisObj).offset;
+    }
+
+    public static JSDataViewObject create(Shape shape, JSArrayBufferObject arrayBuffer, int length, int offset) {
+        return new JSDataViewObject(shape, arrayBuffer, length, offset);
+    }
+
+    public static JSDataViewObject create(JSRealm realm, JSObjectFactory factory, JSArrayBufferObject arrayBuffer, int length, int offset) {
+        CompilerAsserts.partialEvaluationConstant(factory);
+        return factory.initProto(create(factory.getShape(realm), arrayBuffer, length, offset), realm);
     }
 }

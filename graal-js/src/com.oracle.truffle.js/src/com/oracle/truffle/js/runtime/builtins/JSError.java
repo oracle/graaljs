@@ -62,9 +62,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.PrepareStackTraceCallback;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSBasicObject;
-import com.oracle.truffle.js.runtime.objects.JSClassObject;
-import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -139,7 +136,7 @@ public final class JSError extends JSBuiltinObject {
 
     public static DynamicObject createErrorObject(JSContext context, JSRealm realm, JSErrorType errorType) {
         JSObjectFactory factory = context.getErrorFactory(errorType);
-        DynamicObject obj = JSErrorImpl.create(realm, factory);
+        DynamicObject obj = JSErrorObject.create(realm, factory);
         factory.initProto(obj, realm);
         assert isJSError(obj);
         return context.trackAllocation(obj);
@@ -191,7 +188,7 @@ public final class JSError extends JSBuiltinObject {
 
         DynamicObject errorPrototype;
         if (ctx.getEcmaScriptVersion() < 6) {
-            errorPrototype = JSErrorImpl.create(JSShape.createPrototypeShape(ctx, INSTANCE, proto));
+            errorPrototype = JSErrorObject.create(JSShape.createPrototypeShape(ctx, INSTANCE, proto));
             JSObjectUtil.setOrVerifyPrototype(ctx, errorPrototype, proto);
         } else {
             errorPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, proto);
@@ -500,28 +497,5 @@ public final class JSError extends JSBuiltinObject {
 
     public static String getAnonymousFunctionNameStackTrace(JSContext context) {
         return context.isOptionNashornCompatibilityMode() ? "<program>" : "<anonymous>";
-    }
-
-    public static class JSErrorImpl extends JSBasicObject implements JSCopyableObject {
-        protected JSErrorImpl(Shape shape) {
-            super(shape);
-        }
-
-        protected JSErrorImpl(JSRealm realm, JSObjectFactory factory) {
-            super(realm, factory);
-        }
-
-        public static DynamicObject create(Shape shape) {
-            return new JSErrorImpl(shape);
-        }
-
-        public static DynamicObject create(JSRealm realm, JSObjectFactory factory) {
-            return new JSErrorImpl(realm, factory);
-        }
-
-        @Override
-        protected JSClassObject copyWithoutProperties(Shape shape) {
-            return new JSErrorImpl(shape);
-        }
     }
 }

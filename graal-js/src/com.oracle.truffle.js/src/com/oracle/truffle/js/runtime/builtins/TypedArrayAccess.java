@@ -70,7 +70,7 @@ public class TypedArrayAccess {
     }
 
     public byte[] getByteArray(DynamicObject thisObj) {
-        byte[] byteArray = ((JSArrayBufferImpl.HeapArrayBuffer) getArrayBuffer(thisObj)).getByteArray();
+        byte[] byteArray = ((JSArrayBufferObject.Heap) getArrayBuffer(thisObj)).getByteArray();
         if (byteArray == null) {
             CompilerDirectives.transferToInterpreter();
             throw Errors.createTypeErrorDetachedBuffer();
@@ -79,7 +79,7 @@ public class TypedArrayAccess {
     }
 
     public ByteBuffer getByteBuffer(DynamicObject thisObj) {
-        ByteBuffer byteBuffer = ((JSArrayBufferImpl.AbstractDirectArrayBuffer) getArrayBuffer(thisObj)).getByteBuffer();
+        ByteBuffer byteBuffer = ((JSArrayBufferObject.DirectBase) getArrayBuffer(thisObj)).getByteBuffer();
         if (byteBuffer == null) {
             CompilerDirectives.transferToInterpreter();
             throw Errors.createTypeErrorDetachedBuffer();
@@ -93,11 +93,11 @@ public class TypedArrayAccess {
     }
 
     public TypedArray getArrayType(Object thisObj) {
-        return ((JSTypedArrayImpl) thisObj).arrayType;
+        return ((JSTypedArrayObject) thisObj).arrayType;
     }
 
     public void setArrayType(DynamicObject thisObj, TypedArray arrayType) {
-        ((JSTypedArrayImpl) thisObj).arrayType = arrayType;
+        ((JSTypedArrayObject) thisObj).arrayType = arrayType;
     }
 
     public String getTypedArrayName(DynamicObject thisObj) {

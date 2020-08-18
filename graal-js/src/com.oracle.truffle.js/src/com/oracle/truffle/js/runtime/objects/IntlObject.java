@@ -38,59 +38,62 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins;
+package com.oracle.truffle.js.runtime.objects;
 
 import java.util.Objects;
 
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
-import com.oracle.truffle.js.runtime.array.ScriptArray;
-import com.oracle.truffle.js.runtime.objects.JSArrayLike;
-import com.oracle.truffle.js.runtime.objects.JSBasicObject;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.builtins.JSCollator;
+import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
+import com.oracle.truffle.js.runtime.builtins.JSDisplayNames;
+import com.oracle.truffle.js.runtime.builtins.JSListFormat;
+import com.oracle.truffle.js.runtime.builtins.JSLocale;
+import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
+import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
+import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
+import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
+import com.oracle.truffle.js.runtime.builtins.JSSegmenter;
 
-public abstract class JSArrayBase extends JSBasicObject implements JSArrayLike {
-    protected JSArrayBase(Shape shape, ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
+/**
+ * Common class for Intl objects as well as JavaImporter and JavaPackage objects.
+ *
+ * @see JSCollator
+ * @see JSDateTimeFormat
+ * @see JSDisplayNames
+ * @see JSListFormat
+ * @see JSLocale
+ * @see JSNumberFormat
+ * @see JSPluralRules
+ * @see JSRelativeTimeFormat
+ * @see JSSegmenter
+ */
+public final class IntlObject extends JSBasicObject {
+    private final Object internalState;
+
+    protected IntlObject(Shape shape, Object internalState) {
         super(shape);
-        assert JSRuntime.isRepresentableAsUnsignedInt(length);
-        this.theArray = Objects.requireNonNull(array);
-        this.arrayType = arrayType;
-        this.length = (int) length;
-        this.usedLength = usedLength;
-        this.indexOffset = indexOffset;
-        this.arrayOffset = arrayOffset;
-        this.holeCount = holeCount;
-        this.allocationSite = site;
+        this.internalState = Objects.requireNonNull(internalState);
     }
 
-    int length;
-    int usedLength;
-    int indexOffset;
-    int arrayOffset;
-    int holeCount;
-    Object theArray;
-    ScriptArray arrayType;
-    ArrayAllocationSite allocationSite;
-
-    @SuppressWarnings("static-method")
-    public final ArrayAccess arrayAccess() {
-        return ArrayAccess.SINGLETON;
+    @SuppressWarnings("unchecked")
+    public <T> T getInternalState() {
+        return (T) internalState;
     }
 
-    @Override
-    public final ScriptArray getArrayType() {
-        return arrayType;
+    public static IntlObject create(Shape shape, Object internalState) {
+        assert shape.getProperty(JSObject.HIDDEN_PROTO) != null && shape.getProperty(JSObject.HIDDEN_PROTO).getLocation().isConstant();
+        return new IntlObject(shape, internalState);
     }
 
-    public final void setArrayType(ScriptArray arrayType) {
-        this.arrayType = arrayType;
+    public static IntlObject create(JSContext context, JSObjectFactory factory, Object internalState) {
+        return create(context.getRealm(), factory, internalState);
     }
 
-    public final Object getArray() {
-        return theArray;
-    }
-
-    public final void setArray(Object theArray) {
-        this.theArray = Objects.requireNonNull(theArray);
+    public static IntlObject create(JSRealm realm, JSObjectFactory factory, Object internalState) {
+        IntlObject obj = new IntlObject(factory.getShape(realm), internalState);
+        factory.initProto(obj, realm);
+        return obj;
     }
 }

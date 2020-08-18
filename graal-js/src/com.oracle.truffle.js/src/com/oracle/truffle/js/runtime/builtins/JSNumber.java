@@ -41,12 +41,6 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.NumberFunctionBuiltins;
@@ -57,7 +51,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
-import com.oracle.truffle.js.runtime.objects.JSValueObject;
 
 public final class JSNumber extends JSPrimitiveObject implements JSConstructorFactory.Default.WithFunctions {
 
@@ -71,155 +64,18 @@ public final class JSNumber extends JSPrimitiveObject implements JSConstructorFa
     private static final double MAX_SAFE_INTEGER = 9007199254740991d;
     private static final double MIN_SAFE_INTEGER = -9007199254740991d;
 
-    @ExportLibrary(InteropLibrary.class)
-    public static class NumberObjectImpl extends JSValueObject {
-        public static final String CLASS_NAME = "Number";
-        public static final String PROTOTYPE_NAME = "Number.prototype";
-
-        private final Number number;
-
-        protected NumberObjectImpl(Shape shape, Number number) {
-            super(shape);
-            this.number = number;
-        }
-
-        protected NumberObjectImpl(JSRealm realm, JSObjectFactory factory, Number number) {
-            super(realm, factory);
-            this.number = number;
-        }
-
-        public Number getNumber() {
-            return number;
-        }
-
-        @Override
-        public String getClassName() {
-            return CLASS_NAME;
-        }
-
-        public static DynamicObject create(Shape shape, Number value) {
-            return new NumberObjectImpl(shape, value);
-        }
-
-        public static DynamicObject create(JSRealm realm, JSObjectFactory factory, Number value) {
-            return new NumberObjectImpl(realm, factory, value);
-        }
-
-        @SuppressWarnings("static-method")
-        @ExportMessage
-        final boolean isNumber() {
-            return true;
-        }
-
-        @ExportMessage
-        final boolean fitsInByte(
-                        @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) {
-            return numberLib.fitsInByte(JSNumber.valueOf(this));
-        }
-
-        @ExportMessage
-        final boolean fitsInShort(
-                        @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) {
-            return numberLib.fitsInShort(JSNumber.valueOf(this));
-        }
-
-        @ExportMessage
-        final boolean fitsInInt(
-                        @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) {
-            return numberLib.fitsInInt(JSNumber.valueOf(this));
-        }
-
-        @ExportMessage
-        final boolean fitsInLong(
-                        @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) {
-            return numberLib.fitsInLong(JSNumber.valueOf(this));
-        }
-
-        @ExportMessage
-        final boolean fitsInFloat(
-                        @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) {
-            return numberLib.fitsInFloat(JSNumber.valueOf(this));
-        }
-
-        @ExportMessage
-        final boolean fitsInDouble(
-                        @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) {
-            return numberLib.fitsInDouble(JSNumber.valueOf(this));
-        }
-
-        @ExportMessage
-        final byte asByte(
-                        @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) throws UnsupportedMessageException {
-            if (fitsInByte(numberLib)) {
-                return numberLib.asByte(JSNumber.valueOf(this));
-            } else {
-                throw UnsupportedMessageException.create();
-            }
-        }
-
-        @ExportMessage
-        final short asShort(
-                        @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) throws UnsupportedMessageException {
-            if (fitsInShort(numberLib)) {
-                return numberLib.asShort(JSNumber.valueOf(this));
-            } else {
-                throw UnsupportedMessageException.create();
-            }
-        }
-
-        @ExportMessage
-        final int asInt(
-                        @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) throws UnsupportedMessageException {
-            if (fitsInInt(numberLib)) {
-                return numberLib.asInt(JSNumber.valueOf(this));
-            } else {
-                throw UnsupportedMessageException.create();
-            }
-        }
-
-        @ExportMessage
-        final long asLong(
-                        @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) throws UnsupportedMessageException {
-            if (fitsInLong(numberLib)) {
-                return numberLib.asLong(JSNumber.valueOf(this));
-            } else {
-                throw UnsupportedMessageException.create();
-            }
-        }
-
-        @ExportMessage
-        final float asFloat(
-                        @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) throws UnsupportedMessageException {
-            if (fitsInFloat(numberLib)) {
-                return numberLib.asFloat(JSNumber.valueOf(this));
-            } else {
-                throw UnsupportedMessageException.create();
-            }
-        }
-
-        @ExportMessage
-        final double asDouble(
-                        @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) throws UnsupportedMessageException {
-            if (fitsInDouble(numberLib)) {
-                return numberLib.asDouble(JSNumber.valueOf(this));
-            } else {
-                throw UnsupportedMessageException.create();
-            }
-        }
-    }
-
     private JSNumber() {
     }
 
     public static DynamicObject create(JSContext context, Number value) {
-        DynamicObject obj = NumberObjectImpl.create(context.getRealm(), context.getNumberFactory(), value);
+        DynamicObject obj = JSNumberObject.create(context.getRealm(), context.getNumberFactory(), value);
         assert isJSNumber(obj);
         return context.trackAllocation(obj);
     }
 
     private static Number getNumberField(DynamicObject obj) {
         assert isJSNumber(obj);
-        return ((NumberObjectImpl) obj).getNumber();
+        return ((JSNumberObject) obj).getNumber();
     }
 
     public static Number valueOf(DynamicObject obj) {
@@ -230,7 +86,7 @@ public final class JSNumber extends JSPrimitiveObject implements JSConstructorFa
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext context = realm.getContext();
         Shape protoShape = JSShape.createPrototypeShape(realm.getContext(), INSTANCE, realm.getObjectPrototype());
-        DynamicObject numberPrototype = NumberObjectImpl.create(protoShape, 0);
+        DynamicObject numberPrototype = JSNumberObject.create(protoShape, 0);
         JSObjectUtil.setOrVerifyPrototype(context, numberPrototype, realm.getObjectPrototype());
 
         JSObjectUtil.putConstructorProperty(context, numberPrototype, ctor);

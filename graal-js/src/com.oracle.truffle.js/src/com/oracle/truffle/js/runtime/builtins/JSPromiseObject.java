@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,38 +40,36 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 
-public class JSBoundFunctionImpl extends JSFunctionObject {
-    protected JSBoundFunctionImpl(Shape shape, JSFunctionData functionData, JSRealm realm, Object classPrototype,
-                    DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
-        super(shape, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, realm, classPrototype);
-        this.boundTargetFunction = boundTargetFunction;
-        this.boundThis = boundThis;
-        this.boundArguments = boundArguments;
+public final class JSPromiseObject extends JSBasicObject {
+    private int promiseState;
+
+    protected JSPromiseObject(JSRealm realm, JSObjectFactory factory, int promiseState) {
+        super(realm, factory);
+        this.promiseState = promiseState;
     }
 
-    public static JSFunctionObject createBound(Shape shape, JSFunctionData functionData, JSRealm realm, Object classPrototype,
-                    DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
-        return new JSBoundFunctionImpl(shape, functionData, realm, classPrototype, boundTargetFunction, boundThis, boundArguments);
+    protected JSPromiseObject(Shape shape, int promiseState) {
+        super(shape);
+        this.promiseState = promiseState;
     }
 
-    private DynamicObject boundTargetFunction;
-    private Object boundThis;
-    private Object[] boundArguments;
-
-    public DynamicObject getBoundTargetFunction() {
-        return boundTargetFunction;
+    public int getPromiseState() {
+        return promiseState;
     }
 
-    public Object getBoundThis() {
-        return boundThis;
+    public void setPromiseState(int promiseState) {
+        this.promiseState = promiseState;
     }
 
-    public Object[] getBoundArguments() {
-        return boundArguments;
+    public static JSPromiseObject create(JSRealm realm, JSObjectFactory factory, int promiseState) {
+        return new JSPromiseObject(realm, factory, promiseState);
+    }
+
+    public static JSPromiseObject create(Shape shape, int promiseState) {
+        return new JSPromiseObject(shape, promiseState);
     }
 }

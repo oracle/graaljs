@@ -51,7 +51,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSDictionaryObject;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinaryObjectImpl;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
 
@@ -196,7 +195,7 @@ public final class JSShape {
 
     public static Class<? extends DynamicObject> getLayout(JSClass jsclass) {
         if (jsclass == JSUserObject.INSTANCE || jsclass == JSDictionaryObject.INSTANCE) {
-            return JSOrdinaryObjectImpl.class;
+            return JSOrdinaryObject.DefaultLayout.class;
         }
         return JSDynamicObject.class;
     }

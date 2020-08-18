@@ -85,7 +85,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
     public static DynamicObject createArrayBuffer(JSContext context, byte[] byteArray) {
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getArrayBufferFactory();
-        DynamicObject obj = JSArrayBufferImpl.createHeapArrayBuffer(factory.getShape(realm), byteArray);
+        DynamicObject obj = JSArrayBufferObject.createHeapArrayBuffer(factory.getShape(realm), byteArray);
         factory.initProto(obj, realm);
         assert isJSHeapArrayBuffer(obj);
         return context.trackAllocation(obj);
@@ -97,7 +97,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
 
     public static ByteBuffer getDirectByteBuffer(DynamicObject thisObj) {
         assert isJSDirectArrayBuffer(thisObj) || JSSharedArrayBuffer.isJSSharedArrayBuffer(thisObj);
-        return JSArrayBufferImpl.getDirectByteBuffer(thisObj);
+        return JSArrayBufferObject.getDirectByteBuffer(thisObj);
     }
 
     public static DynamicObject createDirectArrayBuffer(JSContext context, int length) {
@@ -107,7 +107,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
     public static DynamicObject createDirectArrayBuffer(JSContext context, ByteBuffer buffer) {
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getDirectArrayBufferFactory();
-        DynamicObject obj = JSArrayBufferImpl.createDirectArrayBuffer(factory.getShape(realm), buffer);
+        DynamicObject obj = JSArrayBufferObject.createDirectArrayBuffer(factory.getShape(realm), buffer);
         factory.initProto(obj, realm);
         assert isJSDirectArrayBuffer(obj);
         return context.trackAllocation(obj);
@@ -119,7 +119,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         DynamicObject arrayBufferPrototype;
         if (context.getEcmaScriptVersion() < 6) {
             Shape protoShape = JSShape.createPrototypeShape(context, HEAP_INSTANCE, realm.getObjectPrototype());
-            arrayBufferPrototype = JSArrayBufferImpl.createHeapArrayBuffer(protoShape, new byte[0]);
+            arrayBufferPrototype = JSArrayBufferObject.createHeapArrayBuffer(protoShape, new byte[0]);
             JSObjectUtil.setOrVerifyPrototype(context, arrayBufferPrototype, realm.getObjectPrototype());
         } else {
             arrayBufferPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
@@ -202,19 +202,19 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
     }
 
     public static boolean isJSHeapArrayBuffer(Object obj) {
-        return (obj instanceof JSArrayBufferImpl.HeapArrayBuffer);
+        return (obj instanceof JSArrayBufferObject.Heap);
     }
 
     public static boolean isJSHeapArrayBuffer(DynamicObject obj) {
-        return (obj instanceof JSArrayBufferImpl.HeapArrayBuffer);
+        return (obj instanceof JSArrayBufferObject.Heap);
     }
 
     public static boolean isJSDirectArrayBuffer(Object obj) {
-        return (obj instanceof JSArrayBufferImpl.DirectArrayBuffer);
+        return (obj instanceof JSArrayBufferObject.Direct);
     }
 
     public static boolean isJSDirectArrayBuffer(DynamicObject obj) {
-        return (obj instanceof JSArrayBufferImpl.DirectArrayBuffer);
+        return (obj instanceof JSArrayBufferObject.Direct);
     }
 
     public static boolean isJSDirectOrSharedArrayBuffer(Object obj) {
@@ -250,9 +250,9 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         assert isJSAbstractBuffer(arrayBuffer);
         JSObject.getJSContext(arrayBuffer).getTypedArrayNotDetachedAssumption().invalidate("no detached array buffer");
         if (isJSDirectArrayBuffer(arrayBuffer)) {
-            ((JSArrayBufferImpl.DirectArrayBuffer) arrayBuffer).detachArrayBuffer();
+            ((JSArrayBufferObject.Direct) arrayBuffer).detachArrayBuffer();
         } else {
-            ((JSArrayBufferImpl.HeapArrayBuffer) arrayBuffer).detachArrayBuffer();
+            ((JSArrayBufferObject.Heap) arrayBuffer).detachArrayBuffer();
         }
     }
 

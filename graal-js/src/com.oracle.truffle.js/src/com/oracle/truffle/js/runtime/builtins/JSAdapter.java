@@ -94,7 +94,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     public static DynamicObject create(JSContext context, DynamicObject adaptee, DynamicObject overrides, DynamicObject proto) {
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getJSAdapterFactory();
-        DynamicObject obj = JSAdapterImpl.create(factory.getShape(realm), adaptee, overrides);
+        DynamicObject obj = new Instance(factory.getShape(realm), adaptee, overrides);
         factory.initProto(obj, realm);
         if (proto != null) {
             JSObject.setPrototype(obj, proto);
@@ -104,12 +104,12 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
 
     public static DynamicObject getAdaptee(DynamicObject obj) {
         assert isJSAdapter(obj);
-        return ((JSAdapterImpl) obj).getAdaptee();
+        return ((Instance) obj).getAdaptee();
     }
 
     public static DynamicObject getOverrides(DynamicObject obj) {
         assert isJSAdapter(obj);
-        return ((JSAdapterImpl) obj).getOverrides();
+        return ((Instance) obj).getOverrides();
     }
 
     public static boolean isJSAdapter(Object obj) {
@@ -349,11 +349,11 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
         return realm.getJSAdapterPrototype();
     }
 
-    public static class JSAdapterImpl extends JSClassObject {
+    public static final class Instance extends JSClassObject {
         private final DynamicObject adaptee;
         private final DynamicObject overrides;
 
-        protected JSAdapterImpl(Shape shape, DynamicObject adaptee, DynamicObject overrides) {
+        protected Instance(Shape shape, DynamicObject adaptee, DynamicObject overrides) {
             super(shape);
             this.adaptee = adaptee;
             this.overrides = overrides;
@@ -366,9 +366,6 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
         public DynamicObject getOverrides() {
             return overrides;
         }
-
-        public static DynamicObject create(Shape shape, DynamicObject adaptee, DynamicObject overrides) {
-            return new JSAdapterImpl(shape, adaptee, overrides);
-        }
     }
+
 }

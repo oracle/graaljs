@@ -86,7 +86,7 @@ public abstract class JSFunctionFactory {
         assert functionData != null;
         assert enclosingFrame != null; // use JSFrameUtil.NULL_MATERIALIZED_FRAME instead
         assert shape.getObjectType() == JSFunction.INSTANCE;
-        DynamicObject obj = JSFunctionImpl.create(shape, functionData, enclosingFrame, realm, classPrototype);
+        DynamicObject obj = JSFunctionObject.create(shape, functionData, enclosingFrame, realm, classPrototype);
         objectFactory.initProto(obj, prototype);
         initProperties(obj, functionData);
         if (context.getEcmaScriptVersion() < 6 && functionData.hasStrictFunctionProperties()) {
@@ -105,7 +105,7 @@ public abstract class JSFunctionFactory {
         if (context.getEcmaScriptVersion() < 6) {
             return createBoundES5(shape, functionData, classPrototype, realm, boundTargetFunction, boundThis, boundArguments);
         }
-        DynamicObject obj = JSBoundFunctionImpl.createBound(shape, functionData, realm, classPrototype, boundTargetFunction, boundThis, boundArguments);
+        DynamicObject obj = JSFunctionObject.createBound(shape, functionData, realm, classPrototype, boundTargetFunction, boundThis, boundArguments);
         objectFactory.initProto(obj, realm);
         initProperties(obj, functionData);
         return obj;
@@ -113,7 +113,7 @@ public abstract class JSFunctionFactory {
 
     private DynamicObject createBoundES5(Shape shape, JSFunctionData functionData, Object classPrototype, JSRealm realm,
                     DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
-        DynamicObject obj = JSBoundFunctionImpl.createBound(shape, functionData, realm, classPrototype, boundTargetFunction, boundThis, boundArguments);
+        DynamicObject obj = JSFunctionObject.createBound(shape, functionData, realm, classPrototype, boundTargetFunction, boundThis, boundArguments);
         objectFactory.initProto(obj, realm);
         initProperties(obj, functionData);
         initES5StrictProperties(obj, realm);

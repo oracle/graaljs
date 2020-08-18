@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,62 +38,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.trufflenode;
+package com.oracle.truffle.js.runtime.objects;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
-import com.oracle.truffle.js.runtime.objects.JSBasicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.array.ScriptArray;
 
-public final class JSExternalObject extends JSBuiltinObject {
-
-    public static final String CLASS_NAME = "external";
-    public static final JSExternalObject INSTANCE = new JSExternalObject();
-
-    private JSExternalObject() {
-    }
-
-    public static DynamicObject create(JSContext context, long pointer) {
-        ContextData contextData = GraalJSAccess.getContextEmbedderData(context);
-        DynamicObject obj = new Instance(contextData.getExternalObjectShape(), pointer);
-        assert isJSExternalObject(obj);
-        return obj;
-    }
-
-    public static Shape makeInitialShape(JSContext ctx) {
-        return ctx.makeEmptyShapeWithNullPrototype(INSTANCE);
-    }
-
-    public static boolean isJSExternalObject(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSExternalObject((DynamicObject) obj);
-    }
-
-    public static boolean isJSExternalObject(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
-    }
-
-    @Override
-    public String getClassName(DynamicObject object) {
-        return CLASS_NAME;
-    }
-
-    public static long getPointer(DynamicObject obj) {
-        assert isJSExternalObject(obj);
-        return ((Instance) obj).getPointer();
-    }
-
-    public static final class Instance extends JSBasicObject {
-        private long pointer;
-
-        private Instance(Shape shape, long pointer) {
-            super(shape);
-            this.pointer = pointer;
-        }
-
-        public long getPointer() {
-            return pointer;
-        }
-    }
+public interface JSArrayLike {
+    ScriptArray getArrayType();
 }

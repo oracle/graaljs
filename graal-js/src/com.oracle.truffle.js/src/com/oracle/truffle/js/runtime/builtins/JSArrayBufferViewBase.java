@@ -47,18 +47,18 @@ import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 
 public abstract class JSArrayBufferViewBase extends JSBasicObject {
 
-    final JSArrayBufferImpl arrayBuffer;
+    final JSArrayBufferObject arrayBuffer;
     int length;
     int offset;
 
-    protected JSArrayBufferViewBase(Shape shape, JSArrayBufferImpl arrayBuffer, int length, int offset) {
+    protected JSArrayBufferViewBase(Shape shape, JSArrayBufferObject arrayBuffer, int length, int offset) {
         super(shape);
         this.arrayBuffer = Objects.requireNonNull(arrayBuffer);
         this.length = length;
         this.offset = offset;
     }
 
-    public final JSArrayBufferImpl getArrayBuffer() {
+    public final JSArrayBufferObject getArrayBuffer() {
         return arrayBuffer;
     }
 }

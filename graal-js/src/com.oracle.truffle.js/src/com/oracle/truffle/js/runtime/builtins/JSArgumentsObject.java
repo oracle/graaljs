@@ -44,38 +44,16 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.CachedLanguage;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.nodes.access.ReadElementNode;
-import com.oracle.truffle.js.nodes.access.WriteElementNode;
-import com.oracle.truffle.js.nodes.interop.ExportValueNode;
-import com.oracle.truffle.js.nodes.interop.ImportValueNode;
-import com.oracle.truffle.js.nodes.interop.KeyInfoNode;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.InteropArray;
-import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 public final class JSArgumentsObject extends JSAbstractArgumentsObject {
     public static final JSArgumentsObject INSTANCE = new JSArgumentsObject();
@@ -83,113 +61,16 @@ public final class JSArgumentsObject extends JSAbstractArgumentsObject {
     private JSArgumentsObject() {
     }
 
-    @ExportLibrary(InteropLibrary.class)
-    public static class AbstractArgumentsObjectImpl extends JSArrayBase {
+    public static final class Unmapped extends JSArgumentsObjectBase {
 
-        protected AbstractArgumentsObjectImpl(Shape shape, ScriptArray arrayType, Object array, int length) {
-            super(shape, arrayType, array, null, length, 0, 0, 0, 0);
-        }
-
-        @Override
-        public final String getClassName() {
-            return CLASS_NAME;
-        }
-
-        @ExportMessage
-        public final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-            // Do not include array indices
-            assert JSObject.getJSClass(this) == JSArgumentsObject.INSTANCE;
-            return InteropArray.create(filterEnumerableNames(this, JSObject.ownPropertyKeys(this), JSArgumentsObject.INSTANCE));
-        }
-
-        @SuppressWarnings("static-method")
-        @ExportMessage
-        public final boolean hasArrayElements() {
-            return true;
-        }
-
-        @ExportMessage
-        public final long getArraySize() {
-            return JSRuntime.toInteger(JSObject.get(this, JSAbstractArray.LENGTH));
-        }
-
-        @ExportMessage
-        public final Object readArrayElement(long index,
-                        @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
-                        @Cached(value = "create(languageRef.get().getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
-                        @Cached ExportValueNode exportNode,
-                        @CachedLibrary("this") InteropLibrary thisLibrary) throws InvalidArrayIndexException, UnsupportedMessageException {
-            if (!hasArrayElements()) {
-                throw UnsupportedMessageException.create();
-            }
-            DynamicObject target = this;
-            if (index < 0 || index >= thisLibrary.getArraySize(target)) {
-                throw InvalidArrayIndexException.create(index);
-            }
-            Object result;
-            if (readNode == null) {
-                result = JSObject.getOrDefault(target, index, target, Undefined.instance, JSClassProfile.getUncached());
-            } else {
-                result = readNode.executeWithTargetAndIndexOrDefault(target, index, Undefined.instance);
-            }
-            return exportNode.execute(result);
-        }
-
-        @ExportMessage
-        public final boolean isArrayElementReadable(long index,
-                        @CachedLibrary("this") InteropLibrary thisLibrary) {
-            try {
-                return hasArrayElements() && (index >= 0 && index < thisLibrary.getArraySize(this));
-            } catch (UnsupportedMessageException e) {
-                throw Errors.shouldNotReachHere(e);
-            }
-        }
-
-        @ExportMessage
-        public final void writeArrayElement(long index, Object value,
-                        @Shared("keyInfo") @Cached KeyInfoNode keyInfo,
-                        @Cached ImportValueNode castValueNode,
-                        @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
-                        @Cached(value = "createCachedInterop(languageRef)", uncached = "getUncachedWrite()") WriteElementNode writeNode)
-                        throws InvalidArrayIndexException, UnsupportedMessageException {
-            if (!hasArrayElements() || testIntegrityLevel(true)) {
-                throw UnsupportedMessageException.create();
-            }
-            DynamicObject target = this;
-            if (!keyInfo.execute(target, index, KeyInfoNode.WRITABLE)) {
-                throw InvalidArrayIndexException.create(index);
-            }
-            Object importedValue = castValueNode.executeWithTarget(value);
-            if (writeNode == null) {
-                JSObject.set(target, index, importedValue, true);
-            } else {
-                writeNode.executeWithTargetAndIndexAndValue(target, index, importedValue);
-            }
-        }
-
-        @ExportMessage
-        public final boolean isArrayElementModifiable(long index,
-                        @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
-            return hasArrayElements() && keyInfo.execute(this, index, KeyInfoNode.MODIFIABLE);
-        }
-
-        @ExportMessage
-        public final boolean isArrayElementInsertable(long index,
-                        @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
-            return hasArrayElements() && keyInfo.execute(this, index, KeyInfoNode.INSERTABLE);
-        }
-    }
-
-    public static class UnmappedArgumentsObjectImpl extends AbstractArgumentsObjectImpl {
-
-        protected UnmappedArgumentsObjectImpl(Shape shape, ScriptArray arrayType, Object array, int length) {
+        protected Unmapped(Shape shape, ScriptArray arrayType, Object array, int length) {
             super(shape, arrayType, array, length);
         }
     }
 
-    public static class MappedArgumentsObjectImpl extends AbstractArgumentsObjectImpl {
+    public static final class Mapped extends JSArgumentsObjectBase {
 
-        protected MappedArgumentsObjectImpl(Shape shape, ScriptArray arrayType, Object array, int length) {
+        protected Mapped(Shape shape, ScriptArray arrayType, Object array, int length) {
             super(shape, arrayType, array, length);
             this.connectedArgumentCount = length;
         }
@@ -197,34 +78,28 @@ public final class JSArgumentsObject extends JSAbstractArgumentsObject {
         protected int connectedArgumentCount;
         protected Map<Long, Object> disconnectedIndices;
 
-        public static int getConnectedArgumentCount(DynamicObject argumentsArray) {
-            assert JSArgumentsObject.isJSArgumentsObject(argumentsArray);
-            return ((MappedArgumentsObjectImpl) argumentsArray).connectedArgumentCount;
+        public int getConnectedArgumentCount() {
+            return connectedArgumentCount;
+        }
+
+        public Map<Long, Object> getDisconnectedIndices() {
+            assert hasDisconnectedIndices(this);
+            return disconnectedIndices;
         }
 
         @TruffleBoundary
-        public static Map<Long, Object> getDisconnectedIndices(DynamicObject argumentsArray) {
-            assert hasDisconnectedIndices(argumentsArray);
-            return ((MappedArgumentsObjectImpl) argumentsArray).disconnectedIndices;
-        }
-
-        @TruffleBoundary
-        public static void initDisconnectedIndices(DynamicObject argumentsArray) {
-            assert hasDisconnectedIndices(argumentsArray);
-            ((MappedArgumentsObjectImpl) argumentsArray).disconnectedIndices = new HashMap<>();
-        }
-
-        public static boolean hasDisconnectedIndices(DynamicObject argumentsArray) {
-            return JSSlowArgumentsObject.isJSSlowArgumentsObject(argumentsArray);
+        public void initDisconnectedIndices() {
+            assert hasDisconnectedIndices(this);
+            this.disconnectedIndices = new HashMap<>();
         }
     }
 
-    public static UnmappedArgumentsObjectImpl createUnmapped(Shape shape, Object[] elements) {
-        return new UnmappedArgumentsObjectImpl(shape, ScriptArray.createConstantArray(elements), elements, elements.length);
+    public static Unmapped createUnmapped(Shape shape, Object[] elements) {
+        return new Unmapped(shape, ScriptArray.createConstantArray(elements), elements, elements.length);
     }
 
-    public static MappedArgumentsObjectImpl createMapped(Shape shape, Object[] elements) {
-        return new MappedArgumentsObjectImpl(shape, ScriptArray.createConstantArray(elements), elements, elements.length);
+    public static Mapped createMapped(Shape shape, Object[] elements) {
+        return new Mapped(shape, ScriptArray.createConstantArray(elements), elements, elements.length);
     }
 
     @TruffleBoundary

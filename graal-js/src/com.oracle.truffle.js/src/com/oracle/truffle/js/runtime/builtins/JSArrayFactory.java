@@ -92,7 +92,7 @@ public abstract class JSArrayFactory {
     }
 
     protected DynamicObject newInstance(Shape shape, ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
-        return JSArrayImpl.create(shape, arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
+        return JSArrayObject.create(shape, arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
     }
 
     protected abstract DynamicObject getPrototype(JSRealm realm);

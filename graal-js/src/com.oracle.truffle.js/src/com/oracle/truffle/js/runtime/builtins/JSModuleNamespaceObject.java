@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,62 +38,61 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.trufflenode;
+package com.oracle.truffle.js.runtime.builtins;
+
+import java.util.Map;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSBasicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
+import com.oracle.truffle.js.runtime.objects.Null;
 
-public final class JSExternalObject extends JSBuiltinObject {
+public final class JSModuleNamespaceObject extends JSBasicObject {
+    /**
+     * [[Module]]. Module Record.
+     *
+     * The Module Record whose exports this namespace exposes.
+     */
+    private final JSModuleRecord module;
 
-    public static final String CLASS_NAME = "external";
-    public static final JSExternalObject INSTANCE = new JSExternalObject();
+    /**
+     * [[Exports]]. List of String.
+     *
+     * A List containing the String values of the exported names exposed as own properties of this
+     * object. The list is ordered as if an Array of those String values had been sorted using
+     * Array.prototype.sort using SortCompare as comparefn.
+     */
+    private final Map<String, ExportResolution> exports;
 
-    private JSExternalObject() {
+    protected JSModuleNamespaceObject(Shape shape, JSModuleRecord module, Map<String, ExportResolution> exports) {
+        super(shape);
+        this.module = module;
+        this.exports = exports;
     }
 
-    public static DynamicObject create(JSContext context, long pointer) {
-        ContextData contextData = GraalJSAccess.getContextEmbedderData(context);
-        DynamicObject obj = new Instance(contextData.getExternalObjectShape(), pointer);
-        assert isJSExternalObject(obj);
-        return obj;
+    public JSModuleRecord getModule() {
+        return module;
     }
 
-    public static Shape makeInitialShape(JSContext ctx) {
-        return ctx.makeEmptyShapeWithNullPrototype(INSTANCE);
+    public Map<String, ExportResolution> getExports() {
+        return exports;
     }
 
-    public static boolean isJSExternalObject(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSExternalObject((DynamicObject) obj);
-    }
-
-    public static boolean isJSExternalObject(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+    public static DynamicObject create(JSRealm realm, JSObjectFactory factory, JSModuleRecord module, Map<String, ExportResolution> exports) {
+        return factory.initProto(new JSModuleNamespaceObject(factory.getShape(realm), module, exports), realm);
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
-        return CLASS_NAME;
+    public String getClassName() {
+        return JSModuleNamespace.CLASS_NAME;
     }
 
-    public static long getPointer(DynamicObject obj) {
-        assert isJSExternalObject(obj);
-        return ((Instance) obj).getPointer();
-    }
-
-    public static final class Instance extends JSBasicObject {
-        private long pointer;
-
-        private Instance(Shape shape, long pointer) {
-            super(shape);
-            this.pointer = pointer;
-        }
-
-        public long getPointer() {
-            return pointer;
-        }
+    @Override
+    public boolean setPrototypeOf(JSDynamicObject newPrototype) {
+        return newPrototype == Null.instance;
     }
 }

@@ -52,23 +52,17 @@ import java.util.Locale;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.DateFunctionBuiltins;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltins;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -110,84 +104,6 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     private static final int DAY_SHIFT = (YEAR_SHIFT / 400) * DAYS_IN_400_YEARS;
 
     public static final String INVALID_DATE_STRING = "Invalid Date";
-
-    @ExportLibrary(InteropLibrary.class)
-    public static class JSDateObject extends JSBasicObject {
-        private double value;
-
-        protected JSDateObject(Shape shape, double value) {
-            super(shape);
-            this.value = value;
-        }
-
-        public double getTimeMillis() {
-            return value;
-        }
-
-        public void setTimeMillis(double value) {
-            this.value = value;
-        }
-
-        public static DynamicObject create(Shape shape, double value) {
-            return new JSDateObject(shape, value);
-        }
-
-        @Override
-        public String getClassName() {
-            return CLASS_NAME;
-        }
-
-        @Override
-        public String getBuiltinToStringTag() {
-            return getClassName();
-        }
-
-        @ExportMessage(name = "isDate")
-        @ExportMessage(name = "isTime")
-        @ExportMessage(name = "isTimeZone")
-        final boolean isDate() {
-            return JSDate.isValidDate(this);
-        }
-
-        @ExportMessage
-        final Instant asInstant() throws UnsupportedMessageException {
-            if (isDate()) {
-                return JSDate.asInstant(this);
-            } else {
-                throw UnsupportedMessageException.create();
-            }
-        }
-
-        @ExportMessage
-        final LocalDate asDate(
-                        @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef) throws UnsupportedMessageException {
-            if (isDate()) {
-                return JSDate.asLocalDate(this, contextRef.get());
-            } else {
-                throw UnsupportedMessageException.create();
-            }
-        }
-
-        @ExportMessage
-        final LocalTime asTime(
-                        @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef) throws UnsupportedMessageException {
-            if (isDate()) {
-                return JSDate.asLocalTime(this, contextRef.get());
-            } else {
-                throw UnsupportedMessageException.create();
-            }
-        }
-
-        @ExportMessage
-        final ZoneId asTimeZone(
-                        @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef) throws UnsupportedMessageException {
-            if (isDate()) {
-                return contextRef.get().getLocalTimeZoneId();
-            } else {
-                throw UnsupportedMessageException.create();
-            }
-        }
-    }
 
     private JSDate() {
     }

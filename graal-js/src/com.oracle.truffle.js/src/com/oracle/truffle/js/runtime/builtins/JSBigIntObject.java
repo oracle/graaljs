@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,24 +40,38 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.objects.JSClassObject;
+import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.objects.JSValueObject;
 
-public final class JSOrdinaryObjectImpl extends JSOrdinaryObject {
-    @DynamicField Object o0;
-    @DynamicField Object o1;
-    @DynamicField Object o2;
-    @DynamicField Object o3;
-    @DynamicField long p0;
-    @DynamicField long p1;
-    @DynamicField long p2;
+public final class JSBigIntObject extends JSValueObject {
+    public static final String CLASS_NAME = "Number";
+    public static final String PROTOTYPE_NAME = "Number.prototype";
 
-    protected JSOrdinaryObjectImpl(Shape shape) {
+    private final BigInt value;
+
+    protected JSBigIntObject(JSRealm realm, JSObjectFactory factory, BigInt value) {
+        super(realm, factory);
+        this.value = value;
+    }
+
+    protected JSBigIntObject(Shape shape, BigInt value) {
         super(shape);
+        this.value = value;
+    }
+
+    public BigInt getBigIntValue() {
+        return value;
     }
 
     @Override
-    protected JSClassObject copyWithoutProperties(Shape shape) {
-        return new JSOrdinaryObjectImpl(shape);
+    public String getClassName() {
+        return CLASS_NAME;
+    }
+
+    public static DynamicObject create(JSRealm realm, JSObjectFactory factory, BigInt value) {
+        return new JSBigIntObject(realm, factory, value);
     }
 }

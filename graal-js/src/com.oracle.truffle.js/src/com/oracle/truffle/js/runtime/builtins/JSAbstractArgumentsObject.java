@@ -49,7 +49,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
-import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject.MappedArgumentsObjectImpl;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -98,7 +97,7 @@ public abstract class JSAbstractArgumentsObject extends JSAbstractArray {
     }
 
     protected static boolean isMappedArguments(DynamicObject thisObj) {
-        return thisObj instanceof MappedArgumentsObjectImpl;
+        return thisObj instanceof JSArgumentsObject.Mapped;
     }
 
     @Override
@@ -111,7 +110,7 @@ public abstract class JSAbstractArgumentsObject extends JSAbstractArray {
         assert JSArgumentsObject.isJSFastArgumentsObject(thisObj);
         JSDynamicObject.setJSClass(thisObj, JSSlowArgumentsObject.INSTANCE);
         if (isMappedArguments(thisObj)) {
-            MappedArgumentsObjectImpl.initDisconnectedIndices(thisObj);
+            ((JSArgumentsObject.Mapped) thisObj).initDisconnectedIndices();
         }
         JSObject.getJSContext(thisObj).getFastArgumentsObjectAssumption().invalidate("create slow ArgumentsObject");
         return thisObj;
@@ -119,13 +118,13 @@ public abstract class JSAbstractArgumentsObject extends JSAbstractArray {
 
     public static int getConnectedArgumentCount(DynamicObject argumentsArray) {
         assert JSArgumentsObject.isJSArgumentsObject(argumentsArray);
-        return MappedArgumentsObjectImpl.getConnectedArgumentCount(argumentsArray);
+        return ((JSArgumentsObject.Mapped) argumentsArray).getConnectedArgumentCount();
     }
 
     @TruffleBoundary
     private static Map<Long, Object> getDisconnectedIndices(DynamicObject argumentsArray) {
         assert hasDisconnectedIndices(argumentsArray);
-        return MappedArgumentsObjectImpl.getDisconnectedIndices(argumentsArray);
+        return ((JSArgumentsObject.Mapped) argumentsArray).getDisconnectedIndices();
     }
 
     @TruffleBoundary

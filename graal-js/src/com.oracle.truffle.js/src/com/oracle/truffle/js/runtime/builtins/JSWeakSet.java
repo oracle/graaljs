@@ -60,25 +60,21 @@ public final class JSWeakSet extends JSBuiltinObject implements JSConstructorFac
     public static final String CLASS_NAME = "WeakSet";
     public static final String PROTOTYPE_NAME = CLASS_NAME + ".prototype";
 
-    public static class WeakSetImpl extends JSBasicObject {
+    public static final class Instance extends JSBasicObject {
         private final Map<Object, Object> weakHashMap;
 
-        protected WeakSetImpl(JSRealm realm, JSObjectFactory factory, Map<Object, Object> weakHashMap) {
+        protected Instance(JSRealm realm, JSObjectFactory factory, Map<Object, Object> weakHashMap) {
             super(realm, factory);
             this.weakHashMap = weakHashMap;
         }
 
-        protected WeakSetImpl(Shape shape, Map<Object, Object> weakHashMap) {
+        protected Instance(Shape shape, Map<Object, Object> weakHashMap) {
             super(shape);
             this.weakHashMap = weakHashMap;
         }
 
         public Map<Object, Object> getWeakHashMap() {
             return weakHashMap;
-        }
-
-        public static WeakSetImpl create(JSRealm realm, JSObjectFactory factory, Map<Object, Object> weakHashMap) {
-            return new WeakSetImpl(realm, factory, weakHashMap);
         }
     }
 
@@ -87,7 +83,7 @@ public final class JSWeakSet extends JSBuiltinObject implements JSConstructorFac
 
     public static DynamicObject create(JSContext context) {
         JSRealm realm = context.getRealm();
-        DynamicObject obj = WeakSetImpl.create(realm, context.getWeakSetFactory(), newWeakHashMap());
+        DynamicObject obj = new Instance(realm, context.getWeakSetFactory(), newWeakHashMap());
         assert isJSWeakSet(obj);
         return context.trackAllocation(obj);
     }
@@ -101,7 +97,7 @@ public final class JSWeakSet extends JSBuiltinObject implements JSConstructorFac
     public static Map<Object, Object> getInternalWeakMap(DynamicObject obj) {
         assert isJSWeakSet(obj);
         // return (Map<DynamicObject, Object>) WEAKSET_PROPERTY.get(obj, isJSWeakSet(obj));
-        return ((WeakSetImpl) obj).getWeakHashMap();
+        return ((Instance) obj).getWeakHashMap();
     }
 
     @Override

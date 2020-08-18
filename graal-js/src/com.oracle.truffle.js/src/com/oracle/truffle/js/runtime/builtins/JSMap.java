@@ -82,14 +82,14 @@ public final class JSMap extends JSBuiltinObject implements JSConstructorFactory
     }
 
     public static DynamicObject create(JSContext context) {
-        DynamicObject obj = MapImpl.create(context.getRealm(), context.getMapFactory(), new JSHashMap());
+        DynamicObject obj = new Instance(context.getRealm(), context.getMapFactory(), new JSHashMap());
         assert isJSMap(obj);
         return context.trackAllocation(obj);
     }
 
     public static JSHashMap getInternalMap(DynamicObject obj) {
         assert isJSMap(obj);
-        return ((MapImpl) obj).getMap();
+        return ((Instance) obj).getMap();
     }
 
     public static int getMapSize(DynamicObject obj) {
@@ -179,15 +179,15 @@ public final class JSMap extends JSBuiltinObject implements JSConstructorFactory
         return realm.getMapPrototype();
     }
 
-    public static class MapImpl extends JSBasicObject {
+    public static final class Instance extends JSBasicObject {
         private final JSHashMap map;
 
-        protected MapImpl(JSRealm realm, JSObjectFactory factory, JSHashMap map) {
+        protected Instance(JSRealm realm, JSObjectFactory factory, JSHashMap map) {
             super(realm, factory);
             this.map = map;
         }
 
-        protected MapImpl(Shape shape, JSHashMap map) {
+        protected Instance(Shape shape, JSHashMap map) {
             super(shape);
             this.map = map;
         }
@@ -195,9 +195,6 @@ public final class JSMap extends JSBuiltinObject implements JSConstructorFactory
         public JSHashMap getMap() {
             return map;
         }
-
-        public static MapImpl create(JSRealm realm, JSObjectFactory factory, JSHashMap map) {
-            return new MapImpl(realm, factory, map);
-        }
     }
+
 }

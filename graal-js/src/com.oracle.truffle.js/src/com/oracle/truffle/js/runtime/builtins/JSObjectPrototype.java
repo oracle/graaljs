@@ -67,7 +67,7 @@ public final class JSObjectPrototype extends JSBuiltinObject {
     }
 
     public static DynamicObject create(JSContext context) {
-        return ObjectPrototypeImpl.create(context.makeEmptyShapeWithNullPrototype(JSObjectPrototype.INSTANCE));
+        return create(context.makeEmptyShapeWithNullPrototype(JSObjectPrototype.INSTANCE));
     }
 
     public static boolean isJSObjectPrototype(Object obj) {
@@ -215,14 +215,14 @@ public final class JSObjectPrototype extends JSBuiltinObject {
         return result;
     }
 
-    public static class ObjectPrototypeImpl extends JSArrayBase {
-        protected ObjectPrototypeImpl(Shape shape) {
-            super(shape, ConstantEmptyPrototypeArray.createConstantEmptyPrototypeArray(), ScriptArray.EMPTY_OBJECT_ARRAY, null, 0, 0, 0, 0, 0);
-        }
+    public static DynamicObject create(Shape shape) {
+        assert JSShape.getJSClassNoCast(shape) == JSObjectPrototype.INSTANCE;
+        return new Instance(shape);
+    }
 
-        public static DynamicObject create(Shape shape) {
-            assert JSShape.getJSClassNoCast(shape) == JSObjectPrototype.INSTANCE;
-            return new ObjectPrototypeImpl(shape);
+    public static final class Instance extends JSArrayBase {
+        protected Instance(Shape shape) {
+            super(shape, ConstantEmptyPrototypeArray.createConstantEmptyPrototypeArray(), ScriptArray.EMPTY_OBJECT_ARRAY, null, 0, 0, 0, 0, 0);
         }
     }
 

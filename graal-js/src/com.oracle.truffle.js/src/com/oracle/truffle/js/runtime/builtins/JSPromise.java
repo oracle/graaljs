@@ -48,7 +48,6 @@ import com.oracle.truffle.js.builtins.PromisePrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -89,18 +88,18 @@ public final class JSPromise extends JSBuiltinObject implements JSConstructorFac
     }
 
     public static DynamicObject create(JSContext context) {
-        return context.trackAllocation(PromiseImpl.create(context.getRealm(), context.getPromiseFactory(), PENDING));
+        return context.trackAllocation(JSPromiseObject.create(context.getRealm(), context.getPromiseFactory(), PENDING));
     }
 
     public static DynamicObject create(JSContext context, Shape shape) {
-        PromiseImpl promise = PromiseImpl.create(shape, PENDING);
+        JSPromiseObject promise = JSPromiseObject.create(shape, PENDING);
         assert isJSPromise(promise);
         return context.trackAllocation(promise);
     }
 
     public static DynamicObject createWithoutPrototype(JSContext context) {
         Shape shape = context.getPromiseShapePrototypeInObject();
-        DynamicObject obj = PromiseImpl.create(shape, PENDING);
+        DynamicObject obj = JSPromiseObject.create(shape, PENDING);
         // prototype is set in caller
         assert isJSPromise(obj);
         return obj;
@@ -138,12 +137,12 @@ public final class JSPromise extends JSBuiltinObject implements JSConstructorFac
 
     public static int getPromiseState(DynamicObject promise) {
         assert isJSPromise(promise);
-        return ((PromiseImpl) promise).getPromiseState();
+        return ((JSPromiseObject) promise).getPromiseState();
     }
 
     public static void setPromiseState(DynamicObject promise, int promiseState) {
         assert isJSPromise(promise);
-        ((PromiseImpl) promise).setPromiseState(promiseState);
+        ((JSPromiseObject) promise).setPromiseState(promiseState);
     }
 
     @Override
@@ -190,36 +189,6 @@ public final class JSPromise extends JSBuiltinObject implements JSConstructorFac
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getPromisePrototype();
-    }
-
-    public static class PromiseImpl extends JSBasicObject {
-        private int promiseState;
-
-        protected PromiseImpl(JSRealm realm, JSObjectFactory factory, int promiseState) {
-            super(realm, factory);
-            this.promiseState = promiseState;
-        }
-
-        protected PromiseImpl(Shape shape, int promiseState) {
-            super(shape);
-            this.promiseState = promiseState;
-        }
-
-        public int getPromiseState() {
-            return promiseState;
-        }
-
-        public void setPromiseState(int promiseState) {
-            this.promiseState = promiseState;
-        }
-
-        public static PromiseImpl create(JSRealm realm, JSObjectFactory factory, int promiseState) {
-            return new PromiseImpl(realm, factory, promiseState);
-        }
-
-        public static PromiseImpl create(Shape shape, int promiseState) {
-            return new PromiseImpl(shape, promiseState);
-        }
     }
 
 }

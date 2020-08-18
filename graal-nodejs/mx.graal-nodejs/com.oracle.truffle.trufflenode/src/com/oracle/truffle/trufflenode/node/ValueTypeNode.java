@@ -98,7 +98,7 @@ import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
-import com.oracle.truffle.js.runtime.builtins.JSTypedArrayImpl;
+import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
@@ -217,7 +217,7 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"cachedArray == value.getArrayType()"})
-    protected final int doArrayBufferView(JSTypedArrayImpl value,
+    protected final int doArrayBufferView(JSTypedArrayObject value,
                     @Cached("value.getArrayType()") TypedArray cachedArray,
                     @Cached("identifyType(cachedArray)") int cachedTypeInt,
                     @Cached("create(getContext())") ArrayBufferViewGetByteLengthNode getByteLengthNode) {
@@ -230,7 +230,7 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
     }
 
     @Specialization(replaces = "doArrayBufferView")
-    protected final int doArrayBufferViewOverLimit(JSTypedArrayImpl value,
+    protected final int doArrayBufferViewOverLimit(JSTypedArrayObject value,
                     @Cached("create(getContext())") ArrayBufferViewGetByteLengthNode getByteLengthNode) {
         assert JSArrayBufferView.isJSArrayBufferView(value);
         if (useSharedBuffer) {

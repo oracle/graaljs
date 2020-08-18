@@ -44,8 +44,6 @@ import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.CachedLanguage;
-import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -55,83 +53,73 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.nodes.interop.KeyInfoNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
-import com.oracle.truffle.js.runtime.array.DynamicArray;
-import com.oracle.truffle.js.runtime.array.ScriptArray;
-import com.oracle.truffle.js.runtime.array.dyn.AbstractConstantEmptyArray;
-import com.oracle.truffle.js.runtime.array.dyn.AbstractObjectArray;
-import com.oracle.truffle.js.runtime.array.dyn.ConstantObjectArray;
-import com.oracle.truffle.js.runtime.objects.JSClassObject;
-import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
+import com.oracle.truffle.js.runtime.array.TypedArray;
+import com.oracle.truffle.js.runtime.objects.JSArrayLike;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropArray;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 @ExportLibrary(InteropLibrary.class)
-public class JSArrayImpl extends JSArrayBase implements JSCopyableObject {
-    protected JSArrayImpl(Shape shape, ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
-        super(shape, arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
+public final class JSTypedArrayObject extends JSArrayBufferViewBase implements JSArrayLike {
+
+    TypedArray arrayType;
+
+    protected JSTypedArrayObject(Shape shape, TypedArray arrayType, JSArrayBufferObject arrayBuffer, int length, int offset) {
+        super(shape, arrayBuffer, length, offset);
+        this.arrayType = arrayType;
     }
 
-    public static DynamicObject create(Shape shape, ScriptArray arrayType, Object array, ArrayAllocationSite site,
-                    long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
-        return new JSArrayImpl(shape, arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
-    }
-
-    public static DynamicObject createEmpty(Shape shape, ScriptArray arrayType) {
-        assert arrayType instanceof AbstractConstantEmptyArray || arrayType instanceof ConstantObjectArray || arrayType instanceof AbstractObjectArray;
-        return new JSArrayImpl(shape, arrayType, ScriptArray.EMPTY_OBJECT_ARRAY, null, 0, 0, 0, 0, 0);
-    }
-
-    @Override
-    public JSAbstractArray getJSClass() {
-        return (JSAbstractArray) super.getJSClass();
+    @SuppressWarnings("static-method")
+    public TypedArrayAccess typedArrayAccess() {
+        return TypedArrayAccess.SINGLETON;
     }
 
     @Override
-    protected JSClassObject copyWithoutProperties(Shape shape) {
-        Object clonedArray = ((DynamicArray) arrayType).cloneArray(this);
-        return new JSArrayImpl(shape, arrayType, clonedArray, null, length, usedLength, indexOffset, arrayOffset, holeCount);
+    public TypedArray getArrayType() {
+        return arrayType;
     }
 
-    @SuppressWarnings("unused")
-    @ImportStatic({JSGuards.class, JSObject.class})
+    public static JSTypedArrayObject create(Shape shape, TypedArray arrayType, JSArrayBufferObject arrayBuffer, int length, int offset) {
+        return new JSTypedArrayObject(shape, arrayType, arrayBuffer, length, offset);
+    }
+
+    @Override
+    public String getClassName() {
+        return typedArrayAccess().getTypedArrayName(this);
+    }
+
+    @Override
+    public String getBuiltinToStringTag() {
+        return "Object";
+    }
+
     @ExportMessage
-    public abstract static class GetMembers {
-        @Specialization(guards = "isJSFastArray(target)")
-        public static Object fastArray(JSArrayImpl target, boolean internal) {
-            // Do not include array indices
-            return InteropArray.create(filterEnumerableNames(target, JSBuiltinObject.ordinaryOwnPropertyKeys(target), JSObject.getJSClass(target)));
-        }
-
-        @Specialization(guards = {"!isJSFastArray(target)"})
-        public static Object slowArray(JSArrayImpl target, boolean internal) {
-            // Do not include array indices
-            return InteropArray.create(filterEnumerableNames(target, JSObject.ownPropertyKeys(target), JSObject.getJSClass(target)));
-        }
+    public Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        // Do not include array indices
+        assert JSObject.getJSClass(this) == JSArrayBufferView.INSTANCE;
+        return InteropArray.create(filterEnumerableNames(this, JSBuiltinObject.ordinaryOwnPropertyKeys(this), JSArrayBufferView.INSTANCE));
     }
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    public final boolean hasArrayElements() {
+    public boolean hasArrayElements() {
         return true;
     }
 
     @ExportMessage
-    public final long getArraySize() {
-        return JSArray.arrayGetLength(this);
+    public long getArraySize() {
+        return JSArrayBufferView.typedArrayGetLength(this);
     }
 
     @ExportMessage
-    public final Object readArrayElement(long index,
+    public Object readArrayElement(long index,
                     @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
                     @Cached(value = "create(languageRef.get().getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
                     @Cached ExportValueNode exportNode,
@@ -153,7 +141,7 @@ public class JSArrayImpl extends JSArrayBase implements JSCopyableObject {
     }
 
     @ExportMessage
-    public final boolean isArrayElementReadable(long index,
+    public boolean isArrayElementReadable(long index,
                     @CachedLibrary("this") InteropLibrary thisLibrary) {
         try {
             return hasArrayElements() && (index >= 0 && index < thisLibrary.getArraySize(this));
@@ -163,7 +151,7 @@ public class JSArrayImpl extends JSArrayBase implements JSCopyableObject {
     }
 
     @ExportMessage
-    public final void writeArrayElement(long index, Object value,
+    public void writeArrayElement(long index, Object value,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo,
                     @Cached ImportValueNode castValueNode,
                     @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
@@ -184,48 +172,14 @@ public class JSArrayImpl extends JSArrayBase implements JSCopyableObject {
     }
 
     @ExportMessage
-    public final boolean isArrayElementModifiable(long index,
+    public boolean isArrayElementModifiable(long index,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
         return hasArrayElements() && keyInfo.execute(this, index, KeyInfoNode.MODIFIABLE);
     }
 
     @ExportMessage
-    public final boolean isArrayElementInsertable(long index,
+    public boolean isArrayElementInsertable(long index,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
         return hasArrayElements() && keyInfo.execute(this, index, KeyInfoNode.INSERTABLE);
-    }
-
-    @ExportMessage
-    public final boolean isArrayElementRemovable(long index) {
-        DynamicObject target = this;
-        assert JSArray.isJSArray(target);
-        ScriptArray strategy = this.arrayType;
-        if (!strategy.isSealed() && !strategy.isLengthNotWritable()) {
-            long len = strategy.length(target);
-            if (index >= 0 && index < len) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    @ExportMessage
-    public final void removeArrayElement(long index) throws UnsupportedMessageException, InvalidArrayIndexException {
-        DynamicObject target = this;
-        assert JSArray.isJSArray(target);
-        ScriptArray strategy = this.arrayType;
-        if (!strategy.isSealed() && !strategy.isLengthNotWritable()) {
-            long len = strategy.length(target);
-            if (index >= 0 && index < len) {
-                strategy = strategy.removeRange(target, index, index + 1);
-                JSObject.setArray(target, strategy);
-                strategy = strategy.setLength(target, len - 1, true);
-                JSObject.setArray(target, strategy);
-                return;
-            } else {
-                throw InvalidArrayIndexException.create(index);
-            }
-        }
-        throw UnsupportedMessageException.create();
     }
 }

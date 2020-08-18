@@ -82,7 +82,7 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
         assert buffer != null;
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getSharedArrayBufferFactory();
-        DynamicObject obj = JSArrayBufferImpl.createSharedArrayBuffer(factory.getShape(realm), buffer, new JSAgentWaiterList());
+        DynamicObject obj = JSArrayBufferObject.createSharedArrayBuffer(factory.getShape(realm), buffer, new JSAgentWaiterList());
         factory.initProto(obj, realm);
         assert isJSSharedArrayBuffer(obj);
         return context.trackAllocation(obj);
@@ -147,17 +147,17 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
 
     public static ByteBuffer getDirectByteBuffer(DynamicObject thisObj) {
         assert isJSSharedArrayBuffer(thisObj);
-        return JSArrayBufferImpl.getDirectByteBuffer(thisObj);
+        return JSArrayBufferObject.getDirectByteBuffer(thisObj);
     }
 
     public static JSAgentWaiterList getWaiterList(DynamicObject thisObj) {
         assert isJSSharedArrayBuffer(thisObj);
-        return JSArrayBufferImpl.getWaiterList(thisObj);
+        return JSArrayBufferObject.getWaiterList(thisObj);
     }
 
     public static void setWaiterList(DynamicObject thisObj, JSAgentWaiterList wl) {
         assert isJSSharedArrayBuffer(thisObj);
-        JSArrayBufferImpl.setWaiterList(thisObj, wl);
+        JSArrayBufferObject.setWaiterList(thisObj, wl);
     }
 
     @Override

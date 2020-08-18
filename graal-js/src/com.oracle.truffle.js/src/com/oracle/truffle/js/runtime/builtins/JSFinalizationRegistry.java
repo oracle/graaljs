@@ -69,20 +69,20 @@ public final class JSFinalizationRegistry extends JSBuiltinObject implements JSC
 
     public static final HiddenKey FINALIZATION_REGISTRY_ID = new HiddenKey("FinalizationRegistry");
 
-    public static class FinalizationRegistryImpl extends JSBasicObject {
+    public static final class Instance extends JSBasicObject {
         TruffleObject cleanupCallback;
         List<FinalizationRecord> cells;
         ReferenceQueue<Object> referenceQueue;
 
-        protected FinalizationRegistryImpl(JSRealm realm, JSObjectFactory factory, TruffleObject cleanupCallback, List<FinalizationRecord> cells, ReferenceQueue<Object> referenceQueue) {
+        protected Instance(JSRealm realm, JSObjectFactory factory, TruffleObject cleanupCallback, List<FinalizationRecord> cells, ReferenceQueue<Object> referenceQueue) {
             super(realm, factory);
             this.cleanupCallback = cleanupCallback;
             this.cells = cells;
             this.referenceQueue = referenceQueue;
         }
 
-        public static FinalizationRegistryImpl create(JSRealm realm, JSObjectFactory factory, TruffleObject cleanupCallback, List<FinalizationRecord> cells, ReferenceQueue<Object> referenceQueue) {
-            return new FinalizationRegistryImpl(realm, factory, cleanupCallback, cells, referenceQueue);
+        public static Instance create(JSRealm realm, JSObjectFactory factory, TruffleObject cleanupCallback, List<FinalizationRecord> cells, ReferenceQueue<Object> referenceQueue) {
+            return new Instance(realm, factory, cleanupCallback, cells, referenceQueue);
         }
     }
 
@@ -91,7 +91,7 @@ public final class JSFinalizationRegistry extends JSBuiltinObject implements JSC
 
     public static DynamicObject create(JSContext context, TruffleObject cleanupCallback) {
         JSRealm realm = context.getRealm();
-        DynamicObject obj = FinalizationRegistryImpl.create(realm, context.getFinalizationRegistryFactory(), cleanupCallback, new ArrayList<>(), new ReferenceQueue<>());
+        DynamicObject obj = Instance.create(realm, context.getFinalizationRegistryFactory(), cleanupCallback, new ArrayList<>(), new ReferenceQueue<>());
         assert isJSFinalizationRegistry(obj);
         context.registerFinalizationRegistry(obj);
         context.trackAllocation(obj);
@@ -101,18 +101,18 @@ public final class JSFinalizationRegistry extends JSBuiltinObject implements JSC
     @SuppressWarnings("unchecked")
     private static List<FinalizationRecord> getCells(DynamicObject obj) {
         assert isJSFinalizationRegistry(obj);
-        return ((FinalizationRegistryImpl) obj).cells;
+        return ((Instance) obj).cells;
     }
 
     public static TruffleObject getCleanupCallback(DynamicObject obj) {
         assert isJSFinalizationRegistry(obj);
-        return ((FinalizationRegistryImpl) obj).cleanupCallback;
+        return ((Instance) obj).cleanupCallback;
     }
 
     @SuppressWarnings("unchecked")
     public static ReferenceQueue<Object> getReferenceQueue(DynamicObject obj) {
         assert isJSFinalizationRegistry(obj);
-        return ((FinalizationRegistryImpl) obj).referenceQueue;
+        return ((Instance) obj).referenceQueue;
     }
 
     @Override
