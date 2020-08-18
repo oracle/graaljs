@@ -61,8 +61,6 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultIndicesArray;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSBasicObject;
-import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
@@ -152,102 +150,6 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         public boolean set(DynamicObject object, Object value) {
             JSObjectUtil.defineDataProperty(object, groupName, value, JSAttributes.getDefault());
             return true;
-        }
-    }
-
-    public static final class JSRegExpObject extends JSBasicObject implements JSCopyableObject {
-        private Object compiledRegex;
-        private JSObjectFactory groupsFactory;
-        private final JSRealm realm;
-        private final boolean legacyFeaturesEnabled;
-
-        protected JSRegExpObject(Shape shape, Object compiledRegex, JSObjectFactory groupsFactory, JSRealm realm, boolean legacyFeaturesEnabled) {
-            super(shape);
-            this.compiledRegex = compiledRegex;
-            this.groupsFactory = groupsFactory;
-            this.realm = realm;
-            this.legacyFeaturesEnabled = legacyFeaturesEnabled;
-        }
-
-        public Object getCompiledRegex() {
-            return compiledRegex;
-        }
-
-        public void setCompiledRegex(Object compiledRegex) {
-            this.compiledRegex = compiledRegex;
-        }
-
-        public JSObjectFactory getGroupsFactory() {
-            return groupsFactory;
-        }
-
-        public void setGroupsFactory(JSObjectFactory groupsFactory) {
-            this.groupsFactory = groupsFactory;
-        }
-
-        public JSRealm getRealm() {
-            return realm;
-        }
-
-        public boolean getLegacyFeaturesEnabled() {
-            return legacyFeaturesEnabled;
-        }
-
-        @Override
-        public String getClassName() {
-            return JSRegExp.CLASS_NAME;
-        }
-
-        public static DynamicObject create(JSRealm realm, JSObjectFactory factory, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
-            return factory.initProto(new JSRegExpObject(factory.getShape(realm), compiledRegex, groupsFactory, realm, legacyFeaturesEnabled), realm);
-        }
-
-        public static DynamicObject create(Shape shape, Object compiledRegex, JSRealm realm) {
-            return new JSRegExpObject(shape, compiledRegex, null, realm, false);
-        }
-
-        @Override
-        protected JSObject copyWithoutProperties(Shape shape) {
-            return new JSRegExpObject(shape, compiledRegex, groupsFactory, realm, legacyFeaturesEnabled);
-        }
-    }
-
-    public static final class JSRegExpGroupsObject extends JSBasicObject implements JSCopyableObject {
-        private Object regexResult;
-        private String input;
-        private boolean isIndices;
-
-        protected JSRegExpGroupsObject(Shape shape, Object regexResult, String inputString, boolean isIndices) {
-            super(shape);
-            this.regexResult = regexResult;
-            this.input = inputString;
-            this.isIndices = isIndices;
-        }
-
-        public Object getRegexResult() {
-            return regexResult;
-        }
-
-        public String getInputString() {
-            return input;
-        }
-
-        public boolean isIndices() {
-            return isIndices;
-        }
-
-        @Override
-        public String getClassName() {
-            return JSUserObject.CLASS_NAME;
-        }
-
-        public static DynamicObject create(JSRealm realm, JSObjectFactory factory, Object regexResult, String inputString, boolean isIndices) {
-            return factory.initProto(new JSRegExpGroupsObject(factory.getShape(realm), regexResult, inputString, isIndices), realm);
-        }
-
-        @Override
-        protected JSObject copyWithoutProperties(Shape shape) {
-            return new JSRegExpGroupsObject(shape, regexResult, input, isIndices);
         }
     }
 

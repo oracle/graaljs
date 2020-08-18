@@ -99,6 +99,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
+import com.oracle.truffle.js.runtime.builtins.JSRegExpGroupsObject;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
@@ -1494,7 +1495,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
             DynamicObject store = receiverCheck.getStore(thisObj);
-            JSRegExp.JSRegExpGroupsObject groups = (JSRegExp.JSRegExpGroupsObject) store;
+            JSRegExpGroupsObject groups = (JSRegExpGroupsObject) store;
             Object regexResult = groups.getRegexResult();
             if (isIndicesObject.profile(groups.isIndices())) {
                 return LazyRegexResultIndicesArray.getIntIndicesArray(root.getContext(), resultAccessor, regexResult, groupIndex);
