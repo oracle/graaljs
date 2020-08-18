@@ -41,9 +41,9 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.CachedLanguage;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -60,6 +60,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSClassObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.truffleinterop.JSMetaType;
 
 @ExportLibrary(InteropLibrary.class)
 public final class JSProxyObject extends JSClassObject {
@@ -135,5 +136,17 @@ public final class JSProxyObject extends JSClassObject {
         } finally {
             language.interopBoundaryExit(realm);
         }
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public boolean hasMetaObject() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public Object getMetaObject() {
+        return JSMetaType.JS_PROXY;
     }
 }

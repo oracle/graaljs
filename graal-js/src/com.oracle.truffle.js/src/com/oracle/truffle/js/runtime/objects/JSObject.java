@@ -82,12 +82,10 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBase;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropArray;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
-import com.oracle.truffle.js.runtime.truffleinterop.JSMetaType;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 /**
@@ -285,34 +283,6 @@ public abstract class JSObject extends JSDynamicObject {
     @ExportMessage
     public final Object toDisplayString(boolean allowSideEffects) {
         return JSRuntime.toDisplayString(this, allowSideEffects);
-    }
-
-    @ExportMessage
-    public final boolean hasMetaObject() {
-        return getMetaObjectImpl() != null;
-    }
-
-    @ExportMessage
-    public final Object getMetaObject() throws UnsupportedMessageException {
-        Object metaObject = getMetaObjectImpl();
-        if (metaObject != null) {
-            return metaObject;
-        }
-        throw UnsupportedMessageException.create();
-    }
-
-    @TruffleBoundary
-    public final Object getMetaObjectImpl() {
-        if (JSGuards.isJSProxy(this)) {
-            return JSMetaType.JS_PROXY;
-        } else {
-            assert JSObject.isJSDynamicObject(this) && !JSGuards.isJSProxy(this);
-            Object metaObject = JSRuntime.getDataProperty(this, JSObject.CONSTRUCTOR);
-            if (metaObject != null && metaObject instanceof JSFunctionObject) {
-                return metaObject;
-            }
-        }
-        return null;
     }
 
     public static ReadElementNode getUncachedRead() {
