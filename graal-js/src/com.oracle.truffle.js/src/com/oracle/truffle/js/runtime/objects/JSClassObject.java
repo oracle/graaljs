@@ -69,7 +69,6 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropInvokeNode;
 import com.oracle.truffle.js.nodes.interop.KeyInfoNode;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
@@ -80,7 +79,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSMetaType;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 @ExportLibrary(InteropLibrary.class)
-public abstract class JSClassObject extends JSDynamicObject {
+public abstract class JSClassObject extends JSObject {
     protected static final String[] EMPTY_STRING_ARRAY = new String[0];
 
     protected JSClassObject(Shape shape) {
@@ -226,10 +225,6 @@ public abstract class JSClassObject extends JSDynamicObject {
     @Override
     public String toString() {
         return getJSClass().toString(this);
-    }
-
-    protected JSClassObject copyWithoutProperties(@SuppressWarnings("unused") Shape shape) {
-        throw Errors.notImplemented("copy");
     }
 
     // --- interop ---

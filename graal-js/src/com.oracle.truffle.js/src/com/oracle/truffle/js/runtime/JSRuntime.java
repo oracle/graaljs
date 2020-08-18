@@ -79,7 +79,6 @@ import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.doubleconv.DoubleConversion;
 import com.oracle.truffle.js.runtime.external.DToA;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSClassObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -265,8 +264,8 @@ public final class JSRuntime {
      * objects.
      */
     public static boolean isObject(Object vo) {
-        assert vo instanceof JSClassObject == hasJSObjectType(vo);
-        return vo instanceof JSClassObject;
+        assert vo instanceof JSObject == hasJSObjectType(vo);
+        return vo instanceof JSObject;
     }
 
     /**
@@ -274,8 +273,8 @@ public final class JSRuntime {
      * objects.
      */
     public static boolean isObject(DynamicObject vo) {
-        assert vo instanceof JSClassObject == hasJSObjectType(vo);
-        return vo instanceof JSClassObject;
+        assert vo instanceof JSObject == hasJSObjectType(vo);
+        return vo instanceof JSObject;
     }
 
     private static boolean hasJSObjectType(Object vo) {

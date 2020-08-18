@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -65,9 +66,11 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 /**
- * Methods for dealing with JS objects (access, creation, instanceof, cast).
+ * The common base class for all JavaScript objects (values of type Object according to the spec).
+ *
+ * Includes static methods for dealing with JS objects (internal methods).
  */
-public final class JSObject {
+public abstract class JSObject extends JSDynamicObject {
 
     public static final String CONSTRUCTOR = "constructor";
     public static final String PROTOTYPE = "prototype";
@@ -77,8 +80,12 @@ public final class JSObject {
     public static final String NO_SUCH_PROPERTY_NAME = "__noSuchProperty__";
     public static final String NO_SUCH_METHOD_NAME = "__noSuchMethod__";
 
-    private JSObject() {
-        // use factory methods to create this class
+    protected JSObject(Shape shape) {
+        super(shape);
+    }
+
+    protected JSObject copyWithoutProperties(@SuppressWarnings("unused") Shape shape) {
+        throw Errors.notImplemented("copy");
     }
 
     /**

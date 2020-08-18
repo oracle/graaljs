@@ -68,7 +68,6 @@ import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractConstantEmptyArray;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantObjectArray;
-import com.oracle.truffle.js.runtime.objects.JSClassObject;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -97,7 +96,7 @@ public final class JSArrayObject extends JSArrayBase implements JSCopyableObject
     }
 
     @Override
-    protected JSClassObject copyWithoutProperties(Shape shape) {
+    protected JSObject copyWithoutProperties(Shape shape) {
         Object clonedArray = ((DynamicArray) arrayType).cloneArray(this);
         return new JSArrayObject(shape, arrayType, clonedArray, null, length, usedLength, indexOffset, arrayOffset, holeCount);
     }

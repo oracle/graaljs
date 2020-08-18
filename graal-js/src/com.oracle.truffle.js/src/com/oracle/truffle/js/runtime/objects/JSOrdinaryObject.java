@@ -85,7 +85,7 @@ public abstract class JSOrdinaryObject extends JSBasicObject implements JSCopyab
         }
 
         @Override
-        protected JSClassObject copyWithoutProperties(Shape shape) {
+        protected JSObject copyWithoutProperties(Shape shape) {
             return new DefaultLayout(shape);
         }
     }

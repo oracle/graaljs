@@ -61,7 +61,6 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultIndicesArray;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSBasicObject;
-import com.oracle.truffle.js.runtime.objects.JSClassObject;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -216,7 +215,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         }
 
         @Override
-        protected JSClassObject copyWithoutProperties(Shape shape) {
+        protected JSObject copyWithoutProperties(Shape shape) {
             return new JSRegExpObject(shape, compiledRegex, groupsFactory, realm, legacyFeaturesEnabled);
         }
     }
@@ -262,7 +261,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         }
 
         @Override
-        protected JSClassObject copyWithoutProperties(Shape shape) {
+        protected JSObject copyWithoutProperties(Shape shape) {
             return new JSRegExpGroupsObject(shape, regexResult, input, isIndices);
         }
     }
