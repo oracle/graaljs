@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,71 +38,56 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.truffleinterop;
+package com.oracle.truffle.js.runtime.interop;
 
-import com.oracle.truffle.api.TruffleLanguage;
+import java.util.List;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.array.ScriptArray;
 
-/**
- * JavaScript language view on JS values and foreign objects.
- */
-@ExportLibrary(value = InteropLibrary.class, delegateTo = "delegate")
-public final class JavaScriptLanguageView implements TruffleObject {
+@ExportLibrary(InteropLibrary.class)
+public final class InteropArray implements TruffleObject {
+    final Object[] array;
 
-    protected final Object delegate;
-
-    private JavaScriptLanguageView(Object delegate) {
-        this.delegate = delegate;
+    private InteropArray(Object[] array) {
+        this.array = array;
     }
 
-    public static JavaScriptLanguageView create(Object delegate) {
-        return new JavaScriptLanguageView(delegate);
+    public static InteropArray create(Object[] array) {
+        return new InteropArray(array);
+    }
+
+    @TruffleBoundary
+    public static InteropArray create(List<? extends Object> list) {
+        return new InteropArray(list.toArray(ScriptArray.EMPTY_OBJECT_ARRAY));
     }
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    boolean hasLanguage() {
+    boolean hasArrayElements() {
         return true;
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return JavaScriptLanguage.class;
-    }
-
-    @ExportMessage
-    Object toDisplayString(boolean allowSideEffects) {
-        return JSRuntime.toDisplayString(delegate, allowSideEffects);
-    }
-
-    @ExportMessage
-    @ExplodeLoop
-    boolean hasMetaObject(@CachedLibrary("this.delegate") InteropLibrary delegateLibrary) {
-        for (JSMetaType type : JSMetaType.KNOWN_TYPES) {
-            if (type.isInstance(delegate, delegateLibrary)) {
-                return true;
-            }
+    Object readArrayElement(long index) throws InvalidArrayIndexException {
+        if (!isArrayElementReadable(index)) {
+            throw InvalidArrayIndexException.create(index);
         }
-        return false;
+        return array[(int) index];
     }
 
     @ExportMessage
-    @ExplodeLoop
-    Object getMetaObject(@CachedLibrary("this.delegate") InteropLibrary delegateLibrary) throws UnsupportedMessageException {
-        for (JSMetaType type : JSMetaType.KNOWN_TYPES) {
-            if (type.isInstance(delegate, delegateLibrary)) {
-                return type;
-            }
-        }
-        throw UnsupportedMessageException.create();
+    long getArraySize() {
+        return array.length;
+    }
+
+    @ExportMessage
+    boolean isArrayElementReadable(long index) {
+        return index >= 0L && index < array.length;
     }
 }

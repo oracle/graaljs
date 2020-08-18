@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.truffleinterop;
+package com.oracle.truffle.js.runtime.interop;
 
 import java.util.List;
 
@@ -48,23 +48,17 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.js.runtime.array.ScriptArray;
 
 @ExportLibrary(InteropLibrary.class)
-public final class InteropArray implements TruffleObject {
-    final Object[] array;
+public final class InteropList implements TruffleObject {
+    final List<? extends Object> list;
 
-    private InteropArray(Object[] array) {
-        this.array = array;
+    private InteropList(List<? extends Object> list) {
+        this.list = list;
     }
 
-    public static InteropArray create(Object[] array) {
-        return new InteropArray(array);
-    }
-
-    @TruffleBoundary
-    public static InteropArray create(List<? extends Object> list) {
-        return new InteropArray(list.toArray(ScriptArray.EMPTY_OBJECT_ARRAY));
+    public static TruffleObject create(List<? extends Object> list) {
+        return new InteropList(list);
     }
 
     @SuppressWarnings("static-method")
@@ -74,20 +68,23 @@ public final class InteropArray implements TruffleObject {
     }
 
     @ExportMessage
+    @TruffleBoundary
     Object readArrayElement(long index) throws InvalidArrayIndexException {
         if (!isArrayElementReadable(index)) {
             throw InvalidArrayIndexException.create(index);
         }
-        return array[(int) index];
+        return list.get((int) index);
     }
 
     @ExportMessage
+    @TruffleBoundary
     long getArraySize() {
-        return array.length;
+        return list.size();
     }
 
     @ExportMessage
+    @TruffleBoundary
     boolean isArrayElementReadable(long index) {
-        return index >= 0L && index < array.length;
+        return index >= 0L && index < list.size();
     }
 }

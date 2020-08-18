@@ -56,7 +56,7 @@ import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 
 @ImportStatic(JSInteropUtil.class)
 abstract class GetLengthHelperNode extends JavaScriptBaseNode {

@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.truffleinterop;
+package com.oracle.truffle.js.runtime.interop;
 
 import java.util.ArrayList;
 import java.util.List;

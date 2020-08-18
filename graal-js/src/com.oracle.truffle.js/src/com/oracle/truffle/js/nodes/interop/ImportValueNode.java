@@ -49,7 +49,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.truffleinterop.InteropFunction;
+import com.oracle.truffle.js.runtime.interop.InteropFunction;
 
 /**
  * This node prepares the import of a value from Interop. It transforms values allowed in Truffle,

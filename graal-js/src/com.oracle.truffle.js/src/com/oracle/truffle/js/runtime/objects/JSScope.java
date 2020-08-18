@@ -89,7 +89,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.truffleinterop.InteropList;
+import com.oracle.truffle.js.runtime.interop.InteropList;
 
 public abstract class JSScope {
 

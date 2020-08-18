@@ -46,7 +46,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
-import com.oracle.truffle.js.runtime.truffleinterop.JSMetaType;
+import com.oracle.truffle.js.runtime.interop.JSMetaType;
 
 @ExportLibrary(InteropLibrary.class)
 public final class Nullish extends JSValue {

@@ -38,7 +38,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.truffleinterop;
+package com.oracle.truffle.js.runtime.interop;
+
+import java.util.Objects;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
@@ -51,35 +53,39 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
-import com.oracle.truffle.js.nodes.promise.UnwrapPromiseNode;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
-/**
- * Interop wrapper for async functions that unwraps the returned promise.
- */
 @ExportLibrary(value = InteropLibrary.class, delegateTo = "function")
-public final class InteropAsyncFunction extends InteropFunction {
+public final class InteropBoundFunction extends InteropFunction {
 
     final DynamicObject function;
+    final Object receiver;
 
-    public InteropAsyncFunction(DynamicObject function) {
+    public InteropBoundFunction(DynamicObject function, Object receiver) {
         super(function);
         this.function = function;
+        this.receiver = receiver;
+    }
+
+    public Object getReceiver() {
+        return receiver;
     }
 
     @Override
     public int hashCode() {
-        return function.hashCode();
+        int result;
+        result = 31 + ((function == null) ? 0 : function.hashCode());
+        result = 31 * result + ((receiver == null) ? 0 : receiver.hashCode());
+        return result;
     }
 
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
             return true;
-        } else if (obj instanceof InteropAsyncFunction) {
-            InteropAsyncFunction other = (InteropAsyncFunction) obj;
-            return function.equals(other.function);
+        } else if (obj instanceof InteropBoundFunction) {
+            InteropBoundFunction other = (InteropBoundFunction) obj;
+            return Objects.equals(function, other.function) && Objects.equals(receiver, other.receiver);
         } else {
             return false;
         }
@@ -96,22 +102,13 @@ public final class InteropAsyncFunction extends InteropFunction {
                     @CachedLanguage JavaScriptLanguage language,
                     @CachedContext(JavaScriptLanguage.class) JSRealm realm,
                     @Cached JSInteropExecuteNode callNode,
-                    @Cached ExportValueNode exportNode,
-                    @Cached(value = "create(realm.getContext())") UnwrapPromiseNode unwrapPromise) throws UnsupportedMessageException {
-        assert realm.getContext().getContextOptions().interopCompletePromises();
+                    @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
         language.interopBoundaryEnter(realm);
-        Object result;
         try {
-            result = callNode.execute(function, Undefined.instance, arguments);
-            result = exportNode.execute(result);
+            Object result = callNode.execute(function, receiver, arguments);
+            return exportNode.execute(result);
         } finally {
             language.interopBoundaryExit(realm);
         }
-        /*
-         * InteropCompletePromises semantics: interop calls to async functions return the async
-         * resolved value (if any). If the promise resolves, its value is made available by flushing
-         * the queue of pending jobs.
-         */
-        return unwrapPromise.execute((DynamicObject) result);
     }
 }

@@ -57,10 +57,10 @@ import com.oracle.truffle.js.nodes.interop.JSInteropInstantiateNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.interop.JSMetaType;
 import com.oracle.truffle.js.runtime.objects.JSClassObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSMetaType;
 
 @ExportLibrary(InteropLibrary.class)
 public final class JSProxyObject extends JSClassObject {
