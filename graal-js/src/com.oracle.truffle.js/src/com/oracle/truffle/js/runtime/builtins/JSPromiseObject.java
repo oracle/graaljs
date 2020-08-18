@@ -47,11 +47,6 @@ import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 public final class JSPromiseObject extends JSBasicObject {
     private int promiseState;
 
-    protected JSPromiseObject(JSRealm realm, JSObjectFactory factory, int promiseState) {
-        super(realm, factory);
-        this.promiseState = promiseState;
-    }
-
     protected JSPromiseObject(Shape shape, int promiseState) {
         super(shape);
         this.promiseState = promiseState;
@@ -66,7 +61,7 @@ public final class JSPromiseObject extends JSBasicObject {
     }
 
     public static JSPromiseObject create(JSRealm realm, JSObjectFactory factory, int promiseState) {
-        return new JSPromiseObject(realm, factory, promiseState);
+        return factory.initProto(new JSPromiseObject(factory.getShape(), promiseState), realm);
     }
 
     public static JSPromiseObject create(Shape shape, int promiseState) {

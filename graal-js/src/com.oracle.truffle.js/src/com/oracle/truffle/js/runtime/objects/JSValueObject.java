@@ -41,16 +41,10 @@
 package com.oracle.truffle.js.runtime.objects;
 
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 
 public abstract class JSValueObject extends JSBasicObject {
     protected JSValueObject(Shape shape) {
         super(shape);
-    }
-
-    protected JSValueObject(JSRealm realm, JSObjectFactory factory) {
-        super(realm, factory);
     }
 
     @Override

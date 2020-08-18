@@ -82,7 +82,9 @@ public final class JSMap extends JSBuiltinObject implements JSConstructorFactory
     }
 
     public static DynamicObject create(JSContext context) {
-        DynamicObject obj = new Instance(context.getRealm(), context.getMapFactory(), new JSHashMap());
+        JSRealm realm = context.getRealm();
+        JSObjectFactory factory = context.getMapFactory();
+        DynamicObject obj = factory.initProto(new Instance(factory.getShape(realm), new JSHashMap()), realm);
         assert isJSMap(obj);
         return context.trackAllocation(obj);
     }
@@ -181,11 +183,6 @@ public final class JSMap extends JSBuiltinObject implements JSConstructorFactory
 
     public static final class Instance extends JSBasicObject {
         private final JSHashMap map;
-
-        protected Instance(JSRealm realm, JSObjectFactory factory, JSHashMap map) {
-            super(realm, factory);
-            this.map = map;
-        }
 
         protected Instance(Shape shape, JSHashMap map) {
             super(shape);

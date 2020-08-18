@@ -57,11 +57,6 @@ public final class JSStringObject extends JSValueObject {
         this.string = string;
     }
 
-    protected JSStringObject(JSRealm realm, JSObjectFactory factory, CharSequence string) {
-        super(realm, factory);
-        this.string = string;
-    }
-
     public CharSequence getCharSequence() {
         return string;
     }
@@ -71,7 +66,7 @@ public final class JSStringObject extends JSValueObject {
     }
 
     public static DynamicObject create(JSRealm realm, JSObjectFactory factory, CharSequence value) {
-        return new JSStringObject(realm, factory, value);
+        return factory.initProto(new JSStringObject(factory.getShape(realm), value), realm);
     }
 
     @Override

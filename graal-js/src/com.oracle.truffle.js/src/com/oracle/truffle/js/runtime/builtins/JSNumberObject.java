@@ -63,11 +63,6 @@ public final class JSNumberObject extends JSValueObject {
         this.number = number;
     }
 
-    protected JSNumberObject(JSRealm realm, JSObjectFactory factory, Number number) {
-        super(realm, factory);
-        this.number = number;
-    }
-
     public Number getNumber() {
         return number;
     }
@@ -82,7 +77,7 @@ public final class JSNumberObject extends JSValueObject {
     }
 
     public static DynamicObject create(JSRealm realm, JSObjectFactory factory, Number value) {
-        return new JSNumberObject(realm, factory, value);
+        return factory.initProto(new JSNumberObject(factory.getShape(realm), value), realm);
     }
 
     @SuppressWarnings("static-method")

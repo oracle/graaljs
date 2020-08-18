@@ -68,12 +68,6 @@ public final class JSProxyObject extends JSClassObject {
     private Object proxyTarget;
     private DynamicObject proxyHandler;
 
-    protected JSProxyObject(JSRealm realm, JSObjectFactory factory, Object proxyTarget, DynamicObject proxyHandler) {
-        super(realm, factory);
-        this.proxyTarget = proxyTarget;
-        this.proxyHandler = proxyHandler;
-    }
-
     protected JSProxyObject(Shape shape, Object proxyTarget, DynamicObject proxyHandler) {
         super(shape);
         this.proxyTarget = proxyTarget;
@@ -94,7 +88,7 @@ public final class JSProxyObject extends JSClassObject {
     }
 
     public static DynamicObject create(JSRealm realm, JSObjectFactory factory, Object target, DynamicObject handler) {
-        return new JSProxyObject(realm, factory, target, handler);
+        return factory.initProto(new JSProxyObject(factory.getShape(realm), target, handler), realm);
     }
 
     @ExportMessage

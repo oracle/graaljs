@@ -48,11 +48,6 @@ import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 public final class JSSymbolObject extends JSBasicObject {
     private final Symbol symbol;
 
-    protected JSSymbolObject(JSRealm realm, JSObjectFactory factory, Symbol symbol) {
-        super(realm, factory);
-        this.symbol = symbol;
-    }
-
     protected JSSymbolObject(Shape shape, Symbol symbol) {
         super(shape);
         this.symbol = symbol;
@@ -63,6 +58,6 @@ public final class JSSymbolObject extends JSBasicObject {
     }
 
     public static JSSymbolObject create(JSRealm realm, JSObjectFactory factory, Symbol symbol) {
-        return new JSSymbolObject(realm, factory, symbol);
+        return factory.initProto(new JSSymbolObject(factory.getShape(realm), symbol), realm);
     }
 }

@@ -52,11 +52,6 @@ public final class JSBigIntObject extends JSValueObject {
 
     private final BigInt value;
 
-    protected JSBigIntObject(JSRealm realm, JSObjectFactory factory, BigInt value) {
-        super(realm, factory);
-        this.value = value;
-    }
-
     protected JSBigIntObject(Shape shape, BigInt value) {
         super(shape);
         this.value = value;
@@ -72,6 +67,6 @@ public final class JSBigIntObject extends JSValueObject {
     }
 
     public static DynamicObject create(JSRealm realm, JSObjectFactory factory, BigInt value) {
-        return new JSBigIntObject(realm, factory, value);
+        return factory.initProto(new JSBigIntObject(factory.getShape(realm), value), realm);
     }
 }

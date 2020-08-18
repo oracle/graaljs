@@ -83,7 +83,9 @@ public final class JSSet extends JSBuiltinObject implements JSConstructorFactory
     }
 
     public static DynamicObject create(JSContext context) {
-        DynamicObject obj = new Instance(context.getRealm(), context.getSetFactory(), new JSHashMap());
+        JSRealm realm = context.getRealm();
+        JSObjectFactory factory = context.getSetFactory();
+        DynamicObject obj = factory.initProto(new Instance(factory.getShape(realm), new JSHashMap()), realm);
         assert isJSSet(obj);
         return context.trackAllocation(obj);
     }
@@ -201,11 +203,6 @@ public final class JSSet extends JSBuiltinObject implements JSConstructorFactory
 
     public static final class Instance extends JSBasicObject {
         private final JSHashMap map;
-
-        protected Instance(JSRealm realm, JSObjectFactory factory, JSHashMap map) {
-            super(realm, factory);
-            this.map = map;
-        }
 
         protected Instance(Shape shape, JSHashMap map) {
             super(shape);

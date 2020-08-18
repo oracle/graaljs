@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -68,12 +67,7 @@ public final class JSDataViewObject extends JSArrayBufferViewBase {
         return ((JSDataViewObject) thisObj).offset;
     }
 
-    public static JSDataViewObject create(Shape shape, JSArrayBufferObject arrayBuffer, int length, int offset) {
-        return new JSDataViewObject(shape, arrayBuffer, length, offset);
-    }
-
     public static JSDataViewObject create(JSRealm realm, JSObjectFactory factory, JSArrayBufferObject arrayBuffer, int length, int offset) {
-        CompilerAsserts.partialEvaluationConstant(factory);
-        return factory.initProto(create(factory.getShape(realm), arrayBuffer, length, offset), realm);
+        return factory.initProto(new JSDataViewObject(factory.getShape(realm), arrayBuffer, length, offset), realm);
     }
 }

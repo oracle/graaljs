@@ -63,11 +63,6 @@ public final class JSWeakMap extends JSBuiltinObject implements JSConstructorFac
     public static final class Instance extends JSBasicObject {
         private final Map<DynamicObject, Object> weakHashMap;
 
-        protected Instance(JSRealm realm, JSObjectFactory factory, Map<DynamicObject, Object> weakHashMap) {
-            super(realm, factory);
-            this.weakHashMap = weakHashMap;
-        }
-
         protected Instance(Shape shape, Map<DynamicObject, Object> weakHashMap) {
             super(shape);
             this.weakHashMap = weakHashMap;
@@ -84,7 +79,8 @@ public final class JSWeakMap extends JSBuiltinObject implements JSConstructorFac
     public static DynamicObject create(JSContext context) {
         WeakMap weakMap = new WeakMap();
         JSRealm realm = context.getRealm();
-        DynamicObject obj = new Instance(realm, context.getWeakMapFactory(), weakMap);
+        JSObjectFactory factory = context.getWeakMapFactory();
+        DynamicObject obj = factory.initProto(new Instance(factory.getShape(realm), weakMap), realm);
         assert isJSWeakMap(obj);
         return context.trackAllocation(obj);
     }

@@ -74,15 +74,11 @@ public final class JSFinalizationRegistry extends JSBuiltinObject implements JSC
         List<FinalizationRecord> cells;
         ReferenceQueue<Object> referenceQueue;
 
-        protected Instance(JSRealm realm, JSObjectFactory factory, TruffleObject cleanupCallback, List<FinalizationRecord> cells, ReferenceQueue<Object> referenceQueue) {
-            super(realm, factory);
+        protected Instance(Shape shape, TruffleObject cleanupCallback, List<FinalizationRecord> cells, ReferenceQueue<Object> referenceQueue) {
+            super(shape);
             this.cleanupCallback = cleanupCallback;
             this.cells = cells;
             this.referenceQueue = referenceQueue;
-        }
-
-        public static Instance create(JSRealm realm, JSObjectFactory factory, TruffleObject cleanupCallback, List<FinalizationRecord> cells, ReferenceQueue<Object> referenceQueue) {
-            return new Instance(realm, factory, cleanupCallback, cells, referenceQueue);
         }
     }
 
@@ -91,7 +87,8 @@ public final class JSFinalizationRegistry extends JSBuiltinObject implements JSC
 
     public static DynamicObject create(JSContext context, TruffleObject cleanupCallback) {
         JSRealm realm = context.getRealm();
-        DynamicObject obj = Instance.create(realm, context.getFinalizationRegistryFactory(), cleanupCallback, new ArrayList<>(), new ReferenceQueue<>());
+        JSObjectFactory factory = context.getFinalizationRegistryFactory();
+        DynamicObject obj = factory.initProto(new Instance(factory.getShape(realm), cleanupCallback, new ArrayList<>(), new ReferenceQueue<>()), realm);
         assert isJSFinalizationRegistry(obj);
         context.registerFinalizationRegistry(obj);
         context.trackAllocation(obj);

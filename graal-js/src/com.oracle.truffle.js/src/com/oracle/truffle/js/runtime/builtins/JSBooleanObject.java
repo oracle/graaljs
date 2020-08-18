@@ -60,11 +60,6 @@ public final class JSBooleanObject extends JSValueObject {
         this.value = value;
     }
 
-    protected JSBooleanObject(JSRealm realm, JSObjectFactory factory, boolean value) {
-        super(realm, factory);
-        this.value = value;
-    }
-
     public boolean getBooleanValue() {
         return value;
     }
@@ -79,7 +74,7 @@ public final class JSBooleanObject extends JSValueObject {
     }
 
     public static DynamicObject create(JSRealm realm, JSObjectFactory factory, boolean value) {
-        return new JSBooleanObject(realm, factory, value);
+        return factory.initProto(new JSBooleanObject(factory.getShape(realm), value), realm);
     }
 
     @SuppressWarnings("static-method")

@@ -169,14 +169,6 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
             this.legacyFeaturesEnabled = legacyFeaturesEnabled;
         }
 
-        protected JSRegExpObject(JSRealm realm, JSObjectFactory factory, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
-            super(realm, factory);
-            this.realm = realm;
-            this.compiledRegex = compiledRegex;
-            this.groupsFactory = groupsFactory;
-            this.legacyFeaturesEnabled = legacyFeaturesEnabled;
-        }
-
         public Object getCompiledRegex() {
             return compiledRegex;
         }
@@ -207,7 +199,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         }
 
         public static DynamicObject create(JSRealm realm, JSObjectFactory factory, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
-            return new JSRegExpObject(realm, factory, compiledRegex, groupsFactory, legacyFeaturesEnabled);
+            return factory.initProto(new JSRegExpObject(factory.getShape(realm), compiledRegex, groupsFactory, realm, legacyFeaturesEnabled), realm);
         }
 
         public static DynamicObject create(Shape shape, Object compiledRegex, JSRealm realm) {
@@ -224,13 +216,6 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         private Object regexResult;
         private String input;
         private boolean isIndices;
-
-        protected JSRegExpGroupsObject(JSRealm realm, JSObjectFactory factory, Object regexResult, String inputString, boolean isIndices) {
-            super(realm, factory);
-            this.regexResult = regexResult;
-            this.input = inputString;
-            this.isIndices = isIndices;
-        }
 
         protected JSRegExpGroupsObject(Shape shape, Object regexResult, String inputString, boolean isIndices) {
             super(shape);
@@ -257,7 +242,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         }
 
         public static DynamicObject create(JSRealm realm, JSObjectFactory factory, Object regexResult, String inputString, boolean isIndices) {
-            return new JSRegExpGroupsObject(realm, factory, regexResult, inputString, isIndices);
+            return factory.initProto(new JSRegExpGroupsObject(factory.getShape(realm), regexResult, inputString, isIndices), realm);
         }
 
         @Override

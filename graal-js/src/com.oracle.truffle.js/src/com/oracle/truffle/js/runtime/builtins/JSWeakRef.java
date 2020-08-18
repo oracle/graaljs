@@ -61,11 +61,6 @@ public final class JSWeakRef extends JSBuiltinObject implements JSConstructorFac
     public static final class Instance extends JSBasicObject {
         private final TruffleWeakReference<Object> weakReference;
 
-        protected Instance(JSRealm realm, JSObjectFactory factory, TruffleWeakReference<Object> weakReference) {
-            super(realm, factory);
-            this.weakReference = weakReference;
-        }
-
         protected Instance(Shape shape, TruffleWeakReference<Object> weakReference) {
             super(shape);
             this.weakReference = weakReference;
@@ -81,7 +76,9 @@ public final class JSWeakRef extends JSBuiltinObject implements JSConstructorFac
 
     public static DynamicObject create(JSContext context, Object referent) {
         TruffleWeakReference<Object> weakReference = new TruffleWeakReference<>(referent);
-        DynamicObject obj = new Instance(context.getRealm(), context.getWeakRefFactory(), weakReference);
+        JSRealm realm = context.getRealm();
+        JSObjectFactory factory = context.getWeakRefFactory();
+        DynamicObject obj = factory.initProto(new Instance(factory.getShape(realm), weakReference), realm);
         assert isJSWeakRef(obj);
         // Used for KeepDuringJob(target) in the specification
         context.addWeakRefTargetToSet(referent);

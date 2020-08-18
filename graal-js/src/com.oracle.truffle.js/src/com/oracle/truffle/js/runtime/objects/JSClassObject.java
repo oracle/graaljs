@@ -42,10 +42,7 @@ package com.oracle.truffle.js.runtime.objects;
 
 import java.util.List;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 
 /**
  * Delegates methods to JSClass.
@@ -54,12 +51,6 @@ public abstract class JSClassObject extends JSObject {
 
     protected JSClassObject(Shape shape) {
         super(shape);
-    }
-
-    protected JSClassObject(JSRealm realm, JSObjectFactory factory) {
-        super(factory.getShape(realm));
-        CompilerAsserts.partialEvaluationConstant(factory);
-        factory.initProto(this, realm);
     }
 
     @Override

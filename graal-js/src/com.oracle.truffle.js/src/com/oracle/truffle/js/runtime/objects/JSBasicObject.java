@@ -47,10 +47,8 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JSGuards;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
-import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 
 /**
  * Basic non-proxy JS object.
@@ -60,10 +58,6 @@ public abstract class JSBasicObject extends JSClassObject {
 
     protected JSBasicObject(Shape shape) {
         super(shape);
-    }
-
-    protected JSBasicObject(JSRealm realm, JSObjectFactory factory) {
-        super(realm, factory);
     }
 
     @ExportMessage

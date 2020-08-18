@@ -52,16 +52,12 @@ public final class JSErrorObject extends JSBasicObject implements JSCopyableObje
         super(shape);
     }
 
-    protected JSErrorObject(JSRealm realm, JSObjectFactory factory) {
-        super(realm, factory);
-    }
-
     public static DynamicObject create(Shape shape) {
         return new JSErrorObject(shape);
     }
 
     public static DynamicObject create(JSRealm realm, JSObjectFactory factory) {
-        return new JSErrorObject(realm, factory);
+        return factory.initProto(new JSErrorObject(factory.getShape(realm)), realm);
     }
 
     @Override
