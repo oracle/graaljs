@@ -13,6 +13,12 @@ local jdks = (import "common.json").jdks;
     },
   },
 
+  jdk15: {
+    downloads+: {
+      JAVA_HOME: jdks["oraclejdk15"],
+    },
+  },
+
   deploy:      {targets+: ['deploy']},
   gate:        {targets+: ['gate']},
   postMerge:   {targets+: ['post-merge']},
