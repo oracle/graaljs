@@ -55,10 +55,13 @@ local common = import '../common.jsonnet';
     graalNodeJs + common.jdk8  + common.gate      + common.linux          + common.gateTags             + {environment+: {TAGS: 'all'}}                                             + {name: 'nodejs-gate-jdk8-linux-amd64'},
     graalNodeJs + common.jdk11 + common.gate      + common.linux          + common.gateTags             + {environment+: {TAGS: 'all'}}                                             + {name: 'nodejs-gate-jdk11-linux-amd64'},
     graalNodeJs + common.jdk11 + common.gate      + common.linux_aarch64  + common.gateTags             + {environment+: {TAGS: 'all'}}                                             + {name: 'nodejs-gate-jdk11-linux-aarch64'},
+    graalNodeJs + common.jdk15 + common.gate      + common.linux          + common.gateTags             + {environment+: {TAGS: 'all'}}                                             + {name: 'nodejs-gate-jdk15-linux-amd64'},
     graalNodeJs + common.jdk8  + common.gate      + common.darwin         + common.gateTags             + {environment+: {TAGS: 'all'}}                                             + {name: 'nodejs-gate-jdk8-darwin-amd64'},
     graalNodeJs + common.jdk11 + common.gate      + common.darwin         + common.gateTags             + {environment+: {TAGS: 'all'}}                                             + {name: 'nodejs-gate-jdk11-darwin-amd64'},
+    graalNodeJs + common.jdk15 + common.gate      + common.darwin         + common.gateTags             + {environment+: {TAGS: 'all'}}                                             + {name: 'nodejs-gate-jdk15-darwin-amd64'},
     graalNodeJs + common.jdk8  + common.gate      + common.windows_vs2010 + common.gateTags             + {environment+: {TAGS: 'windows'}}                                         + {name: 'nodejs-gate-jdk8-windows-amd64'},
     graalNodeJs + common.jdk11 + common.gate      + common.windows        + common.gateTags             + {environment+: {TAGS: 'windows'}}                                         + {name: 'nodejs-gate-jdk11-windows-amd64'},
+    graalNodeJs + common.jdk15 + common.gate      + common.windows        + common.gateTags             + {environment+: {TAGS: 'windows'}}                                         + {name: 'nodejs-gate-jdk15-windows-amd64'},
     graalNodeJs + common.jdk8  + common.gate      + common.linux          + gateSubstrateVm                                                                                         + {name: 'nodejs-gate-substratevm-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8  + common.gate      + common.darwin         + gateSubstrateVm                                                                                         + {name: 'nodejs-gate-substratevm-jdk8-darwin-amd64'},
     graalNodeJs + common.jdk11 + common.gate      + common.linux          + gateSubstrateVm                                                                                         + {name: 'nodejs-gate-substratevm-jdk11-linux-amd64'},
@@ -82,6 +85,18 @@ local common = import '../common.jsonnet';
     graalNodeJs + common.jdk8  + common.gate      + common.windows_vs2010                    + testNode + {environment+: {SUITE: 'es-module',     PART: '-r0,1', MAX_HEAP: '8G'}}   + {name: 'nodejs-gate-es-module-jdk8-windows-amd64'},
     # We run the `sequential` tests with a smaller heap because `test/sequential/test-child-process-pass-fd.js` starts 80 child processes.
     graalNodeJs + common.jdk8  + common.gate      + common.windows_vs2010                    + testNode + {environment+: {SUITE: 'sequential',    PART: '-r0,1', MAX_HEAP: '512M'}} + {name: 'nodejs-gate-sequential-jdk8-windows-amd64'},
+
+    graalNodeJs + common.jdk15 + common.gate      + common.linux          + buildAddons      + testNode + {environment+: {SUITE: 'addons',        PART: '-r0,1', MAX_HEAP: '8G'}}   + {name: 'nodejs-gate-addons-jdk15-linux-amd64'},
+    graalNodeJs + common.jdk15 + common.gate      + common.linux          + buildNodeAPI     + testNode + {environment+: {SUITE: 'node-api',      PART: '-r0,1', MAX_HEAP: '8G'}}   + {name: 'nodejs-gate-node-api-jdk15-linux-amd64'},
+    graalNodeJs + common.jdk15 + common.gate      + common.linux          + buildJSNativeAPI + testNode + {environment+: {SUITE: 'js-native-api', PART: '-r0,1', MAX_HEAP: '8G'}}   + {name: 'nodejs-gate-js-native-api-jdk15-linux-amd64'},
+    graalNodeJs + common.jdk15 + common.gate      + common.linux                             + testNode + {environment+: {SUITE: 'async-hooks',   PART: '-r0,1', MAX_HEAP: '8G'}}   + {name: 'nodejs-gate-async-hooks-jdk15-linux-amd64'},
+    graalNodeJs + common.jdk15 + common.gate      + common.linux                             + testNode + {environment+: {SUITE: 'es-module',     PART: '-r0,1', MAX_HEAP: '8G'}}   + {name: 'nodejs-gate-es-module-jdk15-linux-amd64'},
+    graalNodeJs + common.jdk15 + common.gate      + common.linux                             + testNode + {environment+: {SUITE: 'sequential',    PART: '-r0,1', MAX_HEAP: '8G'}}   + {name: 'nodejs-gate-sequential-jdk15-linux-amd64'},
+    graalNodeJs + common.jdk15 + common.gate      + common.linux                             + testNode + {environment+: {SUITE: parallelNoHttp2, PART: '-r0,5', MAX_HEAP: '8G'}}   + {name: 'nodejs-gate-parallel-1-jdk15-linux-amd64'},
+    graalNodeJs + common.jdk15 + common.gate      + common.linux                             + testNode + {environment+: {SUITE: parallelNoHttp2, PART: '-r1,5', MAX_HEAP: '8G'}}   + {name: 'nodejs-gate-parallel-2-jdk15-linux-amd64'},
+    graalNodeJs + common.jdk15 + common.gate      + common.linux                             + testNode + {environment+: {SUITE: parallelNoHttp2, PART: '-r2,5', MAX_HEAP: '8G'}}   + {name: 'nodejs-gate-parallel-3-jdk15-linux-amd64'},
+    graalNodeJs + common.jdk15 + common.gate      + common.linux                             + testNode + {environment+: {SUITE: parallelNoHttp2, PART: '-r3,5', MAX_HEAP: '8G'}}   + {name: 'nodejs-gate-parallel-4-jdk15-linux-amd64'},
+    graalNodeJs + common.jdk15 + common.gate      + common.linux                             + testNode + {environment+: {SUITE: parallelNoHttp2, PART: '-r4,5', MAX_HEAP: '8G'}}   + {name: 'nodejs-gate-parallel-5-jdk15-linux-amd64'},
 
     // post-merges
     graalNodeJs + common.jdk8  + common.postMerge + common.linux                             + testNode + {environment+: {SUITE: parallelHttp2,   PART: '-r0,1', MAX_HEAP: '8G'}}   + {name: 'nodejs-postmerge-parallel-http2-jdk8-linux-amd64'},
