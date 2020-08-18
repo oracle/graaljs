@@ -44,14 +44,36 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.js.nodes.access.ReadElementNode;
+import com.oracle.truffle.js.nodes.access.WriteElementNode;
+import com.oracle.truffle.js.nodes.interop.ExportValueNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
+import com.oracle.truffle.js.nodes.interop.JSInteropInvokeNode;
+import com.oracle.truffle.js.nodes.interop.KeyInfoNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -60,9 +82,12 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBase;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
+import com.oracle.truffle.js.runtime.truffleinterop.InteropArray;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.truffleinterop.JSMetaType;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 /**
@@ -70,6 +95,7 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
  *
  * Includes static methods for dealing with JS objects (internal methods).
  */
+@ExportLibrary(InteropLibrary.class)
 public abstract class JSObject extends JSDynamicObject {
 
     public static final String CONSTRUCTOR = "constructor";
@@ -79,6 +105,7 @@ public abstract class JSObject extends JSDynamicObject {
 
     public static final String NO_SUCH_PROPERTY_NAME = "__noSuchProperty__";
     public static final String NO_SUCH_METHOD_NAME = "__noSuchMethod__";
+    protected static final String[] EMPTY_STRING_ARRAY = new String[0];
 
     protected JSObject(Shape shape) {
         super(shape);
@@ -100,6 +127,200 @@ public abstract class JSObject extends JSDynamicObject {
      */
     public static boolean isJSObject(Object object) {
         return JSRuntime.isObject(object);
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public final boolean hasMembers() {
+        return true;
+    }
+
+    @ImportStatic({JSGuards.class, JSObject.class})
+    @ExportMessage
+    public abstract static class GetMembers {
+        @Specialization(guards = {"cachedJSClass != null", "getJSClass(target) == cachedJSClass"})
+        public static Object nonArrayCached(JSObject target, @SuppressWarnings("unused") boolean internal,
+                        @Cached("getJSClass(target)") @SuppressWarnings("unused") JSClass cachedJSClass) {
+            return InteropArray.create(JSObject.enumerableOwnNames(target));
+        }
+
+        @Specialization(replaces = "nonArrayCached")
+        public static Object nonArrayUncached(JSObject target, @SuppressWarnings("unused") boolean internal) {
+            return InteropArray.create(JSObject.enumerableOwnNames(target));
+        }
+    }
+
+    @TruffleBoundary
+    protected static String[] filterEnumerableNames(DynamicObject target, Iterable<Object> ownKeys, JSClass jsclass) {
+        List<String> names = new ArrayList<>();
+        for (Object obj : ownKeys) {
+            if (obj instanceof String && !JSRuntime.isArrayIndex((String) obj)) {
+                PropertyDescriptor desc = jsclass.getOwnProperty(target, obj);
+                if (desc != null && desc.getEnumerable()) {
+                    names.add((String) obj);
+                }
+            }
+        }
+        return names.toArray(EMPTY_STRING_ARRAY);
+    }
+
+    @ExportMessage
+    public final Object readMember(String key,
+                    @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
+                    @Cached(value = "create(languageRef.get().getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
+                    @Cached(value = "languageRef.get().bindMemberFunctions()", allowUncached = true) boolean bindMemberFunctions,
+                    @Cached @Exclusive ExportValueNode exportNode) throws UnknownIdentifierException {
+        DynamicObject target = this;
+        Object result;
+        if (readNode == null) {
+            result = JSObject.getOrDefault(target, key, target, null, JSClassProfile.getUncached());
+        } else {
+            result = readNode.executeWithTargetAndIndexOrDefault(target, key, null);
+        }
+        if (result == null) {
+            throw UnknownIdentifierException.create(key);
+        }
+        return exportNode.execute(result, target, bindMemberFunctions);
+    }
+
+    @ExportMessage
+    public final boolean isMemberReadable(String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(this, key, KeyInfoNode.READABLE);
+    }
+
+    @ExportMessage
+    public final void writeMember(String key, Object value,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo,
+                    @Cached ImportValueNode castValueNode,
+                    @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
+                    @Cached(value = "createCachedInterop(languageRef)", uncached = "getUncachedWrite()") WriteElementNode writeNode)
+                    throws UnknownIdentifierException, UnsupportedMessageException {
+        DynamicObject target = this;
+        if (testIntegrityLevel(true)) {
+            throw UnsupportedMessageException.create();
+        }
+        if (!keyInfo.execute(target, key, KeyInfoNode.WRITABLE)) {
+            throw UnknownIdentifierException.create(key);
+        }
+        Object importedValue = castValueNode.executeWithTarget(value);
+        if (writeNode == null) {
+            JSObject.set(target, key, importedValue, true);
+        } else {
+            writeNode.executeWithTargetAndIndexAndValue(target, key, importedValue);
+        }
+    }
+
+    @ExportMessage
+    public final boolean isMemberModifiable(String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(this, key, KeyInfoNode.MODIFIABLE);
+    }
+
+    @ExportMessage
+    public final boolean isMemberInsertable(String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(this, key, KeyInfoNode.INSERTABLE);
+    }
+
+    @ExportMessage
+    public final void removeMember(String key) throws UnsupportedMessageException {
+        if (testIntegrityLevel(false)) {
+            throw UnsupportedMessageException.create();
+        }
+        JSObject.delete(this, key, true);
+    }
+
+    @ExportMessage
+    public final boolean isMemberRemovable(String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(this, key, KeyInfoNode.REMOVABLE);
+    }
+
+    @ExportMessage
+    public final Object invokeMember(String id, Object[] args,
+                    @CachedLanguage JavaScriptLanguage language,
+                    @CachedContext(JavaScriptLanguage.class) JSRealm realm,
+                    @Cached JSInteropInvokeNode callNode,
+                    @Cached @Exclusive ExportValueNode exportNode) throws UnsupportedMessageException, UnknownIdentifierException {
+        language.interopBoundaryEnter(realm);
+        try {
+            Object result = callNode.execute(this, id, args);
+            return exportNode.execute(result);
+        } finally {
+            language.interopBoundaryExit(realm);
+        }
+    }
+
+    @ExportMessage
+    public final boolean isMemberInvocable(String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(this, key, KeyInfoNode.INVOCABLE);
+    }
+
+    @ExportMessage
+    public final boolean hasMemberReadSideEffects(String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(this, key, KeyInfoNode.READ_SIDE_EFFECTS);
+    }
+
+    @ExportMessage
+    public final boolean hasMemberWriteSideEffects(String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(this, key, KeyInfoNode.WRITE_SIDE_EFFECTS);
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public final boolean hasLanguage() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public final Class<? extends TruffleLanguage<?>> getLanguage() {
+        return JavaScriptLanguage.class;
+    }
+
+    @ExportMessage
+    public final Object toDisplayString(boolean allowSideEffects) {
+        return JSRuntime.toDisplayString(this, allowSideEffects);
+    }
+
+    @ExportMessage
+    public final boolean hasMetaObject() {
+        return getMetaObjectImpl() != null;
+    }
+
+    @ExportMessage
+    public final Object getMetaObject() throws UnsupportedMessageException {
+        Object metaObject = getMetaObjectImpl();
+        if (metaObject != null) {
+            return metaObject;
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @TruffleBoundary
+    public final Object getMetaObjectImpl() {
+        if (JSGuards.isJSProxy(this)) {
+            return JSMetaType.JS_PROXY;
+        } else {
+            assert JSObject.isJSDynamicObject(this) && !JSGuards.isJSProxy(this);
+            Object metaObject = JSRuntime.getDataProperty(this, JSObject.CONSTRUCTOR);
+            if (metaObject != null && metaObject instanceof JSFunctionObject) {
+                return metaObject;
+            }
+        }
+        return null;
+    }
+
+    public static ReadElementNode getUncachedRead() {
+        return null;
+    }
+
+    public static WriteElementNode getUncachedWrite() {
+        return null;
     }
 
     public static JSClass getJSClass(DynamicObject obj) {
@@ -364,6 +585,7 @@ public abstract class JSObject extends JSDynamicObject {
         return JSObject.getJSClass(obj).defaultToString(obj);
     }
 
+    @ExportMessage.Ignore
     @TruffleBoundary
     public static String toDisplayString(DynamicObject obj, int depth, boolean allowSideEffects) {
         return JSObject.getJSClass(obj).toDisplayStringImpl(obj, depth, allowSideEffects, JavaScriptLanguage.getCurrentLanguage().getJSContext());

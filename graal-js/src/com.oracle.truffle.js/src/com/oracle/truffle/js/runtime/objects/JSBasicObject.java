@@ -44,6 +44,9 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 
+/**
+ * Basic non-proxy JS object.
+ */
 public abstract class JSBasicObject extends JSClassObject {
 
     protected JSBasicObject(Shape shape) {
