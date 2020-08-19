@@ -1956,14 +1956,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2020-07-21"
   }, {
-    "filePath" : "intl402/NumberFormat/constructor-order.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
-    "filePath" : "intl402/NumberFormat/constructor-unit.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
     "filePath" : "intl402/RelativeTimeFormat/prototype/format/pl-pl-style-long.js",
     "status" : "FAIL",
     "comment" : "new failures 2020-07-21"
