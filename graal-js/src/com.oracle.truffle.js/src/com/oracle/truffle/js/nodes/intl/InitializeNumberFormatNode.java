@@ -167,34 +167,38 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
     private void setNumberFormatUnitOptions(JSNumberFormat.InternalState state, DynamicObject options) {
         String style = getStyleOption.executeValue(options);
         state.setStyle(style);
+        boolean styleIsCurrency = IntlUtil.CURRENCY.equals(style);
+        boolean styleIsUnit = IntlUtil.UNIT.equals(style);
 
         String currency = getCurrencyOption.executeValue(options);
-        if (currency != null) {
+        if (currency == null) {
+            if (styleIsCurrency) {
+                errorBranch.enter();
+                throw Errors.createTypeError("Currency can not be undefined when style is \"currency\".");
+            }
+        } else {
             IntlUtil.ensureIsWellFormedCurrencyCode(currency);
         }
         String currencyDisplay = getCurrencyDisplayOption.executeValue(options);
         String currencySign = getCurrencySignOption.executeValue(options);
 
         String unit = getUnitOption.executeValue(options);
-        if (unit != null) {
+        if (unit == null) {
+            if (styleIsUnit) {
+                errorBranch.enter();
+                throw Errors.createTypeError("Unit can not be undefined when style is \"unit\".");
+            }
+        } else {
             IntlUtil.ensureIsWellFormedUnitIdentifier(unit);
         }
         String unitDisplay = getUnitDisplayOption.executeValue(options);
 
-        if (IntlUtil.CURRENCY.equals(style)) {
-            if (currency == null) {
-                errorBranch.enter();
-                throw Errors.createTypeError("Currency can not be undefined when style is \"currency\".");
-            }
+        if (styleIsCurrency) {
             currency = IntlUtil.toUpperCase(currency);
             state.setCurrency(currency);
             state.setCurrencyDisplay(currencyDisplay);
             state.setCurrencySign(currencySign);
-        } else if (IntlUtil.UNIT.equals(style)) {
-            if (unit == null) {
-                errorBranch.enter();
-                throw Errors.createTypeError("Unit can not be undefined when style is \"unit\".");
-            }
+        } else if (styleIsUnit) {
             state.setUnit(unit);
             state.setUnitDisplay(unitDisplay);
         }
