@@ -53,7 +53,7 @@ public final class TestFileUtil {
      * <p>
      * In other words, creates new test file with copied properties of the {@code first} test file
      * overwritten by non-{@code null} properties of the {@code second} one.
-     * 
+     *
      * @param first test file
      * @param second test file
      * @return new test file with merged properties
@@ -79,5 +79,19 @@ public final class TestFileUtil {
         mergedTestFile.setComment(comment != null ? comment : first.getComment());
         return mergedTestFile;
     }
+
+    private static int getJavaSpecificationVersion() {
+        String value = System.getProperty("java.specification.version");
+        if (value.startsWith("1.")) {
+            value = value.substring(2);
+        }
+        return Integer.parseInt(value);
+    }
+
+    /**
+     * The integer value corresponding to the value of the {@code java.specification.version} system
+     * property after any leading {@code "1."} has been stripped.
+     */
+    public static final int JAVA_SPEC = getJavaSpecificationVersion();
 
 }
