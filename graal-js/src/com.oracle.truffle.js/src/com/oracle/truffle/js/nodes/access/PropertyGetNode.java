@@ -1545,6 +1545,11 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     assert !(cur.receiverCheck instanceof ConstantObjectReceiverCheck) || ((ConstantObjectReceiverCheck) cur.receiverCheck).getExpectedObject() == thisObj;
                 }
             }
+            if (isConstantObjectFinal && depth > 0 && !JSShape.getPropertyAssumption(cacheShape, key).isValid()) {
+                // If no constant object specialization is possible, we can still try to specialize
+                // on final prototype properties with a shape check on the receiver.
+                isConstantObjectFinal = false;
+            }
 
             if (JSProperty.isData(property) && !JSProperty.isProxy(property)) {
                 if (isEligibleForFinalSpecialization(cacheShape, thisJSObj, depth, isConstantObjectFinal)) {
@@ -1571,8 +1576,11 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     }
 
     private boolean isEligibleForFinalSpecialization(Shape cacheShape, DynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
-        return depth >= 1 ? (prototypesInShape(thisObj, depth) && propertyAssumptionsValid(thisObj, depth, isConstantObjectFinal))
-                        : (JSConfig.SkipFinalShapeCheck && isPropertyAssumptionCheckEnabled() && JSShape.getPropertyAssumption(cacheShape, key).isValid());
+        if (depth == 0) {
+            return (JSConfig.SkipFinalShapeCheck && isPropertyAssumptionCheckEnabled() && JSShape.getPropertyAssumption(cacheShape, key).isValid());
+        } else {
+            return (prototypesInShape(thisObj, depth) && propertyAssumptionsValid(thisObj, depth, isConstantObjectFinal));
+        }
     }
 
     private GetCacheNode createCachedPropertyNodeNotJSObject(Property property, Object thisObj, int depth) {
