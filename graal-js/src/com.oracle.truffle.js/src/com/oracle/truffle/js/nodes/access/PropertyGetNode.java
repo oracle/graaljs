@@ -1571,16 +1571,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     }
 
     private boolean isEligibleForFinalSpecialization(Shape cacheShape, DynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
-        /*
-         * NB: We need to check whether the property assumption of the store is valid, even if we do
-         * not actually check the assumption in the specialization but check the shape instead (note
-         * that we always check the expected object instance, too, either directly (depth 0) or
-         * indirectly (prototype derived through shape or property assumption for depth >= 1)). This
-         * is because we cannot guarantee a final location value to be constant for (object, shape)
-         * anymore once the assumption has been invalidated. Namely, one could remove and re-add a
-         * property without invalidating its finality. Perhaps we should invalidate the finality of
-         * removed properties. For now, we have to be conservative.
-         */
         return depth >= 1 ? (prototypesInShape(thisObj, depth) && propertyAssumptionsValid(thisObj, depth, isConstantObjectFinal))
                         : (JSConfig.SkipFinalShapeCheck && isPropertyAssumptionCheckEnabled() && JSShape.getPropertyAssumption(cacheShape, key).isValid());
     }
