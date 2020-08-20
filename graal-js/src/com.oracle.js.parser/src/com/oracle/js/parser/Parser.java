@@ -1870,11 +1870,11 @@ public class Parser extends AbstractParser {
             final String name = ((PropertyKey) propertyName).getPropertyName();
             if (!generator && nameTokenType == GET && type != LPAREN) {
                 PropertyFunction methodDefinition = propertyGetterFunction(startToken, methodLine, yield, await, true);
-                verifyAllowedMethodName(methodDefinition.key, isStatic, methodDefinition.computed, generator, true);
+                verifyAllowedMethodName(methodDefinition.key, isStatic, methodDefinition.computed, generator, true, async);
                 return new PropertyNode(startToken, finish, methodDefinition.key, null, methodDefinition.functionNode, null, isStatic, methodDefinition.computed, false, false);
             } else if (!generator && nameTokenType == SET && type != LPAREN) {
                 PropertyFunction methodDefinition = propertySetterFunction(startToken, methodLine, yield, await, true);
-                verifyAllowedMethodName(methodDefinition.key, isStatic, methodDefinition.computed, generator, true);
+                verifyAllowedMethodName(methodDefinition.key, isStatic, methodDefinition.computed, generator, true, async);
                 return new PropertyNode(startToken, finish, methodDefinition.key, null, null, methodDefinition.functionNode, isStatic, methodDefinition.computed, false, false);
             } else {
                 if (!isStatic && !generator && name.equals(CONSTRUCTOR_NAME)) {
@@ -1883,7 +1883,7 @@ public class Parser extends AbstractParser {
                         flags |= FunctionNode.IS_DERIVED_CONSTRUCTOR;
                     }
                 }
-                verifyAllowedMethodName(propertyName, isStatic, computed, generator, false);
+                verifyAllowedMethodName(propertyName, isStatic, computed, generator, false, async);
             }
         }
         PropertyFunction methodDefinition = propertyMethodFunction(propertyName, startToken, methodLine, generator, flags, computed, async);
@@ -1893,7 +1893,7 @@ public class Parser extends AbstractParser {
     /**
      * ES6 14.5.1 Static Semantics: Early Errors.
      */
-    private void verifyAllowedMethodName(Expression key, boolean isStatic, boolean computed, boolean generator, boolean accessor) {
+    private void verifyAllowedMethodName(Expression key, boolean isStatic, boolean computed, boolean generator, boolean accessor, boolean async) {
         if (!computed) {
             final String name = ((PropertyKey) key).getPropertyName();
             if (!isStatic && generator && name.equals(CONSTRUCTOR_NAME)) {
@@ -1901,6 +1901,9 @@ public class Parser extends AbstractParser {
             }
             if (!isStatic && accessor && name.equals(CONSTRUCTOR_NAME)) {
                 throw error(AbstractParser.message("accessor.constructor"), key.getToken());
+            }
+            if (!isStatic && async && name.equals(CONSTRUCTOR_NAME)) {
+                throw error(AbstractParser.message("async.constructor"), key.getToken());
             }
             if (isStatic && name.equals(PROTOTYPE_NAME)) {
                 throw error(AbstractParser.message("static.prototype.method"), key.getToken());
