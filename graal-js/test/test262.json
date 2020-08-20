@@ -2032,10 +2032,6 @@
     "status" : "FAIL",
     "comment" : "new failures update 2020-04-01"
   }, {
-    "filePath" : "language/expressions/class/elements/syntax/early-errors/grammar-special-meth-ctor-async-meth.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
     "filePath" : "language/expressions/dynamic-import/usage-from-eval.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
@@ -2063,9 +2059,5 @@
     "filePath" : "language/statements/class/elements/private-field-after-optional-chain.js",
     "status" : "FAIL",
     "comment" : "new failures update 2020-04-01"
-  }, {
-    "filePath" : "language/statements/class/elements/syntax/early-errors/grammar-special-meth-ctor-async-meth.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
   } ]
 }
