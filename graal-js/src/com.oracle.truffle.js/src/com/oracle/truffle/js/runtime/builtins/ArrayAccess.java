@@ -53,7 +53,7 @@ public class ArrayAccess {
     }
 
     public ScriptArray getArrayType(Object thisObj) {
-        return ((JSArrayBase) thisObj).arrayType;
+        return ((JSArrayBase) thisObj).getArrayType();
     }
 
     public long getLength(Object thisObj) {
@@ -73,7 +73,7 @@ public class ArrayAccess {
     }
 
     public void setArrayType(Object thisObj, ScriptArray arrayType) {
-        ((JSArrayBase) thisObj).arrayType = arrayType;
+        ((JSArrayBase) thisObj).setArrayType(arrayType);
     }
 
     public void setLength(Object thisObj, long length) {

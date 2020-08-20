@@ -56,8 +56,8 @@ public abstract class JSArrayBase extends JSBasicObject implements JSArrayLike {
     protected JSArrayBase(Shape shape, ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
         super(shape);
         assert JSRuntime.isRepresentableAsUnsignedInt(length);
-        this.theArray = Objects.requireNonNull(array);
-        this.arrayType = arrayType;
+        this.arrayStorage = Objects.requireNonNull(array);
+        this.arrayStrategy = arrayType;
         this.length = (int) length;
         this.usedLength = usedLength;
         this.indexOffset = indexOffset;
@@ -71,8 +71,8 @@ public abstract class JSArrayBase extends JSBasicObject implements JSArrayLike {
     int indexOffset;
     int arrayOffset;
     int holeCount;
-    Object theArray;
-    ScriptArray arrayType;
+    Object arrayStorage;
+    ScriptArray arrayStrategy;
     ArrayAllocationSite allocationSite;
 
     @SuppressWarnings("static-method")
@@ -82,18 +82,18 @@ public abstract class JSArrayBase extends JSBasicObject implements JSArrayLike {
 
     @Override
     public final ScriptArray getArrayType() {
-        return arrayType;
+        return arrayStrategy;
     }
 
     public final void setArrayType(ScriptArray arrayType) {
-        this.arrayType = arrayType;
+        this.arrayStrategy = arrayType;
     }
 
     public final Object getArray() {
-        return theArray;
+        return arrayStorage;
     }
 
-    public final void setArray(Object theArray) {
-        this.theArray = Objects.requireNonNull(theArray);
+    public final void setArray(Object array) {
+        this.arrayStorage = Objects.requireNonNull(array);
     }
 }

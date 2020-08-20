@@ -97,8 +97,8 @@ public final class JSArrayObject extends JSArrayBase implements JSCopyableObject
 
     @Override
     protected JSObject copyWithoutProperties(Shape shape) {
-        Object clonedArray = ((DynamicArray) arrayType).cloneArray(this);
-        return new JSArrayObject(shape, arrayType, clonedArray, null, length, usedLength, indexOffset, arrayOffset, holeCount);
+        Object clonedArray = ((DynamicArray) getArrayType()).cloneArray(this);
+        return new JSArrayObject(shape, getArrayType(), clonedArray, null, length, usedLength, indexOffset, arrayOffset, holeCount);
     }
 
     @SuppressWarnings("unused")
@@ -198,7 +198,7 @@ public final class JSArrayObject extends JSArrayBase implements JSCopyableObject
     public boolean isArrayElementRemovable(long index) {
         DynamicObject target = this;
         assert JSArray.isJSArray(target);
-        ScriptArray strategy = this.arrayType;
+        ScriptArray strategy = this.getArrayType();
         if (!strategy.isSealed() && !strategy.isLengthNotWritable()) {
             long len = strategy.length(target);
             if (index >= 0 && index < len) {
@@ -212,7 +212,7 @@ public final class JSArrayObject extends JSArrayBase implements JSCopyableObject
     public void removeArrayElement(long index) throws UnsupportedMessageException, InvalidArrayIndexException {
         DynamicObject target = this;
         assert JSArray.isJSArray(target);
-        ScriptArray strategy = this.arrayType;
+        ScriptArray strategy = this.getArrayType();
         if (!strategy.isSealed() && !strategy.isLengthNotWritable()) {
             long len = strategy.length(target);
             if (index >= 0 && index < len) {
