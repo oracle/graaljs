@@ -86,18 +86,6 @@ local common = import '../common.jsonnet';
     # We run the `sequential` tests with a smaller heap because `test/sequential/test-child-process-pass-fd.js` starts 80 child processes.
     graalNodeJs + common.jdk8  + common.gate      + common.windows_vs2010                    + testNode + {environment+: {SUITE: 'sequential',    PART: '-r0,1', MAX_HEAP: '512M'}} + {name: 'nodejs-gate-sequential-jdk8-windows-amd64'},
 
-    graalNodeJs + common.jdk15 + common.gate      + common.linux          + buildAddons      + testNode + {environment+: {SUITE: 'addons',        PART: '-r0,1', MAX_HEAP: '8G'}}   + {name: 'nodejs-gate-addons-jdk15-linux-amd64'},
-    graalNodeJs + common.jdk15 + common.gate      + common.linux          + buildNodeAPI     + testNode + {environment+: {SUITE: 'node-api',      PART: '-r0,1', MAX_HEAP: '8G'}}   + {name: 'nodejs-gate-node-api-jdk15-linux-amd64'},
-    graalNodeJs + common.jdk15 + common.gate      + common.linux          + buildJSNativeAPI + testNode + {environment+: {SUITE: 'js-native-api', PART: '-r0,1', MAX_HEAP: '8G'}}   + {name: 'nodejs-gate-js-native-api-jdk15-linux-amd64'},
-    graalNodeJs + common.jdk15 + common.gate      + common.linux                             + testNode + {environment+: {SUITE: 'async-hooks',   PART: '-r0,1', MAX_HEAP: '8G'}}   + {name: 'nodejs-gate-async-hooks-jdk15-linux-amd64'},
-    graalNodeJs + common.jdk15 + common.gate      + common.linux                             + testNode + {environment+: {SUITE: 'es-module',     PART: '-r0,1', MAX_HEAP: '8G'}}   + {name: 'nodejs-gate-es-module-jdk15-linux-amd64'},
-    graalNodeJs + common.jdk15 + common.gate      + common.linux                             + testNode + {environment+: {SUITE: 'sequential',    PART: '-r0,1', MAX_HEAP: '8G'}}   + {name: 'nodejs-gate-sequential-jdk15-linux-amd64'},
-    graalNodeJs + common.jdk15 + common.gate      + common.linux                             + testNode + {environment+: {SUITE: parallelNoHttp2, PART: '-r0,5', MAX_HEAP: '8G'}}   + {name: 'nodejs-gate-parallel-1-jdk15-linux-amd64'},
-    graalNodeJs + common.jdk15 + common.gate      + common.linux                             + testNode + {environment+: {SUITE: parallelNoHttp2, PART: '-r1,5', MAX_HEAP: '8G'}}   + {name: 'nodejs-gate-parallel-2-jdk15-linux-amd64'},
-    graalNodeJs + common.jdk15 + common.gate      + common.linux                             + testNode + {environment+: {SUITE: parallelNoHttp2, PART: '-r2,5', MAX_HEAP: '8G'}}   + {name: 'nodejs-gate-parallel-3-jdk15-linux-amd64'},
-    graalNodeJs + common.jdk15 + common.gate      + common.linux                             + testNode + {environment+: {SUITE: parallelNoHttp2, PART: '-r3,5', MAX_HEAP: '8G'}}   + {name: 'nodejs-gate-parallel-4-jdk15-linux-amd64'},
-    graalNodeJs + common.jdk15 + common.gate      + common.linux                             + testNode + {environment+: {SUITE: parallelNoHttp2, PART: '-r4,5', MAX_HEAP: '8G'}}   + {name: 'nodejs-gate-parallel-5-jdk15-linux-amd64'},
-
     // post-merges
     graalNodeJs + common.jdk8  + common.postMerge + common.linux                             + testNode + {environment+: {SUITE: parallelHttp2,   PART: '-r0,1', MAX_HEAP: '8G'}}   + {name: 'nodejs-postmerge-parallel-http2-jdk8-linux-amd64'},
   ],
