@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.nodes;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -63,7 +62,7 @@ public final class ScriptNode {
     }
 
     public static ScriptNode fromFunctionRoot(JSContext context, FunctionRootNode root) {
-        return new ScriptNode(context, root.getFunctionData(), Truffle.getRuntime().createCallTarget(root));
+        return fromFunctionData(context, root.getFunctionData());
     }
 
     public static ScriptNode fromFunctionData(JSContext context, JSFunctionData functionData) {
