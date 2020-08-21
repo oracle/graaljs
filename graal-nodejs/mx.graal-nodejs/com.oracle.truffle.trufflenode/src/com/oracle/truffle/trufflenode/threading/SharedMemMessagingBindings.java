@@ -53,7 +53,6 @@ import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.JSBasicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 
@@ -102,14 +101,6 @@ public final class SharedMemMessagingBindings extends JSBuiltinObject {
         };
         JSFunctionData functionData = JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(wrapperNode), 2, "SharedMemMessagingInit");
         return JSFunction.create(realm, functionData);
-    }
-
-    public static boolean isSharedMemMessagingBindings(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isSharedMemMessagingBindings((DynamicObject) obj);
-    }
-
-    public static boolean isSharedMemMessagingBindings(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
     }
 
     public static final class Instance extends JSBasicObject {
