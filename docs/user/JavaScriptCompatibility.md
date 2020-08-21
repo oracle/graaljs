@@ -3,9 +3,9 @@
 GraalVM JavaScript is a JavaScript (ECMAScript) language execution runtime.
 This document explains the public API it provides to user applications written in JavaScript.
 
-* [ECMAScript language compliance](#ecmascript-language-compliance)
-* [Compatibility extensions](#compatibility-extensions)
-* [GraalVM JavaScript extensions](#graal-javascript-extensions)
+* [ECMAScript Language Compliance](#ecmascript-language-compliance)
+* [Compatibility Extensions](#compatibility-extensions)
+* [GraalVM JavaScript Extensions](#graalvm-javascript-extensions)
 
 ## ECMAScript Language Compliance
 
@@ -42,7 +42,7 @@ Once you activate the Internationalization API, you can use the following built-
 
 Functionality of a few other built-ins is then also updated according to the specification linked above.
 
-### JavaScript modules
+### JavaScript Modules
 
 GraalVM JavaScript supports modules as defined by ECMAScript 6 and later.
 Be aware that the support for this feature grew and still grows over time, be sure to use the latest ECMAScript version for the all the latest features.
@@ -56,9 +56,9 @@ Loading with the `import` keyword is not limited by that, you can `import` from 
 The following objects and methods are available in GraalVM JavaScript for compatibility with other JavaScript execution engines.
 Note that the behaviour of such methods might not strictly match the semantics of those methods in all existing engines.
 
-### Language features
+### Language Features
 
-#### Conditional catch clauses
+#### Conditional Catch Clauses
 GraalVM JavaScript supports conditional catch clauses if the `js.syntax-extensions` option is enabled:
 
 ```js
@@ -71,7 +71,7 @@ try {
 }
 ```
 
-### Global properties
+### Global Properties
 
 #### `load(source)`
 
@@ -94,7 +94,7 @@ Provides a best-effort human readable output.
 
 `print` and `printErr` are available by default and can be deactivated by setting the `js.print` option to `false`.
 
-#### Methods of the `console` global object
+#### Methods of the `console` Global Object
 
 A global `console` object is provided that offers several methods for debugging purposes.
 These methods strive to provide similar functionality as provided in other engines, but do not guarantee identical results.
@@ -112,7 +112,7 @@ Node.js provides its own implementation that is used instead.
 
 The `console` object is available by default and can be deactivated by setting the option `js.console` to `false`.
 
-### Additional global functions in the `js` shell
+### Additional Global Functions in the `js` Shell
 
 #### `quit(status)`
 
@@ -164,7 +164,7 @@ Returns the setter function for property `prop` of the object as set by `__defin
 This functionality is deprecated in most JavaScript engines.
 In recent ECMAScript versions, getters and setters are natively supported by the language.
 
-### Nashorn scripting mode
+### Nashorn Scripting Mode
 GraalVM JavaScript provides a scripting mode compatible to the one provided by the Nashorn engine.
 It is enabled with the `js.scripting` option, make also sure to have `--experimental-options` set:
 
@@ -360,7 +360,7 @@ requires starting the engine with the `js.debug-builtin` flag.
 `Debug` is a GraalVM JavaScript specific function object that provides functionality for debugging JavaScript code and the GraalVM JavaScript compiler.
 This API might change without notice, do not use for production purposes!
 
-### Global functions
+### Global Functions
 
 #### `printErr(...arg)`
 

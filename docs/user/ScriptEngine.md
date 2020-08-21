@@ -4,7 +4,7 @@ GraalVM JavaScript provides a JSR-223 compliant `javax.script.ScriptEngine` impl
 Note that this is feature is provided for legacy reasons in order to allow easier migration for implementations currently based on a `ScriptEngine`.
 We strongly encourage users to use the `org.graalvm.polyglot.Context` interface in order to control many of the settings directly and benefit from finer-grained security settings in the GraalVM.
 
-## Setting options via `Bindings`
+## Setting Options via `Bindings`
 The  `ScriptEngine` interface does not provide a default way to set options.
 As a workaround, `GraalJSScriptEngine` supports setting some `Context` options
 through `Bindings`.
@@ -36,7 +36,7 @@ engine.eval("(javaObj instanceof Java.type('java.lang.Object'));"); // would not
 This example would not work if the user would call e.g. `engine.eval("var x = 1;")` before calling `bindings.put("polyglot.js.allowHostAccess", true);`, since
 any call to `eval` forces context initialization.
 
-## Setting options via System Properties
+## Setting Options via System Properties
 Options to the JavaScript engine can be set via System Properties before starting the JVM by prepending `polyglot.`:
 
 ```
@@ -47,7 +47,7 @@ or programmatically from within Java before creating the ScriptEngine.
 This, however, only works for the options passed to the JavaScript engine (like `js.ecmascript`), but not for the six options mentioned above that can be set via the `Bindings`.
 Another caveat is that those system properties are shared by all concurrently executed ScriptEngines.
 
-## Manually creating `Context` for more flexibility
+## Manually Creating `Context` for More Flexibility
 `Context` options can also be passed to `GraalJSScriptEngine` directly, via an instance of `Context.Builder`:
 ```
 ScriptEngine engine = GraalJSScriptEngine.create(null,
@@ -62,5 +62,5 @@ engine.eval("(javaObj instanceof Java.type('java.lang.Object'));");
 This allows setting all options available in GraalVM JavaScript.
 It does come at the cost of a hard dependency on GraalVM JavaScript, e.g. the `GraalJSScriptEngine` and `Context` classes.
 
-## Supported file extensions
+## Supported File Extensions
 The GraalVM JavaScript implementation of `javax.script.ScriptEngine` supports the `js` file extension for JavaScript source files, as well as the `mjs` extension for ES modules.

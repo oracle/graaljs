@@ -16,12 +16,12 @@ guides are available.
 
 GraalVM can execute plain JavaScript code:
 ```
-$ js [options] [filename...] -- [args]
+js [options] [filename...] -- [args]
 ```
 
 ## Running Node.js
 GraalVM is adapted to run unmodified Node.js applications. Applications can
-import npm modules, including native ones.
+import NPM modules, including native ones.
 
 To run Node.js-based applications, use the `node` utility in the GraalVM distribution:
 ```
@@ -43,13 +43,23 @@ After the modules are installed, you can use them from your application.
 
 2&#46; Add the following code snippet to a file named `app.js` and save it in the same directory where you installed Node.js modules:
 
-{% include snippet-highlight tabtype="javascript" path="js/app.js" %}
+```js
+const http = require("http");
+const span = require("ansispan");
+require("colors");
 
+http.createServer(function (request, response) {
+    response.writeHead(200, {"Content-Type": "text/html"});
+    response.end(span("Hello Graal.js!".green));
+}).listen(8000, function() { console.log("Graal.js server running at http://127.0.0.1:8000/".red); });
+
+setTimeout(function() { console.log("DONE!"); process.exit(); }, 2000);
+```
 
 3&#46; Execute it on GraalVM using the `node` command as follows:
 
 ```
-$ node app.js
+node app.js
 ```
 Continue reading to the [Node.js Runtime](NodeJS.md) guide.
 
@@ -63,7 +73,8 @@ code from or call methods in any of those languages using GraalVM Polyglot APIs.
 To enable Node.js or JavaScript interoperability with other languages, pass
 `--jvm` and `--polyglot` options, for example:
 ```
-$ node --jvm --polyglot
+node --jvm --polyglot
+
 Welcome to Node.js v12.15.0.
 Type ".help" for more information.
 > var array = Polyglot.eval("python", "[1,2,42,4]")
@@ -81,7 +92,8 @@ reference.
 
 To access Java from JavaScript, use `Java.type` as in the following example:
 ```
-$ node --jvm
+node --jvm
+
 > var BigInteger = Java.type('java.math.BigInteger');
 > console.log(BigInteger.valueOf(2).pow(100).toString(16));
 10000000000000000000000000
@@ -110,8 +122,9 @@ The source code unit can be represented with a String, as in the example, a file
 
 Run it:
 ```
-$ javac HelloPolyglot.java
-$ java HelloPolyglot JavaScript
+javac HelloPolyglot.java
+java HelloPolyglot JavaScript
+
 Hello Java!
 hello JavaScript
 ```
@@ -129,7 +142,8 @@ console.log("done");
 ```
 Then start `node` with the `--jvm` option to enable interoperability with Java:
 ```
-$ node --jvm --vm.cp=. app.js
+node --jvm --vm.cp=. app.js
+
 Hello Java!
 hello from node.js
 done
