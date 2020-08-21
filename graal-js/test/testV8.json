@@ -546,6 +546,10 @@
     "filePath" : "mjsunit/es6/super.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/es6/templates.js",
+    "status" : "FAIL",
+    "comment" : "Off-spec: assumes that \\8 and \\9 are allowed in (non-tagged) template strings"
+  }, {
     "filePath" : "mjsunit/es6/throw-type-error-function-restrictions.js",
     "status" : "FAIL",
     "comment" : "Off-spec: thrower does not have 'name' property"

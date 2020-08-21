@@ -1053,6 +1053,13 @@ public class Lexer extends Scanner {
                         }
                         break;
                     }
+                    case '8':
+                    case '9':
+                        if (strict) {
+                            error(Lexer.message("strict.no.nonoctaldecimal"), STRING, position, limit - position);
+                        }
+                        sb.append(next);
+                        break;
                     case 'n':
                         sb.append('\n');
                         break;
