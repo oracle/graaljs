@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -51,7 +52,7 @@ import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.objects.IntlObject;
+import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
@@ -72,12 +73,13 @@ public final class SharedMemMessagingBindings extends JSBuiltinObject {
     }
 
     public static GraalJSAccess getApiField(DynamicObject self) {
-        return ((IntlObject) self).getInternalState();
+        return ((Instance) self).graalJSAccess;
     }
 
     @TruffleBoundary
     private static DynamicObject create(JSContext context, GraalJSAccess graalJSAccess) {
-        DynamicObject obj = IntlObject.create(context.makeEmptyShapeWithNullPrototype(INSTANCE), graalJSAccess);
+        Shape shape = context.makeEmptyShapeWithNullPrototype(INSTANCE);
+        DynamicObject obj = new Instance(shape, graalJSAccess);
         JSObjectUtil.putFunctionsFromContainer(context.getRealm(), obj, BUILTINS);
         return obj;
     }
@@ -110,4 +112,12 @@ public final class SharedMemMessagingBindings extends JSBuiltinObject {
         return isInstance(obj, INSTANCE);
     }
 
+    public static final class Instance extends JSBasicObject {
+        final GraalJSAccess graalJSAccess;
+
+        protected Instance(Shape shape, GraalJSAccess graalJSAccess) {
+            super(shape);
+            this.graalJSAccess = graalJSAccess;
+        }
+    }
 }

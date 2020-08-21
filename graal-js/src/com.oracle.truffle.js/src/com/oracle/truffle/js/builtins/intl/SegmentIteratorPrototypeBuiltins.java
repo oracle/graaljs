@@ -60,9 +60,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSSegmenter;
-import com.oracle.truffle.js.runtime.builtins.JSSegmenter.IteratorState;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
-import com.oracle.truffle.js.runtime.objects.IntlObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
@@ -125,7 +123,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
 
         protected static JSSegmenter.IteratorState getIteratorState(DynamicObject iterator) {
             assert JSSegmenter.isJSSegmenterIterator(iterator);
-            return (JSSegmenter.IteratorState) ((IntlObject) iterator).getInternalState();
+            return ((JSSegmenter.IteratorInstance) iterator).getIteratorState();
         }
     }
 
@@ -211,7 +209,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         private boolean advanceOp(DynamicObject iteratorObj, int offset) {
-            IteratorState iterator = getIteratorState(iteratorObj);
+            JSSegmenter.IteratorState iterator = getIteratorState(iteratorObj);
             BreakIterator icuIterator = iterator.getBreakIterator();
             JSSegmenter.Granularity segmenterGranularity = iterator.getSegmenterGranularity();
             int newIndex = doAdvanceOp(icuIterator, offset);

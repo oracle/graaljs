@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 
 import com.ibm.icu.number.FormattedNumber;
 import com.ibm.icu.number.LocalizedNumberFormatter;
@@ -55,8 +56,8 @@ import com.oracle.truffle.js.builtins.intl.PluralRulesPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.objects.IntlObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
@@ -67,6 +68,19 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
     public static final String PROTOTYPE_NAME = "PluralRules.prototype";
 
     public static final JSPluralRules INSTANCE = new JSPluralRules();
+
+    public static final class Instance extends JSBasicObject {
+        private final InternalState internalState;
+
+        protected Instance(Shape shape, InternalState internalState) {
+            super(shape);
+            this.internalState = Objects.requireNonNull(internalState);
+        }
+
+        public InternalState getInternalState() {
+            return internalState;
+        }
+    }
 
     private JSPluralRules() {
     }
@@ -111,7 +125,10 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
 
     public static DynamicObject create(JSContext context) {
         InternalState state = new InternalState();
-        DynamicObject obj = IntlObject.create(context.getRealm(), context.getPluralRulesFactory(), state);
+        JSRealm realm = context.getRealm();
+        JSObjectFactory factory = context.getPluralRulesFactory();
+        Instance obj = new Instance(factory.getShape(realm), state);
+        factory.initProto(obj, realm);
         assert isJSPluralRules(obj);
         return context.trackAllocation(obj);
     }
@@ -170,7 +187,7 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
 
     public static InternalState getInternalState(DynamicObject obj) {
         assert isJSPluralRules(obj);
-        return ((IntlObject) obj).getInternalState();
+        return ((Instance) obj).getInternalState();
     }
 
     @Override

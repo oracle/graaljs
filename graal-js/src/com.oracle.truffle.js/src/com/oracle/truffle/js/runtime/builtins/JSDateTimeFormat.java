@@ -84,8 +84,8 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.objects.IntlObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -100,6 +100,19 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
     static final HiddenKey BOUND_OBJECT_KEY = new HiddenKey(CLASS_NAME);
 
     public static final JSDateTimeFormat INSTANCE = new JSDateTimeFormat();
+
+    public static final class Instance extends JSBasicObject {
+        private final InternalState internalState;
+
+        protected Instance(Shape shape, InternalState internalState) {
+            super(shape);
+            this.internalState = Objects.requireNonNull(internalState);
+        }
+
+        public InternalState getInternalState() {
+            return internalState;
+        }
+    }
 
     /**
      * Maps the upper-case version of a supported time zone to the corresponding case-regularized
@@ -151,7 +164,10 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
     public static DynamicObject create(JSContext context) {
         InternalState state = new InternalState();
-        DynamicObject obj = IntlObject.create(context.getRealm(), context.getDateTimeFormatFactory(), state);
+        JSRealm realm = context.getRealm();
+        JSObjectFactory factory = context.getDateTimeFormatFactory();
+        Instance obj = new Instance(factory.getShape(realm), state);
+        factory.initProto(obj, realm);
         assert isJSDateTimeFormat(obj);
         return context.trackAllocation(obj);
     }
@@ -850,7 +866,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
     public static InternalState getInternalState(DynamicObject obj) {
         assert isJSDateTimeFormat(obj);
-        return ((IntlObject) obj).getInternalState();
+        return ((Instance) obj).getInternalState();
     }
 
     private static CallTarget createGetFormatCallTarget(JSContext context) {

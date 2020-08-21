@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.Locale;
+import java.util.Objects;
 
 import com.ibm.icu.text.DisplayContext;
 import com.ibm.icu.text.LocaleDisplayNames;
@@ -52,8 +53,8 @@ import com.oracle.truffle.js.builtins.intl.DisplayNamesPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.objects.IntlObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -65,6 +66,19 @@ public final class JSDisplayNames extends JSBuiltinObject implements JSConstruct
     public static final String PROTOTYPE_NAME = "DisplayNames.prototype";
 
     public static final JSDisplayNames INSTANCE = new JSDisplayNames();
+
+    public static final class Instance extends JSBasicObject {
+        private final InternalState internalState;
+
+        protected Instance(Shape shape, InternalState internalState) {
+            super(shape);
+            this.internalState = Objects.requireNonNull(internalState);
+        }
+
+        public InternalState getInternalState() {
+            return internalState;
+        }
+    }
 
     private JSDisplayNames() {
     }
@@ -108,9 +122,12 @@ public final class JSDisplayNames extends JSBuiltinObject implements JSConstruct
 
     public static DynamicObject create(JSContext context) {
         InternalState state = new InternalState();
-        DynamicObject result = IntlObject.create(context, context.getDisplayNamesFactory(), state);
-        assert isJSDisplayNames(result);
-        return result;
+        JSRealm realm = context.getRealm();
+        JSObjectFactory factory = context.getDisplayNamesFactory();
+        Instance obj = new Instance(factory.getShape(realm), state);
+        factory.initProto(obj, realm);
+        assert isJSDisplayNames(obj);
+        return obj;
     }
 
     public static class InternalState {
@@ -192,7 +209,7 @@ public final class JSDisplayNames extends JSBuiltinObject implements JSConstruct
 
     public static InternalState getInternalState(DynamicObject displayNamesObject) {
         assert isJSDisplayNames(displayNamesObject);
-        return ((IntlObject) displayNamesObject).getInternalState();
+        return ((Instance) displayNamesObject).getInternalState();
     }
 
     @Override

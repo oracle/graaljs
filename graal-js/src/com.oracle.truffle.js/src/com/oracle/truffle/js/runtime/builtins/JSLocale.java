@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.Locale;
+import java.util.Objects;
 
 import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CallTarget;
@@ -56,7 +57,7 @@ import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.objects.IntlObject;
+import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -68,6 +69,19 @@ public final class JSLocale extends JSBuiltinObject implements JSConstructorFact
     public static final String PROTOTYPE_NAME = "Locale.prototype";
 
     public static final JSLocale INSTANCE = new JSLocale();
+
+    public static final class Instance extends JSBasicObject {
+        private final InternalState internalState;
+
+        protected Instance(Shape shape, InternalState internalState) {
+            super(shape);
+            this.internalState = Objects.requireNonNull(internalState);
+        }
+
+        public InternalState getInternalState() {
+            return internalState;
+        }
+    }
 
     private JSLocale() {
     }
@@ -121,9 +135,12 @@ public final class JSLocale extends JSBuiltinObject implements JSConstructorFact
 
     public static DynamicObject create(JSContext context) {
         InternalState state = new InternalState();
-        DynamicObject result = IntlObject.create(context, context.getLocaleFactory(), state);
-        assert isJSLocale(result);
-        return result;
+        JSRealm realm = context.getRealm();
+        JSObjectFactory factory = context.getLocaleFactory();
+        Instance obj = new Instance(factory.getShape(realm), state);
+        factory.initProto(obj, realm);
+        assert isJSLocale(obj);
+        return obj;
     }
 
     static Object emptyStringToUndefined(String s) {
@@ -383,7 +400,7 @@ public final class JSLocale extends JSBuiltinObject implements JSConstructorFact
 
     public static InternalState getInternalState(DynamicObject localeObject) {
         assert isJSLocale(localeObject);
-        return ((IntlObject) localeObject).getInternalState();
+        return ((Instance) localeObject).getInternalState();
     }
 
     @Override

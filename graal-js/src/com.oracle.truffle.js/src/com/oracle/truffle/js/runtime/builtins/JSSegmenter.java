@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.Locale;
+import java.util.Objects;
 
 import com.ibm.icu.text.BreakIterator;
 import com.ibm.icu.util.ULocale;
@@ -59,8 +60,8 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.objects.IntlObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -76,6 +77,32 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
     public static final String ITERATOR_PROTOTYPE_NAME = "Segment Iterator.prototype";
 
     public static final JSSegmenter INSTANCE = new JSSegmenter();
+
+    public static final class Instance extends JSBasicObject {
+        private final InternalState internalState;
+
+        protected Instance(Shape shape, InternalState internalState) {
+            super(shape);
+            this.internalState = Objects.requireNonNull(internalState);
+        }
+
+        public InternalState getInternalState() {
+            return internalState;
+        }
+    }
+
+    public static final class IteratorInstance extends JSBasicObject {
+        private final IteratorState internalState;
+
+        protected IteratorInstance(Shape shape, IteratorState internalState) {
+            super(shape);
+            this.internalState = Objects.requireNonNull(internalState);
+        }
+
+        public IteratorState getIteratorState() {
+            return internalState;
+        }
+    }
 
     public static class IteratorState {
         private String iteratedString;
@@ -225,15 +252,22 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
 
     public static DynamicObject create(JSContext context) {
         InternalState state = new InternalState();
-        DynamicObject result = IntlObject.create(context, context.getSegmenterFactory(), state);
-        assert isJSSegmenter(result);
-        return context.trackAllocation(result);
+        JSRealm realm = context.getRealm();
+        JSObjectFactory factory = context.getSegmenterFactory();
+        Instance obj = new Instance(factory.getShape(realm), state);
+        factory.initProto(obj, realm);
+        assert isJSSegmenter(obj);
+        return context.trackAllocation(obj);
     }
 
     public static DynamicObject createSegmentIterator(JSContext context, DynamicObject segmenter, String value) {
         BreakIterator icuIterator = JSSegmenter.createBreakIterator(segmenter, value);
         Granularity granularity = JSSegmenter.getGranularity(segmenter);
-        IntlObject segmentIterator = IntlObject.create(context, context.getSegmentIteratorFactory(), new JSSegmenter.IteratorState(value, icuIterator, granularity, null, 0));
+        JSSegmenter.IteratorState iteratorState = new JSSegmenter.IteratorState(value, icuIterator, granularity, null, 0);
+        JSObjectFactory factory = context.getSegmentIteratorFactory();
+        JSRealm realm = context.getRealm();
+        IteratorInstance segmentIterator = new IteratorInstance(factory.getShape(realm), iteratorState);
+        factory.initProto(segmentIterator, realm);
         return context.trackAllocation(segmentIterator);
     }
 
@@ -303,7 +337,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
 
     public static InternalState getInternalState(DynamicObject segmenterObj) {
         assert isJSSegmenter(segmenterObj);
-        return ((IntlObject) segmenterObj).getInternalState();
+        return ((Instance) segmenterObj).getInternalState();
     }
 
     @Override
@@ -318,7 +352,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
     }
 
     public static boolean isJSSegmenterIterator(Object obj) {
-        return obj instanceof IntlObject && ((IntlObject) obj).getInternalState() instanceof JSSegmenter.IteratorState;
+        return obj instanceof JSSegmenter.IteratorInstance;
     }
 
     private static CallTarget createPropertyGetterCallTarget(JSContext context, CompilableFunction<JSSegmenter.IteratorState, Object> getter) {
@@ -328,7 +362,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
             public Object execute(VirtualFrame frame) {
                 Object obj = JSArguments.getThisObject(frame.getArguments());
                 if (isJSSegmenterIterator(obj)) {
-                    return getter.apply((JSSegmenter.IteratorState) ((IntlObject) obj).getInternalState());
+                    return getter.apply(((JSSegmenter.IteratorInstance) obj).getIteratorState());
                 }
                 throw Errors.createTypeErrorTypeXExpected(ITERATOR_CLASS_NAME);
             }

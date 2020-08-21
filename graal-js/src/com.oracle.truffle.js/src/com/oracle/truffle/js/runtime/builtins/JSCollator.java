@@ -44,6 +44,7 @@ import java.text.Normalizer;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -72,8 +73,8 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.objects.IntlObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -87,6 +88,19 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
     static final HiddenKey BOUND_OBJECT_KEY = new HiddenKey(CLASS_NAME);
 
     public static final JSCollator INSTANCE = new JSCollator();
+
+    public static final class Instance extends JSBasicObject {
+        private final InternalState internalState;
+
+        protected Instance(Shape shape, InternalState internalState) {
+            super(shape);
+            this.internalState = Objects.requireNonNull(internalState);
+        }
+
+        public InternalState getInternalState() {
+            return internalState;
+        }
+    }
 
     // Valid values of Unicode collation ("co") type key.
     // Based on https://github.com/unicode-org/cldr/blob/master/common/bcp47/collation.xml
@@ -246,7 +260,10 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
 
     public static DynamicObject create(JSContext context) {
         InternalState state = new InternalState();
-        DynamicObject obj = IntlObject.create(context.getRealm(), context.getCollatorFactory(), state);
+        JSRealm realm = context.getRealm();
+        JSObjectFactory factory = context.getCollatorFactory();
+        Instance obj = new Instance(factory.getShape(realm), state);
+        factory.initProto(obj, realm);
         assert isJSCollator(obj);
         return context.trackAllocation(obj);
     }
@@ -329,7 +346,7 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
 
     public static InternalState getInternalState(DynamicObject collatorObj) {
         assert isJSCollator(collatorObj);
-        return ((IntlObject) collatorObj).getInternalState();
+        return ((Instance) collatorObj).getInternalState();
     }
 
     private static CallTarget createGetCompareCallTarget(JSContext context) {

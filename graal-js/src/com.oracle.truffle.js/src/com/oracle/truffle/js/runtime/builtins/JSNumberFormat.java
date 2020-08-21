@@ -47,6 +47,7 @@ import java.util.Currency;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
@@ -90,8 +91,8 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.SafeInteger;
-import com.oracle.truffle.js.runtime.objects.IntlObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -106,6 +107,19 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     static final HiddenKey BOUND_OBJECT_KEY = new HiddenKey(CLASS_NAME);
 
     public static final JSNumberFormat INSTANCE = new JSNumberFormat();
+
+    public static final class Instance extends JSBasicObject {
+        private final InternalState internalState;
+
+        protected Instance(Shape shape, InternalState internalState) {
+            super(shape);
+            this.internalState = Objects.requireNonNull(internalState);
+        }
+
+        public InternalState getInternalState() {
+            return internalState;
+        }
+    }
 
     private JSNumberFormat() {
     }
@@ -162,7 +176,10 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
     public static DynamicObject create(JSContext context) {
         InternalState state = new InternalState();
-        DynamicObject obj = IntlObject.create(context.getRealm(), context.getNumberFormatFactory(), state);
+        JSRealm realm = context.getRealm();
+        JSObjectFactory factory = context.getNumberFormatFactory();
+        Instance obj = new Instance(factory.getShape(realm), state);
+        factory.initProto(obj, realm);
         assert isJSNumberFormat(obj);
         return context.trackAllocation(obj);
     }
@@ -766,7 +783,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
     public static InternalState getInternalState(DynamicObject obj) {
         assert isJSNumberFormat(obj);
-        return ((IntlObject) obj).getInternalState();
+        return ((Instance) obj).getInternalState();
     }
 
     private static CallTarget createGetFormatCallTarget(JSContext context) {

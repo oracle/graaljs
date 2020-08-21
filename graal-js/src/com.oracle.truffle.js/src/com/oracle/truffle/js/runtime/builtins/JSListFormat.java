@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 import com.ibm.icu.impl.ICUResourceBundle;
 import com.ibm.icu.text.ListFormatter;
@@ -57,8 +58,8 @@ import com.oracle.truffle.js.builtins.intl.ListFormatPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.objects.IntlObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
@@ -69,6 +70,19 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
     public static final String PROTOTYPE_NAME = "ListFormat.prototype";
 
     public static final JSListFormat INSTANCE = new JSListFormat();
+
+    public static final class Instance extends JSBasicObject {
+        private final InternalState internalState;
+
+        protected Instance(Shape shape, InternalState internalState) {
+            super(shape);
+            this.internalState = Objects.requireNonNull(internalState);
+        }
+
+        public InternalState getInternalState() {
+            return internalState;
+        }
+    }
 
     private JSListFormat() {
     }
@@ -113,7 +127,10 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
 
     public static DynamicObject create(JSContext context) {
         InternalState state = new InternalState();
-        DynamicObject obj = IntlObject.create(context, context.getListFormatFactory(), state);
+        JSRealm realm = context.getRealm();
+        JSObjectFactory factory = context.getListFormatFactory();
+        Instance obj = new Instance(factory.getShape(realm), state);
+        factory.initProto(obj, realm);
         assert isJSListFormat(obj);
         return context.trackAllocation(obj);
     }
@@ -266,7 +283,7 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
 
     public static InternalState getInternalState(DynamicObject obj) {
         assert isJSListFormat(obj);
-        return ((IntlObject) obj).getInternalState();
+        return ((Instance) obj).getInternalState();
     }
 
     @Override
