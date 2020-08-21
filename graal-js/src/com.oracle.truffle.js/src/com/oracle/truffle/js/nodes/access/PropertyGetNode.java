@@ -1452,7 +1452,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     public static final class LazyRegexResultIndexPropertyGetNode extends LinkedPropertyGetNode {
 
         @Child private TRegexUtil.InvokeGetGroupBoundariesMethodNode readStartNode = TRegexUtil.InvokeGetGroupBoundariesMethodNode.create();
-        @Child private DynamicObjectLibrary readLazyRegexResult = JSObjectUtil.createDispatched(JSAbstractArray.LAZY_REGEX_RESULT_ID, JSConfig.PropertyCacheLimit);
+        @Child private DynamicObjectLibrary readLazyRegexResult = JSObjectUtil.createDispatched(JSAbstractArray.LAZY_REGEX_RESULT_ID);
 
         public LazyRegexResultIndexPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
             super(receiverCheck);

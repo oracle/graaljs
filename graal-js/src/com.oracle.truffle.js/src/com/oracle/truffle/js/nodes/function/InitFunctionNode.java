@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.function;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -76,18 +75,18 @@ public class InitFunctionNode extends JavaScriptBaseNode {
         if (hasPrototype) {
             int prototypeAttributes = prototypeNotWritable ? JSAttributes.notConfigurableNotEnumerableNotWritable() : JSAttributes.notConfigurableNotEnumerableWritable();
             this.prototypeFlags = prototypeAttributes | JSProperty.PROXY;
-            this.setPrototypeNode = JSObjectUtil.createDispatched(JSObject.PROTOTYPE, JSConfig.PropertyCacheLimit);
+            this.setPrototypeNode = JSObjectUtil.createDispatched(JSObject.PROTOTYPE);
         } else {
             this.prototypeFlags = 0;
         }
 
         int lengthAttributes = context.getEcmaScriptVersion() < 6 ? JSAttributes.notConfigurableNotEnumerableNotWritable() : JSAttributes.configurableNotEnumerableNotWritable();
         this.lengthFlags = lengthAttributes | JSProperty.PROXY;
-        this.setLengthNode = JSObjectUtil.createDispatched(JSFunction.LENGTH, JSConfig.PropertyCacheLimit);
+        this.setLengthNode = JSObjectUtil.createDispatched(JSFunction.LENGTH);
 
         int nameAttributes = JSAttributes.configurableNotEnumerableNotWritable();
         this.nameFlags = nameAttributes | JSProperty.PROXY;
-        this.setNameNode = JSObjectUtil.createDispatched(JSFunction.NAME, JSConfig.PropertyCacheLimit);
+        this.setNameNode = JSObjectUtil.createDispatched(JSFunction.NAME);
 
         boolean argumentsCaller = false;
         int argumentsCallerAttributes = 0;
@@ -103,8 +102,8 @@ public class InitFunctionNode extends JavaScriptBaseNode {
             }
         }
         if (argumentsCaller) {
-            this.setArgumentsNode = JSObjectUtil.createDispatched(JSFunction.ARGUMENTS, JSConfig.PropertyCacheLimit);
-            this.setCallerNode = JSObjectUtil.createDispatched(JSFunction.CALLER, JSConfig.PropertyCacheLimit);
+            this.setArgumentsNode = JSObjectUtil.createDispatched(JSFunction.ARGUMENTS);
+            this.setCallerNode = JSObjectUtil.createDispatched(JSFunction.CALLER);
         }
         this.argumentsCallerFlags = argumentsCallerAttributes;
     }

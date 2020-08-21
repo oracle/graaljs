@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.arguments;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -60,8 +62,6 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.util.Set;
 
 /**
  * Allocate arguments object from arguments array.
@@ -85,9 +85,9 @@ public abstract class ArgumentsObjectNode extends JavaScriptNode {
         this.leadingArgCount = leadingArgCount;
         this.trailingArgCount = trailingArgCount;
 
-        this.putLengthNode = JSObjectUtil.createDispatched(JSArgumentsObject.LENGTH, JSConfig.PropertyCacheLimit);
-        this.putSymbolIteratorNode = JSObjectUtil.createDispatched(Symbol.SYMBOL_ITERATOR, JSConfig.PropertyCacheLimit);
-        this.putCalleeNode = JSObjectUtil.createDispatched(JSArgumentsObject.CALLEE, JSConfig.PropertyCacheLimit);
+        this.putLengthNode = JSObjectUtil.createDispatched(JSArgumentsObject.LENGTH);
+        this.putSymbolIteratorNode = JSObjectUtil.createDispatched(Symbol.SYMBOL_ITERATOR);
+        this.putCalleeNode = JSObjectUtil.createDispatched(JSArgumentsObject.CALLEE);
     }
 
     public static JavaScriptNode create(JSContext context, boolean strict, int leadingArgCount, int trailingArgCount) {
@@ -118,7 +118,7 @@ public abstract class ArgumentsObjectNode extends JavaScriptNode {
         if (realm.getContext().getEcmaScriptVersion() < JSConfig.ECMAScript2017) {
             if (putCallerNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                putCallerNode = insert(JSObjectUtil.createDispatched(JSArgumentsObject.CALLER, JSConfig.PropertyCacheLimit));
+                putCallerNode = insert(JSObjectUtil.createDispatched(JSArgumentsObject.CALLER));
             }
             putCallerNode.putWithFlags(argumentsObject, JSArgumentsObject.CALLER, realm.getThrowerAccessor(), THROWER_ACCESSOR_PROPERTY_FLAGS);
         }

@@ -61,7 +61,6 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -295,12 +294,12 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             this.ecmaScriptVersion = context.getEcmaScriptVersion();
             this.setRegexResultNode = PropertySetNode.createSetHidden(JSArray.LAZY_REGEX_RESULT_ID, context);
             this.setRegexOriginalInputNode = PropertySetNode.createSetHidden(JSArray.LAZY_REGEX_ORIGINAL_INPUT_ID, context);
-            this.setInputNode = JSObjectUtil.createDispatched(JSRegExp.INPUT, JSConfig.PropertyCacheLimit);
-            this.setIndexNode = JSObjectUtil.createDispatched(JSRegExp.INDEX, JSConfig.PropertyCacheLimit);
-            this.setGroupsNode = JSObjectUtil.createDispatched(JSRegExp.GROUPS, JSConfig.PropertyCacheLimit);
-            this.setIndicesNode = JSObjectUtil.createDispatched(JSRegExp.INDICES, JSConfig.PropertyCacheLimit);
-            this.setIndicesRegexResultNode = JSObjectUtil.createDispatched(JSArray.LAZY_REGEX_RESULT_ID, JSConfig.PropertyCacheLimit);
-            this.setIndicesGroupsNode = JSObjectUtil.createDispatched(JSRegExp.GROUPS, JSConfig.PropertyCacheLimit);
+            this.setInputNode = JSObjectUtil.createDispatched(JSRegExp.INPUT);
+            this.setIndexNode = JSObjectUtil.createDispatched(JSRegExp.INDEX);
+            this.setGroupsNode = JSObjectUtil.createDispatched(JSRegExp.GROUPS);
+            this.setIndicesNode = JSObjectUtil.createDispatched(JSRegExp.INDICES);
+            this.setIndicesRegexResultNode = JSObjectUtil.createDispatched(JSArray.LAZY_REGEX_RESULT_ID);
+            this.setIndicesGroupsNode = JSObjectUtil.createDispatched(JSRegExp.GROUPS);
         }
 
         public static JSRegExpExecBuiltinNode create(JSContext context) {
