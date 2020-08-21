@@ -13,7 +13,7 @@ You have to explicitly load the classes using `Java.type(typename)`.
 GraalVM JavaScript supports the `Packages` global object, but loading the classes explicitly is still encouraged.
 The following Java package globals are available in Nashorn compatibility mode (`js.nashorn-compat` option): `java`, `javafx`, `javax`, `com`, `org`, `edu`.
 
-### Console output of Java classes and Java objects
+### Console Output of Java Classes and Java Objects
 GraalVM JavaScript provides a `print` builtin function.
 It tries to special-case its behavior on Java classes and Java objects to provide the most useful output.
 

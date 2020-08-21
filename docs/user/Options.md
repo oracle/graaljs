@@ -23,7 +23,6 @@ Depending on how the engine is started, the options can be passed to the launche
 Note that most of these options are experimental and require an `--experimental-options` flag.
 
 To the launcher, the options are passed with `--js.<option-name>=<value>`:
-
 ```
 js --js.ecmascript-version=6
 ```
@@ -50,7 +49,7 @@ context.eval("js", "42");
 ```
 See the [Polyglot Programming](https://www.graalvm.org/docs/reference-manual/polyglot-programming/) reference for information on how to set options programmatically.
 
-### Stable and Experimental options
+### Stable and Experimental Options
 
 The available options are distinguished in stable and experimental options.
 If an experimental option is used, an extra flag has to be provided upfront.
@@ -59,7 +58,7 @@ In the native launchers (`js`, `node`), `--experimental-options` has to be passe
 When using a `Context`, the option `allowExperimentalOptions(true)` has to be called on the `Context.Builder`.
 See [ScriptEngine.md](ScriptEngine.md) on how to use experimental options with a `ScriptEngine`.
 
-### ecmascript-version
+### ECMAScript Version
 
 It provides compatibility to a specific version of the ECMAScript specification.
 It expects an integer value, where both the counting version numbers (`5` to `11`) and the publication years (starting from `2015`) are supported.
@@ -80,10 +79,10 @@ Available versions are:
 
 ### intl-402
 
-It Enables ECMAScript's [Internationalization API](https://tc39.github.io/ecma402/).
+It enables ECMAScript's [Internationalization API](https://tc39.github.io/ecma402/).
 It expects a Boolean value, the default is `false`.
 
-### strict
+### Strict Mode
 
 It enables JavaScript's strict mode for all scripts.
 It expects a boolean value, default is `false`.

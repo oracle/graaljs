@@ -1,7 +1,7 @@
 # Node.js Runtime
 
 GraalVM can run unmodified Node.js applications.
-Applications can freely import and use Npm packages, including native ones.
+Applications can freely import and use NPM packages, including native ones.
 
 ## Running Node.js Applications
 
@@ -18,15 +18,15 @@ A list of available options can be obtained with `node --help`.
 ## Installing Packages Using `npm`
 
 To install a Node.js package, you can use the `npm` executable in the `$GRAALVM_HOME/bin` folder of GraalVM.
-The `npm` executable is equivalent to the default Npm command, and supports most of its options.
+The `npm` executable is equivalent to the default NPM command, and supports most of its options.
 
-An Npm package can be installed with:
+An NPM package can be installed with:
 ```
 $GRAALVM_HOME/bin/npm install <package>
 ```
-As the `npm` executable of GraalVM is largely compatible with Npm, packages will be installed in the `node_modules` folder, as expected.
+As the `npm` executable of GraalVM is largely compatible with NPM, packages will be installed in the `node_modules` folder, as expected.
 
-### Installing `npm` packages globally
+### Installing `npm` Packages Globally
 
 Node packages can be installed globally using `npm` and the `-g` option.
 By default, `npm` installs global packages in the path where the `node` executable is installed.
@@ -36,4 +36,4 @@ For example, the following command will install global packages in the `/foo/bar
 ```
 $GRAALVM_HOME/bin/npm install --prefix /foo/bar -g <package>
 ```
-More details about `prefix` can be found in the official Npm documentation.
+More details about `prefix` can be found in the official npm documentation.

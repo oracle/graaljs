@@ -1,7 +1,7 @@
 # Run GraalVM JavaScript on a Stock JDK
 
 GraalVM JavaScript is optimized for execution as part of GraalVM or in an embedding scenario built on the GraalVM.
-This guarantees best possible performance by using the [GraalVM Compiler](https://github.com/oracle/graal) as the optimizing compiler and potentially [GraalVM Native Image](https://www.graalvm.org/docs/reference-manual/graalvm-native-image/) to ahead-of-time compile the engine into a native binary.
+This guarantees best possible performance by using the [GraalVM Compiler](https://github.com/oracle/graal) as the optimizing compiler and potentially [GraalVM Native Image](https://www.graalvm.org/reference-manual/native-image/) to ahead-of-time compile the engine into a native binary.
 
 As GraalVM JavaScript is a Java application, it is possible to execute it on a stock Java VM like OpenJDK.
 When executed without the GraalVM Compiler as optimizing compiler, performance of GraalVM JavaScript will be significantly worse.
@@ -90,7 +90,7 @@ GRAALVM=/path/to/GraalVM
 The Maven example as given above is the preferred way to start on JDK 11.
 Working without Maven, you have to provide the JAR files manually and provide them to the Java command.
 Using --upgrade-module-path executes GraalVM JavaScript with the GraalVM Compiler as optimizing compiler, guaranteeing best performance.
-For that, the [GraalVM Compiler](https://github.com/oracle/graal) built with JDK 11 is required.
+For that, the [GraalVM Compiler](https://github.com/oracle/graal/tree/master/compiler) built with JDK 11 is required.
 
 ```
 GRAALVM=/path/to/GraalVM

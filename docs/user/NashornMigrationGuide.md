@@ -11,7 +11,7 @@ Both Nashorn and GraalVM JavaScript support a similar set of syntax and semantic
 One notable difference is that GraalVM JavaScript takes a _secure by default_ approach, meaning some features need to be explicitly enabled that were available by default on Nashorn.
 The most important differences relevant for migration are listed here.
 
-Nashorn features available by default (dependent on [security settings](#Secure-by-default)):
+Nashorn features available by default (dependent on [security settings](#secure-by-default)):
 * `Java.type`, `Java.typeName`
 * `Java.from`, `Java.to`
 * `Java.extend`, `Java.super`
@@ -23,15 +23,15 @@ GraalVM JavaScript provides a Nashorn compatibility mode.
 Some of the functionality necessary for Nashorn compatibility is only available when the `js.nashorn-compat` option is enabled.
 This is the case for Nashorn-specific extensions that GraalVM JavaScript does not want to expose by default.
 Note that you have to enable [experimental options](Options.md#stable-and-experimental-options) to use this flag.
-Further note that setting this flag defeats the [secure by default](#Secure-by-default) approach of GraalVM JavaScript in some cases, e.g., when operating on a legacy `ScriptEngine`.
+Further note that setting this flag defeats the [secure by default](#secure-by-default) approach of GraalVM JavaScript in some cases, e.g., when operating on a legacy `ScriptEngine`.
 
 The `js.nashorn-compat` option can be set:
 1. by using a command line option:
 ```
-$ js --experimental-options --js.nashorn-compat=true
+js --experimental-options --js.nashorn-compat=true
 ```
 
-2. by using the polyglot API:
+2. by using the Polyglot API:
 ```java
 import org.graalvm.polyglot.Context;
 
@@ -42,7 +42,7 @@ try (Context context = Context.newBuilder().allowExperimentalOptions(true).optio
 
 3. by using a system property when starting a Java application (remember to enable `allowExperimentalOptions` on the `Context.Builder` in your application as well):
 ```
-$ java -Dpolyglot.js.nashorn-compat=true MyApplication
+java -Dpolyglot.js.nashorn-compat=true MyApplication
 ```
 
 Functionality only available under this flag includes:
@@ -59,10 +59,10 @@ Functionality only available under this flag includes:
 [Nashorn syntax extensions](https://wiki.openjdk.java.net/display/Nashorn/Nashorn+extensions) can be enabled using the `js.syntax-extensions` experimental option.
 They're also enabled by default in Nashorn compatibility mode (`js.nashorn-compat`).
 
-## Intentional design differences
+## Intentional Design Differences
 GraalVM JavaScript differs from Nashorn in some aspects that were intentional design decisions.
 
-### Secure by default
+## Secure by Default
 GraalVM JavaScript takes a _secure by default_ approach.
 Unless explicitly permitted by the embedder, JavaScript code cannot access Java classes or access the file system, among other restrictions.
 Several features of GraalVM JavaScript, including Nashorn compatibility features, are only available when the relevant security settings are permissive enough.
@@ -79,11 +79,11 @@ If you run code on the legacy `ScriptEngine`, see [Setting options via `Bindings
 
 Finally, note that the `nashorn-compat` mode enables the relevant flags when executing code on the `ScriptEngine` (but not on `Context`), to provide better compatibilty with Nashorn in that setup.
 
-### Launcher name `js`
+### Launcher Name `js`
 When shipped with GraalVM, GraalVM JavaScript comes with a binary launcher named `js`.
 Note that, depending on the build setup, GraalVM might still ship Nashorn and its `jjs` launcher.
 
-### ScriptEngine name `graal.js`
+### ScriptEngine Name `graal.js`
 GraalVM JavaScript is shipped with ScriptEngine support.
 It registers under several names, including "graal.js", "JavaScript", "js".
 Be sure to activate the Nashorn compatibility mode as described above if you need full Nashorn compatibility.
@@ -95,7 +95,7 @@ For more details, see [ScriptEngine.md](ScriptEngine.md).
 GraalVM JavaScript supports a class filter when starting with a polyglot `Context`.
 See the [JavaDoc of `Context.Builder.hostClassFilter`](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#hostClassFilter-java.util.function.Predicate-)
 
-### Fully qualified names
+### Fully Qualified Names
 GraalVM Javascript requires the use of `Java.type(typename)`.
 It does not support accessing classes just by their fully qualified class name by default.
 `Java.type` brings more clarity and avoids the accidental use of Java classes in JavaScript code.
@@ -112,7 +112,7 @@ var BigDecimal = Java.type('java.math.BigDecimal');
 var bd = new BigDecimal('10');
 ```
 
-### Lossy conversion
+### Lossy Conversion
 GraalVM JavaScript does not allow lossy conversions of arguments when calling Java methods.
 This could lead to bugs with numeric values that are hard to detect.
 
@@ -120,9 +120,9 @@ GraalVM JavaScript will always select the overloaded method with the narrowest p
 If no such overloaded method is available, GraalVM JavaScript throws a `TypeError` instead of lossy conversion.
 In general, this affects which overloaded method is executed.
 
-Custom `targetTypeMapping`s can be used to customize behavior, see [HostAccess.Builder#targetTypeMapping](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#targetTypeMapping-java.lang.Class-java.lang.Class-java.util.function.Predicate-java.util.function.Function-).
+Custom `targetTypeMapping`s can be used to customize behaviour, see [HostAccess.Builder#targetTypeMapping](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#targetTypeMapping-java.lang.Class-java.lang.Class-java.util.function.Predicate-java.util.function.Function-).
 
-### `ScriptObjectMirror` objects
+### `ScriptObjectMirror` Objects
 GraalVM JavaScript does not provide objects of the class `ScriptObjectMirror`.
 Instead, JavaScript objects are exposed to Java code as objects implementing Java's `Map` interface.
 
@@ -165,7 +165,7 @@ The following extensions to JavaScript available in Nashorn are deactivated in G
 They are provided in GraalVM's Nashorn compatibility mode.
 It is highly recommended not to implement new applications based on those features, but only to use it as a means to migrate existing applications to GraalVM.
 
-### String `length` property
+### String `length` Property
 GraalVM JavaScript does not treat the length property of a String specially.
 The canonical way of accessing the String length is reading the `length` property.
 
@@ -177,7 +177,7 @@ Nashorn allows to both access `length` as a property and a function.
 Existing function calls `length()` should be expressed as property access.
 Nashorn behavior is mimicked in the Nashorn compatibility mode.
 
-### Java packages in the JavaScript global object
+### Java Packages in the JavaScript Global Object
 GraalVM JavaScript requires the use of `Java.type` instead of fully qualified names.
 In Nashorn compatibility mode, the following Java package are added to the JavaScript global object: `java`, `javafx`, `javax`, `com`, `org`, `edu`.
 
@@ -188,7 +188,7 @@ The `JavaImporter` feature is available only in Nashorn compatibility mode.
 Use of the non-standard `JSAdapter` is discouraged and should be replaced with the equivalent standard `Proxy` feature.
 For compatibility, `JSAdapter` is still available in Nashorn compatibility mode.
 
-### Java.* methods
+### Java.* Methods
 Several methods provided by Nashorn on the `Java` global object are available only in Nashorn compatibility mode or currently not supported by GraalVM JavaScript.
 Available in Nashorn compatibility mode are: `Java.isJavaFunction`, `Java.isJavaMethod`, `Java.isScriptObject`, `Java.isScriptFunction`.
 Currently not supported: `Java.asJSONCompatible`.
@@ -219,7 +219,7 @@ Nashorn also gives precedence to getters, even when a public field of the exact 
 GraalVM JavaScript supports features of the newest ECMAScript specification and some extensions to that, see [JavaScriptCompatibility.md](JavaScriptCompatibility.md).
 Note that this e.g. adds objects to the global scope that might interfere with existing source code unaware of those extensions.
 
-### Console output
+### Console Output
 GraalVM JavaScript provides a `print` builtin function compatible with Nashorn.
 
 Note that GraalVM JavaScript also provides a `console.log` function.
