@@ -60,8 +60,9 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.objects.IntlObject;
+import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
@@ -74,16 +75,21 @@ public final class JavaPackage extends JSBuiltinObject {
     }
 
     public static DynamicObject create(JSContext context, JSRealm realm, String packageName) {
-        DynamicObject obj = IntlObject.create(realm, realm.getContext().getJavaPackageFactory(), packageName);
-        JSObjectUtil.putDataProperty(context, obj, Symbol.SYMBOL_TO_PRIMITIVE, realm.getJavaPackageToPrimitiveFunction(), JSAttributes.notConfigurableNotEnumerableNotWritable());
-        assert isJavaPackage(obj);
+        Instance obj = createInstance(context, realm, packageName);
         return context.trackAllocation(obj);
     }
 
     public static DynamicObject createInit(JSRealm realm, String packageName) {
         CompilerAsserts.neverPartOfCompilation();
-        DynamicObject obj = IntlObject.create(realm, realm.getContext().getJavaPackageFactory(), packageName);
-        JSObjectUtil.putDataProperty(obj, Symbol.SYMBOL_TO_PRIMITIVE, realm.getJavaPackageToPrimitiveFunction(), JSAttributes.notConfigurableNotEnumerableNotWritable());
+        JSContext context = realm.getContext();
+        return createInstance(context, realm, packageName);
+    }
+
+    private static Instance createInstance(JSContext context, JSRealm realm, String packageName) {
+        JSObjectFactory factory = context.getJavaPackageFactory();
+        Instance obj = new Instance(factory.getShape(realm), packageName);
+        factory.initProto(obj, realm);
+        JSObjectUtil.putDataProperty(context, obj, Symbol.SYMBOL_TO_PRIMITIVE, realm.getJavaPackageToPrimitiveFunction(), JSAttributes.notConfigurableNotEnumerableNotWritable());
         assert isJavaPackage(obj);
         return obj;
     }
@@ -98,7 +104,7 @@ public final class JavaPackage extends JSBuiltinObject {
 
     public static String getPackageName(DynamicObject obj) {
         assert isJavaPackage(obj);
-        return ((IntlObject) obj).getInternalState();
+        return ((Instance) obj).getPackageName();
     }
 
     @TruffleBoundary
@@ -225,5 +231,18 @@ public final class JavaPackage extends JSBuiltinObject {
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject objectPrototype) {
         return JSObjectUtil.getProtoChildShape(objectPrototype, INSTANCE, context);
+    }
+
+    public static final class Instance extends JSBasicObject {
+        private final String packageName;
+
+        protected Instance(Shape shape, String packageName) {
+            super(shape);
+            this.packageName = packageName;
+        }
+
+        public String getPackageName() {
+            return packageName;
+        }
     }
 }

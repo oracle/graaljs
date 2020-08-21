@@ -48,8 +48,9 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
+import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
-import com.oracle.truffle.js.runtime.objects.IntlObject;
+import com.oracle.truffle.js.runtime.objects.JSBasicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
@@ -76,8 +77,11 @@ public final class JavaImporter extends JSBuiltinObject implements JSConstructor
         return CLASS_NAME;
     }
 
-    public static DynamicObject create(JSContext context, DynamicObject[] value) {
-        DynamicObject obj = IntlObject.create(context, context.getJavaImporterFactory(), value);
+    public static DynamicObject create(JSContext context, Object[] value) {
+        JSRealm realm = context.getRealm();
+        JSObjectFactory factory = context.getJavaImporterFactory();
+        Instance obj = new Instance(factory.getShape(realm), value);
+        factory.initProto(obj, realm);
         assert isJavaImporter(obj);
         return context.trackAllocation(obj);
     }
@@ -99,21 +103,24 @@ public final class JavaImporter extends JSBuiltinObject implements JSConstructor
     @Override
     public Object getOwnHelper(DynamicObject store, Object thisObj, Object name) {
         if (name instanceof String) {
-            DynamicObject[] packages = getPackages(store);
+            Object[] packages = getPackages(store);
             JSRealm realm = JSObject.getJSContext(store).getRealm();
-            for (DynamicObject pkg : packages) {
-                Object found = JavaPackage.getClass(realm, pkg, (String) name, Object.class);
-                if (found != null) {
-                    return found;
+            for (Object pkg : packages) {
+                if (pkg instanceof JavaPackage.Instance) {
+                    JavaPackage.Instance javaPackage = (JavaPackage.Instance) pkg;
+                    Object found = JavaPackage.getClass(realm, javaPackage, (String) name, Object.class);
+                    if (found != null) {
+                        return found;
+                    }
                 }
             }
         }
         return null;
     }
 
-    public static DynamicObject[] getPackages(DynamicObject importer) {
+    public static Object[] getPackages(DynamicObject importer) {
         assert JavaImporter.isJavaImporter(importer);
-        return ((IntlObject) importer).getInternalState();
+        return ((Instance) importer).getPackages();
     }
 
     @Override
@@ -147,5 +154,18 @@ public final class JavaImporter extends JSBuiltinObject implements JSConstructor
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getJavaImporterPrototype();
+    }
+
+    public static final class Instance extends JSBasicObject {
+        private final Object[] packages;
+
+        protected Instance(Shape shape, Object[] packages) {
+            super(shape);
+            this.packages = packages;
+        }
+
+        public Object[] getPackages() {
+            return packages;
+        }
     }
 }

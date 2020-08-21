@@ -2043,13 +2043,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected DynamicObject constructJavaImporter(Object[] args) {
-            SimpleArrayList<DynamicObject> pkgs = new SimpleArrayList<>(args.length);
+            SimpleArrayList<Object> pkgs = new SimpleArrayList<>(args.length);
             for (Object pkg : args) {
                 if (JavaPackage.isJavaPackage(pkg)) {
-                    pkgs.addUnchecked((DynamicObject) pkg);
+                    pkgs.addUnchecked(pkg);
                 }
             }
-            return JavaImporter.create(getContext(), pkgs.toArray(new DynamicObject[pkgs.size()]));
+            return JavaImporter.create(getContext(), pkgs.toArray());
         }
     }
 
