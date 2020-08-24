@@ -179,7 +179,7 @@ public class ImportWithCustomFsTest {
         }
     }
 
-    private static class TestFS implements FileSystem {
+    protected static class TestFS implements FileSystem {
 
         private final Path dummyPath;
         private final String moduleBody;
