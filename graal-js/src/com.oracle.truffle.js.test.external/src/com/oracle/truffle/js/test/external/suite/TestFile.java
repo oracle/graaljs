@@ -374,7 +374,8 @@ public final class TestFile {
         COMPILE_IMMEDIATELY(cfg -> cfg.isCompile()),
         AMD64(cfg -> System.getProperty("os.arch").equals("amd64") || System.getProperty("os.arch").equals("x86_64")),
         AARCH64(cfg -> System.getProperty("os.arch").equals("aarch64")),
-        WINDOWS(cfg -> System.getProperty("os.name").startsWith("Windows"));
+        WINDOWS(cfg -> System.getProperty("os.name").startsWith("Windows")),
+        JDK15(cfg -> TestFileUtil.JAVA_SPEC >= 15);
 
         private final Predicate<SuiteConfig> condition;
 

@@ -107,6 +107,13 @@
     "status" : "SKIP",
     "comment" : "multi-threaded test"
   }, {
+    "filePath" : "basic/javaexceptions.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "JDK15" : "FAIL"
+    },
+    "comment" : "IllegalMonitorStateException message changed in JDK 15."
+  }, {
     "filePath" : "basic/javaimporter.js",
     "status" : "FAIL",
     "comment" : "Java interop migration"
@@ -395,6 +402,13 @@
     "status" : "SKIP",
     "comment" : "Fails on SPARC, JDK does not provide netscape.javascript.JSObject and the instancof check seems to be wrong\nThe exception thrown by Java.type(\"netscape.javascript.JSObject\") is not a ClassCastException object\nbut a \"TypeError: java.lang.ClassNotFoundException: netscape.javascript.JSObject\". The test fails also on openjdk1.8.0_121-graalvm-jvmci-0.30."
   }, {
+    "filePath" : "basic/JDK-8058422.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "JDK15" : "FAIL"
+    },
+    "comment" : "Fails on JDK 15 due to Nashorn removal."
+  }, {
     "filePath" : "basic/JDK-8060101.js",
     "status" : "FAIL"
   }, {
@@ -646,8 +660,22 @@
     "status" : "SKIP",
     "comment" : "Using 'jdk.nashorn.test.tools.StaticTypeInspector'"
   }, {
+    "filePath" : "basic/optimistic_assignment_check_type.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "JDK15" : "FAIL"
+    },
+    "comment" : "Fails on JDK 15 due to Nashorn removal."
+  }, {
     "filePath" : "basic/optimistic_check_type.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "basic/optimistic_logical_check_type.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "JDK15" : "FAIL"
+    },
+    "comment" : "Fails on JDK 15 due to Nashorn removal."
   }, {
     "filePath" : "basic/samfunc.js",
     "status" : "SKIP",
