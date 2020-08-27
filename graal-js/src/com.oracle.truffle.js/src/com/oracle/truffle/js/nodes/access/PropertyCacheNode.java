@@ -179,7 +179,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public DynamicObject getStore(Object thisObj) {
-            throw new UnsupportedOperationException();
+            throw Errors.shouldNotReachHere();
         }
     }
 
@@ -246,7 +246,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public DynamicObject getStore(Object thisObj) {
-            throw new UnsupportedOperationException();
+            throw Errors.shouldNotReachHere();
         }
     }
 
@@ -1022,7 +1022,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public DynamicObject getStore(Object thisObj) {
-            throw new UnsupportedOperationException();
+            throw Errors.shouldNotReachHere();
         }
     }
 
