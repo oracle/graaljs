@@ -49,17 +49,20 @@ import org.graalvm.polyglot.io.FileSystem;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessMode;
 import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.FileAttribute;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -120,6 +123,20 @@ public class ImportWithCustomFsTest {
     }
 
     @Test
+    public void testWithUriSpecifierAndReferrer() throws IOException {
+        final String moduleBody = "export const foo = 41;";
+        final String expectedSpecifier = "https://unpkg.com/@esm/ms";
+        final String testSrc = "import {foo} from 'https://unpkg.com/@esm/ms'; foo;";
+        TestFS fs = new TestFS(expectedSpecifier, moduleBody);
+        Path sourceFile = Files.createTempFile("tmp-test", ".mjs");
+        Files.write(sourceFile, Collections.singletonList(testSrc));
+        Value v = assertFsLoads(fs, sourceFile.toFile());
+        Assert.assertEquals(41, v.asInt());
+        Assert.assertTrue(fs.uriSpecifiers.contains(expectedSpecifier));
+        Assert.assertFalse(fs.stringSpecifiers.contains(expectedSpecifier));
+    }
+
+    @Test
     public void testBareModuleCommonJsEmulation() throws IOException {
         final String expectedSpecifier = "foobar";
         final String moduleBody = "export const foo = 43;";
@@ -138,8 +155,13 @@ public class ImportWithCustomFsTest {
         Assert.assertTrue(fs.paths.contains("foobar"));
     }
 
+    private static Value assertFsLoads(TestFS fs, File file) throws IOException {
+        Context cx = JSTest.newContextBuilder().allowIO(true).fileSystem(fs).build();
+        return cx.eval(Source.newBuilder(ID, file).build());
+    }
+
     private static Value assertFsLoads(TestFS fs, String testSrc) throws IOException {
-        Context cx = JSTest.newContextBuilder().allowPolyglotAccess(PolyglotAccess.ALL).allowIO(true).fileSystem(fs).build();
+        Context cx = JSTest.newContextBuilder().allowIO(true).fileSystem(fs).build();
         return cx.eval(Source.newBuilder(ID, testSrc, "test.mjs").build());
     }
 

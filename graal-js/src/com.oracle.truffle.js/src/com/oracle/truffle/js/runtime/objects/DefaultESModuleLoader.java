@@ -85,9 +85,8 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         String refPath = referrer == null ? null : referrer.getSource().getPath();
         try {
             TruffleFile moduleFile;
+            URI maybeUri = asURI(specifier);
             if (refPath == null) {
-                // Importing module source does not originate from a file.
-                URI maybeUri = asURI(specifier);
                 if (maybeUri != null) {
                     moduleFile = realm.getEnv().getPublicTruffleFile(maybeUri).getCanonicalFile();
                 } else {
@@ -95,7 +94,12 @@ public class DefaultESModuleLoader implements JSModuleLoader {
                 }
             } else {
                 TruffleFile refFile = realm.getEnv().getPublicTruffleFile(refPath);
-                moduleFile = refFile.resolveSibling(specifier).getCanonicalFile();
+                if (maybeUri != null) {
+                    String uriFile = realm.getEnv().getPublicTruffleFile(maybeUri).getCanonicalFile().getPath();
+                    moduleFile = refFile.resolveSibling(uriFile).getCanonicalFile();
+                } else {
+                    moduleFile = refFile.resolveSibling(specifier).getCanonicalFile();
+                }
             }
             String canonicalPath = moduleFile.getPath();
             return loadModuleFromUrl(specifier, moduleFile, canonicalPath);
