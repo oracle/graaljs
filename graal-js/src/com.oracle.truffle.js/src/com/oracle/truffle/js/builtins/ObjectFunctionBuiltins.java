@@ -84,7 +84,6 @@ import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectValues
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltins.ObjectOperation;
 import com.oracle.truffle.js.builtins.helper.ListGetNode;
 import com.oracle.truffle.js.builtins.helper.ListSizeNode;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
@@ -125,6 +124,7 @@ import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -872,9 +872,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSObject(object)", "isValidPrototype(newProto)"})
-        final Object setPrototypeOfJSObject(DynamicObject object, DynamicObject newProto) {
-            assert JSGuards.isJSObject(object);
+        @Specialization(guards = {"isValidPrototype(newProto)"})
+        final Object setPrototypeOfJSObject(JSObject object, JSDynamicObject newProto) {
             if (!JSObject.setPrototype(object, newProto, classProfile)) {
                 errorBranch.enter();
                 throw Errors.createTypeError("setPrototype failed");
@@ -882,26 +881,25 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return object;
         }
 
-        @Specialization(guards = {"isJSObject(object)", "!isJSObject(newProto)", "!isJSNull(newProto)"})
-        static Object setPrototypeOfJSObjectToInvalidNewProto(Object object, Object newProto) {
-            assert JSGuards.isJSObject(object);
+        @Specialization(guards = {"!isValidPrototype(newProto)"})
+        static Object setPrototypeOfJSObjectToInvalidNewProto(@SuppressWarnings("unused") JSObject object, Object newProto) {
             throw Errors.createTypeErrorInvalidPrototype(newProto);
         }
 
         @Specialization(guards = {"isNullOrUndefined(object)"})
-        final Object setPrototypeOfNonObjectCoercible(Object object, @SuppressWarnings("unused") DynamicObject newProto) {
+        final Object setPrototypeOfNonObjectCoercible(Object object, @SuppressWarnings("unused") Object newProto) {
             // ? RequireObjectCoercible(O).
             throw createTypeErrorCalledOnNonObject(object);
         }
 
         @Specialization(guards = {"!isJSObject(object)", "!isNullOrUndefined(object)", "!isForeignObject(object)"})
-        static Object setPrototypeOfValue(Object object, @SuppressWarnings("unused") DynamicObject newProto) {
+        static Object setPrototypeOfValue(Object object, @SuppressWarnings("unused") Object newProto) {
             // If Type(O) is not Object, return O.
             return object;
         }
 
         @Specialization(guards = {"isForeignObject(object)"})
-        final Object setPrototypeOfForeignObject(Object object, @SuppressWarnings("unused") DynamicObject newProto) {
+        final Object setPrototypeOfForeignObject(Object object, @SuppressWarnings("unused") Object newProto) {
             throw createTypeErrorCalledOnNonObject(object);
         }
     }
