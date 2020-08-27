@@ -252,7 +252,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, GlobalShell builtinEnum) {
             switch (builtinEnum) {
                 case quit:
-                    return JSGlobalExitNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
+                    return JSGlobalExitNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                 case readline:
                     return JSGlobalReadLineNodeGen.create(context, builtin, new JavaScriptNode[]{JSConstantNode.createUndefined()});
                 case read:
@@ -372,7 +372,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             switch (builtinEnum) {
                 case exit:
                 case quit:
-                    return JSGlobalExitNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
+                    return JSGlobalExitNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                 case readLine:
                     return JSGlobalReadLineNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                 case readFully:
@@ -1470,14 +1470,29 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             super(context, builtin);
         }
 
+        @Specialization(guards = "isUndefined(arg)")
+        protected Object exit(@SuppressWarnings("unused") Object arg) {
+            return exit(0);
+        }
+
         @Specialization
-        protected Object exit(Object[] arg,
-                        @Cached("create()") JSToNumberNode toNumberNode) {
-            int exitCode = arg.length == 0 ? 0 : (int) JSRuntime.toInteger(toNumberNode.executeNumber(arg[0]));
+        protected Object exit(int exitCode) {
             if (getContext().isOptionNashornCompatibilityMode()) {
                 nashornExit(exitCode);
             }
-            throw new ExitException(exitCode, this);
+            throw newExitException(exitCode);
+        }
+
+        @Specialization
+        protected Object exit(Object arg,
+                        @Cached("create()") JSToNumberNode toNumberNode) {
+            int exitCode = (int) JSRuntime.toInteger(toNumberNode.executeNumber(arg));
+            return exit(exitCode);
+        }
+
+        @TruffleBoundary
+        private ExitException newExitException(int exitCode) {
+            return new ExitException(exitCode, this);
         }
 
         @TruffleBoundary
