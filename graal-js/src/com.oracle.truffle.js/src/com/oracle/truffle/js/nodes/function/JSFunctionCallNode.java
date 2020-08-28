@@ -281,7 +281,6 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                         c = insertAtFront(new JSNoSuchMethodAdapterCacheNode(null), currentHead);
                     } else {
                         c = insertAtFront(new GenericFallbackCacheNode(null), dropCachedNodes(currentHead, hasCached));
-                        reportPolymorphicSpecialize();
                     }
                 }
                 assert c.getParent() != null;
