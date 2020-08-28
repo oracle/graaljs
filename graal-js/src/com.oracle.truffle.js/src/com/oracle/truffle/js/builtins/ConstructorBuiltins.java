@@ -161,6 +161,7 @@ import com.oracle.truffle.js.nodes.intl.InitializeSegmenterNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveThenableNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.GraalJSException;
@@ -1783,7 +1784,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 if (isDirect.profile(byteBuffer.isDirect())) {
                     return swapPrototype(JSArrayBuffer.createDirectArrayBuffer(getContext(), byteBuffer), newTarget);
                 } else {
-                    return swapPrototype(JSArrayBuffer.createArrayBuffer(getContext(), byteBuffer.array()), newTarget);
+                    return swapPrototype(JSArrayBuffer.createArrayBuffer(getContext(), Boundaries.byteBufferArray(byteBuffer)), newTarget);
                 }
             } else {
                 errorBranch.enter();

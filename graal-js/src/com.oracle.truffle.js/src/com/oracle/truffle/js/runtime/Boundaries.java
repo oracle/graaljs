@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -374,5 +375,10 @@ public final class Boundaries {
     @TruffleBoundary
     public static <T> boolean economicSetContains(EconomicSet<T> economicSet, T element) {
         return economicSet.contains(element);
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    public static byte[] byteBufferArray(ByteBuffer buffer) {
+        return buffer.array();
     }
 }
