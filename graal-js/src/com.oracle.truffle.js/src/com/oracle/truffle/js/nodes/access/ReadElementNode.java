@@ -547,9 +547,6 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 ArrayReadElementCacheNode newCacheNode = makeArrayCacheNode(target, array, currentHead);
                 insert(newCacheNode);
                 arrayReadElementNode = newCacheNode;
-                if (currentHead != null && currentHead.arrayCacheNext != null && currentHead.arrayCacheNext.arrayCacheNext != null) {
-                    reportPolymorphicSpecialize();
-                }
                 if (!newCacheNode.guard(target, array)) {
                     throw Errors.shouldNotReachHere();
                 }
