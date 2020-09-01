@@ -58,7 +58,6 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
-@ReportPolymorphism
 @ImportStatic({JSRuntime.class, CachedGetPropertyNode.class})
 abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
     static final int MAX_DEPTH = 1;
@@ -122,6 +121,7 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
         }
     }
 
+    @ReportPolymorphism.Megamorphic
     @Specialization(replaces = {"doCachedKey", "doArrayIndex", "doProxy"})
     void doGeneric(DynamicObject target, Object key, Object value, Object receiver,
                     @Cached("create()") ToArrayIndexNode toArrayIndexNode,

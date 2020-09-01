@@ -78,7 +78,6 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
  */
 @TypeSystemReference(IntToLongTypeSystem.class)
 @ImportStatic(value = {JSRuntime.class, JSInteropUtil.class})
-@ReportPolymorphism
 public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
 
     private final boolean hasOwnProperty;
@@ -139,11 +138,13 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
         return hasPropertyNode.hasProperty(object);
     }
 
+    @ReportPolymorphism.Megamorphic
     @Specialization(guards = {"isJSType(object)"}, replaces = {"objectStringCached", "arrayStringCached"})
     public boolean objectOrArrayString(DynamicObject object, String propertyName) {
         return hasPropertyGeneric(object, propertyName);
     }
 
+    @ReportPolymorphism.Megamorphic
     @Specialization(guards = {"isJSType(object)"})
     public boolean objectSymbol(DynamicObject object, Symbol propertyName) {
         return hasPropertyGeneric(object, propertyName);
@@ -208,6 +209,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
         }
     }
 
+    @ReportPolymorphism.Megamorphic
     @Specialization(guards = "isJSType(object)")
     public boolean objectObject(DynamicObject object, Object propertyName,
                     @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {

@@ -1285,6 +1285,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         if (invalidationAssumption == null) {
             invalidationAssumption = Truffle.getRuntime().createAssumption("PropertyCacheNode");
             cacheAssumptionInitializedCount.inc();
+            // This could be removed eventually GR-25874
             reportPolymorphicSpecialize();
         }
         return null;

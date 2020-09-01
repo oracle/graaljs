@@ -470,9 +470,6 @@ public class WriteElementNode extends JSTargetableNode {
             WriteElementTypeCacheNode newCacheNode = makeTypeCacheNode(target, currentHead);
             insert(newCacheNode);
             typeCacheNode = newCacheNode;
-            if (currentHead != null) {
-                reportPolymorphicSpecialize();
-            }
             if (!newCacheNode.guard(target)) {
                 throw Errors.shouldNotReachHere();
             }
@@ -638,7 +635,7 @@ public class WriteElementNode extends JSTargetableNode {
                 ArrayWriteElementCacheNode newCacheNode = makeArrayCacheNode(target, array, currentHead);
                 insert(newCacheNode);
                 arrayWriteElementNode = newCacheNode;
-                if (currentHead != null) {
+                if (currentHead != null && currentHead.arrayCacheNext != null && currentHead.arrayCacheNext.arrayCacheNext != null) {
                     reportPolymorphicSpecialize();
                 }
                 if (!newCacheNode.guard(target, array)) {
