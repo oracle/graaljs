@@ -246,9 +246,13 @@ public abstract class JSNewNode extends JavaScriptNode {
             throwCannotExtendError(type);
         }
         // Equivalent to Java.extend(type)
-        JavaAccess.checkAccess(new Class<?>[]{type}, context);
-        Class<?> adapterClass = context.getJavaAdapterClassFor(type);
-        return env.asHostSymbol(adapterClass);
+        Class<?>[] types = new Class<?>[]{type};
+        JavaAccess.checkAccess(types, context);
+        try {
+            return env.createHostAdapterClass(types);
+        } catch (Exception ex) {
+            throw Errors.createTypeError(ex.getMessage(), ex, this);
+        }
     }
 
     @Specialization(guards = {"!isJSFunction(target)", "!isJSAdapter(target)", "!isJSProxy(target)", "!isJavaPackage(target)", "!isForeignObject(target)"})

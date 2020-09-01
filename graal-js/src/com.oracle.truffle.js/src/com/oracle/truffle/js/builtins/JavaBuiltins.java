@@ -55,6 +55,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -96,7 +97,6 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.java.JavaAccess;
-import com.oracle.truffle.js.runtime.java.adapter.JavaAdapterFactory;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -361,13 +361,15 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
             JavaAccess.checkAccess(types, getContext());
 
-            Class<?> result;
-            if (types.length == 1 && classOverrides == null) {
-                result = getContext().getJavaAdapterClassFor(types[0]);
-            } else {
-                result = JavaAdapterFactory.getAdapterClassFor(types, classOverrides);
+            try {
+                if (classOverrides != null) {
+                    return env.createHostAdapterClassWithStaticOverrides(types, classOverrides);
+                } else {
+                    return env.createHostAdapterClass(types);
+                }
+            } catch (Exception ex) {
+                throw Errors.createTypeError(ex.getMessage(), ex, this);
             }
-            return env.asHostSymbol(result);
         }
 
         protected static boolean isType(Object obj, TruffleLanguage.Env env) {
@@ -537,7 +539,11 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         @Specialization
         @TruffleBoundary
         protected Object superAdapter(Object adapter) {
-            return JavaAdapterFactory.getSuperAdapter(adapter);
+            try {
+                return InteropLibrary.getUncached().readMember(adapter, "super");
+            } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+                throw Errors.createTypeErrorInteropException(adapter, e, null, this);
+            }
         }
     }
 

@@ -76,7 +76,6 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
-import com.oracle.truffle.js.runtime.java.adapter.JavaSuperAdapter;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -229,24 +228,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @Override
         public boolean isValid() {
             return prototypeShapeCheck.isValid();
-        }
-    }
-
-    protected static final class JavaSuperAdapterCheckNode extends ReceiverCheckNode {
-        private final Class<?> type;
-
-        protected JavaSuperAdapterCheckNode(JavaSuperAdapter adapter) {
-            this.type = adapter.getAdapter().getClass();
-        }
-
-        @Override
-        public boolean accept(Object thisObj) {
-            return thisObj instanceof JavaSuperAdapter && ((JavaSuperAdapter) thisObj).getAdapter().getClass() == type;
-        }
-
-        @Override
-        public DynamicObject getStore(Object thisObj) {
-            throw Errors.shouldNotReachHere();
         }
     }
 
