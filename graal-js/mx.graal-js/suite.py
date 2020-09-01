@@ -479,7 +479,6 @@ suite = {
         },
         "exports" : [
           "com.oracle.truffle.js.lang to org.graalvm.truffle",
-          "com.oracle.truffle.js.runtime.java.adapter",
         ],
       },
       "subDir" : "src",
