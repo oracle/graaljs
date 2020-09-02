@@ -2455,7 +2455,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             String thisStr = toString(thisObj);
             if (isRegExpNode.executeBoolean(searchString)) {
                 noStringBranch.enter();
-                throw Errors.createTypeErrorStringExpected();
+                throw Errors.createTypeError("First argument to String.prototype.startsWith must not be a regular expression");
             }
             String searchStr = toString2Node.executeString(searchString);
             int fromIndex = toIntegerAsInt(position);
@@ -2502,7 +2502,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             String thisStr = toString(thisObj);
             if (isRegExpNode.executeBoolean(searchString)) {
                 noStringBranch.enter();
-                throw Errors.createTypeErrorStringExpected();
+                throw Errors.createTypeError("First argument to String.prototype.endsWith must not be a regular expression");
             }
             String searchStr = toString2Node.executeString(searchString);
             int fromIndex = toIntegerAsInt(position);
@@ -2548,7 +2548,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             String thisStr = toString(thisObj);
             if (isRegExpNode.executeBoolean(searchString)) {
                 noStringBranch.enter();
-                throw Errors.createTypeErrorStringExpected();
+                throw Errors.createTypeError("First argument to String.prototype.includes must not be a regular expression");
             }
             String searchStr = toString2Node.executeString(searchString);
             int fromIndex = toIntegerAsInt(position);

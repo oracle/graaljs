@@ -763,11 +763,6 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorStringExpected() {
-        return Errors.createTypeError("string expected");
-    }
-
-    @TruffleBoundary
     public static JSException createEvalDisabled() {
         return Errors.createEvalError("dynamic evaluation of code is disabled.");
     }
