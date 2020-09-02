@@ -539,10 +539,6 @@
     "filePath" : "mjsunit/es6/sloppy-restrictive-block-function.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/string-endswith.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
     "filePath" : "mjsunit/es6/super.js",
     "status" : "FAIL"
   }, {
