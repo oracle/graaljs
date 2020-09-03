@@ -708,8 +708,11 @@
     "comment" : "TODO: evaluate"
   }, {
     "filePath" : "mjsunit/harmony/optional-chaining-this-private.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
+    "ecmaVersion" : {
+      "minVersion" : 12
+    },
+    "status" : "PASS",
+    "comment" : "Uses private fields"
   }, {
     "filePath" : "mjsunit/harmony/private-fields-ic.js",
     "ecmaVersion" : {
