@@ -2754,8 +2754,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode createOptionalAccessNode(AccessNode accessNode, JavaScriptNode base) {
-        assert !accessNode.isPrivate();
-        JavaScriptNode read = factory.createReadProperty(context, filterOptionalChainTarget(base, accessNode.isOptional()), accessNode.getProperty(), accessNode.isFunction());
+        JavaScriptNode innerAccess = filterOptionalChainTarget(base, accessNode.isOptional());
+        JavaScriptNode read = createReadProperty(accessNode, innerAccess);
         tagExpression(read, accessNode);
         return factory.createOptionalChain(read);
     }

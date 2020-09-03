@@ -4422,9 +4422,15 @@ public class Parser extends AbstractParser {
                             break;
                         }
                         default: {
-                            final IdentNode property = getIdentifierName();
+                            final boolean isPrivate = type == TokenType.PRIVATE_IDENT;
+                            final IdentNode property;
+                            if (isPrivate) {
+                                property = privateIdentifierUse();
+                            } else {
+                                property = getIdentifierName();
+                            }
 
-                            lhs = new AccessNode(callToken, finish, lhs, property.getName(), false, false, true, optionalChain);
+                            lhs = new AccessNode(callToken, finish, lhs, property.getName(), false, isPrivate, true, optionalChain);
                             break;
                         }
                     }
