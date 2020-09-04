@@ -44,38 +44,22 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.unary.IsCallableNode;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 
 public abstract class PerformPromiseCombinatorNode extends JavaScriptBaseNode {
     protected final JSContext context;
-    @Child private PropertyGetNode getResolve;
-    @Child private IsCallableNode isCallable;
     @Child private IteratorStepNode iteratorStep;
     @Child private IteratorValueNode iteratorValue;
 
     protected PerformPromiseCombinatorNode(JSContext context) {
         this.context = context;
-        this.getResolve = PropertyGetNode.create(JSPromise.RESOLVE, false, context);
-        this.isCallable = IsCallableNode.create();
         this.iteratorStep = IteratorStepNode.create(context);
         this.iteratorValue = IteratorValueNode.create(context);
     }
 
-    public abstract DynamicObject execute(IteratorRecord iteratorRecord, DynamicObject constructor, PromiseCapabilityRecord resultCapability);
-
-    protected final Object getPromiseResolve(DynamicObject constructor) {
-        Object promiseResolve = getResolve.getValue(constructor);
-        if (!isCallable.executeBoolean(promiseResolve)) {
-            throw Errors.createTypeErrorNotAFunction(promiseResolve);
-        }
-        return promiseResolve;
-    }
+    public abstract DynamicObject execute(IteratorRecord iteratorRecord, DynamicObject constructor, PromiseCapabilityRecord resultCapability, Object promiseResolve);
 
     /**
      * Let next be IteratorStep(iteratorRecord). If next is an abrupt completion, set

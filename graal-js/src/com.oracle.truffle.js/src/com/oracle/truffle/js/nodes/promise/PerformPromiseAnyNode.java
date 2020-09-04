@@ -107,11 +107,11 @@ public class PerformPromiseAnyNode extends PerformPromiseCombinatorNode {
     }
 
     @Override
-    public DynamicObject execute(IteratorRecord iteratorRecord, DynamicObject constructor, PromiseCapabilityRecord resultCapability) {
+    public DynamicObject execute(IteratorRecord iteratorRecord, DynamicObject constructor, PromiseCapabilityRecord resultCapability, Object promiseResolve) {
         assert JSRuntime.isConstructor(constructor);
+        assert JSRuntime.isCallable(promiseResolve);
         SimpleArrayList<Object> errors = new SimpleArrayList<>(10);
         BoxedInt remainingElementsCount = new BoxedInt(1);
-        Object promiseResolve = getPromiseResolve(constructor);
         for (int index = 0;; index++) {
             Object next = iteratorStepOrSetDone(iteratorRecord);
             if (next == Boolean.FALSE) {
