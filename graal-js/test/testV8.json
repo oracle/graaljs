@@ -479,18 +479,6 @@
     "status" : "SKIP",
     "comment" : "Tests for a V8-specific RangeError, which is against the spec."
   }, {
-    "filePath" : "mjsunit/es6/promise-all-resolve-not-callable.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
-  }, {
-    "filePath" : "mjsunit/es6/promise-allsettled-resolve-not-callable.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
-  }, {
-    "filePath" : "mjsunit/es6/promise-race-resolve-not-callable.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
-  }, {
     "filePath" : "mjsunit/es6/proxies-accesschecks.js",
     "status" : "FAIL"
   }, {
@@ -760,10 +748,6 @@
     "filePath" : "mjsunit/harmony/promise-any-overflow-1.js",
     "status" : "SKIP",
     "comment" : "long-running test, deactivated"
-  }, {
-    "filePath" : "mjsunit/harmony/promise-any-resolve-not-callable.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
   }, {
     "filePath" : "mjsunit/harmony/public-instance-class-fields.js",
     "ecmaVersion" : {
