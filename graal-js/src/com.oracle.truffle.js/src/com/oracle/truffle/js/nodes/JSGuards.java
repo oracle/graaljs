@@ -406,11 +406,11 @@ public final class JSGuards {
     }
 
     public static boolean isJSProxy(DynamicObject value) {
-        return JSProxy.isProxy(value);
+        return JSProxy.isJSProxy(value);
     }
 
     public static boolean isJSProxy(Object value) {
-        return JSProxy.isProxy(value);
+        return JSProxy.isJSProxy(value);
     }
 
     public static boolean isJSFastArguments(DynamicObject value) {

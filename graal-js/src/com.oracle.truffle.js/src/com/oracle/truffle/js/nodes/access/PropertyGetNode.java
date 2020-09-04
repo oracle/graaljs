@@ -712,7 +712,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            if (JSRuntime.isObject(thisObj) && !JSAdapter.isJSAdapter(thisObj) && !JSProxy.isProxy(thisObj)) {
+            if (JSRuntime.isObject(thisObj) && !JSAdapter.isJSAdapter(thisObj) && !JSProxy.isJSProxy(thisObj)) {
                 if (!context.getNoSuchMethodUnusedAssumption().isValid() && root.isMethod() && getHasProperty().executeBoolean(thisObj, JSObject.NO_SUCH_METHOD_NAME)) {
                     Object function = getNoSuchMethod().getValue(thisObj);
                     if (function != Undefined.instance) {
@@ -1184,7 +1184,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @TruffleBoundary
         private Object getNoSuchPropertySlow(DynamicObject thisObj, Object defaultValue, boolean isMethod) {
-            if (!(key instanceof Symbol) && JSRuntime.isObject(thisObj) && !JSAdapter.isJSAdapter(thisObj) && !JSProxy.isProxy(thisObj)) {
+            if (!(key instanceof Symbol) && JSRuntime.isObject(thisObj) && !JSAdapter.isJSAdapter(thisObj) && !JSProxy.isJSProxy(thisObj)) {
                 if (isMethod) {
                     Object function = JSObject.get(thisObj, JSObject.NO_SUCH_METHOD_NAME);
                     if (function != Undefined.instance) {
@@ -1709,7 +1709,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             ReceiverCheckNode receiverCheck = (depth == 0) ? new JSClassCheckNode(JSObject.getJSClass(jsobject)) : shapeCheck;
             if (JSAdapter.isJSAdapter(store)) {
                 return new JSAdapterPropertyGetNode(receiverCheck);
-            } else if (JSProxy.isProxy(store) && JSRuntime.isPropertyKey(key)) {
+            } else if (JSProxy.isJSProxy(store) && JSRuntime.isPropertyKey(key)) {
                 return createJSProxyCache(receiverCheck);
             } else if (JSModuleNamespace.isJSModuleNamespace(store)) {
                 return new UnspecializedPropertyGetNode(receiverCheck);
@@ -1718,7 +1718,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             } else {
                 return createUndefinedJSObjectPropertyNode(jsobject, depth);
             }
-        } else if (JSProxy.isProxy(store)) {
+        } else if (JSProxy.isJSProxy(store)) {
             ReceiverCheckNode receiverCheck = createPrimitiveReceiverCheck(thisObj, depth);
             return new JSProxyDispatcherPropertyGetNode(context, key, receiverCheck, isMethod());
         } else {

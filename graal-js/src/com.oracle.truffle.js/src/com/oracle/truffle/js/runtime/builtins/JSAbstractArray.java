@@ -332,7 +332,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
         DynamicObject current = JSObject.getPrototype(thisObj);
         String propertyName = null;
         while (current != Null.instance) {
-            if (JSProxy.isProxy(current)) {
+            if (JSProxy.isJSProxy(current)) {
                 return JSObject.setWithReceiver(current, index, value, receiver, false);
             }
             if (canHaveReadOnlyOrAccessorProperties(current)) {

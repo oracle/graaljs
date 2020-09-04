@@ -227,7 +227,7 @@ public final class JSRuntime {
             return JSSymbol.TYPE_NAME;
         } else if (JSObject.isJSDynamicObject(value)) {
             DynamicObject object = (DynamicObject) value;
-            if (JSProxy.isProxy(object)) {
+            if (JSProxy.isJSProxy(object)) {
                 Object target = JSProxy.getTarget(object);
                 if (target == Null.instance) {
                     return JSRuntime.isRevokedCallableProxy(object) ? JSFunction.TYPE_NAME : JSOrdinary.TYPE_NAME;
@@ -968,7 +968,7 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static String objectToConsoleString(DynamicObject obj, String name, int depth, String[] internalKeys, Object[] internalValues, boolean allowSideEffects) {
-        assert JSObject.isJSDynamicObject(obj) && !JSFunction.isJSFunction(obj) && !JSProxy.isProxy(obj);
+        assert JSObject.isJSDynamicObject(obj) && !JSFunction.isJSFunction(obj) && !JSProxy.isJSProxy(obj);
         StringBuilder sb = new StringBuilder();
 
         if (name != null) {
@@ -2371,7 +2371,7 @@ public final class JSRuntime {
     public static boolean isCallable(Object value) {
         if (JSFunction.isJSFunction(value)) {
             return true;
-        } else if (JSProxy.isProxy(value)) {
+        } else if (JSProxy.isJSProxy(value)) {
             return isCallableProxy((DynamicObject) value);
         } else if (value instanceof TruffleObject) {
             return isCallableForeign(value);
@@ -2383,7 +2383,7 @@ public final class JSRuntime {
         assert JSObject.isJSDynamicObject(value);
         if (JSFunction.isJSFunction(value)) {
             return true;
-        } else if (JSProxy.isProxy(value)) {
+        } else if (JSProxy.isJSProxy(value)) {
             return isCallableProxy(value);
         }
         return false;
@@ -2399,13 +2399,13 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static boolean isCallableProxy(DynamicObject proxy) {
-        assert JSProxy.isProxy(proxy);
+        assert JSProxy.isJSProxy(proxy);
         Object target = JSProxy.getTarget(proxy);
         return (target == Null.instance) ? isRevokedCallableProxy(proxy) : isCallable(target);
     }
 
     public static boolean isRevokedCallableProxy(DynamicObject revokedProxy) {
-        assert JSProxy.isProxy(revokedProxy) && JSProxy.isRevoked(revokedProxy);
+        assert JSProxy.isJSProxy(revokedProxy) && JSProxy.isRevoked(revokedProxy);
         return Boolean.TRUE == JSDynamicObject.getOrDefault(revokedProxy, JSProxy.REVOKED_CALLABLE, Boolean.FALSE);
     }
 
@@ -2415,7 +2415,7 @@ public final class JSRuntime {
     public static boolean isArray(Object obj) {
         if (JSArray.isJSArray(obj)) {
             return true;
-        } else if (JSProxy.isProxy(obj)) {
+        } else if (JSProxy.isJSProxy(obj)) {
             return isProxyAnArray((DynamicObject) obj);
         } else if (isForeignObject(obj)) {
             return InteropLibrary.getFactory().getUncached().hasArrayElements(obj);
@@ -2425,7 +2425,7 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static boolean isProxyAnArray(DynamicObject proxy) {
-        assert JSProxy.isProxy(proxy);
+        assert JSProxy.isJSProxy(proxy);
         if (JSProxy.isRevoked(proxy)) {
             throw Errors.createTypeErrorProxyRevoked();
         }
@@ -2460,7 +2460,7 @@ public final class JSRuntime {
     public static Object call(Object fnObj, Object holder, Object[] arguments) {
         if (JSFunction.isJSFunction(fnObj)) {
             return JSFunction.call((DynamicObject) fnObj, holder, arguments);
-        } else if (JSProxy.isProxy(fnObj)) {
+        } else if (JSProxy.isJSProxy(fnObj)) {
             return JSProxy.call((DynamicObject) fnObj, holder, arguments);
         } else if (isForeignObject(fnObj)) {
             return JSInteropUtil.call(fnObj, arguments);
@@ -2472,7 +2472,7 @@ public final class JSRuntime {
     public static Object construct(Object fnObj, Object[] arguments) {
         if (JSFunction.isJSFunction(fnObj)) {
             return JSFunction.construct((DynamicObject) fnObj, arguments);
-        } else if (JSProxy.isProxy(fnObj)) {
+        } else if (JSProxy.isJSProxy(fnObj)) {
             return JSProxy.construct((DynamicObject) fnObj, arguments);
         } else if (isForeignObject(fnObj)) {
             return JSInteropUtil.construct(fnObj, arguments);
@@ -2639,7 +2639,7 @@ public final class JSRuntime {
     }
 
     private static boolean isProxy(DynamicObject receiver) {
-        return JSProxy.isProxy(receiver) || JSAdapter.isJSAdapter(receiver);
+        return JSProxy.isJSProxy(receiver) || JSAdapter.isJSAdapter(receiver);
     }
 
     public static boolean isJSRootNode(RootNode rootNode) {
@@ -2673,7 +2673,7 @@ public final class JSRuntime {
                 } else {
                     return JSFunction.getRealm(dynObj);
                 }
-            } else if (JSProxy.isProxy(dynObj)) {
+            } else if (JSProxy.isJSProxy(dynObj)) {
                 if (JSProxy.getHandler(dynObj) == Null.instance) {
                     throw Errors.createTypeErrorProxyRevoked();
                 }
@@ -2689,7 +2689,7 @@ public final class JSRuntime {
     public static boolean isConstructor(Object constrObj) {
         if (JSFunction.isConstructor(constrObj)) {
             return true;
-        } else if (JSProxy.isProxy(constrObj)) {
+        } else if (JSProxy.isJSProxy(constrObj)) {
             return isConstructorProxy((DynamicObject) constrObj);
         } else if (constrObj instanceof TruffleObject) {
             return isConstructorForeign(constrObj);
@@ -2707,14 +2707,14 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static boolean isConstructorProxy(DynamicObject constrObj) {
-        assert JSProxy.isProxy(constrObj);
+        assert JSProxy.isJSProxy(constrObj);
         return isConstructor(JSProxy.getTarget(constrObj));
     }
 
     public static boolean isGenerator(Object genObj) {
         if (JSFunction.isJSFunction(genObj) && JSFunction.isGenerator((DynamicObject) genObj)) {
             return true;
-        } else if (JSProxy.isProxy(genObj)) {
+        } else if (JSProxy.isJSProxy(genObj)) {
             return isGeneratorProxy((DynamicObject) genObj);
         }
         return false;
@@ -2722,7 +2722,7 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static boolean isGeneratorProxy(DynamicObject genObj) {
-        assert JSProxy.isProxy(genObj);
+        assert JSProxy.isJSProxy(genObj);
         return isGenerator(JSProxy.getTarget(genObj));
     }
 

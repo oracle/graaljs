@@ -285,7 +285,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
         if (type == Type.Number || type == Type.BigInt || type == Type.String || type == Type.Boolean || type == Type.Symbol || type == Type.False) {
             return false;
         } else if (type == Type.Object) {
-            if (JSProxy.isProxy(value)) {
+            if (JSProxy.isJSProxy(value)) {
                 proxyBranch.enter();
                 return checkProxy(value, false);
             } else {
@@ -296,7 +296,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
         } else if (type == Type.Function) {
             if (JSFunction.isJSFunction(value)) {
                 return true;
-            } else if (JSProxy.isProxy(value)) {
+            } else if (JSProxy.isJSProxy(value)) {
                 proxyBranch.enter();
                 return checkProxy(value, true);
             } else {
@@ -335,7 +335,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
         do {
             proxy = (DynamicObject) target;
             target = JSProxy.getTarget(proxy);
-        } while (JSProxy.isProxy(target));
+        } while (JSProxy.isJSProxy(target));
 
         if (target == Null.instance) { // revoked proxy
             return isFunction == JSRuntime.isRevokedCallableProxy(proxy);

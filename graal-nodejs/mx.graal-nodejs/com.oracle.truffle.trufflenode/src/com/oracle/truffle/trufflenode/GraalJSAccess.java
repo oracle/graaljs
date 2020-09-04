@@ -486,7 +486,7 @@ public final class GraalJSAccess {
             return SET_OBJECT;
         } else if (JSPromise.isJSPromise(obj)) {
             return PROMISE_OBJECT;
-        } else if (JSProxy.isProxy(obj)) {
+        } else if (JSProxy.isJSProxy(obj)) {
             return PROXY_OBJECT;
         } else {
             return ORDINARY_OBJECT;
@@ -885,7 +885,7 @@ public final class GraalJSAccess {
 
     public boolean objectHasRealNamedProperty(Object object, Object key) {
         Object obj = object;
-        if (JSProxy.isProxy(obj)) {
+        if (JSProxy.isJSProxy(obj)) {
             obj = JSProxy.getTarget((DynamicObject) obj);
         }
         return objectHasOwnProperty(obj, key);
@@ -1086,7 +1086,7 @@ public final class GraalJSAccess {
         Object current = object;
         while (JSRuntime.isObject(current)) {
             DynamicObject currentDO = (DynamicObject) current;
-            if (JSProxy.isProxy(currentDO)) {
+            if (JSProxy.isJSProxy(currentDO)) {
                 current = JSProxy.getTarget(currentDO);
             } else {
                 if (JSObject.hasOwnProperty(currentDO, propertyKey)) {
@@ -1103,7 +1103,7 @@ public final class GraalJSAccess {
         Object current = object;
         while (JSRuntime.isObject(current)) {
             DynamicObject currentDO = (DynamicObject) current;
-            if (JSProxy.isProxy(currentDO)) {
+            if (JSProxy.isJSProxy(currentDO)) {
                 current = JSProxy.getTarget(currentDO);
             } else {
                 PropertyDescriptor descriptor = JSObject.getOwnProperty(currentDO, propertyKey);
@@ -1138,7 +1138,7 @@ public final class GraalJSAccess {
     private Object objectCreationContextFromConstructor(DynamicObject object) {
         // V8 has a link to the constructor in the object's map which is used to get the context.
         // We try to get the constructor via the object's prototype instead.
-        if (!JSProxy.isProxy(object)) {
+        if (!JSProxy.isJSProxy(object)) {
             DynamicObject prototype = JSObject.getPrototype(object);
             if (prototype != Null.instance) {
                 Object constructor = JSRuntime.getDataProperty(prototype, JSObject.CONSTRUCTOR);

@@ -96,7 +96,7 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
     protected boolean doGeneric(DynamicObject proxy, Object receiver, Object value, Object key,
                     @Cached("createBinaryProfile()") ConditionProfile hasTrap,
                     @Cached JSClassProfile targetClassProfile) {
-        assert JSProxy.isProxy(proxy);
+        assert JSProxy.isJSProxy(proxy);
         assert !(key instanceof HiddenKey);
         Object propertyKey = toPropertyKey(key);
         DynamicObject handler = JSProxy.getHandlerChecked(proxy, errorBranch);

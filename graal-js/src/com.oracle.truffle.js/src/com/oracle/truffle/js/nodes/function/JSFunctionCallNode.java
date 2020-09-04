@@ -273,7 +273,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                     boolean hasCached = cachedCount > 0;
                     if (JSFunction.isJSFunction(function)) {
                         c = specializeGenericFunction(currentHead, hasCached);
-                    } else if (JSProxy.isProxy(function)) {
+                    } else if (JSProxy.isJSProxy(function)) {
                         c = insertAtFront(new JSProxyCacheNode(null, JSFunctionCallNode.isNew(flags), JSFunctionCallNode.isNewTarget(flags)), currentHead);
                     } else if (JSGuards.isForeignObject(function)) {
                         c = specializeForeignCall(arguments, currentHead);
@@ -1613,7 +1613,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         @Override
         public Object executeCall(Object[] arguments) {
             Object function = JSArguments.getFunctionObject(arguments);
-            if (JSProxy.isProxy(function)) {
+            if (JSProxy.isJSProxy(function)) {
                 if (proxyCall == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     JSContext context = JSShape.getJSContext(((DynamicObject) function).getShape());
@@ -1627,7 +1627,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         @Override
         protected boolean accept(Object function) {
-            return JSProxy.isProxy(function);
+            return JSProxy.isJSProxy(function);
         }
     }
 
@@ -1673,7 +1673,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         @Override
         protected boolean accept(Object function) {
-            return !JSFunction.isJSFunction(function) && !JSProxy.isProxy(function) &&
+            return !JSFunction.isJSFunction(function) && !JSProxy.isJSProxy(function) &&
                             !(JSGuards.isForeignObject(function)) &&
                             !(function instanceof JSNoSuchMethodAdapter);
         }

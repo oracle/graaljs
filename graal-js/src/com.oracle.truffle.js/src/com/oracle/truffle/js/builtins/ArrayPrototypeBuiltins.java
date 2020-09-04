@@ -1354,7 +1354,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 errorBranch.enter();
                 throwLengthError();
             }
-            if (optimizationsObservable.profile(JSProxy.isProxy(elObj) || !JSObject.isJSDynamicObject(elObj))) {
+            if (optimizationsObservable.profile(JSProxy.isJSProxy(elObj) || !JSObject.isJSDynamicObject(elObj))) {
                 // strictly to the standard implementation; traps could expose optimizations!
                 for (long k = 0; k < len2; k++) {
                     if (hasProperty(elObj, k)) {

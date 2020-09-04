@@ -301,7 +301,7 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
             ReceiverCheckNode receiverCheck = (depth == 0) ? new JSClassCheckNode(JSObject.getJSClass(thisJSObj)) : shapeCheck;
             if (JSAdapter.isJSAdapter(store)) {
                 return new JSAdapterHasPropertyCacheNode(key, receiverCheck);
-            } else if (JSProxy.isProxy(store)) {
+            } else if (JSProxy.isJSProxy(store)) {
                 return new JSProxyDispatcherPropertyHasNode(context, key, receiverCheck, isOwnProperty());
             } else if (JSModuleNamespace.isJSModuleNamespace(store)) {
                 return new UnspecializedHasPropertyCacheNode(receiverCheck);

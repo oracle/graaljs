@@ -477,7 +477,7 @@ public final class JSError extends JSNonProxy {
     private static Object getPropertyWithoutSideEffect(DynamicObject obj, String key) {
         Object value = JSDynamicObject.getOrNull(obj, key);
         if (value == null) {
-            if (!JSProxy.isProxy(obj)) {
+            if (!JSProxy.isJSProxy(obj)) {
                 return getPropertyWithoutSideEffect(JSObject.getPrototype(obj), key);
             }
             return null;

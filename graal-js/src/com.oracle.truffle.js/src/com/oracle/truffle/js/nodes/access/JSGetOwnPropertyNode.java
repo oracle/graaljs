@@ -180,7 +180,7 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
 
     /** @see JSNonProxy#ordinaryGetOwnProperty */
     private PropertyDescriptor ordinaryGetOwnProperty(DynamicObject thisObj, Property prop) {
-        assert !JSProxy.isProxy(thisObj);
+        assert !JSProxy.isJSProxy(thisObj);
         if (hasPropertyBranch.profile(prop == null)) {
             return null;
         }

@@ -1341,7 +1341,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 return new JSAdapterPropertySetNode(receiverCheck);
             } else if (isStrict() && isGlobal() && !JSObject.hasProperty(thisJSObj, key)) {
                 return new ReferenceErrorPropertySetNode(shapeCheck);
-            } else if (JSProxy.isProxy(store) && JSRuntime.isPropertyKey(key)) {
+            } else if (JSProxy.isJSProxy(store) && JSRuntime.isPropertyKey(key)) {
                 ReceiverCheckNode receiverCheck = (depth == 0) ? new JSClassCheckNode(JSObject.getJSClass(thisJSObj)) : shapeCheck;
                 return new JSProxyDispatcherPropertySetNode(context, receiverCheck, isStrict());
             } else if (!JSRuntime.isObject(thisJSObj)) {
@@ -1356,7 +1356,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             } else {
                 return new ReadOnlyPropertySetNode(createShapeCheckNode(cacheShape, thisJSObj, depth, false, false), isStrict());
             }
-        } else if (JSProxy.isProxy(store)) {
+        } else if (JSProxy.isJSProxy(store)) {
             ReceiverCheckNode receiverCheck = createPrimitiveReceiverCheck(thisObj, depth);
             return new JSProxyDispatcherPropertySetNode(context, receiverCheck, isStrict());
         } else {

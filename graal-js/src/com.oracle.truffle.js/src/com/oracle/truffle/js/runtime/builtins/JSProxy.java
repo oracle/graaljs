@@ -126,7 +126,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     public static Object getTarget(DynamicObject obj) {
-        assert isProxy(obj);
+        assert isJSProxy(obj);
         return ((JSProxyObject) obj).getProxyTarget();
     }
 
@@ -136,14 +136,14 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
      */
     public static Object getTargetNonProxy(DynamicObject thisObj) {
         Object obj = thisObj;
-        while (JSProxy.isProxy(obj)) {
+        while (JSProxy.isJSProxy(obj)) {
             obj = JSProxy.getTarget((DynamicObject) obj);
         }
         return obj;
     }
 
     public static DynamicObject getHandler(DynamicObject obj) {
-        assert isProxy(obj);
+        assert isJSProxy(obj);
         return ((JSProxyObject) obj).getProxyHandler();
     }
 
@@ -166,7 +166,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
 
     // ES2015, 26.2.2.1.1
     public static void revoke(DynamicObject obj) {
-        assert JSProxy.isProxy(obj);
+        assert JSProxy.isJSProxy(obj);
         try {
             ((JSProxyObject) obj).revoke();
         } catch (Exception ex) {
@@ -174,11 +174,11 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         }
     }
 
-    public static boolean isProxy(Object obj) {
+    public static boolean isJSProxy(Object obj) {
         return obj instanceof JSProxyObject;
     }
 
-    public static boolean isProxy(DynamicObject obj) {
+    public static boolean isJSProxy(DynamicObject obj) {
         return obj instanceof JSProxyObject;
     }
 
@@ -279,7 +279,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
 
     @TruffleBoundary
     public static boolean checkProxySetTrapInvariants(DynamicObject proxy, Object key, Object value) {
-        assert JSProxy.isProxy(proxy);
+        assert JSProxy.isJSProxy(proxy);
         assert JSRuntime.isPropertyKey(key);
         Object target = JSProxy.getTarget(proxy);
         if (!JSObject.isJSDynamicObject(target)) {
@@ -786,7 +786,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     public static boolean isRevoked(DynamicObject proxy) {
-        assert JSProxy.isProxy(proxy) : "Only proxy objects can be revoked";
+        assert JSProxy.isJSProxy(proxy) : "Only proxy objects can be revoked";
         // if the internal handler slot is null, this proxy must have been revoked
         return JSProxy.getHandler(proxy) == Null.instance;
     }

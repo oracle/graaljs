@@ -369,7 +369,7 @@ public abstract class JSNonProxy extends JSClass {
         assert JSRuntime.isPropertyKey(key);
         DynamicObject current = JSObject.getPrototype(thisObj);
         while (current != Null.instance) {
-            if (JSProxy.isProxy(current)) {
+            if (JSProxy.isJSProxy(current)) {
                 return JSObject.setWithReceiver(current, key, value, receiver, isStrict);
             } else {
                 PropertyDescriptor desc = JSObject.getOwnProperty(current, key);
@@ -630,7 +630,7 @@ public abstract class JSNonProxy extends JSClass {
                 return false;
             }
             // 9.1.2.1 If p.[[GetPrototypeOf]] is not the ordinary object internal method
-            if (JSProxy.isProxy(proto)) {
+            if (JSProxy.isJSProxy(proto)) {
                 return true;
             }
             proto = JSObject.getPrototype(proto);

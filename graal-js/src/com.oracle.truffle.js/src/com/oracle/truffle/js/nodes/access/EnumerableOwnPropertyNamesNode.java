@@ -104,7 +104,7 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
         if (hasFastShapesProfile.profile(keys && !values && JSConfig.FastOwnKeys && hasOnlyShapeProperties.execute(thisObj, jsclass))) {
             return JSShape.getEnumerablePropertyNames(thisObj.getShape());
         } else {
-            boolean isProxy = JSProxy.isProxy(thisObj);
+            boolean isProxy = JSProxy.isJSProxy(thisObj);
             List<Object> ownKeys = jsclass.ownPropertyKeys(thisObj);
             int ownKeysSize = listSize.execute(ownKeys);
             SimpleArrayList<Object> properties = new SimpleArrayList<>();

@@ -82,7 +82,7 @@ public abstract class JSArrayElementIndexNode extends JavaScriptBaseNode {
     }
 
     protected final boolean isSuitableForEnumBasedProcessingUsingOwnKeys(Object object, long length) {
-        return length > JSConfig.BigArrayThreshold && !JSArrayBufferView.isJSArrayBufferView(object) && !JSProxy.isProxy(object) &&
+        return length > JSConfig.BigArrayThreshold && !JSArrayBufferView.isJSArrayBufferView(object) && !JSProxy.isJSProxy(object) &&
                         ((JSArray.isJSArray(object) && context.getArrayPrototypeNoElementsAssumption().isValid()) || !JSObject.isJSDynamicObject(object) ||
                                         JSObject.getPrototype((DynamicObject) object) == Null.instance);
     }
@@ -93,7 +93,7 @@ public abstract class JSArrayElementIndexNode extends JavaScriptBaseNode {
         }
         DynamicObject chainObject = (DynamicObject) object;
         do {
-            if (JSArrayBufferView.isJSArrayBufferView(chainObject) || JSProxy.isProxy(chainObject)) {
+            if (JSArrayBufferView.isJSArrayBufferView(chainObject) || JSProxy.isJSProxy(chainObject)) {
                 return false;
             }
             chainObject = JSObject.getPrototype(chainObject);

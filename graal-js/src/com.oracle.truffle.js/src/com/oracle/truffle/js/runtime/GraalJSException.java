@@ -664,7 +664,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             if (propertyName.isEmpty()) {
                 return null;
             }
-            for (DynamicObject current = receiver; current != Null.instance && !JSProxy.isProxy(current); current = JSObject.getPrototype(current)) {
+            for (DynamicObject current = receiver; current != Null.instance && !JSProxy.isJSProxy(current); current = JSObject.getPrototype(current)) {
                 PropertyDescriptor desc = JSObject.getOwnProperty(current, propertyName);
                 if (desc != null) {
                     if (desc.isAccessorDescriptor() == accessor && (desc.getValue() == functionObj || desc.getGet() == functionObj || desc.getSet() == functionObj)) {
@@ -678,7 +678,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
 
         private static String findMethodPropertyName(DynamicObject receiver, DynamicObject functionObj) {
             String name = null;
-            for (DynamicObject current = receiver; current != Null.instance && !JSProxy.isProxy(current); current = JSObject.getPrototype(current)) {
+            for (DynamicObject current = receiver; current != Null.instance && !JSProxy.isJSProxy(current); current = JSObject.getPrototype(current)) {
                 for (String key : JSObject.enumerableOwnNames(current)) {
                     PropertyDescriptor desc = JSObject.getOwnProperty(current, key);
                     if (desc.getValue() == functionObj || desc.getGet() == functionObj || desc.getSet() == functionObj) {

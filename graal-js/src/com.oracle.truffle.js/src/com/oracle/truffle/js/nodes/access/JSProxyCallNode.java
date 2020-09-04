@@ -95,7 +95,7 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
     protected Object doCall(Object[] arguments) {
         Object thisObj = JSArguments.getThisObject(arguments);
         Object function = JSArguments.getFunctionObject(arguments);
-        assert JSProxy.isProxy(function);
+        assert JSProxy.isJSProxy(function);
         DynamicObject proxy = (DynamicObject) function;
 
         if (!JSRuntime.isCallableProxy(proxy)) {
@@ -120,7 +120,7 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
     @Specialization(guards = {"isNew || isNewTarget"})
     protected Object doConstruct(Object[] arguments) {
         Object function = JSArguments.getFunctionObject(arguments);
-        assert JSProxy.isProxy(function);
+        assert JSProxy.isJSProxy(function);
         DynamicObject proxy = (DynamicObject) function;
 
         if (!JSRuntime.isConstructorProxy(proxy)) {

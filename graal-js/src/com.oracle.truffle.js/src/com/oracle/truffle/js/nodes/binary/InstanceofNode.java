@@ -140,7 +140,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
     private static boolean isCallable(DynamicObject target, BranchProfile proxyBranch) {
         if (JSFunction.isJSFunction(target)) {
             return true;
-        } else if (JSProxy.isProxy(target)) {
+        } else if (JSProxy.isJSProxy(target)) {
             proxyBranch.enter();
             return JSRuntime.isCallableProxy(target);
         } else {

@@ -252,7 +252,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             for (;;) {
                 if (JSFunction.isJSFunction(innerFunction)) {
                     break;
-                } else if (JSProxy.isProxy(innerFunction)) {
+                } else if (JSProxy.isJSProxy(innerFunction)) {
                     innerFunction = JSProxy.getTarget((DynamicObject) innerFunction);
                 } else {
                     throw Errors.createTypeErrorNotAFunction(thisObj);

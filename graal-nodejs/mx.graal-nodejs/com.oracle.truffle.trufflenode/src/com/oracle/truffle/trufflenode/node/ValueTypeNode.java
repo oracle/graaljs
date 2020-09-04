@@ -210,7 +210,7 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
         return PROMISE_OBJECT;
     }
 
-    @Specialization(guards = "isProxy(value)")
+    @Specialization(guards = "isJSProxy(value)")
     protected static int doProxy(DynamicObject value) {
         return PROXY_OBJECT;
     }
@@ -299,7 +299,7 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
                     "!isJSMap(value)",
                     "!isJSSet(value)",
                     "!isJSPromise(value)",
-                    "!isProxy(value)",
+                    "!isJSProxy(value)",
                     "!isJSArrayBufferView(value)",
                     "!isJSDataView(value)",
                     "!isJSDirectArrayBuffer(value)"}, replaces = {"doOrdinaryObject"})

@@ -234,7 +234,7 @@ public class Serializer {
             writeJSDataView((DynamicObject) object);
         } else if (JSError.isJSError(object)) {
             writeJSError((DynamicObject) object);
-        } else if (JSProxy.isProxy(object)) {
+        } else if (JSProxy.isJSProxy(object)) {
             boolean callable = JSRuntime.isCallableProxy((DynamicObject) object);
             String message = (callable ? "[object Function]" : "[object Object]") + " could not be cloned.";
             NativeAccess.throwDataCloneError(delegate, message);

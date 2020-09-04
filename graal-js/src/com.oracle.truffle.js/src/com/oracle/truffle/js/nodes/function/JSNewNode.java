@@ -48,7 +48,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -86,7 +85,6 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 /**
  * 11.2.2 The new Operator.
  */
-@ImportStatic(value = {JSProxy.class})
 public abstract class JSNewNode extends JavaScriptNode {
 
     @Child @Executed protected JavaScriptNode targetNode;
@@ -168,7 +166,7 @@ public abstract class JSNewNode extends JavaScriptNode {
     /**
      * Implements [[Construct]] for Proxy.
      */
-    @Specialization(guards = "isProxy(proxy)")
+    @Specialization(guards = "isJSProxy(proxy)")
     protected Object doNewJSProxy(VirtualFrame frame, DynamicObject proxy) {
         if (!JSRuntime.isConstructorProxy(proxy)) {
             throw Errors.createTypeErrorNotAFunction(proxy, this);
@@ -252,7 +250,7 @@ public abstract class JSNewNode extends JavaScriptNode {
         return env.asHostSymbol(adapterClass);
     }
 
-    @Specialization(guards = {"!isJSFunction(target)", "!isJSAdapter(target)", "!isProxy(target)", "!isJavaPackage(target)", "!isForeignObject(target)"})
+    @Specialization(guards = {"!isJSFunction(target)", "!isJSAdapter(target)", "!isJSProxy(target)", "!isJavaPackage(target)", "!isForeignObject(target)"})
     public Object createFunctionTypeError(VirtualFrame frame, Object target) {
         getAbstractFunctionArguments(frame);
         return throwFunctionTypeError(target);
