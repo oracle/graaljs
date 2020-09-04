@@ -42,7 +42,6 @@ package com.oracle.truffle.js.runtime.objects;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.util.DebugCounter;
@@ -52,23 +51,17 @@ import com.oracle.truffle.js.runtime.util.DebugCounter;
  */
 public final class JSSharedData {
     private final JSContext context;
-    private final Property prototypeProperty;
     private Assumption prototypeAssumption;
 
     private static final DebugCounter prototypeAssumptionsCreated = DebugCounter.create("Prototype assumptions created");
     private static final DebugCounter prototypeAssumptionsRemoved = DebugCounter.create("Prototype assumptions removed");
 
-    public JSSharedData(JSContext context, Property prototypeProperty) {
+    public JSSharedData(JSContext context) {
         this.context = context;
-        this.prototypeProperty = prototypeProperty;
     }
 
     JSContext getContext() {
         return context;
-    }
-
-    Property getPrototypeProperty() {
-        return prototypeProperty;
     }
 
     synchronized Assumption getPrototypeAssumption() {

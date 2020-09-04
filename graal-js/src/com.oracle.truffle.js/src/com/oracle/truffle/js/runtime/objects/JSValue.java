@@ -49,6 +49,10 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 
+/**
+ * Common base class for DynamicObject classes that are JS values but not considered proper objects,
+ * i.e., not instances of JSObject (e.g. {@code null}, {@code undefined}).
+ */
 public abstract class JSValue extends JSDynamicObject {
 
     protected JSValue(Shape shape) {

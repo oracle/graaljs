@@ -67,6 +67,10 @@ public final class JSShape {
     public static final int SEALED_FLAGS = NOT_EXTENSIBLE_FLAG | SEALED_FLAG;
     public static final int FROZEN_FLAGS = NOT_EXTENSIBLE_FLAG | SEALED_FLAG | FROZEN_FLAG;
 
+    /**
+     * If this flag is set, the object has extra properties that are not included in the
+     * DynamicObject's shape.
+     */
     public static final int EXTERNAL_PROPERTIES_FLAG = 1 << 3;
 
     private JSShape() {
@@ -187,7 +191,7 @@ public final class JSShape {
     }
 
     public static JSSharedData makeJSSharedData(JSContext context) {
-        return new JSSharedData(context, null);
+        return new JSSharedData(context);
     }
 
     public static Class<? extends DynamicObject> getLayout(JSClass jsclass) {
@@ -213,11 +217,10 @@ public final class JSShape {
         return 0;
     }
 
-    public static boolean hasExternalProperties(Shape shape) {
-        assert (shape.getDynamicType() == JSDictionary.INSTANCE) == ((shape.getFlags() & EXTERNAL_PROPERTIES_FLAG) != 0);
-        return (shape.getFlags() & EXTERNAL_PROPERTIES_FLAG) != 0;
-    }
-
+    /**
+     * If this flag is set, the object has extra properties that are not included in the
+     * DynamicObject's shape.
+     */
     public static boolean hasExternalProperties(int shapeFlags) {
         return (shapeFlags & EXTERNAL_PROPERTIES_FLAG) != 0;
     }
