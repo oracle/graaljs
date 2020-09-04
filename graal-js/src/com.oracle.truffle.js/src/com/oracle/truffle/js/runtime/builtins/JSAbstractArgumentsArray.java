@@ -56,7 +56,7 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 
-public abstract class JSAbstractArgumentsObject extends JSAbstractArray {
+public abstract class JSAbstractArgumentsArray extends JSAbstractArray {
 
     public static final String CALLEE = "callee";
     public static final String CALLER = "caller";
@@ -107,8 +107,8 @@ public abstract class JSAbstractArgumentsObject extends JSAbstractArray {
             return thisObj;
         }
 
-        assert JSArgumentsObject.isJSFastArgumentsObject(thisObj);
-        JSDynamicObject.setJSClass(thisObj, JSSlowArgumentsObject.INSTANCE);
+        assert JSArgumentsArray.isJSFastArgumentsObject(thisObj);
+        JSDynamicObject.setJSClass(thisObj, JSSlowArgumentsArray.INSTANCE);
         if (isMappedArguments(thisObj)) {
             ((JSArgumentsObject.Mapped) thisObj).initDisconnectedIndices();
         }
@@ -117,7 +117,7 @@ public abstract class JSAbstractArgumentsObject extends JSAbstractArray {
     }
 
     public static int getConnectedArgumentCount(DynamicObject argumentsArray) {
-        assert JSArgumentsObject.isJSArgumentsObject(argumentsArray);
+        assert JSArgumentsArray.isJSArgumentsObject(argumentsArray);
         return ((JSArgumentsObject.Mapped) argumentsArray).getConnectedArgumentCount();
     }
 
@@ -151,13 +151,13 @@ public abstract class JSAbstractArgumentsObject extends JSAbstractArray {
     @TruffleBoundary
     public static void disconnectIndex(DynamicObject argumentsArray, long index, Object oldValue) {
         if (!hasDisconnectedIndices(argumentsArray)) {
-            JSArgumentsObject.INSTANCE.makeSlowArray(argumentsArray);
+            JSArgumentsArray.INSTANCE.makeSlowArray(argumentsArray);
         }
         getDisconnectedIndices(argumentsArray).put(index, oldValue);
     }
 
     public static boolean hasDisconnectedIndices(DynamicObject argumentsArray) {
-        return JSSlowArgumentsObject.isJSSlowArgumentsObject(argumentsArray);
+        return JSSlowArgumentsArray.isJSSlowArgumentsObject(argumentsArray);
     }
 
     @TruffleBoundary
@@ -226,7 +226,7 @@ public abstract class JSAbstractArgumentsObject extends JSAbstractArray {
         }
         long index = JSRuntime.propertyKeyToArrayIndex(key);
         if (index >= 0) {
-            boolean isMapped = JSArgumentsObject.isJSFastArgumentsObject(thisObj) || (isMappedArguments(thisObj) && !wasIndexDisconnected(thisObj, index));
+            boolean isMapped = JSArgumentsArray.isJSFastArgumentsObject(thisObj) || (isMappedArguments(thisObj) && !wasIndexDisconnected(thisObj, index));
             if (isMapped) {
                 desc.setValue(super.get(thisObj, index));
             }
@@ -239,6 +239,6 @@ public abstract class JSAbstractArgumentsObject extends JSAbstractArray {
 
     @Override
     protected boolean isSlowArray(DynamicObject thisObj) {
-        return JSSlowArgumentsObject.isJSSlowArgumentsObject(thisObj);
+        return JSSlowArgumentsArray.isJSSlowArgumentsObject(thisObj);
     }
 }

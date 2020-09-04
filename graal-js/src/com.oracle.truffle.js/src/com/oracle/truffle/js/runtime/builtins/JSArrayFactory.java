@@ -174,7 +174,7 @@ public abstract class JSArrayFactory {
         private final boolean mapped;
 
         protected ArgumentsObject(JSContext context, int slot, boolean mapped) {
-            super(context, JSObjectFactory.defaultShapeSupplier(JSArgumentsObject.INSTANCE), slot);
+            super(context, JSObjectFactory.defaultShapeSupplier(JSArgumentsArray.INSTANCE), slot);
             this.mapped = mapped;
         }
 
@@ -187,9 +187,9 @@ public abstract class JSArrayFactory {
         protected DynamicObject newInstance(Shape shape, ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
             Object[] elements = (Object[]) array;
             if (mapped) {
-                return JSArgumentsObject.createMapped(shape, elements);
+                return JSArgumentsArray.createMapped(shape, elements);
             } else {
-                return JSArgumentsObject.createUnmapped(shape, elements);
+                return JSArgumentsArray.createUnmapped(shape, elements);
             }
         }
     }

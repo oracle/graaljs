@@ -133,7 +133,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
+import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSURLDecoder;
@@ -1436,7 +1436,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @TruffleBoundary(transferToInterpreterOnException = false)
         protected Object evalImpl(JSRealm realm, String fileName, String source, Object[] args) {
             JSRealm childRealm = realm.createChildRealm();
-            DynamicObject argObj = JSArgumentsObject.createStrictSlow(childRealm, args);
+            DynamicObject argObj = JSArgumentsArray.createStrictSlow(childRealm, args);
             // TODO: should be a child realm array
             JSRuntime.createDataProperty(childRealm.getGlobalObject(), JSFunction.ARGUMENTS, argObj);
             return loadStringImpl(getContext(), fileName, source).run(childRealm);
@@ -1449,7 +1449,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             TruffleContext childContext = childRealm.getTruffleContext();
             Object prev = childContext.enter();
             try {
-                DynamicObject argObj = JSArgumentsObject.createStrictSlow(childRealm, args);
+                DynamicObject argObj = JSArgumentsArray.createStrictSlow(childRealm, args);
                 // TODO: should be a child realm array
                 JSRuntime.createDataProperty(childRealm.getGlobalObject(), JSFunction.ARGUMENTS, argObj);
                 Source source = sourceFromPath(path, childRealm);

@@ -88,7 +88,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     public static final HiddenKey LAZY_REGEX_ORIGINAL_INPUT_ID = new HiddenKey("lazyRegexResultOriginalInput");
 
     public static ScriptArray arrayGetArrayType(DynamicObject thisObj) {
-        assert JSArray.isJSArray(thisObj) || JSArgumentsObject.isJSArgumentsObject(thisObj) || JSObjectPrototype.isJSObjectPrototype(thisObj);
+        assert JSArray.isJSArray(thisObj) || JSArgumentsArray.isJSArgumentsObject(thisObj) || JSObjectPrototype.isJSObjectPrototype(thisObj);
         return arrayAccess().getArrayType(thisObj);
     }
 
@@ -427,7 +427,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
 
     @TruffleBoundary
     protected static List<Object> ownPropertyKeysFastArray(DynamicObject thisObj, boolean strings, boolean symbols) {
-        assert JSArray.isJSFastArray(thisObj) || JSArgumentsObject.isJSFastArgumentsObject(thisObj);
+        assert JSArray.isJSFastArray(thisObj) || JSArgumentsArray.isJSFastArgumentsObject(thisObj);
         List<Object> indices = strings ? arrayGetArrayType(thisObj).ownPropertyKeys(thisObj) : Collections.emptyList();
         List<Object> keyList = thisObj.getShape().getKeyList();
         if (keyList.isEmpty()) {

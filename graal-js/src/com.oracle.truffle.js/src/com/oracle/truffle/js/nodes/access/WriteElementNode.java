@@ -119,7 +119,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
-import com.oracle.truffle.js.runtime.builtins.JSSlowArgumentsObject;
+import com.oracle.truffle.js.runtime.builtins.JSSlowArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
@@ -698,7 +698,7 @@ public class WriteElementNode extends JSTargetableNode {
     }
 
     static ArrayWriteElementCacheNode makeArrayCacheNode(DynamicObject target, ScriptArray array, ArrayWriteElementCacheNode next) {
-        if (JSSlowArray.isJSSlowArray(target) || JSSlowArgumentsObject.isJSSlowArgumentsObject(target)) {
+        if (JSSlowArray.isJSSlowArray(target) || JSSlowArgumentsArray.isJSSlowArgumentsObject(target)) {
             return new ExactArrayWriteElementCacheNode(array, next);
         }
 
@@ -817,7 +817,7 @@ public class WriteElementNode extends JSTargetableNode {
             assert arrayType.isHolesType();
             if ((!root.context.getArrayPrototypeNoElementsAssumption().isValid() && !root.writeOwn) ||
                             (!root.context.getFastArrayAssumption().isValid() && JSSlowArray.isJSSlowArray(target)) ||
-                            (!root.context.getFastArgumentsObjectAssumption().isValid() && JSSlowArgumentsObject.isJSSlowArgumentsObject(target))) {
+                            (!root.context.getFastArgumentsObjectAssumption().isValid() && JSSlowArgumentsArray.isJSSlowArgumentsObject(target))) {
                 if (!arrayType.hasElement(target, index)) {
                     needPrototypeBranch.enter();
                     return true;

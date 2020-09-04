@@ -52,7 +52,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNodeGen.IsArrayWrappedNodeGen;
 import com.oracle.truffle.js.nodes.unary.JSIsArrayNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
-import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
+import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
@@ -103,7 +103,7 @@ public abstract class IsArrayNode extends JavaScriptBaseNode {
     @Specialization(replaces = "doIsArrayJSClass")
     protected final boolean isArray(DynamicObject object) {
         if (fastAndTypedArray) {
-            return JSArray.isJSFastArray(object) || JSArgumentsObject.isJSFastArgumentsObject(object) || JSArrayBufferView.isJSArrayBufferView(object);
+            return JSArray.isJSFastArray(object) || JSArgumentsArray.isJSFastArgumentsObject(object) || JSArrayBufferView.isJSArrayBufferView(object);
         } else if (fastArray) {
             return JSArray.isJSFastArray(object);
         } else if (onlyArray) {

@@ -920,7 +920,7 @@ public final class JSFunction extends JSBuiltinObject {
                             JSContext context = functionData.getContext();
                             JSRealm realm = context.getRealm();
                             Object[] userArguments = JSArguments.extractUserArguments(frame.getArguments());
-                            return JSArgumentsObject.createNonStrictSlow(realm, userArguments, function);
+                            return JSArgumentsArray.createNonStrictSlow(realm, userArguments, function);
                         }
                     }
                     return null;

@@ -62,7 +62,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
-import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
+import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
@@ -221,7 +221,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
         return JSObject.isJSDynamicObject(obj) && (!JSRuntime.isNullOrUndefined(obj) &&
                         !JSString.isJSString(obj) &&
                         !JSArray.isJSArray(obj) &&
-                        !JSArgumentsObject.isJSArgumentsObject(obj) &&
+                        !JSArgumentsArray.isJSArgumentsObject(obj) &&
                         !JSArrayBufferView.isJSArrayBufferView(obj));
     }
 

@@ -51,7 +51,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
-import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
+import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
@@ -230,11 +230,11 @@ public final class JSGuards {
     }
 
     public static boolean isJSArgumentsObject(DynamicObject value) {
-        return JSArgumentsObject.isJSArgumentsObject(value);
+        return JSArgumentsArray.isJSArgumentsObject(value);
     }
 
     public static boolean isJSArgumentsObject(Object value) {
-        return JSArgumentsObject.isJSArgumentsObject(value);
+        return JSArgumentsArray.isJSArgumentsObject(value);
     }
 
     public static boolean isJSRegExp(Object value) {
@@ -414,11 +414,11 @@ public final class JSGuards {
     }
 
     public static boolean isJSFastArguments(DynamicObject value) {
-        return JSArgumentsObject.isJSFastArgumentsObject(value);
+        return JSArgumentsArray.isJSFastArgumentsObject(value);
     }
 
     public static boolean isJSFastArguments(Object value) {
-        return JSArgumentsObject.isJSFastArgumentsObject(value);
+        return JSArgumentsArray.isJSFastArgumentsObject(value);
     }
 
     public static boolean isJSSymbol(DynamicObject value) {
@@ -554,7 +554,7 @@ public final class JSGuards {
     }
 
     public static boolean isArgumentsDisconnected(DynamicObject argumentsArray) {
-        return JSArgumentsObject.hasDisconnectedIndices(argumentsArray);
+        return JSArgumentsArray.hasDisconnectedIndices(argumentsArray);
     }
 
     public static Class<? extends Number> getJavaNumberClass(Object value) {

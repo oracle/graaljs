@@ -55,7 +55,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
+import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -85,9 +85,9 @@ public abstract class ArgumentsObjectNode extends JavaScriptNode {
         this.leadingArgCount = leadingArgCount;
         this.trailingArgCount = trailingArgCount;
 
-        this.putLengthNode = JSObjectUtil.createDispatched(JSArgumentsObject.LENGTH);
+        this.putLengthNode = JSObjectUtil.createDispatched(JSArgumentsArray.LENGTH);
         this.putSymbolIteratorNode = JSObjectUtil.createDispatched(Symbol.SYMBOL_ITERATOR);
-        this.putCalleeNode = JSObjectUtil.createDispatched(JSArgumentsObject.CALLEE);
+        this.putCalleeNode = JSObjectUtil.createDispatched(JSArgumentsArray.CALLEE);
     }
 
     public static JavaScriptNode create(JSContext context, boolean strict, int leadingArgCount, int trailingArgCount) {
@@ -108,19 +108,19 @@ public abstract class ArgumentsObjectNode extends JavaScriptNode {
         JSRealm realm = realmNode.execute(frame);
 
         JSObjectFactory factory = context.getStrictArgumentsFactory();
-        DynamicObject argumentsObject = JSArgumentsObject.createUnmapped(factory.getShape(realm), arguments);
+        DynamicObject argumentsObject = JSArgumentsArray.createUnmapped(factory.getShape(realm), arguments);
         factory.initProto(argumentsObject, realm);
 
-        putLengthNode.putWithFlags(argumentsObject, JSArgumentsObject.LENGTH, arguments.length, JSAttributes.getDefaultNotEnumerable());
+        putLengthNode.putWithFlags(argumentsObject, JSArgumentsArray.LENGTH, arguments.length, JSAttributes.getDefaultNotEnumerable());
         putSymbolIteratorNode.putWithFlags(argumentsObject, Symbol.SYMBOL_ITERATOR, realm.getArrayProtoValuesIterator(), JSAttributes.getDefaultNotEnumerable());
 
-        putCalleeNode.putWithFlags(argumentsObject, JSArgumentsObject.CALLEE, realm.getThrowerAccessor(), THROWER_ACCESSOR_PROPERTY_FLAGS);
+        putCalleeNode.putWithFlags(argumentsObject, JSArgumentsArray.CALLEE, realm.getThrowerAccessor(), THROWER_ACCESSOR_PROPERTY_FLAGS);
         if (realm.getContext().getEcmaScriptVersion() < JSConfig.ECMAScript2017) {
             if (putCallerNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                putCallerNode = insert(JSObjectUtil.createDispatched(JSArgumentsObject.CALLER));
+                putCallerNode = insert(JSObjectUtil.createDispatched(JSArgumentsArray.CALLER));
             }
-            putCallerNode.putWithFlags(argumentsObject, JSArgumentsObject.CALLER, realm.getThrowerAccessor(), THROWER_ACCESSOR_PROPERTY_FLAGS);
+            putCallerNode.putWithFlags(argumentsObject, JSArgumentsArray.CALLER, realm.getThrowerAccessor(), THROWER_ACCESSOR_PROPERTY_FLAGS);
         }
         return context.trackAllocation(argumentsObject);
     }
@@ -133,13 +133,13 @@ public abstract class ArgumentsObjectNode extends JavaScriptNode {
         DynamicObject callee = getFunctionObject(frame);
 
         JSObjectFactory factory = context.getNonStrictArgumentsFactory();
-        DynamicObject argumentsObject = JSArgumentsObject.createMapped(factory.getShape(realm), arguments);
+        DynamicObject argumentsObject = JSArgumentsArray.createMapped(factory.getShape(realm), arguments);
         factory.initProto(argumentsObject, realm);
 
-        putLengthNode.putWithFlags(argumentsObject, JSArgumentsObject.LENGTH, arguments.length, JSAttributes.getDefaultNotEnumerable());
+        putLengthNode.putWithFlags(argumentsObject, JSArgumentsArray.LENGTH, arguments.length, JSAttributes.getDefaultNotEnumerable());
         putSymbolIteratorNode.putWithFlags(argumentsObject, Symbol.SYMBOL_ITERATOR, realm.getArrayProtoValuesIterator(), JSAttributes.getDefaultNotEnumerable());
 
-        putCalleeNode.putWithFlags(argumentsObject, JSArgumentsObject.CALLEE, callee, JSAttributes.getDefaultNotEnumerable());
+        putCalleeNode.putWithFlags(argumentsObject, JSArgumentsArray.CALLEE, callee, JSAttributes.getDefaultNotEnumerable());
         return context.trackAllocation(argumentsObject);
     }
 

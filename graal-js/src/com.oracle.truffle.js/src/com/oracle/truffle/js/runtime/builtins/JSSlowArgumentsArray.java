@@ -45,10 +45,10 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 
-public final class JSSlowArgumentsObject extends JSAbstractArgumentsObject {
-    static final JSSlowArgumentsObject INSTANCE = new JSSlowArgumentsObject();
+public final class JSSlowArgumentsArray extends JSAbstractArgumentsArray {
+    static final JSSlowArgumentsArray INSTANCE = new JSSlowArgumentsArray();
 
-    private JSSlowArgumentsObject() {
+    private JSSlowArgumentsArray() {
     }
 
     @TruffleBoundary
@@ -88,7 +88,7 @@ public final class JSSlowArgumentsObject extends JSAbstractArgumentsObject {
 
     @Override
     protected DynamicObject makeSlowArray(DynamicObject thisObj) {
-        assert JSSlowArgumentsObject.isJSSlowArgumentsObject(thisObj);
+        assert JSSlowArgumentsArray.isJSSlowArgumentsObject(thisObj);
         return thisObj;
     }
 
