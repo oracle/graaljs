@@ -43,11 +43,11 @@ package com.oracle.truffle.trufflenode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
-import com.oracle.truffle.js.runtime.objects.JSBasicObject;
+import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
-public final class JSExternalObject extends JSBuiltinObject {
+public final class JSExternalObject extends JSNonProxy {
 
     public static final String CLASS_NAME = "external";
     public static final JSExternalObject INSTANCE = new JSExternalObject();
@@ -84,7 +84,7 @@ public final class JSExternalObject extends JSBuiltinObject {
         return ((Instance) obj).getPointer();
     }
 
-    public static final class Instance extends JSBasicObject {
+    public static final class Instance extends JSNonProxyObject {
         private long pointer;
 
         private Instance(Shape shape, long pointer) {

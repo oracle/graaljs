@@ -64,20 +64,20 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSBasicObject;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.LazyValue;
 
-public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
+public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
     public static final String CLASS_NAME = "RelativeTimeFormat";
     public static final String PROTOTYPE_NAME = "RelativeTimeFormat.prototype";
 
     public static final JSRelativeTimeFormat INSTANCE = new JSRelativeTimeFormat();
 
-    public static final class Instance extends JSBasicObject {
+    public static final class Instance extends JSNonProxyObject {
         private final InternalState internalState;
 
         protected Instance(Shape shape, InternalState internalState) {

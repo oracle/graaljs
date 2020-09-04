@@ -49,7 +49,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
+import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -341,7 +341,7 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createTypeErrorCannotSetProto(DynamicObject thisObj, DynamicObject proto) {
-        if (!JSBuiltinObject.checkProtoCycle(thisObj, proto)) {
+        if (!JSNonProxy.checkProtoCycle(thisObj, proto)) {
             if (JSObject.getJSContext(thisObj).isOptionNashornCompatibilityMode()) {
                 return Errors.createTypeError("Cannot create__proto__ cycle for " + JSObject.defaultToString(thisObj));
             }

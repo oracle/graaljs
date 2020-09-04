@@ -68,7 +68,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
-public final class JSDate extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
+public final class JSDate extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
     public static final String CLASS_NAME = "Date";
     public static final String PROTOTYPE_NAME = "Date.prototype";

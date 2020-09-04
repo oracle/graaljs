@@ -43,11 +43,11 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.objects.JSBasicObject;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
-public final class JSErrorObject extends JSBasicObject implements JSCopyableObject {
+public final class JSErrorObject extends JSNonProxyObject implements JSCopyableObject {
     protected JSErrorObject(Shape shape) {
         super(shape);
     }

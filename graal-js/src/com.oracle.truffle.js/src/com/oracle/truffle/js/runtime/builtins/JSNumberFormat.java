@@ -92,14 +92,14 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSBasicObject;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.LazyValue;
 
-public final class JSNumberFormat extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
+public final class JSNumberFormat extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
     public static final String CLASS_NAME = "NumberFormat";
     public static final String PROTOTYPE_NAME = "NumberFormat.prototype";
@@ -108,7 +108,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
     public static final JSNumberFormat INSTANCE = new JSNumberFormat();
 
-    public static final class Instance extends JSBasicObject {
+    public static final class Instance extends JSNonProxyObject {
         private final InternalState internalState;
 
         protected Instance(Shape shape, InternalState internalState) {

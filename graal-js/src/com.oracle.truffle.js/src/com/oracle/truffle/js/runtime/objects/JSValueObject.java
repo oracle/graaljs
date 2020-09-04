@@ -42,7 +42,7 @@ package com.oracle.truffle.js.runtime.objects;
 
 import com.oracle.truffle.api.object.Shape;
 
-public abstract class JSValueObject extends JSBasicObject {
+public abstract class JSValueObject extends JSNonProxyObject {
     protected JSValueObject(Shape shape) {
         super(shape);
     }

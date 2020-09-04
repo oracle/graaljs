@@ -55,12 +55,12 @@ import com.oracle.truffle.js.builtins.FinalizationRegistryPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.objects.JSBasicObject;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public final class JSFinalizationRegistry extends JSBuiltinObject implements JSConstructorFactory.Default, PrototypeSupplier {
+public final class JSFinalizationRegistry extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
 
     public static final JSFinalizationRegistry INSTANCE = new JSFinalizationRegistry();
 
@@ -69,7 +69,7 @@ public final class JSFinalizationRegistry extends JSBuiltinObject implements JSC
 
     public static final HiddenKey FINALIZATION_REGISTRY_ID = new HiddenKey("FinalizationRegistry");
 
-    public static final class Instance extends JSBasicObject {
+    public static final class Instance extends JSNonProxyObject {
         TruffleObject cleanupCallback;
         List<FinalizationRecord> cells;
         ReferenceQueue<Object> referenceQueue;

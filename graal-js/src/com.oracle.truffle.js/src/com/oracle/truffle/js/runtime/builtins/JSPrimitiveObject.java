@@ -49,7 +49,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public abstract class JSPrimitiveObject extends JSBuiltinObject implements PrototypeSupplier {
+public abstract class JSPrimitiveObject extends JSNonProxy implements PrototypeSupplier {
     protected JSPrimitiveObject() {
     }
 

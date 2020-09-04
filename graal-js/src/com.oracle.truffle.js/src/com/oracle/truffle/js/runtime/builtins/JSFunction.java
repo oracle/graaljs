@@ -88,7 +88,7 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public final class JSFunction extends JSBuiltinObject {
+public final class JSFunction extends JSNonProxy {
 
     public static final String TYPE_NAME = "function";
     public static final String CLASS_NAME = "Function";

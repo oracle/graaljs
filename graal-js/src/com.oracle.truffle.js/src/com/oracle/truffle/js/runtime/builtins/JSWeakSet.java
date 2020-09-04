@@ -49,18 +49,18 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.WeakSetPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.objects.JSBasicObject;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
-public final class JSWeakSet extends JSBuiltinObject implements JSConstructorFactory.Default, PrototypeSupplier {
+public final class JSWeakSet extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
 
     public static final JSWeakSet INSTANCE = new JSWeakSet();
 
     public static final String CLASS_NAME = "WeakSet";
     public static final String PROTOTYPE_NAME = CLASS_NAME + ".prototype";
 
-    public static final class Instance extends JSBasicObject {
+    public static final class Instance extends JSNonProxyObject {
         private final Map<Object, Object> weakHashMap;
 
         protected Instance(Shape shape, Map<Object, Object> weakHashMap) {

@@ -46,10 +46,10 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
-import com.oracle.truffle.js.runtime.objects.JSBasicObject;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
-public abstract class JSArrayBufferObject extends JSBasicObject {
+public abstract class JSArrayBufferObject extends JSNonProxyObject {
 
     public static final String CLASS_NAME = "ArrayBuffer";
     public static final String PROTOTYPE_NAME = CLASS_NAME + ".prototype";

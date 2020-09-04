@@ -71,9 +71,14 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 import com.oracle.truffle.js.runtime.util.IteratorUtil;
 
-public abstract class JSBuiltinObject extends JSClass {
+/**
+ * Common base class for non-proxy object types.
+ *
+ * @see com.oracle.truffle.js.runtime.objects.JSNonProxyObject
+ */
+public abstract class JSNonProxy extends JSClass {
 
-    protected JSBuiltinObject() {
+    protected JSNonProxy() {
     }
 
     @TruffleBoundary

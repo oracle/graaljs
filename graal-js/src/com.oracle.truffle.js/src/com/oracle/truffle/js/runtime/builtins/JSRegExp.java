@@ -74,7 +74,7 @@ import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropReadStringMemberNode
 import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResultNode;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexResultAccessor;
 
-public final class JSRegExp extends JSBuiltinObject implements JSConstructorFactory.Default, PrototypeSupplier {
+public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
 
     public static final JSRegExp INSTANCE = new JSRegExp();
 

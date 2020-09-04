@@ -61,14 +61,14 @@ import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSBasicObject;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.CompilableFunction;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
-public final class JSSegmenter extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
+public final class JSSegmenter extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
     public static final String CLASS_NAME = "Segmenter";
     public static final String PROTOTYPE_NAME = "Segmenter.prototype";
@@ -78,7 +78,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
 
     public static final JSSegmenter INSTANCE = new JSSegmenter();
 
-    public static final class Instance extends JSBasicObject {
+    public static final class Instance extends JSNonProxyObject {
         private final InternalState internalState;
 
         protected Instance(Shape shape, InternalState internalState) {
@@ -91,7 +91,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
         }
     }
 
-    public static final class IteratorInstance extends JSBasicObject {
+    public static final class IteratorInstance extends JSNonProxyObject {
         private final IteratorState internalState;
 
         protected IteratorInstance(Shape shape, IteratorState internalState) {

@@ -81,7 +81,7 @@ import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
  * This is a variant of {@link JSUserObject} that stores its contents as a HashMap of properties
  * (excepts hidden properties, incl. prototype).
  */
-public final class JSDictionaryObject extends JSBuiltinObject {
+public final class JSDictionaryObject extends JSNonProxy {
 
     public static final String CLASS_NAME = "Object";
 

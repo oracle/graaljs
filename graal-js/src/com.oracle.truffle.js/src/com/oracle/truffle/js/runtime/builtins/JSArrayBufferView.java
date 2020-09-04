@@ -76,7 +76,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 import com.oracle.truffle.js.runtime.util.IteratorUtil;
 
-public final class JSArrayBufferView extends JSBuiltinObject {
+public final class JSArrayBufferView extends JSNonProxy {
     public static final String CLASS_NAME = "TypedArray";
     public static final String PROTOTYPE_NAME = CLASS_NAME + ".prototype";
 

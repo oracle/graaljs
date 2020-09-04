@@ -104,7 +104,7 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase implements J
     public Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         // Do not include array indices
         assert JSObject.getJSClass(this) == JSArrayBufferView.INSTANCE;
-        return InteropArray.create(filterEnumerableNames(this, JSBuiltinObject.ordinaryOwnPropertyKeys(this), JSArrayBufferView.INSTANCE));
+        return InteropArray.create(filterEnumerableNames(this, JSNonProxy.ordinaryOwnPropertyKeys(this), JSArrayBufferView.INSTANCE));
     }
 
     @SuppressWarnings("static-method")

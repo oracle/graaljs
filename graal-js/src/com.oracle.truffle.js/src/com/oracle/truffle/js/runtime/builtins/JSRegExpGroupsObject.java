@@ -43,11 +43,11 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.objects.JSBasicObject;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
-public final class JSRegExpGroupsObject extends JSBasicObject implements JSCopyableObject {
+public final class JSRegExpGroupsObject extends JSNonProxyObject implements JSCopyableObject {
     private Object regexResult;
     private String input;
     private boolean isIndices;

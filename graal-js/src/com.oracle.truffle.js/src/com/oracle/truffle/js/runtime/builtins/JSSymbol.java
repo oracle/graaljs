@@ -65,7 +65,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  *
  * @see Symbol
  */
-public final class JSSymbol extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
+public final class JSSymbol extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
     public static final JSSymbol INSTANCE = new JSSymbol();
 

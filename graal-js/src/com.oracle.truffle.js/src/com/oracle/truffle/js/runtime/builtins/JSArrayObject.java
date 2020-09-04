@@ -108,7 +108,7 @@ public final class JSArrayObject extends JSArrayBase implements JSCopyableObject
         @Specialization(guards = "isJSFastArray(target)")
         public static Object fastArray(JSArrayObject target, boolean internal) {
             // Do not include array indices
-            return InteropArray.create(filterEnumerableNames(target, JSBuiltinObject.ordinaryOwnPropertyKeys(target), JSObject.getJSClass(target)));
+            return InteropArray.create(filterEnumerableNames(target, JSNonProxy.ordinaryOwnPropertyKeys(target), JSObject.getJSClass(target)));
         }
 
         @Specialization(guards = {"!isJSFastArray(target)"})

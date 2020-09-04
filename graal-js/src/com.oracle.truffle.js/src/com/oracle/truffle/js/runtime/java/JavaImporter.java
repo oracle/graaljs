@@ -45,16 +45,16 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
+import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
-import com.oracle.truffle.js.runtime.objects.JSBasicObject;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
-public final class JavaImporter extends JSBuiltinObject implements JSConstructorFactory.Default, PrototypeSupplier {
+public final class JavaImporter extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
     public static final String CLASS_NAME = "JavaImporter";
 
     private static final JavaImporter INSTANCE = new JavaImporter();
@@ -156,7 +156,7 @@ public final class JavaImporter extends JSBuiltinObject implements JSConstructor
         return realm.getJavaImporterPrototype();
     }
 
-    public static final class Instance extends JSBasicObject {
+    public static final class Instance extends JSNonProxyObject {
         private final Object[] packages;
 
         protected Instance(Shape shape, Object[] packages) {

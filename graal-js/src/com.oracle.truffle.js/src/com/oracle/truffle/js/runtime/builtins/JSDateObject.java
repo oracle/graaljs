@@ -55,10 +55,10 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.objects.JSBasicObject;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 @ExportLibrary(InteropLibrary.class)
-public final class JSDateObject extends JSBasicObject {
+public final class JSDateObject extends JSNonProxyObject {
     private double value;
 
     protected JSDateObject(Shape shape, double value) {

@@ -338,7 +338,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
 
     @Override
     public boolean setPrototypeOf(DynamicObject thisObj, DynamicObject newPrototype) {
-        return JSBuiltinObject.setPrototypeStatic(thisObj, newPrototype);
+        return JSNonProxy.setPrototypeStatic(thisObj, newPrototype);
     }
 
     @Override

@@ -43,9 +43,9 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.util.Objects;
 
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.objects.JSBasicObject;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-public abstract class JSArrayBufferViewBase extends JSBasicObject {
+public abstract class JSArrayBufferViewBase extends JSNonProxyObject {
 
     final JSArrayBufferObject arrayBuffer;
     int length;

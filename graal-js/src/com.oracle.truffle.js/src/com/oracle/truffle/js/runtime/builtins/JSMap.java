@@ -57,14 +57,14 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSBasicObject;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
-public final class JSMap extends JSBuiltinObject implements JSConstructorFactory.Default.WithSpecies, PrototypeSupplier {
+public final class JSMap extends JSNonProxy implements JSConstructorFactory.Default.WithSpecies, PrototypeSupplier {
 
     public static final JSMap INSTANCE = new JSMap();
 
@@ -181,7 +181,7 @@ public final class JSMap extends JSBuiltinObject implements JSConstructorFactory
         return realm.getMapPrototype();
     }
 
-    public static final class Instance extends JSBasicObject {
+    public static final class Instance extends JSNonProxyObject {
         private final JSHashMap map;
 
         protected Instance(Shape shape, JSHashMap map) {

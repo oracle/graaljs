@@ -57,16 +57,16 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
+import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSBasicObject;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
-public final class JavaPackage extends JSBuiltinObject {
+public final class JavaPackage extends JSNonProxy {
     public static final String TYPE_NAME = "object";
     public static final String CLASS_NAME = "JavaPackage";
     public static final JavaPackage INSTANCE = new JavaPackage();
@@ -233,7 +233,7 @@ public final class JavaPackage extends JSBuiltinObject {
         return JSObjectUtil.getProtoChildShape(objectPrototype, INSTANCE, context);
     }
 
-    public static final class Instance extends JSBasicObject {
+    public static final class Instance extends JSNonProxyObject {
         private final String packageName;
 
         protected Instance(Shape shape, String packageName) {

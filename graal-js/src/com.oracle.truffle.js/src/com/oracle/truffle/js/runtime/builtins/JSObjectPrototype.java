@@ -56,7 +56,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
-public final class JSObjectPrototype extends JSBuiltinObject {
+public final class JSObjectPrototype extends JSNonProxy {
 
     public static final String CLASS_NAME = "Object";
 

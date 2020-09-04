@@ -52,11 +52,13 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 
 /**
  * Basic non-proxy JS object.
+ *
+ * @see com.oracle.truffle.js.runtime.builtins.JSNonProxy
  */
 @ExportLibrary(InteropLibrary.class)
-public abstract class JSBasicObject extends JSClassObject {
+public abstract class JSNonProxyObject extends JSClassObject {
 
-    protected JSBasicObject(Shape shape) {
+    protected JSNonProxyObject(Shape shape) {
         super(shape);
     }
 

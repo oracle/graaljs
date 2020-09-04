@@ -49,10 +49,10 @@ import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
+import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.objects.JSBasicObject;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 
@@ -60,7 +60,7 @@ import com.oracle.truffle.trufflenode.GraalJSAccess;
  * JS Builtins used by Node.s workers to send Java object references via message passing (@see
  * lib/internal/worker.js).
  */
-public final class SharedMemMessagingBindings extends JSBuiltinObject {
+public final class SharedMemMessagingBindings extends JSNonProxy {
 
     private static final SharedMemMessagingBindings INSTANCE = new SharedMemMessagingBindings();
 
@@ -103,7 +103,7 @@ public final class SharedMemMessagingBindings extends JSBuiltinObject {
         return JSFunction.create(realm, functionData);
     }
 
-    public static final class Instance extends JSBasicObject {
+    public static final class Instance extends JSNonProxyObject {
         final GraalJSAccess graalJSAccess;
 
         protected Instance(Shape shape, GraalJSAccess graalJSAccess) {

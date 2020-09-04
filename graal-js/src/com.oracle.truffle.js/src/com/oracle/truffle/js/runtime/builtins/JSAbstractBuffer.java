@@ -43,7 +43,7 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
-public abstract class JSAbstractBuffer extends JSBuiltinObject {
+public abstract class JSAbstractBuffer extends JSNonProxy {
 
     protected static final String BYTE_LENGTH = "byteLength";
 

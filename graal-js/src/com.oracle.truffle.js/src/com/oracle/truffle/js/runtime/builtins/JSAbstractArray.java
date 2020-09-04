@@ -74,7 +74,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 import com.oracle.truffle.js.runtime.util.IteratorUtil;
 
-public abstract class JSAbstractArray extends JSBuiltinObject {
+public abstract class JSAbstractArray extends JSNonProxy {
 
     public static final String LENGTH = "length";
 
@@ -758,7 +758,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         if (prop == null) {
             return null;
         }
-        return JSBuiltinObject.ordinaryGetOwnPropertyIntl(thisObj, key, prop);
+        return JSNonProxy.ordinaryGetOwnPropertyIntl(thisObj, key, prop);
     }
 
     @Override

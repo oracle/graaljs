@@ -56,7 +56,7 @@ import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public final class JSDataView extends JSBuiltinObject implements JSConstructorFactory.Default, PrototypeSupplier {
+public final class JSDataView extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
 
     public static final String CLASS_NAME = "DataView";
     public static final String PROTOTYPE_NAME = "DataView.prototype";

@@ -72,7 +72,7 @@ import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 /**
  * Module Namespace Exotic Objects.
  */
-public final class JSModuleNamespace extends JSBuiltinObject {
+public final class JSModuleNamespace extends JSNonProxy {
 
     public static final JSModuleNamespace INSTANCE = new JSModuleNamespace();
 

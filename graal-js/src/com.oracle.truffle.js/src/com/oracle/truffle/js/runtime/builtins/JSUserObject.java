@@ -55,7 +55,7 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.util.CompilableBiFunction;
 
-public final class JSUserObject extends JSBuiltinObject implements PrototypeSupplier {
+public final class JSUserObject extends JSNonProxy implements PrototypeSupplier {
 
     public static final String TYPE_NAME = "object";
     public static final String CLASS_NAME = "Object";

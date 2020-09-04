@@ -45,12 +45,12 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.objects.JSBasicObject;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
-public final class JSGlobalObject extends JSBuiltinObject {
+public final class JSGlobalObject extends JSNonProxy {
 
     public static final String CLASS_NAME = "global";
     public static final String EVAL_NAME = "eval";
@@ -101,7 +101,7 @@ public final class JSGlobalObject extends JSBuiltinObject {
         return CLASS_NAME;
     }
 
-    public static final class Instance extends JSBasicObject {
+    public static final class Instance extends JSNonProxyObject {
         protected Instance(Shape shape) {
             super(shape);
         }

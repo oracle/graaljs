@@ -70,7 +70,7 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public final class JSError extends JSBuiltinObject {
+public final class JSError extends JSNonProxy {
 
     public static final String MESSAGE = "message";
     public static final int MESSAGE_ATTRIBUTES = JSAttributes.getDefaultNotEnumerable();
