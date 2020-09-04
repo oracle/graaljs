@@ -64,13 +64,13 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
@@ -245,12 +245,8 @@ public final class JSGuards {
         return JSRegExp.isJSRegExp(value);
     }
 
-    public static boolean isJSUserObject(DynamicObject value) {
-        return JSOrdinary.isJSUserObject(value);
-    }
-
-    public static boolean isJSUserObject(Object value) {
-        return JSOrdinary.isJSUserObject(value);
+    public static boolean isJSOrdinaryObject(Object value) {
+        return JSOrdinary.isJSOrdinaryObject(value);
     }
 
     public static boolean isJSDateTimeFormat(DynamicObject value) {

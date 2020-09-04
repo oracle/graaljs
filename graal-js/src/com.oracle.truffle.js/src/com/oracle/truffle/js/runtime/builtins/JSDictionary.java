@@ -273,7 +273,7 @@ public final class JSDictionary extends JSNonProxy {
     public static void makeDictionaryObject(DynamicObject obj, String reason) {
         CompilerAsserts.neverPartOfCompilation();
         assert JSConfig.DictionaryObject;
-        if (!JSOrdinary.isJSUserObject(obj)) {
+        if (!JSOrdinary.isJSOrdinaryObject(obj)) {
             return;
         }
 
@@ -403,7 +403,7 @@ public final class JSDictionary extends JSNonProxy {
             }
         }
 
-        assert JSOrdinary.isJSUserObject(obj) && obj.getShape().getProperty(HASHMAP_PROPERTY_NAME) == null;
+        assert JSOrdinary.isJSOrdinaryObject(obj) && obj.getShape().getProperty(HASHMAP_PROPERTY_NAME) == null;
     }
 
     public static Shape makeDictionaryShape(JSContext context, DynamicObject prototype) {

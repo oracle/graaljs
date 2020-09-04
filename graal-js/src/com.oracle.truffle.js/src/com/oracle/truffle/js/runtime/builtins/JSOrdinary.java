@@ -146,11 +146,11 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
         return JSOrdinaryObject.create(context.getEmptyShapeNullPrototype());
     }
 
-    public static boolean isJSUserObject(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSUserObject((DynamicObject) obj);
+    public static boolean isJSOrdinaryObject(Object obj) {
+        return JSObject.isJSDynamicObject(obj) && isJSOrdinaryObject((DynamicObject) obj);
     }
 
-    public static boolean isJSUserObject(DynamicObject obj) {
+    public static boolean isJSOrdinaryObject(DynamicObject obj) {
         return isInstance(obj, INSTANCE);
     }
 

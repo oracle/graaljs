@@ -117,7 +117,7 @@ public class ParseInlineTest {
 
             context.eval(JavaScriptLanguage.ID, src);
 
-            assertTrue(JSOrdinary.isJSUserObject(tester.result));
+            assertTrue(JSOrdinary.isJSOrdinaryObject(tester.result));
             assertTrue(JSObject.hasOwnProperty((DynamicObject) tester.result, "number"));
         }
     }

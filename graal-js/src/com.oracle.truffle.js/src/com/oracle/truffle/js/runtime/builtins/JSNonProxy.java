@@ -435,7 +435,7 @@ public abstract class JSNonProxy extends JSClass {
             return false;
         }
 
-        if (!JSOrdinary.isJSUserObject(thisObj)) {
+        if (!JSOrdinary.isJSOrdinaryObject(thisObj)) {
             return false;
         }
 

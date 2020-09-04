@@ -282,7 +282,7 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
         return ARRAY_BUFFER_OBJECT;
     }
 
-    @Specialization(guards = {"isJSUserObject(value)"})
+    @Specialization(guards = {"isJSOrdinaryObject(value)"})
     protected static int doOrdinaryObject(DynamicObject value) {
         return ORDINARY_OBJECT;
     }
