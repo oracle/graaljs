@@ -44,9 +44,9 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.objects.JSValueObject;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-public final class JSBigIntObject extends JSValueObject {
+public final class JSBigIntObject extends JSNonProxyObject {
 
     private final BigInt value;
 

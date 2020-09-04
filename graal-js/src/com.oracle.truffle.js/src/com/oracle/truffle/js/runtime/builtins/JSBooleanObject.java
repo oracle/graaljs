@@ -46,10 +46,10 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.objects.JSValueObject;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 @ExportLibrary(InteropLibrary.class)
-public final class JSBooleanObject extends JSValueObject {
+public final class JSBooleanObject extends JSNonProxyObject {
 
     private final boolean value;
 
