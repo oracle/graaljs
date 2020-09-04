@@ -38,22 +38,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins;
+package com.oracle.truffle.js.runtime.builtins.intl;
 
 import java.util.Objects;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-public final class JSDateTimeFormatObject extends JSNonProxyObject {
-    private final JSDateTimeFormat.InternalState internalState;
+public final class JSRelativeTimeFormatObject extends JSNonProxyObject {
+    private final JSRelativeTimeFormat.InternalState internalState;
 
-    protected JSDateTimeFormatObject(Shape shape, JSDateTimeFormat.InternalState internalState) {
+    protected JSRelativeTimeFormatObject(Shape shape, JSRelativeTimeFormat.InternalState internalState) {
         super(shape);
         this.internalState = Objects.requireNonNull(internalState);
     }
 
-    public JSDateTimeFormat.InternalState getInternalState() {
+    public JSRelativeTimeFormat.InternalState getInternalState() {
         return internalState;
     }
 }

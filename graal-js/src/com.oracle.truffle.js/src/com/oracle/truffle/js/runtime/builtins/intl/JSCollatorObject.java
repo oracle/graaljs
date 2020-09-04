@@ -38,22 +38,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins;
+package com.oracle.truffle.js.runtime.builtins.intl;
 
 import java.util.Objects;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-public final class JSPluralRulesObject extends JSNonProxyObject {
-    private final JSPluralRules.InternalState internalState;
+public final class JSCollatorObject extends JSNonProxyObject {
+    private final JSCollator.InternalState internalState;
 
-    protected JSPluralRulesObject(Shape shape, JSPluralRules.InternalState internalState) {
+    protected JSCollatorObject(Shape shape, JSCollator.InternalState internalState) {
         super(shape);
         this.internalState = Objects.requireNonNull(internalState);
     }
 
-    public JSPluralRules.InternalState getInternalState() {
+    public JSCollator.InternalState getInternalState() {
         return internalState;
     }
 }

@@ -45,7 +45,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.intl.SupportedLocalesOfNodeGen;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSDisplayNames;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDisplayNames;
 
 /**
  * Contains built-ins for {@linkplain JSDisplayNames} function (constructor).
