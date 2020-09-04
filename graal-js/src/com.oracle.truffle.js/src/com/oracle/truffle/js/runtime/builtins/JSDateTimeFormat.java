@@ -85,7 +85,6 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -101,19 +100,6 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
 
     public static final JSDateTimeFormat INSTANCE = new JSDateTimeFormat();
 
-    public static final class Instance extends JSNonProxyObject {
-        private final InternalState internalState;
-
-        protected Instance(Shape shape, InternalState internalState) {
-            super(shape);
-            this.internalState = Objects.requireNonNull(internalState);
-        }
-
-        public InternalState getInternalState() {
-            return internalState;
-        }
-    }
-
     /**
      * Maps the upper-case version of a supported time zone to the corresponding case-regularized
      * canonical ID.
@@ -124,11 +110,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     }
 
     public static boolean isJSDateTimeFormat(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSDateTimeFormat((DynamicObject) obj);
-    }
-
-    public static boolean isJSDateTimeFormat(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSDateTimeFormatObject;
     }
 
     @Override
@@ -166,7 +148,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         InternalState state = new InternalState();
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getDateTimeFormatFactory();
-        Instance obj = new Instance(factory.getShape(realm), state);
+        JSDateTimeFormatObject obj = new JSDateTimeFormatObject(factory.getShape(realm), state);
         factory.initProto(obj, realm);
         assert isJSDateTimeFormat(obj);
         return context.trackAllocation(obj);
@@ -866,7 +848,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
 
     public static InternalState getInternalState(DynamicObject obj) {
         assert isJSDateTimeFormat(obj);
-        return ((Instance) obj).getInternalState();
+        return ((JSDateTimeFormatObject) obj).getInternalState();
     }
 
     private static CallTarget createGetFormatCallTarget(JSContext context) {

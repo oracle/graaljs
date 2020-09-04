@@ -60,6 +60,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSSegmenter;
+import com.oracle.truffle.js.runtime.builtins.JSSegmenterIteratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -123,7 +124,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
 
         protected static JSSegmenter.IteratorState getIteratorState(DynamicObject iterator) {
             assert JSSegmenter.isJSSegmenterIterator(iterator);
-            return ((JSSegmenter.IteratorInstance) iterator).getIteratorState();
+            return ((JSSegmenterIteratorObject) iterator).getIteratorState();
         }
     }
 

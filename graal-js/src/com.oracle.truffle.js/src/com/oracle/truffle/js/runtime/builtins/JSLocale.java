@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.Locale;
-import java.util.Objects;
 
 import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CallTarget;
@@ -57,8 +56,6 @@ import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
@@ -70,28 +67,11 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
 
     public static final JSLocale INSTANCE = new JSLocale();
 
-    public static final class Instance extends JSNonProxyObject {
-        private final InternalState internalState;
-
-        protected Instance(Shape shape, InternalState internalState) {
-            super(shape);
-            this.internalState = Objects.requireNonNull(internalState);
-        }
-
-        public InternalState getInternalState() {
-            return internalState;
-        }
-    }
-
     private JSLocale() {
     }
 
     public static boolean isJSLocale(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSLocale((DynamicObject) obj);
-    }
-
-    public static boolean isJSLocale(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSLocaleObject;
     }
 
     @Override
@@ -137,7 +117,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
         InternalState state = new InternalState();
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getLocaleFactory();
-        Instance obj = new Instance(factory.getShape(realm), state);
+        JSLocaleObject obj = new JSLocaleObject(factory.getShape(realm), state);
         factory.initProto(obj, realm);
         assert isJSLocale(obj);
         return obj;
@@ -400,7 +380,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
 
     public static InternalState getInternalState(DynamicObject localeObject) {
         assert isJSLocale(localeObject);
-        return ((Instance) localeObject).getInternalState();
+        return ((JSLocaleObject) localeObject).getInternalState();
     }
 
     @Override

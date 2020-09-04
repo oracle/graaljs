@@ -44,7 +44,6 @@ import java.text.AttributedCharacterIterator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
@@ -64,8 +63,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.LazyValue;
@@ -77,28 +74,11 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
 
     public static final JSRelativeTimeFormat INSTANCE = new JSRelativeTimeFormat();
 
-    public static final class Instance extends JSNonProxyObject {
-        private final InternalState internalState;
-
-        protected Instance(Shape shape, InternalState internalState) {
-            super(shape);
-            this.internalState = Objects.requireNonNull(internalState);
-        }
-
-        public InternalState getInternalState() {
-            return internalState;
-        }
-    }
-
     private JSRelativeTimeFormat() {
     }
 
     public static boolean isJSRelativeTimeFormat(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSRelativeTimeFormat((DynamicObject) obj);
-    }
-
-    public static boolean isJSRelativeTimeFormat(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSRelativeTimeFormatObject;
     }
 
     @Override
@@ -135,7 +115,7 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
         InternalState state = new InternalState();
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getRelativeTimeFormatFactory();
-        Instance obj = new Instance(factory.getShape(realm), state);
+        JSRelativeTimeFormatObject obj = new JSRelativeTimeFormatObject(factory.getShape(realm), state);
         factory.initProto(obj, realm);
         assert isJSRelativeTimeFormat(obj);
         return context.trackAllocation(obj);
@@ -254,7 +234,7 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
 
     public static InternalState getInternalState(DynamicObject obj) {
         assert isJSRelativeTimeFormat(obj);
-        return ((Instance) obj).getInternalState();
+        return ((JSRelativeTimeFormatObject) obj).getInternalState();
     }
 
     @Override

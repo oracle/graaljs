@@ -42,7 +42,6 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Objects;
 
 import com.ibm.icu.number.FormattedNumber;
 import com.ibm.icu.number.LocalizedNumberFormatter;
@@ -57,8 +56,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
@@ -69,28 +66,11 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
 
     public static final JSPluralRules INSTANCE = new JSPluralRules();
 
-    public static final class Instance extends JSNonProxyObject {
-        private final InternalState internalState;
-
-        protected Instance(Shape shape, InternalState internalState) {
-            super(shape);
-            this.internalState = Objects.requireNonNull(internalState);
-        }
-
-        public InternalState getInternalState() {
-            return internalState;
-        }
-    }
-
     private JSPluralRules() {
     }
 
     public static boolean isJSPluralRules(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSPluralRules((DynamicObject) obj);
-    }
-
-    public static boolean isJSPluralRules(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSPluralRulesObject;
     }
 
     @Override
@@ -127,7 +107,7 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
         InternalState state = new InternalState();
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getPluralRulesFactory();
-        Instance obj = new Instance(factory.getShape(realm), state);
+        JSPluralRulesObject obj = new JSPluralRulesObject(factory.getShape(realm), state);
         factory.initProto(obj, realm);
         assert isJSPluralRules(obj);
         return context.trackAllocation(obj);
@@ -187,7 +167,7 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
 
     public static InternalState getInternalState(DynamicObject obj) {
         assert isJSPluralRules(obj);
-        return ((Instance) obj).getInternalState();
+        return ((JSPluralRulesObject) obj).getInternalState();
     }
 
     @Override

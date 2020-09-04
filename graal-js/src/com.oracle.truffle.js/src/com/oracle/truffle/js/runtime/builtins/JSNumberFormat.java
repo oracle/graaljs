@@ -47,7 +47,6 @@ import java.util.Currency;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
@@ -92,8 +91,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
@@ -108,28 +105,11 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
 
     public static final JSNumberFormat INSTANCE = new JSNumberFormat();
 
-    public static final class Instance extends JSNonProxyObject {
-        private final InternalState internalState;
-
-        protected Instance(Shape shape, InternalState internalState) {
-            super(shape);
-            this.internalState = Objects.requireNonNull(internalState);
-        }
-
-        public InternalState getInternalState() {
-            return internalState;
-        }
-    }
-
     private JSNumberFormat() {
     }
 
     public static boolean isJSNumberFormat(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSNumberFormat((DynamicObject) obj);
-    }
-
-    public static boolean isJSNumberFormat(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSNumberFormatObject;
     }
 
     @Override
@@ -178,7 +158,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         InternalState state = new InternalState();
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getNumberFormatFactory();
-        Instance obj = new Instance(factory.getShape(realm), state);
+        JSNumberFormatObject obj = new JSNumberFormatObject(factory.getShape(realm), state);
         factory.initProto(obj, realm);
         assert isJSNumberFormat(obj);
         return context.trackAllocation(obj);
@@ -783,7 +763,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
 
     public static InternalState getInternalState(DynamicObject obj) {
         assert isJSNumberFormat(obj);
-        return ((Instance) obj).getInternalState();
+        return ((JSNumberFormatObject) obj).getInternalState();
     }
 
     private static CallTarget createGetFormatCallTarget(JSContext context) {

@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.Locale;
-import java.util.Objects;
 
 import com.ibm.icu.text.BreakIterator;
 import com.ibm.icu.util.ULocale;
@@ -61,8 +60,6 @@ import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.CompilableFunction;
@@ -77,32 +74,6 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
     public static final String ITERATOR_PROTOTYPE_NAME = "Segment Iterator.prototype";
 
     public static final JSSegmenter INSTANCE = new JSSegmenter();
-
-    public static final class Instance extends JSNonProxyObject {
-        private final InternalState internalState;
-
-        protected Instance(Shape shape, InternalState internalState) {
-            super(shape);
-            this.internalState = Objects.requireNonNull(internalState);
-        }
-
-        public InternalState getInternalState() {
-            return internalState;
-        }
-    }
-
-    public static final class IteratorInstance extends JSNonProxyObject {
-        private final IteratorState internalState;
-
-        protected IteratorInstance(Shape shape, IteratorState internalState) {
-            super(shape);
-            this.internalState = Objects.requireNonNull(internalState);
-        }
-
-        public IteratorState getIteratorState() {
-            return internalState;
-        }
-    }
 
     public static class IteratorState {
         private String iteratedString;
@@ -214,11 +185,7 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
     }
 
     public static boolean isJSSegmenter(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSSegmenter((DynamicObject) obj);
-    }
-
-    public static boolean isJSSegmenter(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSSegmenterObject;
     }
 
     @Override
@@ -254,7 +221,7 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
         InternalState state = new InternalState();
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getSegmenterFactory();
-        Instance obj = new Instance(factory.getShape(realm), state);
+        JSSegmenterObject obj = new JSSegmenterObject(factory.getShape(realm), state);
         factory.initProto(obj, realm);
         assert isJSSegmenter(obj);
         return context.trackAllocation(obj);
@@ -266,7 +233,7 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
         JSSegmenter.IteratorState iteratorState = new JSSegmenter.IteratorState(value, icuIterator, granularity, null, 0);
         JSObjectFactory factory = context.getSegmentIteratorFactory();
         JSRealm realm = context.getRealm();
-        IteratorInstance segmentIterator = new IteratorInstance(factory.getShape(realm), iteratorState);
+        JSSegmenterIteratorObject segmentIterator = new JSSegmenterIteratorObject(factory.getShape(realm), iteratorState);
         factory.initProto(segmentIterator, realm);
         return context.trackAllocation(segmentIterator);
     }
@@ -337,7 +304,7 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
 
     public static InternalState getInternalState(DynamicObject segmenterObj) {
         assert isJSSegmenter(segmenterObj);
-        return ((Instance) segmenterObj).getInternalState();
+        return ((JSSegmenterObject) segmenterObj).getInternalState();
     }
 
     @Override
@@ -352,7 +319,7 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
     }
 
     public static boolean isJSSegmenterIterator(Object obj) {
-        return obj instanceof JSSegmenter.IteratorInstance;
+        return obj instanceof JSSegmenterIteratorObject;
     }
 
     private static CallTarget createPropertyGetterCallTarget(JSContext context, CompilableFunction<JSSegmenter.IteratorState, Object> getter) {
@@ -362,7 +329,7 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
             public Object execute(VirtualFrame frame) {
                 Object obj = JSArguments.getThisObject(frame.getArguments());
                 if (isJSSegmenterIterator(obj)) {
-                    return getter.apply(((JSSegmenter.IteratorInstance) obj).getIteratorState());
+                    return getter.apply(((JSSegmenterIteratorObject) obj).getIteratorState());
                 }
                 throw Errors.createTypeErrorTypeXExpected(ITERATOR_CLASS_NAME);
             }
