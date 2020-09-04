@@ -61,13 +61,12 @@ import com.oracle.truffle.js.nodes.interop.KeyInfoNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.interop.InteropArray;
-import com.oracle.truffle.js.runtime.objects.JSArrayLike;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 @ExportLibrary(InteropLibrary.class)
-public final class JSTypedArrayObject extends JSArrayBufferViewBase implements JSArrayLike {
+public final class JSTypedArrayObject extends JSArrayBufferViewBase {
 
     TypedArray arrayType;
 
@@ -81,7 +80,6 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase implements J
         return TypedArrayAccess.SINGLETON;
     }
 
-    @Override
     public TypedArray getArrayType() {
         return arrayType;
     }
