@@ -49,6 +49,7 @@ import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.RejectNodeG
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.ResolveNodeGen;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -60,10 +61,12 @@ import com.oracle.truffle.js.nodes.promise.PerformPromiseAnyNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseCombinatorNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseRaceNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
@@ -133,6 +136,8 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
 
     public abstract static class PromiseCombinatorNode extends JSBuiltinNode {
         @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
+        @Child private PropertyGetNode getResolve;
+        @Child private IsCallableNode isCallable;
         @Child private GetIteratorNode getIteratorNode;
         @Child private PerformPromiseCombinatorNode performPromiseOpNode;
         @Child private JSFunctionCallNode callRejectNode;
@@ -143,6 +148,8 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected PromiseCombinatorNode(JSContext context, JSBuiltin builtin, PerformPromiseCombinatorNode performPromiseOp) {
             super(context, builtin);
             this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
+            this.getResolve = PropertyGetNode.create(JSPromise.RESOLVE, context);
+            this.isCallable = IsCallableNode.create();
             this.getIteratorNode = GetIteratorNode.create(context);
             this.performPromiseOpNode = performPromiseOp;
         }
@@ -151,8 +158,10 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected DynamicObject doObject(DynamicObject thisObj, Object iterable) {
             DynamicObject constructor = thisObj;
             PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.execute(constructor);
+            Object promiseResolve;
             IteratorRecord iteratorRecord;
             try {
+                promiseResolve = getPromiseResolve(constructor);
                 iteratorRecord = getIteratorNode.execute(iterable);
             } catch (Throwable ex) {
                 if (shouldCatch(ex)) {
@@ -162,7 +171,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
                 }
             }
             try {
-                return performPromiseOpNode.execute(iteratorRecord, constructor, promiseCapability);
+                return performPromiseOpNode.execute(iteratorRecord, constructor, promiseCapability, promiseResolve);
             } catch (Throwable ex) {
                 if (shouldCatch(ex)) {
                     if (!iteratorRecord.isDone()) {
@@ -173,6 +182,15 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
                     throw ex;
                 }
             }
+        }
+
+        private Object getPromiseResolve(DynamicObject constructor) {
+            assert JSRuntime.isConstructor(constructor);
+            Object promiseResolve = getResolve.getValue(constructor);
+            if (!isCallable.executeBoolean(promiseResolve)) {
+                throw Errors.createTypeErrorNotAFunction(promiseResolve);
+            }
+            return promiseResolve;
         }
 
         protected DynamicObject rejectPromise(Object value, PromiseCapabilityRecord promiseCapability) {
