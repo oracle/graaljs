@@ -57,10 +57,8 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
@@ -85,7 +83,7 @@ public final class JSSet extends JSNonProxy implements JSConstructorFactory.Defa
     public static DynamicObject create(JSContext context) {
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getSetFactory();
-        DynamicObject obj = factory.initProto(new Instance(factory.getShape(realm), new JSHashMap()), realm);
+        DynamicObject obj = factory.initProto(new JSSetObject(factory.getShape(realm), new JSHashMap()), realm);
         assert isJSSet(obj);
         return context.trackAllocation(obj);
     }
@@ -110,7 +108,7 @@ public final class JSSet extends JSNonProxy implements JSConstructorFactory.Defa
 
     public static JSHashMap getInternalSet(DynamicObject obj) {
         assert isJSSet(obj);
-        return ((Instance) obj).getMap();
+        return ((JSSetObject) obj).getMap();
     }
 
     public static int getSetSize(DynamicObject obj) {
@@ -189,29 +187,12 @@ public final class JSSet extends JSNonProxy implements JSConstructorFactory.Defa
     }
 
     public static boolean isJSSet(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSSet((DynamicObject) obj);
-    }
-
-    public static boolean isJSSet(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSSetObject;
     }
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getSetPrototype();
-    }
-
-    public static final class Instance extends JSNonProxyObject {
-        private final JSHashMap map;
-
-        protected Instance(Shape shape, JSHashMap map) {
-            super(shape);
-            this.map = map;
-        }
-
-        public JSHashMap getMap() {
-            return map;
-        }
     }
 
 }

@@ -45,12 +45,11 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
+import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
@@ -80,18 +79,14 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
     public static DynamicObject create(JSContext context, Object[] value) {
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getJavaImporterFactory();
-        Instance obj = new Instance(factory.getShape(realm), value);
+        JavaImporterObject obj = new JavaImporterObject(factory.getShape(realm), value);
         factory.initProto(obj, realm);
         assert isJavaImporter(obj);
         return context.trackAllocation(obj);
     }
 
     public static boolean isJavaImporter(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJavaImporter((DynamicObject) obj);
-    }
-
-    public static boolean isJavaImporter(DynamicObject obj) {
-        return isInstance(obj, instance());
+        return obj instanceof JavaImporterObject;
     }
 
     @Override
@@ -106,8 +101,8 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
             Object[] packages = getPackages(store);
             JSRealm realm = JSObject.getJSContext(store).getRealm();
             for (Object pkg : packages) {
-                if (pkg instanceof JavaPackage.Instance) {
-                    JavaPackage.Instance javaPackage = (JavaPackage.Instance) pkg;
+                if (pkg instanceof JavaPackageObject) {
+                    JavaPackageObject javaPackage = (JavaPackageObject) pkg;
                     Object found = JavaPackage.getClass(realm, javaPackage, (String) name, Object.class);
                     if (found != null) {
                         return found;
@@ -120,7 +115,7 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
 
     public static Object[] getPackages(DynamicObject importer) {
         assert JavaImporter.isJavaImporter(importer);
-        return ((Instance) importer).getPackages();
+        return ((JavaImporterObject) importer).getPackages();
     }
 
     @Override
@@ -154,18 +149,5 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getJavaImporterPrototype();
-    }
-
-    public static final class Instance extends JSNonProxyObject {
-        private final Object[] packages;
-
-        protected Instance(Shape shape, Object[] packages) {
-            super(shape);
-            this.packages = packages;
-        }
-
-        public Object[] getPackages() {
-            return packages;
-        }
     }
 }

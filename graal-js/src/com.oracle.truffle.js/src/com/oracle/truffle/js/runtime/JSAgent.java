@@ -54,6 +54,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.JSAgentWaiterListEntry;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
+import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistryObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -92,7 +93,7 @@ public abstract class JSAgent implements EcmaAgent {
      */
     private EconomicSet<Object> weakRefTargets;
 
-    private final Deque<WeakReference<DynamicObject>> finalizationRegistryQueue;
+    private final Deque<WeakReference<JSFinalizationRegistryObject>> finalizationRegistryQueue;
 
     public JSAgent(boolean canBlock) {
         this.signifier = signifierGenerator.incrementAndGet();
@@ -183,13 +184,13 @@ public abstract class JSAgent implements EcmaAgent {
      * to 4.1.3 Execution and 4.1.4.1 HostCleanupFinalizatioRegistry.
      */
     private void cleanupFinalizers() {
-        for (Iterator<WeakReference<DynamicObject>> iter = finalizationRegistryQueue.iterator(); iter.hasNext();) {
-            WeakReference<DynamicObject> ref = iter.next();
-            DynamicObject fg = ref.get();
-            if (fg == null) {
+        for (Iterator<WeakReference<JSFinalizationRegistryObject>> iter = finalizationRegistryQueue.iterator(); iter.hasNext();) {
+            WeakReference<JSFinalizationRegistryObject> ref = iter.next();
+            JSFinalizationRegistryObject fr = ref.get();
+            if (fr == null) {
                 iter.remove();
             } else {
-                JSFinalizationRegistry.hostCleanupFinalizationRegistry(fg);
+                JSFinalizationRegistry.hostCleanupFinalizationRegistry(fr);
             }
         }
     }
@@ -211,7 +212,7 @@ public abstract class JSAgent implements EcmaAgent {
     }
 
     @TruffleBoundary
-    public void registerFinalizationRegistry(DynamicObject finalizationRegistry) {
+    public void registerFinalizationRegistry(JSFinalizationRegistryObject finalizationRegistry) {
         finalizationRegistryQueue.add(new WeakReference<>(finalizationRegistry));
     }
 }

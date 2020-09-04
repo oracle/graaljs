@@ -45,7 +45,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -65,7 +64,7 @@ public final class JSGlobal extends JSNonProxy {
         JSContext context = realm.getContext();
         Shape globalObjectShape = makeGlobalObjectShape(context, objectPrototype);
 
-        DynamicObject global = new Instance(globalObjectShape);
+        DynamicObject global = new JSGlobalObject(globalObjectShape);
         JSObjectUtil.setOrVerifyPrototype(context, global, objectPrototype);
 
         JSObjectUtil.putToStringTag(global, CLASS_NAME);
@@ -85,7 +84,7 @@ public final class JSGlobal extends JSNonProxy {
 
     public static DynamicObject createGlobalScope(JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
-        return new Instance(context.getGlobalScopeShape());
+        return new JSGlobalObject(context.getGlobalScopeShape());
     }
 
     public static boolean isJSGlobalObject(Object obj) {
@@ -99,16 +98,5 @@ public final class JSGlobal extends JSNonProxy {
     @Override
     public String getClassName(DynamicObject object) {
         return CLASS_NAME;
-    }
-
-    public static final class Instance extends JSNonProxyObject {
-        protected Instance(Shape shape) {
-            super(shape);
-        }
-
-        @Override
-        public String getClassName() {
-            return CLASS_NAME;
-        }
     }
 }

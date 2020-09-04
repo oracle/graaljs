@@ -47,8 +47,6 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.WeakRefPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JSWeakRef extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
@@ -58,19 +56,6 @@ public final class JSWeakRef extends JSNonProxy implements JSConstructorFactory.
     public static final String CLASS_NAME = "WeakRef";
     public static final String PROTOTYPE_NAME = "WeakRef.prototype";
 
-    public static final class Instance extends JSNonProxyObject {
-        private final TruffleWeakReference<Object> weakReference;
-
-        protected Instance(Shape shape, TruffleWeakReference<Object> weakReference) {
-            super(shape);
-            this.weakReference = weakReference;
-        }
-
-        public TruffleWeakReference<Object> getWeakReference() {
-            return weakReference;
-        }
-    }
-
     private JSWeakRef() {
     }
 
@@ -78,7 +63,7 @@ public final class JSWeakRef extends JSNonProxy implements JSConstructorFactory.
         TruffleWeakReference<Object> weakReference = new TruffleWeakReference<>(referent);
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getWeakRefFactory();
-        DynamicObject obj = factory.initProto(new Instance(factory.getShape(realm), weakReference), realm);
+        DynamicObject obj = factory.initProto(new JSWeakRefObject(factory.getShape(realm), weakReference), realm);
         assert isJSWeakRef(obj);
         // Used for KeepDuringJob(target) in the specification
         context.addWeakRefTargetToSet(referent);
@@ -87,7 +72,7 @@ public final class JSWeakRef extends JSNonProxy implements JSConstructorFactory.
 
     public static TruffleWeakReference<?> getInternalWeakRef(DynamicObject obj) {
         assert isJSWeakRef(obj);
-        return ((Instance) obj).getWeakReference();
+        return ((JSWeakRefObject) obj).getWeakReference();
     }
 
     @Override
@@ -126,11 +111,7 @@ public final class JSWeakRef extends JSNonProxy implements JSConstructorFactory.
     }
 
     public static boolean isJSWeakRef(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSWeakRef((DynamicObject) obj);
-    }
-
-    public static boolean isJSWeakRef(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSWeakRefObject;
     }
 
     @Override

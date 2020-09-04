@@ -57,12 +57,11 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
@@ -75,7 +74,7 @@ public final class JavaPackage extends JSNonProxy {
     }
 
     public static DynamicObject create(JSContext context, JSRealm realm, String packageName) {
-        Instance obj = createInstance(context, realm, packageName);
+        JavaPackageObject obj = createInstance(context, realm, packageName);
         return context.trackAllocation(obj);
     }
 
@@ -85,9 +84,9 @@ public final class JavaPackage extends JSNonProxy {
         return createInstance(context, realm, packageName);
     }
 
-    private static Instance createInstance(JSContext context, JSRealm realm, String packageName) {
+    private static JavaPackageObject createInstance(JSContext context, JSRealm realm, String packageName) {
         JSObjectFactory factory = context.getJavaPackageFactory();
-        Instance obj = new Instance(factory.getShape(realm), packageName);
+        JavaPackageObject obj = new JavaPackageObject(factory.getShape(realm), packageName);
         factory.initProto(obj, realm);
         JSObjectUtil.putDataProperty(context, obj, Symbol.SYMBOL_TO_PRIMITIVE, realm.getJavaPackageToPrimitiveFunction(), JSAttributes.notConfigurableNotEnumerableNotWritable());
         assert isJavaPackage(obj);
@@ -95,16 +94,12 @@ public final class JavaPackage extends JSNonProxy {
     }
 
     public static boolean isJavaPackage(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJavaPackage((DynamicObject) obj);
-    }
-
-    public static boolean isJavaPackage(DynamicObject obj) {
-        return INSTANCE != null && isInstance(obj, INSTANCE);
+        return obj instanceof JavaPackageObject;
     }
 
     public static String getPackageName(DynamicObject obj) {
         assert isJavaPackage(obj);
-        return ((Instance) obj).getPackageName();
+        return ((JavaPackageObject) obj).getPackageName();
     }
 
     @TruffleBoundary
@@ -231,18 +226,5 @@ public final class JavaPackage extends JSNonProxy {
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject objectPrototype) {
         return JSObjectUtil.getProtoChildShape(objectPrototype, INSTANCE, context);
-    }
-
-    public static final class Instance extends JSNonProxyObject {
-        private final String packageName;
-
-        protected Instance(Shape shape, String packageName) {
-            super(shape);
-            this.packageName = packageName;
-        }
-
-        public String getPackageName() {
-            return packageName;
-        }
     }
 }

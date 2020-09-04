@@ -48,8 +48,6 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.WeakMapPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.WeakMap;
 
@@ -60,19 +58,6 @@ public final class JSWeakMap extends JSNonProxy implements JSConstructorFactory.
     public static final String CLASS_NAME = "WeakMap";
     public static final String PROTOTYPE_NAME = CLASS_NAME + ".prototype";
 
-    public static final class Instance extends JSNonProxyObject {
-        private final Map<DynamicObject, Object> weakHashMap;
-
-        protected Instance(Shape shape, Map<DynamicObject, Object> weakHashMap) {
-            super(shape);
-            this.weakHashMap = weakHashMap;
-        }
-
-        public Map<DynamicObject, Object> getWeakHashMap() {
-            return weakHashMap;
-        }
-    }
-
     private JSWeakMap() {
     }
 
@@ -80,7 +65,7 @@ public final class JSWeakMap extends JSNonProxy implements JSConstructorFactory.
         WeakMap weakMap = new WeakMap();
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getWeakMapFactory();
-        DynamicObject obj = factory.initProto(new Instance(factory.getShape(realm), weakMap), realm);
+        DynamicObject obj = factory.initProto(new JSWeakMapObject(factory.getShape(realm), weakMap), realm);
         assert isJSWeakMap(obj);
         return context.trackAllocation(obj);
     }
@@ -88,7 +73,7 @@ public final class JSWeakMap extends JSNonProxy implements JSConstructorFactory.
     @SuppressWarnings("unchecked")
     public static Map<DynamicObject, Object> getInternalWeakMap(DynamicObject obj) {
         assert isJSWeakMap(obj);
-        return ((Instance) obj).getWeakHashMap();
+        return ((JSWeakMapObject) obj).getWeakHashMap();
     }
 
     @Override
@@ -132,11 +117,7 @@ public final class JSWeakMap extends JSNonProxy implements JSConstructorFactory.
     }
 
     public static boolean isJSWeakMap(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSWeakMap((DynamicObject) obj);
-    }
-
-    public static boolean isJSWeakMap(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSWeakMapObject;
     }
 
     @Override

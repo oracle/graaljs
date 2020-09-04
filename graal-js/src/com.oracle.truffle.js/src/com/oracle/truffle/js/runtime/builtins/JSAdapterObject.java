@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,43 +38,41 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.trufflenode;
+package com.oracle.truffle.js.runtime.builtins;
 
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
+import com.oracle.truffle.js.runtime.interop.JSMetaType;
+import com.oracle.truffle.js.runtime.objects.JSClassObject;
 
-public final class JSExternal extends JSNonProxy {
+public final class JSAdapterObject extends JSClassObject {
+    private final DynamicObject adaptee;
+    private final DynamicObject overrides;
 
-    public static final String CLASS_NAME = "external";
-    public static final JSExternal INSTANCE = new JSExternal();
-
-    private JSExternal() {
+    protected JSAdapterObject(Shape shape, DynamicObject adaptee, DynamicObject overrides) {
+        super(shape);
+        this.adaptee = adaptee;
+        this.overrides = overrides;
     }
 
-    public static DynamicObject create(JSContext context, long pointer) {
-        ContextData contextData = GraalJSAccess.getContextEmbedderData(context);
-        DynamicObject obj = new JSExternalObject(contextData.getExternalObjectShape(), pointer);
-        assert isJSExternalObject(obj);
-        return obj;
+    public DynamicObject getAdaptee() {
+        return adaptee;
     }
 
-    public static Shape makeInitialShape(JSContext ctx) {
-        return ctx.makeEmptyShapeWithNullPrototype(INSTANCE);
+    public DynamicObject getOverrides() {
+        return overrides;
     }
 
-    public static boolean isJSExternalObject(Object obj) {
-        return obj instanceof JSExternalObject;
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public boolean hasMetaObject() {
+        return true;
     }
 
-    @Override
-    public String getClassName(DynamicObject object) {
-        return CLASS_NAME;
-    }
-
-    public static long getPointer(DynamicObject obj) {
-        assert isJSExternalObject(obj);
-        return ((JSExternalObject) obj).getPointer();
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public Object getMetaObject() {
+        return JSMetaType.JS_PROXY;
     }
 }

@@ -55,7 +55,6 @@ import com.oracle.truffle.js.builtins.FinalizationRegistryPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -69,47 +68,22 @@ public final class JSFinalizationRegistry extends JSNonProxy implements JSConstr
 
     public static final HiddenKey FINALIZATION_REGISTRY_ID = new HiddenKey("FinalizationRegistry");
 
-    public static final class Instance extends JSNonProxyObject {
-        TruffleObject cleanupCallback;
-        List<FinalizationRecord> cells;
-        ReferenceQueue<Object> referenceQueue;
-
-        protected Instance(Shape shape, TruffleObject cleanupCallback, List<FinalizationRecord> cells, ReferenceQueue<Object> referenceQueue) {
-            super(shape);
-            this.cleanupCallback = cleanupCallback;
-            this.cells = cells;
-            this.referenceQueue = referenceQueue;
-        }
-    }
-
     private JSFinalizationRegistry() {
     }
 
     public static DynamicObject create(JSContext context, TruffleObject cleanupCallback) {
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getFinalizationRegistryFactory();
-        DynamicObject obj = factory.initProto(new Instance(factory.getShape(realm), cleanupCallback, new ArrayList<>(), new ReferenceQueue<>()), realm);
+        JSFinalizationRegistryObject obj = factory.initProto(new JSFinalizationRegistryObject(factory.getShape(realm), cleanupCallback, new ArrayList<>(), new ReferenceQueue<>()), realm);
         assert isJSFinalizationRegistry(obj);
         context.registerFinalizationRegistry(obj);
         context.trackAllocation(obj);
         return obj;
     }
 
-    @SuppressWarnings("unchecked")
-    private static List<FinalizationRecord> getCells(DynamicObject obj) {
-        assert isJSFinalizationRegistry(obj);
-        return ((Instance) obj).cells;
-    }
-
-    public static TruffleObject getCleanupCallback(DynamicObject obj) {
-        assert isJSFinalizationRegistry(obj);
-        return ((Instance) obj).cleanupCallback;
-    }
-
-    @SuppressWarnings("unchecked")
     public static ReferenceQueue<Object> getReferenceQueue(DynamicObject obj) {
         assert isJSFinalizationRegistry(obj);
-        return ((Instance) obj).referenceQueue;
+        return ((JSFinalizationRegistryObject) obj).getReferenceQueue();
     }
 
     @Override
@@ -148,11 +122,7 @@ public final class JSFinalizationRegistry extends JSNonProxy implements JSConstr
     }
 
     public static boolean isJSFinalizationRegistry(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSFinalizationRegistry((DynamicObject) obj);
-    }
-
-    public static boolean isJSFinalizationRegistry(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSFinalizationRegistryObject;
     }
 
     @Override
@@ -161,16 +131,16 @@ public final class JSFinalizationRegistry extends JSNonProxy implements JSConstr
     }
 
     @TruffleBoundary
-    public static void appendToCells(DynamicObject finalizationRegistry, Object target, Object holdings, Object unregisterToken) {
-        List<FinalizationRecord> cells = getCells(finalizationRegistry);
-        ReferenceQueue<Object> queue = getReferenceQueue(finalizationRegistry);
+    public static void appendToCells(JSFinalizationRegistryObject finalizationRegistry, Object target, Object holdings, Object unregisterToken) {
+        List<FinalizationRecord> cells = finalizationRegistry.getCells();
+        ReferenceQueue<Object> queue = finalizationRegistry.getReferenceQueue();
         WeakReference<Object> weakTarget = new WeakReference<>(target, queue);
         cells.add(new FinalizationRecord(weakTarget, holdings, unregisterToken));
     }
 
     @TruffleBoundary
-    public static boolean removeFromCells(DynamicObject finalizationRegistry, Object unregisterToken) {
-        List<FinalizationRecord> cells = getCells(finalizationRegistry);
+    public static boolean removeFromCells(JSFinalizationRegistryObject finalizationRegistry, Object unregisterToken) {
+        List<FinalizationRecord> cells = finalizationRegistry.getCells();
         boolean removed = false;
         for (Iterator<FinalizationRecord> iterator = cells.iterator(); iterator.hasNext();) {
             FinalizationRecord record = iterator.next();
@@ -182,8 +152,9 @@ public final class JSFinalizationRegistry extends JSNonProxy implements JSConstr
         return removed;
     }
 
-    public static void cleanupFinalizationRegistry(DynamicObject finalizationRegistry, Object callbackArg) {
-        Object callback = callbackArg == Undefined.instance ? JSFinalizationRegistry.getCleanupCallback(finalizationRegistry) : callbackArg;
+    @TruffleBoundary
+    public static void cleanupFinalizationRegistry(JSFinalizationRegistryObject finalizationRegistry, Object callbackArg) {
+        Object callback = callbackArg == Undefined.instance ? finalizationRegistry.getCleanupCallback() : callbackArg;
         FinalizationRecord cell;
         while ((cell = removeCellEmptyTarget(finalizationRegistry)) != null) {
             assert (cell.getWeakRefTarget().get() == null);
@@ -192,9 +163,8 @@ public final class JSFinalizationRegistry extends JSNonProxy implements JSConstr
     }
 
     @TruffleBoundary
-    public static FinalizationRecord removeCellEmptyTarget(DynamicObject finalizationRegistry) {
-        assert JSFinalizationRegistry.isJSFinalizationRegistry(finalizationRegistry);
-        List<FinalizationRecord> cells = getCells(finalizationRegistry);
+    public static FinalizationRecord removeCellEmptyTarget(JSFinalizationRegistryObject finalizationRegistry) {
+        List<FinalizationRecord> cells = finalizationRegistry.getCells();
         for (int i = 0; i < cells.size(); i++) {
             FinalizationRecord record = cells.get(i);
             if (record.getWeakRefTarget().get() == null) {
@@ -208,9 +178,9 @@ public final class JSFinalizationRegistry extends JSNonProxy implements JSConstr
     /**
      * 4.1.3 Execution and 4.1.4.1 HostCleanupFinalizationRegistry.
      */
-    public static void hostCleanupFinalizationRegistry(DynamicObject finalizationRegistry) {
+    public static void hostCleanupFinalizationRegistry(JSFinalizationRegistryObject finalizationRegistry) {
         // if something can be polled, clean up the FinalizationRegistry
-        ReferenceQueue<Object> queue = getReferenceQueue(finalizationRegistry);
+        ReferenceQueue<Object> queue = finalizationRegistry.getReferenceQueue();
         boolean queueNotEmpty = (queue.poll() != null);
         // Cleared WeakReferences may not appear in ReferenceQueue immediatelly
         // but V8 tests expect the invocation of the callbacks as soon as possible

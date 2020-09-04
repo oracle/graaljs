@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,43 +38,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.trufflenode;
+package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.object.DynamicObject;
+import java.lang.ref.ReferenceQueue;
+import java.util.List;
+
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-public final class JSExternal extends JSNonProxy {
+public final class JSFinalizationRegistryObject extends JSNonProxyObject {
+    TruffleObject cleanupCallback;
+    List<FinalizationRecord> cells;
+    ReferenceQueue<Object> referenceQueue;
 
-    public static final String CLASS_NAME = "external";
-    public static final JSExternal INSTANCE = new JSExternal();
-
-    private JSExternal() {
+    protected JSFinalizationRegistryObject(Shape shape, TruffleObject cleanupCallback, List<FinalizationRecord> cells, ReferenceQueue<Object> referenceQueue) {
+        super(shape);
+        this.cleanupCallback = cleanupCallback;
+        this.cells = cells;
+        this.referenceQueue = referenceQueue;
     }
 
-    public static DynamicObject create(JSContext context, long pointer) {
-        ContextData contextData = GraalJSAccess.getContextEmbedderData(context);
-        DynamicObject obj = new JSExternalObject(contextData.getExternalObjectShape(), pointer);
-        assert isJSExternalObject(obj);
-        return obj;
+    public TruffleObject getCleanupCallback() {
+        return cleanupCallback;
     }
 
-    public static Shape makeInitialShape(JSContext ctx) {
-        return ctx.makeEmptyShapeWithNullPrototype(INSTANCE);
+    public List<FinalizationRecord> getCells() {
+        return cells;
     }
 
-    public static boolean isJSExternalObject(Object obj) {
-        return obj instanceof JSExternalObject;
-    }
-
-    @Override
-    public String getClassName(DynamicObject object) {
-        return CLASS_NAME;
-    }
-
-    public static long getPointer(DynamicObject obj) {
-        assert isJSExternalObject(obj);
-        return ((JSExternalObject) obj).getPointer();
+    public ReferenceQueue<Object> getReferenceQueue() {
+        return referenceQueue;
     }
 }

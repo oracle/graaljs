@@ -57,9 +57,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
@@ -84,14 +82,14 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
     public static DynamicObject create(JSContext context) {
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getMapFactory();
-        DynamicObject obj = factory.initProto(new Instance(factory.getShape(realm), new JSHashMap()), realm);
+        DynamicObject obj = factory.initProto(new JSMapObject(factory.getShape(realm), new JSHashMap()), realm);
         assert isJSMap(obj);
         return context.trackAllocation(obj);
     }
 
     public static JSHashMap getInternalMap(DynamicObject obj) {
         assert isJSMap(obj);
-        return ((Instance) obj).getMap();
+        return ((JSMapObject) obj).getMap();
     }
 
     public static int getMapSize(DynamicObject obj) {
@@ -169,29 +167,12 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
     }
 
     public static boolean isJSMap(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSMap((DynamicObject) obj);
-    }
-
-    public static boolean isJSMap(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSMapObject;
     }
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getMapPrototype();
-    }
-
-    public static final class Instance extends JSNonProxyObject {
-        private final JSHashMap map;
-
-        protected Instance(Shape shape, JSHashMap map) {
-            super(shape);
-            this.map = map;
-        }
-
-        public JSHashMap getMap() {
-            return map;
-        }
     }
 
 }

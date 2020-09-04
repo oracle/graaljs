@@ -56,6 +56,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
+import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistryObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -124,8 +125,8 @@ public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsConta
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSFinalizationRegistry(thisObj)")
-        protected DynamicObject register(DynamicObject thisObj, Object target, Object holdings, Object unregisterTokenArg) {
+        @Specialization
+        protected DynamicObject register(JSFinalizationRegistryObject thisObj, Object target, Object holdings, Object unregisterTokenArg) {
             if (!isObjectNode.executeBoolean(target)) {
                 errorBranch.enter();
                 throw Errors.createTypeError("FinalizationRegistry.prototype.register: target must be an object");
@@ -163,8 +164,8 @@ public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsConta
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSFinalizationRegistry(thisObj)")
-        protected boolean unregister(DynamicObject thisObj, Object unregisterToken) {
+        @Specialization
+        protected boolean unregister(JSFinalizationRegistryObject thisObj, Object unregisterToken) {
             if (!isObjectNode.executeBoolean(unregisterToken)) {
                 invalidUnregisterToken(unregisterToken);
             }
@@ -189,8 +190,8 @@ public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsConta
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSFinalizationRegistry(thisObj)")
-        protected DynamicObject cleanupSome(DynamicObject thisObj, Object callback) {
+        @Specialization
+        protected DynamicObject cleanupSome(JSFinalizationRegistryObject thisObj, Object callback) {
             if (callback != Undefined.instance && !isCallableNode.executeBoolean(callback)) {
                 errorBranch.enter();
                 throw Errors.createTypeError("FinalizationRegistry: cleanup must be callable");

@@ -92,6 +92,7 @@ import com.oracle.truffle.js.runtime.builtins.JSDictionary;
 import com.oracle.truffle.js.runtime.builtins.JSDisplayNames;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
+import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistryObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionFactory;
@@ -103,6 +104,7 @@ import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -113,7 +115,6 @@ import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
@@ -708,7 +709,7 @@ public class JSContext {
         return getJSAgent().addWeakRefTargetToSet(target);
     }
 
-    public void registerFinalizationRegistry(DynamicObject finalizationRegistry) {
+    public void registerFinalizationRegistry(JSFinalizationRegistryObject finalizationRegistry) {
         invalidatePromiseQueueNotUsedAssumption();
         getJSAgent().registerFinalizationRegistry(finalizationRegistry);
     }

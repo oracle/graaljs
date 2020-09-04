@@ -49,8 +49,6 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.WeakSetPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JSWeakSet extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
@@ -60,26 +58,13 @@ public final class JSWeakSet extends JSNonProxy implements JSConstructorFactory.
     public static final String CLASS_NAME = "WeakSet";
     public static final String PROTOTYPE_NAME = CLASS_NAME + ".prototype";
 
-    public static final class Instance extends JSNonProxyObject {
-        private final Map<Object, Object> weakHashMap;
-
-        protected Instance(Shape shape, Map<Object, Object> weakHashMap) {
-            super(shape);
-            this.weakHashMap = weakHashMap;
-        }
-
-        public Map<Object, Object> getWeakHashMap() {
-            return weakHashMap;
-        }
-    }
-
     private JSWeakSet() {
     }
 
     public static DynamicObject create(JSContext context) {
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getWeakSetFactory();
-        DynamicObject obj = factory.initProto(new Instance(factory.getShape(realm), newWeakHashMap()), realm);
+        DynamicObject obj = factory.initProto(new JSWeakSetObject(factory.getShape(realm), newWeakHashMap()), realm);
         assert isJSWeakSet(obj);
         return context.trackAllocation(obj);
     }
@@ -93,7 +78,7 @@ public final class JSWeakSet extends JSNonProxy implements JSConstructorFactory.
     public static Map<Object, Object> getInternalWeakMap(DynamicObject obj) {
         assert isJSWeakSet(obj);
         // return (Map<DynamicObject, Object>) WEAKSET_PROPERTY.get(obj, isJSWeakSet(obj));
-        return ((Instance) obj).getWeakHashMap();
+        return ((JSWeakSetObject) obj).getWeakHashMap();
     }
 
     @Override
@@ -137,11 +122,7 @@ public final class JSWeakSet extends JSNonProxy implements JSConstructorFactory.
     }
 
     public static boolean isJSWeakSet(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSWeakSet((DynamicObject) obj);
-    }
-
-    public static boolean isJSWeakSet(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSWeakSetObject;
     }
 
     @Override
