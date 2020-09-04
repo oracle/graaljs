@@ -47,8 +47,6 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSValueObject;
 
 public final class JSBigIntObject extends JSValueObject {
-    public static final String CLASS_NAME = "Number";
-    public static final String PROTOTYPE_NAME = "Number.prototype";
 
     private final BigInt value;
 
@@ -63,7 +61,7 @@ public final class JSBigIntObject extends JSValueObject {
 
     @Override
     public String getClassName() {
-        return CLASS_NAME;
+        return JSBigInt.CLASS_NAME;
     }
 
     public static DynamicObject create(JSRealm realm, JSObjectFactory factory, BigInt value) {

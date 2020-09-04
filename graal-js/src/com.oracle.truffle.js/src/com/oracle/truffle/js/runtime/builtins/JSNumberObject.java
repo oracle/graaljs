@@ -53,8 +53,6 @@ import com.oracle.truffle.js.runtime.objects.JSValueObject;
 
 @ExportLibrary(InteropLibrary.class)
 public final class JSNumberObject extends JSValueObject {
-    public static final String CLASS_NAME = "Number";
-    public static final String PROTOTYPE_NAME = "Number.prototype";
 
     private final Number number;
 
@@ -69,7 +67,7 @@ public final class JSNumberObject extends JSValueObject {
 
     @Override
     public String getClassName() {
-        return CLASS_NAME;
+        return JSNumber.CLASS_NAME;
     }
 
     public static DynamicObject create(Shape shape, Number value) {

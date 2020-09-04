@@ -50,8 +50,6 @@ import com.oracle.truffle.js.runtime.objects.JSValueObject;
 
 @ExportLibrary(InteropLibrary.class)
 public final class JSBooleanObject extends JSValueObject {
-    public static final String CLASS_NAME = "Boolean";
-    public static final String PROTOTYPE_NAME = "Boolean.prototype";
 
     private final boolean value;
 
@@ -66,7 +64,7 @@ public final class JSBooleanObject extends JSValueObject {
 
     @Override
     public String getClassName() {
-        return CLASS_NAME;
+        return JSBoolean.CLASS_NAME;
     }
 
     public static DynamicObject create(Shape shape, boolean value) {
