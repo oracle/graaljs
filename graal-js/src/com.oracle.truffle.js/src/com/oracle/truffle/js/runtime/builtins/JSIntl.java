@@ -53,7 +53,7 @@ public final class JSIntl {
     }
 
     public static DynamicObject create(JSRealm realm) {
-        DynamicObject obj = JSUserObject.createInit(realm);
+        DynamicObject obj = JSOrdinary.createInit(realm);
         JSObjectUtil.putFunctionsFromContainer(realm, obj, IntlBuiltins.BUILTINS);
         return obj;
     }

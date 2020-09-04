@@ -61,7 +61,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -101,7 +101,7 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
     protected Shape getProtoChildShape(Object prototype) {
         CompilerAsserts.neverPartOfCompilation();
         if (JSGuards.isJSObject(prototype)) {
-            return JSObjectUtil.getProtoChildShape((DynamicObject) prototype, JSUserObject.INSTANCE, context);
+            return JSObjectUtil.getProtoChildShape((DynamicObject) prototype, JSOrdinary.INSTANCE, context);
         }
         return null;
     }
@@ -110,7 +110,7 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
     public DynamicObject doCachedProto(@SuppressWarnings("unused") DynamicObject target, @SuppressWarnings("unused") Object prototype,
                     @Cached("prototype") @SuppressWarnings("unused") Object cachedPrototype,
                     @Cached("getProtoChildShape(prototype)") Shape shape) {
-        return JSUserObject.create(context, shape);
+        return JSOrdinary.create(context, shape);
     }
 
     /** Many different prototypes. */
@@ -118,8 +118,8 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
     @Specialization(guards = {"!isBuiltin", "isConstructor", "!context.isMultiContext()", "isJSObject(prototype)"}, replaces = "doCachedProto")
     public DynamicObject doUncachedProto(@SuppressWarnings("unused") DynamicObject target, DynamicObject prototype,
                     @Cached("create()") BranchProfile slowBranch) {
-        Shape shape = JSObjectUtil.getProtoChildShape(prototype, JSUserObject.INSTANCE, context, slowBranch);
-        return JSUserObject.create(context, shape);
+        Shape shape = JSObjectUtil.getProtoChildShape(prototype, JSOrdinary.INSTANCE, context, slowBranch);
+        return JSOrdinary.create(context, shape);
     }
 
     @Specialization(guards = {"!isBuiltin", "isConstructor", "context.isMultiContext()", "prototypeClass != null", "prototypeClass.isInstance(prototype)"}, limit = "1")
@@ -132,7 +132,7 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
     @Specialization(guards = {"!isBuiltin", "isConstructor", "context.isMultiContext()", "isJSObject(prototype)"})
     public DynamicObject createWithProto(@SuppressWarnings("unused") DynamicObject target, DynamicObject prototype,
                     @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode) {
-        DynamicObject object = JSUserObject.createWithoutPrototype(context);
+        DynamicObject object = JSOrdinary.createWithoutPrototype(context);
         setProtoNode.put(object, JSObject.HIDDEN_PROTO, prototype);
         return object;
     }
@@ -142,11 +142,11 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
         // user-provided prototype is not an object
         JSRealm realm = JSRuntime.getFunctionRealm(target, context);
         if (isAsyncGenerator) {
-            return JSUserObject.createWithRealm(context, context.getAsyncGeneratorObjectFactory(), realm);
+            return JSOrdinary.createWithRealm(context, context.getAsyncGeneratorObjectFactory(), realm);
         } else if (isGenerator) {
-            return JSUserObject.createWithRealm(context, context.getGeneratorObjectFactory(), realm);
+            return JSOrdinary.createWithRealm(context, context.getGeneratorObjectFactory(), realm);
         }
-        return JSUserObject.create(context, realm);
+        return JSOrdinary.create(context, realm);
     }
 
     @Specialization(guards = {"isBuiltin", "isConstructor"})

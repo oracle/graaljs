@@ -515,7 +515,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         private Integer maximumSignificantDigits;
 
         DynamicObject toResolvedOptionsObject(JSContext context) {
-            DynamicObject resolvedOptions = JSUserObject.create(context);
+            DynamicObject resolvedOptions = JSOrdinary.create(context);
             fillResolvedOptions(context, resolvedOptions);
             return resolvedOptions;
         }

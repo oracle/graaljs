@@ -308,7 +308,7 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
         Granularity granularity = Granularity.GRAPHEME;
 
         DynamicObject toResolvedOptionsObject(JSContext context) {
-            DynamicObject result = JSUserObject.create(context);
+            DynamicObject result = JSOrdinary.create(context);
             JSObjectUtil.defineDataProperty(result, IntlUtil.LOCALE, locale, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, IntlUtil.GRANULARITY, granularity.getName(), JSAttributes.getDefault());
             return result;
@@ -348,7 +348,7 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
     // Iterator
 
     public static Shape makeInitialSegmentIteratorShape(JSContext ctx, DynamicObject prototype) {
-        return JSObjectUtil.getProtoChildShape(prototype, JSUserObject.BARE_INSTANCE, ctx);
+        return JSObjectUtil.getProtoChildShape(prototype, JSOrdinary.BARE_INSTANCE, ctx);
     }
 
     public static boolean isJSSegmenterIterator(Object obj) {

@@ -63,7 +63,7 @@ public final class ContextData {
     private final Shape externalObjectShape;
 
     public ContextData(JSContext context) {
-        this.externalObjectShape = JSExternalObject.makeInitialShape(context);
+        this.externalObjectShape = JSExternal.makeInitialShape(context);
     }
 
     public Pair<JSFunctionData, JSFunctionData> getAccessorPair(int id) {

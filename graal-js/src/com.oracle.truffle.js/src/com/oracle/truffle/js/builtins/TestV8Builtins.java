@@ -83,7 +83,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSTestV8;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -341,7 +341,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         @Specialization(guards = "isJSObject(syncIterator)")
         protected Object createAsyncFromSyncIterator(DynamicObject syncIterator) {
             JSContext context = getContext();
-            DynamicObject obj = JSUserObject.create(context, context.getAsyncFromSyncIteratorFactory());
+            DynamicObject obj = JSOrdinary.create(context, context.getAsyncFromSyncIteratorFactory());
             IteratorRecord syncIteratorRecord = IteratorRecord.create(syncIterator, getNextMethodNode.getValue(syncIterator), false);
             setState.setValue(obj, syncIteratorRecord);
             return obj;

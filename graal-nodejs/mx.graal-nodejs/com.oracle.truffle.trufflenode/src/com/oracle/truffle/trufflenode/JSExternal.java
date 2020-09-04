@@ -47,12 +47,12 @@ import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
-public final class JSExternalObject extends JSNonProxy {
+public final class JSExternal extends JSNonProxy {
 
     public static final String CLASS_NAME = "external";
-    public static final JSExternalObject INSTANCE = new JSExternalObject();
+    public static final JSExternal INSTANCE = new JSExternal();
 
-    private JSExternalObject() {
+    private JSExternal() {
     }
 
     public static DynamicObject create(JSContext context, long pointer) {

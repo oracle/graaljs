@@ -83,7 +83,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -98,7 +98,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     public static final JSBuiltinsContainer BUILTINS = new ObjectPrototypeBuiltins();
 
     protected ObjectPrototypeBuiltins() {
-        super(JSUserObject.PROTOTYPE_NAME, ObjectPrototype.class);
+        super(JSOrdinary.PROTOTYPE_NAME, ObjectPrototype.class);
     }
 
     public enum ObjectPrototype implements BuiltinEnum<ObjectPrototype> {

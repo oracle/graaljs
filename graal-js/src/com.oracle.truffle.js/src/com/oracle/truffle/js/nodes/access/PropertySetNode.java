@@ -83,7 +83,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
-import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
+import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.Dead;
@@ -1028,7 +1028,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 root.globalPropertySetInStrictMode(thisObj);
             } else if (root.isOwnProperty()) {
                 if (root.isDeclaration()) {
-                    assert JSGlobalObject.isJSGlobalObject(thisJSObj) && !JSObject.hasProperty(thisJSObj, key);
+                    assert JSGlobal.isJSGlobalObject(thisJSObj) && !JSObject.hasProperty(thisJSObj, key);
                     JSObjectUtil.putDeclaredDataProperty(root.getContext(), thisJSObj, key, value, root.getAttributeFlags());
                 } else {
                     JSObject.defineOwnProperty(thisJSObj, key, PropertyDescriptor.createData(value, root.getAttributeFlags()), root.isStrict());

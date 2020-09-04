@@ -48,7 +48,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
-import com.oracle.truffle.trufflenode.JSExternalObject;
+import com.oracle.truffle.trufflenode.JSExternal;
 import com.oracle.truffle.trufflenode.threading.SharedMemMessagingBuiltinsFactory.DisposeNodeGen;
 import com.oracle.truffle.trufflenode.threading.SharedMemMessagingBuiltinsFactory.EncodedRefsNodeGen;
 import com.oracle.truffle.trufflenode.threading.SharedMemMessagingBuiltinsFactory.EnterNodeGen;
@@ -107,7 +107,7 @@ public class SharedMemMessagingBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @Specialization
         public Object enter(DynamicObject self, DynamicObject nativeMessagePortData) {
-            assert JSExternalObject.isJSExternalObject(nativeMessagePortData);
+            assert JSExternal.isJSExternalObject(nativeMessagePortData);
             GraalJSAccess access = SharedMemMessagingBindings.getApiField(self);
             access.setCurrentMessagePortData(nativeMessagePortData);
             return self;
@@ -176,7 +176,7 @@ public class SharedMemMessagingBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @Specialization
         public Object dispose(DynamicObject self, DynamicObject external) {
-            assert JSExternalObject.isJSExternalObject(external);
+            assert JSExternal.isJSExternalObject(external);
             SharedMemMessagingManager.disposeReferences(external);
             return self;
         }

@@ -73,7 +73,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSString;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.ForInIterator;
 import com.oracle.truffle.js.runtime.util.IteratorUtil;
@@ -235,7 +235,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             setEnumerateIteratorNode = insert(PropertySetNode.createSetHidden(JSRuntime.ENUMERATE_ITERATOR_ID, context));
         }
-        DynamicObject obj = JSUserObject.create(context, context.getEnumerateIteratorFactory());
+        DynamicObject obj = JSOrdinary.create(context, context.getEnumerateIteratorFactory());
         setEnumerateIteratorNode.setValue(obj, iterator);
         return obj;
     }
@@ -245,7 +245,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             setForInIteratorNode = insert(PropertySetNode.createSetHidden(JSRuntime.FOR_IN_ITERATOR_ID, context));
         }
-        DynamicObject iteratorObj = JSUserObject.create(context, context.getForInIteratorFactory());
+        DynamicObject iteratorObj = JSOrdinary.create(context, context.getForInIteratorFactory());
         setForInIteratorNode.setValue(iteratorObj, new ForInIterator(obj, values));
         return iteratorObj;
     }

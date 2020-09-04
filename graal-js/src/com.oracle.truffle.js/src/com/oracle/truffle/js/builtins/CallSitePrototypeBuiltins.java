@@ -56,7 +56,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
+import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -264,7 +264,7 @@ public final class CallSitePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 case isNative:
                     return JSFunction.isJSFunction(stackTraceElement.getFunction()) && JSFunction.isBuiltin((DynamicObject) stackTraceElement.getFunction());
                 case isToplevel:
-                    return JSRuntime.isNullOrUndefined(stackTraceElement.getThis()) || JSGlobalObject.isJSGlobalObject(stackTraceElement.getThis()) || stackTraceElement.isEval();
+                    return JSRuntime.isNullOrUndefined(stackTraceElement.getThis()) || JSGlobal.isJSGlobalObject(stackTraceElement.getThis()) || stackTraceElement.isEval();
                 case isAsync:
                     return stackTraceElement.isAsync();
                 case isPromiseAll:

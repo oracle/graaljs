@@ -49,7 +49,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.Null;
 
 public class TruffleJSONParser {
@@ -138,7 +138,7 @@ public class TruffleJSONParser {
         incDepth();
         skipChar('{');
         skipWhitespace();
-        DynamicObject object = JSUserObject.create(context);
+        DynamicObject object = JSOrdinary.create(context);
         if (get() != '}') {
             parseJSONMemberList(object);
             if (get() != '}') {

@@ -82,8 +82,8 @@ public final class JSSlowArray extends JSAbstractArray {
     @Override
     public Object getOwnHelper(DynamicObject store, Object thisObj, long index) {
         String indexAsString = Boundaries.stringValueOf(index);
-        if (JSUserObject.INSTANCE.hasOwnProperty(store, indexAsString)) {
-            return JSUserObject.INSTANCE.getOwnHelper(store, thisObj, indexAsString);
+        if (JSOrdinary.INSTANCE.hasOwnProperty(store, indexAsString)) {
+            return JSOrdinary.INSTANCE.getOwnHelper(store, thisObj, indexAsString);
         }
         return super.getOwnHelper(store, thisObj, index);
     }
@@ -92,7 +92,7 @@ public final class JSSlowArray extends JSAbstractArray {
     @Override
     public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
         String indexAsString = Boundaries.stringValueOf(index);
-        if (JSUserObject.INSTANCE.hasOwnProperty(thisObj, indexAsString)) {
+        if (JSOrdinary.INSTANCE.hasOwnProperty(thisObj, indexAsString)) {
             return ordinarySet(thisObj, indexAsString, value, receiver, isStrict);
         }
         return super.set(thisObj, index, value, receiver, isStrict);
@@ -111,7 +111,7 @@ public final class JSSlowArray extends JSAbstractArray {
                 return false;
             }
         } else {
-            return JSUserObject.INSTANCE.delete(thisObj, index, isStrict);
+            return JSOrdinary.INSTANCE.delete(thisObj, index, isStrict);
         }
     }
 
@@ -141,7 +141,7 @@ public final class JSSlowArray extends JSAbstractArray {
             this.setLength(thisObj, (index + 1), doThrow);
         }
         ScriptArray arrayType = arrayGetArrayType(thisObj);
-        if (arrayType.hasElement(thisObj, index) && !JSUserObject.INSTANCE.hasOwnProperty(thisObj, name)) {
+        if (arrayType.hasElement(thisObj, index) && !JSOrdinary.INSTANCE.hasOwnProperty(thisObj, name)) {
             // replace with a regular property first
             JSContext context = JSObject.getJSContext(thisObj);
             boolean wasNotExtensible = !JSShape.isExtensible(thisObj.getShape());
@@ -190,7 +190,7 @@ public final class JSSlowArray extends JSAbstractArray {
                 if (internalArray.hasElement(thisObj, idx)) {
                     deleteSucceeded = !sealed;
                 } else {
-                    deleteSucceeded = JSUserObject.INSTANCE.delete(thisObj, idx, false);
+                    deleteSucceeded = JSOrdinary.INSTANCE.delete(thisObj, idx, false);
                 }
                 if (!deleteSucceeded) {
                     newLen = idx + 1;

@@ -58,9 +58,9 @@ import com.oracle.truffle.js.nodes.access.CreateObjectNodeFactory.CreateObjectWi
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
-import com.oracle.truffle.js.runtime.builtins.JSDictionaryObject;
+import com.oracle.truffle.js.runtime.builtins.JSDictionary;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -77,7 +77,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
     }
 
     public static CreateObjectWithPrototypeNode createWithPrototype(JSContext context, JavaScriptNode prototypeExpression) {
-        return createWithPrototype(context, prototypeExpression, JSUserObject.INSTANCE);
+        return createWithPrototype(context, prototypeExpression, JSOrdinary.INSTANCE);
     }
 
     public static CreateObjectWithPrototypeNode createWithPrototype(JSContext context, JavaScriptNode prototypeExpression, JSClass jsclass) {
@@ -107,7 +107,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
 
         @Override
         public DynamicObject executeDynamicObject(VirtualFrame frame) {
-            return JSUserObject.create(context);
+            return JSOrdinary.create(context);
         }
 
         @Override
@@ -150,7 +150,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
             if (isPromiseObject()) {
                 return JSPromise.create(context, protoChildShape);
             } else if (isOrdinaryObject()) {
-                return JSUserObject.create(context, protoChildShape);
+                return JSOrdinary.create(context, protoChildShape);
             } else {
                 throw Errors.unsupported("unsupported object type");
             }
@@ -159,7 +159,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         @Specialization(guards = {"isOrdinaryObject()", "isValidPrototype(prototype)"}, replaces = "doCachedPrototype")
         final DynamicObject doOrdinaryInstancePrototype(DynamicObject prototype,
                         @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode) {
-            DynamicObject object = JSUserObject.createWithoutPrototype(context);
+            DynamicObject object = JSOrdinary.createWithoutPrototype(context);
             setProtoNode.put(object, JSObject.HIDDEN_PROTO, prototype);
             return object;
         }
@@ -174,7 +174,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
 
         @Specialization(guards = {"isOrdinaryObject() || isPromiseObject()", "!isValidPrototype(prototype)"})
         final DynamicObject doNotJSObjectOrNull(@SuppressWarnings("unused") Object prototype) {
-            return JSUserObject.create(context);
+            return JSOrdinary.create(context);
         }
 
         final Shape getProtoChildShape(DynamicObject prototype) {
@@ -182,7 +182,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         }
 
         final boolean isOrdinaryObject() {
-            return jsclass == JSUserObject.INSTANCE;
+            return jsclass == JSOrdinary.INSTANCE;
         }
 
         final boolean isPromiseObject() {
@@ -202,7 +202,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
 
         @Override
         public DynamicObject executeDynamicObject(VirtualFrame frame) {
-            return JSDictionaryObject.create(context);
+            return JSDictionary.create(context);
         }
 
         @Override

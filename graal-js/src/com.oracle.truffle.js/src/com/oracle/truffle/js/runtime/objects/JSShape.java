@@ -50,8 +50,8 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
-import com.oracle.truffle.js.runtime.builtins.JSDictionaryObject;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSDictionary;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
 
 /**
@@ -191,7 +191,7 @@ public final class JSShape {
     }
 
     public static Class<? extends DynamicObject> getLayout(JSClass jsclass) {
-        if (jsclass == JSUserObject.INSTANCE || jsclass == JSDictionaryObject.INSTANCE) {
+        if (jsclass == JSOrdinary.INSTANCE || jsclass == JSDictionary.INSTANCE) {
             return JSOrdinaryObject.DefaultLayout.class;
         }
         return JSDynamicObject.class;
@@ -207,14 +207,14 @@ public final class JSShape {
     }
 
     public static int getDefaultShapeFlags(JSClass jsclass) {
-        if (jsclass == JSDictionaryObject.INSTANCE) {
+        if (jsclass == JSDictionary.INSTANCE) {
             return EXTERNAL_PROPERTIES_FLAG;
         }
         return 0;
     }
 
     public static boolean hasExternalProperties(Shape shape) {
-        assert (shape.getDynamicType() == JSDictionaryObject.INSTANCE) == ((shape.getFlags() & EXTERNAL_PROPERTIES_FLAG) != 0);
+        assert (shape.getDynamicType() == JSDictionary.INSTANCE) == ((shape.getFlags() & EXTERNAL_PROPERTIES_FLAG) != 0);
         return (shape.getFlags() & EXTERNAL_PROPERTIES_FLAG) != 0;
     }
 

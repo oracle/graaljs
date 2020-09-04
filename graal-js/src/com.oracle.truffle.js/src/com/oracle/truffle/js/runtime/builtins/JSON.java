@@ -53,7 +53,7 @@ public final class JSON {
     }
 
     public static DynamicObject create(JSRealm realm) {
-        DynamicObject obj = JSUserObject.createInit(realm);
+        DynamicObject obj = JSOrdinary.createInit(realm);
         JSObjectUtil.putToStringTag(obj, CLASS_NAME);
         JSObjectUtil.putFunctionsFromContainer(realm, obj, JSONBuiltins.BUILTINS);
         return obj;

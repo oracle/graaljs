@@ -242,7 +242,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
     }
 
     private static DynamicObject createUnscopables(JSContext context, List<String> unscopableNames) {
-        DynamicObject unscopables = JSUserObject.createWithNullPrototypeInit(context);
+        DynamicObject unscopables = JSOrdinary.createWithNullPrototypeInit(context);
         for (String name : unscopableNames) {
             putDataProperty(context, unscopables, name, true, JSAttributes.getDefault());
         }

@@ -113,7 +113,7 @@ import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
+import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSIntl;
 import com.oracle.truffle.js.runtime.builtins.JSListFormat;
 import com.oracle.truffle.js.runtime.builtins.JSLocale;
@@ -136,7 +136,7 @@ import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSTest262;
 import com.oracle.truffle.js.runtime.builtins.JSTestV8;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
@@ -405,10 +405,10 @@ public class JSRealm {
             putProtoAccessorProperty(this);
         }
 
-        this.globalObject = JSGlobalObject.create(this, objectPrototype);
-        this.globalScope = JSGlobalObject.createGlobalScope(context);
+        this.globalObject = JSGlobal.create(this, objectPrototype);
+        this.globalScope = JSGlobal.createGlobalScope(context);
         if (context.getContextOptions().isScriptEngineGlobalScopeImport()) {
-            this.scriptEngineImportScope = JSUserObject.createWithNullPrototypeInit(context);
+            this.scriptEngineImportScope = JSOrdinary.createWithNullPrototypeInit(context);
         }
 
         this.objectConstructor = createObjectConstructor(this, objectPrototype);
@@ -669,7 +669,7 @@ public class JSRealm {
 
     public static DynamicObject createObjectConstructor(JSRealm realm, DynamicObject objectPrototype) {
         JSContext context = realm.getContext();
-        DynamicObject objectConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, JSUserObject.CLASS_NAME);
+        DynamicObject objectConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, JSOrdinary.CLASS_NAME);
         JSObjectUtil.putConstructorPrototypeProperty(context, objectConstructor, objectPrototype);
         JSObjectUtil.putFunctionsFromContainer(realm, objectConstructor, ObjectFunctionBuiltins.BUILTINS);
         if (context.isOptionNashornCompatibilityMode()) {
@@ -1138,7 +1138,7 @@ public class JSRealm {
         long time = context.getContextOptions().isProfileTime() ? System.nanoTime() : 0L;
 
         DynamicObject global = getGlobalObject();
-        putGlobalProperty(JSUserObject.CLASS_NAME, getObjectConstructor());
+        putGlobalProperty(JSOrdinary.CLASS_NAME, getObjectConstructor());
         putGlobalProperty(JSFunction.CLASS_NAME, getFunctionConstructor());
         putGlobalProperty(JSArray.CLASS_NAME, getArrayConstructor());
         putGlobalProperty(JSString.CLASS_NAME, getStringConstructor());
@@ -1155,7 +1155,7 @@ public class JSRealm {
 
         JSObjectUtil.putFunctionsFromContainer(this, global, GlobalBuiltins.GLOBAL_FUNCTIONS);
 
-        this.evalFunctionObject = JSObject.get(global, JSGlobalObject.EVAL_NAME);
+        this.evalFunctionObject = JSObject.get(global, JSGlobal.EVAL_NAME);
         DynamicObject jsonBuiltin = (DynamicObject) JSObject.get(global, "JSON");
         this.jsonParseFunctionObject = JSObject.get(jsonBuiltin, "parse");
 
@@ -1395,7 +1395,7 @@ public class JSRealm {
     }
 
     private void putGraalObject() {
-        DynamicObject graalObject = JSUserObject.createInit(this);
+        DynamicObject graalObject = JSOrdinary.createInit(this);
         int flags = JSAttributes.notConfigurableEnumerableNotWritable();
         JSObjectUtil.putDataProperty(context, graalObject, "language", JavaScriptLanguage.NAME, flags);
         assert GRAALVM_VERSION != null;
@@ -1512,13 +1512,13 @@ public class JSRealm {
     }
 
     private DynamicObject createConsoleObject() {
-        DynamicObject console = JSUserObject.createInit(this);
+        DynamicObject console = JSOrdinary.createInit(this);
         JSObjectUtil.putFunctionsFromContainer(this, console, ConsoleBuiltins.BUILTINS);
         return console;
     }
 
     private DynamicObject createPerformanceObject() {
-        DynamicObject obj = JSUserObject.createInit(this);
+        DynamicObject obj = JSOrdinary.createInit(this);
         JSObjectUtil.putFunctionsFromContainer(this, obj, PerformanceBuiltins.BUILTINS);
         return obj;
     }
@@ -1632,10 +1632,10 @@ public class JSRealm {
         if (getContext().getParserOptions().isScripting()) {
             // $OPTIONS
             String timezone = getLocalTimeZoneId().getId();
-            DynamicObject timezoneObj = JSUserObject.create(context, this);
+            DynamicObject timezoneObj = JSOrdinary.create(context, this);
             JSObjectUtil.putDataProperty(context, timezoneObj, "ID", timezone, JSAttributes.configurableEnumerableWritable());
 
-            DynamicObject optionsObj = JSUserObject.create(context, this);
+            DynamicObject optionsObj = JSOrdinary.create(context, this);
             JSObjectUtil.putDataProperty(context, optionsObj, "_timezone", timezoneObj, JSAttributes.configurableEnumerableWritable());
             JSObjectUtil.putDataProperty(context, optionsObj, "_scripting", true, JSAttributes.configurableEnumerableWritable());
             JSObjectUtil.putDataProperty(context, optionsObj, "_compile_only", false, JSAttributes.configurableEnumerableWritable());
@@ -1648,7 +1648,7 @@ public class JSRealm {
             putGlobalProperty("$ARG", arguments, JSAttributes.configurableNotEnumerableWritable());
 
             // $ENV
-            DynamicObject envObj = JSUserObject.create(context, this);
+            DynamicObject envObj = JSOrdinary.create(context, this);
             Map<String, String> sysenv = getEnv().getEnvironment();
             for (Map.Entry<String, String> entry : sysenv.entrySet()) {
                 JSObjectUtil.putDataProperty(context, envObj, entry.getKey(), entry.getValue(), JSAttributes.configurableEnumerableWritable());
@@ -1681,7 +1681,7 @@ public class JSRealm {
     }
 
     private DynamicObject createRealmBuiltinObject() {
-        DynamicObject obj = JSUserObject.createInit(this);
+        DynamicObject obj = JSOrdinary.createInit(this);
         JSObjectUtil.putToStringTag(obj, REALM_BUILTIN_CLASS_NAME);
         JSObjectUtil.putProxyProperty(obj, REALM_SHARED_NAME, REALM_SHARED_PROXY, JSAttributes.getDefault());
         JSObjectUtil.putFunctionsFromContainer(this, obj, RealmFunctionBuiltins.BUILTINS);
@@ -1689,7 +1689,7 @@ public class JSRealm {
     }
 
     private DynamicObject createDebugObject() {
-        DynamicObject obj = JSUserObject.createInit(this);
+        DynamicObject obj = JSOrdinary.createInit(this);
         JSObjectUtil.putToStringTag(obj, DEBUG_CLASS_NAME);
         JSObjectUtil.putFunctionsFromContainer(this, obj, DebugBuiltins.BUILTINS);
         return obj;

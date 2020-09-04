@@ -81,7 +81,7 @@ import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSString;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -115,13 +115,13 @@ public class JSRuntimeTest extends JSTest {
         assertFalse(JSRuntime.equal(Undefined.instance, 1));
         assertTrue(JSRuntime.equal(Float.MAX_VALUE, Float.MAX_VALUE));
 
-        DynamicObject obj = JSUserObject.create(context);
+        DynamicObject obj = JSOrdinary.create(context);
         assertFalse(JSRuntime.equal(obj, Null.instance));
         assertFalse(JSRuntime.equal(obj, Undefined.instance));
         assertFalse(JSRuntime.equal(Null.instance, obj));
         assertFalse(JSRuntime.equal(Undefined.instance, obj));
         assertTrue(JSRuntime.equal(obj, obj));
-        assertFalse(JSRuntime.equal(obj, JSUserObject.create(context)));
+        assertFalse(JSRuntime.equal(obj, JSOrdinary.create(context)));
 
         BigInt bi1a = new BigInt(new BigInteger("0123456789"));
         BigInt bi1b = new BigInt(new BigInteger("0123456789"));
@@ -218,7 +218,7 @@ public class JSRuntimeTest extends JSTest {
 
     private static Object[] createValues(JSContext ctx) {
         return new Object[]{0, 1, true, false, 0.5, "foo", Symbol.SYMBOL_MATCH, Null.instance, Undefined.instance, JSString.create(ctx, "hallo"), JSNumber.create(ctx, 4711),
-                        JSBoolean.create(ctx, true), JSUserObject.create(ctx), JSProxy.create(ctx, JSUserObject.create(ctx), JSUserObject.create(ctx)), JSBigInt.create(ctx, BigInt.ZERO),
+                        JSBoolean.create(ctx, true), JSOrdinary.create(ctx), JSProxy.create(ctx, JSOrdinary.create(ctx), JSOrdinary.create(ctx)), JSBigInt.create(ctx, BigInt.ZERO),
                         new ForeignTestMap()};
     }
 
@@ -293,10 +293,10 @@ public class JSRuntimeTest extends JSTest {
     @Test
     public void testIsPrototypeOf() {
         JSContext ctx = testHelper.getJSContext();
-        DynamicObject parent1 = JSUserObject.create(ctx);
-        DynamicObject parent2 = JSUserObject.create(ctx);
-        DynamicObject child1 = JSUserObject.createWithPrototype(parent1, ctx);
-        DynamicObject grandchild1 = JSUserObject.createWithPrototype(child1, ctx);
+        DynamicObject parent1 = JSOrdinary.create(ctx);
+        DynamicObject parent2 = JSOrdinary.create(ctx);
+        DynamicObject child1 = JSOrdinary.createWithPrototype(parent1, ctx);
+        DynamicObject grandchild1 = JSOrdinary.createWithPrototype(child1, ctx);
 
         assertFalse(JSRuntime.isPrototypeOf(parent1, parent2));
         assertFalse(JSRuntime.isPrototypeOf(parent1, parent1));
@@ -318,13 +318,13 @@ public class JSRuntimeTest extends JSTest {
         // conversion necessary
         assertTrue(JSRuntime.isPropertyKey(JSRuntime.toPropertyKey(1)));
         assertTrue(JSRuntime.isPropertyKey(JSRuntime.toPropertyKey(true)));
-        assertTrue(JSRuntime.isPropertyKey(JSRuntime.toPropertyKey(JSUserObject.create(testHelper.getJSContext()))));
+        assertTrue(JSRuntime.isPropertyKey(JSRuntime.toPropertyKey(JSOrdinary.create(testHelper.getJSContext()))));
     }
 
     @Test
     public void testCall() {
         JSContext ctx = testHelper.getJSContext();
-        DynamicObject thisObj = JSUserObject.create(ctx);
+        DynamicObject thisObj = JSOrdinary.create(ctx);
         Object[] defaultArgs = new Object[]{"foo", 42, false};
 
         DynamicObject fnObj = JSFunction.create(ctx.getRealm(), JSFunctionData.createCallOnly(ctx, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(ctx.getLanguage(), null, null) {
@@ -336,7 +336,7 @@ public class JSRuntimeTest extends JSTest {
         }), 0, "test"));
 
         assertEquals("foo42false", JSRuntime.call(fnObj, thisObj, defaultArgs));
-        assertEquals("foo42false", JSRuntime.call(JSProxy.create(ctx, fnObj, JSUserObject.create(ctx)), thisObj, defaultArgs));
+        assertEquals("foo42false", JSRuntime.call(JSProxy.create(ctx, fnObj, JSOrdinary.create(ctx)), thisObj, defaultArgs));
     }
 
     @Test
@@ -347,12 +347,12 @@ public class JSRuntimeTest extends JSTest {
         assertTrue(JSArray.isJSArray(result));
         assertEquals(10, JSArray.arrayGetLength((DynamicObject) result));
 
-        result = JSRuntime.construct(JSProxy.create(ctx, arrayCtrFn, JSUserObject.create(ctx)), new Object[]{10});
+        result = JSRuntime.construct(JSProxy.create(ctx, arrayCtrFn, JSOrdinary.create(ctx)), new Object[]{10});
         assertTrue(JSArray.isJSArray(result));
         assertEquals(10, JSArray.arrayGetLength((DynamicObject) result));
 
         try {
-            JSRuntime.construct(JSUserObject.create(ctx), new Object[]{10});
+            JSRuntime.construct(JSOrdinary.create(ctx), new Object[]{10});
             assertTrue(false);
         } catch (Exception ex) {
             assertTrue(ex.getMessage().contains("not a function"));

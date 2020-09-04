@@ -68,7 +68,7 @@ public final class JSSlowArgumentsArray extends JSAbstractArgumentsArray {
             arraySetArrayType(thisObj, arrayType.deleteElement(thisObj, index, false));
             wasDeleted = true;
         } else {
-            wasDeleted = JSUserObject.INSTANCE.delete(thisObj, index, isStrict);
+            wasDeleted = JSOrdinary.INSTANCE.delete(thisObj, index, isStrict);
         }
 
         if (wasDeleted && isMappedArguments && !indexDisconnected) {
@@ -96,7 +96,7 @@ public final class JSSlowArgumentsArray extends JSAbstractArgumentsArray {
     @Override
     public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
         String indexAsString = Boundaries.stringValueOf(index);
-        if (JSUserObject.INSTANCE.hasOwnProperty(thisObj, indexAsString)) {
+        if (JSOrdinary.INSTANCE.hasOwnProperty(thisObj, indexAsString)) {
             return ordinarySet(thisObj, indexAsString, value, receiver, isStrict);
         }
         return super.set(thisObj, index, value, receiver, isStrict);
@@ -106,8 +106,8 @@ public final class JSSlowArgumentsArray extends JSAbstractArgumentsArray {
     @Override
     public Object getOwnHelper(DynamicObject store, Object thisObj, long index) {
         String indexAsString = Boundaries.stringValueOf(index);
-        if (JSUserObject.INSTANCE.hasOwnProperty(store, indexAsString)) {
-            return JSUserObject.INSTANCE.getOwnHelper(store, thisObj, indexAsString);
+        if (JSOrdinary.INSTANCE.hasOwnProperty(store, indexAsString)) {
+            return JSOrdinary.INSTANCE.getOwnHelper(store, thisObj, indexAsString);
         }
         return super.getOwnHelper(store, thisObj, index);
     }

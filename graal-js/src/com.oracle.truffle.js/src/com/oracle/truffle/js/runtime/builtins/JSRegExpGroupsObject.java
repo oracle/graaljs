@@ -73,7 +73,7 @@ public final class JSRegExpGroupsObject extends JSNonProxyObject implements JSCo
 
     @Override
     public String getClassName() {
-        return JSUserObject.CLASS_NAME;
+        return JSOrdinary.CLASS_NAME;
     }
 
     public static DynamicObject create(JSRealm realm, JSObjectFactory factory, Object regexResult, String inputString, boolean isIndices) {

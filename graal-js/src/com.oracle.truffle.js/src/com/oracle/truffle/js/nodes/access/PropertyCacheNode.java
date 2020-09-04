@@ -70,7 +70,7 @@ import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
-import com.oracle.truffle.js.runtime.builtins.JSDictionaryObject;
+import com.oracle.truffle.js.runtime.builtins.JSDictionary;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
@@ -1209,7 +1209,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
             Shape cacheShape = store.getShape();
 
-            if (JSConfig.DictionaryObject && JSDictionaryObject.isJSDictionaryObject(store)) {
+            if (JSConfig.DictionaryObject && JSDictionary.isJSDictionaryObject(store)) {
                 // TODO: could probably specialize on shape as well.
                 return rewriteToGeneric(currentHead, cachedCount, "dictionary object");
             }

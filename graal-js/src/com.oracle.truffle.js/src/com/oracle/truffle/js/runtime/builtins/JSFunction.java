@@ -485,15 +485,15 @@ public final class JSFunction extends JSNonProxy {
         JSRealm realm = getRealm(constructor);
         JSContext context = functionData.getContext();
         if (!functionData.isGenerator()) {
-            DynamicObject prototype = JSUserObject.create(context, realm);
+            DynamicObject prototype = JSOrdinary.create(context, realm);
             JSObjectUtil.putConstructorProperty(context, prototype, constructor);
             return prototype;
         } else {
             assert functionData.isGenerator();
             if (functionData.isAsync()) {
-                return JSUserObject.createWithRealm(context, context.getAsyncGeneratorObjectFactory(), realm);
+                return JSOrdinary.createWithRealm(context, context.getAsyncGeneratorObjectFactory(), realm);
             } else {
-                return JSUserObject.createWithRealm(context, context.getGeneratorObjectFactory(), realm);
+                return JSOrdinary.createWithRealm(context, context.getGeneratorObjectFactory(), realm);
             }
         }
     }
@@ -850,7 +850,7 @@ public final class JSFunction extends JSNonProxy {
     }
 
     public static Shape makeInitialEnumerateIteratorShape(JSContext context, DynamicObject enumerateIteratorPrototype) {
-        return JSObjectUtil.getProtoChildShape(enumerateIteratorPrototype, JSUserObject.INSTANCE, context);
+        return JSObjectUtil.getProtoChildShape(enumerateIteratorPrototype, JSOrdinary.INSTANCE, context);
     }
 
     public static DynamicObject createForInIteratorPrototype(JSRealm realm) {
@@ -861,7 +861,7 @@ public final class JSFunction extends JSNonProxy {
     }
 
     public static Shape makeInitialForInIteratorShape(JSContext context, DynamicObject iteratorPrototype) {
-        return JSObjectUtil.getProtoChildShape(iteratorPrototype, JSUserObject.INSTANCE, context);
+        return JSObjectUtil.getProtoChildShape(iteratorPrototype, JSOrdinary.INSTANCE, context);
     }
 
     public static RootNode getFrameRootNode(FrameInstance frameInstance) {

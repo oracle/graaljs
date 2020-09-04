@@ -53,7 +53,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
-public final class JSBoolean extends JSPrimitiveObject implements JSConstructorFactory.Default {
+public final class JSBoolean extends JSPrimitive implements JSConstructorFactory.Default {
 
     public static final String TYPE_NAME = "boolean";
     public static final String CLASS_NAME = "Boolean";

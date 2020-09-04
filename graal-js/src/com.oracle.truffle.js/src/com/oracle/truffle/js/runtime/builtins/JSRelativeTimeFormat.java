@@ -210,7 +210,7 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
 
         @Override
         DynamicObject toResolvedOptionsObject(JSContext context) {
-            DynamicObject result = JSUserObject.create(context);
+            DynamicObject result = JSOrdinary.create(context);
             JSObjectUtil.defineDataProperty(result, IntlUtil.LOCALE, getLocale(), JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, IntlUtil.STYLE, style, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, IntlUtil.NUMERIC, numeric, JSAttributes.getDefault());

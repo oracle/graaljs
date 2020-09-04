@@ -52,7 +52,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
-public final class JSBigInt extends JSPrimitiveObject implements JSConstructorFactory.Default.WithFunctions {
+public final class JSBigInt extends JSPrimitive implements JSConstructorFactory.Default.WithFunctions {
 
     public static final String TYPE_NAME = "bigint";
     public static final String CLASS_NAME = "BigInt";

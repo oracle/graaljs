@@ -42,7 +42,7 @@ package com.oracle.truffle.js.runtime.objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 
 public abstract class JSOrdinaryObject extends JSNonProxyObject implements JSCopyableObject {
 
@@ -56,7 +56,7 @@ public abstract class JSOrdinaryObject extends JSNonProxyObject implements JSCop
 
     @Override
     public String getClassName() {
-        return JSUserObject.CLASS_NAME;
+        return JSOrdinary.CLASS_NAME;
     }
 
     @TruffleBoundary

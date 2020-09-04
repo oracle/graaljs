@@ -101,7 +101,7 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRegExpGroupsObject;
 import com.oracle.truffle.js.runtime.builtins.JSString;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.Accessor;
@@ -1384,15 +1384,15 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     setConstructor = insert(CreateMethodPropertyNode.create(context, JSObject.CONSTRUCTOR));
                 }
-                prototype = JSUserObject.create(context, realm);
+                prototype = JSOrdinary.create(context, realm);
                 setConstructor.executeVoid(prototype, functionObj);
             } else if (kind == GENERATOR) {
                 assert JSFunction.getFunctionData(functionObj).isGenerator();
-                prototype = JSUserObject.createWithRealm(context, context.getGeneratorObjectFactory(), realm);
+                prototype = JSOrdinary.createWithRealm(context, context.getGeneratorObjectFactory(), realm);
             } else {
                 assert kind == ASYNC_GENERATOR;
                 assert JSFunction.getFunctionData(functionObj).isAsyncGenerator();
-                prototype = JSUserObject.createWithRealm(context, context.getAsyncGeneratorObjectFactory(), realm);
+                prototype = JSOrdinary.createWithRealm(context, context.getAsyncGeneratorObjectFactory(), realm);
             }
             JSFunction.setClassPrototype(functionObj, prototype);
             return prototype;

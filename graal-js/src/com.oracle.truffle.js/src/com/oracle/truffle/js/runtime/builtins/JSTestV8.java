@@ -55,7 +55,7 @@ public final class JSTestV8 {
 
     public static DynamicObject create(JSRealm realm) {
         JSContext ctx = realm.getContext();
-        DynamicObject obj = JSUserObject.createInit(realm);
+        DynamicObject obj = JSOrdinary.createInit(realm);
         JSObjectUtil.putToStringTag(obj, CLASS_NAME);
         JSObjectUtil.putDataProperty(ctx, obj, "stringMaxLength", ctx.getStringLengthLimit());
         JSObjectUtil.putFunctionsFromContainer(realm, obj, TestV8Builtins.BUILTINS);

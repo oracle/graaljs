@@ -105,9 +105,9 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
+import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
@@ -409,7 +409,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 if (desc.isDataDescriptor()) {
                     Object value = JSObject.get(object, key);
                     if (JSObject.isJSDynamicObject(value)) {
-                        if ((JSUserObject.isJSUserObject(value) || JSGlobalObject.isJSGlobalObject(value)) && !key.equals(JSObject.CONSTRUCTOR)) {
+                        if ((JSOrdinary.isJSUserObject(value) || JSGlobal.isJSGlobalObject(value)) && !key.equals(JSObject.CONSTRUCTOR)) {
                             if (level < levelStop && !key.equals(JSObject.CONSTRUCTOR)) {
                                 value = debugPrint((DynamicObject) value, level + 1, levelStop);
                             } else {
@@ -653,7 +653,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @TruffleBoundary
         @Specialization
         protected Object systemProperties() {
-            DynamicObject result = JSUserObject.create(getContext());
+            DynamicObject result = JSOrdinary.create(getContext());
             for (Map.Entry<Object, Object> entry : System.getProperties().entrySet()) {
                 Object key = entry.getKey();
                 Object value = entry.getValue();

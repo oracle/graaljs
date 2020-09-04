@@ -78,18 +78,18 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 
 /**
- * This is a variant of {@link JSUserObject} that stores its contents as a HashMap of properties
+ * This is a variant of {@link JSOrdinary} that stores its contents as a HashMap of properties
  * (excepts hidden properties, incl. prototype).
  */
-public final class JSDictionaryObject extends JSNonProxy {
+public final class JSDictionary extends JSNonProxy {
 
     public static final String CLASS_NAME = "Object";
 
     private static final HiddenKey HASHMAP_PROPERTY_NAME = new HiddenKey("%hashMap");
 
-    public static final JSDictionaryObject INSTANCE = new JSDictionaryObject();
+    public static final JSDictionary INSTANCE = new JSDictionary();
 
-    private JSDictionaryObject() {
+    private JSDictionary() {
     }
 
     public static boolean isJSDictionaryObject(Object obj) {
@@ -265,7 +265,7 @@ public final class JSDictionaryObject extends JSNonProxy {
 
     @SuppressWarnings("unchecked")
     static EconomicMap<Object, PropertyDescriptor> getHashMap(DynamicObject obj) {
-        assert JSDictionaryObject.isJSDictionaryObject(obj);
+        assert JSDictionary.isJSDictionaryObject(obj);
         Property hashMapProperty = obj.getShape().getProperty(HASHMAP_PROPERTY_NAME);
         return (EconomicMap<Object, PropertyDescriptor>) hashMapProperty.get(obj, false);
     }
@@ -273,7 +273,7 @@ public final class JSDictionaryObject extends JSNonProxy {
     public static void makeDictionaryObject(DynamicObject obj, String reason) {
         CompilerAsserts.neverPartOfCompilation();
         assert JSConfig.DictionaryObject;
-        if (!JSUserObject.isJSUserObject(obj)) {
+        if (!JSOrdinary.isJSUserObject(obj)) {
             return;
         }
 
@@ -284,7 +284,7 @@ public final class JSDictionaryObject extends JSNonProxy {
         Shape currentShape = obj.getShape();
         assert !isJSDictionaryObject(obj) && currentShape.getProperty(HASHMAP_PROPERTY_NAME) == null;
         JSContext context = JSObject.getJSContext(obj);
-        Shape newRootShape = makeEmptyShapeForNewType(context, currentShape, JSDictionaryObject.INSTANCE, obj);
+        Shape newRootShape = makeEmptyShapeForNewType(context, currentShape, JSDictionary.INSTANCE, obj);
         assert JSShape.hasExternalProperties(newRootShape.getFlags());
 
         DynamicObjectLibrary lib = DynamicObjectLibrary.getUncached();
@@ -359,7 +359,7 @@ public final class JSDictionaryObject extends JSNonProxy {
         EconomicMap<Object, PropertyDescriptor> hashMap = getHashMap(obj);
         Shape oldShape = obj.getShape();
         JSContext context = JSObject.getJSContext(obj);
-        Shape newRootShape = makeEmptyShapeForNewType(context, oldShape, JSUserObject.INSTANCE, obj);
+        Shape newRootShape = makeEmptyShapeForNewType(context, oldShape, JSOrdinary.INSTANCE, obj);
 
         DynamicObjectLibrary lib = DynamicObjectLibrary.getUncached();
 
@@ -403,12 +403,12 @@ public final class JSDictionaryObject extends JSNonProxy {
             }
         }
 
-        assert JSUserObject.isJSUserObject(obj) && obj.getShape().getProperty(HASHMAP_PROPERTY_NAME) == null;
+        assert JSOrdinary.isJSUserObject(obj) && obj.getShape().getProperty(HASHMAP_PROPERTY_NAME) == null;
     }
 
     public static Shape makeDictionaryShape(JSContext context, DynamicObject prototype) {
         assert prototype != Null.instance;
-        return JSObjectUtil.getProtoChildShape(prototype, JSDictionaryObject.INSTANCE, context);
+        return JSObjectUtil.getProtoChildShape(prototype, JSDictionary.INSTANCE, context);
     }
 
     public static DynamicObject create(JSContext context) {

@@ -75,7 +75,7 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.doubleconv.DoubleConversion;
 import com.oracle.truffle.js.runtime.external.DToA;
 import com.oracle.truffle.js.runtime.interop.InteropFunction;
@@ -230,14 +230,14 @@ public final class JSRuntime {
             if (JSProxy.isProxy(object)) {
                 Object target = JSProxy.getTarget(object);
                 if (target == Null.instance) {
-                    return JSRuntime.isRevokedCallableProxy(object) ? JSFunction.TYPE_NAME : JSUserObject.TYPE_NAME;
+                    return JSRuntime.isRevokedCallableProxy(object) ? JSFunction.TYPE_NAME : JSOrdinary.TYPE_NAME;
                 } else {
                     return typeof(target);
                 }
             } else if (JSFunction.isJSFunction(object)) {
                 return JSFunction.TYPE_NAME;
             }
-            return JSUserObject.TYPE_NAME;
+            return JSOrdinary.TYPE_NAME;
         } else if (value instanceof TruffleObject) {
             assert !(value instanceof Symbol);
             TruffleObject object = (TruffleObject) value;
@@ -251,7 +251,7 @@ public final class JSRuntime {
             } else if (interop.isExecutable(object) || interop.isInstantiable(object)) {
                 return JSFunction.TYPE_NAME;
             } else {
-                return JSUserObject.TYPE_NAME;
+                return JSOrdinary.TYPE_NAME;
             }
         } else {
             CompilerDirectives.transferToInterpreter();
@@ -2146,7 +2146,7 @@ public final class JSRuntime {
         if (desc == null) {
             return Undefined.instance;
         }
-        DynamicObject obj = JSUserObject.create(context);
+        DynamicObject obj = JSOrdinary.create(context);
         if (desc.hasValue()) {
             JSObject.set(obj, JSAttributes.VALUE, desc.getValue());
         }

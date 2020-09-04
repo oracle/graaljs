@@ -99,16 +99,15 @@ import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
-import com.oracle.truffle.trufflenode.JSExternalObject;
+import com.oracle.truffle.trufflenode.JSExternal;
 
 /**
  * Keep in sync with {@link GraalJSAccess#valueType}.
  */
 @SuppressWarnings("unused")
-@ImportStatic({JSExternalObject.class, JSRuntime.class, JSUserObject.class, JSMap.class, JSSet.class, JSPromise.class, JSProxy.class, JSObject.class, JSDataView.class})
+@ImportStatic({JSExternal.class, JSRuntime.class, JSMap.class, JSSet.class, JSPromise.class, JSProxy.class, JSObject.class, JSDataView.class})
 abstract class ValueTypeNode extends JavaScriptBaseNode {
     protected final GraalJSAccess graalAccess;
     protected final JSContext context;

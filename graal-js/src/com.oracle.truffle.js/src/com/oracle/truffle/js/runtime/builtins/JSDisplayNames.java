@@ -138,7 +138,7 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
         LocaleDisplayNames displayNames;
 
         DynamicObject toResolvedOptionsObject(JSContext context) {
-            DynamicObject result = JSUserObject.create(context);
+            DynamicObject result = JSOrdinary.create(context);
             JSObjectUtil.defineDataProperty(result, IntlUtil.LOCALE, locale, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, IntlUtil.STYLE, style, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, IntlUtil.TYPE, type, JSAttributes.getDefault());

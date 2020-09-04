@@ -337,7 +337,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
 
     public static Shape makeInitialGroupsObjectShape(JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
-        return JSShape.createRootWithNullProto(context, JSUserObject.BARE_INSTANCE);
+        return JSShape.createRootWithNullProto(context, JSOrdinary.BARE_INSTANCE);
     }
 
     @Override

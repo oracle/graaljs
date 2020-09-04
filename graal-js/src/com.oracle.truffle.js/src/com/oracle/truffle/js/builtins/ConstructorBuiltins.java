@@ -206,7 +206,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSegmenter;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
@@ -1422,7 +1422,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         private DynamicObject newObject(DynamicObject newTarget) {
-            return swapPrototype(JSUserObject.create(getContext()), newTarget);
+            return swapPrototype(JSOrdinary.create(getContext()), newTarget);
         }
 
         @Override

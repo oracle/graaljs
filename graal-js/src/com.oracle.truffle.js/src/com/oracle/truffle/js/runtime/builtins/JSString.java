@@ -69,7 +69,7 @@ import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 import com.oracle.truffle.js.runtime.util.IteratorUtil;
 
-public final class JSString extends JSPrimitiveObject implements JSConstructorFactory.Default.WithFunctions {
+public final class JSString extends JSPrimitive implements JSConstructorFactory.Default.WithFunctions {
 
     public static final JSString INSTANCE = new JSString();
 

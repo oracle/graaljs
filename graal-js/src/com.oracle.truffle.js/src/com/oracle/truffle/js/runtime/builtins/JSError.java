@@ -245,7 +245,7 @@ public final class JSError extends JSNonProxy {
     }
 
     public static Shape makeInitialCallSiteShape(JSContext context, DynamicObject callSitePrototype) {
-        return JSObjectUtil.getProtoChildShape(callSitePrototype, JSUserObject.INSTANCE, context);
+        return JSObjectUtil.getProtoChildShape(callSitePrototype, JSOrdinary.INSTANCE, context);
     }
 
     public static void setLineNumber(JSContext context, DynamicObject errorObj, Object lineNumber) {
@@ -345,7 +345,7 @@ public final class JSError extends JSNonProxy {
 
     private static Object prepareStackElement(JSRealm realm, JSStackTraceElement stackTraceElement) {
         JSContext context = realm.getContext();
-        DynamicObject callSite = JSUserObject.createWithRealm(context, context.getCallSiteFactory(), realm);
+        DynamicObject callSite = JSOrdinary.createWithRealm(context, context.getCallSiteFactory(), realm);
         JSObjectUtil.putHiddenProperty(callSite, STACK_TRACE_ELEMENT_PROPERTY_NAME, stackTraceElement);
         return callSite;
     }

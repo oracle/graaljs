@@ -50,14 +50,14 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
-public final class JSGlobalObject extends JSNonProxy {
+public final class JSGlobal extends JSNonProxy {
 
     public static final String CLASS_NAME = "global";
     public static final String EVAL_NAME = "eval";
 
-    public static final JSGlobalObject INSTANCE = new JSGlobalObject();
+    public static final JSGlobal INSTANCE = new JSGlobal();
 
-    private JSGlobalObject() {
+    private JSGlobal() {
     }
 
     public static DynamicObject create(JSRealm realm, DynamicObject objectPrototype) {
@@ -75,7 +75,7 @@ public final class JSGlobalObject extends JSNonProxy {
     public static Shape makeGlobalObjectShape(JSContext context, DynamicObject objectPrototype) {
         // keep a separate shape tree for the global object in order not to pollute user objects
         boolean singleContext = !context.isMultiContext();
-        Shape globalObjectShape = JSShape.newBuilder(context, JSGlobalObject.INSTANCE).propertyAssumptions(singleContext).singleContextAssumption(
+        Shape globalObjectShape = JSShape.newBuilder(context, JSGlobal.INSTANCE).propertyAssumptions(singleContext).singleContextAssumption(
                         singleContext ? context.getSingleRealmAssumption() : null).build();
         if (singleContext) {
             globalObjectShape = Shape.newBuilder(globalObjectShape).addConstantProperty(JSObject.HIDDEN_PROTO, objectPrototype, 0).build();

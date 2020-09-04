@@ -49,7 +49,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
+import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -112,7 +112,7 @@ public abstract class DeclareGlobalFunctionNode extends DeclareGlobalNode {
 
     @Specialization(replaces = {"doCached"})
     protected void doUncached(DynamicObject globalObject, Object value, PropertyDescriptor desc, JSContext context) {
-        if (valueNode == null && desc == null && JSGlobalObject.isJSGlobalObject(globalObject)) {
+        if (valueNode == null && desc == null && JSGlobal.isJSGlobalObject(globalObject)) {
             JSObjectUtil.putDeclaredDataProperty(context, globalObject, varName, value, getAttributeFlags());
         } else {
             if (desc == null || desc.getConfigurable()) {

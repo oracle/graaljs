@@ -49,11 +49,11 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
+import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 
 import java.util.Set;
 
-@ImportStatic({JSGlobalObject.class})
+@ImportStatic({JSGlobal.class})
 public abstract class DeclareGlobalNode extends JavaScriptBaseNode {
     protected final String varName;
     @Child private HasPropertyCacheNode hasLexicalBindingNode;

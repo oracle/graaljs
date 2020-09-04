@@ -399,13 +399,13 @@ public abstract class JSNonProxy extends JSClass {
         }
 
         if (JSConfig.DictionaryObject) {
-            boolean isDictionaryObject = JSDictionaryObject.isJSDictionaryObject(thisObj);
+            boolean isDictionaryObject = JSDictionary.isJSDictionaryObject(thisObj);
             if (!isDictionaryObject && isDictionaryObjectCandidate(thisObj, isIndex)) {
-                JSDictionaryObject.makeDictionaryObject(thisObj, "set");
+                JSDictionary.makeDictionaryObject(thisObj, "set");
                 isDictionaryObject = true;
             }
             if (isDictionaryObject) {
-                JSDictionaryObject.getHashMap(thisObj).put(key, PropertyDescriptor.createDataDefault(value));
+                JSDictionary.getHashMap(thisObj).put(key, PropertyDescriptor.createDataDefault(value));
                 return true;
             }
         }
@@ -435,7 +435,7 @@ public abstract class JSNonProxy extends JSClass {
             return false;
         }
 
-        if (!JSUserObject.isJSUserObject(thisObj)) {
+        if (!JSOrdinary.isJSUserObject(thisObj)) {
             return false;
         }
 

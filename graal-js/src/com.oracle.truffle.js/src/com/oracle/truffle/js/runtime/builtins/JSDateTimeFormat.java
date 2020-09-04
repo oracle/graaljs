@@ -772,7 +772,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     }
 
     private static Object makePart(JSContext context, String type, String value) {
-        DynamicObject p = JSUserObject.create(context);
+        DynamicObject p = JSOrdinary.create(context);
         JSObject.set(p, IntlUtil.TYPE, type);
         JSObject.set(p, IntlUtil.VALUE, value);
         return p;
@@ -807,7 +807,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         private String timeStyle;
 
         DynamicObject toResolvedOptionsObject(JSContext context) {
-            DynamicObject result = JSUserObject.create(context);
+            DynamicObject result = JSOrdinary.create(context);
             JSObjectUtil.defineDataProperty(result, IntlUtil.LOCALE, locale, JSAttributes.getDefault());
             if (calendar != null) {
                 JSObjectUtil.defineDataProperty(result, IntlUtil.CALENDAR, calendar, JSAttributes.getDefault());

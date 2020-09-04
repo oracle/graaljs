@@ -75,7 +75,7 @@ import static com.oracle.truffle.trufflenode.ValueType.UINT8ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.UINT8CLAMPEDARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.UNDEFINED_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.UNKNOWN_TYPE;
-import static com.oracle.truffle.trufflenode.buffer.NIOBufferObject.NIO_BUFFER_MODULE_NAME;
+import static com.oracle.truffle.trufflenode.buffer.NIOBuffer.NIO_BUFFER_MODULE_NAME;
 
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
@@ -196,7 +196,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -215,7 +215,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
-import com.oracle.truffle.trufflenode.buffer.NIOBufferObject;
+import com.oracle.truffle.trufflenode.buffer.NIOBuffer;
 import com.oracle.truffle.trufflenode.info.Accessor;
 import com.oracle.truffle.trufflenode.info.FunctionTemplate;
 import com.oracle.truffle.trufflenode.info.ObjectTemplate;
@@ -459,7 +459,7 @@ public final class GraalJSAccess {
     }
 
     private int valueTypeJSObject(DynamicObject obj, boolean useSharedBuffer) {
-        if (JSExternalObject.isJSExternalObject(obj)) {
+        if (JSExternal.isJSExternalObject(obj)) {
             return EXTERNAL_OBJECT;
         } else if (JSFunction.isJSFunction(obj)) {
             return FUNCTION_OBJECT;
@@ -537,7 +537,7 @@ public final class GraalJSAccess {
     }
 
     public long valueExternal(Object obj) {
-        return JSExternalObject.getPointer((DynamicObject) obj);
+        return JSExternal.getPointer((DynamicObject) obj);
     }
 
     public String valueUnknown(Object obj) {
@@ -716,7 +716,7 @@ public final class GraalJSAccess {
 
     public Object objectNew(Object context) {
         JSRealm jsRealm = (JSRealm) context;
-        return JSUserObject.create(jsRealm.getContext(), jsRealm);
+        return JSOrdinary.create(jsRealm.getContext(), jsRealm);
     }
 
     public boolean objectSet(Object object, Object key, Object value) {
@@ -1361,7 +1361,7 @@ public final class GraalJSAccess {
     }
 
     public Object externalNew(Object context, long pointer) {
-        return JSExternalObject.create(((JSRealm) context).getContext(), pointer);
+        return JSExternal.create(((JSRealm) context).getContext(), pointer);
     }
 
     public Object integerNew(long value) {
@@ -1606,7 +1606,7 @@ public final class GraalJSAccess {
 
             ObjectTemplate prototypeTemplate = template.getPrototypeTemplate();
             if (prototypeTemplate != null) {
-                DynamicObject proto = JSUserObject.create(jsContext);
+                DynamicObject proto = JSOrdinary.create(jsContext);
                 objectTemplateInstantiate(jsRealm, prototypeTemplate, proto);
                 JSObjectUtil.putConstructorProperty(jsContext, proto, obj);
                 JSObject.set(obj, JSObject.PROTOTYPE, proto);
@@ -1675,11 +1675,11 @@ public final class GraalJSAccess {
         if (functionHandler == null) {
             FunctionTemplate parentFunctionTemplate = template.getParentFunctionTemplate();
             if (parentFunctionTemplate == null) {
-                instance = JSUserObject.create(jsContext, jsRealm);
+                instance = JSOrdinary.create(jsContext, jsRealm);
             } else {
                 DynamicObject function = (DynamicObject) functionTemplateGetFunction(realm, parentFunctionTemplate);
                 DynamicObject prototype = (DynamicObject) JSObject.get(function, JSObject.PROTOTYPE);
-                instance = JSUserObject.createWithPrototype(prototype, jsContext);
+                instance = JSOrdinary.createWithPrototype(prototype, jsContext);
                 JSObjectUtil.putHiddenProperty(instance, FunctionTemplate.CONSTRUCTOR, parentFunctionTemplate);
             }
         } else {
@@ -1694,7 +1694,7 @@ public final class GraalJSAccess {
 
     @CompilerDirectives.TruffleBoundary
     public DynamicObject propertyHandlerInstantiate(JSContext context, JSRealm realm, ObjectTemplate template, DynamicObject target, boolean global) {
-        DynamicObject handler = JSUserObject.create(context, realm);
+        DynamicObject handler = JSOrdinary.create(context, realm);
         DynamicObject proxy = JSProxy.create(context, target, handler);
 
         DynamicObject getter = functionFromRootNode(context, realm, new ExecuteNativePropertyHandlerNode(
@@ -1849,7 +1849,7 @@ public final class GraalJSAccess {
             }
         } else {
             assert exts.length == 0;
-            DynamicObject graalExtension = JSUserObject.create(jsContext);
+            DynamicObject graalExtension = JSOrdinary.create(jsContext);
             JSObject.set(graalExtension, "graalExtension", extraArgument);
             extensions = new Object[]{graalExtension};
         }
@@ -2003,7 +2003,7 @@ public final class GraalJSAccess {
         if (NIO_BUFFER_MODULE_NAME.equals(moduleName)) {
             // NIO-based buffer APIs in internal/graal/buffer.js are initialized by passing one
             // extra argument to the module loading function.
-            extraArgument = USE_NIO_BUFFER ? NIOBufferObject.createInitFunction(context) : Null.instance;
+            extraArgument = USE_NIO_BUFFER ? NIOBuffer.createInitFunction(context) : Null.instance;
         } else if ("internal/graal/debug.js".equals(moduleName)) {
             CallTarget setBreakPointCallTarget = Truffle.getRuntime().createCallTarget(new SetBreakPointNode(this));
             JSFunctionData setBreakPointData = JSFunctionData.createCallOnly(context, setBreakPointCallTarget, 3, SetBreakPointNode.NAME);
@@ -2531,7 +2531,7 @@ public final class GraalJSAccess {
                 global = propertyHandlerInstantiate(context, realm, template, global, true);
                 realm.setGlobalObject(global);
             } else {
-                DynamicObject prototype = JSUserObject.create(context);
+                DynamicObject prototype = JSOrdinary.create(context);
                 objectTemplateInstantiate(realm, template, prototype);
                 JSObject.setPrototype(global, prototype);
             }
@@ -2594,7 +2594,7 @@ public final class GraalJSAccess {
     }
 
     private DynamicObject initializeExtrasBindingObject(JSRealm realm) {
-        DynamicObject extras = JSUserObject.create(realm.getContext(), realm);
+        DynamicObject extras = JSOrdinary.create(realm.getContext(), realm);
 
         // isTraceCategoryEnabled
         JavaScriptRootNode isEnabledRootNode = new JavaScriptRootNode() {

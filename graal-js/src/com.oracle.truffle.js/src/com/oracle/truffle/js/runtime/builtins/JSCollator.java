@@ -326,7 +326,7 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
         private String caseFirst = IntlUtil.FALSE;
 
         DynamicObject toResolvedOptionsObject(JSContext context) {
-            DynamicObject result = JSUserObject.create(context);
+            DynamicObject result = JSOrdinary.create(context);
             JSObjectUtil.defineDataProperty(result, IntlUtil.LOCALE, locale, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, IntlUtil.USAGE, usage, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, IntlUtil.SENSITIVITY, sensitivity, JSAttributes.getDefault());

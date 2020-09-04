@@ -88,14 +88,14 @@ import com.oracle.truffle.js.runtime.builtins.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
-import com.oracle.truffle.js.runtime.builtins.JSDictionaryObject;
+import com.oracle.truffle.js.runtime.builtins.JSDictionary;
 import com.oracle.truffle.js.runtime.builtins.JSDisplayNames;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionFactory;
-import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
+import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSListFormat;
 import com.oracle.truffle.js.runtime.builtins.JSLocale;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
@@ -113,7 +113,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
@@ -464,8 +464,8 @@ public class JSContext {
         this.isMultiContext = lang.isMultiContext();
 
         // shapes and factories
-        PrototypeSupplier objectPrototypeSupplier = JSUserObject.INSTANCE;
-        CompilableBiFunction<JSContext, DynamicObject, Shape> ordinaryObjectShapeSupplier = JSUserObject.SHAPE_SUPPLIER;
+        PrototypeSupplier objectPrototypeSupplier = JSOrdinary.INSTANCE;
+        CompilableBiFunction<JSContext, DynamicObject, Shape> ordinaryObjectShapeSupplier = JSOrdinary.SHAPE_SUPPLIER;
         JSObjectFactory.IntrinsicBuilder builder = new JSObjectFactory.IntrinsicBuilder(this);
 
         this.functionFactory = builder.function(functionPrototypeSupplier, false, false, false, false, false);
@@ -479,7 +479,7 @@ public class JSContext {
 
         this.boundFunctionFactory = builder.function(functionPrototypeSupplier, true, false, false, true, false);
 
-        this.ordinaryObjectFactory = builder.create(JSUserObject.INSTANCE);
+        this.ordinaryObjectFactory = builder.create(JSOrdinary.INSTANCE);
         this.arrayFactory = builder.create(JSArray.INSTANCE);
         this.lazyRegexArrayFactory = builder.create(JSArray.INSTANCE);
         this.lazyRegexIndicesArrayFactory = builder.create(JSArray.INSTANCE);
@@ -539,7 +539,7 @@ public class JSContext {
         this.jsAdapterFactory = nashornCompat ? builder.create(JSAdapter.INSTANCE) : null;
         this.javaImporterFactory = nashornCompat ? builder.create(JavaImporter.instance()) : null;
 
-        this.dictionaryObjectFactory = JSConfig.DictionaryObject ? builder.create(objectPrototypeSupplier, JSDictionaryObject::makeDictionaryShape) : null;
+        this.dictionaryObjectFactory = JSConfig.DictionaryObject ? builder.create(objectPrototypeSupplier, JSDictionary::makeDictionaryShape) : null;
 
         this.factoryCount = builder.finish();
 
@@ -636,11 +636,11 @@ public class JSContext {
     }
 
     public final Shape createEmptyShape() {
-        return makeEmptyShapeWithNullPrototype(JSUserObject.INSTANCE);
+        return makeEmptyShapeWithNullPrototype(JSOrdinary.INSTANCE);
     }
 
     private Shape createEmptyShapePrototypeInObject() {
-        return makeEmptyShapeWithPrototypeInObject(JSUserObject.INSTANCE);
+        return makeEmptyShapeWithPrototypeInObject(JSOrdinary.INSTANCE);
     }
 
     private Shape createPromiseShapePrototypeInObject() {
@@ -664,7 +664,7 @@ public class JSContext {
     }
 
     private Shape createGlobalScopeShape() {
-        return JSShape.makeEmptyRoot(JSGlobalObject.INSTANCE, this);
+        return JSShape.makeEmptyRoot(JSGlobal.INSTANCE, this);
     }
 
     public final Map<String, Symbol> getSymbolRegistry() {

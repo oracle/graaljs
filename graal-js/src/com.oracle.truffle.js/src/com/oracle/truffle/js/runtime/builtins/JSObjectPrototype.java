@@ -154,7 +154,7 @@ public final class JSObjectPrototype extends JSNonProxy {
                 return false;
             }
         } else {
-            return JSUserObject.INSTANCE.delete(thisObj, index, isStrict);
+            return JSOrdinary.INSTANCE.delete(thisObj, index, isStrict);
         }
     }
 

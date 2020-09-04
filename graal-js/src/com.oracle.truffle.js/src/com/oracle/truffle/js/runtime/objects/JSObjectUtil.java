@@ -65,7 +65,7 @@ import com.oracle.truffle.js.runtime.builtins.Builtin;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 
 /**
  * @see DynamicObject
@@ -101,9 +101,9 @@ public final class JSObjectUtil {
         JSContext context = realm.getContext();
         DynamicObject obj;
         if (context.isMultiContext()) {
-            obj = JSUserObject.createInitWithInstancePrototype(prototype, context);
+            obj = JSOrdinary.createInitWithInstancePrototype(prototype, context);
         } else {
-            Shape initialShape = prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, JSUserObject.INSTANCE, context);
+            Shape initialShape = prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, JSOrdinary.INSTANCE, context);
             obj = JSOrdinaryObject.create(initialShape);
         }
         return obj;

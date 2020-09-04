@@ -60,7 +60,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSSegmenter;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
@@ -175,7 +175,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         protected DynamicObject makeIterationResultValue(int endIndex, String segment, String breakType) {
-            DynamicObject result = JSUserObject.create(getContext());
+            DynamicObject result = JSOrdinary.create(getContext());
             JSObject.set(result, IntlUtil.SEGMENT, segment);
             JSObject.set(result, IntlUtil.BREAK_TYPE, breakType == null ? Undefined.instance : breakType);
             JSObject.set(result, IntlUtil.INDEX, endIndex);

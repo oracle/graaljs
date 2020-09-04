@@ -120,7 +120,7 @@ import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -145,7 +145,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
     public static final JSBuiltinsContainer BUILTINS_NASHORN_COMPAT = new ObjectFunctionNashornCompatBuiltins();
 
     protected ObjectFunctionBuiltins() {
-        super(JSUserObject.CLASS_NAME, ObjectFunction.class);
+        super(JSOrdinary.CLASS_NAME, ObjectFunction.class);
     }
 
     public enum ObjectFunction implements BuiltinEnum<ObjectFunction> {
@@ -403,7 +403,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached ListSizeNode listSize,
                         @Cached ListGetNode listGet,
                         @Cached JSClassProfile classProfile) {
-            DynamicObject retObj = JSUserObject.create(getContext());
+            DynamicObject retObj = JSOrdinary.create(getContext());
 
             List<Object> ownPropertyKeys = JSObject.ownPropertyKeys(thisObj, classProfile);
             int size = listSize.execute(ownPropertyKeys);
@@ -424,7 +424,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @CachedLibrary("thisObj") InteropLibrary interop,
                         @CachedLibrary(limit = "3") InteropLibrary members,
                         @Cached("create()") ImportValueNode toJSType) {
-            DynamicObject result = JSUserObject.create(getContext());
+            DynamicObject result = JSOrdinary.create(getContext());
 
             try {
                 if (interop.hasMembers(thisObj)) {
@@ -581,7 +581,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @SuppressWarnings("unused")
         @Specialization(guards = "isJSNull(prototype)")
         protected DynamicObject createPrototypeNull(Object prototype, Object properties) {
-            DynamicObject ret = JSUserObject.createWithNullPrototype(getContext());
+            DynamicObject ret = JSOrdinary.createWithNullPrototype(getContext());
             return objectDefineProperties(ret, properties);
         }
 
@@ -1128,7 +1128,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected DynamicObject entries(Object iterable) {
             requireObjectCoercibleNode.executeVoid(iterable);
-            DynamicObject obj = JSUserObject.create(getContext());
+            DynamicObject obj = JSOrdinary.create(getContext());
             return addEntriesFromIterable(obj, iterable);
         }
 

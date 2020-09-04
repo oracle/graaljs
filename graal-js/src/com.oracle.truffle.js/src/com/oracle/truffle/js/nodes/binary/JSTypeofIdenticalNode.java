@@ -80,7 +80,7 @@ import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -134,7 +134,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
                 return Type.String;
             case JSBoolean.TYPE_NAME:
                 return Type.Boolean;
-            case JSUserObject.TYPE_NAME:
+            case JSOrdinary.TYPE_NAME:
                 return Type.Object;
             case Undefined.TYPE_NAME:
                 return Type.Undefined;

@@ -79,7 +79,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
@@ -246,11 +246,11 @@ public final class JSGuards {
     }
 
     public static boolean isJSUserObject(DynamicObject value) {
-        return JSUserObject.isJSUserObject(value);
+        return JSOrdinary.isJSUserObject(value);
     }
 
     public static boolean isJSUserObject(Object value) {
-        return JSUserObject.isJSUserObject(value);
+        return JSOrdinary.isJSUserObject(value);
     }
 
     public static boolean isJSDateTimeFormat(DynamicObject value) {

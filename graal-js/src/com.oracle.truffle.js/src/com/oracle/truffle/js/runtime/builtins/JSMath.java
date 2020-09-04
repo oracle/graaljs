@@ -58,7 +58,7 @@ public final class JSMath {
 
     public static DynamicObject create(JSRealm realm) {
         JSContext ctx = realm.getContext();
-        DynamicObject obj = JSUserObject.createInit(realm);
+        DynamicObject obj = JSOrdinary.createInit(realm);
         JSObjectUtil.putToStringTag(obj, CLASS_NAME);
 
         JSObjectUtil.putDataProperty(ctx, obj, "E", Math.E);

@@ -55,18 +55,18 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.util.CompilableBiFunction;
 
-public final class JSUserObject extends JSNonProxy implements PrototypeSupplier {
+public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
 
     public static final String TYPE_NAME = "object";
     public static final String CLASS_NAME = "Object";
     public static final String PROTOTYPE_NAME = "Object.prototype";
 
-    public static final JSUserObject INSTANCE = new JSUserObject();
+    public static final JSOrdinary INSTANCE = new JSOrdinary();
     public static final CompilableBiFunction<JSContext, DynamicObject, Shape> SHAPE_SUPPLIER = (ctx, proto) -> JSObjectUtil.getProtoChildShape(proto, INSTANCE, ctx);
 
-    public static final JSUserObject BARE_INSTANCE = new JSUserObject();
+    public static final JSOrdinary BARE_INSTANCE = new JSOrdinary();
 
-    private JSUserObject() {
+    private JSOrdinary() {
     }
 
     public static DynamicObject create(JSContext context) {
@@ -121,7 +121,7 @@ public final class JSUserObject extends JSNonProxy implements PrototypeSupplier 
     }
 
     public static DynamicObject create(JSContext context, Shape shape) {
-        assert JSShape.getJSClass(shape) == JSUserObject.INSTANCE;
+        assert JSShape.getJSClass(shape) == JSOrdinary.INSTANCE;
         return context.trackAllocation(JSOrdinaryObject.create(shape));
     }
 
