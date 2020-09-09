@@ -49,7 +49,6 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JSBigInt extends JSPrimitive implements JSConstructorFactory.Default.WithFunctions {
@@ -99,11 +98,7 @@ public final class JSBigInt extends JSPrimitive implements JSConstructorFactory.
     }
 
     public static boolean isJSBigInt(Object obj) {
-        return JSDynamicObject.isJSDynamicObject(obj) && isJSBigInt((DynamicObject) obj);
-    }
-
-    public static boolean isJSBigInt(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSBigIntObject;
     }
 
     @Override

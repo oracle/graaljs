@@ -206,23 +206,11 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         return (obj instanceof JSArrayBufferObject.Heap);
     }
 
-    public static boolean isJSHeapArrayBuffer(DynamicObject obj) {
-        return (obj instanceof JSArrayBufferObject.Heap);
-    }
-
     public static boolean isJSDirectArrayBuffer(Object obj) {
         return (obj instanceof JSArrayBufferObject.Direct);
     }
 
-    public static boolean isJSDirectArrayBuffer(DynamicObject obj) {
-        return (obj instanceof JSArrayBufferObject.Direct);
-    }
-
     public static boolean isJSDirectOrSharedArrayBuffer(Object obj) {
-        return isJSDirectArrayBuffer(obj) || JSSharedArrayBuffer.isJSSharedArrayBuffer(obj);
-    }
-
-    public static boolean isJSDirectOrSharedArrayBuffer(DynamicObject obj) {
         return isJSDirectArrayBuffer(obj) || JSSharedArrayBuffer.isJSSharedArrayBuffer(obj);
     }
 

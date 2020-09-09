@@ -480,10 +480,6 @@ public final class JSArrayBufferView extends JSNonProxy {
         return obj instanceof JSTypedArrayObject;
     }
 
-    public static boolean isJSArrayBufferView(DynamicObject obj) {
-        return obj instanceof JSTypedArrayObject;
-    }
-
     public static boolean isBigIntArrayBufferView(DynamicObject obj) {
         return typedArrayGetArrayType(obj) instanceof TypedArray.TypedBigIntArray;
     }

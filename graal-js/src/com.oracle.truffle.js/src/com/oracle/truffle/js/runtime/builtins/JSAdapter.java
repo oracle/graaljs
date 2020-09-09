@@ -52,7 +52,6 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -113,11 +112,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     }
 
     public static boolean isJSAdapter(Object obj) {
-        return JSDynamicObject.isJSDynamicObject(obj) && isJSAdapter((DynamicObject) obj);
-    }
-
-    public static boolean isJSAdapter(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSAdapterObject;
     }
 
     private static JSException typeError() {

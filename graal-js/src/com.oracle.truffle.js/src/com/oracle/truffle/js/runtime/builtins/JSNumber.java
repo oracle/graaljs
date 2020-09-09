@@ -48,7 +48,6 @@ import com.oracle.truffle.js.builtins.NumberPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
@@ -122,11 +121,7 @@ public final class JSNumber extends JSPrimitive implements JSConstructorFactory.
     }
 
     public static boolean isJSNumber(Object obj) {
-        return JSDynamicObject.isJSDynamicObject(obj) && isJSNumber((DynamicObject) obj);
-    }
-
-    public static boolean isJSNumber(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSNumberObject;
     }
 
     @Override

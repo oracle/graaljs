@@ -118,11 +118,7 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
     }
 
     public static boolean isJSDate(Object obj) {
-        return JSDynamicObject.isJSDynamicObject(obj) && isJSDate((DynamicObject) obj);
-    }
-
-    public static boolean isJSDate(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSDateObject;
     }
 
     @Override

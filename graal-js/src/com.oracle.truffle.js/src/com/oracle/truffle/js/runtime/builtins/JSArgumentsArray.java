@@ -99,19 +99,11 @@ public final class JSArgumentsArray extends JSAbstractArgumentsArray {
         return context.trackAllocation(argumentsObject);
     }
 
-    public static boolean isJSArgumentsObject(DynamicObject obj) {
-        return isInstance(obj, INSTANCE) || isInstance(obj, JSSlowArgumentsArray.INSTANCE);
-    }
-
     public static boolean isJSArgumentsObject(Object obj) {
-        return isInstance(obj, INSTANCE) || isInstance(obj, JSSlowArgumentsArray.INSTANCE);
-    }
-
-    public static boolean isJSFastArgumentsObject(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSArgumentsObject;
     }
 
     public static boolean isJSFastArgumentsObject(Object obj) {
-        return isInstance(obj, INSTANCE);
+        return isJSArgumentsObject(obj) && isInstance((JSArgumentsObject) obj, INSTANCE);
     }
 }

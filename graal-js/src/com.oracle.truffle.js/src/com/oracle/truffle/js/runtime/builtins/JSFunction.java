@@ -726,10 +726,6 @@ public final class JSFunction extends JSNonProxy {
         return obj instanceof JSFunctionObject;
     }
 
-    public static boolean isJSFunction(DynamicObject obj) {
-        return obj instanceof JSFunctionObject;
-    }
-
     // ##### Generator functions
 
     public static DynamicObject createGeneratorFunctionPrototype(JSRealm realm, DynamicObject constructor) {

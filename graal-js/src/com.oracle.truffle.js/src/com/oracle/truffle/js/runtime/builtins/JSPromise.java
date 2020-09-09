@@ -115,11 +115,7 @@ public final class JSPromise extends JSNonProxy implements JSConstructorFactory.
     }
 
     public static boolean isJSPromise(Object obj) {
-        return JSDynamicObject.isJSDynamicObject(obj) && isJSPromise((DynamicObject) obj);
-    }
-
-    public static boolean isJSPromise(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSPromiseObject;
     }
 
     public static boolean isRejected(DynamicObject promise) {

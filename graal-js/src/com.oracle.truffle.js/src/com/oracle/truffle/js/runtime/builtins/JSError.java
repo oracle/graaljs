@@ -444,11 +444,7 @@ public final class JSError extends JSNonProxy {
     }
 
     public static boolean isJSError(Object obj) {
-        return JSDynamicObject.isJSDynamicObject(obj) && isJSError((DynamicObject) obj);
-    }
-
-    public static boolean isJSError(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSErrorObject;
     }
 
     @TruffleBoundary

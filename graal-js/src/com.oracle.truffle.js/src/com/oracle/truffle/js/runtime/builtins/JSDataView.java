@@ -169,10 +169,6 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
         return obj instanceof JSDataViewObject;
     }
 
-    public static boolean isJSDataView(DynamicObject obj) {
-        return obj instanceof JSDataViewObject;
-    }
-
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getDataViewPrototype();

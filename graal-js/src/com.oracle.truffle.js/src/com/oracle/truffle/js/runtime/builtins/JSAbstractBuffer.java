@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public abstract class JSAbstractBuffer extends JSNonProxy {
 
@@ -61,18 +60,10 @@ public abstract class JSAbstractBuffer extends JSNonProxy {
     }
 
     public static boolean isJSAbstractHeapBuffer(Object obj) {
-        return JSDynamicObject.isJSDynamicObject(obj) && isJSAbstractHeapBuffer((DynamicObject) obj);
-    }
-
-    public static boolean isJSAbstractHeapBuffer(DynamicObject obj) {
         return JSArrayBuffer.isJSHeapArrayBuffer(obj);
     }
 
     public static boolean isJSAbstractBuffer(Object obj) {
-        return JSDynamicObject.isJSDynamicObject(obj) && isJSAbstractBuffer((DynamicObject) obj);
-    }
-
-    public static boolean isJSAbstractBuffer(DynamicObject obj) {
         return JSArrayBuffer.isJSHeapArrayBuffer(obj) || JSArrayBuffer.isJSDirectArrayBuffer(obj) || JSSharedArrayBuffer.isJSSharedArrayBuffer(obj);
     }
 }

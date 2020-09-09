@@ -56,7 +56,6 @@ import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -152,11 +151,7 @@ public final class JSSymbol extends JSNonProxy implements JSConstructorFactory.D
     }
 
     public static boolean isJSSymbol(Object obj) {
-        return JSDynamicObject.isJSDynamicObject(obj) && isJSSymbol((DynamicObject) obj);
-    }
-
-    public static boolean isJSSymbol(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSSymbolObject;
     }
 
     @Override

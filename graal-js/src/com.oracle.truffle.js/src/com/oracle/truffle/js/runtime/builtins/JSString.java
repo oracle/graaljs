@@ -60,7 +60,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
@@ -303,11 +302,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     }
 
     public static boolean isJSString(Object obj) {
-        return JSDynamicObject.isJSDynamicObject(obj) && isJSString((DynamicObject) obj);
-    }
-
-    public static boolean isJSString(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSStringObject;
     }
 
     public static final class StringLengthProxyProperty implements PropertyProxy {

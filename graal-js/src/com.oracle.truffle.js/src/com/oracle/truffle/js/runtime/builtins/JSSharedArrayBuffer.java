@@ -59,7 +59,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
@@ -138,11 +137,7 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
     }
 
     public static boolean isJSSharedArrayBuffer(Object obj) {
-        return JSDynamicObject.isJSDynamicObject(obj) && isJSSharedArrayBuffer((DynamicObject) obj);
-    }
-
-    public static boolean isJSSharedArrayBuffer(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSArrayBufferObject.Shared;
     }
 
     public static ByteBuffer getDirectByteBuffer(DynamicObject thisObj) {

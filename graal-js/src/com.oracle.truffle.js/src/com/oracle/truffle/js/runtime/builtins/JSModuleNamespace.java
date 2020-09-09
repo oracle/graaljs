@@ -61,7 +61,6 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -255,11 +254,7 @@ public final class JSModuleNamespace extends JSNonProxy {
     }
 
     public static boolean isJSModuleNamespace(Object obj) {
-        return JSDynamicObject.isJSDynamicObject(obj) && isJSModuleNamespace((DynamicObject) obj);
-    }
-
-    public static boolean isJSModuleNamespace(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSModuleNamespaceObject;
     }
 
     @TruffleBoundary

@@ -179,10 +179,6 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         return obj instanceof JSProxyObject;
     }
 
-    public static boolean isJSProxy(DynamicObject obj) {
-        return obj instanceof JSProxyObject;
-    }
-
     @TruffleBoundary
     @Override
     public Object getOwnHelper(DynamicObject store, Object receiver, Object key) {
