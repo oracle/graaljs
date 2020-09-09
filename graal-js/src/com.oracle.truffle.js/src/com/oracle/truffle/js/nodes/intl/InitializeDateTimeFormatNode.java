@@ -163,31 +163,25 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
             Object timeZoneValue = getTimeZoneNode.getValue(options);
             TimeZone timeZone = toTimeZone(timeZoneValue);
 
+            String weekdayOpt = getWeekdayOption.executeValue(options);
+            String eraOpt = getEraOption.executeValue(options);
+            String yearOpt = getYearOption.executeValue(options);
+            String monthOpt = getMonthOption.executeValue(options);
+            String dayOpt = getDayOption.executeValue(options);
+            String hourOpt = getHourOption.executeValue(options);
+            String minuteOpt = getMinuteOption.executeValue(options);
+            String secondOpt = getSecondOption.executeValue(options);
+            String tzNameOpt = getTimeZoneNameOption.executeValue(options);
+
+            getFormatMatcherOption.executeValue(options);
+
             String dateStyleOpt = getDateStyleOption.executeValue(options);
             String timeStyleOpt = getTimeStyleOption.executeValue(options);
 
-            String weekdayOpt = null;
-            String eraOpt = null;
-            String yearOpt = null;
-            String monthOpt = null;
-            String dayOpt = null;
-            String hourOpt = null;
-            String minuteOpt = null;
-            String secondOpt = null;
-            String tzNameOpt = null;
-
-            if (dateStyleOpt == null && timeStyleOpt == null) {
-                weekdayOpt = getWeekdayOption.executeValue(options);
-                eraOpt = getEraOption.executeValue(options);
-                yearOpt = getYearOption.executeValue(options);
-                monthOpt = getMonthOption.executeValue(options);
-                dayOpt = getDayOption.executeValue(options);
-                hourOpt = getHourOption.executeValue(options);
-                minuteOpt = getMinuteOption.executeValue(options);
-                secondOpt = getSecondOption.executeValue(options);
-                tzNameOpt = getTimeZoneNameOption.executeValue(options);
-
-                getFormatMatcherOption.executeValue(options);
+            if ((dateStyleOpt != null || timeStyleOpt != null) && (weekdayOpt != null || eraOpt != null || yearOpt != null || monthOpt != null || dayOpt != null || hourOpt != null ||
+                            minuteOpt != null || secondOpt != null || tzNameOpt != null)) {
+                errorBranch.enter();
+                throw Errors.createTypeError("dateStyle and timeStyle options cannot be mixed with other date/time options");
             }
 
             JSDateTimeFormat.setupInternalDateTimeFormat(context, state, locales, weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hcOpt, hour12Opt, minuteOpt, secondOpt, tzNameOpt,
