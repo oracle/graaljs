@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.JSArrayBufferAbstractSliceNode;
 import com.oracle.truffle.js.builtins.SharedArrayBufferPrototypeBuiltinsFactory.JSSharedArrayBufferSliceNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
@@ -112,7 +113,7 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
             checkErrors(resObj, thisObj, newLen);
 
             ByteBuffer resBuffer = JSArrayBuffer.getDirectByteBuffer(resObj);
-            sliceDirectIntl(byteBuffer, clampedBegin, clampedEnd, resBuffer);
+            Boundaries.byteBufferPutSlice(resBuffer, 0, byteBuffer, clampedBegin, clampedEnd);
             return resObj;
         }
 
