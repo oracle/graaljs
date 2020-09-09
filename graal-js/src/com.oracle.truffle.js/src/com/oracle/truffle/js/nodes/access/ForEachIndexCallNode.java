@@ -46,6 +46,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.BasicArrayOperation;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.array.JSArrayFirstElementIndexNode;
 import com.oracle.truffle.js.nodes.array.JSArrayLastElementIndexNode;
@@ -222,6 +223,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
             Object currentResult = initialResult;
             if (index < length) {
                 needLoop.enter();
+                long count = 0;
                 while (index < length && index <= lastElementIndex(target, length)) {
                     Object value = readElementInBounds(target, index, arrayCondition);
                     Object callbackResult = callback(index, value, target, callback, callbackThisArg, currentResult);
@@ -231,8 +233,10 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
                     if (maybeResult.isPresent()) {
                         break;
                     }
+                    count++;
                     index = nextElementIndex(target, index, length);
                 }
+                BasicArrayOperation.reportLoopCount(this, count);
             }
             return currentResult;
         }
@@ -259,6 +263,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
                     }
                 }
             }
+            BasicArrayOperation.reportLoopCount(this, length - fromIndex);
             return currentResult;
         }
 
@@ -286,6 +291,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
             Object currentResult = initialResult;
             if (index >= 0) {
                 needLoop.enter();
+                long count = 0;
                 while (index >= 0 && index >= firstElementIndex(target, length)) {
                     Object value = readElementInBounds(target, index, arrayCondition);
                     Object callbackResult = callback(index, value, target, callback, callbackThisArg, currentResult);
@@ -295,8 +301,10 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
                     if (maybeResult.isPresent()) {
                         break;
                     }
+                    count++;
                     index = previousElementIndex(target, index);
                 }
+                BasicArrayOperation.reportLoopCount(this, count);
             }
             return currentResult;
         }
@@ -324,6 +332,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
                     }
                 }
             }
+            BasicArrayOperation.reportLoopCount(this, fromIndex);
             return currentResult;
         }
 

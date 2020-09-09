@@ -66,6 +66,8 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -414,6 +416,16 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             if (JSArrayBufferView.hasDetachedBuffer((DynamicObject) obj, getContext())) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorDetachedBuffer();
+            }
+        }
+
+        protected void reportLoopCount(long count) {
+            reportLoopCount(this, count);
+        }
+
+        public static void reportLoopCount(Node node, long count) {
+            if (count > 0) {
+                LoopNode.reportLoopCount(node, count > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) count);
             }
         }
     }
@@ -1060,6 +1072,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             long len = getLength(thisObj);
             if (lengthIsZero.profile(len > 0)) {
                 Object firstElement = read(thisObj, 0);
+
                 for (long i = 0; i < len - 1; i++) {
                     if (hasProperty(thisObj, i + 1)) {
                         write(thisObj, i, read(thisObj, i + 1));
@@ -1069,6 +1082,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 }
                 deletePropertyNode.executeEvaluated(thisObj, len - 1);
                 setLength(thisObj, len - 1);
+                reportLoopCount(len - 1);
                 return firstElement;
             } else {
                 return Undefined.instance;
@@ -1085,6 +1099,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             long len = getLength(thisObj);
             if (lengthIsZero.profile(len > 0)) {
                 Object firstElement = read(thisObj, 0);
+                long count = 0;
                 for (long i = firstElementIndexNode.executeLong(thisObj, len); i <= lastElementIndexNode.executeLong(thisObj, len); i = nextElementIndex(thisObj, i, len)) {
                     if (i > 0) {
                         write(thisObj, i - 1, read(thisObj, i));
@@ -1092,8 +1107,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     if (!hasProperty(thisObj, i + 1)) {
                         deletePropertyNode.executeEvaluated(thisObj, i);
                     }
+                    count++;
                 }
                 setLength(thisObj, len - 1);
+                reportLoopCount(count);
                 return firstElement;
             } else {
                 return Undefined.instance;
@@ -1122,6 +1139,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
             deleteNode.executeEvaluated(thisJSObj, len - 1);
             setLength(thisJSObj, len - 1);
+            reportLoopCount(len);
             return firstObj;
         }
 
@@ -1141,6 +1159,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     arrays.writeArrayElement(thisObj, i - 1, val);
                 }
                 arrays.removeArrayElement(thisObj, len - 1);
+                reportLoopCount(len);
                 return firstObj;
             } catch (UnsupportedMessageException | InvalidArrayIndexException | UnsupportedTypeException e) {
                 throw Errors.createTypeErrorInteropException(thisObj, e, "shift", this);
@@ -1164,12 +1183,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private long unshiftHoleless(DynamicObject thisObj, Object[] args) {
             long len = getLength(thisObj);
             if (getContext().getEcmaScriptVersion() <= 5 || args.length > 0) {
-                for (long i = len - 1; i >= 0; i--) {
-                    write(thisObj, i + args.length, read(thisObj, i));
+                for (long l = len - 1; l >= 0; l--) {
+                    write(thisObj, l + args.length, read(thisObj, l));
                 }
                 for (int i = 0; i < args.length; i++) {
                     write(thisObj, i, args[i]);
                 }
+                reportLoopCount(len + args.length);
             }
             long newLen = len + args.length;
             setLength(thisObj, newLen);
@@ -1207,8 +1227,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 }
                 long lastIdx = lastElementIndexNode.executeLong(thisObj, len);
                 long firstIdx = firstElementIndexNode.executeLong(thisObj, len);
-
+                long count = 0;
                 for (long i = lastIdx; i >= firstIdx; i = previousElementIndex(thisObj, i)) {
+                    count++;
                     if (hasProperty(thisObj, i)) {
                         write(thisObj, i + args.length, read(thisObj, i));
                         if (args.length > 0 && i >= args.length && !hasProperty(thisObj, i - args.length)) {
@@ -1221,6 +1242,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 for (int i = 0; i < args.length; i++) {
                     write(thisObj, i, args[i]);
                 }
+                reportLoopCount(count + args.length);
             }
             long newLen = len + args.length;
             setLength(thisObj, newLen);
@@ -1796,6 +1818,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             long newLength = len - actualDeleteCount + itemCount;
             setLength(thisObj, newLength);
+            reportLoopCount(len);
             return aObj;
         }
 
@@ -2445,15 +2468,16 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             long length = getLength(thisJSObj);
             Object callbackFn = checkCallbackIsFunction(callback);
 
-            long k;
-            for (k = 0; k < length; k++) {
-                Object value = read(thisObj, k);
-                Object callbackResult = callPredicate(callbackFn, thisArg, value, k, thisJSObj);
+            for (long idx = 0; idx < length; idx++) {
+                Object value = read(thisObj, idx);
+                Object callbackResult = callPredicate(callbackFn, thisArg, value, idx, thisJSObj);
                 boolean testResult = toBooleanNode.executeBoolean(callbackResult);
                 if (testResult) {
+                    reportLoopCount(idx);
                     return value;
                 }
             }
+            reportLoopCount(length);
             return Undefined.instance;
         }
     }
@@ -2476,15 +2500,16 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             long length = getLength(thisJSObj);
             Object callbackFn = checkCallbackIsFunction(callback);
 
-            long k;
-            for (k = 0; k < length; k++) {
-                Object value = read(thisObj, k);
-                Object callbackResult = callPredicate(callbackFn, thisArg, value, k, thisJSObj);
+            for (long idx = 0; idx < length; idx++) {
+                Object value = read(thisObj, idx);
+                Object callbackResult = callPredicate(callbackFn, thisArg, value, idx, thisJSObj);
                 boolean testResult = toBooleanNode.executeBoolean(callbackResult);
                 if (testResult) {
-                    return JSRuntime.positiveLongToIntOrDouble(k);
+                    reportLoopCount(idx);
+                    return JSRuntime.positiveLongToIntOrDouble(idx);
                 }
             }
+            reportLoopCount(length);
             return -1;
         }
     }
@@ -2519,6 +2544,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             Object[] array = arrayToObjectArrayNode.executeObjectArray(thisObj, scriptArray, len);
 
             sortIntl(getComparator(thisObj, compare), array);
+            reportLoopCount(len); // best effort guess, let's not go for n*log(n)
 
             for (int i = 0; i < array.length; i++) {
                 write(thisObj, i, array[i]);
@@ -2564,6 +2590,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             Comparator<Object> comparator = getComparator(thisJSObj, comparefn);
             sortIntl(comparator, array);
+            reportLoopCount(len);
 
             for (int i = 0; i < array.length; i++) {
                 write(thisJSObj, i, array[i]);
@@ -2593,6 +2620,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             Comparator<Object> comparator = getComparator(thisObj, comparefn);
             sortIntl(comparator, array);
+            reportLoopCount(len);
 
             for (int i = 0; i < array.length; i++) {
                 write(thisObj, i, array[i]);
@@ -2869,6 +2897,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             for (long idx = lStart; idx < lEnd; idx++) {
                 write(thisJSObj, idx, value);
             }
+            reportLoopCount(lEnd - lStart);
             return thisJSObj;
         }
     }
@@ -2899,6 +2928,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 finalIdx = JSRuntime.getOffset(toIntegerAsLong(end), len, offsetProfile3);
             }
             long count = Math.min(finalIdx - from, len - to);
+            long expectedCount = count;
 
             long direction;
             if (from < to && to < (from + count)) {
@@ -2920,7 +2950,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 to += direction;
                 count--;
             }
-
+            reportLoopCount(expectedCount);
             return obj;
         }
     }
@@ -2955,14 +2985,17 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return true;
             }
 
+            long startIdx = k;
             while (k < len) {
                 Object currentElement = read(thisObj, k);
 
                 if (identicalNode.executeBoolean(searchElement, currentElement)) {
+                    reportLoopCount(k - startIdx);
                     return true;
                 }
                 k++;
             }
+            reportLoopCount(len - startIdx);
             return false;
         }
     }
@@ -3048,7 +3081,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     upper--;
                 }
             }
-
+            reportLoopCount(lower);
             return array;
         }
     }
