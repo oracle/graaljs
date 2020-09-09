@@ -40,39 +40,26 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import java.util.Collections;
+import java.util.List;
+
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.interop.JSMetaType;
 
 @ExportLibrary(InteropLibrary.class)
-public final class Nullish extends JSValue {
+public final class Nullish extends JSDynamicObject {
 
     public Nullish() {
         super(Null.SHAPE);
-    }
-
-    @Override
-    public String getClassName() {
-        return this == Undefined.instance ? Undefined.NAME : Null.NAME;
-    }
-
-    @Override
-    public String toDisplayStringImpl(int depth, boolean allowSideEffects) {
-        return this == Undefined.instance ? "[object Undefined]" : "[object Null]";
-    }
-
-    @Override
-    public String defaultToString() {
-        return this == Undefined.instance ? Undefined.NAME : Null.NAME;
-    }
-
-    @Override
-    public String toString() {
-        return "DynamicObject<" + getClassName() + ">@" + Integer.toHexString(hashCode());
     }
 
     @SuppressWarnings("static-method")
@@ -114,4 +101,153 @@ public final class Nullish extends JSValue {
             return JSMetaType.JS_UNDEFINED;
         }
     }
+
+    @Override
+    public String getClassName() {
+        return this == Undefined.instance ? Undefined.NAME : Null.NAME;
+    }
+
+    @Override
+    public String toDisplayStringImpl(int depth, boolean allowSideEffects) {
+        return this == Undefined.instance ? "[object Undefined]" : "[object Null]";
+    }
+
+    @Override
+    public String defaultToString() {
+        return this == Undefined.instance ? Undefined.NAME : Null.NAME;
+    }
+
+    @Override
+    public String toString() {
+        return "DynamicObject<" + getClassName() + ">@" + Integer.toHexString(hashCode());
+    }
+
+    @Override
+    boolean isObject() {
+        return false;
+    }
+
+    static JSException typeError() {
+        return Errors.createTypeError("not an object");
+    }
+
+    @TruffleBoundary
+    static JSException cannotDoPropertyOf(String doWhat, Object index, Object thisObj) {
+        return Errors.createTypeErrorFormat("Cannot %s property \"%s\" of %s", doWhat, index, JSRuntime.safeToString(thisObj));
+    }
+
+    @TruffleBoundary
+    @Override
+    public Object getOwnHelper(Object thisObj, Object name) {
+        throw cannotDoPropertyOf("get", name, thisObj);
+    }
+
+    @TruffleBoundary
+    @Override
+    public Object getOwnHelper(Object thisObj, long index) {
+        throw cannotDoPropertyOf("get", index, thisObj);
+    }
+
+    @Override
+    public Object getMethodHelper(Object thisObj, Object name) {
+        return getHelper(thisObj, name);
+    }
+
+    @Override
+    public Object getHelper(Object thisObj, Object name) {
+        return getOwnHelper(thisObj, name);
+    }
+
+    @Override
+    public Object getHelper(Object thisObj, long index) {
+        return getOwnHelper(thisObj, index);
+    }
+
+    @Override
+    public boolean hasOwnProperty(Object propName) {
+        throw typeError();
+    }
+
+    @Override
+    public boolean hasOwnProperty(long propIdx) {
+        throw typeError();
+    }
+
+    @Override
+    public boolean hasProperty(Object propName) {
+        return hasOwnProperty(propName);
+    }
+
+    @Override
+    public boolean hasProperty(long propIdx) {
+        return hasOwnProperty(propIdx);
+    }
+
+    @TruffleBoundary
+    @Override
+    public boolean set(Object key, Object value, Object receiver, boolean isStrict) {
+        throw cannotDoPropertyOf("set", key, this);
+    }
+
+    @TruffleBoundary
+    @Override
+    public boolean set(long index, Object value, Object receiver, boolean isStrict) {
+        throw cannotDoPropertyOf("set", index, this);
+    }
+
+    @TruffleBoundary
+    @Override
+    public boolean delete(Object index, boolean isStrict) {
+        throw cannotDoPropertyOf("delete", index, this);
+    }
+
+    @TruffleBoundary
+    @Override
+    public boolean delete(long index, boolean isStrict) {
+        throw cannotDoPropertyOf("delete", index, this);
+    }
+
+    @Override
+    public List<Object> getOwnPropertyKeys(boolean string, boolean symbols) {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public boolean defineOwnProperty(Object key, PropertyDescriptor desc, boolean doThrow) {
+        if (doThrow) {
+            throw Errors.createTypeErrorCannotSetProperty(key, this, null);
+        }
+        return false;
+    }
+
+    @Override
+    public boolean preventExtensions(boolean doThrow) {
+        throw typeError();
+    }
+
+    @Override
+    public boolean isExtensible() {
+        throw typeError();
+    }
+
+    @Override
+    public boolean hasOnlyShapeProperties() {
+        return false;
+    }
+
+    @Override
+    public JSDynamicObject getPrototypeOf() {
+        return Null.instance;
+    }
+
+    @Override
+    public boolean setPrototypeOf(JSDynamicObject newPrototype) {
+        return true;
+    }
+
+    @Override
+    public PropertyDescriptor getOwnProperty(Object propertyKey) {
+        throw typeError();
+    }
+
 }

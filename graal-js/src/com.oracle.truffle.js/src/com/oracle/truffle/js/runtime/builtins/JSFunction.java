@@ -79,11 +79,12 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
-import com.oracle.truffle.js.runtime.objects.PlaceholderValue;
+import com.oracle.truffle.js.runtime.objects.Nullish;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -719,7 +720,7 @@ public final class JSFunction extends JSNonProxy {
      * functions to differentiate between a constructor and a normal call (i.e., [[Construct]] and
      * [[Call]] internal methods, see ES5 13.2.1 and 13.2.2). Must not be passed anywhere else.
      */
-    public static final DynamicObject CONSTRUCT = PlaceholderValue.CONSTRUCT;
+    public static final JSDynamicObject CONSTRUCT = new Nullish();
 
     public static boolean isJSFunction(Object obj) {
         return obj instanceof JSFunctionObject;
