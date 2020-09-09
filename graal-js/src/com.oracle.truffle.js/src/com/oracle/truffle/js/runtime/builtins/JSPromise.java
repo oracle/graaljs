@@ -49,7 +49,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -116,7 +115,7 @@ public final class JSPromise extends JSNonProxy implements JSConstructorFactory.
     }
 
     public static boolean isJSPromise(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSPromise((DynamicObject) obj);
+        return JSDynamicObject.isJSDynamicObject(obj) && isJSPromise((DynamicObject) obj);
     }
 
     public static boolean isJSPromise(DynamicObject obj) {

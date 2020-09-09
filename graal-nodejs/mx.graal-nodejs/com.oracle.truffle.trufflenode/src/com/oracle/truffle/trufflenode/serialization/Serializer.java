@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
@@ -240,7 +241,7 @@ public class Serializer {
             NativeAccess.throwDataCloneError(delegate, message);
         } else if (JSFunction.isJSFunction(object)) {
             NativeAccess.throwDataCloneError(delegate, JSRuntime.safeToString(object) + " could not be cloned.");
-        } else if (JSObject.isJSDynamicObject(object)) {
+        } else if (JSDynamicObject.isJSDynamicObject(object)) {
             DynamicObject dynamicObject = (DynamicObject) object;
             if (GraalJSAccess.internalFieldCount(dynamicObject) == 0) {
                 writeJSObject(dynamicObject);
@@ -385,7 +386,7 @@ public class Serializer {
     }
 
     private void writeJSObject(DynamicObject object) {
-        assert JSObject.isJSDynamicObject(object);
+        assert JSDynamicObject.isJSDynamicObject(object);
         writeTag(SerializationTag.BEGIN_JS_OBJECT);
         List<String> names = JSObject.enumerableOwnNames(object);
         writeJSObjectProperties(object, names);
@@ -394,7 +395,7 @@ public class Serializer {
     }
 
     private void writeJSObjectProperties(DynamicObject object, List<String> keys) {
-        assert JSObject.isJSDynamicObject(object);
+        assert JSDynamicObject.isJSDynamicObject(object);
         for (String key : keys) {
             if (JSRuntime.isArrayIndex(key)) {
                 writeIntOrDouble(Double.parseDouble(key));

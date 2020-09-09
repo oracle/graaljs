@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
@@ -88,7 +89,7 @@ public abstract class IsJSObjectNode extends JavaScriptBaseNode {
     // name-clash with JSObject.isJSObject. Different behavior around null/undefined.
     protected boolean guardIsJSObject(Object obj) {
         if (includeNullUndefined) {
-            return JSObject.isJSDynamicObject(obj);
+            return JSDynamicObject.isJSDynamicObject(obj);
         } else {
             return JSGuards.isJSObject(obj);
         }

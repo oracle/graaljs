@@ -122,6 +122,7 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.java.adapter.JavaAdapterFactory;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSPrototypeData;
@@ -1580,10 +1581,10 @@ public class JSContext {
                     return Undefined.instance;
                 }
                 Object value = JSArguments.getUserArgument(arguments, 0);
-                if (!JSObject.isJSDynamicObject(value) || value == Undefined.instance) {
+                if (!JSDynamicObject.isJSDynamicObject(value) || value == Undefined.instance) {
                     return Undefined.instance;
                 }
-                if (!JSObject.isJSDynamicObject(obj)) {
+                if (!JSDynamicObject.isJSDynamicObject(obj)) {
                     return Undefined.instance;
                 }
                 DynamicObject thisObj = (DynamicObject) obj;
@@ -1604,7 +1605,7 @@ public class JSContext {
             @Override
             public Object execute(VirtualFrame frame) {
                 Object obj = toObjectNode.execute(JSArguments.getThisObject(frame.getArguments()));
-                if (JSObject.isJSDynamicObject(obj)) {
+                if (JSDynamicObject.isJSDynamicObject(obj)) {
                     return getPrototypeNode.executeJSObject(obj);
                 }
                 return Null.instance;

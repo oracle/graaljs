@@ -51,6 +51,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
@@ -300,7 +301,7 @@ public abstract class JSClass extends ObjectType {
     }
 
     public static boolean isInstance(Object object, JSClass jsclass) {
-        return JSObject.isJSDynamicObject(object) && isInstance((DynamicObject) object, jsclass);
+        return JSDynamicObject.isJSDynamicObject(object) && isInstance((DynamicObject) object, jsclass);
     }
 
     public static boolean isInstance(DynamicObject object, JSClass jsclass) {

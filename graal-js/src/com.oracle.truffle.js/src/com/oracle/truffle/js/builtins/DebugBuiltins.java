@@ -109,6 +109,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
@@ -276,7 +277,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         protected static Object clazz(Object obj) {
             if (obj instanceof Symbol) {
                 return Null.instance;
-            } else if (JSObject.isJSDynamicObject(obj)) {
+            } else if (JSDynamicObject.isJSDynamicObject(obj)) {
                 DynamicObject jsObj = (DynamicObject) obj;
                 if (JSObjectUtil.hasHiddenProperty(jsObj, JSRuntime.ITERATED_OBJECT_ID)) {
                     DynamicObject iteratedObj = (DynamicObject) JSObjectUtil.getHiddenProperty(jsObj, JSRuntime.ITERATED_OBJECT_ID);
@@ -409,7 +410,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 sb.append(key);
                 if (desc.isDataDescriptor()) {
                     Object value = JSObject.get(object, key);
-                    if (JSObject.isJSDynamicObject(value)) {
+                    if (JSDynamicObject.isJSDynamicObject(value)) {
                         if ((JSGuards.isJSOrdinaryObject(value) || JSGlobal.isJSGlobalObject(value)) && !key.equals(JSObject.CONSTRUCTOR)) {
                             if (level < levelStop && !key.equals(JSObject.CONSTRUCTOR)) {
                                 value = debugPrint((DynamicObject) value, level + 1, levelStop);
@@ -484,7 +485,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @TruffleBoundary
         @Specialization
         protected Object arraytype(Object array) {
-            if (!(JSObject.isJSDynamicObject(array)) || !(JSObject.hasArray((DynamicObject) array))) {
+            if (!(JSDynamicObject.isJSDynamicObject(array)) || !(JSObject.hasArray((DynamicObject) array))) {
                 return "NOT_AN_ARRAY";
             }
             return JSObject.getArray((DynamicObject) array).getClass().getSimpleName();

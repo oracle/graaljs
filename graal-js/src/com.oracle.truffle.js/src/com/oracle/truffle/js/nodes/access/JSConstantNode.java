@@ -58,7 +58,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -87,7 +87,7 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
             return createBigInt((BigInt) value);
         } else if (value instanceof SafeInteger) {
             return createSafeInteger((SafeInteger) value);
-        } else if (JSObject.isJSDynamicObject(value)) {
+        } else if (JSDynamicObject.isJSDynamicObject(value)) {
             return new JSConstantJSObjectNode((DynamicObject) value);
         } else {
             return new JSConstantObjectNode(value);

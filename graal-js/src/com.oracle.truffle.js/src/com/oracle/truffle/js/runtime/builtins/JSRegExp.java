@@ -61,7 +61,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultIndicesArray;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -282,7 +282,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
 
     // non-standard according to ES2015, 7.2.8 IsRegExp (@@match check missing)
     public static boolean isJSRegExp(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSRegExp((DynamicObject) obj);
+        return JSDynamicObject.isJSDynamicObject(obj) && isJSRegExp((DynamicObject) obj);
     }
 
     // non-standard according to ES2015, 7.2.8 IsRegExp (@@match check missing)

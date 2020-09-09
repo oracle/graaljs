@@ -49,7 +49,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
@@ -100,7 +100,7 @@ public final class JSBoolean extends JSPrimitive implements JSConstructorFactory
     }
 
     public static boolean isJSBoolean(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSBoolean((DynamicObject) obj);
+        return JSDynamicObject.isJSDynamicObject(obj) && isJSBoolean((DynamicObject) obj);
     }
 
     public static boolean isJSBoolean(DynamicObject obj) {

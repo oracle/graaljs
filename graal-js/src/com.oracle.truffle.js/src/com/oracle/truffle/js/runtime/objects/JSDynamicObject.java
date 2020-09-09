@@ -332,6 +332,13 @@ public abstract class JSDynamicObject extends DynamicObject implements TruffleOb
 
     // -- static --
 
+    /**
+     * Returns whether object is a DynamicObject of JavaScript.
+     */
+    public static boolean isJSDynamicObject(Object object) {
+        return object instanceof JSDynamicObject;
+    }
+
     public static JSContext getJSContext(DynamicObject obj) {
         return getJSSharedData(obj).getContext();
     }

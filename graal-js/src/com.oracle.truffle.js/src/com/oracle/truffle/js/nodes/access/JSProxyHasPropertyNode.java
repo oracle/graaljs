@@ -57,6 +57,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -92,7 +93,7 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
         Object target = JSProxy.getTarget(proxy);
         Object trapFun = trapGetter.executeWithTarget(handler);
         if (trapFunProfile.profile(trapFun == Undefined.instance)) {
-            if (JSObject.isJSDynamicObject(target)) {
+            if (JSDynamicObject.isJSDynamicObject(target)) {
                 return JSObject.hasProperty((DynamicObject) target, propertyKey);
             } else {
                 return JSInteropUtil.hasProperty(target, propertyKey);

@@ -45,6 +45,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -88,7 +89,7 @@ public final class JSGlobal extends JSNonProxy {
     }
 
     public static boolean isJSGlobalObject(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSGlobalObject((DynamicObject) obj);
+        return JSDynamicObject.isJSDynamicObject(obj) && isJSGlobalObject((DynamicObject) obj);
     }
 
     public static boolean isJSGlobalObject(DynamicObject obj) {

@@ -104,6 +104,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
@@ -402,7 +403,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
             rangeCheck(0, srcLength, offset, targetArray.length(thisObj));
 
-            boolean isJSObject = JSObject.isJSDynamicObject(src);
+            boolean isJSObject = JSDynamicObject.isJSDynamicObject(src);
             for (int i = 0, j = offset; i < srcLength; i++, j++) {
                 Object value;
                 if (srcIsJSObject.profile(isJSObject)) {

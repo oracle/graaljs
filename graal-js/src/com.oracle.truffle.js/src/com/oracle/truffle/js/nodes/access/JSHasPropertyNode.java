@@ -68,6 +68,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
@@ -218,7 +219,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
     }
 
     protected static boolean isCacheableObjectType(DynamicObject obj) {
-        return JSObject.isJSDynamicObject(obj) && (!JSRuntime.isNullOrUndefined(obj) &&
+        return JSDynamicObject.isJSDynamicObject(obj) && (!JSRuntime.isNullOrUndefined(obj) &&
                         !JSString.isJSString(obj) &&
                         !JSArray.isJSArray(obj) &&
                         !JSArgumentsArray.isJSArgumentsObject(obj) &&

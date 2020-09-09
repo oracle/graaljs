@@ -61,6 +61,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -147,7 +148,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
             @Override
             public Object execute(VirtualFrame frame) {
                 Object obj = JSArguments.getThisObject(frame.getArguments());
-                if (JSObject.isJSDynamicObject(obj)) {
+                if (JSDynamicObject.isJSDynamicObject(obj)) {
                     DynamicObject buffer = (DynamicObject) obj;
                     if (isArrayBuffer.profile(isJSHeapArrayBuffer(buffer))) {
                         if (!context.getTypedArrayNotDetachedAssumption().isValid() && isDetachedBuffer(buffer)) {

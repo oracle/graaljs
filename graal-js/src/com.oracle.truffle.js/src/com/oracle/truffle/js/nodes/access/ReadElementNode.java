@@ -109,6 +109,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSlowArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
@@ -430,7 +431,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     @SuppressWarnings("unchecked")
     private static ReadElementTypeCacheNode makeTypeCacheNode(Object target, ReadElementTypeCacheNode next) {
-        if (JSObject.isJSDynamicObject(target)) {
+        if (JSDynamicObject.isJSDynamicObject(target)) {
             return new JSObjectReadElementTypeCacheNode(next);
         } else if (target instanceof JSLazyString) {
             return new LazyStringReadElementTypeCacheNode(next);
@@ -1657,7 +1658,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         public boolean guard(Object target) {
-            return targetClass.isInstance(target) && !JSObject.isJSDynamicObject(target);
+            return targetClass.isInstance(target) && !JSDynamicObject.isJSDynamicObject(target);
         }
     }
 

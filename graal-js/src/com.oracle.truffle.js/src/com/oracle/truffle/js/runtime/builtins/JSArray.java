@@ -183,7 +183,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
     }
 
     public static boolean isJSFastArray(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSFastArray((DynamicObject) obj);
+        return JSDynamicObject.isJSDynamicObject(obj) && isJSFastArray((DynamicObject) obj);
     }
 
     public static boolean isJSFastArray(DynamicObject obj) {

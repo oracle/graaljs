@@ -73,6 +73,7 @@ import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -301,7 +302,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
 
         private String getGap(Object spaceParam) {
             Object space = spaceParam;
-            if (JSObject.isJSDynamicObject(space)) {
+            if (JSDynamicObject.isJSDynamicObject(space)) {
                 if (JSNumber.isJSNumber(space)) {
                     space = toNumber(space);
                 } else if (JSString.isJSString(space)) {

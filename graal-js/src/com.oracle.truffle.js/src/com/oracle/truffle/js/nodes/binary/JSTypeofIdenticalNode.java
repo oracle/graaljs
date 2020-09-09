@@ -81,7 +81,7 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -343,7 +343,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
             if (isFunction) {
                 return JSFunction.isJSFunction(target) || JSRuntime.isCallableForeign(target) || JSRuntime.isConstructorForeign(target);
             } else {
-                return (JSObject.isJSDynamicObject(target) && !JSFunction.isJSFunction(target)) ||
+                return (JSDynamicObject.isJSDynamicObject(target) && !JSFunction.isJSFunction(target)) ||
                                 (JSRuntime.isForeignObject(target) && !JSRuntime.isCallableForeign(target) && !JSRuntime.isConstructorForeign(target));
             }
         }

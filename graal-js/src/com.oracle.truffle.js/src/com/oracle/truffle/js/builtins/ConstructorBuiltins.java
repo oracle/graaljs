@@ -213,6 +213,7 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -943,7 +944,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             boolean hasMatchSymbol = isRegExpNode.executeBoolean(pattern);
             if (isCall) {
                 // we are in the "call" case, i.e. NewTarget is undefined (before)
-                if (callIsRegExpProfile.profile(hasMatchSymbol && flags == Undefined.instance && JSObject.isJSDynamicObject(pattern))) {
+                if (callIsRegExpProfile.profile(hasMatchSymbol && flags == Undefined.instance && JSDynamicObject.isJSDynamicObject(pattern))) {
                     DynamicObject patternObj = (DynamicObject) pattern;
                     Object patternConstructor = getConstructor(patternObj);
                     if (constructorEquivalentProfile.profile(patternConstructor == getContext().getRealm().getRegExpConstructor())) {
@@ -2153,7 +2154,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                             return;
                         }
                         Object nextItem = getIteratorValue((DynamicObject) next);
-                        if (!JSObject.isJSDynamicObject(nextItem)) {
+                        if (!JSDynamicObject.isJSDynamicObject(nextItem)) {
                             errorBranch.enter();
                             throw Errors.createTypeErrorIteratorResultNotObject(nextItem, this);
                         }

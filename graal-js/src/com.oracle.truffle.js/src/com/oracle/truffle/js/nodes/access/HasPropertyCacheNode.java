@@ -230,7 +230,7 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
 
         @Override
         protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
-            if (JSObject.isJSDynamicObject(thisObj)) {
+            if (JSDynamicObject.isJSDynamicObject(thisObj)) {
                 Object key = root.getKey();
                 if (root.isOwnProperty()) {
                     return JSObject.hasOwnProperty((DynamicObject) thisObj, key, jsclassProfile);
@@ -278,7 +278,7 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
     protected HasCacheNode createCachedPropertyNode(Property property, Object thisObj, int depth, Object value, HasCacheNode currentHead) {
         assert !isOwnProperty() || depth == 0;
         ReceiverCheckNode check;
-        if (JSObject.isJSDynamicObject(thisObj)) {
+        if (JSDynamicObject.isJSDynamicObject(thisObj)) {
             JSDynamicObject thisJSObj = (JSDynamicObject) thisObj;
             Shape cacheShape = thisJSObj.getShape();
             check = createShapeCheckNode(cacheShape, thisJSObj, depth, false, false);
@@ -294,7 +294,7 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
         if (specialized != null) {
             return specialized;
         }
-        if (JSObject.isJSDynamicObject(thisObj)) {
+        if (JSDynamicObject.isJSDynamicObject(thisObj)) {
             JSDynamicObject thisJSObj = (JSDynamicObject) thisObj;
             Shape cacheShape = thisJSObj.getShape();
             AbstractShapeCheckNode shapeCheck = createShapeCheckNode(cacheShape, thisJSObj, depth, false, false);

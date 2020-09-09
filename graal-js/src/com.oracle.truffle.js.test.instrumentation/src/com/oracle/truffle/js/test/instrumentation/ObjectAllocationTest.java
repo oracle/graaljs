@@ -51,7 +51,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public class ObjectAllocationTest extends FineGrainedAccessTest {
 
@@ -74,7 +74,7 @@ public class ObjectAllocationTest extends FineGrainedAccessTest {
                 }).exit();
             }).exit();
             write.input((e1) -> {
-                assertTrue(JSObject.isJSDynamicObject(e1.val));
+                assertTrue(JSDynamicObject.isJSDynamicObject(e1.val));
             });
         }).exit();
 
@@ -83,7 +83,7 @@ public class ObjectAllocationTest extends FineGrainedAccessTest {
             prop.input(assertGlobalObjectInput);
             enter(LiteralTag.class).exit();
             prop.input((e1) -> {
-                assertTrue(JSObject.isJSDynamicObject(e1.val));
+                assertTrue(JSDynamicObject.isJSDynamicObject(e1.val));
             });
         }).exit();
 
@@ -110,11 +110,11 @@ public class ObjectAllocationTest extends FineGrainedAccessTest {
                     assertAttribute(e2, LITERAL_TYPE, LiteralTag.Type.ObjectLiteral.name());
                 }).exit();
                 lit.input((e2) -> {
-                    assertTrue(JSObject.isJSDynamicObject(e2.val));
+                    assertTrue(JSDynamicObject.isJSDynamicObject(e2.val));
                 });
             }).exit();
             prop.input((e1) -> {
-                assertTrue(JSObject.isJSDynamicObject(e1.val));
+                assertTrue(JSDynamicObject.isJSDynamicObject(e1.val));
             });
         }).exit();
 
@@ -148,7 +148,7 @@ public class ObjectAllocationTest extends FineGrainedAccessTest {
                 });
             }).exit();
             prop.input((e1) -> {
-                assertTrue(JSObject.isJSDynamicObject(e1.val));
+                assertTrue(JSDynamicObject.isJSDynamicObject(e1.val));
             });
         }).exit();
     }

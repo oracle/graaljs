@@ -298,7 +298,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 }
             } else {
                 Object tobject = toObject(object);
-                if (JSObject.isJSDynamicObject(tobject)) {
+                if (JSDynamicObject.isJSDynamicObject(tobject)) {
                     return JSObject.getPrototype((DynamicObject) tobject);
                 } else {
                     if (getContext().getContextOptions().hasForeignObjectPrototype()) {
@@ -380,7 +380,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"!isJSObject(thisObj)", "!isForeignObject(thisObj)"})
         protected DynamicObject getDefault(Object thisObj, Object property) {
             Object object = toObject(thisObj);
-            assert JSObject.isJSDynamicObject(object);
+            assert JSDynamicObject.isJSDynamicObject(object);
             return getJSObject((DynamicObject) object, property);
         }
 

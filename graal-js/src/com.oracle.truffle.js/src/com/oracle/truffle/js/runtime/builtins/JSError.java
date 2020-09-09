@@ -444,7 +444,7 @@ public final class JSError extends JSNonProxy {
     }
 
     public static boolean isJSError(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSError((DynamicObject) obj);
+        return JSDynamicObject.isJSDynamicObject(obj) && isJSError((DynamicObject) obj);
     }
 
     public static boolean isJSError(DynamicObject obj) {

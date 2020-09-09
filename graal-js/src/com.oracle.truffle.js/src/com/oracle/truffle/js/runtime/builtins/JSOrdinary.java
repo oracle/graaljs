@@ -48,6 +48,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
@@ -147,7 +148,7 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
     }
 
     public static boolean isJSOrdinaryObject(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSOrdinaryObject((DynamicObject) obj);
+        return JSDynamicObject.isJSDynamicObject(obj) && isJSOrdinaryObject((DynamicObject) obj);
     }
 
     public static boolean isJSOrdinaryObject(DynamicObject obj) {

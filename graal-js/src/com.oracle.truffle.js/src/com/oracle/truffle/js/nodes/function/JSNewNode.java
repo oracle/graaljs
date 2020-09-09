@@ -79,6 +79,7 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.java.JavaAccess;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -175,7 +176,7 @@ public abstract class JSNewNode extends JavaScriptNode {
         Object target = JSProxy.getTarget(proxy);
         Object trap = JSProxy.getTrapFromObject(handler, JSProxy.CONSTRUCT);
         if (trap == Undefined.instance) {
-            if (JSObject.isJSDynamicObject(target)) {
+            if (JSDynamicObject.isJSDynamicObject(target)) {
                 // Construct(F=target, argumentsList=frame, newTarget=proxy)
                 int userArgumentCount = arguments.getCount(frame);
                 Object[] args = JSArguments.createInitialWithNewTarget(JSFunction.CONSTRUCT, target, proxy, userArgumentCount);

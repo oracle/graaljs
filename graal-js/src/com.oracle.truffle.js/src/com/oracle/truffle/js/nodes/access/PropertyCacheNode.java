@@ -761,7 +761,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @ExplodeLoop
         @Override
         public boolean accept(Object thisObj) {
-            if (!JSObject.isJSDynamicObject(thisObj)) {
+            if (!JSDynamicObject.isJSDynamicObject(thisObj)) {
                 return false;
             }
             DynamicObject current = (DynamicObject) thisObj;
@@ -832,7 +832,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean accept(Object thisObj) {
-            if (JSObject.isJSDynamicObject(thisObj)) {
+            if (JSDynamicObject.isJSDynamicObject(thisObj)) {
                 DynamicObject jsobj = (DynamicObject) thisObj;
                 if (getShape().check(jsobj)) {
                     // Return the shape check of the prototype we're going to access.
@@ -1190,12 +1190,12 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         T specialized = null;
 
         DynamicObject store = null;
-        if (JSObject.isJSDynamicObject(thisObj)) {
+        if (JSDynamicObject.isJSDynamicObject(thisObj)) {
             if ((!JSAdapter.isJSAdapter(thisObj) && !JSProxy.isJSProxy(thisObj)) || key instanceof HiddenKey) {
                 store = (DynamicObject) thisObj;
             }
         } else if (JSRuntime.isForeignObject(thisObj)) {
-            assert !JSObject.isJSDynamicObject(thisObj);
+            assert !JSDynamicObject.isJSDynamicObject(thisObj);
             specialized = createTruffleObjectPropertyNode();
         } else {
             store = wrapPrimitive(thisObj, context);
@@ -1408,7 +1408,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     protected static final DynamicObject wrapPrimitive(Object thisObject, JSContext context) {
         // wrap primitives for lookup
         Object wrapper = JSRuntime.toObjectFromPrimitive(context, thisObject, false);
-        return JSObject.isJSDynamicObject(wrapper) ? ((JSDynamicObject) wrapper) : null;
+        return JSDynamicObject.isJSDynamicObject(wrapper) ? ((JSDynamicObject) wrapper) : null;
     }
 
     protected final AbstractShapeCheckNode createShapeCheckNode(Shape shape, JSDynamicObject thisObj, int depth, boolean isConstantObjectFinal, boolean isDefine) {

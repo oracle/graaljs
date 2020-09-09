@@ -60,6 +60,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
@@ -103,7 +104,7 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
         Object target = JSProxy.getTarget(proxy);
         Object trapFun = trapGet.executeWithTarget(handler);
         if (hasTrap.profile(trapFun == Undefined.instance)) {
-            if (JSObject.isJSDynamicObject(target)) {
+            if (JSDynamicObject.isJSDynamicObject(target)) {
                 return JSObject.setWithReceiver((DynamicObject) target, propertyKey, value, receiver, isStrict, targetClassProfile);
             } else {
                 truffleWrite(target, propertyKey, value);

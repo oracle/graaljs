@@ -57,6 +57,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
@@ -174,7 +175,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
 
     protected Object getElement(Object target, long index, boolean isForeign) {
         if (!isForeign) {
-            assert JSObject.isJSDynamicObject(target);
+            assert JSDynamicObject.isJSDynamicObject(target);
             return JSObject.get((DynamicObject) target, index, targetClassProfile);
         } else {
             return foreignRead(target, index);

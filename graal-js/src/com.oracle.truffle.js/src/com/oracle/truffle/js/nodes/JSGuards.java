@@ -84,6 +84,7 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSPluralRules;
 import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -119,14 +120,14 @@ public final class JSGuards {
      * Like isJSObject, but including Null and Undefined.
      */
     public static boolean isJSDynamicObject(Object value) {
-        return JSObject.isJSDynamicObject(value);
+        return JSDynamicObject.isJSDynamicObject(value);
     }
 
     /**
      * Like isJSObject, but including Null and Undefined.
      */
     public static boolean isJSDynamicObject(DynamicObject value) {
-        return JSObject.isJSDynamicObject(value);
+        return JSDynamicObject.isJSDynamicObject(value);
     }
 
     public static boolean isTruffleObject(Object value) {
@@ -142,7 +143,7 @@ public final class JSGuards {
     }
 
     public static boolean isForeignObject(TruffleObject value) {
-        return !JSObject.isJSDynamicObject(value) && !(value instanceof Symbol) && !(value instanceof JSLazyString) && !(value instanceof SafeInteger) && !(value instanceof BigInt);
+        return !JSDynamicObject.isJSDynamicObject(value) && !(value instanceof Symbol) && !(value instanceof JSLazyString) && !(value instanceof SafeInteger) && !(value instanceof BigInt);
     }
 
     public static boolean isUndefined(Object value) {
@@ -154,7 +155,7 @@ public final class JSGuards {
     }
 
     public static boolean isDynamicObject(Object value) {
-        return JSObject.isJSDynamicObject(value);
+        return JSDynamicObject.isJSDynamicObject(value);
     }
 
     public static boolean isJSFunction(Object value) {
@@ -568,7 +569,7 @@ public final class JSGuards {
     }
 
     public static JSClass getJSClassChecked(DynamicObject object) {
-        if (JSObject.isJSDynamicObject(object)) {
+        if (JSDynamicObject.isJSDynamicObject(object)) {
             return JSObject.getJSClass(object);
         } else {
             return null;

@@ -50,6 +50,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.SparseArray;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -66,7 +67,7 @@ public final class JSSlowArray extends JSAbstractArray {
     }
 
     public static boolean isJSSlowArray(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSSlowArray((DynamicObject) obj);
+        return JSDynamicObject.isJSDynamicObject(obj) && isJSSlowArray((DynamicObject) obj);
     }
 
     public static boolean isJSSlowArray(DynamicObject obj) {

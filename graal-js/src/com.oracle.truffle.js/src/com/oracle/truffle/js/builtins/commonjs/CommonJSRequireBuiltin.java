@@ -61,6 +61,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 import java.util.Map;
@@ -250,7 +251,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
                 assert source != null;
                 String jsonString = source.getCharacters().toString();
                 Object jsonObj = JSFunction.call(JSArguments.create(parse, parse, jsonString));
-                if (JSObject.isJSDynamicObject(jsonObj)) {
+                if (JSDynamicObject.isJSDynamicObject(jsonObj)) {
                     return (DynamicObject) jsonObj;
                 }
             }
@@ -317,7 +318,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
     }
 
     private TruffleFile getModuleResolutionEntryPath(DynamicObject currentRequire, TruffleLanguage.Env env) {
-        if (JSObject.isJSDynamicObject(currentRequire)) {
+        if (JSDynamicObject.isJSDynamicObject(currentRequire)) {
             Object maybeFilename = JSObject.get(currentRequire, FILENAME_VAR_NAME);
             if (JSRuntime.isString(maybeFilename)) {
                 String fileName = JSRuntime.toStringIsString(maybeFilename);

@@ -51,6 +51,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 
@@ -83,12 +84,12 @@ public abstract class JSArrayElementIndexNode extends JavaScriptBaseNode {
 
     protected final boolean isSuitableForEnumBasedProcessingUsingOwnKeys(Object object, long length) {
         return length > JSConfig.BigArrayThreshold && !JSArrayBufferView.isJSArrayBufferView(object) && !JSProxy.isJSProxy(object) &&
-                        ((JSArray.isJSArray(object) && context.getArrayPrototypeNoElementsAssumption().isValid()) || !JSObject.isJSDynamicObject(object) ||
+                        ((JSArray.isJSArray(object) && context.getArrayPrototypeNoElementsAssumption().isValid()) || !JSDynamicObject.isJSDynamicObject(object) ||
                                         JSObject.getPrototype((DynamicObject) object) == Null.instance);
     }
 
     protected static final boolean isSuitableForEnumBasedProcessing(Object object, long length) {
-        if (length <= JSConfig.BigArrayThreshold || !JSObject.isJSDynamicObject(object)) {
+        if (length <= JSConfig.BigArrayThreshold || !JSDynamicObject.isJSDynamicObject(object)) {
             return false;
         }
         DynamicObject chainObject = (DynamicObject) object;

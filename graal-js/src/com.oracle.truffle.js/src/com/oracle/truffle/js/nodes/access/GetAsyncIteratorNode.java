@@ -53,7 +53,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 import java.util.Set;
@@ -96,7 +96,7 @@ public abstract class GetAsyncIteratorNode extends GetIteratorNode {
 
     private DynamicObject createAsyncFromSyncIterator(IteratorRecord syncIteratorRecord) {
         DynamicObject syncIterator = syncIteratorRecord.getIterator();
-        if (!JSObject.isJSDynamicObject(syncIterator)) {
+        if (!JSDynamicObject.isJSDynamicObject(syncIterator)) {
             throw Errors.createTypeErrorNotAnObject(syncIterator, this);
         }
         DynamicObject obj = JSOrdinary.create(context, context.getAsyncFromSyncIteratorFactory());

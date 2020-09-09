@@ -52,6 +52,7 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -382,7 +383,7 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createTypeErrorConstReassignment(Object key, Object thisObj, Node originatingNode) {
-        if (JSObject.isJSDynamicObject(thisObj) && JSObject.getJSContext((DynamicObject) thisObj).isOptionV8CompatibilityMode()) {
+        if (JSDynamicObject.isJSDynamicObject(thisObj) && JSObject.getJSContext((DynamicObject) thisObj).isOptionV8CompatibilityMode()) {
             throw Errors.createTypeError("Assignment to constant variable.", originatingNode);
         }
         throw Errors.createTypeError("Assignment to constant \"" + key + "\"", originatingNode);

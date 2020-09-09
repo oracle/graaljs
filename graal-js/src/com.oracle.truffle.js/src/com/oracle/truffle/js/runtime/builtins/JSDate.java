@@ -64,7 +64,6 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
@@ -119,7 +118,7 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
     }
 
     public static boolean isJSDate(Object obj) {
-        return JSObject.isJSDynamicObject(obj) && isJSDate((DynamicObject) obj);
+        return JSDynamicObject.isJSDynamicObject(obj) && isJSDate((DynamicObject) obj);
     }
 
     public static boolean isJSDate(DynamicObject obj) {
