@@ -71,11 +71,11 @@ import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.doubleconv.DoubleConversion;
 import com.oracle.truffle.js.runtime.external.DToA;
 import com.oracle.truffle.js.runtime.interop.InteropFunction;
@@ -268,35 +268,19 @@ public final class JSRuntime {
         return vo instanceof JSObject;
     }
 
-    /**
-     * Returns whether object is a DynamicObject. JS-Null and JS-Undefined are not considered
-     * objects.
-     */
-    public static boolean isObject(DynamicObject vo) {
-        assert vo instanceof JSObject == hasJSObjectType(vo);
-        return vo instanceof JSObject;
-    }
-
     private static boolean hasJSObjectType(Object vo) {
-        return JSDynamicObject.isJSDynamicObject(vo) && isObject((DynamicObject) vo);
-    }
-
-    private static boolean hasJSObjectType(DynamicObject vo) {
-        ObjectType type = vo.getShape().getObjectType();
-        return (type instanceof JSClass) && (type != Null.NULL_CLASS);
+        if (JSDynamicObject.isJSDynamicObject(vo)) {
+            ObjectType type = ((JSDynamicObject) vo).getShape().getObjectType();
+            return (type instanceof JSClass) && (type != Null.NULL_CLASS);
+        } else {
+            return false;
+        }
     }
 
     /**
      * Returns whether {@code value} is JS {@code null} or {@code undefined}.
      */
     public static boolean isNullOrUndefined(Object value) {
-        return value instanceof Nullish;
-    }
-
-    /**
-     * Returns whether {@code value} is JS {@code null} or {@code undefined}.
-     */
-    public static boolean isNullOrUndefined(DynamicObject value) {
         return value instanceof Nullish;
     }
 

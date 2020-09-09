@@ -48,7 +48,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
@@ -85,7 +84,6 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -109,24 +107,9 @@ public final class JSGuards {
     }
 
     /**
-     * Is this a DynamicObject representing a JavaScript object; this excludes Null and Undefined,
-     * and excludes objects from other languages.
-     */
-    public static boolean isJSObject(DynamicObject value) {
-        return JSRuntime.isObject(value);
-    }
-
-    /**
      * Like isJSObject, but including Null and Undefined.
      */
     public static boolean isJSDynamicObject(Object value) {
-        return JSDynamicObject.isJSDynamicObject(value);
-    }
-
-    /**
-     * Like isJSObject, but including Null and Undefined.
-     */
-    public static boolean isJSDynamicObject(DynamicObject value) {
         return JSDynamicObject.isJSDynamicObject(value);
     }
 
@@ -140,10 +123,6 @@ public final class JSGuards {
 
     public static boolean isForeignObject(Object value) {
         return JSRuntime.isForeignObject(value);
-    }
-
-    public static boolean isForeignObject(TruffleObject value) {
-        return !JSDynamicObject.isJSDynamicObject(value) && !(value instanceof Symbol) && !(value instanceof JSLazyString) && !(value instanceof SafeInteger) && !(value instanceof BigInt);
     }
 
     public static boolean isUndefined(Object value) {
@@ -170,10 +149,6 @@ public final class JSGuards {
         return isJSFunction(value) && JSFunction.isBoundFunction((DynamicObject) value);
     }
 
-    public static boolean isJSFunction(DynamicObject value) {
-        return JSFunction.isJSFunction(value);
-    }
-
     public static boolean isCallable(Object reviver) {
         return JSRuntime.isCallable(reviver);
     }
@@ -182,56 +157,28 @@ public final class JSGuards {
         return JSRuntime.isCallableProxy(proxy);
     }
 
-    public static boolean isJSString(DynamicObject value) {
-        return JSString.isJSString(value);
-    }
-
     public static boolean isJSString(Object value) {
         return JSString.isJSString(value);
-    }
-
-    public static boolean isJSNumber(DynamicObject value) {
-        return JSNumber.isJSNumber(value);
     }
 
     public static boolean isJSNumber(Object value) {
         return JSNumber.isJSNumber(value);
     }
 
-    public static boolean isJSBigInt(DynamicObject value) {
-        return JSBigInt.isJSBigInt(value);
-    }
-
     public static boolean isJSBigInt(Object value) {
         return JSBigInt.isJSBigInt(value);
-    }
-
-    public static boolean isJSBoolean(DynamicObject value) {
-        return JSBoolean.isJSBoolean(value);
     }
 
     public static boolean isJSBoolean(Object value) {
         return JSBoolean.isJSBoolean(value);
     }
 
-    public static boolean isJSDate(DynamicObject value) {
-        return JSDate.isJSDate(value);
-    }
-
     public static boolean isJSDate(Object value) {
         return JSDate.isJSDate(value);
     }
 
-    public static boolean isJSArray(DynamicObject value) {
-        return JSArray.isJSArray(value);
-    }
-
     public static boolean isJSArray(Object value) {
         return JSArray.isJSArray(value);
-    }
-
-    public static boolean isJSArgumentsObject(DynamicObject value) {
-        return JSArgumentsArray.isJSArgumentsObject(value);
     }
 
     public static boolean isJSArgumentsObject(Object value) {
@@ -242,80 +189,40 @@ public final class JSGuards {
         return JSRegExp.isJSRegExp(value);
     }
 
-    public static boolean isJSRegExp(DynamicObject value) {
-        return JSRegExp.isJSRegExp(value);
-    }
-
     public static boolean isJSOrdinaryObject(Object value) {
         return JSOrdinary.isJSOrdinaryObject(value);
-    }
-
-    public static boolean isJSDateTimeFormat(DynamicObject value) {
-        return JSDateTimeFormat.isJSDateTimeFormat(value);
     }
 
     public static boolean isJSDateTimeFormat(Object value) {
         return JSDateTimeFormat.isJSDateTimeFormat(value);
     }
 
-    public static boolean isJSCollator(DynamicObject value) {
-        return JSCollator.isJSCollator(value);
-    }
-
     public static boolean isJSCollator(Object value) {
         return JSCollator.isJSCollator(value);
-    }
-
-    public static boolean isJSListFormat(DynamicObject value) {
-        return JSListFormat.isJSListFormat(value);
     }
 
     public static boolean isJSListFormat(Object value) {
         return JSListFormat.isJSListFormat(value);
     }
 
-    public static boolean isJSNumberFormat(DynamicObject value) {
-        return JSNumberFormat.isJSNumberFormat(value);
-    }
-
     public static boolean isJSNumberFormat(Object value) {
         return JSNumberFormat.isJSNumberFormat(value);
-    }
-
-    public static boolean isJSPluralRules(DynamicObject value) {
-        return JSPluralRules.isJSPluralRules(value);
     }
 
     public static boolean isJSPluralRules(Object value) {
         return JSPluralRules.isJSPluralRules(value);
     }
 
-    public static boolean isJSRelativeTimeFormat(DynamicObject value) {
-        return JSRelativeTimeFormat.isJSRelativeTimeFormat(value);
-    }
-
     public static boolean isJSRelativeTimeFormat(Object value) {
         return JSRelativeTimeFormat.isJSRelativeTimeFormat(value);
-    }
-
-    public static boolean isJSSegmenter(DynamicObject value) {
-        return JSSegmenter.isJSSegmenter(value);
     }
 
     public static boolean isJSSegmenter(Object value) {
         return JSSegmenter.isJSSegmenter(value);
     }
 
-    public static boolean isJSDisplayNames(DynamicObject value) {
-        return JSDisplayNames.isJSDisplayNames(value);
-    }
-
     public static boolean isJSDisplayNames(Object value) {
         return JSDisplayNames.isJSDisplayNames(value);
-    }
-
-    public static boolean isJSLocale(DynamicObject value) {
-        return JSLocale.isJSLocale(value);
     }
 
     public static boolean isJSLocale(Object value) {
@@ -362,120 +269,60 @@ public final class JSGuards {
         return operand instanceof Symbol;
     }
 
-    public static boolean isJSHeapArrayBuffer(DynamicObject thisObj) {
-        return JSArrayBuffer.isJSHeapArrayBuffer(thisObj);
-    }
-
     public static boolean isJSHeapArrayBuffer(Object thisObj) {
         return JSArrayBuffer.isJSHeapArrayBuffer(thisObj);
-    }
-
-    public static boolean isJSDirectArrayBuffer(DynamicObject thisObj) {
-        return JSArrayBuffer.isJSDirectArrayBuffer(thisObj);
     }
 
     public static boolean isJSDirectArrayBuffer(Object thisObj) {
         return JSArrayBuffer.isJSDirectArrayBuffer(thisObj);
     }
 
-    public static boolean isJSSharedArrayBuffer(DynamicObject thisObj) {
-        return JSSharedArrayBuffer.isJSSharedArrayBuffer(thisObj);
-    }
-
     public static boolean isJSSharedArrayBuffer(Object thisObj) {
         return JSSharedArrayBuffer.isJSSharedArrayBuffer(thisObj);
-    }
-
-    public static boolean isJSArrayBufferView(DynamicObject thisObj) {
-        return JSArrayBufferView.isJSArrayBufferView(thisObj);
     }
 
     public static boolean isJSArrayBufferView(Object thisObj) {
         return JSArrayBufferView.isJSArrayBufferView(thisObj);
     }
 
-    public static boolean isJSFastArray(DynamicObject value) {
-        return JSArray.isJSFastArray(value);
-    }
-
     public static boolean isJSFastArray(Object value) {
         return JSArray.isJSFastArray(value);
-    }
-
-    public static boolean isJSProxy(DynamicObject value) {
-        return JSProxy.isJSProxy(value);
     }
 
     public static boolean isJSProxy(Object value) {
         return JSProxy.isJSProxy(value);
     }
 
-    public static boolean isJSFastArguments(DynamicObject value) {
-        return JSArgumentsArray.isJSFastArgumentsObject(value);
-    }
-
     public static boolean isJSFastArguments(Object value) {
         return JSArgumentsArray.isJSFastArgumentsObject(value);
-    }
-
-    public static boolean isJSSymbol(DynamicObject value) {
-        return JSSymbol.isJSSymbol(value);
     }
 
     public static boolean isJSSymbol(Object value) {
         return JSSymbol.isJSSymbol(value);
     }
 
-    public static boolean isJSMap(DynamicObject value) {
-        return JSMap.isJSMap(value);
-    }
-
     public static boolean isJSMap(Object value) {
         return JSMap.isJSMap(value);
-    }
-
-    public static boolean isJSSet(DynamicObject value) {
-        return JSSet.isJSSet(value);
     }
 
     public static boolean isJSSet(Object value) {
         return JSSet.isJSSet(value);
     }
 
-    public static boolean isJSWeakRef(DynamicObject value) {
-        return JSWeakRef.isJSWeakRef(value);
-    }
-
     public static boolean isJSWeakRef(Object value) {
         return JSWeakRef.isJSWeakRef(value);
-    }
-
-    public static boolean isJSFinalizationRegistry(DynamicObject value) {
-        return JSFinalizationRegistry.isJSFinalizationRegistry(value);
     }
 
     public static boolean isJSFinalizationRegistry(Object value) {
         return JSFinalizationRegistry.isJSFinalizationRegistry(value);
     }
 
-    public static boolean isJSWeakMap(DynamicObject value) {
-        return JSWeakMap.isJSWeakMap(value);
-    }
-
     public static boolean isJSWeakMap(Object value) {
         return JSWeakMap.isJSWeakMap(value);
     }
 
-    public static boolean isJSWeakSet(DynamicObject value) {
-        return JSWeakSet.isJSWeakSet(value);
-    }
-
     public static boolean isJSWeakSet(Object value) {
         return JSWeakSet.isJSWeakSet(value);
-    }
-
-    public static boolean isJSModuleNamespace(DynamicObject value) {
-        return JSModuleNamespace.isJSModuleNamespace(value);
     }
 
     public static boolean isJSModuleNamespace(Object value) {
@@ -483,10 +330,6 @@ public final class JSGuards {
     }
 
     public static boolean isJSAdapter(Object object) {
-        return JSAdapter.isJSAdapter(object);
-    }
-
-    public static boolean isJSAdapter(DynamicObject object) {
         return JSAdapter.isJSAdapter(object);
     }
 
@@ -613,10 +456,6 @@ public final class JSGuards {
     }
 
     public static boolean isNullOrUndefined(Object value) {
-        return JSRuntime.isNullOrUndefined(value);
-    }
-
-    public static boolean isNullOrUndefined(DynamicObject value) {
         return JSRuntime.isNullOrUndefined(value);
     }
 
