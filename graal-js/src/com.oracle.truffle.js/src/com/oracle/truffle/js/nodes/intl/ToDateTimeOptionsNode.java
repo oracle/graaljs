@@ -46,10 +46,12 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 // https://tc39.github.io/ecma402/#sec-todatetimeoptions
 public abstract class ToDateTimeOptionsNode extends JavaScriptBaseNode {
@@ -94,6 +96,17 @@ public abstract class ToDateTimeOptionsNode extends JavaScriptBaseNode {
                 needDefaults &= JSGuards.isUndefined(JSObject.get(options, "minute"));
                 needDefaults &= JSGuards.isUndefined(JSObject.get(options, "second"));
             }
+        }
+        Object dateStyle = JSObject.get(options, "dateStyle");
+        Object timeStyle = JSObject.get(options, "timeStyle");
+        if (dateStyle != Undefined.instance || timeStyle != Undefined.instance) {
+            needDefaults = false;
+        }
+        if ("date".equals(required) && timeStyle != Undefined.instance) {
+            throw Errors.createTypeError("timeStyle option is not allowed here");
+        }
+        if ("time".equals(required) && dateStyle != Undefined.instance) {
+            throw Errors.createTypeError("dateStyle option is not allowed here");
         }
         if (defaults != null) {
             if (needDefaults && (defaults.equals("date") || defaults.equals("all"))) {
