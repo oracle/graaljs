@@ -35,22 +35,6 @@
     "status" : "FAIL",
     "comment" : "new test failures (update 2020-07-22)"
   }, {
-    "filePath" : "intl/date-format/constructor-date-style-order.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
-  }, {
-    "filePath" : "intl/date-format/constructor-date-time-style-order.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
-  }, {
-    "filePath" : "intl/date-format/constructor-no-style-order.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
-  }, {
-    "filePath" : "intl/date-format/constructor-time-style-order.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
-  }, {
     "filePath" : "intl/date-format/date_style_time_style_hour_cycle.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
