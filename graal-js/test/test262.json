@@ -1916,10 +1916,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2020-07-21"
   }, {
-    "filePath" : "intl402/Locale/prototype/minimize/removing-likely-subtags-first-adds-likely-subtags.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
     "filePath" : "intl402/RelativeTimeFormat/prototype/format/pl-pl-style-long.js",
     "status" : "FAIL",
     "comment" : "new failures 2020-07-21"

@@ -375,13 +375,18 @@ public final class JSLocale extends JSBuiltinObject implements JSConstructorFact
 
         @TruffleBoundary
         public String minimize() {
+            // minimize() corresponds to Remove Likely Subtags.
+            // This operation is supposed to invoke Add Likely Subtags
+            // before the minimization. Unfortunately, ULocale.minimizeSubtags()
+            // fails to do so => we invoke addLikelySubtags() explicitly.
+            ULocale max = ULocale.addLikelySubtags(ULocale.forLocale(locale));
             // ULocale.minimizeSubtags() tends to add "yes" type to Unicode extensions
             // => use this method to get language/script/region only.
-            ULocale max = ULocale.minimizeSubtags(ULocale.forLocale(locale));
+            ULocale min = ULocale.minimizeSubtags(max);
             Locale.Builder builder = new Locale.Builder().setLocale(locale);
-            builder.setLanguage(max.getLanguage());
-            builder.setScript(max.getScript());
-            builder.setRegion(max.getCountry());
+            builder.setLanguage(min.getLanguage());
+            builder.setScript(min.getScript());
+            builder.setRegion(min.getCountry());
             return builder.build().toLanguageTag();
         }
     }
