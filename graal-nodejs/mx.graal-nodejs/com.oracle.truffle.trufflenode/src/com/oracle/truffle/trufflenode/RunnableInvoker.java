@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.trufflenode;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -64,11 +65,13 @@ public final class RunnableInvoker implements TruffleObject {
 
     @SuppressWarnings("static-method")
     @ExportMessage
+    @TruffleBoundary
     boolean isMemberInvocable(String name) {
         return "run".equals(name);
     }
 
     @ExportMessage
+    @TruffleBoundary
     Object invokeMember(String name, @SuppressWarnings("unused") Object[] args) throws UnknownIdentifierException {
         if ("run".equals(name)) {
             runnable.run();
@@ -80,6 +83,7 @@ public final class RunnableInvoker implements TruffleObject {
 
     @SuppressWarnings("static-method")
     @ExportMessage
+    @TruffleBoundary
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
