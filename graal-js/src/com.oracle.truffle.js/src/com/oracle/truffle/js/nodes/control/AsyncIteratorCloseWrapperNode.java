@@ -57,7 +57,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 import java.util.Set;
@@ -161,7 +161,7 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
                 throw JSRuntime.rethrow((Throwable) completion.getValue());
             }
             Object innerResult = resumeAwait(frame);
-            if (!JSObject.isJSObject(innerResult)) {
+            if (!JSDynamicObject.isJSDynamicObject(innerResult)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorIterResultNotAnObject(innerResult, this);
             }

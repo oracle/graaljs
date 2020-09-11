@@ -42,7 +42,6 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 
@@ -51,14 +50,12 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.Dead;
@@ -66,7 +63,6 @@ import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
@@ -76,21 +72,24 @@ import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 /**
  * Module Namespace Exotic Objects.
  */
-public final class JSModuleNamespace extends JSBuiltinObject {
+public final class JSModuleNamespace extends JSNonProxy {
 
     public static final JSModuleNamespace INSTANCE = new JSModuleNamespace();
 
     public static final String CLASS_NAME = "Module";
 
-    private static final HiddenKey MODULE_ID = new HiddenKey("module");
-    private static final HiddenKey EXPORTS_ID = new HiddenKey("exports");
+    private JSModuleNamespace() {
+    }
 
     /**
      * [[Module]]. Module Record.
      *
      * The Module Record whose exports this namespace exposes.
      */
-    private static final Property MODULE_PROPERTY;
+    public static JSModuleRecord getModule(DynamicObject obj) {
+        assert isJSModuleNamespace(obj);
+        return ((JSModuleNamespaceObject) obj).getModule();
+    }
 
     /**
      * [[Exports]]. List of String.
@@ -99,38 +98,22 @@ public final class JSModuleNamespace extends JSBuiltinObject {
      * object. The list is ordered as if an Array of those String values had been sorted using
      * Array.prototype.sort using SortCompare as comparefn.
      */
-    private static final Property EXPORTS_PROPERTY;
-
-    static {
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        MODULE_PROPERTY = JSObjectUtil.makeHiddenProperty(MODULE_ID, allocator.locationForType(Object.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
-        EXPORTS_PROPERTY = JSObjectUtil.makeHiddenProperty(EXPORTS_ID, allocator.locationForType(Object.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
-    }
-
-    private JSModuleNamespace() {
-    }
-
-    public static JSModuleRecord getModule(DynamicObject obj) {
-        assert isJSModuleNamespace(obj);
-        return (JSModuleRecord) MODULE_PROPERTY.get(obj, isJSModuleNamespace(obj));
-    }
-
-    @SuppressWarnings("unchecked")
     public static Map<String, ExportResolution> getExports(DynamicObject obj) {
         assert isJSModuleNamespace(obj);
-        return (Map<String, ExportResolution>) EXPORTS_PROPERTY.get(obj, isJSModuleNamespace(obj));
+        return ((JSModuleNamespaceObject) obj).getExports();
     }
 
-    public static DynamicObject create(JSContext context, Object module, Map<String, ExportResolution> exports) {
-        DynamicObject obj = JSObject.createWithBoundPrototype(context, context.getModuleNamespaceFactory(), module, exports);
+    public static DynamicObject create(JSContext context, JSModuleRecord module, Map<String, ExportResolution> exports) {
+        JSRealm realm = context.getRealm();
+        JSObjectFactory factory = context.getModuleNamespaceFactory();
+        DynamicObject obj = JSModuleNamespaceObject.create(realm, factory, module, exports);
         assert isJSModuleNamespace(obj);
-        return obj;
+        assert !JSObject.isExtensible(obj);
+        return context.trackAllocation(obj);
     }
 
     public static Shape makeInitialShape(JSContext context) {
-        Shape initialShape = JSShape.makeEmptyRoot(JSObject.LAYOUT, INSTANCE, context);
-        initialShape = initialShape.addProperty(MODULE_PROPERTY);
-        initialShape = initialShape.addProperty(EXPORTS_PROPERTY);
+        Shape initialShape = JSShape.newBuilder(context, INSTANCE).shapeFlags(JSShape.NOT_EXTENSIBLE_FLAG).build();
 
         /*
          * The initial value of the @@toStringTag property is the String value "Module".
@@ -138,11 +121,11 @@ public final class JSModuleNamespace extends JSBuiltinObject {
          * This property has the attributes { [[Writable]]: false, [[Enumerable]]: false,
          * [[Configurable]]: false }.
          */
-        Property toStringTagProperty = JSObjectUtil.makeDataProperty(Symbol.SYMBOL_TO_STRING_TAG, initialShape.allocator().constantLocation(CLASS_NAME),
-                        JSAttributes.notConfigurableNotEnumerableNotWritable());
-        initialShape = initialShape.addProperty(toStringTagProperty);
-
-        return JSShape.makeNotExtensible(initialShape);
+        initialShape = Shape.newBuilder(initialShape).//
+                        addConstantProperty(JSObject.HIDDEN_PROTO, Null.instance, 0).//
+                        addConstantProperty(Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.notConfigurableNotEnumerableNotWritable()).build();
+        assert !JSShape.isExtensible(initialShape);
+        return initialShape;
     }
 
     @Override
@@ -171,7 +154,7 @@ public final class JSModuleNamespace extends JSBuiltinObject {
         }
     }
 
-    private static Object getBindingValue(ExportResolution binding) {
+    static Object getBindingValue(ExportResolution binding) {
         JSModuleRecord targetModule = binding.getModule();
         MaterializedFrame targetEnv = targetModule.getEnvironment();
         if (targetEnv == null) {
@@ -271,11 +254,7 @@ public final class JSModuleNamespace extends JSBuiltinObject {
     }
 
     public static boolean isJSModuleNamespace(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSModuleNamespace((DynamicObject) obj);
-    }
-
-    public static boolean isJSModuleNamespace(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSModuleNamespaceObject;
     }
 
     @TruffleBoundary
@@ -311,7 +290,7 @@ public final class JSModuleNamespace extends JSBuiltinObject {
                 throw Errors.createTypeError("not allowed to freeze a namespace object");
             }
         } else {
-            // Check for uninitalized bindings
+            // Check for uninitialized bindings
             for (ExportResolution binding : getExports(obj).values()) {
                 // can throw ReferenceError
                 getBindingValue(binding);

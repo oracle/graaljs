@@ -60,7 +60,8 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 import java.util.Map;
@@ -207,8 +208,8 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         DynamicObject exportsBuiltin = createExportsBuiltin(realm);
         DynamicObject moduleBuiltin = createModuleBuiltin(realm, exportsBuiltin, filenameBuiltin);
         DynamicObject requireBuiltin = createRequireBuiltin(realm, moduleBuiltin, filenameBuiltin);
-        DynamicObject env = JSUserObject.create(getContext());
-        JSObject.set(env, ENV_PROPERTY_NAME, JSUserObject.create(getContext()));
+        DynamicObject env = JSOrdinary.create(getContext());
+        JSObject.set(env, ENV_PROPERTY_NAME, JSOrdinary.create(getContext()));
         // Parse the module
         CharSequence characters = MODULE_PREAMBLE + source.getCharacters() + MODULE_END;
         Source moduleSources = Source.newBuilder(JavaScriptLanguage.ID, characters, filenameBuiltin).mimeType(JavaScriptLanguage.TEXT_MIME_TYPE).build();
@@ -250,7 +251,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
                 assert source != null;
                 String jsonString = source.getCharacters().toString();
                 Object jsonObj = JSFunction.call(JSArguments.create(parse, parse, jsonString));
-                if (JSObject.isJSObject(jsonObj)) {
+                if (JSDynamicObject.isJSDynamicObject(jsonObj)) {
                     return (DynamicObject) jsonObj;
                 }
             }
@@ -274,7 +275,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
     }
 
     private static DynamicObject createModuleBuiltin(JSRealm realm, DynamicObject exportsBuiltin, String fileNameBuiltin) {
-        DynamicObject module = JSUserObject.create(realm.getContext(), realm);
+        DynamicObject module = JSOrdinary.create(realm.getContext(), realm);
         JSObject.set(module, EXPORTS_PROPERTY_NAME, exportsBuiltin);
         JSObject.set(module, ID_PROPERTY_NAME, fileNameBuiltin);
         JSObject.set(module, FILENAME_PROPERTY_NAME, fileNameBuiltin);
@@ -297,7 +298,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
     }
 
     private static DynamicObject createExportsBuiltin(JSRealm realm) {
-        return JSUserObject.create(realm.getContext(), realm);
+        return JSOrdinary.create(realm.getContext(), realm);
     }
 
     private static boolean isNodeBinFile(TruffleFile maybeModule) {
@@ -317,7 +318,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
     }
 
     private TruffleFile getModuleResolutionEntryPath(DynamicObject currentRequire, TruffleLanguage.Env env) {
-        if (JSObject.isJSObject(currentRequire)) {
+        if (JSDynamicObject.isJSDynamicObject(currentRequire)) {
             Object maybeFilename = JSObject.get(currentRequire, FILENAME_VAR_NAME);
             if (JSRuntime.isString(maybeFilename)) {
                 String fileName = JSRuntime.toStringIsString(maybeFilename);

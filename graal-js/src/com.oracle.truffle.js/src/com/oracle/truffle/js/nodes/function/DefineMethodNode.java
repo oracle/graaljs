@@ -52,6 +52,7 @@ import com.oracle.truffle.js.nodes.function.DefineMethodNodeFactory.FunctionCrea
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -87,10 +88,12 @@ public class DefineMethodNode extends JavaScriptBaseNode {
 
     protected abstract static class FunctionCreateNode extends JavaScriptBaseNode {
         private final JSFunctionData functionData;
+        @Child private InitFunctionNode initFunctionNode;
 
         protected FunctionCreateNode(JSContext context, JSFunctionData functionData) {
             assert context == functionData.getContext();
             this.functionData = functionData;
+            this.initFunctionNode = InitFunctionNode.create(functionData);
         }
 
         public static FunctionCreateNode create(JSContext context, JSFunctionData functionData) {
@@ -122,7 +125,7 @@ public class DefineMethodNode extends JavaScriptBaseNode {
 
         @TruffleBoundary
         protected final JSFunctionFactory makeFactory(DynamicObject prototype) {
-            return JSFunctionFactory.create(getContext(), JSFunction.makeInitialFunctionShape(getContext(), prototype, true, true, functionData.isPrototypeNotWritable()).createFactory());
+            return JSFunctionFactory.create(getContext(), prototype);
         }
 
         protected final JSFunctionFactory makeFactoryMultiContext() {
@@ -131,7 +134,10 @@ public class DefineMethodNode extends JavaScriptBaseNode {
 
         protected final DynamicObject makeFunction(VirtualFrame frame, JSFunctionFactory factory, DynamicObject prototype) {
             MaterializedFrame enclosingFrame = functionData.needsParentFrame() ? frame.materialize() : JSFrameUtil.NULL_MATERIALIZED_FRAME;
-            return JSFunction.createWithPrototype(factory, getContext().getRealm(), functionData, enclosingFrame, prototype);
+            JSRealm realm = getContext().getRealm();
+            DynamicObject function = factory.createWithPrototype(functionData, enclosingFrame, JSFunction.CLASS_PROTOTYPE_PLACEHOLDER, realm, prototype);
+            initFunctionNode.execute(function);
+            return function;
         }
 
         final JSContext getContext() {

@@ -40,67 +40,55 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.util.EnumSet;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.WeakMapPrototypeBuiltins;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSShape;
+import com.oracle.truffle.js.runtime.util.WeakMap;
 
-public final class JSWeakMap extends JSBuiltinObject implements JSConstructorFactory.Default, PrototypeSupplier {
+public final class JSWeakMap extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
 
     public static final JSWeakMap INSTANCE = new JSWeakMap();
 
     public static final String CLASS_NAME = "WeakMap";
     public static final String PROTOTYPE_NAME = CLASS_NAME + ".prototype";
 
-    private static final HiddenKey WEAKMAP_ID = new HiddenKey("weakmap");
-    private static final Property WEAKMAP_PROPERTY;
-
-    static {
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        WEAKMAP_PROPERTY = JSObjectUtil.makeHiddenProperty(WEAKMAP_ID, allocator.locationForType(Map.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
+    private JSWeakMap() {
     }
 
-    private JSWeakMap() {
+    public static DynamicObject create(JSContext context) {
+        WeakMap weakMap = new WeakMap();
+        JSRealm realm = context.getRealm();
+        JSObjectFactory factory = context.getWeakMapFactory();
+        DynamicObject obj = factory.initProto(new JSWeakMapObject(factory.getShape(realm), weakMap), realm);
+        assert isJSWeakMap(obj);
+        return context.trackAllocation(obj);
     }
 
     @SuppressWarnings("unchecked")
     public static Map<DynamicObject, Object> getInternalWeakMap(DynamicObject obj) {
         assert isJSWeakMap(obj);
-        return (Map<DynamicObject, Object>) WEAKMAP_PROPERTY.get(obj, isJSWeakMap(obj));
-    }
-
-    public static PropertyGetNode createKeyMapGetterNode(JSContext context) {
-        return PropertyGetNode.createGetHidden(JSWeakMap.WEAKMAP_ID, context);
+        return ((JSWeakMapObject) obj).getWeakHashMap();
     }
 
     @Override
     public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, WeakMapPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
         return prototype;
     }
 
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSWeakMap.INSTANCE, context);
-        initialShape = initialShape.addProperty(WEAKMAP_PROPERTY);
         return initialShape;
     }
 
@@ -129,11 +117,7 @@ public final class JSWeakMap extends JSBuiltinObject implements JSConstructorFac
     }
 
     public static boolean isJSWeakMap(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSWeakMap((DynamicObject) obj);
-    }
-
-    public static boolean isJSWeakMap(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSWeakMapObject;
     }
 
     @Override

@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
 
@@ -51,87 +50,55 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.FinalizationRegistryPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public final class JSFinalizationRegistry extends JSBuiltinObject implements JSConstructorFactory.Default, PrototypeSupplier {
+public final class JSFinalizationRegistry extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
 
     public static final JSFinalizationRegistry INSTANCE = new JSFinalizationRegistry();
 
     public static final String CLASS_NAME = "FinalizationRegistry";
     public static final String PROTOTYPE_NAME = "FinalizationRegistry.prototype";
 
-    private static final HiddenKey CLEANUP_CALLBACK_ID = new HiddenKey("cleanup_callback");
-    private static final Property CLEANUP_CALLBACK_PROPERTY;
-    private static final HiddenKey CELLS_ID = new HiddenKey("cells");
-    private static final Property CELLS_PROPERTY;
-    private static final HiddenKey REFERENCE_QUEUE_ID = new HiddenKey("reference_queue");
-    private static final Property REFERENCE_QUEUE_PROPERTY;
-
     public static final HiddenKey FINALIZATION_REGISTRY_ID = new HiddenKey("FinalizationRegistry");
-
-    static {
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        CLEANUP_CALLBACK_PROPERTY = JSObjectUtil.makeHiddenProperty(CLEANUP_CALLBACK_ID, allocator.locationForType(DynamicObject.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
-        CELLS_PROPERTY = JSObjectUtil.makeHiddenProperty(CELLS_ID, allocator.locationForType(List.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
-        REFERENCE_QUEUE_PROPERTY = JSObjectUtil.makeHiddenProperty(REFERENCE_QUEUE_ID, allocator.locationForType(ReferenceQueue.class, EnumSet.of(LocationModifier.NonNull)));
-    }
 
     private JSFinalizationRegistry() {
     }
 
     public static DynamicObject create(JSContext context, TruffleObject cleanupCallback) {
-        DynamicObject obj = JSObject.create(context, context.getFinalizationRegistryFactory(), cleanupCallback, new ArrayList<>(), new ReferenceQueue<>());
+        JSRealm realm = context.getRealm();
+        JSObjectFactory factory = context.getFinalizationRegistryFactory();
+        JSFinalizationRegistryObject obj = factory.initProto(new JSFinalizationRegistryObject(factory.getShape(realm), cleanupCallback, new ArrayList<>(), new ReferenceQueue<>()), realm);
         assert isJSFinalizationRegistry(obj);
         context.registerFinalizationRegistry(obj);
+        context.trackAllocation(obj);
         return obj;
     }
 
-    @SuppressWarnings("unchecked")
-    private static List<FinalizationRecord> getCells(DynamicObject obj) {
-        assert isJSFinalizationRegistry(obj);
-        return (List<FinalizationRecord>) CELLS_PROPERTY.get(obj, isJSFinalizationRegistry(obj));
-    }
-
-    public static DynamicObject getCleanupCallback(DynamicObject obj) {
-        assert isJSFinalizationRegistry(obj);
-        return (DynamicObject) CLEANUP_CALLBACK_PROPERTY.get(obj, isJSFinalizationRegistry(obj));
-    }
-
-    @SuppressWarnings("unchecked")
     public static ReferenceQueue<Object> getReferenceQueue(DynamicObject obj) {
         assert isJSFinalizationRegistry(obj);
-        return (ReferenceQueue<Object>) REFERENCE_QUEUE_PROPERTY.get(obj, isJSFinalizationRegistry(obj));
+        return ((JSFinalizationRegistryObject) obj).getReferenceQueue();
     }
 
     @Override
     public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, FinalizationRegistryPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
         return prototype;
     }
 
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
-        Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSFinalizationRegistry.INSTANCE, context);
-        initialShape = initialShape.addProperty(CLEANUP_CALLBACK_PROPERTY);
-        initialShape = initialShape.addProperty(CELLS_PROPERTY);
-        initialShape = initialShape.addProperty(REFERENCE_QUEUE_PROPERTY);
-        return initialShape;
+        return JSObjectUtil.getProtoChildShape(prototype, JSFinalizationRegistry.INSTANCE, context);
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
@@ -155,11 +122,7 @@ public final class JSFinalizationRegistry extends JSBuiltinObject implements JSC
     }
 
     public static boolean isJSFinalizationRegistry(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSFinalizationRegistry((DynamicObject) obj);
-    }
-
-    public static boolean isJSFinalizationRegistry(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSFinalizationRegistryObject;
     }
 
     @Override
@@ -168,16 +131,16 @@ public final class JSFinalizationRegistry extends JSBuiltinObject implements JSC
     }
 
     @TruffleBoundary
-    public static void appendToCells(DynamicObject finalizationRegistry, Object target, Object holdings, Object unregisterToken) {
-        List<FinalizationRecord> cells = getCells(finalizationRegistry);
-        ReferenceQueue<Object> queue = getReferenceQueue(finalizationRegistry);
+    public static void appendToCells(JSFinalizationRegistryObject finalizationRegistry, Object target, Object holdings, Object unregisterToken) {
+        List<FinalizationRecord> cells = finalizationRegistry.getCells();
+        ReferenceQueue<Object> queue = finalizationRegistry.getReferenceQueue();
         WeakReference<Object> weakTarget = new WeakReference<>(target, queue);
         cells.add(new FinalizationRecord(weakTarget, holdings, unregisterToken));
     }
 
     @TruffleBoundary
-    public static boolean removeFromCells(DynamicObject finalizationRegistry, Object unregisterToken) {
-        List<FinalizationRecord> cells = getCells(finalizationRegistry);
+    public static boolean removeFromCells(JSFinalizationRegistryObject finalizationRegistry, Object unregisterToken) {
+        List<FinalizationRecord> cells = finalizationRegistry.getCells();
         boolean removed = false;
         for (Iterator<FinalizationRecord> iterator = cells.iterator(); iterator.hasNext();) {
             FinalizationRecord record = iterator.next();
@@ -189,8 +152,9 @@ public final class JSFinalizationRegistry extends JSBuiltinObject implements JSC
         return removed;
     }
 
-    public static void cleanupFinalizationRegistry(DynamicObject finalizationRegistry, Object callbackArg) {
-        Object callback = callbackArg == Undefined.instance ? JSFinalizationRegistry.getCleanupCallback(finalizationRegistry) : callbackArg;
+    @TruffleBoundary
+    public static void cleanupFinalizationRegistry(JSFinalizationRegistryObject finalizationRegistry, Object callbackArg) {
+        Object callback = callbackArg == Undefined.instance ? finalizationRegistry.getCleanupCallback() : callbackArg;
         FinalizationRecord cell;
         while ((cell = removeCellEmptyTarget(finalizationRegistry)) != null) {
             assert (cell.getWeakRefTarget().get() == null);
@@ -199,9 +163,8 @@ public final class JSFinalizationRegistry extends JSBuiltinObject implements JSC
     }
 
     @TruffleBoundary
-    public static FinalizationRecord removeCellEmptyTarget(DynamicObject finalizationRegistry) {
-        assert JSFinalizationRegistry.isJSFinalizationRegistry(finalizationRegistry);
-        List<FinalizationRecord> cells = getCells(finalizationRegistry);
+    public static FinalizationRecord removeCellEmptyTarget(JSFinalizationRegistryObject finalizationRegistry) {
+        List<FinalizationRecord> cells = finalizationRegistry.getCells();
         for (int i = 0; i < cells.size(); i++) {
             FinalizationRecord record = cells.get(i);
             if (record.getWeakRefTarget().get() == null) {
@@ -215,9 +178,9 @@ public final class JSFinalizationRegistry extends JSBuiltinObject implements JSC
     /**
      * 4.1.3 Execution and 4.1.4.1 HostCleanupFinalizationRegistry.
      */
-    public static void hostCleanupFinalizationRegistry(DynamicObject finalizationRegistry) {
+    public static void hostCleanupFinalizationRegistry(JSFinalizationRegistryObject finalizationRegistry) {
         // if something can be polled, clean up the FinalizationRegistry
-        ReferenceQueue<Object> queue = getReferenceQueue(finalizationRegistry);
+        ReferenceQueue<Object> queue = finalizationRegistry.getReferenceQueue();
         boolean queueNotEmpty = (queue.poll() != null);
         // Cleared WeakReferences may not appear in ReferenceQueue immediatelly
         // but V8 tests expect the invocation of the callbacks as soon as possible

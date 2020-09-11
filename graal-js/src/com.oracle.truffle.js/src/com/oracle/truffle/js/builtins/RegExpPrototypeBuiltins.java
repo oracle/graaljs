@@ -51,6 +51,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -102,6 +103,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -211,10 +213,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         return Errors.createTypeError(objName + " is not a RegExp");
     }
 
-    private static IsJSClassNode createIsJSRegExpNode() {
-        return IsJSClassNode.create(JSRegExp.INSTANCE);
-    }
-
     /**
      * This implements the deprecated RegExp.prototype.compile() method.
      */
@@ -236,11 +234,10 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             String pattern;
             String flags;
 
-            boolean thisRegExpIsRegExp = JSRegExp.isJSRegExp(thisRegExp);
-            if (getContext().getRealm() != JSRegExp.getRealmUnchecked(thisRegExp, thisRegExpIsRegExp)) {
+            if (getContext().getRealm() != JSRegExp.getRealm(thisRegExp)) {
                 throw Errors.createTypeError("RegExp.prototype.compile cannot be used on a RegExp from a different Realm.");
             }
-            if (!JSRegExp.getLegacyFeaturesEnabledUnchecked(thisRegExp, thisRegExpIsRegExp)) {
+            if (!JSRegExp.getLegacyFeaturesEnabled(thisRegExp)) {
                 throw Errors.createTypeError("RegExp.prototype.compile cannot be used on subclasses of RegExp.");
             }
             boolean isRegExp = isRegExpProfile.profile(JSRegExp.isJSRegExp(patternObj));
@@ -248,7 +245,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 if (flagsObj != Undefined.instance) {
                     throw Errors.createTypeError("flags must be undefined", this);
                 }
-                Object regex = JSRegExp.getCompiledRegexUnchecked((DynamicObject) patternObj, isRegExp);
+                Object regex = JSRegExp.getCompiledRegex((DynamicObject) patternObj);
                 pattern = compiledRegexAccessor.pattern(regex);
                 flags = flagsAccessor.source(compiledRegexAccessor.flags(regex));
             } else {
@@ -273,22 +270,20 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      */
     public abstract static class JSRegExpExecNode extends JSBuiltinNode {
 
-        @Child private IsJSClassNode isRegExpNode;
         @Child private JSRegExpExecBuiltinNode regExpNode;
 
         JSRegExpExecNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             assert context.getEcmaScriptVersion() >= 6;
-            this.isRegExpNode = createIsJSRegExpNode();
             this.regExpNode = JSRegExpExecBuiltinNode.create(context);
         }
 
-        @Specialization(guards = "isRegExp(thisRegExp)")
+        @Specialization(guards = "isJSRegExp(thisRegExp)")
         DynamicObject doString(DynamicObject thisRegExp, String inputStr) {
             return (DynamicObject) regExpNode.execute(thisRegExp, inputStr);
         }
 
-        @Specialization(guards = "isRegExp(thisRegExp)")
+        @Specialization(guards = "isJSRegExp(thisRegExp)")
         DynamicObject doObject(DynamicObject thisRegExp, Object input,
                         @Cached("create()") JSToStringNode toStringNode) {
             return (DynamicObject) regExpNode.execute(thisRegExp, toStringNode.executeString(input));
@@ -297,10 +292,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Fallback
         Object doNoRegExp(Object thisObj, @SuppressWarnings("unused") Object input) {
             throw createNoRegExpError(thisObj);
-        }
-
-        boolean isRegExp(DynamicObject regExp) {
-            return isRegExpNode.executeBoolean(regExp);
         }
     }
 
@@ -685,7 +676,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         private DynamicObject splitInternal(DynamicObject rx, String str, long lim) {
             initTRegexAccessors();
-            Object tRegexCompiledRegex = compiledRegexProfile.profile(JSRegExp.getCompiledRegexUnchecked(rx, isJSRegExp(rx)));
+            Object tRegexCompiledRegex = compiledRegexProfile.profile(JSRegExp.getCompiledRegex(rx));
             Object tRegexFlags = compiledRegexAccessor.flags(tRegexCompiledRegex);
             boolean unicodeMatching = flagsAccessor.unicode(tRegexFlags);
             DynamicObject splitter;
@@ -844,14 +835,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return isPristineObjectNode.execute(rx);
         }
 
-        private boolean isJSRegExp(DynamicObject rx) {
-            if (isJSRegExpNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                isJSRegExpNode = insert(createIsJSRegExpNode());
-            }
-            return isJSRegExpNode.executeBoolean(rx);
-        }
-
         private long toLength(Object obj) {
             if (toLengthNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -896,6 +879,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private PropertyGetNode getIndexNode;
         @Child private PropertyGetNode getGroupsNode;
         @Child private TRegexUtil.TRegexResultAccessor readLazyLengthNode;
+        @Child private DynamicObjectLibrary lazyRegexResultNode;
         @Child private JSToLengthNode toLengthNode;
         @Child private JSToIntegerAsIntNode toIntegerNode;
         @Child private JSToStringNode toString2Node;
@@ -938,6 +922,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.isCallableNode = IsCallableNode.create();
             this.hasLazyRegexResultNode = HasHiddenKeyCacheNode.create(JSArray.LAZY_REGEX_RESULT_ID);
             this.stringBuilderProfile = StringBuilderProfile.create(context.getStringLengthLimit());
+            this.lazyRegexResultNode = DynamicObjectLibrary.getFactory().createDispatched(5);
         }
 
         @Specialization(guards = {"cachedReplaceValue.equals(replaceValue)"})
@@ -1006,7 +991,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         private String replaceInternal(DynamicObject rx, String s, String replaceString, ReplaceStringParser.Token[] parsedWithNamedCG, ReplaceStringParser.Token[] parsedWithoutNamedCG) {
             initTRegexAccessors();
-            Object tRegexCompiledRegex = compiledRegexProfile.profile(JSRegExp.getCompiledRegexUnchecked(rx, isJSRegExp(rx)));
+            Object tRegexCompiledRegex = compiledRegexProfile.profile(JSRegExp.getCompiledRegex(rx));
             Object tRegexFlags = compiledRegexAccessor.flags(tRegexCompiledRegex);
             boolean global = globalProfile.profile(flagsAccessor.global(tRegexFlags));
             boolean unicode = unicodeProfile.profile(flagsAccessor.unicode(tRegexFlags));
@@ -1220,7 +1205,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private boolean isLazyResultArray(DynamicObject result) {
-            return hasLazyRegexResultNode.executeHasHiddenKey(result);
+            boolean isLazyResultArray = hasLazyRegexResultNode.executeHasHiddenKey(result);
+            assert isLazyResultArray == JSDynamicObject.hasProperty(result, JSArray.LAZY_REGEX_RESULT_ID);
+            return isLazyResultArray;
         }
 
         private int processResult(StringBuilder accumulatedResult, DynamicObject result, String s, String replaceString, int nextSourcePosition, int matchLength) {
@@ -1361,7 +1348,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 readLazyLengthNode = insert(TRegexUtil.TRegexResultAccessor.create());
             }
-            return readLazyLengthNode.captureGroupLength(JSAbstractArray.arrayGetRegexResult(obj), 0);
+            return readLazyLengthNode.captureGroupLength(JSAbstractArray.arrayGetRegexResult(obj, lazyRegexResultNode), 0);
         }
 
         private PropertyGetNode getGetUnicodeNode() {
@@ -1378,14 +1365,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 isPristineObjectNode = insert(IsPristineObjectNode.createRegExpExecAndMatch(getContext()));
             }
             return isPristineObjectNode.execute(rx);
-        }
-
-        private boolean isJSRegExp(DynamicObject rx) {
-            if (isJSRegExpNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                isJSRegExpNode = insert(createIsJSRegExpNode());
-            }
-            return isJSRegExpNode.executeBoolean(rx);
         }
 
         private Object getLength(Object obj) {
@@ -1728,7 +1707,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
     abstract static class CompiledRegexFlagPropertyAccessor extends JSBuiltinNode {
 
-        @Child IsJSClassNode isJSRegExpNode = createIsJSRegExpNode();
         @Child TRegexUtil.TRegexCompiledRegexSingleFlagAccessor readNode;
 
         CompiledRegexFlagPropertyAccessor(JSContext context, JSBuiltin builtin, String flagName) {
@@ -1736,9 +1714,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             readNode = TRegexUtil.TRegexCompiledRegexSingleFlagAccessor.create(flagName);
         }
 
-        @Specialization(guards = "isJSRegExpNode.executeBoolean(obj)")
+        @Specialization(guards = "isJSRegExp(obj)")
         Object doDynamicObject(DynamicObject obj) {
-            return readNode.get(JSRegExp.getCompiledRegexUnchecked(obj, isJSRegExpNode.executeBoolean(obj)));
+            return readNode.get(JSRegExp.getCompiledRegex(obj));
         }
 
         @Specialization(guards = "isRegExpPrototype(obj)")
@@ -1764,16 +1742,15 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         private static final String DEFAULT_RETURN = "(?:)";
 
-        @Child IsJSClassNode isJSRegExpNode = createIsJSRegExpNode();
         @Child TRegexUtil.InteropReadStringMemberNode readPatternNode = TRegexUtil.InteropReadStringMemberNode.create();
 
         CompiledRegexPatternAccessor(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSRegExpNode.executeBoolean(obj)")
+        @Specialization(guards = "isJSRegExp(obj)")
         Object doDynamicObject(DynamicObject obj) {
-            return JSRegExp.escapeRegExpPattern(readPatternNode.execute(JSRegExp.getCompiledRegexUnchecked(obj, isJSRegExpNode.executeBoolean(obj)), TRegexUtil.Props.CompiledRegex.PATTERN));
+            return JSRegExp.escapeRegExpPattern(readPatternNode.execute(JSRegExp.getCompiledRegex(obj), TRegexUtil.Props.CompiledRegex.PATTERN));
         }
 
         @Specialization(guards = "isRegExpPrototype(obj)")

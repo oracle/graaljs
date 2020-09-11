@@ -40,24 +40,18 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.util.EnumSet;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.NumberFunctionBuiltins;
 import com.oracle.truffle.js.builtins.NumberPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
-public final class JSNumber extends JSPrimitiveObject implements JSConstructorFactory.Default.WithFunctions {
+public final class JSNumber extends JSPrimitive implements JSConstructorFactory.Default.WithFunctions {
 
     public static final String TYPE_NAME = "number";
     public static final String CLASS_NAME = "Number";
@@ -65,29 +59,22 @@ public final class JSNumber extends JSPrimitiveObject implements JSConstructorFa
 
     public static final JSNumber INSTANCE = new JSNumber();
 
-    private static final Property VALUE_PROPERTY;
-    private static final HiddenKey VALUE_ID = new HiddenKey("value");
     private static final double NUMBER_EPSILON = 2.220446049250313e-16;
     private static final double MAX_SAFE_INTEGER = 9007199254740991d;
     private static final double MIN_SAFE_INTEGER = -9007199254740991d;
-
-    static {
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        VALUE_PROPERTY = JSObjectUtil.makeHiddenProperty(VALUE_ID, allocator.locationForType(Number.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
-    }
 
     private JSNumber() {
     }
 
     public static DynamicObject create(JSContext context, Number value) {
-        DynamicObject obj = JSObject.create(context, context.getNumberFactory(), value);
+        DynamicObject obj = JSNumberObject.create(context.getRealm(), context.getNumberFactory(), value);
         assert isJSNumber(obj);
-        return obj;
+        return context.trackAllocation(obj);
     }
 
     private static Number getNumberField(DynamicObject obj) {
         assert isJSNumber(obj);
-        return (Number) VALUE_PROPERTY.get(obj, isJSNumber(obj));
+        return ((JSNumberObject) obj).getNumber();
     }
 
     public static Number valueOf(DynamicObject obj) {
@@ -97,10 +84,11 @@ public final class JSNumber extends JSPrimitiveObject implements JSConstructorFa
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext context = realm.getContext();
-        DynamicObject numberPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSNumber.INSTANCE);
-        JSObjectUtil.putHiddenProperty(numberPrototype, VALUE_PROPERTY, 0);
-        JSObjectUtil.putConstructorProperty(context, numberPrototype, ctor);
+        Shape protoShape = JSShape.createPrototypeShape(realm.getContext(), INSTANCE, realm.getObjectPrototype());
+        DynamicObject numberPrototype = JSNumberObject.create(protoShape, 0);
+        JSObjectUtil.setOrVerifyPrototype(context, numberPrototype, realm.getObjectPrototype());
 
+        JSObjectUtil.putConstructorProperty(context, numberPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, numberPrototype, NumberPrototypeBuiltins.BUILTINS);
         return numberPrototype;
     }
@@ -108,7 +96,6 @@ public final class JSNumber extends JSPrimitiveObject implements JSConstructorFa
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
-        initialShape = initialShape.addProperty(VALUE_PROPERTY);
         return initialShape;
     }
 
@@ -134,11 +121,7 @@ public final class JSNumber extends JSPrimitiveObject implements JSConstructorFa
     }
 
     public static boolean isJSNumber(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSNumber((DynamicObject) obj);
-    }
-
-    public static boolean isJSNumber(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSNumberObject;
     }
 
     @Override

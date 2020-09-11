@@ -64,27 +64,27 @@ public final class ContiguousIntArray extends AbstractContiguousIntArray {
     }
 
     @Override
-    protected int prepareInBounds(DynamicObject object, int index, boolean condition, ProfileHolder profile) {
-        return prepareInBoundsContiguous(object, index, condition, profile);
+    protected int prepareInBounds(DynamicObject object, int index, ProfileHolder profile) {
+        return prepareInBoundsContiguous(object, index, profile);
     }
 
     @Override
-    protected int prepareSupported(DynamicObject object, int index, boolean condition, ProfileHolder profile) {
-        return prepareSupportedContiguous(object, index, condition, profile);
+    protected int prepareSupported(DynamicObject object, int index, ProfileHolder profile) {
+        return prepareSupportedContiguous(object, index, profile);
     }
 
     @Override
-    public boolean isSupported(DynamicObject object, long index, boolean condition) {
-        return isSupportedContiguous(object, index, condition);
+    public boolean isSupported(DynamicObject object, long index) {
+        return isSupportedContiguous(object, index);
     }
 
     @Override
-    public ContiguousDoubleArray toDouble(DynamicObject object, long index, double value, boolean condition) {
-        int[] array = getArray(object, condition);
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
-        int arrayOffset = getArrayOffset(object, condition);
-        long indexOffset = getIndexOffset(object, condition);
+    public ContiguousDoubleArray toDouble(DynamicObject object, long index, double value) {
+        int[] array = getArray(object);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
+        int arrayOffset = getArrayOffset(object);
+        long indexOffset = getIndexOffset(object);
 
         double[] doubleCopy = ArrayCopy.intToDouble(array, arrayOffset, usedLength);
         ContiguousDoubleArray newArray = ContiguousDoubleArray.makeContiguousDoubleArray(object, length, doubleCopy, indexOffset, arrayOffset, usedLength, integrityLevel);
@@ -95,12 +95,12 @@ public final class ContiguousIntArray extends AbstractContiguousIntArray {
     }
 
     @Override
-    public ContiguousObjectArray toObject(DynamicObject object, long index, Object value, boolean condition) {
-        int[] array = getArray(object, condition);
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
-        int arrayOffset = getArrayOffset(object, condition);
-        long indexOffset = getIndexOffset(object, condition);
+    public ContiguousObjectArray toObject(DynamicObject object, long index, Object value) {
+        int[] array = getArray(object);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
+        int arrayOffset = getArrayOffset(object);
+        long indexOffset = getIndexOffset(object);
 
         Object[] doubleCopy = ArrayCopy.intToObject(array, arrayOffset, usedLength);
         ContiguousObjectArray newArray = ContiguousObjectArray.makeContiguousObjectArray(object, length, doubleCopy, indexOffset, arrayOffset, usedLength, integrityLevel);
@@ -111,16 +111,16 @@ public final class ContiguousIntArray extends AbstractContiguousIntArray {
     }
 
     @Override
-    public AbstractWritableArray toHoles(DynamicObject object, long index, Object value, boolean condition) {
-        int[] array = getArray(object, condition);
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
-        int arrayOffset = getArrayOffset(object, condition);
-        long indexOffset = getIndexOffset(object, condition);
+    public AbstractWritableArray toHoles(DynamicObject object, long index, Object value) {
+        int[] array = getArray(object);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
+        int arrayOffset = getArrayOffset(object);
+        long indexOffset = getIndexOffset(object);
 
         AbstractWritableArray newArray;
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, containsHoleValue(object, condition))) {
-            newArray = toObjectHoles(object, condition);
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, containsHoleValue(object))) {
+            newArray = toObjectHoles(object);
         } else {
             newArray = HolesIntArray.makeHolesIntArray(object, length, array, indexOffset, arrayOffset, usedLength, 0, integrityLevel);
         }
@@ -131,22 +131,22 @@ public final class ContiguousIntArray extends AbstractContiguousIntArray {
     }
 
     @Override
-    protected HolesObjectArray toObjectHoles(DynamicObject object, boolean condition) {
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
-        int arrayOffset = getArrayOffset(object, condition);
-        long indexOffset = getIndexOffset(object, condition);
+    protected HolesObjectArray toObjectHoles(DynamicObject object) {
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
+        int arrayOffset = getArrayOffset(object);
+        long indexOffset = getIndexOffset(object);
 
-        return HolesObjectArray.makeHolesObjectArray(object, length, convertToObject(object, condition), indexOffset, arrayOffset, usedLength, 0, integrityLevel);
+        return HolesObjectArray.makeHolesObjectArray(object, length, convertToObject(object), indexOffset, arrayOffset, usedLength, 0, integrityLevel);
     }
 
     @Override
-    public ZeroBasedIntArray toNonContiguous(DynamicObject object, int index, Object value, boolean condition, ProfileHolder profile) {
-        setSupported(object, index, (int) value, condition, profile);
+    public ZeroBasedIntArray toNonContiguous(DynamicObject object, int index, Object value, ProfileHolder profile) {
+        setSupported(object, index, (int) value, profile);
 
-        int[] array = getArray(object, condition);
-        int length = lengthInt(object, condition);
-        int usedLength = getUsedLength(object, condition);
+        int[] array = getArray(object);
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
         ZeroBasedIntArray newArray = ZeroBasedIntArray.makeZeroBasedIntArray(object, length, usedLength, array, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);

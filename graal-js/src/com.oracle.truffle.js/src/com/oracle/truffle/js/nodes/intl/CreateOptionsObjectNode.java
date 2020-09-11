@@ -46,7 +46,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 
 public abstract class CreateOptionsObjectNode extends JavaScriptBaseNode {
 
@@ -67,7 +67,7 @@ public abstract class CreateOptionsObjectNode extends JavaScriptBaseNode {
     @SuppressWarnings("unused")
     @Specialization(guards = "isUndefined(opts)")
     public DynamicObject fromUndefined(Object opts) {
-        return JSUserObject.createWithNullPrototype(getContext());
+        return JSOrdinary.createWithNullPrototype(getContext());
     }
 
     @Specialization(guards = "!isUndefined(opts)")

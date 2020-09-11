@@ -47,7 +47,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 import java.util.Map;
@@ -84,8 +84,8 @@ public abstract class CommonJSGlobalModuleGetterBuiltin extends GlobalBuiltins.J
     }
 
     private static DynamicObject createModuleObject(JSContext context) {
-        DynamicObject moduleObject = JSUserObject.create(context);
-        DynamicObject exportsObject = JSUserObject.create(context);
+        DynamicObject moduleObject = JSOrdinary.create(context);
+        DynamicObject exportsObject = JSOrdinary.create(context);
         JSObject.set(moduleObject, CommonJSRequireBuiltin.EXPORTS_PROPERTY_NAME, exportsObject);
         return moduleObject;
     }

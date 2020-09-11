@@ -65,7 +65,7 @@ import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -150,9 +150,9 @@ public abstract class TypeOfNode extends JSUnaryNode {
         return JSFunction.TYPE_NAME;
     }
 
-    @Specialization(guards = {"isJSType(operand)", "!isJSFunction(operand)", "!isUndefined(operand)", "!isJSProxy(operand)"})
+    @Specialization(guards = {"isJSDynamicObject(operand)", "!isJSFunction(operand)", "!isUndefined(operand)", "!isJSProxy(operand)"})
     protected String doJSObjectOnly(DynamicObject operand) {
-        return JSUserObject.TYPE_NAME;
+        return JSOrdinary.TYPE_NAME;
     }
 
     @Specialization(guards = {"isJSProxy(operand)"})
@@ -162,7 +162,7 @@ public abstract class TypeOfNode extends JSUnaryNode {
         Object target = JSProxy.getTarget(operand);
         if (target == Null.instance) {
             revokedProxyBranch.enter();
-            return JSRuntime.isRevokedCallableProxy(operand) ? JSFunction.TYPE_NAME : JSUserObject.TYPE_NAME;
+            return JSRuntime.isRevokedCallableProxy(operand) ? JSFunction.TYPE_NAME : JSOrdinary.TYPE_NAME;
         } else {
             return typeofNode.executeString(target);
         }
@@ -186,14 +186,14 @@ public abstract class TypeOfNode extends JSUnaryNode {
         } else if (interop.isExecutable(operand) || interop.isInstantiable(operand)) {
             return JSFunction.TYPE_NAME;
         } else {
-            return JSUserObject.TYPE_NAME;
+            return JSOrdinary.TYPE_NAME;
         }
     }
 
     @Fallback
     protected String doJavaObject(Object operand) {
         assert operand != null;
-        return operand instanceof Number ? JSNumber.TYPE_NAME : JSUserObject.TYPE_NAME;
+        return operand instanceof Number ? JSNumber.TYPE_NAME : JSOrdinary.TYPE_NAME;
     }
 
     @Override

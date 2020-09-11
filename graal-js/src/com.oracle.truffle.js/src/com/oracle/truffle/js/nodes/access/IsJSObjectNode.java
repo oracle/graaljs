@@ -43,13 +43,10 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
@@ -58,8 +55,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 @ImportStatic(JSObject.class)
 public abstract class IsJSObjectNode extends JavaScriptBaseNode {
 
-    protected static final int MAX_SHAPE_COUNT = 1;
-    protected static final int MAX_JSCLASS_COUNT = 1;
+    protected static final int MAX_CLASS_COUNT = 1;
     private final boolean includeNullUndefined;
 
     protected IsJSObjectNode(boolean includeNullUndefined) {
@@ -69,25 +65,17 @@ public abstract class IsJSObjectNode extends JavaScriptBaseNode {
     public abstract boolean executeBoolean(Object obj);
 
     @SuppressWarnings("unused")
-    @Specialization(guards = "cachedShape.check(object)", limit = "MAX_SHAPE_COUNT")
-    protected static boolean isObjectShape(DynamicObject object,
-                    @Cached("object.getShape()") Shape cachedShape,
+    @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "MAX_CLASS_COUNT")
+    protected static boolean isObjectCached(Object object,
+                    @Cached("getClassIfJSDynamicObject(object)") Class<?> cachedClass,
                     @Cached("guardIsJSObject(object)") boolean cachedResult) {
         return cachedResult;
     }
 
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, replaces = "isObjectShape", limit = "MAX_JSCLASS_COUNT")
-    protected static boolean isObjectJSClass(DynamicObject object,
-                    @Cached("getJSClassChecked(object)") JSClass cachedClass,
-                    @Cached("guardIsJSObject(object)") boolean cachedResult) {
-        return cachedResult;
-    }
-
-    @Specialization(replaces = {"isObjectShape", "isObjectJSClass"})
-    protected static boolean isObject(Object object,
+    @Specialization(replaces = {"isObjectCached"})
+    protected boolean isObject(Object object,
                     @Cached("createBinaryProfile()") ConditionProfile resultProfile) {
-        return resultProfile.profile(JSRuntime.isObject(object));
+        return resultProfile.profile(guardIsJSObject(object));
     }
 
     public static IsJSObjectNode create() {
@@ -99,9 +87,9 @@ public abstract class IsJSObjectNode extends JavaScriptBaseNode {
     }
 
     // name-clash with JSObject.isJSObject. Different behavior around null/undefined.
-    protected boolean guardIsJSObject(DynamicObject obj) {
+    protected boolean guardIsJSObject(Object obj) {
         if (includeNullUndefined) {
-            return JSObject.isJSObject(obj);
+            return JSDynamicObject.isJSDynamicObject(obj);
         } else {
             return JSGuards.isJSObject(obj);
         }

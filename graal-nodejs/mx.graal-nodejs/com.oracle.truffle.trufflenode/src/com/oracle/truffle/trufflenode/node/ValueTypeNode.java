@@ -98,16 +98,16 @@ import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
-import com.oracle.truffle.trufflenode.JSExternalObject;
+import com.oracle.truffle.trufflenode.JSExternal;
 
 /**
  * Keep in sync with {@link GraalJSAccess#valueType}.
  */
 @SuppressWarnings("unused")
-@ImportStatic({JSExternalObject.class, JSRuntime.class, JSUserObject.class, JSMap.class, JSSet.class, JSPromise.class, JSProxy.class, JSObject.class, JSDataView.class})
+@ImportStatic({JSExternal.class, JSRuntime.class, JSMap.class, JSSet.class, JSPromise.class, JSProxy.class, JSObject.class, JSDataView.class})
 abstract class ValueTypeNode extends JavaScriptBaseNode {
     protected final GraalJSAccess graalAccess;
     protected final JSContext context;
@@ -210,16 +210,17 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
         return PROMISE_OBJECT;
     }
 
-    @Specialization(guards = "isProxy(value)")
+    @Specialization(guards = "isJSProxy(value)")
     protected static int doProxy(DynamicObject value) {
         return PROXY_OBJECT;
     }
 
-    @Specialization(guards = {"isJSArrayBufferView(value)", "cachedArray == getScriptArray(value)"})
-    protected final int doArrayBufferView(DynamicObject value,
-                    @Cached("getScriptArray(value)") ScriptArray cachedArray,
+    @Specialization(guards = {"cachedArray == value.getArrayType()"})
+    protected final int doArrayBufferView(JSTypedArrayObject value,
+                    @Cached("value.getArrayType()") TypedArray cachedArray,
                     @Cached("identifyType(cachedArray)") int cachedTypeInt,
                     @Cached("create(getContext())") ArrayBufferViewGetByteLengthNode getByteLengthNode) {
+        assert JSArrayBufferView.isJSArrayBufferView(value);
         if (useSharedBuffer) {
             graalAccess.getSharedBuffer().putInt(getByteLengthNode.executeInt(value));
             graalAccess.getSharedBuffer().putInt(GraalJSAccess.arrayBufferViewByteOffset(context, value));
@@ -227,14 +228,15 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
         return cachedTypeInt;
     }
 
-    @Specialization(guards = {"isJSArrayBufferView(value)"}, replaces = "doArrayBufferView")
-    protected final int doArrayBufferViewOverLimit(DynamicObject value,
+    @Specialization(replaces = "doArrayBufferView")
+    protected final int doArrayBufferViewOverLimit(JSTypedArrayObject value,
                     @Cached("create(getContext())") ArrayBufferViewGetByteLengthNode getByteLengthNode) {
+        assert JSArrayBufferView.isJSArrayBufferView(value);
         if (useSharedBuffer) {
             graalAccess.getSharedBuffer().putInt(getByteLengthNode.executeInt(value));
             graalAccess.getSharedBuffer().putInt(GraalJSAccess.arrayBufferViewByteOffset(context, value));
         }
-        ScriptArray array = getScriptArray(value);
+        TypedArray array = value.getArrayType();
         return identifyType(array);
     }
 
@@ -245,11 +247,6 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
             graalAccess.getSharedBuffer().putInt(GraalJSAccess.arrayBufferViewByteOffset(context, value));
         }
         return DATA_VIEW_OBJECT;
-    }
-
-    protected ScriptArray getScriptArray(DynamicObject obj) {
-        boolean condition = JSArrayBufferView.isJSArrayBufferView(obj);
-        return JSObject.getArray(obj, condition);
     }
 
     protected int identifyType(ScriptArray array) {
@@ -285,7 +282,7 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
         return ARRAY_BUFFER_OBJECT;
     }
 
-    @Specialization(guards = {"isJSUserObject(value)"})
+    @Specialization(guards = {"isJSOrdinaryObject(value)"})
     protected static int doOrdinaryObject(DynamicObject value) {
         return ORDINARY_OBJECT;
     }
@@ -302,7 +299,7 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
                     "!isJSMap(value)",
                     "!isJSSet(value)",
                     "!isJSPromise(value)",
-                    "!isProxy(value)",
+                    "!isJSProxy(value)",
                     "!isJSArrayBufferView(value)",
                     "!isJSDataView(value)",
                     "!isJSDirectArrayBuffer(value)"}, replaces = {"doOrdinaryObject"})

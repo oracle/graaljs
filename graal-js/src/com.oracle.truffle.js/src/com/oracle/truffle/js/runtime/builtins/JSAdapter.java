@@ -40,14 +40,10 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.util.EnumSet;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -56,7 +52,6 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -68,9 +63,6 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
 
     public static final JSAdapter INSTANCE = new JSAdapter();
 
-    private static final Property ADAPTEE_PROPERTY;
-    private static final Property OVERRIDES_PROPERTY;
-
     private static final String GET = "__get__";
     private static final String PUT = "__put__";
     private static final String HAS = "__has__";
@@ -79,15 +71,6 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     public static final String NEW = "__new__";
     public static final String GET_IDS = "__getIds__";
     public static final String GET_VALUES = "__getValues__";
-
-    private static final HiddenKey ADAPTEE_ID = new HiddenKey("adaptee");
-    private static final HiddenKey OVERRIDES_ID = new HiddenKey("overrides");
-
-    static {
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        ADAPTEE_PROPERTY = JSObjectUtil.makeHiddenProperty(ADAPTEE_ID, allocator.locationForType(Object.class, EnumSet.of(LocationModifier.Final)));
-        OVERRIDES_PROPERTY = JSObjectUtil.makeHiddenProperty(OVERRIDES_ID, allocator.locationForType(Object.class, EnumSet.of(LocationModifier.Final)));
-    }
 
     private JSAdapter() {
     }
@@ -108,29 +91,28 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     }
 
     public static DynamicObject create(JSContext context, DynamicObject adaptee, DynamicObject overrides, DynamicObject proto) {
-        DynamicObject obj = JSObject.create(context, context.getJSAdapterFactory(), adaptee, overrides);
+        JSRealm realm = context.getRealm();
+        JSObjectFactory factory = context.getJSAdapterFactory();
+        DynamicObject obj = new JSAdapterObject(factory.getShape(realm), adaptee, overrides);
+        factory.initProto(obj, realm);
         if (proto != null) {
             JSObject.setPrototype(obj, proto);
         }
-        return obj;
+        return context.trackAllocation(obj);
     }
 
     public static DynamicObject getAdaptee(DynamicObject obj) {
         assert isJSAdapter(obj);
-        return (DynamicObject) ADAPTEE_PROPERTY.get(obj, isJSAdapter(obj));
+        return ((JSAdapterObject) obj).getAdaptee();
     }
 
     public static DynamicObject getOverrides(DynamicObject obj) {
         assert isJSAdapter(obj);
-        return (DynamicObject) OVERRIDES_PROPERTY.get(obj, isJSAdapter(obj));
+        return ((JSAdapterObject) obj).getOverrides();
     }
 
     public static boolean isJSAdapter(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSAdapter((DynamicObject) obj);
-    }
-
-    public static boolean isJSAdapter(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSAdapterObject;
     }
 
     private static JSException typeError() {
@@ -306,18 +288,15 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
 
     @Override
     public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
-        DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(realm.getContext(), prototype, ctor);
-        JSObjectUtil.putDataProperty(realm.getContext(), prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
         return prototype;
     }
 
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
-        Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
-        initialShape = initialShape.addProperty(ADAPTEE_PROPERTY);
-        initialShape = initialShape.addProperty(OVERRIDES_PROPERTY);
-        return initialShape;
+        return JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
@@ -352,7 +331,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
 
     @Override
     public boolean setPrototypeOf(DynamicObject thisObj, DynamicObject newPrototype) {
-        return JSBuiltinObject.setPrototypeStatic(thisObj, newPrototype);
+        return JSNonProxy.setPrototypeStatic(thisObj, newPrototype);
     }
 
     @Override
@@ -364,4 +343,5 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getJSAdapterPrototype();
     }
+
 }

@@ -49,6 +49,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -101,7 +102,7 @@ public final class WithTargetNode extends JavaScriptNode {
      */
     private boolean isPropertyScopable(Object target) {
         if (context.getEcmaScriptVersion() >= 6) {
-            if (JSObject.isJSObject(target)) {
+            if (JSDynamicObject.isJSDynamicObject(target)) {
                 Object unscopables = withObjectGetUnscopables.getValue(target);
                 if (JSRuntime.isObject(unscopables)) {
                     boolean blocked = toBoolean.executeBoolean(unscopablesGetProperty.getValue(unscopables));

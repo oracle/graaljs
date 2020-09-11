@@ -52,7 +52,7 @@ import com.oracle.truffle.js.nodes.intl.JSToCanonicalizedLocaleListNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSIntl;
+import com.oracle.truffle.js.runtime.builtins.intl.JSIntl;
 
 /**
  * Contains builtins for {@linkplain Intl} function (constructor).

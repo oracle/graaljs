@@ -40,12 +40,9 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import static com.oracle.truffle.js.runtime.util.BufferUtil.asBaseBuffer;
-
 import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -54,6 +51,7 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstru
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
@@ -134,14 +132,6 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Lamb
                 arraySpeciesCreateNode = insert(ArraySpeciesConstructorNode.create(getContext(), true));
             }
             return arraySpeciesCreateNode;
-        }
-
-        @TruffleBoundary
-        protected static void sliceDirectIntl(ByteBuffer byteBuffer, int clampedBegin, int clampedEnd, ByteBuffer resBuffer) {
-            ByteBuffer slice = byteBuffer.duplicate();
-            asBaseBuffer(slice).position(clampedBegin).limit(clampedEnd);
-            assert resBuffer.position() == 0;
-            resBuffer.duplicate().put(slice);
         }
 
     }
@@ -239,7 +229,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Lamb
             checkErrors(resObj, thisObj, newLen, true);
 
             ByteBuffer resBuffer = JSArrayBuffer.getDirectByteBuffer(resObj);
-            sliceDirectIntl(byteBuffer, clampedBegin, clampedEnd, resBuffer);
+            Boundaries.byteBufferPutSlice(resBuffer, 0, byteBuffer, clampedBegin, clampedEnd);
             return resObj;
         }
 

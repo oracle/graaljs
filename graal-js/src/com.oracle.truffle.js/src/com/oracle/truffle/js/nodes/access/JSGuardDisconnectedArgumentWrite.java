@@ -54,7 +54,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
-import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
+import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 
 import java.util.Set;
 
@@ -97,9 +97,9 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
     @Specialization(guards = "!isArgumentsDisconnected(argumentsArray)")
     public Object doObject(DynamicObject argumentsArray, Object value,
                     @Cached("createBinaryProfile()") @Shared("unconnected") ConditionProfile unconnected) {
-        assert JSArgumentsObject.isJSArgumentsObject(argumentsArray);
-        if (unconnected.profile(index >= JSArgumentsObject.getConnectedArgumentCount(argumentsArray))) {
-            JSArgumentsObject.disconnectIndex(argumentsArray, index, value);
+        assert JSArgumentsArray.isJSArgumentsObject(argumentsArray);
+        if (unconnected.profile(index >= JSArgumentsArray.getConnectedArgumentCount(argumentsArray))) {
+            JSArgumentsArray.disconnectIndex(argumentsArray, index, value);
         } else {
             writeArgumentsElementNode.executeWithTargetAndIndexAndValue(argumentsArray, index, value);
         }
@@ -110,11 +110,11 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
     public Object doObjectDisconnected(DynamicObject argumentsArray, Object value,
                     @Cached("createBinaryProfile()") ConditionProfile wasDisconnected,
                     @Cached("createBinaryProfile()") @Shared("unconnected") ConditionProfile unconnected) {
-        assert JSArgumentsObject.isJSArgumentsObject(argumentsArray);
-        if (wasDisconnected.profile(JSArgumentsObject.wasIndexDisconnected(argumentsArray, index))) {
-            JSArgumentsObject.setDisconnectedIndexValue(argumentsArray, index, value);
-        } else if (unconnected.profile(index >= JSArgumentsObject.getConnectedArgumentCount(argumentsArray))) {
-            JSArgumentsObject.disconnectIndex(argumentsArray, index, value);
+        assert JSArgumentsArray.isJSArgumentsObject(argumentsArray);
+        if (wasDisconnected.profile(JSArgumentsArray.wasIndexDisconnected(argumentsArray, index))) {
+            JSArgumentsArray.setDisconnectedIndexValue(argumentsArray, index, value);
+        } else if (unconnected.profile(index >= JSArgumentsArray.getConnectedArgumentCount(argumentsArray))) {
+            JSArgumentsArray.disconnectIndex(argumentsArray, index, value);
         } else {
             writeArgumentsElementNode.executeWithTargetAndIndexAndValue(argumentsArray, index, value);
         }

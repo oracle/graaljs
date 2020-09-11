@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,8 +49,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.SharedArrayBufferFunctionBuiltins;
 import com.oracle.truffle.js.builtins.SharedArrayBufferPrototypeBuiltins;
@@ -61,9 +59,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
@@ -75,13 +70,6 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
 
     public static final JSSharedArrayBuffer INSTANCE = new JSSharedArrayBuffer();
 
-    protected static final Property BUFFER_WAIT_LIST;
-    protected static final HiddenKey BUFFER_WAIT_LIST_ID = new HiddenKey("waitList");
-
-    static {
-        BUFFER_WAIT_LIST = JSObjectUtil.makeHiddenProperty(BUFFER_WAIT_LIST_ID, allocator.locationForType(JSAgentWaiterList.class));
-    }
-
     private JSSharedArrayBuffer() {
     }
 
@@ -91,15 +79,18 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
 
     public static DynamicObject createSharedArrayBuffer(JSContext context, ByteBuffer buffer) {
         assert buffer != null;
-        DynamicObject obj = JSObject.create(context, context.getSharedArrayBufferFactory(), buffer, new JSAgentWaiterList());
+        JSRealm realm = context.getRealm();
+        JSObjectFactory factory = context.getSharedArrayBufferFactory();
+        DynamicObject obj = JSArrayBufferObject.createSharedArrayBuffer(factory.getShape(realm), buffer, new JSAgentWaiterList());
+        factory.initProto(obj, realm);
         assert isJSSharedArrayBuffer(obj);
-        return obj;
+        return context.trackAllocation(obj);
     }
 
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext context = realm.getContext();
-        DynamicObject arrayBufferPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject arrayBufferPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         putConstructorProperty(context, arrayBufferPrototype, ctor);
         putFunctionsFromContainer(realm, arrayBufferPrototype, SharedArrayBufferPrototypeBuiltins.BUILTINS);
         /* ECMA2017 24.2.4.1 get SharedArrayBuffer.prototype.byteLength */
@@ -107,8 +98,8 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
             return JSFunctionData.createCallOnly(context, createByteLengthGetterCallTarget(context), 0, "get " + BYTE_LENGTH);
         });
         DynamicObject byteLengthGetter = JSFunction.create(realm, fd);
-        JSObjectUtil.putDataProperty(context, arrayBufferPrototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
-        JSObjectUtil.putConstantAccessorProperty(context, arrayBufferPrototype, BYTE_LENGTH, byteLengthGetter, Undefined.instance);
+        JSObjectUtil.putToStringTag(arrayBufferPrototype, CLASS_NAME);
+        JSObjectUtil.putBuiltinAccessorProperty(arrayBufferPrototype, BYTE_LENGTH, byteLengthGetter, Undefined.instance);
         return arrayBufferPrototype;
     }
 
@@ -128,8 +119,6 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
-        initialShape = initialShape.addProperty(BYTE_BUFFER_PROPERTY);
-        initialShape = initialShape.addProperty(BUFFER_WAIT_LIST);
         return initialShape;
     }
 
@@ -148,34 +137,22 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
     }
 
     public static boolean isJSSharedArrayBuffer(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSSharedArrayBuffer((DynamicObject) obj);
-    }
-
-    public static boolean isJSSharedArrayBuffer(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSArrayBufferObject.Shared;
     }
 
     public static ByteBuffer getDirectByteBuffer(DynamicObject thisObj) {
-        return getDirectByteBuffer(thisObj, isJSSharedArrayBuffer(thisObj));
-    }
-
-    public static ByteBuffer getDirectByteBuffer(DynamicObject thisObj, boolean condition) {
         assert isJSSharedArrayBuffer(thisObj);
-        return DirectByteBufferHelper.cast((ByteBuffer) BYTE_BUFFER_PROPERTY.get(thisObj, condition));
+        return JSArrayBufferObject.getDirectByteBuffer(thisObj);
     }
 
     public static JSAgentWaiterList getWaiterList(DynamicObject thisObj) {
-        return (JSAgentWaiterList) BUFFER_WAIT_LIST.get(thisObj, isJSSharedArrayBuffer(thisObj));
-    }
-
-    public static JSAgentWaiterList getWaiterList(DynamicObject thisObj, boolean condition) {
         assert isJSSharedArrayBuffer(thisObj);
-        return (JSAgentWaiterList) BUFFER_WAIT_LIST.get(thisObj, condition);
+        return JSArrayBufferObject.getWaiterList(thisObj);
     }
 
     public static void setWaiterList(DynamicObject thisObj, JSAgentWaiterList wl) {
         assert isJSSharedArrayBuffer(thisObj);
-        BUFFER_WAIT_LIST.setSafe(thisObj, wl, null);
+        JSArrayBufferObject.setWaiterList(thisObj, wl);
     }
 
     @Override

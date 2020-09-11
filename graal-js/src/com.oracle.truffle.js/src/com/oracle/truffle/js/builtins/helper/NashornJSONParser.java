@@ -55,7 +55,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -142,7 +142,7 @@ public class NashornJSONParser {
     }
 
     private Object parseObject() {
-        DynamicObject jsobject = JSUserObject.create(context);
+        DynamicObject jsobject = JSOrdinary.create(context);
 
         int state = STATE_EMPTY;
 

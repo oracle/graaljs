@@ -61,7 +61,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
+import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSString;
@@ -121,9 +121,9 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
         assert JSRuntime.isPropertyKey(propertyKey);
         long idx = toArrayIndex(propertyKey, toArrayIndexNode);
         if (JSRuntime.isArrayIndex(idx)) {
-            ScriptArray array = typeProfile.profile(JSAbstractArray.arrayGetArrayType(thisObj, false));
+            ScriptArray array = typeProfile.profile(JSAbstractArray.arrayGetArrayType(thisObj));
             if (array.hasElement(thisObj, idx)) {
-                Object value = needValue ? array.getElement(thisObj, idx, JSArray.isJSArray(thisObj)) : null;
+                Object value = needValue ? array.getElement(thisObj, idx) : null;
                 return PropertyDescriptor.createData(value, true, needWritability && !array.isFrozen(), needConfigurability && !array.isSealed());
             }
         }
@@ -178,9 +178,9 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
         return null;
     }
 
-    /** @see JSBuiltinObject#ordinaryGetOwnProperty */
+    /** @see JSNonProxy#ordinaryGetOwnProperty */
     private PropertyDescriptor ordinaryGetOwnProperty(DynamicObject thisObj, Property prop) {
-        assert !JSProxy.isProxy(thisObj);
+        assert !JSProxy.isJSProxy(thisObj);
         if (hasPropertyBranch.profile(prop == null)) {
             return null;
         }

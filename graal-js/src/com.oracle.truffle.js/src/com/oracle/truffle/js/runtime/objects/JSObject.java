@@ -41,20 +41,35 @@
 package com.oracle.truffle.js.runtime.objects;
 
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.List;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.instrumentation.AllocationReporter;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.Layout;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.js.nodes.access.ReadElementNode;
+import com.oracle.truffle.js.nodes.access.WriteElementNode;
+import com.oracle.truffle.js.nodes.interop.ExportValueNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
+import com.oracle.truffle.js.nodes.interop.JSInteropInvokeNode;
+import com.oracle.truffle.js.nodes.interop.KeyInfoNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -62,24 +77,24 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
-import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
-import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
+import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBase;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
-import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
+import com.oracle.truffle.js.runtime.interop.InteropArray;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 /**
- * Methods for dealing with JS objects (access, creation, instanceof, cast).
+ * The common base class for all JavaScript objects (values of type Object according to the spec).
+ *
+ * Includes static methods for dealing with JS objects (internal methods).
  */
-public final class JSObject {
-
-    public static final Layout LAYOUT = createLayout();
-    public static final Class<? extends DynamicObject> CLASS = LAYOUT.getType();
+@ExportLibrary(InteropLibrary.class)
+public abstract class JSObject extends JSDynamicObject {
 
     public static final String CONSTRUCTOR = "constructor";
     public static final String PROTOTYPE = "prototype";
@@ -88,176 +103,187 @@ public final class JSObject {
 
     public static final String NO_SUCH_PROPERTY_NAME = "__noSuchProperty__";
     public static final String NO_SUCH_METHOD_NAME = "__noSuchMethod__";
+    protected static final String[] EMPTY_STRING_ARRAY = new String[0];
 
-    public static final Property PROTO_PROPERTY = JSObjectUtil.makeHiddenProperty(JSObject.HIDDEN_PROTO,
-                    JSObject.LAYOUT.createAllocator().locationForType(JSObject.CLASS, EnumSet.noneOf(LocationModifier.class)));
-
-    private JSObject() {
-        // use factory methods to create this class
+    protected JSObject(Shape shape) {
+        super(shape);
     }
 
-    public static Layout createLayout() {
-        return Layout.newLayout().setAllowedImplicitCasts(EnumSet.of(Layout.ImplicitCast.IntToDouble)).build();
-    }
-
-    /**
-     * Use only for static objects; omits allocation tracking.
-     */
-    public static DynamicObject createStatic(Shape shape) {
-        CompilerAsserts.neverPartOfCompilation();
-        return shape.newInstance();
+    protected JSObject copyWithoutProperties(@SuppressWarnings("unused") Shape shape) {
+        throw Errors.notImplemented("copy");
     }
 
     /**
-     * Use only for realm initialization; omits allocation tracking.
-     */
-    public static DynamicObject createInit(Shape shape) {
-        CompilerAsserts.neverPartOfCompilation();
-        return shape.newInstance();
-    }
-
-    public static DynamicObject create(JSContext context, Shape shape) {
-        AllocationReporter reporter = context.getAllocationReporter();
-        if (reporter != null) {
-            reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
-        }
-        DynamicObject object = shape.newInstance();
-        if (reporter != null) {
-            reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
-        }
-        return object;
-    }
-
-    public static DynamicObject createBoundary(JSContext context, Shape shape) {
-        AllocationReporter reporter = context.getAllocationReporter();
-        if (reporter != null) {
-            reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
-        }
-        DynamicObject object = newInstanceBoundary(shape);
-        if (reporter != null) {
-            reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
-        }
-        return object;
-    }
-
-    @TruffleBoundary
-    private static DynamicObject newInstanceBoundary(Shape shape) {
-        return shape.newInstance();
-    }
-
-    public static DynamicObject create(JSContext context, JSObjectFactory factory, Object... initialValues) {
-        return createWithRealm(context, factory, context.getRealm(), initialValues);
-    }
-
-    public static DynamicObject createWithRealm(JSContext context, JSObjectFactory factory, JSRealm realm, Object... initialValues) {
-        AllocationReporter reporter = context.getAllocationReporter();
-        if (reporter != null) {
-            reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
-        }
-        DynamicObject object = factory.createWithRealm(realm, initialValues);
-        if (reporter != null) {
-            reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
-        }
-        return object;
-    }
-
-    public static DynamicObject createWithPrototype(JSContext context, JSObjectFactory factory, JSRealm realm, DynamicObject proto, Object... initialValues) {
-        AllocationReporter reporter = context.getAllocationReporter();
-        if (reporter != null) {
-            reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
-        }
-        DynamicObject object = factory.createWithPrototype(realm, proto, initialValues);
-        if (reporter != null) {
-            reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
-        }
-        return object;
-    }
-
-    public static DynamicObject createWithBoundPrototype(JSContext context, JSObjectFactory.BoundProto factory, Object... initialValues) {
-        AllocationReporter reporter = context.getAllocationReporter();
-        if (reporter != null) {
-            reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
-        }
-        DynamicObject object = factory.createBound(initialValues);
-        if (reporter != null) {
-            reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
-        }
-        return object;
-    }
-
-    /**
-     * For Realm/Context initialization only. Does not track allocation.
-     */
-    public static DynamicObject createInit(JSRealm realm, DynamicObject prototype, JSClass builtinObject) {
-        CompilerAsserts.neverPartOfCompilation();
-        return createInit(realm.getContext(), prototype, builtinObject);
-    }
-
-    /**
-     * For Realm/Context initialization only. Does not track allocation.
-     */
-    public static DynamicObject createInit(JSContext context, DynamicObject prototype, JSClass builtinObject) {
-        CompilerAsserts.neverPartOfCompilation();
-        assert prototype == Null.instance || JSRuntime.isObject(prototype);
-        if (context.isMultiContext()) {
-            Shape shape;
-            if (builtinObject == JSUserObject.INSTANCE) {
-                shape = context.getEmptyShapePrototypeInObject();
-            } else {
-                shape = context.makeEmptyShapeWithPrototypeInObject(builtinObject, JSObject.PROTO_PROPERTY);
-            }
-            assert JSShape.getPrototypeProperty(shape) == JSObject.PROTO_PROPERTY;
-            DynamicObject obj = JSObject.createInit(shape);
-            JSObject.PROTO_PROPERTY.setSafe(obj, prototype, shape);
-            return obj;
-        }
-        return createInit(prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, builtinObject, context));
-    }
-
-    @TruffleBoundary
-    public static DynamicObject create(JSContext context, DynamicObject prototype, JSClass builtinObject) {
-        // slow; only use for initialization
-        assert prototype == Null.instance || JSRuntime.isObject(prototype);
-        if (context.isMultiContext() && builtinObject == JSUserObject.INSTANCE) {
-            return JSUserObject.createWithPrototypeInObject(prototype, context);
-        }
-        return create(context, prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, builtinObject, context));
-    }
-
-    @TruffleBoundary
-    public static DynamicObject create(JSContext context, DynamicObject prototype, JSClass builtinObject, Property protoProperty) {
-        // slow; only use for initialization
-        assert prototype == Null.instance || JSRuntime.isObject(prototype);
-        if (context.isMultiContext()) {
-            Shape shape = context.makeEmptyShapeWithPrototypeInObject(builtinObject, protoProperty);
-            DynamicObject obj = JSObject.create(context, shape);
-            protoProperty.setSafe(obj, prototype, shape);
-            return obj;
-        }
-        return create(context, prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, builtinObject, context));
-    }
-
-    /**
-     * Returns whether object is a DynamicObject of JavaScript.
+     * Returns whether object is a proper JavaScript Object.
      */
     public static boolean isJSObject(Object object) {
-        return isDynamicObject(object) && ((DynamicObject) object).getShape().getObjectType() instanceof JSClass;
+        return JSRuntime.isObject(object);
     }
 
-    /**
-     * Returns whether object is a DynamicObject. This includes objects from other language
-     * implementations as well.
-     */
-    public static boolean isDynamicObject(Object object) {
-        return CLASS.isInstance(object);
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public final boolean hasMembers() {
+        return true;
     }
 
-    public static DynamicObject castJSObject(Object object) {
-        return CLASS.cast(object);
+    @ImportStatic({JSGuards.class, JSObject.class})
+    @ExportMessage
+    public abstract static class GetMembers {
+        @Specialization(guards = {"cachedJSClass != null", "getJSClass(target) == cachedJSClass"})
+        public static Object nonArrayCached(JSObject target, @SuppressWarnings("unused") boolean internal,
+                        @Cached("getJSClass(target)") @SuppressWarnings("unused") JSClass cachedJSClass) {
+            return InteropArray.create(JSObject.enumerableOwnNames(target));
+        }
+
+        @Specialization(replaces = "nonArrayCached")
+        public static Object nonArrayUncached(JSObject target, @SuppressWarnings("unused") boolean internal) {
+            return InteropArray.create(JSObject.enumerableOwnNames(target));
+        }
     }
 
-    public static boolean isJSObjectClass(Class<?> clazz) {
-        return CLASS.isAssignableFrom(clazz);
+    @TruffleBoundary
+    protected static String[] filterEnumerableNames(DynamicObject target, Iterable<Object> ownKeys, JSClass jsclass) {
+        List<String> names = new ArrayList<>();
+        for (Object obj : ownKeys) {
+            if (obj instanceof String && !JSRuntime.isArrayIndex((String) obj)) {
+                PropertyDescriptor desc = jsclass.getOwnProperty(target, obj);
+                if (desc != null && desc.getEnumerable()) {
+                    names.add((String) obj);
+                }
+            }
+        }
+        return names.toArray(EMPTY_STRING_ARRAY);
+    }
+
+    @ExportMessage
+    public final Object readMember(String key,
+                    @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
+                    @Cached(value = "create(languageRef.get().getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
+                    @Cached(value = "languageRef.get().bindMemberFunctions()", allowUncached = true) boolean bindMemberFunctions,
+                    @Cached @Exclusive ExportValueNode exportNode) throws UnknownIdentifierException {
+        DynamicObject target = this;
+        Object result;
+        if (readNode == null) {
+            result = JSObject.getOrDefault(target, key, target, null, JSClassProfile.getUncached());
+        } else {
+            result = readNode.executeWithTargetAndIndexOrDefault(target, key, null);
+        }
+        if (result == null) {
+            throw UnknownIdentifierException.create(key);
+        }
+        return exportNode.execute(result, target, bindMemberFunctions);
+    }
+
+    @ExportMessage
+    public final boolean isMemberReadable(String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(this, key, KeyInfoNode.READABLE);
+    }
+
+    @ExportMessage
+    public final void writeMember(String key, Object value,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo,
+                    @Cached ImportValueNode castValueNode,
+                    @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
+                    @Cached(value = "createCachedInterop(languageRef)", uncached = "getUncachedWrite()") WriteElementNode writeNode)
+                    throws UnknownIdentifierException, UnsupportedMessageException {
+        DynamicObject target = this;
+        if (testIntegrityLevel(true)) {
+            throw UnsupportedMessageException.create();
+        }
+        if (!keyInfo.execute(target, key, KeyInfoNode.WRITABLE)) {
+            throw UnknownIdentifierException.create(key);
+        }
+        Object importedValue = castValueNode.executeWithTarget(value);
+        if (writeNode == null) {
+            JSObject.set(target, key, importedValue, true);
+        } else {
+            writeNode.executeWithTargetAndIndexAndValue(target, key, importedValue);
+        }
+    }
+
+    @ExportMessage
+    public final boolean isMemberModifiable(String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(this, key, KeyInfoNode.MODIFIABLE);
+    }
+
+    @ExportMessage
+    public final boolean isMemberInsertable(String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(this, key, KeyInfoNode.INSERTABLE);
+    }
+
+    @ExportMessage
+    public final void removeMember(String key) throws UnsupportedMessageException {
+        if (testIntegrityLevel(false)) {
+            throw UnsupportedMessageException.create();
+        }
+        JSObject.delete(this, key, true);
+    }
+
+    @ExportMessage
+    public final boolean isMemberRemovable(String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(this, key, KeyInfoNode.REMOVABLE);
+    }
+
+    @ExportMessage
+    public final Object invokeMember(String id, Object[] args,
+                    @CachedLanguage JavaScriptLanguage language,
+                    @CachedContext(JavaScriptLanguage.class) JSRealm realm,
+                    @Cached JSInteropInvokeNode callNode,
+                    @Cached @Exclusive ExportValueNode exportNode) throws UnsupportedMessageException, UnknownIdentifierException {
+        language.interopBoundaryEnter(realm);
+        try {
+            Object result = callNode.execute(this, id, args);
+            return exportNode.execute(result);
+        } finally {
+            language.interopBoundaryExit(realm);
+        }
+    }
+
+    @ExportMessage
+    public final boolean isMemberInvocable(String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(this, key, KeyInfoNode.INVOCABLE);
+    }
+
+    @ExportMessage
+    public final boolean hasMemberReadSideEffects(String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(this, key, KeyInfoNode.READ_SIDE_EFFECTS);
+    }
+
+    @ExportMessage
+    public final boolean hasMemberWriteSideEffects(String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(this, key, KeyInfoNode.WRITE_SIDE_EFFECTS);
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public final boolean hasLanguage() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public final Class<? extends TruffleLanguage<?>> getLanguage() {
+        return JavaScriptLanguage.class;
+    }
+
+    @ExportMessage
+    public final Object toDisplayString(boolean allowSideEffects) {
+        return JSRuntime.toDisplayString(this, allowSideEffects);
+    }
+
+    public static ReadElementNode getUncachedRead() {
+        return null;
+    }
+
+    public static WriteElementNode getUncachedWrite() {
+        return null;
     }
 
     public static JSClass getJSClass(DynamicObject obj) {
@@ -298,7 +324,7 @@ public final class JSObject {
     @TruffleBoundary
     public static Object get(TruffleObject obj, Object key) {
         assert JSRuntime.isPropertyKey(key);
-        if (isJSObject(obj)) {
+        if (JSDynamicObject.isJSDynamicObject(obj)) {
             return get((DynamicObject) obj, key);
         } else {
             return JSInteropUtil.readMemberOrDefault(obj, key, Undefined.instance);
@@ -307,7 +333,7 @@ public final class JSObject {
 
     @TruffleBoundary
     public static Object get(TruffleObject obj, long index) {
-        if (isJSObject(obj)) {
+        if (JSDynamicObject.isJSDynamicObject(obj)) {
             return get((DynamicObject) obj, index);
         } else {
             return JSInteropUtil.readArrayElementOrDefault(obj, index, Undefined.instance);
@@ -522,6 +548,7 @@ public final class JSObject {
         return JSObject.getJSClass(obj).defaultToString(obj);
     }
 
+    @ExportMessage.Ignore
     @TruffleBoundary
     public static String toDisplayString(DynamicObject obj, int depth, boolean allowSideEffects) {
         return JSObject.getJSClass(obj).toDisplayStringImpl(obj, depth, allowSideEffects, JavaScriptLanguage.getCurrentLanguage().getJSContext());
@@ -619,21 +646,21 @@ public final class JSObject {
     }
 
     public static ScriptArray getArray(DynamicObject obj) {
-        return JSObject.getArray(obj, JSObject.hasArray(obj));
-    }
-
-    public static ScriptArray getArray(DynamicObject obj, boolean customFloatingCondition) {
         assert hasArray(obj);
-        return (ScriptArray) JSAbstractArray.ARRAY_TYPE_PROPERTY.get(obj, customFloatingCondition);
+        if (obj instanceof JSArrayBase) {
+            return ((JSArrayBase) obj).getArrayType();
+        } else {
+            return ((JSTypedArrayObject) obj).getArrayType();
+        }
     }
 
     public static void setArray(DynamicObject obj, ScriptArray array) {
         assert hasArray(obj);
-        JSAbstractArray.ARRAY_TYPE_PROPERTY.setSafe(obj, array, null);
+        ((JSArrayBase) obj).setArrayType(array);
     }
 
     public static boolean hasArray(DynamicObject obj) {
-        return JSArray.isJSArray(obj) || JSArgumentsObject.isJSArgumentsObject(obj) || JSArrayBufferView.isJSArrayBufferView(obj) || JSObjectPrototype.isJSObjectPrototype(obj);
+        return JSArray.isJSArray(obj) || JSArgumentsArray.isJSArgumentsObject(obj) || JSArrayBufferView.isJSArrayBufferView(obj) || JSObjectPrototype.isJSObjectPrototype(obj);
     }
 
     public static JSContext getJSContext(DynamicObject obj) {

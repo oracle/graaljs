@@ -140,7 +140,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
     private static boolean isCallable(DynamicObject target, BranchProfile proxyBranch) {
         if (JSFunction.isJSFunction(target)) {
             return true;
-        } else if (JSProxy.isProxy(target)) {
+        } else if (JSProxy.isJSProxy(target)) {
             proxyBranch.enter();
             return JSRuntime.isCallableProxy(target);
         } else {
@@ -178,12 +178,12 @@ public abstract class InstanceofNode extends JSBinaryNode {
         throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
     }
 
-    @Specialization(guards = {"isForeignObject(target)", "isJSType(instance)"})
+    @Specialization(guards = {"isForeignObject(target)", "isJSDynamicObject(instance)"})
     protected boolean doForeignTargetJSType(@SuppressWarnings("unused") DynamicObject instance, @SuppressWarnings("unused") Object target) {
         return false;
     }
 
-    @Specialization(guards = {"isForeignObject(target)", "!isJSType(instance)"}, limit = "3")
+    @Specialization(guards = {"isForeignObject(target)", "!isJSDynamicObject(instance)"}, limit = "3")
     protected boolean doForeignTargetOther(Object instance, Object target,
                     @CachedLibrary("target") InteropLibrary interop) {
         try {

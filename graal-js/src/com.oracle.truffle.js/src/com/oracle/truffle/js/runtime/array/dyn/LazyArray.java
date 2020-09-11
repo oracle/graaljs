@@ -51,7 +51,7 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
-import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * LazyArray is a backing class for a JSArray that allows array elements to be supplied on demand
@@ -77,32 +77,32 @@ public class LazyArray extends AbstractConstantArray {
         return new LazyArray(newIntegrityLevel, cache);
     }
 
-    static List<?> arrayGetLazyList(DynamicObject object, boolean condition) {
-        return (List<?>) arrayGetArray(object, condition);
+    private static List<?> arrayGetLazyList(DynamicObject object) {
+        return (List<?>) arrayGetArray(object);
     }
 
     @Override
-    public Object getElementInBounds(DynamicObject object, int index, boolean condition) {
-        return Boundaries.listGet(arrayGetLazyList(object, condition), index);
+    public Object getElementInBounds(DynamicObject object, int index) {
+        return Boundaries.listGet(arrayGetLazyList(object), index);
     }
 
     @Override
-    public boolean hasElement(DynamicObject object, long index, boolean condition) {
-        return index >= 0 && index < lengthInt(object, condition);
+    public boolean hasElement(DynamicObject object, long index) {
+        return index >= 0 && index < lengthInt(object);
     }
 
     @Override
-    public int lengthInt(DynamicObject object, boolean condition) {
-        return (int) arrayGetLength(object, condition);
+    public int lengthInt(DynamicObject object) {
+        return (int) arrayGetLength(object);
     }
 
     @Override
-    public AbstractWritableArray createWriteableObject(DynamicObject object, long index, Object value, boolean condition, ProfileHolder profile) {
+    public AbstractWritableArray createWriteableObject(DynamicObject object, long index, Object value, ProfileHolder profile) {
         // enumerate the whole array
-        int len = lengthInt(object, condition);
+        int len = lengthInt(object);
         Object[] array = new Object[len];
         for (int i = 0; i < len; i++) {
-            array[i] = getElementInBounds(object, i, condition);
+            array[i] = getElementInBounds(object, i);
         }
         AbstractObjectArray newArray;
         newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, array.length, array.length, array, integrityLevel);
@@ -113,38 +113,38 @@ public class LazyArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractWritableArray createWriteableDouble(DynamicObject object, long index, double value, boolean condition, ProfileHolder profile) {
-        return createWriteableObject(object, index, value, condition, profile);
+    public AbstractWritableArray createWriteableDouble(DynamicObject object, long index, double value, ProfileHolder profile) {
+        return createWriteableObject(object, index, value, profile);
     }
 
     @Override
-    public AbstractWritableArray createWriteableInt(DynamicObject object, long index, int value, boolean condition, ProfileHolder profile) {
-        return createWriteableObject(object, index, value, condition, profile);
+    public AbstractWritableArray createWriteableInt(DynamicObject object, long index, int value, ProfileHolder profile) {
+        return createWriteableObject(object, index, value, profile);
     }
 
     @Override
-    public AbstractWritableArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, boolean condition, ProfileHolder profile) {
-        return createWriteableObject(object, index, value, condition, profile);
+    public AbstractWritableArray createWriteableJSObject(DynamicObject object, long index, JSDynamicObject value, ProfileHolder profile) {
+        return createWriteableObject(object, index, value, profile);
     }
 
     @Override
-    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict, boolean condition) {
-        return createWriteableObject(object, index, null, condition, ProfileHolder.empty()).deleteElementImpl(object, index, strict, condition);
+    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict) {
+        return createWriteableObject(object, index, null, ProfileHolder.empty()).deleteElementImpl(object, index, strict);
     }
 
     @Override
-    public ScriptArray setLengthImpl(DynamicObject object, long len, boolean condition, ProfileHolder profile) {
-        return createWriteableObject(object, len - 1, null, condition, ProfileHolder.empty()).setLengthImpl(object, len, condition, profile);
+    public ScriptArray setLengthImpl(DynamicObject object, long len, ProfileHolder profile) {
+        return createWriteableObject(object, len - 1, null, ProfileHolder.empty()).setLengthImpl(object, len, profile);
     }
 
     @Override
     public ScriptArray removeRangeImpl(DynamicObject object, long start, long end) {
-        return createWriteableObject(object, start, null, JSArray.isJSArray(object), ProfileHolder.empty()).removeRangeImpl(object, start, end);
+        return createWriteableObject(object, start, null, ProfileHolder.empty()).removeRangeImpl(object, start, end);
     }
 
     @Override
     public ScriptArray addRangeImpl(DynamicObject object, long offset, int size) {
-        return createWriteableObject(object, offset, null, JSArray.isJSArray(object), ProfileHolder.empty()).addRangeImpl(object, offset, size);
+        return createWriteableObject(object, offset, null, ProfileHolder.empty()).addRangeImpl(object, offset, size);
     }
 
     @Override
@@ -153,8 +153,13 @@ public class LazyArray extends AbstractConstantArray {
         int len = lengthInt(object);
         Object[] array = new Object[len];
         for (int i = 0; i < len; i++) {
-            array[i] = getElementInBounds(object, i, arrayCondition());
+            array[i] = getElementInBounds(object, i);
         }
         return array;
+    }
+
+    @Override
+    public Object cloneArray(DynamicObject object) {
+        return arrayGetLazyList(object);
     }
 }

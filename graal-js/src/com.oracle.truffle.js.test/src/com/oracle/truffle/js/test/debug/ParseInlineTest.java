@@ -57,7 +57,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.test.JSTest;
 
@@ -117,7 +117,7 @@ public class ParseInlineTest {
 
             context.eval(JavaScriptLanguage.ID, src);
 
-            assertTrue(JSUserObject.isJSUserObject(tester.result));
+            assertTrue(JSOrdinary.isJSOrdinaryObject(tester.result));
             assertTrue(JSObject.hasOwnProperty((DynamicObject) tester.result, "number"));
         }
     }

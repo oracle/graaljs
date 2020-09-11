@@ -47,7 +47,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -216,7 +216,7 @@ public final class JSModuleRecord extends ScriptOrModule {
     }
 
     private DynamicObject createMetaObject() {
-        DynamicObject metaObj = JSUserObject.createWithNullPrototype(context);
+        DynamicObject metaObj = JSOrdinary.createWithNullPrototype(context);
         if (context.hasImportMetaInitializerBeenSet()) {
             context.notifyImportMetaInitializer(metaObj, this);
         } else {

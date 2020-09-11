@@ -47,6 +47,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public final class ConstantDoubleArray extends AbstractConstantArray {
     private static final ConstantDoubleArray CONSTANT_DOUBLE_ARRAY = new ConstantDoubleArray(INTEGRITY_LEVEL_NONE, createCache());
@@ -60,30 +61,26 @@ public final class ConstantDoubleArray extends AbstractConstantArray {
     }
 
     @Override
-    public Object getElementInBounds(DynamicObject object, int index, boolean condition) {
-        return getElementDouble(object, index, condition);
+    public Object getElementInBounds(DynamicObject object, int index) {
+        return getElementDouble(object, index);
     }
 
-    public static double getElementDouble(DynamicObject object, int index, boolean condition) {
-        return getArray(object, condition)[index];
+    private static double getElementDouble(DynamicObject object, int index) {
+        return getArray(object)[index];
     }
 
-    public static double[] getArray(DynamicObject object) {
+    private static double[] getArray(DynamicObject object) {
         return (double[]) arrayGetArray(object);
     }
 
-    public static double[] getArray(DynamicObject object, boolean condition) {
-        return (double[]) arrayGetArray(object, condition);
+    @Override
+    public int lengthInt(DynamicObject object) {
+        return getArray(object).length;
     }
 
     @Override
-    public int lengthInt(DynamicObject object, boolean condition) {
-        return getArray(object, condition).length;
-    }
-
-    @Override
-    public boolean hasElement(DynamicObject object, long index, boolean condition) {
-        return index >= 0 && index < getArray(object, condition).length;
+    public boolean hasElement(DynamicObject object, long index) {
+        return index >= 0 && index < getArray(object).length;
     }
 
     @Override
@@ -92,23 +89,28 @@ public final class ConstantDoubleArray extends AbstractConstantArray {
     }
 
     @Override
-    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict, boolean condition) {
-        return createWriteableDouble(object, index, HolesDoubleArray.HOLE_VALUE_DOUBLE, condition, ProfileHolder.empty()).deleteElementImpl(object, index, condition, condition);
+    public Object cloneArray(DynamicObject object) {
+        return getArray(object);
     }
 
     @Override
-    public ScriptArray setLengthImpl(DynamicObject object, long length, boolean condition, ProfileHolder profile) {
-        return createWriteableDouble(object, length - 1, HolesDoubleArray.HOLE_VALUE_DOUBLE, condition, ProfileHolder.empty()).setLengthImpl(object, length, condition, profile);
+    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict) {
+        return createWriteableDouble(object, index, HolesDoubleArray.HOLE_VALUE_DOUBLE, ProfileHolder.empty()).deleteElementImpl(object, index, strict);
     }
 
     @Override
-    public ZeroBasedDoubleArray createWriteableInt(DynamicObject object, long index, int value, boolean condition, ProfileHolder profile) {
-        return createWriteableDouble(object, index, value, condition, profile);
+    public ScriptArray setLengthImpl(DynamicObject object, long length, ProfileHolder profile) {
+        return createWriteableDouble(object, length - 1, HolesDoubleArray.HOLE_VALUE_DOUBLE, ProfileHolder.empty()).setLengthImpl(object, length, profile);
     }
 
     @Override
-    public ZeroBasedDoubleArray createWriteableDouble(DynamicObject object, long index, double value, boolean condition, ProfileHolder profile) {
-        double[] doubleCopy = ArrayCopy.doubleToDouble(getArray(object, condition));
+    public ZeroBasedDoubleArray createWriteableInt(DynamicObject object, long index, int value, ProfileHolder profile) {
+        return createWriteableDouble(object, index, value, profile);
+    }
+
+    @Override
+    public ZeroBasedDoubleArray createWriteableDouble(DynamicObject object, long index, double value, ProfileHolder profile) {
+        double[] doubleCopy = ArrayCopy.doubleToDouble(getArray(object));
         ZeroBasedDoubleArray newArray = ZeroBasedDoubleArray.makeZeroBasedDoubleArray(object, doubleCopy.length, doubleCopy.length, doubleCopy, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
@@ -117,13 +119,13 @@ public final class ConstantDoubleArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractWritableArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, boolean condition, ProfileHolder profile) {
-        return createWriteableObject(object, index, value, condition, profile);
+    public AbstractWritableArray createWriteableJSObject(DynamicObject object, long index, JSDynamicObject value, ProfileHolder profile) {
+        return createWriteableObject(object, index, value, profile);
     }
 
     @Override
-    public ZeroBasedObjectArray createWriteableObject(DynamicObject object, long index, Object value, boolean condition, ProfileHolder profile) {
-        Object[] doubleCopy = ArrayCopy.doubleToObject(getArray(object, condition));
+    public ZeroBasedObjectArray createWriteableObject(DynamicObject object, long index, Object value, ProfileHolder profile) {
+        Object[] doubleCopy = ArrayCopy.doubleToObject(getArray(object));
         ZeroBasedObjectArray newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, doubleCopy.length, doubleCopy.length, doubleCopy, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);

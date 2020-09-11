@@ -48,7 +48,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -77,16 +76,16 @@ import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.java.JavaAccess;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 /**
  * 11.2.2 The new Operator.
  */
-@ImportStatic(value = {JSProxy.class})
 public abstract class JSNewNode extends JavaScriptNode {
 
     @Child @Executed protected JavaScriptNode targetNode;
@@ -168,7 +167,7 @@ public abstract class JSNewNode extends JavaScriptNode {
     /**
      * Implements [[Construct]] for Proxy.
      */
-    @Specialization(guards = "isProxy(proxy)")
+    @Specialization(guards = "isJSProxy(proxy)")
     protected Object doNewJSProxy(VirtualFrame frame, DynamicObject proxy) {
         if (!JSRuntime.isConstructorProxy(proxy)) {
             throw Errors.createTypeErrorNotAFunction(proxy, this);
@@ -177,7 +176,7 @@ public abstract class JSNewNode extends JavaScriptNode {
         Object target = JSProxy.getTarget(proxy);
         Object trap = JSProxy.getTrapFromObject(handler, JSProxy.CONSTRUCT);
         if (trap == Undefined.instance) {
-            if (JSObject.isJSObject(target)) {
+            if (JSDynamicObject.isJSDynamicObject(target)) {
                 // Construct(F=target, argumentsList=frame, newTarget=proxy)
                 int userArgumentCount = arguments.getCount(frame);
                 Object[] args = JSArguments.createInitialWithNewTarget(JSFunction.CONSTRUCT, target, proxy, userArgumentCount);
@@ -252,7 +251,7 @@ public abstract class JSNewNode extends JavaScriptNode {
         return env.asHostSymbol(adapterClass);
     }
 
-    @Specialization(guards = {"!isJSFunction(target)", "!isJSAdapter(target)", "!isProxy(target)", "!isJavaPackage(target)", "!isForeignObject(target)"})
+    @Specialization(guards = {"!isJSFunction(target)", "!isJSAdapter(target)", "!isJSProxy(target)", "!isJavaPackage(target)", "!isForeignObject(target)"})
     public Object createFunctionTypeError(VirtualFrame frame, Object target) {
         getAbstractFunctionArguments(frame);
         return throwFunctionTypeError(target);

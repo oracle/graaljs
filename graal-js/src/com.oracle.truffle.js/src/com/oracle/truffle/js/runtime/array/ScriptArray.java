@@ -74,39 +74,27 @@ public abstract class ScriptArray {
 
     public static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
 
-    protected static boolean arrayCondition() {
-        return false;
-    }
+    public abstract Object getElement(DynamicObject object, long index);
 
-    public final Object getElement(DynamicObject object, long index) {
-        return getElement(object, index, arrayCondition());
-    }
+    public abstract Object getElementInBounds(DynamicObject object, long index);
 
-    public abstract Object getElement(DynamicObject object, long index, boolean condition);
-
-    public abstract Object getElementInBounds(DynamicObject object, long index, boolean condition);
-
-    public abstract ScriptArray setElementImpl(DynamicObject object, long index, Object value, boolean strict, boolean condition);
+    public abstract ScriptArray setElementImpl(DynamicObject object, long index, Object value, boolean strict);
 
     public final ScriptArray setElement(DynamicObject object, long index, Object value, boolean strict) {
-        return setElement(object, index, value, strict, arrayCondition());
-    }
-
-    public final ScriptArray setElement(DynamicObject object, long index, Object value, boolean strict, boolean condition) {
         if (isFrozen()) {
             if (strict) {
                 setElementFrozenStrict(index);
             }
             return this;
         } else if (isLengthNotWritable()) {
-            if (index >= length(object, condition)) {
+            if (index >= length(object)) {
                 if (strict) {
                     throw Errors.createTypeErrorLengthNotWritable();
                 }
                 return this;
             }
         }
-        return setElementImpl(object, index, value, strict, condition);
+        return setElementImpl(object, index, value, strict);
     }
 
     @TruffleBoundary
@@ -119,24 +107,16 @@ public abstract class ScriptArray {
         }
     }
 
-    public abstract ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict, boolean condition);
+    public abstract ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict);
 
     public final ScriptArray deleteElement(DynamicObject object, long index, boolean strict) {
-        return deleteElement(object, index, strict, arrayCondition());
-    }
-
-    public final ScriptArray deleteElement(DynamicObject object, long index, boolean strict, boolean condition) {
-        assert canDeleteElement(object, index, strict, condition);
-        return deleteElementImpl(object, index, strict, condition);
+        assert canDeleteElement(object, index, strict);
+        return deleteElementImpl(object, index, strict);
     }
 
     public final boolean canDeleteElement(DynamicObject object, long index, boolean strict) {
-        return canDeleteElement(object, index, strict, arrayCondition());
-    }
-
-    public final boolean canDeleteElement(DynamicObject object, long index, boolean strict, boolean condition) {
         if (isSealed()) {
-            if (hasElement(object, index, condition)) {
+            if (hasElement(object, index)) {
                 if (strict) {
                     throw Errors.createTypeErrorCannotDeletePropertyOfSealedArray(index);
                 }
@@ -149,23 +129,11 @@ public abstract class ScriptArray {
     /**
      * @return true if array has an element (not a hole) at this index.
      */
-    public final boolean hasElement(DynamicObject object, long index) {
-        return hasElement(object, index, arrayCondition());
-    }
+    public abstract boolean hasElement(DynamicObject object, long index);
 
-    public abstract boolean hasElement(DynamicObject object, long index, boolean condition);
+    public abstract long length(DynamicObject object);
 
-    public final long length(DynamicObject object) {
-        return length(object, arrayCondition());
-    }
-
-    public abstract long length(DynamicObject object, boolean condition);
-
-    public final int lengthInt(DynamicObject object) {
-        return lengthInt(object, arrayCondition());
-    }
-
-    public abstract int lengthInt(DynamicObject object, boolean condition);
+    public abstract int lengthInt(DynamicObject object);
 
     protected interface ProfileAccess {
     }
@@ -211,55 +179,33 @@ public abstract class ScriptArray {
         return ProfileHolder.create(8, SetLengthProfileAccess.class);
     }
 
-    public abstract ScriptArray setLengthImpl(DynamicObject object, long len, boolean condition, ProfileHolder profile);
+    public abstract ScriptArray setLengthImpl(DynamicObject object, long len, ProfileHolder profile);
 
-    public final ScriptArray setLength(DynamicObject object, long len, boolean strict, boolean condition, ProfileHolder profile) {
+    public final ScriptArray setLength(DynamicObject object, long len, boolean strict, ProfileHolder profile) {
         if (isLengthNotWritable()) {
             if (strict) {
                 throw Errors.createTypeErrorLengthNotWritable();
             }
             return this;
         } else if (isSealed()) {
-            assert len >= lastElementIndex(object, condition) + 1; // to be checked by caller
+            assert len >= lastElementIndex(object) + 1; // to be checked by caller
         }
-        return setLengthImpl(object, len, condition, profile);
+        return setLengthImpl(object, len, profile);
     }
 
     public final ScriptArray setLength(DynamicObject object, long len, boolean strict) {
-        return setLength(object, len, strict, arrayCondition(), ProfileHolder.empty());
+        return setLength(object, len, strict, ProfileHolder.empty());
     }
 
     /**
      * First element index (inclusive).
      */
-    public final long firstElementIndex(DynamicObject object) {
-        return firstElementIndex(object, arrayCondition());
-    }
+    public abstract long firstElementIndex(DynamicObject object);
 
     /**
      * Last element index (inclusive).
      */
-    public final long lastElementIndex(DynamicObject object) {
-        return lastElementIndex(object, arrayCondition());
-    }
-
-    /**
-     * First element index (inclusive).
-     */
-    public abstract long firstElementIndex(DynamicObject object, boolean condition);
-
-    /**
-     * Last element index (inclusive).
-     */
-    public abstract long lastElementIndex(DynamicObject object, boolean condition);
-
-    /**
-     * Returns the next index. The index is guaranteed either to exist, or be larger than
-     * lastElementIndex().
-     */
-    public final long nextElementIndex(DynamicObject object, long index) {
-        return nextElementIndex(object, index, arrayCondition());
-    }
+    public abstract long lastElementIndex(DynamicObject object);
 
     /**
      * Returns the next index. The index is guaranteed either to exist, or be MAX_SAFE_INTEGER.
@@ -267,33 +213,19 @@ public abstract class ScriptArray {
      * the length() of this array would be wrong, if the inheriting array is longer, but has a hole
      * at length().
      */
-    public abstract long nextElementIndex(DynamicObject object, long index, boolean condition);
+    public abstract long nextElementIndex(DynamicObject object, long index);
 
     /**
      * Returns the previous index. The index is guaranteed either to exist, or be smaller than
      * firstElementIndex().
      */
-    public final long previousElementIndex(DynamicObject object, long index) {
-        return previousElementIndex(object, index, arrayCondition());
-    }
-
-    /**
-     * Returns the previous index. The index is guaranteed to exist.
-     */
-    public abstract long previousElementIndex(DynamicObject object, long index, boolean condition);
+    public abstract long previousElementIndex(DynamicObject object, long index);
 
     /**
      * Range check only, might be a hole depending on array type.
      */
-    public boolean isInBoundsFast(DynamicObject object, long index, boolean condition) {
-        return firstElementIndex(object, condition) <= index && index <= lastElementIndex(object, condition);
-    }
-
-    /**
-     * Range check only, might be a hole depending on array type.
-     */
-    public final boolean isInBoundsFast(DynamicObject object, long index) {
-        return isInBoundsFast(object, index, arrayCondition());
+    public boolean isInBoundsFast(DynamicObject object, long index) {
+        return firstElementIndex(object) <= index && index <= lastElementIndex(object);
     }
 
     public Iterable<Object> asIterable(DynamicObject object) {
@@ -336,7 +268,7 @@ public abstract class ScriptArray {
 
     /**
      * Creates an Object[] from this array, of size array.length. Does not check the prototype
-     * chain, i.e. result can be wrong. Use JSArrayToObjectArrayNode for more correct results.
+     * chain, i.e. result can be wrong. Use JSToObjectArrayNode for more correct results.
      */
     public abstract Object[] toArray(DynamicObject object);
 
@@ -412,11 +344,7 @@ public abstract class ScriptArray {
         return false;
     }
 
-    public final boolean hasHoles(DynamicObject object) {
-        return hasHoles(object, arrayCondition());
-    }
-
-    public abstract boolean hasHoles(DynamicObject object, boolean condition);
+    public abstract boolean hasHoles(DynamicObject object);
 
     /**
      * This function deletes all elements in the range from [start..end[. This is equivalent to

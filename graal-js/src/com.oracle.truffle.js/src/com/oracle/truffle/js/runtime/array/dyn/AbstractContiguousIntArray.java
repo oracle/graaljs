@@ -56,26 +56,26 @@ public abstract class AbstractContiguousIntArray extends AbstractIntArray {
     }
 
     @Override
-    public int getInBoundsFastInt(DynamicObject object, int index, boolean condition) {
-        return getArray(object, condition)[(int) (index - getIndexOffset(object, condition))];
+    public int getInBoundsFastInt(DynamicObject object, int index) {
+        return getArray(object)[(int) (index - getIndexOffset(object))];
     }
 
     @Override
-    public void setInBoundsFast(DynamicObject object, int index, int value, boolean condition) {
-        getArray(object, condition)[(int) (index - getIndexOffset(object, condition))] = value;
+    public void setInBoundsFast(DynamicObject object, int index, int value) {
+        getArray(object)[(int) (index - getIndexOffset(object))] = value;
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBoundsFast", index, value);
         }
     }
 
     @Override
-    protected final void setLengthLess(DynamicObject object, long length, boolean condition, ProfileHolder profile) {
-        setLengthLessContiguous(object, length, condition, profile);
+    protected final void setLengthLess(DynamicObject object, long length, ProfileHolder profile) {
+        setLengthLessContiguous(object, length, profile);
     }
 
     @Override
-    protected final int prepareInBoundsFast(DynamicObject object, long index, boolean condition) {
-        return (int) (index - getIndexOffset(object, condition));
+    protected final int prepareInBoundsFast(DynamicObject object, long index) {
+        return (int) (index - getIndexOffset(object));
     }
 
     @Override
@@ -89,11 +89,6 @@ public abstract class AbstractContiguousIntArray extends AbstractIntArray {
     }
 
     @Override
-    protected final int getArrayOffset(DynamicObject object, boolean condition) {
-        return arrayGetArrayOffset(object, condition);
-    }
-
-    @Override
     protected final void setIndexOffset(DynamicObject object, long indexOffset) {
         arraySetIndexOffset(object, indexOffset);
     }
@@ -104,22 +99,17 @@ public abstract class AbstractContiguousIntArray extends AbstractIntArray {
     }
 
     @Override
-    protected final long getIndexOffset(DynamicObject object, boolean condition) {
-        return arrayGetIndexOffset(object, condition);
+    public final long firstElementIndex(DynamicObject object) {
+        return getIndexOffset(object) + getArrayOffset(object);
     }
 
     @Override
-    public final long firstElementIndex(DynamicObject object, boolean condition) {
-        return getIndexOffset(object, condition) + getArrayOffset(object, condition);
+    public final long lastElementIndex(DynamicObject object) {
+        return getIndexOffset(object) + getArrayOffset(object) + getUsedLength(object) - 1;
     }
 
     @Override
-    public final long lastElementIndex(DynamicObject object, boolean condition) {
-        return getIndexOffset(object, condition) + getArrayOffset(object, condition) + getUsedLength(object, condition) - 1;
-    }
-
-    @Override
-    public boolean hasHoles(DynamicObject object, boolean condition) {
+    public boolean hasHoles(DynamicObject object) {
         return true;
     }
 

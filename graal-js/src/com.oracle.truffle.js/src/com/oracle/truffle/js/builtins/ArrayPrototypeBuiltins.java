@@ -171,10 +171,11 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.StringBuilderProfile;
@@ -501,7 +502,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             if (isArray(originalArray)) {
                 arraySpeciesIsArray.enter();
                 ctor = getConstructorProperty(originalArray);
-                if (JSObject.isJSObject(ctor)) {
+                if (JSDynamicObject.isJSDynamicObject(ctor)) {
                     DynamicObject ctorObj = (DynamicObject) ctor;
                     if (JSFunction.isJSFunction(ctorObj) && JSFunction.isConstructor(ctorObj)) {
                         JSRealm thisRealm = context.getRealm();
@@ -569,7 +570,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 defaultConstructorBranch.enter();
                 return defaultConstructor;
             }
-            if (!JSObject.isJSObject(c)) {
+            if (!JSDynamicObject.isJSDynamicObject(c)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorNotAnObject(c);
             }
@@ -928,7 +929,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"isArray(object)", "longIsRepresentableAsInt(longLength)"})
         protected static void setArrayLength(DynamicObject object, long longLength,
                         @Cached("createArrayLengthWriteNode()") ArrayLengthWriteNode arrayLengthWriteNode) {
-            arrayLengthWriteNode.executeVoid(object, (int) longLength, isArray(object));
+            arrayLengthWriteNode.executeVoid(object, (int) longLength);
         }
 
         protected static final ArrayLengthWriteNode createArrayLengthWriteNode() {
@@ -1027,13 +1028,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             super(context, builtin);
         }
 
-        protected static boolean isSparseArray(DynamicObject thisObj, boolean isArray) {
-            return arrayGetArrayType(thisObj, isArray) instanceof SparseArray;
+        protected static boolean isSparseArray(DynamicObject thisObj) {
+            return arrayGetArrayType(thisObj) instanceof SparseArray;
         }
 
         protected static boolean isArrayWithoutHoles(DynamicObject thisObj, IsArrayNode isArrayNode, TestArrayNode hasHolesNode) {
             boolean isArray = isArrayNode.execute(thisObj);
-            return isArray && !hasHolesNode.executeBoolean(thisObj, isArray);
+            return isArray && !hasHolesNode.executeBoolean(thisObj);
         }
 
         @Specialization(guards = {"isArrayWithoutHoles(thisObj, isArrayNode, hasHolesNode)"}, limit = "1")
@@ -1060,7 +1061,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         protected static boolean isArrayWithHoles(DynamicObject thisObj, IsArrayNode isArrayNode, TestArrayNode hasHolesNode) {
             boolean isArray = isArrayNode.execute(thisObj);
-            return isArray && hasHolesNode.executeBoolean(thisObj, isArray) && !isSparseArray(thisObj, isArray);
+            return isArray && hasHolesNode.executeBoolean(thisObj) && !isSparseArray(thisObj);
         }
 
         @Specialization(guards = {"isArrayWithHoles(thisObj, isArrayNode, hasHolesNode)"}, limit = "1")
@@ -1089,7 +1090,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        @Specialization(guards = {"isArrayNode.execute(thisObj)", "isSparseArray(thisObj, isArrayNode.execute(thisObj))"}, limit = "1")
+        @Specialization(guards = {"isArrayNode.execute(thisObj)", "isSparseArray(thisObj)"}, limit = "1")
         protected Object shiftSparse(DynamicObject thisObj,
                         @Shared("isArray") @Cached("createIsArray()") @SuppressWarnings("unused") IsArrayNode isArrayNode,
                         @Shared("deleteProperty") @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode,
@@ -1177,7 +1178,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         protected boolean isFastPath(Object thisObj) {
             boolean isArray = isArrayNode.execute(thisObj);
-            return isArray && !hasHolesNode.executeBoolean((DynamicObject) thisObj, isArray);
+            return isArray && !hasHolesNode.executeBoolean((DynamicObject) thisObj);
         }
 
         private long unshiftHoleless(DynamicObject thisObj, Object[] args) {
@@ -1276,7 +1277,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected Object toString(Object thisObj) {
             Object arrayObj = toObject(thisObj);
-            if (isJSObjectProfile.profile(JSObject.isJSObject(arrayObj))) {
+            if (isJSObjectProfile.profile(JSDynamicObject.isJSDynamicObject(arrayObj))) {
                 Object join = getJoinProperty(arrayObj);
                 if (isCallable(join)) {
                     return callJoin(arrayObj, join);
@@ -1376,7 +1377,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 errorBranch.enter();
                 throwLengthError();
             }
-            if (optimizationsObservable.profile(JSProxy.isProxy(elObj) || !JSObject.isJSObject(elObj))) {
+            if (optimizationsObservable.profile(JSProxy.isJSProxy(elObj) || !JSDynamicObject.isJSDynamicObject(elObj))) {
                 // strictly to the standard implementation; traps could expose optimizations!
                 for (long k = 0; k < len2; k++) {
                     if (hasProperty(elObj, k)) {
@@ -1403,7 +1404,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             if (el == Undefined.instance || el == Null.instance) {
                 return false;
             }
-            if (JSObject.isJSObject(el)) {
+            if (JSDynamicObject.isJSDynamicObject(el)) {
                 DynamicObject obj = (DynamicObject) el;
                 Object spreadable = getSpreadableProperty(obj);
                 if (spreadable != Undefined.instance) {
@@ -1802,9 +1803,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             boolean isJSArray = JSArray.isJSArray(thisObj);
             if (isJSArray) {
                 DynamicObject dynObj = (DynamicObject) thisObj;
-                ScriptArray arrayType = arrayGetArrayType(dynObj, isJSArray);
+                ScriptArray arrayType = arrayGetArrayType(dynObj);
                 spliceJSArray.execute(dynObj, len, actualStart, actualDeleteCount, itemCount, arrayType, this);
-            } else if (JSObject.isJSObject(thisObj)) {
+            } else if (JSDynamicObject.isJSDynamicObject(thisObj)) {
                 objectBranch.enter();
                 spliceJSObject(thisObj, len, actualStart, actualDeleteCount, itemCount);
             } else {
@@ -2121,7 +2122,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             long resultLen = arrayGetLength(resultArray);
 
             Object obj = getArraySpeciesConstructorNode().typedArraySpeciesCreate(thisJSObj, JSRuntime.longToIntOrDouble(resultLen));
-            if (!JSObject.isJSObject(obj)) {
+            if (!JSDynamicObject.isJSDynamicObject(obj)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorNotAnObject(obj);
             }
@@ -2570,7 +2571,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached("createBinaryProfile()") ConditionProfile isJSObject) {
             checkCompareFunction(comparefn);
             Object thisJSObj = toObject(thisObj);
-            if (isJSObject.profile(JSObject.isJSObject(thisJSObj))) {
+            if (isJSObject.profile(JSDynamicObject.isJSDynamicObject(thisJSObj))) {
                 return sortJSObject(comparefn, (DynamicObject) thisJSObj);
             } else {
                 return sortForeignObject(comparefn, thisJSObj);
@@ -3029,7 +3030,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             long lower = 0;
             long upper = length - 1;
             boolean isArray = isArrayNode.execute(array);
-            boolean hasHoles = isArray && hasHolesNode.executeBoolean((DynamicObject) array, isArray);
+            boolean hasHoles = isArray && hasHolesNode.executeBoolean((DynamicObject) array);
 
             while (lower <= upper) {
                 boolean lowerExists;

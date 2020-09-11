@@ -63,8 +63,8 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 @NodeInfo(shortName = "==")
 @ImportStatic({JSRuntime.class, JSInteropUtil.class})
@@ -257,7 +257,7 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     // null-or-undefined check on one element suffices
-    @Specialization(guards = {"!isNullOrUndefined(a)", "isJSType(a)", "isJSType(b)"})
+    @Specialization(guards = {"!isNullOrUndefined(a)", "isJSDynamicObject(a)", "isJSDynamicObject(b)"})
     protected static boolean doJSObject(DynamicObject a, DynamicObject b) {
         return a == b;
     }

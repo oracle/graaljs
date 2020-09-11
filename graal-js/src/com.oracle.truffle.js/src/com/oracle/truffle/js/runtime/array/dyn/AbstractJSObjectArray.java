@@ -45,12 +45,13 @@ import static com.oracle.truffle.api.CompilerDirectives.injectBranchProbability;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArray;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArray;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public abstract class AbstractJSObjectArray extends AbstractWritableArray {
 
@@ -60,62 +61,63 @@ public abstract class AbstractJSObjectArray extends AbstractWritableArray {
 
     @Override
     AbstractWritableArray sameTypeHolesArray(DynamicObject object, int length, Object array, long indexOffset, int arrayOffset, int usedLength, int holeCount) {
-        return HolesJSObjectArray.makeHolesJSObjectArray(object, length, (DynamicObject[]) array, indexOffset, arrayOffset, usedLength, holeCount, integrityLevel);
+        return HolesJSObjectArray.makeHolesJSObjectArray(object, length, (JSDynamicObject[]) array, indexOffset, arrayOffset, usedLength, holeCount, integrityLevel);
     }
 
-    public abstract void setInBoundsFast(DynamicObject object, int index, DynamicObject value, boolean condition);
+    public abstract void setInBoundsFast(DynamicObject object, int index, JSDynamicObject value);
 
     @Override
-    public final ScriptArray setElementImpl(DynamicObject object, long index, Object value, boolean strict, boolean condition) {
+    public final ScriptArray setElementImpl(DynamicObject object, long index, Object value, boolean strict) {
         assert index >= 0;
-        if (injectBranchProbability(FASTPATH_PROBABILITY, JSObject.isDynamicObject(value) && isSupported(object, index, condition))) {
-            setSupported(object, (int) index, (DynamicObject) value, condition, ProfileHolder.empty());
+        if (injectBranchProbability(FASTPATH_PROBABILITY, JSDynamicObject.isJSDynamicObject(value) && isSupported(object, index))) {
+            setSupported(object, (int) index, (JSDynamicObject) value, ProfileHolder.empty());
             return this;
         } else {
-            return rewrite(object, index, value, condition).setElementImpl(object, index, value, strict, condition);
+            return rewrite(object, index, value).setElementImpl(object, index, value, strict);
         }
     }
 
-    private ScriptArray rewrite(DynamicObject object, long index, Object value, boolean condition) {
-        if (isSupportedContiguous(object, index, condition)) {
-            return toContiguous(object, index, value, condition);
-        } else if (isSupportedHoles(object, index, condition)) {
-            return toHoles(object, index, value, condition);
+    private ScriptArray rewrite(DynamicObject object, long index, Object value) {
+        if (isSupportedContiguous(object, index)) {
+            return toContiguous(object, index, value);
+        } else if (isSupportedHoles(object, index)) {
+            return toHoles(object, index, value);
         } else {
-            return toObject(object, index, value, condition);
+            return toObject(object, index, value);
         }
     }
 
     @Override
-    public Object getInBoundsFast(DynamicObject object, int index, boolean condition) {
-        return getInBoundsFastJSObject(object, index, condition);
+    public Object getInBoundsFast(DynamicObject object, int index) {
+        return getInBoundsFastJSObject(object, index);
     }
 
     @Override
     int getArrayLength(Object array) {
-        return ((DynamicObject[]) array).length;
+        return ((JSDynamicObject[]) array).length;
     }
 
-    protected static DynamicObject[] getArray(DynamicObject object) {
-        return getArray(object, arrayCondition());
+    protected static JSDynamicObject[] getArray(DynamicObject object) {
+        Object array = arrayGetArray(object);
+        if (array.getClass() == JSDynamicObject[].class) {
+            return CompilerDirectives.castExact(array, JSDynamicObject[].class);
+        } else {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
     }
 
-    protected static DynamicObject[] getArray(DynamicObject object, boolean condition) {
-        return arrayCast(arrayGetArray(object, condition), DynamicObject[].class, condition);
-    }
+    public abstract DynamicObject getInBoundsFastJSObject(DynamicObject object, int index);
 
-    public abstract DynamicObject getInBoundsFastJSObject(DynamicObject object, int index, boolean condition);
-
-    public final void setInBounds(DynamicObject object, int index, DynamicObject value, boolean condition, ProfileHolder profile) {
-        getArray(object, condition)[prepareInBounds(object, index, condition, profile)] = checkNonNull(value);
+    public final void setInBounds(DynamicObject object, int index, JSDynamicObject value, ProfileHolder profile) {
+        getArray(object)[prepareInBounds(object, index, profile)] = checkNonNull(value);
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBounds", index, value);
         }
     }
 
-    public final void setSupported(DynamicObject object, int index, DynamicObject value, boolean condition, ProfileHolder profile) {
-        int preparedIndex = prepareSupported(object, index, condition, profile);
-        getArray(object, condition)[preparedIndex] = checkNonNull(value);
+    public final void setSupported(DynamicObject object, int index, JSDynamicObject value, ProfileHolder profile) {
+        int preparedIndex = prepareSupported(object, index, profile);
+        getArray(object)[preparedIndex] = checkNonNull(value);
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("Supported", index, value);
         }
@@ -123,7 +125,7 @@ public abstract class AbstractJSObjectArray extends AbstractWritableArray {
 
     @Override
     void fillWithHoles(Object array, int fromIndex, int toIndex) {
-        DynamicObject[] objectArray = (DynamicObject[]) array;
+        JSDynamicObject[] objectArray = (JSDynamicObject[]) array;
         for (int i = fromIndex; i < toIndex; i++) {
             objectArray[i] = null;
         }
@@ -142,62 +144,67 @@ public abstract class AbstractJSObjectArray extends AbstractWritableArray {
     }
 
     @Override
-    protected final boolean isHolePrepared(DynamicObject object, int preparedIndex, boolean condition) {
-        return HolesObjectArray.isHoleValue(getArray(object, condition)[preparedIndex]);
+    protected final boolean isHolePrepared(DynamicObject object, int preparedIndex) {
+        return HolesObjectArray.isHoleValue(getArray(object)[preparedIndex]);
     }
 
     @Override
-    protected final int getArrayCapacity(DynamicObject object, boolean condition) {
-        return getArray(object, condition).length;
+    protected final int getArrayCapacity(DynamicObject object) {
+        return getArray(object).length;
     }
 
     @Override
-    protected final void resizeArray(DynamicObject object, int newCapacity, int oldCapacity, int offset, boolean condition) {
-        DynamicObject[] newArray = new DynamicObject[newCapacity];
-        System.arraycopy(getArray(object, condition), 0, newArray, offset, oldCapacity);
+    protected final void resizeArray(DynamicObject object, int newCapacity, int oldCapacity, int offset) {
+        JSDynamicObject[] newArray = new JSDynamicObject[newCapacity];
+        System.arraycopy(getArray(object), 0, newArray, offset, oldCapacity);
         arraySetArray(object, newArray);
     }
 
     @Override
-    public abstract AbstractJSObjectArray toHoles(DynamicObject object, long index, Object value, boolean condition);
+    public abstract AbstractJSObjectArray toHoles(DynamicObject object, long index, Object value);
 
     @Override
-    public abstract AbstractWritableArray toObject(DynamicObject object, long index, Object value, boolean condition);
+    public abstract AbstractWritableArray toObject(DynamicObject object, long index, Object value);
 
     @Override
-    public final AbstractWritableArray toDouble(DynamicObject object, long index, double value, boolean condition) {
+    public final AbstractWritableArray toDouble(DynamicObject object, long index, double value) {
         return this;
     }
 
     @Override
-    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict, boolean condition) {
-        return toHoles(object, index, null, condition).deleteElementImpl(object, index, strict, condition);
+    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict) {
+        return toHoles(object, index, null).deleteElementImpl(object, index, strict);
     }
 
     @Override
     protected final void moveRangePrepared(DynamicObject object, int src, int dst, int len) {
-        DynamicObject[] array = getArray(object);
+        JSDynamicObject[] array = getArray(object);
         System.arraycopy(array, src, array, dst, len);
     }
 
     @Override
     public final Object allocateArray(int length) {
-        return new DynamicObject[length];
+        return new JSDynamicObject[length];
+    }
+
+    @Override
+    public Object cloneArray(DynamicObject object) {
+        return getArray(object).clone();
     }
 
     @Override
     protected abstract AbstractJSObjectArray withIntegrityLevel(int newIntegrityLevel);
 
-    protected static DynamicObject checkNonNull(DynamicObject value) {
+    protected static JSDynamicObject checkNonNull(JSDynamicObject value) {
         assert value != null;
         return value;
     }
 
     protected DynamicObject castNonNull(DynamicObject value) {
-        if (JSConfig.MarkElementsNonNull && value == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw Errors.shouldNotReachHere();
+        if (JSConfig.MarkElementsNonNull) {
+            return Objects.requireNonNull(value);
+        } else {
+            return value;
         }
-        return value;
     }
 }

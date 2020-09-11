@@ -50,7 +50,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class UnaryOperationTest extends FineGrainedAccessTest {
@@ -67,7 +67,7 @@ public class UnaryOperationTest extends FineGrainedAccessTest {
                 enter(ReadPropertyTag.class, (e3, prop) -> {
                     assertAttribute(e3, KEY, "Uint8Array");
                     prop.input((e4) -> {
-                        assertTrue(JSObject.isJSObject(e4.val));
+                        assertTrue(JSDynamicObject.isJSDynamicObject(e4.val));
                     });
                 }).exit();
                 unary.input(assertJSFunctionInput);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,55 +40,16 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSShape;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-public final class JSGlobalObject extends JSBuiltinObject {
-
-    public static final String CLASS_NAME = "global";
-    public static final String EVAL_NAME = "eval";
-
-    public static final JSGlobalObject INSTANCE = new JSGlobalObject();
-
-    private JSGlobalObject() {
-    }
-
-    public static DynamicObject create(JSRealm realm, DynamicObject objectPrototype) {
-        CompilerAsserts.neverPartOfCompilation();
-        JSContext context = realm.getContext();
-        DynamicObject global;
-        if (context.isMultiContext()) {
-            Shape shape = context.makeEmptyShapeWithPrototypeInObject(INSTANCE, JSObject.PROTO_PROPERTY);
-            global = JSObject.createInit(shape);
-            JSObject.PROTO_PROPERTY.setSafe(global, objectPrototype, shape);
-        } else {
-            // keep a separate shape tree for the global object in order not to pollute user objects
-            Shape shape = JSShape.makeUniqueRootWithPrototype(JSObject.LAYOUT, INSTANCE, context, objectPrototype);
-            global = JSObject.createInit(shape);
-        }
-        JSObjectUtil.putDataProperty(context, global, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
-        return global;
-    }
-
-    public static boolean isJSGlobalObject(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSGlobalObject((DynamicObject) obj);
-    }
-
-    public static boolean isJSGlobalObject(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+public final class JSGlobalObject extends JSNonProxyObject {
+    protected JSGlobalObject(Shape shape) {
+        super(shape);
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
-        return CLASS_NAME;
+    public String getClassName() {
+        return JSGlobal.CLASS_NAME;
     }
-
 }

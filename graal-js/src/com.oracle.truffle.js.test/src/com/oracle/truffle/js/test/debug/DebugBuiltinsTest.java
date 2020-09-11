@@ -61,7 +61,6 @@ public class DebugBuiltinsTest {
         ctx.eval("js", "Debug.dumpCounters();");
         ctx.eval("js", "Debug.dumpFunctionTree(()=>{return true;});");
         ctx.eval("js", "Debug.compileFunction( ()=>{return true;});");
-        ctx.eval("js", "Debug.inspect(); Debug.inspect({}); Debug.inspect([]);");
         ctx.eval("js", "Debug.printObject(); Debug.printObject({}); Debug.printObject([]);");
         ctx.eval("js", "Debug.toJavaString(); Debug.toJavaString({}); Debug.toJavaString([]);");
         ctx.eval("js", "Debug.arraytype(); Debug.arraytype([]); Debug.arraytype({});");

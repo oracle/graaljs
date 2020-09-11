@@ -43,6 +43,8 @@ package com.oracle.truffle.js.runtime.array;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.builtins.ArrayAccess;
 
 /**
  * Common base class for all dynamic (i.e., non-typed) JavaScript arrays. Encapsulates information
@@ -143,6 +145,12 @@ public abstract class DynamicArray extends ScriptArray {
     @Override
     public final boolean isStatelessType() {
         return true;
+    }
+
+    public abstract Object cloneArray(DynamicObject object);
+
+    protected static ArrayAccess array() {
+        return ArrayAccess.SINGLETON;
     }
 
     @Override

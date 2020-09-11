@@ -42,14 +42,11 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.StringFunctionBuiltins;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltins;
@@ -65,12 +62,14 @@ import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
+import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 import com.oracle.truffle.js.runtime.util.IteratorUtil;
 
-public final class JSString extends JSPrimitiveObject implements JSConstructorFactory.Default.WithFunctions {
+public final class JSString extends JSPrimitive implements JSConstructorFactory.Default.WithFunctions {
 
     public static final JSString INSTANCE = new JSString();
 
@@ -80,10 +79,6 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
     public static final String CLASS_NAME_EXTENSIONS = "StringExtensions";
 
     public static final String LENGTH = "length";
-
-    private static final HiddenKey STRING_ID = new HiddenKey("string");
-    private static final Property STRING_PROPERTY;
-    private static final Property LENGTH_PROPERTY;
 
     public static final String ITERATOR_CLASS_NAME = "String Iterator";
     public static final String ITERATOR_PROTOTYPE_NAME = "String Iterator.prototype";
@@ -98,19 +93,15 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
     public static final HiddenKey REGEXP_ITERATOR_UNICODE_ID = new HiddenKey("Unicode");
     public static final HiddenKey REGEXP_ITERATOR_DONE_ID = new HiddenKey("Done");
 
-    static {
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        STRING_PROPERTY = JSObjectUtil.makeHiddenProperty(STRING_ID, allocator.locationForType(CharSequence.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
-        LENGTH_PROPERTY = JSObjectUtil.makeProxyProperty(LENGTH, new StringLengthProxyProperty(), JSAttributes.notConfigurableNotEnumerableNotWritable());
-    }
+    private static final PropertyProxy LENGTH_PROXY = new StringLengthProxyProperty();
 
     private JSString() {
     }
 
     public static DynamicObject create(JSContext context, CharSequence value) {
-        DynamicObject stringObj = JSObject.create(context, context.getStringFactory(), value);
+        DynamicObject stringObj = JSStringObject.create(context.getRealm(), context.getStringFactory(), value);
         assert isJSString(stringObj);
-        return stringObj;
+        return context.trackAllocation(stringObj);
     }
 
     @TruffleBoundary
@@ -125,12 +116,11 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
 
     public static CharSequence getCharSequence(DynamicObject obj) {
         assert isJSString(obj);
-        return (CharSequence) STRING_PROPERTY.get(obj, isJSString(obj));
+        return ((com.oracle.truffle.js.runtime.builtins.JSStringObject) obj).getCharSequence();
     }
 
     public static String getString(DynamicObject obj) {
-        assert isJSString(obj);
-        return Boundaries.stringValueOf(STRING_PROPERTY.get(obj, isJSString(obj)));
+        return Boundaries.stringValueOf(getCharSequence(obj));
     }
 
     @TruffleBoundary
@@ -252,8 +242,10 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
     @Override
     public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSString.INSTANCE);
-        JSObjectUtil.putHiddenProperty(prototype, STRING_PROPERTY, "");
+        Shape protoShape = JSShape.createPrototypeShape(ctx, INSTANCE, realm.getObjectPrototype());
+        DynamicObject prototype = JSStringObject.create(protoShape, "");
+        JSObjectUtil.setOrVerifyPrototype(ctx, prototype, realm.getObjectPrototype());
+
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         // sets the length just for the prototype
         JSObjectUtil.putDataProperty(ctx, prototype, LENGTH, 0, JSAttributes.notConfigurableNotEnumerableNotWritable());
@@ -274,8 +266,7 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSString.INSTANCE, context);
-        initialShape = initialShape.addProperty(STRING_PROPERTY);
-        initialShape = initialShape.addProperty(LENGTH_PROPERTY);
+        initialShape = Shape.newBuilder(initialShape).addConstantProperty(LENGTH, LENGTH_PROXY, JSAttributes.notConfigurableNotEnumerableNotWritable() | JSProperty.PROXY).build();
         return initialShape;
     }
 
@@ -311,11 +302,7 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
     }
 
     public static boolean isJSString(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSString((DynamicObject) obj);
-    }
-
-    public static boolean isJSString(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSStringObject;
     }
 
     public static final class StringLengthProxyProperty implements PropertyProxy {
@@ -341,15 +328,13 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
         return false;
     }
 
+    @TruffleBoundary
     @Override
     public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
         assert JSRuntime.isPropertyKey(key) : key.getClass().getName();
         long idx = JSRuntime.propertyKeyToArrayIndex(key);
         if (idx >= 0 && idx < getStringLength(thisObj)) {
-            if (doThrow) {
-                throw createTypeErrorCannotRedefineStringIndex(key);
-            }
-            return false;
+            return DefinePropertyUtil.isCompatiblePropertyDescriptor(isExtensible(thisObj), desc, stringGetIndexProperty(thisObj, key), doThrow);
         }
         return super.defineOwnProperty(thisObj, key, desc, doThrow);
     }
@@ -382,4 +367,5 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getStringPrototype();
     }
+
 }

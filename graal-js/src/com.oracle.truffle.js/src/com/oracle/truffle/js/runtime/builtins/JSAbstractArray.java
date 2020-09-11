@@ -40,22 +40,18 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putHiddenProperty;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.TreeMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -66,8 +62,8 @@ import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.SparseArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantEmptyPrototypeArray;
 import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultArray;
-import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultIndicesArray;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
@@ -78,7 +74,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 import com.oracle.truffle.js.runtime.util.IteratorUtil;
 
-public abstract class JSAbstractArray extends JSBuiltinObject {
+public abstract class JSAbstractArray extends JSNonProxy {
 
     public static final String LENGTH = "length";
 
@@ -88,189 +84,89 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     protected static final String MAKE_SLOW_ARRAY_NEVER_PART_OF_COMPILATION_MESSAGE = "do not convert to slow array from compiled code";
     public static final String ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION = "Array.prototype no element assumption";
 
-    private static final HiddenKey ARRAY_ID = new HiddenKey("array");
-    private static final HiddenKey ARRAY_TYPE_ID = new HiddenKey("arraytype");
-    private static final HiddenKey ALLOCATION_SITE_ID = new HiddenKey("allocationSite");
-    private static final HiddenKey LENGTH_ID = new HiddenKey(LENGTH);
-    private static final HiddenKey USED_LENGTH_ID = new HiddenKey("usedLength");
-    private static final HiddenKey INDEX_OFFSET_ID = new HiddenKey("indexOffset");
-    private static final HiddenKey ARRAY_OFFSET_ID = new HiddenKey("arrayOffset");
-    private static final HiddenKey HOLE_COUNT_ID = new HiddenKey("holeCount");
     public static final HiddenKey LAZY_REGEX_RESULT_ID = new HiddenKey("lazyRegexResult");
     public static final HiddenKey LAZY_REGEX_ORIGINAL_INPUT_ID = new HiddenKey("lazyRegexResultOriginalInput");
-    public static final Property ARRAY_PROPERTY;
-    public static final Property ARRAY_TYPE_PROPERTY;
-    private static final Property ALLOCATION_SITE_PROPERTY;
-    private static final Property LENGTH_PROPERTY;
-    private static final Property USED_LENGTH_PROPERTY;
-    private static final Property INDEX_OFFSET_PROPERTY;
-    private static final Property ARRAY_OFFSET_PROPERTY;
-    private static final Property HOLE_COUNT_PROPERTY;
-    public static final Property LAZY_REGEX_RESULT_PROPERTY;
-    public static final Property LAZY_REGEX_ORIGINAL_INPUT_PROPERTY;
-
-    static {
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        ARRAY_PROPERTY = JSObjectUtil.makeHiddenProperty(ARRAY_ID, allocator.locationForType(Object.class, EnumSet.of(LocationModifier.NonNull)));
-        ARRAY_TYPE_PROPERTY = JSObjectUtil.makeHiddenProperty(ARRAY_TYPE_ID, allocator.locationForType(ScriptArray.class, EnumSet.of(LocationModifier.NonNull)));
-        ALLOCATION_SITE_PROPERTY = JSObjectUtil.makeHiddenProperty(ALLOCATION_SITE_ID, allocator.locationForType(ArrayAllocationSite.class), false);
-        LENGTH_PROPERTY = JSObjectUtil.makeHiddenProperty(LENGTH_ID, allocator.locationForType(int.class));
-        USED_LENGTH_PROPERTY = JSObjectUtil.makeHiddenProperty(USED_LENGTH_ID, allocator.locationForType(int.class), false);
-        INDEX_OFFSET_PROPERTY = JSObjectUtil.makeHiddenProperty(INDEX_OFFSET_ID, allocator.locationForType(int.class), false);
-        ARRAY_OFFSET_PROPERTY = JSObjectUtil.makeHiddenProperty(ARRAY_OFFSET_ID, allocator.locationForType(int.class), false);
-        HOLE_COUNT_PROPERTY = JSObjectUtil.makeHiddenProperty(HOLE_COUNT_ID, allocator.locationForType(int.class), false);
-        LAZY_REGEX_RESULT_PROPERTY = JSObjectUtil.makeHiddenProperty(LAZY_REGEX_RESULT_ID,
-                        allocator.locationForType(Object.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
-        LAZY_REGEX_ORIGINAL_INPUT_PROPERTY = JSObjectUtil.makeHiddenProperty(LAZY_REGEX_ORIGINAL_INPUT_ID,
-                        allocator.locationForType(String.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
-    }
 
     public static ScriptArray arrayGetArrayType(DynamicObject thisObj) {
-        assert JSArray.isJSArray(thisObj) || JSArgumentsObject.isJSArgumentsObject(thisObj);
-        return arrayGetArrayType(thisObj, JSArray.isJSArray(thisObj));
-    }
-
-    public static ScriptArray arrayGetArrayType(DynamicObject thisObj, boolean arrayCondition) {
-        assert JSArray.isJSArray(thisObj) || JSArgumentsObject.isJSArgumentsObject(thisObj) || JSObjectPrototype.isJSObjectPrototype(thisObj);
-        return (ScriptArray) ARRAY_TYPE_PROPERTY.get(thisObj, arrayCondition);
+        assert JSArray.isJSArray(thisObj) || JSArgumentsArray.isJSArgumentsObject(thisObj) || JSObjectPrototype.isJSObjectPrototype(thisObj);
+        return arrayAccess().getArrayType(thisObj);
     }
 
     public static long arrayGetLength(DynamicObject thisObj) {
-        return arrayGetLength(thisObj, JSArray.isJSArray(thisObj));
-    }
-
-    public static long arrayGetLength(DynamicObject thisObj, boolean arrayCondition) {
-        return Integer.toUnsignedLong((int) LENGTH_PROPERTY.get(thisObj, arrayCondition));
+        return arrayAccess().getLength(thisObj);
     }
 
     public static int arrayGetUsedLength(DynamicObject thisObj) {
-        return arrayGetUsedLength(thisObj, JSArray.isJSArray(thisObj));
-    }
-
-    public static int arrayGetUsedLength(DynamicObject thisObj, boolean arrayCondition) {
-        return (int) USED_LENGTH_PROPERTY.get(thisObj, arrayCondition);
+        return arrayAccess().getUsedLength(thisObj);
     }
 
     public static long arrayGetIndexOffset(DynamicObject thisObj) {
-        return arrayGetIndexOffset(thisObj, JSArray.isJSArray(thisObj));
-    }
-
-    public static long arrayGetIndexOffset(DynamicObject thisObj, boolean arrayCondition) {
-        return Integer.toUnsignedLong((int) INDEX_OFFSET_PROPERTY.get(thisObj, arrayCondition));
+        return arrayAccess().getIndexOffset(thisObj);
     }
 
     public static int arrayGetArrayOffset(DynamicObject thisObj) {
-        return arrayGetArrayOffset(thisObj, JSArray.isJSArray(thisObj));
-    }
-
-    public static int arrayGetArrayOffset(DynamicObject thisObj, boolean arrayCondition) {
-        return (int) ARRAY_OFFSET_PROPERTY.get(thisObj, arrayCondition);
+        return arrayAccess().getArrayOffset(thisObj);
     }
 
     public static void arraySetArrayType(DynamicObject thisObj, ScriptArray arrayType) {
-        ARRAY_TYPE_PROPERTY.setSafe(thisObj, arrayType, null);
+        arrayAccess().setArrayType(thisObj, arrayType);
     }
 
     public static void arraySetLength(DynamicObject thisObj, int length) {
         assert length >= 0;
-        LENGTH_PROPERTY.setSafe(thisObj, length, null);
+        arrayAccess().setLength(thisObj, length);
     }
 
     public static void arraySetLength(DynamicObject thisObj, long length) {
-        assert JSRuntime.isRepresentableAsUnsignedInt(length);
-        LENGTH_PROPERTY.setSafe(thisObj, (int) length, null);
+        assert JSRuntime.isValidArrayLength(length);
+        arrayAccess().setLength(thisObj, length);
     }
 
     public static void arraySetUsedLength(DynamicObject thisObj, int usedLength) {
         assert usedLength >= 0;
-        USED_LENGTH_PROPERTY.setSafe(thisObj, usedLength, null);
+        arrayAccess().setUsedLength(thisObj, usedLength);
     }
 
     public static void arraySetIndexOffset(DynamicObject thisObj, long indexOffset) {
-        assert JSRuntime.isRepresentableAsUnsignedInt(indexOffset);
-        INDEX_OFFSET_PROPERTY.setSafe(thisObj, (int) indexOffset, null);
+        arrayAccess().setIndexOffset(thisObj, indexOffset);
     }
 
     public static void arraySetArrayOffset(DynamicObject thisObj, int arrayOffset) {
         assert arrayOffset >= 0;
-        ARRAY_OFFSET_PROPERTY.setSafe(thisObj, arrayOffset, null);
+        arrayAccess().setArrayOffset(thisObj, arrayOffset);
     }
 
     public static Object arrayGetArray(DynamicObject thisObj) {
-        return arrayGetArray(thisObj, JSObject.hasArray(thisObj));
-    }
-
-    public static Object arrayGetArray(DynamicObject thisObj, boolean arrayCondition) {
         assert JSObject.hasArray(thisObj);
-        return ARRAY_PROPERTY.get(thisObj, arrayCondition);
+        return arrayAccess().getArray(thisObj);
     }
 
     public static void arraySetArray(DynamicObject thisObj, Object array) {
         assert JSObject.hasArray(thisObj);
         assert array != null && (array.getClass().isArray() || array instanceof TreeMap<?, ?>);
-        ARRAY_PROPERTY.setSafe(thisObj, array, null);
+        arrayAccess().setArray(thisObj, array);
     }
 
     public static int arrayGetHoleCount(DynamicObject thisObj) {
-        return arrayGetHoleCount(thisObj, JSArray.isJSArray(thisObj));
-    }
-
-    public static int arrayGetHoleCount(DynamicObject thisObj, boolean arrayCondition) {
-        return (int) HOLE_COUNT_PROPERTY.get(thisObj, arrayCondition);
+        return arrayAccess().getHoleCount(thisObj);
     }
 
     public static void arraySetHoleCount(DynamicObject thisObj, int holeCount) {
-        HOLE_COUNT_PROPERTY.setSafe(thisObj, holeCount, null);
+        assert holeCount >= 0;
+        arrayAccess().setHoleCount(thisObj, holeCount);
     }
 
     public static ArrayAllocationSite arrayGetAllocationSite(DynamicObject thisObj) {
-        return arrayGetAllocationSite(thisObj, JSArray.isJSArray(thisObj));
+        return arrayAccess().getAllocationSite(thisObj);
     }
 
-    public static ArrayAllocationSite arrayGetAllocationSite(DynamicObject thisObj, boolean arrayCondition) {
-        return (ArrayAllocationSite) ALLOCATION_SITE_PROPERTY.get(thisObj, arrayCondition);
+    public static Object arrayGetRegexResult(DynamicObject thisObj, DynamicObjectLibrary lazyRegexResult) {
+        assert JSArray.isJSArray(thisObj) && JSArray.arrayGetArrayType(thisObj) == LazyRegexResultArray.LAZY_REGEX_RESULT_ARRAY;
+        return lazyRegexResult.getOrDefault(thisObj, LAZY_REGEX_RESULT_ID, null);
     }
 
-    public static Object arrayGetRegexResult(DynamicObject thisObj) {
-        return arrayGetRegexResult(thisObj, JSArray.isJSArray(thisObj) &&
-                        (JSArray.arrayGetArrayType(thisObj) == LazyRegexResultArray.LAZY_REGEX_RESULT_ARRAY ||
-                                        JSArray.arrayGetArrayType(thisObj) == LazyRegexResultIndicesArray.LAZY_REGEX_RESULT_INDICES_ARRAY));
-    }
-
-    public static Object arrayGetRegexResult(DynamicObject thisObj, boolean arrayCondition) {
-        return LAZY_REGEX_RESULT_PROPERTY.get(thisObj, arrayCondition);
-    }
-
-    public static String arrayGetRegexResultOriginalInput(DynamicObject thisObj) {
-        return arrayGetRegexResultOriginalInput(thisObj, JSArray.isJSArray(thisObj) && JSArray.arrayGetArrayType(thisObj) == LazyRegexResultArray.LAZY_REGEX_RESULT_ARRAY);
-    }
-
-    public static String arrayGetRegexResultOriginalInput(DynamicObject thisObj, boolean arrayCondition) {
-        return (String) LAZY_REGEX_ORIGINAL_INPUT_PROPERTY.get(thisObj, arrayCondition);
-    }
-
-    public static void putArrayProperties(DynamicObject arrayPrototype, ScriptArray arrayType) {
-        putHiddenProperty(arrayPrototype, ARRAY_PROPERTY, ScriptArray.EMPTY_OBJECT_ARRAY);
-        putHiddenProperty(arrayPrototype, ARRAY_TYPE_PROPERTY, arrayType);
-        putHiddenProperty(arrayPrototype, ALLOCATION_SITE_PROPERTY, null);
-        putHiddenProperty(arrayPrototype, LENGTH_PROPERTY, 0);
-        putHiddenProperty(arrayPrototype, USED_LENGTH_PROPERTY, 0);
-        putHiddenProperty(arrayPrototype, INDEX_OFFSET_PROPERTY, 0);
-        putHiddenProperty(arrayPrototype, ARRAY_OFFSET_PROPERTY, 0);
-        putHiddenProperty(arrayPrototype, HOLE_COUNT_PROPERTY, 0);
-    }
-
-    protected static Shape addArrayProperties(Shape initialShape) {
-        Shape shape = initialShape;
-        shape = shape.addProperty(ARRAY_PROPERTY);
-        shape = shape.addProperty(ARRAY_TYPE_PROPERTY);
-        shape = shape.addProperty(ALLOCATION_SITE_PROPERTY);
-        shape = shape.addProperty(LENGTH_PROPERTY);
-        shape = shape.addProperty(USED_LENGTH_PROPERTY);
-        shape = shape.addProperty(INDEX_OFFSET_PROPERTY);
-        shape = shape.addProperty(ARRAY_OFFSET_PROPERTY);
-        shape = shape.addProperty(HOLE_COUNT_PROPERTY);
-        return shape;
+    public static String arrayGetRegexResultOriginalInput(DynamicObject thisObj, DynamicObjectLibrary lazyRegexResultOriginalInput) {
+        return (String) lazyRegexResultOriginalInput.getOrDefault(thisObj, LAZY_REGEX_ORIGINAL_INPUT_ID, null);
     }
 
     public static final Comparator<Object> DEFAULT_JSARRAY_COMPARATOR = new DefaultJSArrayComparator();
@@ -341,6 +237,10 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     }
 
     protected JSAbstractArray() {
+    }
+
+    protected static final ArrayAccess arrayAccess() {
+        return ArrayAccess.SINGLETON;
     }
 
     public long getLength(DynamicObject thisObj) {
@@ -432,7 +332,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         DynamicObject current = JSObject.getPrototype(thisObj);
         String propertyName = null;
         while (current != Null.instance) {
-            if (JSProxy.isProxy(current)) {
+            if (JSProxy.isJSProxy(current)) {
                 return JSObject.setWithReceiver(current, index, value, receiver, false);
             }
             if (canHaveReadOnlyOrAccessorProperties(current)) {
@@ -527,7 +427,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
 
     @TruffleBoundary
     protected static List<Object> ownPropertyKeysFastArray(DynamicObject thisObj, boolean strings, boolean symbols) {
-        assert JSArray.isJSFastArray(thisObj) || JSArgumentsObject.isJSFastArgumentsObject(thisObj);
+        assert JSArray.isJSFastArray(thisObj) || JSArgumentsArray.isJSFastArgumentsObject(thisObj);
         List<Object> indices = strings ? arrayGetArrayType(thisObj).ownPropertyKeys(thisObj) : Collections.emptyList();
         List<Object> keyList = thisObj.getShape().getKeyList();
         if (keyList.isEmpty()) {
@@ -735,7 +635,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
             setLength(thisObj, len, doThrow);
         } finally {
             int newAttr = JSAttributes.fromConfigurableEnumerableWritable(newConfigurable, newEnumerable, newWritable);
-            JSObjectUtil.changeFlags(thisObj, LENGTH, newAttr);
+            JSObjectUtil.changePropertyFlags(thisObj, LENGTH, newAttr);
         }
 
         if (!newWritable) {
@@ -761,25 +661,26 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         }
         boolean wasNotExtensible = !JSShape.isExtensible(thisObj.getShape());
         boolean success = JSObject.defineOwnProperty(makeSlowArray(thisObj), name, descriptor, doThrow);
-        if (wasNotExtensible && JSShape.isExtensible(thisObj.getShape())) {
-            // not-extensible marker property is expected to be the last property; ensure it is.
-            thisObj.delete(JSShape.NOT_EXTENSIBLE_KEY);
-            preventExtensions(thisObj, false);
-            assert !JSObject.isExtensible(thisObj);
+        if (wasNotExtensible) {
+            assert !JSShape.isExtensible(thisObj.getShape());
         }
         return success;
     }
 
     protected DynamicObject makeSlowArray(DynamicObject thisObj) {
         CompilerAsserts.neverPartOfCompilation(MAKE_SLOW_ARRAY_NEVER_PART_OF_COMPILATION_MESSAGE);
+        if (isSlowArray(thisObj)) {
+            return thisObj;
+        }
+
         assert !JSSlowArray.isJSSlowArray(thisObj);
-        Shape oldShape = thisObj.getShape();
-        thisObj.setShapeAndGrow(oldShape, oldShape.changeType(JSSlowArray.INSTANCE));
+        JSDynamicObject.setJSClass(thisObj, JSSlowArray.INSTANCE);
         JSContext context = JSObject.getJSContext(thisObj);
         context.getFastArrayAssumption().invalidate("create slow ArgumentsObject");
         if (isArrayPrototype(thisObj)) {
             context.getArrayPrototypeNoElementsAssumption().invalidate("Array.prototype has no elements");
         }
+        assert JSSlowArray.isJSSlowArray(thisObj);
         return thisObj;
     }
 
@@ -791,16 +692,18 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     public boolean testIntegrityLevel(DynamicObject thisObj, boolean frozen) {
         ScriptArray array = arrayGetArrayType(thisObj);
         boolean arrayIs = frozen ? array.isFrozen() : array.isSealed();
-        return arrayIs && super.testIntegrityLevel(thisObj, frozen);
+        return arrayIs && super.testIntegrityLevelFast(thisObj, frozen);
     }
 
     @Override
     public boolean setIntegrityLevel(DynamicObject thisObj, boolean freeze, boolean doThrow) {
-        boolean result = super.setIntegrityLevel(thisObj, freeze, doThrow);
+        if (testIntegrityLevel(thisObj, freeze)) {
+            return true;
+        }
+
         ScriptArray arr = arrayGetArrayType(thisObj);
         arraySetArrayType(thisObj, freeze ? arr.freeze() : arr.seal());
-        assert testIntegrityLevel(thisObj, freeze);
-        return result;
+        return super.setIntegrityLevelFast(thisObj, freeze);
     }
 
     @TruffleBoundary
@@ -845,7 +748,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
 
         long idx = JSRuntime.propertyKeyToArrayIndex(key);
         if (JSRuntime.isArrayIndex(idx)) {
-            ScriptArray array = arrayGetArrayType(thisObj, false);
+            ScriptArray array = arrayGetArrayType(thisObj);
             if (array.hasElement(thisObj, idx)) {
                 Object value = array.getElement(thisObj, idx);
                 return PropertyDescriptor.createData(value, true, !array.isFrozen(), !array.isSealed());
@@ -855,7 +758,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         if (prop == null) {
             return null;
         }
-        return JSBuiltinObject.ordinaryGetOwnPropertyIntl(thisObj, key, prop);
+        return JSNonProxy.ordinaryGetOwnPropertyIntl(thisObj, key, prop);
     }
 
     @Override
@@ -865,6 +768,10 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         } else {
             return JSRuntime.objectToConsoleString(obj, null, depth, allowSideEffects);
         }
+    }
+
+    protected boolean isSlowArray(DynamicObject thisObj) {
+        return JSSlowArray.isJSSlowArray(thisObj);
     }
 
     @Override

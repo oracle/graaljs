@@ -69,7 +69,7 @@ public final class SharedMemorySync {
         Fences.acquireFence();
         TypedArray array = typedArrayGetArrayType(target);
         TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) array;
-        return typedArray.getInt(target, intArrayOffset, true);
+        return typedArray.getInt(target, intArrayOffset);
     }
 
     // ##### Getters and setters with ordering and memory barriers
@@ -78,14 +78,14 @@ public final class SharedMemorySync {
         Fences.acquireFence();
         TypedArray array = typedArrayGetArrayType(target);
         TypedArray.TypedBigIntArray<?> typedArray = (TypedArray.TypedBigIntArray<?>) array;
-        return typedArray.getBigInt(target, intArrayOffset, true);
+        return typedArray.getBigInt(target, intArrayOffset);
     }
 
     @TruffleBoundary
     public static void doVolatilePut(DynamicObject target, int index, int value) {
         TypedArray array = typedArrayGetArrayType(target);
         TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) array;
-        typedArray.setInt(target, index, value, true);
+        typedArray.setInt(target, index, value);
         Fences.releaseFence();
     }
 
@@ -93,7 +93,7 @@ public final class SharedMemorySync {
     public static void doVolatilePutBigInt(DynamicObject target, int index, BigInt value) {
         TypedArray array = typedArrayGetArrayType(target);
         TypedArray.TypedBigIntArray<?> typedArray = (TypedArray.TypedBigIntArray<?>) array;
-        typedArray.setBigInt(target, index, value, true);
+        typedArray.setBigInt(target, index, value);
         Fences.releaseFence();
     }
 
@@ -217,7 +217,7 @@ public final class SharedMemorySync {
 
     @SuppressWarnings("unused")
     public static JSAgentWaiterListEntry getWaiterList(JSContext cx, DynamicObject target, int indexPos) {
-        DynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target, JSArrayBufferView.isJSArrayBufferView(target));
+        DynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
         JSAgentWaiterList waiterList = JSSharedArrayBuffer.getWaiterList(arrayBuffer);
         return waiterList.getListForIndex(indexPos);
     }

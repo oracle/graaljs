@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -52,9 +54,6 @@ import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNodeGen.RequireO
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.SafeInteger;
-import com.oracle.truffle.js.runtime.builtins.JSClass;
-
-import java.util.Set;
 
 /**
  * Implementation of the abstract operation RequireObjectCoercible(argument) (ES6 7.2.1).
@@ -99,14 +98,9 @@ public abstract class RequireObjectCoercibleNode extends JavaScriptBaseNode {
     protected static void doBoolean(@SuppressWarnings("unused") boolean value) {
     }
 
-    @Specialization(guards = {"cachedShape != null", "cachedShape.check(object)"}, limit = "1")
-    protected static void doCachedShape(@SuppressWarnings("unused") DynamicObject object,
-                    @Cached("getShapeIfObject(object)") @SuppressWarnings("unused") Shape cachedShape) {
-    }
-
-    @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "1", replaces = "doCachedShape")
-    protected static void doCachedJSClass(@SuppressWarnings("unused") DynamicObject object,
-                    @Cached("getJSClassIfObject(object)") @SuppressWarnings("unused") JSClass cachedClass) {
+    @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "1")
+    protected static void doCachedJSClass(@SuppressWarnings("unused") Object object,
+                    @Cached("getClassIfJSObject(object)") @SuppressWarnings("unused") Class<?> cachedClass) {
     }
 
     @Specialization(guards = {"!isNullOrUndefined(object)"}, replaces = "doCachedJSClass")

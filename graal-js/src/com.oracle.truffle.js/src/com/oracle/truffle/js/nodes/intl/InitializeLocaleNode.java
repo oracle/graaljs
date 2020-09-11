@@ -52,7 +52,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSLocale;
+import com.oracle.truffle.js.runtime.builtins.intl.JSLocale;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public abstract class InitializeLocaleNode extends JavaScriptBaseNode {

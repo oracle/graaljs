@@ -46,7 +46,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.control.StatementNode;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -74,7 +74,7 @@ public class DeclareEvalVariableNode extends StatementNode {
         DynamicObject dynamicScope = (DynamicObject) dynamicScopeNode.execute(frame);
         if (dynamicScope == Undefined.instance) {
             // NB: dynamic scope object must not have a prototype (visible to user code)
-            dynamicScope = JSUserObject.createWithNullPrototype(context);
+            dynamicScope = JSOrdinary.createWithNullPrototype(context);
             initScopeNode.executeWrite(frame, dynamicScope);
         }
         assert isValidDynamicScopeObject(dynamicScope);

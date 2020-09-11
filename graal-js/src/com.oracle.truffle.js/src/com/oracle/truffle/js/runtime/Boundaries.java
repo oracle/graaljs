@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -49,6 +50,7 @@ import java.util.Set;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.js.runtime.util.BufferUtil;
 
 /**
  * Utility class for calls to library methods that require a {@link TruffleBoundary}.
@@ -374,5 +376,20 @@ public final class Boundaries {
     @TruffleBoundary
     public static <T> boolean economicSetContains(EconomicSet<T> economicSet, T element) {
         return economicSet.contains(element);
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    public static byte[] byteBufferArray(ByteBuffer buffer) {
+        return buffer.array();
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    public static void byteBufferPutSlice(ByteBuffer dst, int dstPos, ByteBuffer src, int srcPos, int srcLimit) {
+        ByteBuffer srcDup = src.duplicate();
+        BufferUtil.asBaseBuffer(srcDup).position(srcPos).limit(srcLimit);
+        ByteBuffer slice = srcDup.slice();
+        ByteBuffer dstDup = dst.duplicate();
+        BufferUtil.asBaseBuffer(dstDup).position(dstPos);
+        dstDup.put(slice);
     }
 }

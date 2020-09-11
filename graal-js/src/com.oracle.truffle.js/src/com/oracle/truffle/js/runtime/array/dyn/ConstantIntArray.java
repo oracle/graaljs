@@ -47,6 +47,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public final class ConstantIntArray extends AbstractConstantArray {
     private static final ConstantIntArray CONSTANT_INT_ARRAY = new ConstantIntArray(INTEGRITY_LEVEL_NONE, createCache());
@@ -60,30 +61,26 @@ public final class ConstantIntArray extends AbstractConstantArray {
     }
 
     @Override
-    public Object getElementInBounds(DynamicObject object, int index, boolean condition) {
-        return getElementInt(object, index, condition);
+    public Object getElementInBounds(DynamicObject object, int index) {
+        return getElementInt(object, index);
     }
 
-    public static int getElementInt(DynamicObject object, int index, boolean condition) {
-        return getArray(object, condition)[index];
+    public static int getElementInt(DynamicObject object, int index) {
+        return getArray(object)[index];
     }
 
     private static int[] getArray(DynamicObject object) {
         return (int[]) arrayGetArray(object);
     }
 
-    public static int[] getArray(DynamicObject object, boolean condition) {
-        return (int[]) arrayGetArray(object, condition);
+    @Override
+    public int lengthInt(DynamicObject object) {
+        return getArray(object).length;
     }
 
     @Override
-    public int lengthInt(DynamicObject object, boolean condition) {
-        return getArray(object, condition).length;
-    }
-
-    @Override
-    public boolean hasElement(DynamicObject object, long index, boolean condition) {
-        return index >= 0 && index < getArray(object, condition).length;
+    public boolean hasElement(DynamicObject object, long index) {
+        return index >= 0 && index < getArray(object).length;
     }
 
     @Override
@@ -92,18 +89,23 @@ public final class ConstantIntArray extends AbstractConstantArray {
     }
 
     @Override
-    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict, boolean condition) {
-        return createWriteableInt(object, index, HolesIntArray.HOLE_VALUE, condition, ProfileHolder.empty()).deleteElementImpl(object, index, strict, condition);
+    public Object cloneArray(DynamicObject object) {
+        return getArray(object);
     }
 
     @Override
-    public ScriptArray setLengthImpl(DynamicObject object, long length, boolean condition, ProfileHolder profile) {
-        return createWriteableInt(object, length - 1, HolesIntArray.HOLE_VALUE, condition, ProfileHolder.empty()).setLengthImpl(object, length, condition, profile);
+    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict) {
+        return createWriteableInt(object, index, HolesIntArray.HOLE_VALUE, ProfileHolder.empty()).deleteElementImpl(object, index, strict);
     }
 
     @Override
-    public AbstractIntArray createWriteableInt(DynamicObject object, long index, int value, boolean condition, ProfileHolder profile) {
-        int[] copyArray = ArrayCopy.intToInt(getArray(object, condition));
+    public ScriptArray setLengthImpl(DynamicObject object, long length, ProfileHolder profile) {
+        return createWriteableInt(object, length - 1, HolesIntArray.HOLE_VALUE, ProfileHolder.empty()).setLengthImpl(object, length, profile);
+    }
+
+    @Override
+    public AbstractIntArray createWriteableInt(DynamicObject object, long index, int value, ProfileHolder profile) {
+        int[] copyArray = ArrayCopy.intToInt(getArray(object));
         ZeroBasedIntArray newArray = ZeroBasedIntArray.makeZeroBasedIntArray(object, copyArray.length, copyArray.length, copyArray, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
@@ -112,8 +114,8 @@ public final class ConstantIntArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractWritableArray createWriteableDouble(DynamicObject object, long index, double value, boolean condition, ProfileHolder profile) {
-        double[] copyArray = ArrayCopy.intToDouble(getArray(object, condition));
+    public AbstractWritableArray createWriteableDouble(DynamicObject object, long index, double value, ProfileHolder profile) {
+        double[] copyArray = ArrayCopy.intToDouble(getArray(object));
         ZeroBasedDoubleArray newArray = ZeroBasedDoubleArray.makeZeroBasedDoubleArray(object, copyArray.length, copyArray.length, copyArray, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
@@ -122,13 +124,13 @@ public final class ConstantIntArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractWritableArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, boolean condition, ProfileHolder profile) {
-        return createWriteableObject(object, index, value, condition, ProfileHolder.empty());
+    public AbstractWritableArray createWriteableJSObject(DynamicObject object, long index, JSDynamicObject value, ProfileHolder profile) {
+        return createWriteableObject(object, index, value, ProfileHolder.empty());
     }
 
     @Override
-    public AbstractWritableArray createWriteableObject(DynamicObject object, long index, Object value, boolean condition, ProfileHolder profile) {
-        Object[] copyArray = ArrayCopy.intToObject(getArray(object, condition));
+    public AbstractWritableArray createWriteableObject(DynamicObject object, long index, Object value, ProfileHolder profile) {
+        Object[] copyArray = ArrayCopy.intToObject(getArray(object));
         ZeroBasedObjectArray newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, copyArray.length, copyArray.length, copyArray, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);

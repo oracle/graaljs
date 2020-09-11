@@ -75,7 +75,7 @@ public interface JSConstructorFactory {
         interface WithSpecies extends Default {
             @Override
             default void fillConstructor(JSRealm realm, DynamicObject constructor) {
-                JSBuiltinObject.putConstructorSpeciesGetter(realm, constructor);
+                JSNonProxy.putConstructorSpeciesGetter(realm, constructor);
             }
         }
     }
@@ -96,7 +96,7 @@ public interface JSConstructorFactory {
     interface WithFunctionsAndSpecies extends WithFunctions {
         @Override
         default void fillConstructor(JSRealm realm, DynamicObject constructor) {
-            JSBuiltinObject.putConstructorSpeciesGetter(realm, constructor);
+            JSNonProxy.putConstructorSpeciesGetter(realm, constructor);
         }
     }
 }

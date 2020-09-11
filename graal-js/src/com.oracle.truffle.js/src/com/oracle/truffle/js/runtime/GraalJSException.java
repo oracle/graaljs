@@ -63,6 +63,7 @@ import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
@@ -439,7 +440,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
     }
 
     private static boolean isGlobalObject(Object object, JSRealm realm) {
-        return JSObject.isJSObject(object) && (realm != null) && (realm.getGlobalObject() == object);
+        return JSDynamicObject.isJSDynamicObject(object) && (realm != null) && (realm.getGlobalObject() == object);
     }
 
     private static JSStackTraceElement processForeignFrame(Node node, boolean strict, boolean inNashornMode, boolean async) {
@@ -587,7 +588,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                 if (thisObject == JSFunction.CONSTRUCT) {
                     return getFunctionName();
                 } else if (!JSRuntime.isNullOrUndefined(thisObject) && !global) {
-                    if (JSObject.isDynamicObject(thisObject)) {
+                    if (JSDynamicObject.isJSDynamicObject(thisObject)) {
                         return JSRuntime.getConstructorName((DynamicObject) thisObject);
                     } else if (JSRuntime.isJSPrimitive(thisObject)) {
                         return getPrimitiveConstructorName(thisObject);
@@ -636,7 +637,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             if (context.isOptionNashornCompatibilityMode()) {
                 return JSError.correctMethodName(functionName, context);
             }
-            if (JSRuntime.isNullOrUndefined(thisObj) || !JSObject.isJSObject(thisObj)) {
+            if (JSRuntime.isNullOrUndefined(thisObj) || !JSDynamicObject.isJSDynamicObject(thisObj)) {
                 return null;
             }
             if (!JSFunction.isJSFunction(functionObj)) {
@@ -664,7 +665,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             if (propertyName.isEmpty()) {
                 return null;
             }
-            for (DynamicObject current = receiver; current != Null.instance && !JSProxy.isProxy(current); current = JSObject.getPrototype(current)) {
+            for (DynamicObject current = receiver; current != Null.instance && !JSProxy.isJSProxy(current); current = JSObject.getPrototype(current)) {
                 PropertyDescriptor desc = JSObject.getOwnProperty(current, propertyName);
                 if (desc != null) {
                     if (desc.isAccessorDescriptor() == accessor && (desc.getValue() == functionObj || desc.getGet() == functionObj || desc.getSet() == functionObj)) {
@@ -678,7 +679,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
 
         private static String findMethodPropertyName(DynamicObject receiver, DynamicObject functionObj) {
             String name = null;
-            for (DynamicObject current = receiver; current != Null.instance && !JSProxy.isProxy(current); current = JSObject.getPrototype(current)) {
+            for (DynamicObject current = receiver; current != Null.instance && !JSProxy.isJSProxy(current); current = JSObject.getPrototype(current)) {
                 for (String key : JSObject.enumerableOwnNames(current)) {
                     PropertyDescriptor desc = JSObject.getOwnProperty(current, key);
                     if (desc.getValue() == functionObj || desc.getGet() == functionObj || desc.getSet() == functionObj) {
@@ -776,7 +777,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         public boolean isConstructor() {
             if (thisObj == JSFunction.CONSTRUCT) {
                 return true;
-            } else if (!JSRuntime.isNullOrUndefined(thisObj) && JSObject.isJSObject(thisObj)) {
+            } else if (!JSRuntime.isNullOrUndefined(thisObj) && JSDynamicObject.isJSDynamicObject(thisObj)) {
                 Object constructor = JSRuntime.getDataProperty((DynamicObject) thisObj, JSObject.CONSTRUCTOR);
                 return constructor != null && constructor == functionObj;
             }

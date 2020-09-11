@@ -50,6 +50,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.SparseArray;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -66,7 +67,7 @@ public final class JSSlowArray extends JSAbstractArray {
     }
 
     public static boolean isJSSlowArray(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSSlowArray((DynamicObject) obj);
+        return JSDynamicObject.isJSDynamicObject(obj) && isJSSlowArray((DynamicObject) obj);
     }
 
     public static boolean isJSSlowArray(DynamicObject obj) {
@@ -82,8 +83,8 @@ public final class JSSlowArray extends JSAbstractArray {
     @Override
     public Object getOwnHelper(DynamicObject store, Object thisObj, long index) {
         String indexAsString = Boundaries.stringValueOf(index);
-        if (JSUserObject.INSTANCE.hasOwnProperty(store, indexAsString)) {
-            return JSUserObject.INSTANCE.getOwnHelper(store, thisObj, indexAsString);
+        if (JSOrdinary.INSTANCE.hasOwnProperty(store, indexAsString)) {
+            return JSOrdinary.INSTANCE.getOwnHelper(store, thisObj, indexAsString);
         }
         return super.getOwnHelper(store, thisObj, index);
     }
@@ -92,7 +93,7 @@ public final class JSSlowArray extends JSAbstractArray {
     @Override
     public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
         String indexAsString = Boundaries.stringValueOf(index);
-        if (JSUserObject.INSTANCE.hasOwnProperty(thisObj, indexAsString)) {
+        if (JSOrdinary.INSTANCE.hasOwnProperty(thisObj, indexAsString)) {
             return ordinarySet(thisObj, indexAsString, value, receiver, isStrict);
         }
         return super.set(thisObj, index, value, receiver, isStrict);
@@ -101,7 +102,7 @@ public final class JSSlowArray extends JSAbstractArray {
     @TruffleBoundary
     @Override
     public boolean delete(DynamicObject thisObj, long index, boolean isStrict) {
-        ScriptArray array = arrayGetArrayType(thisObj);
+        ScriptArray array = arrayAccess().getArrayType(thisObj);
         if (array.hasElement(thisObj, index)) {
             ScriptArray arrayType = arrayGetArrayType(thisObj);
             if (arrayType.canDeleteElement(thisObj, index, isStrict)) {
@@ -111,7 +112,7 @@ public final class JSSlowArray extends JSAbstractArray {
                 return false;
             }
         } else {
-            return JSUserObject.INSTANCE.delete(thisObj, index, isStrict);
+            return JSOrdinary.INSTANCE.delete(thisObj, index, isStrict);
         }
     }
 
@@ -130,7 +131,7 @@ public final class JSSlowArray extends JSAbstractArray {
     @Override
     protected boolean defineOwnPropertyIndex(DynamicObject thisObj, String name, PropertyDescriptor descriptor, boolean doThrow) {
         long index = JSRuntime.toUInt32(name);
-        if (index >= this.getLength(thisObj)) {
+        if (index >= getLength(thisObj)) {
             PropertyDescriptor desc = getOwnProperty(thisObj, LENGTH);
             if (!desc.getWritable()) {
                 return DefinePropertyUtil.reject(doThrow, ARRAY_LENGTH_NOT_WRITABLE);
@@ -141,23 +142,19 @@ public final class JSSlowArray extends JSAbstractArray {
             this.setLength(thisObj, (index + 1), doThrow);
         }
         ScriptArray arrayType = arrayGetArrayType(thisObj);
-        if (arrayType.hasElement(thisObj, index) && !JSUserObject.INSTANCE.hasOwnProperty(thisObj, name)) {
+        if (arrayType.hasElement(thisObj, index) && !JSOrdinary.INSTANCE.hasOwnProperty(thisObj, name)) {
             // replace with a regular property first
             JSContext context = JSObject.getJSContext(thisObj);
             boolean wasNotExtensible = !JSShape.isExtensible(thisObj.getShape());
-            if (wasNotExtensible) {
-                thisObj.delete(JSShape.NOT_EXTENSIBLE_KEY);
-            }
             JSObjectUtil.putDataProperty(context, thisObj, name, get(thisObj, index), JSAttributes.fromConfigurableEnumerableWritable(!arrayType.isSealed(), true, !arrayType.isFrozen()));
             if (wasNotExtensible) {
-                // not-extensible marker property is expected to be the last property; ensure it is.
-                preventExtensions(thisObj, false);
-                assert !JSObject.isExtensible(thisObj);
+                assert !JSShape.isExtensible(thisObj.getShape());
             }
+
             // Using deleteElementImpl() instead of deleteElement() because the property
             // should be removed even from sealed arrays (it is being replaced by
             // by a regular data property defined above).
-            arraySetArrayType(thisObj, arrayType.deleteElementImpl(thisObj, index, false, false));
+            arraySetArrayType(thisObj, arrayType.deleteElementImpl(thisObj, index, false));
         }
 
         boolean succeeded = jsDefineProperty(thisObj, index, descriptor, false);
@@ -168,8 +165,8 @@ public final class JSSlowArray extends JSAbstractArray {
         return true;
     }
 
-    protected static boolean jsDefineProperty(DynamicObject thisObj, long index, PropertyDescriptor descriptor, boolean doThrow) {
-        ScriptArray internalArray = arrayGetArrayType(thisObj);
+    private static boolean jsDefineProperty(DynamicObject thisObj, long index, PropertyDescriptor descriptor, boolean doThrow) {
+        ScriptArray internalArray = arrayAccess().getArrayType(thisObj);
         boolean copyValue = (internalArray.hasElement(thisObj, index) && (!descriptor.hasValue() && !descriptor.hasGet()));
         boolean succeed = DefinePropertyUtil.ordinaryDefineOwnProperty(thisObj, Boundaries.stringValueOf(index), descriptor, doThrow);
         if (copyValue) {
@@ -194,7 +191,7 @@ public final class JSSlowArray extends JSAbstractArray {
                 if (internalArray.hasElement(thisObj, idx)) {
                     deleteSucceeded = !sealed;
                 } else {
-                    deleteSucceeded = JSUserObject.INSTANCE.delete(thisObj, idx, false);
+                    deleteSucceeded = JSOrdinary.INSTANCE.delete(thisObj, idx, false);
                 }
                 if (!deleteSucceeded) {
                     newLen = idx + 1;

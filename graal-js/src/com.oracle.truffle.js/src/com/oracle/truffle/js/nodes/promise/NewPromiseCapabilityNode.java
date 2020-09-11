@@ -63,6 +63,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -131,7 +132,7 @@ public class NewPromiseCapabilityNode extends JavaScriptBaseNode {
     private static DynamicObject getCapabilitiesExecutor(JSContext context, PromiseCapabilityRecord promiseCapability) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseGetCapabilitiesExecutor, (c) -> createGetCapabilitiesExecutorImpl(c));
         DynamicObject function = JSFunction.create(context.getRealm(), functionData);
-        function.define(NewPromiseCapabilityNode.PROMISE_CAPABILITY_KEY, promiseCapability);
+        JSObjectUtil.putHiddenProperty(function, PROMISE_CAPABILITY_KEY, promiseCapability);
         return function;
     }
 

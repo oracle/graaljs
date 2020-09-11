@@ -40,98 +40,109 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNodeGen.IsArrayWrappedNodeGen;
 import com.oracle.truffle.js.nodes.unary.JSIsArrayNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
-import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
+import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-
-import java.util.Set;
 
 /**
  * Non-standard IsArray. Checks for array exotic objects.
  *
  * @see JSIsArrayNode
  */
-@ImportStatic(value = JSGuards.class)
+@ImportStatic(value = {IsArrayNode.Kind.class})
 public abstract class IsArrayNode extends JavaScriptBaseNode {
 
     protected static final int MAX_SHAPE_COUNT = 1;
     protected static final int MAX_JSCLASS_COUNT = 1;
 
-    private final boolean onlyArray;
-    private final boolean fastArray;
-    private final boolean fastAndTypedArray;
+    final Kind kind;
 
-    protected IsArrayNode(boolean onlyArray, boolean fastArray, boolean fastAndTypedArray) {
-        this.onlyArray = onlyArray;
-        this.fastArray = fastArray;
-        this.fastAndTypedArray = fastAndTypedArray;
+    protected enum Kind {
+        /** Fast Array, Arguments, or Typed Array exotic object. */
+        FastOrTypedArray,
+        /** Fast Array exotic object. */
+        FastArray,
+        /** Array exotic object. */
+        Array,
+        /** Array, Typed Array, or Arguments exotic object, or Object.prototype. */
+        AnyArray,
+    }
+
+    protected IsArrayNode(Kind kind) {
+        this.kind = kind;
     }
 
     public abstract boolean execute(Object operand);
 
+    @Specialization(guards = {"kind == Array", "isJSArray(object)"})
+    protected static boolean doJSArray(@SuppressWarnings("unused") Object object) {
+        return true;
+    }
+
+    @SuppressWarnings("unused")
     @Specialization(guards = "cachedShape.check(object)", limit = "MAX_SHAPE_COUNT")
-    protected static boolean doIsArrayShape(DynamicObject object, //
-                    @Cached("object.getShape()") Shape cachedShape, //
+    protected static boolean doIsArrayShape(JSDynamicObject object,
+                    @Cached("object.getShape()") Shape cachedShape,
                     @Cached("isArray(object)") boolean cachedResult) {
-        // (aw) must do the shape check again to preserve the unsafe condition,
-        // otherwise we could just do: return cachedResult;
-        return cachedResult && cachedShape.check(object);
+        return cachedResult;
     }
 
     @SuppressWarnings("unused")
     @Specialization(replaces = "doIsArrayShape", guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "MAX_JSCLASS_COUNT")
-    protected static boolean doIsArrayJSClass(DynamicObject object,
+    protected static boolean doIsArrayJSClass(JSDynamicObject object,
                     @Cached("isArray(object)") boolean cachedResult,
                     @Cached("getJSClassChecked(object)") JSClass cachedClass) {
         return cachedResult;
     }
 
     @Specialization(replaces = "doIsArrayJSClass")
-    protected final boolean isArray(DynamicObject object) {
-        if (fastAndTypedArray) {
-            return JSArray.isJSFastArray(object) || JSArgumentsObject.isJSFastArgumentsObject(object) || JSArrayBufferView.isJSArrayBufferView(object);
-        } else if (fastArray) {
+    protected final boolean isArray(JSDynamicObject object) {
+        if (kind == Kind.FastOrTypedArray) {
+            return JSArray.isJSFastArray(object) || JSArgumentsArray.isJSFastArgumentsObject(object) || JSArrayBufferView.isJSArrayBufferView(object);
+        } else if (kind == Kind.FastArray) {
             return JSArray.isJSFastArray(object);
-        } else if (onlyArray) {
+        } else if (kind == Kind.Array) {
             return JSArray.isJSArray(object);
         } else {
+            assert kind == Kind.AnyArray;
             return JSObject.hasArray(object);
         }
     }
 
-    @Specialization(guards = "!isDynamicObject(object)")
+    @Specialization(guards = "!isJSDynamicObject(object)")
     protected static boolean isNotDynamicObject(@SuppressWarnings("unused") Object object) {
         return false;
     }
 
     public static IsArrayNode createIsAnyArray() {
-        return IsArrayNodeGen.create(false, false, false);
+        return IsArrayNodeGen.create(Kind.AnyArray);
     }
 
     public static IsArrayNode createIsArray() {
-        return IsArrayNodeGen.create(true, false, false);
+        return IsArrayNodeGen.create(Kind.Array);
     }
 
     public static IsArrayNode createIsFastArray() {
-        return IsArrayNodeGen.create(true, true, false);
+        return IsArrayNodeGen.create(Kind.FastArray);
     }
 
     public static IsArrayNode createIsFastOrTypedArray() {
-        return IsArrayNodeGen.create(true, true, true);
+        return IsArrayNodeGen.create(Kind.FastOrTypedArray);
     }
 
     /**

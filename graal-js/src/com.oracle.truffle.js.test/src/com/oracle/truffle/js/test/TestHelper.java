@@ -64,6 +64,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionExpressionNode;
@@ -121,11 +122,11 @@ public class TestHelper implements AutoCloseable {
     }
 
     public Object getBinding(String key) {
-        return getGlobalObject().get(key);
+        return DynamicObjectLibrary.getUncached().getOrDefault(getGlobalObject(), key, null);
     }
 
     public void putBinding(String key, Object value) {
-        getGlobalObject().set(key, value);
+        DynamicObjectLibrary.getUncached().putIfPresent(getGlobalObject(), key, value);
     }
 
     public Object run(String sourceCode) {

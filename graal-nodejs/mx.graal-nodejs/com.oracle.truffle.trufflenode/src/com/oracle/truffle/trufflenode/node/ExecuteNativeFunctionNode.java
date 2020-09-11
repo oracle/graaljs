@@ -59,6 +59,7 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.NativeAccess;
@@ -218,7 +219,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
             }
             setConstructorTemplateNode.setValue(thisObject, functionTemplate);
         } else {
-            thisObject.define(FunctionTemplate.CONSTRUCTOR, functionTemplate);
+            JSObjectUtil.putHiddenProperty(thisObject, FunctionTemplate.CONSTRUCTOR, functionTemplate);
         }
     }
 
@@ -231,7 +232,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
             Object result = getConstructorTemplateNode.getValue(thisObject);
             return result == Undefined.instance ? null : result;
         } else {
-            return thisObject.get(FunctionTemplate.CONSTRUCTOR);
+            return JSObjectUtil.getHiddenProperty(thisObject, FunctionTemplate.CONSTRUCTOR);
         }
     }
 

@@ -111,7 +111,7 @@ public class ThrowNode extends StatementNode {
         } else {
             tryRethrowInterop(exceptionObject);
         }
-        throw UserScriptException.create(exceptionObject, this, stackTraceLimitNode().executeInt(frame));
+        throw UserScriptException.create(exceptionObject, this, stackTraceLimitNode().executeInt());
     }
 
     private void tryRethrowInterop(Object exceptionObject) {

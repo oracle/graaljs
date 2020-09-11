@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import java.nio.ByteBuffer;
-import java.util.EnumSet;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -50,9 +49,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -71,6 +67,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -79,7 +76,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 import com.oracle.truffle.js.runtime.util.IteratorUtil;
 
-public final class JSArrayBufferView extends JSBuiltinObject {
+public final class JSArrayBufferView extends JSNonProxy {
     public static final String CLASS_NAME = "TypedArray";
     public static final String PROTOTYPE_NAME = CLASS_NAME + ".prototype";
 
@@ -90,84 +87,30 @@ public final class JSArrayBufferView extends JSBuiltinObject {
     private static final String LENGTH = JSAbstractArray.LENGTH;
     private static final String BUFFER = "buffer";
     private static final String BYTE_OFFSET = "byteOffset";
-    private static final HiddenKey ARRAY_BUFFER_ID = new HiddenKey("arrayBuffer");
-    private static final Property ARRAY_BUFFER_PROPERTY;
 
-    private static final HiddenKey ARRAY_ID = new HiddenKey("array");
-    private static final HiddenKey ARRAY_TYPE_ID = new HiddenKey("arraytype");
-    private static final HiddenKey OFFSET_ID = new HiddenKey("offset");
-    private static final HiddenKey LENGTH_ID = new HiddenKey(LENGTH);
-    private static final HiddenKey SHAREABLE_ID = new HiddenKey("shareable");
-
-    private static final Property BYTE_ARRAY_PROPERTY;
-    private static final Property BYTE_BUFFER_PROPERTY;
-    private static final Property ARRAY_TYPE_PROPERTY;
-    private static final Property ARRAY_LENGTH_PROPERTY;
-    private static final Property ARRAY_OFFSET_PROPERTY;
-    private static final Property ARRAY_SHAREABLE;
-
-    static {
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        BYTE_ARRAY_PROPERTY = JSObjectUtil.makeHiddenProperty(ARRAY_ID, allocator.copy().locationForType(byte[].class, EnumSet.of(LocationModifier.NonNull)));
-        BYTE_BUFFER_PROPERTY = JSObjectUtil.makeHiddenProperty(ARRAY_ID, allocator.locationForType(ByteBuffer.class, EnumSet.of(LocationModifier.NonNull)));
-        ARRAY_TYPE_PROPERTY = JSObjectUtil.makeHiddenProperty(ARRAY_TYPE_ID, allocator.locationForType(TypedArray.class, EnumSet.of(LocationModifier.NonNull)));
-        ARRAY_BUFFER_PROPERTY = JSObjectUtil.makeHiddenProperty(ARRAY_BUFFER_ID, allocator.locationForType(JSObject.CLASS, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
-        ARRAY_LENGTH_PROPERTY = JSObjectUtil.makeHiddenProperty(LENGTH_ID, allocator.locationForType(int.class));
-        ARRAY_OFFSET_PROPERTY = JSObjectUtil.makeHiddenProperty(OFFSET_ID, allocator.locationForType(int.class));
-        ARRAY_SHAREABLE = JSObjectUtil.makeHiddenProperty(SHAREABLE_ID, allocator.locationForType(boolean.class));
+    private static TypedArrayAccess typedArray() {
+        return TypedArrayAccess.SINGLETON;
     }
 
     public static TypedArray typedArrayGetArrayType(DynamicObject thisObj) {
-        return typedArrayGetArrayType(thisObj, JSArrayBufferView.isJSArrayBufferView(thisObj));
-    }
-
-    public static TypedArray typedArrayGetArrayType(DynamicObject thisObj, boolean condition) {
         assert JSArrayBufferView.isJSArrayBufferView(thisObj);
-        return (TypedArray) ARRAY_TYPE_PROPERTY.get(thisObj, condition);
-    }
-
-    public static void typedArraySetArrayType(DynamicObject thisObj, TypedArray arrayType) {
-        ARRAY_TYPE_PROPERTY.setSafe(thisObj, arrayType, null);
+        return typedArray().getArrayType(thisObj);
     }
 
     public static int typedArrayGetLength(DynamicObject thisObj) {
-        return typedArrayGetLength(thisObj, JSArrayBufferView.isJSArrayBufferView(thisObj));
-    }
-
-    public static int typedArrayGetLength(DynamicObject thisObj, boolean condition) {
-        return (int) ARRAY_LENGTH_PROPERTY.get(thisObj, condition);
-    }
-
-    public static void typedArraySetLength(DynamicObject thisObj, int length) {
-        ARRAY_LENGTH_PROPERTY.setSafe(thisObj, length, null);
+        return typedArray().getLength(thisObj);
     }
 
     public static int typedArrayGetOffset(DynamicObject thisObj) {
-        return typedArrayGetOffset(thisObj, JSArrayBufferView.isJSArrayBufferView(thisObj));
-    }
-
-    public static int typedArrayGetOffset(DynamicObject thisObj, boolean condition) {
-        return (int) ARRAY_OFFSET_PROPERTY.get(thisObj, condition);
-    }
-
-    public static void typedArraySetOffset(DynamicObject thisObj, int arrayOffset) {
-        ARRAY_OFFSET_PROPERTY.setSafe(thisObj, arrayOffset, null);
+        return typedArray().getOffset(thisObj);
     }
 
     public static byte[] typedArrayGetByteArray(DynamicObject thisObj) {
-        return typedArrayGetByteArray(thisObj, JSArrayBufferView.isJSArrayBufferView(thisObj));
+        return typedArray().getByteArray(thisObj);
     }
 
-    public static byte[] typedArrayGetByteArray(DynamicObject thisObj, boolean condition) {
-        return (byte[]) BYTE_ARRAY_PROPERTY.get(thisObj, condition);
-    }
-
-    public static void typedArraySetArray(DynamicObject thisObj, byte[] arrayOffset) {
-        BYTE_ARRAY_PROPERTY.setSafe(thisObj, arrayOffset, null);
-    }
-
-    public static ByteBuffer typedArrayGetByteBuffer(DynamicObject thisObj, boolean condition) {
-        return DirectByteBufferHelper.cast((ByteBuffer) BYTE_BUFFER_PROPERTY.get(thisObj, condition));
+    public static ByteBuffer typedArrayGetByteBuffer(DynamicObject thisObj) {
+        return DirectByteBufferHelper.cast(typedArray().getByteBuffer(thisObj));
     }
 
     private static String typedArrayGetName(DynamicObject thisObj) {
@@ -177,39 +120,35 @@ public final class JSArrayBufferView extends JSBuiltinObject {
     private JSArrayBufferView() {
     }
 
-    public static DynamicObject getArrayBuffer(DynamicObject thisObj, boolean condition) {
-        assert JSArrayBufferView.isJSArrayBufferView(thisObj);
-        return (DynamicObject) ARRAY_BUFFER_PROPERTY.get(thisObj, condition);
-    }
-
     public static DynamicObject getArrayBuffer(DynamicObject thisObj) {
-        return getArrayBuffer(thisObj, JSArrayBufferView.isJSArrayBufferView(thisObj));
+        assert JSArrayBufferView.isJSArrayBufferView(thisObj);
+        return typedArray().getArrayBuffer(thisObj);
     }
 
-    public static int getByteLength(DynamicObject store, boolean condition, JSContext ctx) {
+    public static int getByteLength(DynamicObject store, JSContext ctx) {
         assert JSArrayBufferView.isJSArrayBufferView(store);
         if (JSArrayBufferView.hasDetachedBuffer(store, ctx)) {
             return 0;
         }
-        TypedArray typedArray = typedArrayGetArrayType(store, condition);
-        return typedArray.lengthInt(store, condition) * typedArray.bytesPerElement();
+        TypedArray typedArray = typedArrayGetArrayType(store);
+        return typedArray.lengthInt(store) * typedArray.bytesPerElement();
     }
 
-    public static int getByteLength(DynamicObject store, boolean condition, JSContext ctx, ValueProfile profile) {
+    public static int getByteLength(DynamicObject store, JSContext ctx, ValueProfile profile) {
         assert JSArrayBufferView.isJSArrayBufferView(store);
         if (JSArrayBufferView.hasDetachedBuffer(store, ctx)) {
             return 0;
         }
-        TypedArray typedArray = profile.profile(typedArrayGetArrayType(store, condition));
-        return typedArray.lengthInt(store, condition) * typedArray.bytesPerElement();
+        TypedArray typedArray = profile.profile(typedArrayGetArrayType(store));
+        return typedArray.lengthInt(store) * typedArray.bytesPerElement();
     }
 
-    public static int getByteOffset(DynamicObject store, boolean condition, JSContext ctx) {
+    public static int getByteOffset(DynamicObject store, JSContext ctx) {
         assert JSArrayBufferView.isJSArrayBufferView(store);
         if (JSArrayBufferView.hasDetachedBuffer(store, ctx)) {
             return 0;
         }
-        return typedArrayGetOffset(store, condition);
+        return typedArrayGetOffset(store);
     }
 
     @TruffleBoundary
@@ -369,7 +308,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         if (JSRuntime.isNegativeZero(d) || d < 0) {
             return false;
         }
-        return d < JSArrayBufferView.typedArrayGetLength(thisObj, JSArrayBufferView.isJSArrayBufferView(thisObj));
+        return d < JSArrayBufferView.typedArrayGetLength(thisObj);
     }
 
     public static DynamicObject createArrayBufferView(JSContext context, DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length) {
@@ -378,7 +317,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         if (!context.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
             throw Errors.createTypeErrorDetachedBuffer();
         }
-        JSObjectFactory objectFactory = arrayType.isDirect() ? context.getDirectArrayBufferViewFactory(arrayType.getFactory()) : context.getArrayBufferViewFactory(arrayType.getFactory());
+        JSObjectFactory objectFactory = context.getArrayBufferViewFactory(arrayType.getFactory());
         return createArrayBufferView(context, objectFactory, arrayBuffer, arrayType, offset, length);
     }
 
@@ -391,29 +330,35 @@ public final class JSArrayBufferView extends JSBuiltinObject {
                     Object backingStorage, boolean shareable) {
         assert offset >= 0 && offset + length * arrayType.bytesPerElement() <= (arrayType.isDirect() ? ((ByteBuffer) backingStorage).limit() : ((byte[]) backingStorage).length);
         assert offset != 0 == arrayType.hasOffset();
+        assert !shareable;
 
-        // (backingArray, typedArrayType, arrayBuffer, length, offset)
-        DynamicObject arrayBufferView = JSObject.create(context, objectFactory, backingStorage, arrayType, arrayBuffer, length, offset, shareable);
+        JSRealm realm = context.getRealm();
+        DynamicObject obj = JSTypedArrayObject.create(objectFactory.getShape(realm), arrayType, (JSArrayBufferObject) arrayBuffer, length, offset);
+        objectFactory.initProto(obj, realm);
         assert JSArrayBuffer.isJSAbstractBuffer(arrayBuffer);
-        assert isJSArrayBufferView(arrayBufferView);
-        return arrayBufferView;
+        assert isJSArrayBufferView(obj);
+        return context.trackAllocation(obj);
     }
 
     private static DynamicObject createArrayBufferViewPrototype(JSRealm realm, DynamicObject ctor, int bytesPerElement, TypedArrayFactory factory, DynamicObject taPrototype) {
         JSContext context = realm.getContext();
-        DynamicObject prototype = JSObject.createInit(realm, taPrototype, context.getEcmaScriptVersion() < 6 ? INSTANCE : JSUserObject.INSTANCE);
-        if (context.getEcmaScriptVersion() < 6) {
-            byte[] byteArray = new byte[0];
-            DynamicObject arrayBuffer = context.getArrayBufferFactory().createWithRealm(realm, byteArray);
-            JSObjectUtil.putHiddenProperty(prototype, BYTE_ARRAY_PROPERTY, byteArray);
-            JSObjectUtil.putHiddenProperty(prototype, ARRAY_TYPE_PROPERTY, factory.createArrayType(false, false));
-            JSObjectUtil.putHiddenProperty(prototype, ARRAY_BUFFER_PROPERTY, arrayBuffer);
-            JSObjectUtil.putHiddenProperty(prototype, ARRAY_LENGTH_PROPERTY, 0);
-            JSObjectUtil.putHiddenProperty(prototype, ARRAY_OFFSET_PROPERTY, 0);
-            JSObjectUtil.putHiddenProperty(prototype, ARRAY_SHAREABLE, false);
-        }
+        DynamicObject prototype = context.getEcmaScriptVersion() >= 6
+                        ? JSObjectUtil.createOrdinaryPrototypeObject(realm, taPrototype)
+                        : createLegacyArrayBufferViewPrototype(realm, factory, taPrototype);
         JSObjectUtil.putDataProperty(context, prototype, BYTES_PER_ELEMENT, bytesPerElement, JSAttributes.notConfigurableNotEnumerableNotWritable());
         JSObjectUtil.putConstructorProperty(context, prototype, ctor);
+        return prototype;
+    }
+
+    private static DynamicObject createLegacyArrayBufferViewPrototype(JSRealm realm, TypedArrayFactory factory, DynamicObject taPrototype) {
+        JSContext context = realm.getContext();
+        byte[] byteArray = new byte[0];
+        JSObjectFactory bufferFactory = context.getArrayBufferFactory();
+        DynamicObject emptyArrayBuffer = bufferFactory.initProto(JSArrayBufferObject.createHeapArrayBuffer(bufferFactory.getShape(realm), byteArray), realm);
+        TypedArray arrayType = factory.createArrayType(context.isOptionDirectByteBuffer(), false);
+        Shape shape = JSShape.createPrototypeShape(context, INSTANCE, taPrototype);
+        DynamicObject prototype = JSTypedArrayObject.create(shape, arrayType, (JSArrayBufferObject) emptyArrayBuffer, 0, 0);
+        JSObjectUtil.setOrVerifyPrototype(context, prototype, taPrototype);
         return prototype;
     }
 
@@ -426,12 +371,8 @@ public final class JSArrayBufferView extends JSBuiltinObject {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = JSArguments.getThisObject(frame.getArguments());
-                    if (JSObject.isDynamicObject(obj)) {
-                        DynamicObject view = JSObject.castJSObject(obj);
-                        boolean condition = isJSArrayBufferView(view);
-                        if (condition) {
-                            return getter.apply(view, condition);
-                        }
+                    if (isJSArrayBufferView(obj)) {
+                        return getter.apply((JSTypedArrayObject) obj);
                     }
                     errorBranch.enter();
                     throw Errors.createTypeError("method called on incompatible receiver");
@@ -439,28 +380,15 @@ public final class JSArrayBufferView extends JSBuiltinObject {
             }), 0, "get " + key);
         });
         DynamicObject lengthGetter = JSFunction.create(realm, lengthGetterData);
-        JSObjectUtil.putConstantAccessorProperty(realm.getContext(), prototype, key, lengthGetter, Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, key, lengthGetter, Undefined.instance);
     }
 
     private abstract static class ArrayBufferViewGetter extends Node {
-        public abstract Object apply(DynamicObject view, boolean condition);
+        public abstract Object apply(DynamicObject view);
     }
 
-    public static Shape makeInitialArrayBufferViewShape(JSContext ctx, DynamicObject prototype, boolean direct) {
-        // assert JSShape.getProtoChildTree(prototype.getShape(), INSTANCE) == null;
-        Shape childTree = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
-        // hidden properties
-        if (direct) {
-            childTree = childTree.addProperty(BYTE_BUFFER_PROPERTY);
-        } else {
-            childTree = childTree.addProperty(BYTE_ARRAY_PROPERTY);
-        }
-        childTree = childTree.addProperty(ARRAY_TYPE_PROPERTY);
-        childTree = childTree.addProperty(ARRAY_BUFFER_PROPERTY);
-        childTree = childTree.addProperty(ARRAY_LENGTH_PROPERTY);
-        childTree = childTree.addProperty(ARRAY_OFFSET_PROPERTY);
-        childTree = childTree.addProperty(ARRAY_SHAREABLE);
-        return childTree;
+    public static Shape makeInitialArrayBufferViewShape(JSContext ctx, DynamicObject prototype) {
+        return JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
     }
 
     public static JSConstructor createConstructor(JSRealm realm, TypedArrayFactory factory, JSConstructor taConstructor) {
@@ -477,36 +405,36 @@ public final class JSArrayBufferView extends JSBuiltinObject {
 
     private static DynamicObject createTypedArrayPrototype(final JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TypedArrayPrototypeBuiltins.BUILTINS);
         putArrayBufferViewPrototypeGetter(realm, prototype, LENGTH, BuiltinFunctionKey.ArrayBufferViewLength, new ArrayBufferViewGetter() {
             private final ConditionProfile detachedBufferProfile = ConditionProfile.create();
 
             @Override
-            public Object apply(DynamicObject view, boolean condition) {
+            public Object apply(DynamicObject view) {
                 if (detachedBufferProfile.profile(JSArrayBufferView.hasDetachedBuffer(view, ctx))) {
                     return 0;
                 }
-                return typedArrayGetLength(view, condition);
+                return typedArrayGetLength(view);
             }
         });
         putArrayBufferViewPrototypeGetter(realm, prototype, BUFFER, BuiltinFunctionKey.ArrayBufferViewBuffer, new ArrayBufferViewGetter() {
             @Override
-            public Object apply(DynamicObject view, boolean condition) {
-                return getArrayBuffer(view, condition);
+            public Object apply(DynamicObject view) {
+                return getArrayBuffer(view);
             }
         });
         putArrayBufferViewPrototypeGetter(realm, prototype, BYTE_LENGTH, BuiltinFunctionKey.ArrayBufferViewByteLength, new ArrayBufferViewGetter() {
             @Override
-            public Object apply(DynamicObject view, boolean condition) {
-                return getByteLength(view, condition, ctx);
+            public Object apply(DynamicObject view) {
+                return getByteLength(view, ctx);
             }
         });
         putArrayBufferViewPrototypeGetter(realm, prototype, BYTE_OFFSET, BuiltinFunctionKey.ArrayBufferViewByteByteOffset, new ArrayBufferViewGetter() {
             @Override
-            public Object apply(DynamicObject view, boolean condition) {
-                return getByteOffset(view, condition, ctx);
+            public Object apply(DynamicObject view) {
+                return getByteOffset(view, ctx);
             }
         });
         JSFunctionData toStringData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.ArrayBufferViewToString, (c) -> {
@@ -514,23 +442,22 @@ public final class JSArrayBufferView extends JSBuiltinObject {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = JSArguments.getThisObject(frame.getArguments());
-                    if (JSObject.isDynamicObject(obj)) {
-                        DynamicObject view = JSObject.castJSObject(obj);
-                        if (isJSArrayBufferView(view)) {
-                            return typedArrayGetName(view);
-                        }
+                    if (isJSArrayBufferView(obj)) {
+                        return typedArrayGetName((JSTypedArrayObject) obj);
                     }
                     return Undefined.instance;
                 }
             }), 0, "get [Symbol.toStringTag]");
         });
         DynamicObject toStringTagGetter = JSFunction.create(realm, toStringData);
-        JSObjectUtil.putConstantAccessorProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, toStringTagGetter, Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, Symbol.SYMBOL_TO_STRING_TAG, toStringTagGetter, Undefined.instance);
         // The initial value of the @@iterator property is the same function object as the initial
         // value of the %TypedArray%.prototype.values property.
-        JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_ITERATOR, prototype.get("values"), JSAttributes.getDefaultNotEnumerable());
+        Object valuesFunction = JSDynamicObject.getOrNull(prototype, "values");
+        JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_ITERATOR, valuesFunction, JSAttributes.getDefaultNotEnumerable());
         // %TypedArray%.prototype.toString is the same function object as Array.prototype.toString
-        JSObjectUtil.putDataProperty(ctx, prototype, "toString", realm.getArrayPrototype().get("toString"), JSAttributes.getDefaultNotEnumerable());
+        Object toStringFunction = JSDynamicObject.getOrNull(realm.getArrayPrototype(), "toString");
+        JSObjectUtil.putDataProperty(ctx, prototype, "toString", toStringFunction, JSAttributes.getDefaultNotEnumerable());
         return prototype;
     }
 
@@ -550,11 +477,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
     }
 
     public static boolean isJSArrayBufferView(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSArrayBufferView((DynamicObject) obj);
-    }
-
-    public static boolean isJSArrayBufferView(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSTypedArrayObject;
     }
 
     public static boolean isBigIntArrayBufferView(DynamicObject obj) {
@@ -650,6 +573,14 @@ public final class JSArrayBufferView extends JSBuiltinObject {
             throwCannotRedefine();
         }
         return true;
+    }
+
+    @Override
+    public boolean testIntegrityLevel(DynamicObject thisObj, boolean frozen) {
+        if (frozen && typedArrayGetLength(thisObj) > 0) {
+            return false;
+        }
+        return super.testIntegrityLevelFast(thisObj, frozen);
     }
 
     private static void throwCannotRedefine() {

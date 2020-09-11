@@ -53,10 +53,10 @@ public final class Null {
 
     public static final String TYPE_NAME = "object";
     public static final String NAME = "null";
-    public static final JSClass NULL_CLASS = NullClass.INSTANCE;
-    private static final Shape SHAPE = JSShape.makeStaticRoot(JSObject.LAYOUT, NULL_CLASS, 0);
     public static final String CLASS_NAME = "null|undefined";
-    public static final DynamicObject instance = JSObject.createStatic(SHAPE);
+    public static final JSClass NULL_CLASS = NullClass.INSTANCE;
+    static final Shape SHAPE = JSShape.makeStaticRoot(Null.NULL_CLASS);
+    public static final JSDynamicObject instance = new Nullish();
 
     private Null() {
     }

@@ -59,7 +59,6 @@ public class RejectPromiseNode extends JavaScriptBaseNode {
     @Child private PropertySetNode setPromiseResult;
     @Child private PropertySetNode setPromiseFulfillReactions;
     @Child private PropertySetNode setPromiseRejectReactions;
-    @Child private PropertySetNode setPromiseState;
     @Child private PropertyGetNode getPromiseIsHandled;
     @Child private TriggerPromiseReactionsNode triggerPromiseReactions;
     private final ConditionProfile unhandledProf = ConditionProfile.createBinaryProfile();
@@ -70,7 +69,6 @@ public class RejectPromiseNode extends JavaScriptBaseNode {
         this.setPromiseResult = PropertySetNode.createSetHidden(JSPromise.PROMISE_RESULT, context);
         this.setPromiseFulfillReactions = PropertySetNode.createSetHidden(JSPromise.PROMISE_FULFILL_REACTIONS, context);
         this.setPromiseRejectReactions = PropertySetNode.createSetHidden(JSPromise.PROMISE_REJECT_REACTIONS, context);
-        this.setPromiseState = PropertySetNode.createSetHidden(JSPromise.PROMISE_STATE, context);
         this.getPromiseIsHandled = PropertyGetNode.createGetHidden(JSPromise.PROMISE_IS_HANDLED, context);
         this.triggerPromiseReactions = TriggerPromiseReactionsNode.create(context);
     }
@@ -91,7 +89,7 @@ public class RejectPromiseNode extends JavaScriptBaseNode {
         setPromiseResult.setValue(promise, reason);
         setPromiseFulfillReactions.setValue(promise, Undefined.instance);
         setPromiseRejectReactions.setValue(promise, Undefined.instance);
-        setPromiseState.setValueInt(promise, JSPromise.REJECTED);
+        JSPromise.setPromiseState(promise, JSPromise.REJECTED);
         if (unhandledProf.profile(getPromiseIsHandled.getValue(promise) != Boolean.TRUE)) {
             context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_REJECT, reason);
         }

@@ -52,10 +52,12 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantEmptyPrototypeArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
-public final class JSObjectPrototype extends JSBuiltinObject {
+public final class JSObjectPrototype extends JSNonProxy {
 
     public static final String CLASS_NAME = "Object";
 
@@ -66,14 +68,11 @@ public final class JSObjectPrototype extends JSBuiltinObject {
     }
 
     public static DynamicObject create(JSContext context) {
-        Shape objectPrototypeShape = context.makeEmptyShapeWithNullPrototype(INSTANCE);
-        DynamicObject obj = JSObject.createInit(objectPrototypeShape);
-        JSAbstractArray.putArrayProperties(obj, ConstantEmptyPrototypeArray.createConstantEmptyPrototypeArray());
-        return obj;
+        return create(context.makeEmptyShapeWithNullPrototype(JSObjectPrototype.INSTANCE));
     }
 
     public static boolean isJSObjectPrototype(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSObjectPrototype((DynamicObject) obj);
+        return JSDynamicObject.isJSDynamicObject(obj) && isJSObjectPrototype((DynamicObject) obj);
     }
 
     public static boolean isJSObjectPrototype(DynamicObject obj) {
@@ -156,7 +155,7 @@ public final class JSObjectPrototype extends JSBuiltinObject {
                 return false;
             }
         } else {
-            return JSUserObject.INSTANCE.delete(thisObj, index, isStrict);
+            return JSOrdinary.INSTANCE.delete(thisObj, index, isStrict);
         }
     }
 
@@ -215,6 +214,17 @@ public final class JSObjectPrototype extends JSBuiltinObject {
             JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
         }
         return result;
+    }
+
+    public static DynamicObject create(Shape shape) {
+        assert JSShape.getJSClassNoCast(shape) == JSObjectPrototype.INSTANCE;
+        return new Instance(shape);
+    }
+
+    public static final class Instance extends JSArrayBase {
+        protected Instance(Shape shape) {
+            super(shape, ConstantEmptyPrototypeArray.createConstantEmptyPrototypeArray(), ScriptArray.EMPTY_OBJECT_ARRAY, null, 0, 0, 0, 0, 0);
+        }
     }
 
 }

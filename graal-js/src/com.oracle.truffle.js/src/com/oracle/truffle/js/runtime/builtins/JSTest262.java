@@ -56,7 +56,7 @@ public final class JSTest262 {
     }
 
     public static DynamicObject create(JSRealm realm) {
-        DynamicObject obj = JSUserObject.createInit(realm);
+        DynamicObject obj = JSOrdinary.createInit(realm);
         JSObjectUtil.putDataProperty(obj, "createRealm", realm.lookupFunction(Test262Builtins.BUILTINS, "createRealm"), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(obj, "detachArrayBuffer", realm.lookupFunction(Test262Builtins.BUILTINS, "detachArrayBuffer"), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(obj, "evalScript", realm.lookupFunction(Test262Builtins.BUILTINS, "evalScript"), JSAttributes.getDefaultNotEnumerable());
@@ -68,7 +68,7 @@ public final class JSTest262 {
     }
 
     private static DynamicObject createAgent(JSRealm realm) {
-        DynamicObject agent = JSUserObject.createInit(realm);
+        DynamicObject agent = JSOrdinary.createInit(realm);
         JSObjectUtil.putDataProperty(agent, "start", realm.lookupFunction(Test262Builtins.BUILTINS, "agentStart"), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(agent, "broadcast", realm.lookupFunction(Test262Builtins.BUILTINS, "agentBroadcast"), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(agent, "getReport", realm.lookupFunction(Test262Builtins.BUILTINS, "agentGetReport"), JSAttributes.getDefaultNotEnumerable());

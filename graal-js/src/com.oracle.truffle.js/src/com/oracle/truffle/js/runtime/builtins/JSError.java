@@ -40,14 +40,11 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.util.EnumSet;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.CallSitePrototypeBuiltins;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
@@ -65,6 +62,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.PrepareStackTraceCallback;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
@@ -72,9 +70,10 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public final class JSError extends JSBuiltinObject {
+public final class JSError extends JSNonProxy {
 
     public static final String MESSAGE = "message";
+    public static final int MESSAGE_ATTRIBUTES = JSAttributes.getDefaultNotEnumerable();
     public static final String NAME = "name";
     public static final String CLASS_NAME = "Error";
     public static final String PROTOTYPE_NAME = "Error.prototype";
@@ -82,6 +81,7 @@ public final class JSError extends JSBuiltinObject {
     public static final String STACK_NAME = "stack";
     public static final HiddenKey FORMATTED_STACK_NAME = new HiddenKey("FormattedStack");
     public static final String ERRORS_NAME = "errors";
+    public static final int ERRORS_ATTRIBUTES = JSAttributes.getDefaultNotEnumerable();
     public static final String PREPARE_STACK_TRACE_NAME = "prepareStackTrace";
     public static final String LINE_NUMBER_PROPERTY_NAME = "lineNumber";
     public static final String COLUMN_NUMBER_PROPERTY_NAME = "columnNumber";
@@ -89,31 +89,16 @@ public final class JSError extends JSBuiltinObject {
     public static final String STACK_TRACE_LIMIT_PROPERTY_NAME = "stackTraceLimit";
 
     public static final JSError INSTANCE = new JSError();
-    private static final Property MESSAGE_PROPERTY;
-    private static final Property AGGREGATE_ERRORS_PROPERTY;
 
     // CallSite
     private static final String CALL_SITE_CLASS_NAME = "CallSite";
     public static final String CALL_SITE_PROTOTYPE_NAME = "CallSite.prototype";
     public static final HiddenKey STACK_TRACE_ELEMENT_PROPERTY_NAME = new HiddenKey("StackTraceElement");
-    private static final Property STACK_TRACE_ELEMENT_PROPERTY;
-
-    static {
-        // Error
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        MESSAGE_PROPERTY = JSObjectUtil.makeDataProperty(MESSAGE, allocator.locationForType(Object.class, EnumSet.of(LocationModifier.NonNull)), JSAttributes.getDefaultNotEnumerable());
-        AGGREGATE_ERRORS_PROPERTY = JSObjectUtil.makeDataProperty(ERRORS_NAME, allocator.locationForType(Object.class, EnumSet.of(LocationModifier.NonNull)), JSAttributes.getDefaultNotEnumerable());
-    }
-    static {
-        // CallSite
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        STACK_TRACE_ELEMENT_PROPERTY = JSObjectUtil.makeHiddenProperty(STACK_TRACE_ELEMENT_PROPERTY_NAME, allocator.locationForType(Object.class));
-    }
 
     public static final PropertyProxy STACK_PROXY = new PropertyProxy() {
         @Override
         public Object get(DynamicObject store) {
-            Object value = store.get(FORMATTED_STACK_NAME);
+            Object value = JSObjectUtil.getHiddenProperty(store, FORMATTED_STACK_NAME);
             if (value == null) {
                 // stack not prepared yet
                 GraalJSException truffleException = getException(store);
@@ -125,9 +110,9 @@ public final class JSError extends JSBuiltinObject {
                 }
                 // FORMATTED_STACK_NAME could have been set during invocation
                 // of user-defined Error.prepareStackTrace => do not overwrite it
-                Object currentValue = store.get(FORMATTED_STACK_NAME);
+                Object currentValue = JSObjectUtil.getHiddenProperty(store, FORMATTED_STACK_NAME);
                 if (currentValue == null) {
-                    store.set(FORMATTED_STACK_NAME, value);
+                    JSObjectUtil.putHiddenProperty(store, FORMATTED_STACK_NAME, value);
                 } else {
                     value = currentValue;
                 }
@@ -141,7 +126,7 @@ public final class JSError extends JSBuiltinObject {
 
         @Override
         public boolean set(DynamicObject store, Object value) {
-            store.set(FORMATTED_STACK_NAME, value);
+            JSObjectUtil.putHiddenProperty(store, FORMATTED_STACK_NAME, value);
             return true;
         }
     };
@@ -149,38 +134,67 @@ public final class JSError extends JSBuiltinObject {
     private JSError() {
     }
 
+    public static DynamicObject createErrorObject(JSContext context, JSRealm realm, JSErrorType errorType) {
+        JSObjectFactory factory = context.getErrorFactory(errorType);
+        DynamicObject obj = JSErrorObject.create(realm, factory);
+        factory.initProto(obj, realm);
+        assert isJSError(obj);
+        return context.trackAllocation(obj);
+    }
+
+    public static void setMessage(DynamicObject obj, String message) {
+        assert !JSDynamicObject.hasProperty(obj, MESSAGE);
+        JSObjectUtil.putDataProperty(obj, MESSAGE, message, MESSAGE_ATTRIBUTES);
+    }
+
     public static DynamicObject create(JSErrorType errorType, JSRealm realm, Object message) {
         assert message instanceof String || message == Undefined.instance;
-        DynamicObject obj;
+        DynamicObject obj = createErrorObject(realm.getContext(), realm, errorType);
         String msg;
-        JSContext context = realm.getContext();
-        DynamicObject prototype = realm.getErrorPrototype(errorType);
         if (message == Undefined.instance) {
-            obj = JSObject.createWithPrototype(context, context.getErrorFactory(errorType, false), realm, prototype);
             msg = null;
         } else {
-            obj = JSObject.createWithPrototype(context, context.getErrorFactory(errorType, true), realm, prototype, message);
             msg = (String) message; // can only be String or undefined
+            setMessage(obj, msg);
         }
         setException(realm, obj, JSException.createCapture(errorType, msg, obj, realm), false);
         return obj;
     }
 
     public static DynamicObject createFromJSException(JSException exception, JSRealm realm, String message) {
-        JSErrorType errorType = exception.getErrorType();
+        Objects.requireNonNull(message);
         JSContext context = realm.getContext();
-        DynamicObject prototype = realm.getErrorPrototype(errorType);
-        DynamicObject obj = JSObject.createWithPrototype(context, context.getErrorFactory(errorType, true), realm, prototype, Objects.requireNonNull(message));
+        JSErrorType errorType = exception.getErrorType();
+        DynamicObject obj = createErrorObject(context, realm, errorType);
+        setMessage(obj, message);
         setException(realm, obj, exception, context.isOptionNashornCompatibilityMode());
         return obj;
+    }
+
+    @TruffleBoundary
+    public static DynamicObject createAggregateError(JSRealm realm, Object errors, String msg) {
+        DynamicObject errorObj = createErrorObject(realm.getContext(), realm, JSErrorType.AggregateError);
+        if (msg != null) {
+            setMessage(errorObj, msg);
+        }
+        JSObjectUtil.putDataProperty(errorObj, ERRORS_NAME, errors, ERRORS_ATTRIBUTES);
+        setException(realm, errorObj, JSException.createCapture(JSErrorType.AggregateError, msg, errorObj, realm), false);
+        return errorObj;
     }
 
     private static DynamicObject createErrorPrototype(JSRealm realm, JSErrorType errorType) {
         JSContext ctx = realm.getContext();
         DynamicObject proto = errorType == JSErrorType.Error ? realm.getObjectPrototype() : realm.getErrorPrototype(JSErrorType.Error);
 
-        DynamicObject errorPrototype = JSObject.createInit(realm, proto, ctx.getEcmaScriptVersion() < 6 ? INSTANCE : JSUserObject.INSTANCE);
-        JSObjectUtil.putDataProperty(ctx, errorPrototype, MESSAGE, "", JSAttributes.getDefaultNotEnumerable());
+        DynamicObject errorPrototype;
+        if (ctx.getEcmaScriptVersion() < 6) {
+            errorPrototype = JSErrorObject.create(JSShape.createPrototypeShape(ctx, INSTANCE, proto));
+            JSObjectUtil.setOrVerifyPrototype(ctx, errorPrototype, proto);
+        } else {
+            errorPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, proto);
+        }
+
+        JSObjectUtil.putDataProperty(ctx, errorPrototype, MESSAGE, "", MESSAGE_ATTRIBUTES);
 
         if (errorType == JSErrorType.Error) {
             JSObjectUtil.putFunctionsFromContainer(realm, errorPrototype, ErrorPrototypeBuiltins.BUILTINS);
@@ -200,7 +214,7 @@ public final class JSError extends JSBuiltinObject {
             JSObject.setPrototype(errorConstructor, realm.getErrorConstructor(JSErrorType.Error));
         }
         JSObjectUtil.putConstructorProperty(context, classPrototype, errorConstructor);
-        JSObjectUtil.putDataProperty(context, classPrototype, NAME, name, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(context, classPrototype, NAME, name, MESSAGE_ATTRIBUTES);
         JSObjectUtil.putConstructorPrototypeProperty(context, errorConstructor, classPrototype);
         if (errorType == JSErrorType.Error) {
             JSObjectUtil.putFunctionsFromContainer(realm, errorConstructor, ErrorFunctionBuiltins.BUILTINS);
@@ -215,17 +229,8 @@ public final class JSError extends JSBuiltinObject {
         return JSObjectUtil.getProtoChildShape(errorPrototype, INSTANCE, context);
     }
 
-    public static Shape addAggregateErrorsPropertyToShape(Shape shape) {
-        return shape.addProperty(AGGREGATE_ERRORS_PROPERTY);
-    }
-
-    public static Shape addMessagePropertyToShape(Shape shape) {
-        return shape.addProperty(MESSAGE_PROPERTY);
-    }
-
     private static DynamicObject createCallSitePrototype(JSRealm realm) {
-        DynamicObject proto = realm.getObjectPrototype();
-        DynamicObject callSitePrototype = JSObject.createInit(realm, proto, JSUserObject.INSTANCE);
+        DynamicObject callSitePrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putFunctionsFromContainer(realm, callSitePrototype, CallSitePrototypeBuiltins.BUILTINS);
         return callSitePrototype;
     }
@@ -240,7 +245,7 @@ public final class JSError extends JSBuiltinObject {
     }
 
     public static Shape makeInitialCallSiteShape(JSContext context, DynamicObject callSitePrototype) {
-        return JSObjectUtil.getProtoChildShape(callSitePrototype, JSUserObject.INSTANCE, context).addProperty(STACK_TRACE_ELEMENT_PROPERTY);
+        return JSObjectUtil.getProtoChildShape(callSitePrototype, JSOrdinary.INSTANCE, context);
     }
 
     public static void setLineNumber(JSContext context, DynamicObject errorObj, Object lineNumber) {
@@ -252,12 +257,12 @@ public final class JSError extends JSBuiltinObject {
     }
 
     public static GraalJSException getException(DynamicObject errorObj) {
-        Object exception = errorObj.get(EXCEPTION_PROPERTY_NAME);
+        Object exception = JSDynamicObject.getOrNull(errorObj, EXCEPTION_PROPERTY_NAME);
         return exception instanceof GraalJSException ? (GraalJSException) exception : null;
     }
 
     @TruffleBoundary
-    private static DynamicObject setException(JSRealm realm, DynamicObject errorObj, GraalJSException exception, boolean defaultColumnNumber) {
+    public static DynamicObject setException(JSRealm realm, DynamicObject errorObj, GraalJSException exception, boolean defaultColumnNumber) {
         assert isJSError(errorObj);
         defineStackProperty(realm, errorObj, exception);
         JSContext context = realm.getContext();
@@ -270,9 +275,7 @@ public final class JSError extends JSBuiltinObject {
     }
 
     private static void setErrorProperty(JSContext context, DynamicObject errorObj, Object key, Object value) {
-        if (!errorObj.set(key, value)) {
-            JSObjectUtil.putDataProperty(context, errorObj, key, value, JSAttributes.getDefaultNotEnumerable());
-        }
+        JSObjectUtil.defineDataProperty(context, errorObj, key, value, JSAttributes.getDefaultNotEnumerable());
     }
 
     private static void defineStackProperty(JSRealm realm, DynamicObject errorObj, GraalJSException exception) {
@@ -280,8 +283,8 @@ public final class JSError extends JSBuiltinObject {
         setErrorProperty(context, errorObj, EXCEPTION_PROPERTY_NAME, exception);
 
         // Error.stack is not formatted until it is accessed
-        errorObj.define(FORMATTED_STACK_NAME, null);
-        JSObjectUtil.defineProxyProperty(errorObj, JSError.STACK_NAME, JSError.STACK_PROXY, JSAttributes.getDefaultNotEnumerable() | JSProperty.PROXY);
+        JSObjectUtil.putHiddenProperty(errorObj, FORMATTED_STACK_NAME, null);
+        JSObjectUtil.defineProxyProperty(errorObj, JSError.STACK_NAME, JSError.STACK_PROXY, MESSAGE_ATTRIBUTES | JSProperty.PROXY);
     }
 
     public static Object prepareStack(JSRealm realm, DynamicObject errorObj, GraalJSException exception) {
@@ -341,7 +344,10 @@ public final class JSError extends JSBuiltinObject {
     }
 
     private static Object prepareStackElement(JSRealm realm, JSStackTraceElement stackTraceElement) {
-        return JSObject.createWithRealm(realm.getContext(), realm.getContext().getCallSiteFactory(), realm, stackTraceElement);
+        JSContext context = realm.getContext();
+        DynamicObject callSite = JSOrdinary.createWithRealm(context, context.getCallSiteFactory(), realm);
+        JSObjectUtil.putHiddenProperty(callSite, STACK_TRACE_ELEMENT_PROPERTY_NAME, stackTraceElement);
+        return callSite;
     }
 
     private static String getMessage(DynamicObject errorObj) {
@@ -438,11 +444,7 @@ public final class JSError extends JSBuiltinObject {
     }
 
     public static boolean isJSError(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSError((DynamicObject) obj);
-    }
-
-    public static boolean isJSError(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSErrorObject;
     }
 
     @TruffleBoundary
@@ -469,9 +471,9 @@ public final class JSError extends JSBuiltinObject {
     }
 
     private static Object getPropertyWithoutSideEffect(DynamicObject obj, String key) {
-        Object value = obj.get(key);
+        Object value = JSDynamicObject.getOrNull(obj, key);
         if (value == null) {
-            if (!JSProxy.isProxy(obj)) {
+            if (!JSProxy.isJSProxy(obj)) {
                 return getPropertyWithoutSideEffect(JSObject.getPrototype(obj), key);
             }
             return null;
@@ -492,5 +494,4 @@ public final class JSError extends JSBuiltinObject {
     public static String getAnonymousFunctionNameStackTrace(JSContext context) {
         return context.isOptionNashornCompatibilityMode() ? "<program>" : "<anonymous>";
     }
-
 }

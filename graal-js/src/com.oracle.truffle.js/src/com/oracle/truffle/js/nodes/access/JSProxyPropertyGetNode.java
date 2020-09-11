@@ -58,10 +58,11 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 @NodeInfo(cost = NodeCost.NONE)
@@ -89,14 +90,14 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
                     @Cached JSToPropertyKeyNode toPropertyKeyNode,
                     @Cached("createBinaryProfile()") ConditionProfile hasTrap,
                     @Cached JSClassProfile targetClassProfile) {
-        assert JSProxy.isProxy(proxy);
+        assert JSProxy.isJSProxy(proxy);
         assert !(key instanceof HiddenKey);
         Object propertyKey = toPropertyKeyNode.execute(key);
         DynamicObject handler = JSProxy.getHandlerChecked(proxy, errorBranch);
         Object target = JSProxy.getTarget(proxy);
         Object trapFun = trapGet.executeWithTarget(handler);
         if (hasTrap.profile(trapFun == Undefined.instance)) {
-            if (JSObject.isJSObject(target)) {
+            if (JSDynamicObject.isJSDynamicObject(target)) {
                 return JSObject.getOrDefault((DynamicObject) target, propertyKey, receiver, Undefined.instance, targetClassProfile);
             } else {
                 return JSInteropUtil.readMemberOrDefault(target, propertyKey, Undefined.instance);
@@ -109,7 +110,7 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
 
     private void checkInvariants(Object propertyKey, Object proxyTarget, Object trapResult) {
         assert JSRuntime.isPropertyKey(propertyKey);
-        if (!JSObject.isJSObject(proxyTarget)) {
+        if (!JSDynamicObject.isJSDynamicObject(proxyTarget)) {
             return; // best effort, cannot check for foreign objects
         }
         PropertyDescriptor targetDesc = getOwnProperty((DynamicObject) proxyTarget, propertyKey);

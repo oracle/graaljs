@@ -72,14 +72,14 @@ public abstract class JSArrayDeleteIndexNode extends JavaScriptBaseNode {
         return JSArrayDeleteIndexNodeGen.create(context, strict);
     }
 
-    public abstract boolean execute(DynamicObject array, ScriptArray arrayType, long index, boolean arrayGuard);
+    public abstract boolean execute(DynamicObject array, ScriptArray arrayType, long index);
 
     @Specialization(guards = {"cachedArrayType.isInstance(arrayType)"}, limit = "5")
-    protected boolean doCached(DynamicObject array, @SuppressWarnings("unused") ScriptArray arrayType, long index, boolean arrayGuard,
+    protected boolean doCached(DynamicObject array, @SuppressWarnings("unused") ScriptArray arrayType, long index,
                     @Cached("arrayType") @SuppressWarnings("unused") ScriptArray cachedArrayType) {
         assert JSArray.isJSFastArray(array);
-        if (cachedArrayType.canDeleteElement(array, index, strict, arrayGuard)) {
-            arraySetArrayType(array, cachedArrayType.deleteElement(array, index, strict, arrayGuard));
+        if (cachedArrayType.canDeleteElement(array, index, strict)) {
+            arraySetArrayType(array, cachedArrayType.deleteElement(array, index, strict));
             return true;
         } else {
             return false;
@@ -88,7 +88,7 @@ public abstract class JSArrayDeleteIndexNode extends JavaScriptBaseNode {
 
     @TruffleBoundary
     @Specialization(replaces = {"doCached"})
-    protected boolean doUncached(DynamicObject array, ScriptArray arrayType, long index, boolean arrayGuard) {
-        return doCached(array, arrayType, index, arrayGuard, arrayType);
+    protected boolean doUncached(DynamicObject array, ScriptArray arrayType, long index) {
+        return doCached(array, arrayType, index, arrayType);
     }
 }

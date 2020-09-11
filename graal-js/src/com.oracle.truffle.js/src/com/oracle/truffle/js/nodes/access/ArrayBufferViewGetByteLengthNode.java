@@ -75,15 +75,13 @@ public abstract class ArrayBufferViewGetByteLengthNode extends JavaScriptBaseNod
     @Specialization(guards = {"isJSArrayBufferView(obj)", "!hasDetachedBuffer(obj)", "cachedArray == getArrayType(obj)"})
     protected int getByteLength(DynamicObject obj,
                     @Cached("getArrayType(obj)") TypedArray cachedArray) {
-        boolean condition = JSArrayBufferView.isJSArrayBufferView(obj);
-        return cachedArray.lengthInt(obj, condition) * cachedArray.bytesPerElement();
+        return cachedArray.lengthInt(obj) * cachedArray.bytesPerElement();
     }
 
     @Specialization(guards = {"isJSArrayBufferView(obj)", "!hasDetachedBuffer(obj)"}, replaces = "getByteLength")
     protected int getByteLengthOverLimit(DynamicObject obj) {
-        boolean condition = JSArrayBufferView.isJSArrayBufferView(obj);
         TypedArray typedArray = getArrayType(obj);
-        return typedArray.lengthInt(obj, condition) * typedArray.bytesPerElement();
+        return typedArray.lengthInt(obj) * typedArray.bytesPerElement();
     }
 
     @Specialization(guards = "!isJSArrayBufferView(obj)")

@@ -44,9 +44,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.math.MathBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 /**
@@ -61,8 +58,8 @@ public final class JSMath {
 
     public static DynamicObject create(JSRealm realm) {
         JSContext ctx = realm.getContext();
-        DynamicObject obj = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
-        JSObjectUtil.putDataProperty(ctx, obj, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        DynamicObject obj = JSOrdinary.createInit(realm);
+        JSObjectUtil.putToStringTag(obj, CLASS_NAME);
 
         JSObjectUtil.putDataProperty(ctx, obj, "E", Math.E);
         JSObjectUtil.putDataProperty(ctx, obj, "PI", Math.PI);

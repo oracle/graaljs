@@ -47,7 +47,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -85,7 +85,7 @@ public abstract class FromPropertyDescriptorNode extends JavaScriptBaseNode {
             return Undefined.instance;
         }
 
-        DynamicObject obj = JSUserObject.create(context);
+        DynamicObject obj = JSOrdinary.create(context);
         if (desc.hasValue()) {
             putValueNode.put(obj, JSAttributes.VALUE, desc.getValue());
         }

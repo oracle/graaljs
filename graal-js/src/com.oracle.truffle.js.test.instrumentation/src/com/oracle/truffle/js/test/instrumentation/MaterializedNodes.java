@@ -99,7 +99,6 @@ import com.oracle.truffle.js.nodes.unary.JSNotNode;
 import com.oracle.truffle.js.nodes.unary.VoidNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class MaterializedNodes {
@@ -141,7 +140,7 @@ public class MaterializedNodes {
 
     @Test
     public void materializeMulti() {
-        JSTargetableNode undef = GlobalConstantNode.createGlobalConstant(JSObject.getJSContext(Undefined.instance), "test", Undefined.instance);
+        JSTargetableNode undef = GlobalConstantNode.createGlobalConstant(jsContext, "test", Undefined.instance);
         JavaScriptNode[] args = new JavaScriptNode[]{};
         JSFunctionCallNode c = JSFunctionCallNode.createInvoke(undef, args, false, false);
         c.setSourceSection(Source.newBuilder(JavaScriptLanguage.ID, "", "").build().createUnavailableSection());

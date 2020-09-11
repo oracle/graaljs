@@ -45,6 +45,7 @@ import static com.oracle.truffle.api.CompilerDirectives.injectBranchProbability;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArray;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArray;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -61,42 +62,42 @@ public abstract class AbstractDoubleArray extends AbstractWritableArray {
         return HolesDoubleArray.makeHolesDoubleArray(object, length, (double[]) array, indexOffset, arrayOffset, usedLength, holeCount, integrityLevel);
     }
 
-    public abstract void setInBoundsFast(DynamicObject object, int index, double value, boolean condition);
+    public abstract void setInBoundsFast(DynamicObject object, int index, double value);
 
     @Override
-    public final ScriptArray setElementImpl(DynamicObject object, long index, Object value, boolean strict, boolean condition) {
+    public final ScriptArray setElementImpl(DynamicObject object, long index, Object value, boolean strict) {
         assert index >= 0;
-        if (injectBranchProbability(FASTPATH_PROBABILITY, (value instanceof Integer || value instanceof Double) && isSupported(object, (int) index, condition))) {
+        if (injectBranchProbability(FASTPATH_PROBABILITY, (value instanceof Integer || value instanceof Double) && isSupported(object, (int) index))) {
             double doubleValue = JSRuntime.doubleValue((Number) value);
             assert !HolesDoubleArray.isHoleValue(doubleValue);
-            setSupported(object, (int) index, doubleValue, condition, ProfileHolder.empty());
+            setSupported(object, (int) index, doubleValue, ProfileHolder.empty());
             return this;
         } else {
-            return rewrite(object, index, value, condition).setElementImpl(object, index, value, strict, condition);
+            return rewrite(object, index, value).setElementImpl(object, index, value, strict);
         }
     }
 
-    private ScriptArray rewrite(DynamicObject object, long index, Object value, boolean condition) {
+    private ScriptArray rewrite(DynamicObject object, long index, Object value) {
         if (value instanceof Integer || value instanceof Double) {
-            if (isSupportedContiguous(object, index, condition)) {
-                return toContiguous(object, index, value, condition);
-            } else if (isSupportedHoles(object, index, condition)) {
-                return toHoles(object, index, value, condition);
+            if (isSupportedContiguous(object, index)) {
+                return toContiguous(object, index, value);
+            } else if (isSupportedHoles(object, index)) {
+                return toHoles(object, index, value);
             } else {
                 return toSparse(object, index, value);
             }
         } else {
-            return toObject(object, index, value, condition);
+            return toObject(object, index, value);
         }
     }
 
     @Override
-    public Object getInBoundsFast(DynamicObject object, int index, boolean condition) {
-        return getInBoundsFastDouble(object, index, condition);
+    public Object getInBoundsFast(DynamicObject object, int index) {
+        return getInBoundsFastDouble(object, index);
     }
 
     @Override
-    public abstract double getInBoundsFastDouble(DynamicObject object, int index, boolean condition);
+    public abstract double getInBoundsFastDouble(DynamicObject object, int index);
 
     @Override
     int getArrayLength(Object array) {
@@ -104,23 +105,24 @@ public abstract class AbstractDoubleArray extends AbstractWritableArray {
     }
 
     protected static double[] getArray(DynamicObject object) {
-        return getArray(object, arrayCondition());
+        Object array = arrayGetArray(object);
+        if (array.getClass() == double[].class) {
+            return (double[]) array;
+        } else {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
     }
 
-    protected static double[] getArray(DynamicObject object, boolean condition) {
-        return arrayCast(arrayGetArray(object, condition), double[].class, condition);
-    }
-
-    public final void setInBounds(DynamicObject object, int index, double value, boolean condition, ProfileHolder profile) {
-        getArray(object, condition)[prepareInBounds(object, index, condition, profile)] = value;
+    public final void setInBounds(DynamicObject object, int index, double value, ProfileHolder profile) {
+        getArray(object)[prepareInBounds(object, index, profile)] = value;
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBounds", index, value);
         }
     }
 
-    public final void setSupported(DynamicObject object, int index, double value, boolean condition, ProfileHolder profile) {
-        int preparedIndex = prepareSupported(object, index, condition, profile);
-        getArray(object, condition)[preparedIndex] = value;
+    public final void setSupported(DynamicObject object, int index, double value, ProfileHolder profile) {
+        int preparedIndex = prepareSupported(object, index, profile);
+        getArray(object)[preparedIndex] = value;
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("Supported", index, value);
         }
@@ -140,33 +142,33 @@ public abstract class AbstractDoubleArray extends AbstractWritableArray {
     }
 
     @Override
-    protected final boolean isHolePrepared(DynamicObject object, int preparedIndex, boolean condition) {
-        return HolesDoubleArray.isHoleValue(getArray(object, condition)[preparedIndex]);
+    protected final boolean isHolePrepared(DynamicObject object, int preparedIndex) {
+        return HolesDoubleArray.isHoleValue(getArray(object)[preparedIndex]);
     }
 
     @Override
-    protected final int getArrayCapacity(DynamicObject object, boolean condition) {
-        return getArray(object, condition).length;
+    protected final int getArrayCapacity(DynamicObject object) {
+        return getArray(object).length;
     }
 
     @Override
-    protected final void resizeArray(DynamicObject object, int newCapacity, int oldCapacity, int offset, boolean condition) {
+    protected final void resizeArray(DynamicObject object, int newCapacity, int oldCapacity, int offset) {
         double[] newArray = new double[newCapacity];
-        System.arraycopy(getArray(object, condition), 0, newArray, offset, oldCapacity);
+        System.arraycopy(getArray(object), 0, newArray, offset, oldCapacity);
         arraySetArray(object, newArray);
     }
 
     @Override
-    public abstract AbstractDoubleArray toHoles(DynamicObject object, long index, Object value, boolean condition);
+    public abstract AbstractDoubleArray toHoles(DynamicObject object, long index, Object value);
 
     @Override
-    public final AbstractWritableArray toDouble(DynamicObject object, long index, double value, boolean condition) {
+    public final AbstractWritableArray toDouble(DynamicObject object, long index, double value) {
         return this;
     }
 
     @Override
-    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict, boolean condition) {
-        return toHoles(object, index, HolesDoubleArray.HOLE_VALUE, condition).deleteElementImpl(object, index, strict, condition);
+    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict) {
+        return toHoles(object, index, HolesDoubleArray.HOLE_VALUE).deleteElementImpl(object, index, strict);
     }
 
     @Override
@@ -178,6 +180,11 @@ public abstract class AbstractDoubleArray extends AbstractWritableArray {
     @Override
     public final Object allocateArray(int length) {
         return new double[length];
+    }
+
+    @Override
+    public Object cloneArray(DynamicObject object) {
+        return getArray(object).clone();
     }
 
     @Override

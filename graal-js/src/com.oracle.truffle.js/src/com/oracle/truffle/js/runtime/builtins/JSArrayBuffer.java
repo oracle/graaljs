@@ -42,7 +42,6 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putConstructorProperty;
 import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putFunctionsFromContainer;
-import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putHiddenProperty;
 
 import java.nio.ByteBuffer;
 
@@ -62,10 +61,10 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
@@ -85,9 +84,12 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
     }
 
     public static DynamicObject createArrayBuffer(JSContext context, byte[] byteArray) {
-        DynamicObject obj = JSObject.create(context, context.getArrayBufferFactory(), byteArray);
+        JSRealm realm = context.getRealm();
+        JSObjectFactory factory = context.getArrayBufferFactory();
+        DynamicObject obj = JSArrayBufferObject.createHeapArrayBuffer(factory.getShape(realm), byteArray);
+        factory.initProto(obj, realm);
         assert isJSHeapArrayBuffer(obj);
-        return obj;
+        return context.trackAllocation(obj);
     }
 
     public static int getDirectByteLength(DynamicObject thisObj) {
@@ -95,12 +97,8 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
     }
 
     public static ByteBuffer getDirectByteBuffer(DynamicObject thisObj) {
-        return getDirectByteBuffer(thisObj, JSArrayBuffer.isJSDirectArrayBuffer(thisObj));
-    }
-
-    public static ByteBuffer getDirectByteBuffer(DynamicObject thisObj, boolean condition) {
         assert isJSDirectArrayBuffer(thisObj) || JSSharedArrayBuffer.isJSSharedArrayBuffer(thisObj);
-        return DirectByteBufferHelper.cast((ByteBuffer) BYTE_BUFFER_PROPERTY.get(thisObj, condition));
+        return JSArrayBufferObject.getDirectByteBuffer(thisObj);
     }
 
     public static DynamicObject createDirectArrayBuffer(JSContext context, int length) {
@@ -108,18 +106,26 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
     }
 
     public static DynamicObject createDirectArrayBuffer(JSContext context, ByteBuffer buffer) {
-        DynamicObject obj = JSObject.create(context, context.getDirectArrayBufferFactory(), buffer);
+        JSRealm realm = context.getRealm();
+        JSObjectFactory factory = context.getDirectArrayBufferFactory();
+        DynamicObject obj = JSArrayBufferObject.createDirectArrayBuffer(factory.getShape(realm), buffer);
+        factory.initProto(obj, realm);
         assert isJSDirectArrayBuffer(obj);
-        return obj;
+        return context.trackAllocation(obj);
     }
 
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext context = realm.getContext();
-        DynamicObject arrayBufferPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), context.getEcmaScriptVersion() < 6 ? HEAP_INSTANCE : JSUserObject.INSTANCE);
+        DynamicObject arrayBufferPrototype;
         if (context.getEcmaScriptVersion() < 6) {
-            putHiddenProperty(arrayBufferPrototype, BYTE_ARRAY_PROPERTY, new byte[0]);
+            Shape protoShape = JSShape.createPrototypeShape(context, HEAP_INSTANCE, realm.getObjectPrototype());
+            arrayBufferPrototype = JSArrayBufferObject.createHeapArrayBuffer(protoShape, new byte[0]);
+            JSObjectUtil.setOrVerifyPrototype(context, arrayBufferPrototype, realm.getObjectPrototype());
+        } else {
+            arrayBufferPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         }
+
         putConstructorProperty(context, arrayBufferPrototype, ctor);
         putFunctionsFromContainer(realm, arrayBufferPrototype, ArrayBufferPrototypeBuiltins.BUILTINS);
 
@@ -128,8 +134,8 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         });
 
         DynamicObject byteLengthGetter = JSFunction.create(realm, byteLengthGetterData);
-        JSObjectUtil.putConstantAccessorProperty(context, arrayBufferPrototype, BYTE_LENGTH, byteLengthGetter, Undefined.instance);
-        JSObjectUtil.putDataProperty(context, arrayBufferPrototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putBuiltinAccessorProperty(arrayBufferPrototype, BYTE_LENGTH, byteLengthGetter, Undefined.instance);
+        JSObjectUtil.putToStringTag(arrayBufferPrototype, CLASS_NAME);
         return arrayBufferPrototype;
     }
 
@@ -142,7 +148,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
             @Override
             public Object execute(VirtualFrame frame) {
                 Object obj = JSArguments.getThisObject(frame.getArguments());
-                if (JSObject.isDynamicObject(obj)) {
+                if (JSDynamicObject.isJSDynamicObject(obj)) {
                     DynamicObject buffer = (DynamicObject) obj;
                     if (isArrayBuffer.profile(isJSHeapArrayBuffer(buffer))) {
                         if (!context.getTypedArrayNotDetachedAssumption().isValid() && isDetachedBuffer(buffer)) {
@@ -174,12 +180,10 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         if (this == HEAP_INSTANCE) {
             Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, HEAP_INSTANCE, context);
-            initialShape = initialShape.addProperty(BYTE_ARRAY_PROPERTY);
             return initialShape;
         } else {
             assert this == DIRECT_INSTANCE;
             Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, DIRECT_INSTANCE, context);
-            initialShape = initialShape.addProperty(BYTE_BUFFER_PROPERTY);
             return initialShape;
         }
     }
@@ -199,26 +203,14 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
     }
 
     public static boolean isJSHeapArrayBuffer(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSHeapArrayBuffer((DynamicObject) obj);
-    }
-
-    public static boolean isJSHeapArrayBuffer(DynamicObject obj) {
-        return isInstance(obj, HEAP_INSTANCE);
+        return (obj instanceof JSArrayBufferObject.Heap);
     }
 
     public static boolean isJSDirectArrayBuffer(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSDirectArrayBuffer((DynamicObject) obj);
-    }
-
-    public static boolean isJSDirectArrayBuffer(DynamicObject obj) {
-        return isInstance(obj, DIRECT_INSTANCE);
+        return (obj instanceof JSArrayBufferObject.Direct);
     }
 
     public static boolean isJSDirectOrSharedArrayBuffer(Object obj) {
-        return isJSDirectArrayBuffer(obj) || JSSharedArrayBuffer.isJSSharedArrayBuffer(obj);
-    }
-
-    public static boolean isJSDirectOrSharedArrayBuffer(DynamicObject obj) {
         return isJSDirectArrayBuffer(obj) || JSSharedArrayBuffer.isJSSharedArrayBuffer(obj);
     }
 
@@ -231,10 +223,11 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
     @TruffleBoundary
     public static boolean isDetachedBuffer(DynamicObject arrayBuffer) {
         assert isJSAbstractBuffer(arrayBuffer);
-        if (isJSDirectArrayBuffer(arrayBuffer)) {
-            return BYTE_BUFFER_PROPERTY.get(arrayBuffer, isJSDirectArrayBuffer(arrayBuffer)) == null;
+        if (isJSHeapArrayBuffer(arrayBuffer)) {
+            return getByteArray(arrayBuffer) == null;
         } else {
-            return BYTE_ARRAY_PROPERTY.get(arrayBuffer, isJSHeapArrayBuffer(arrayBuffer)) == null;
+            assert isJSDirectOrSharedArrayBuffer(arrayBuffer);
+            return getDirectByteBuffer(arrayBuffer) == null;
         }
     }
 
@@ -246,9 +239,9 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         assert isJSAbstractBuffer(arrayBuffer);
         JSObject.getJSContext(arrayBuffer).getTypedArrayNotDetachedAssumption().invalidate("no detached array buffer");
         if (isJSDirectArrayBuffer(arrayBuffer)) {
-            BYTE_BUFFER_PROPERTY.setSafe(arrayBuffer, null, null);
+            ((JSArrayBufferObject.Direct) arrayBuffer).detachArrayBuffer();
         } else {
-            BYTE_ARRAY_PROPERTY.setSafe(arrayBuffer, null, null);
+            ((JSArrayBufferObject.Heap) arrayBuffer).detachArrayBuffer();
         }
     }
 

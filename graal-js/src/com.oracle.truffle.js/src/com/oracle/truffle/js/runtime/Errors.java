@@ -49,9 +49,12 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
+import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
+import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 
 /**
@@ -66,13 +69,22 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createAggregateError(Object errors, String message, JSContext context) {
         JSRealm realm = context.getRealm();
-        DynamicObject errorObj = JSObject.createWithRealm(context, context.getErrorFactory(JSErrorType.AggregateError, true), realm, message, errors);
-        return JSException.create(JSErrorType.AggregateError, message, errorObj, realm);
+        DynamicObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
+        JSError.setMessage(errorObj, message);
+        JSObjectUtil.putDataProperty(context, errorObj, JSError.ERRORS_NAME, errors, JSError.ERRORS_ATTRIBUTES);
+        JSException exception = JSException.create(JSErrorType.AggregateError, message, errorObj, realm);
+        JSError.setException(realm, errorObj, exception, false);
+        return exception;
     }
 
     @TruffleBoundary
     public static JSException createAggregateError(Object errors, JSContext context) {
-        return createAggregateError(errors, "", context);
+        JSRealm realm = context.getRealm();
+        DynamicObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
+        JSObjectUtil.putDataProperty(context, errorObj, JSError.ERRORS_NAME, errors, JSError.ERRORS_ATTRIBUTES);
+        JSException exception = JSException.create(JSErrorType.AggregateError, null, errorObj, realm);
+        JSError.setException(realm, errorObj, exception, false);
+        return exception;
     }
 
     @TruffleBoundary
@@ -330,7 +342,7 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createTypeErrorCannotSetProto(DynamicObject thisObj, DynamicObject proto) {
-        if (!JSBuiltinObject.checkProtoCycle(thisObj, proto)) {
+        if (!JSNonProxy.checkProtoCycle(thisObj, proto)) {
             if (JSObject.getJSContext(thisObj).isOptionNashornCompatibilityMode()) {
                 return Errors.createTypeError("Cannot create__proto__ cycle for " + JSObject.defaultToString(thisObj));
             }
@@ -371,7 +383,7 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createTypeErrorConstReassignment(Object key, Object thisObj, Node originatingNode) {
-        if (JSObject.isJSObject(thisObj) && JSObject.getJSContext((DynamicObject) thisObj).isOptionV8CompatibilityMode()) {
+        if (JSDynamicObject.isJSDynamicObject(thisObj) && JSObject.getJSContext((DynamicObject) thisObj).isOptionV8CompatibilityMode()) {
             throw Errors.createTypeError("Assignment to constant variable.", originatingNode);
         }
         throw Errors.createTypeError("Assignment to constant \"" + key + "\"", originatingNode);

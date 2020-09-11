@@ -59,6 +59,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.BooleanLocation;
 import com.oracle.truffle.api.object.DoubleLocation;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
@@ -82,10 +83,12 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
-import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
+import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.Accessor;
+import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
@@ -572,7 +575,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         @TruffleBoundary
         private static void updateShape(DynamicObject store) {
-            store.updateShape();
+            DynamicObjectLibrary.getUncached().updateShape(store);
         }
 
         protected boolean acceptsValue(Object value) {
@@ -642,14 +645,14 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             this.cache = new DefinePropertyCache(oldShape, newShape, property, getShapeValidAssumption(oldShape, newShape), null);
         }
 
-        protected DynamicObject getStore(Object thisObj) {
-            return JSObject.castJSObject(thisObj);
+        protected JSDynamicObject getStore(Object thisObj) {
+            return ((JSDynamicObject) thisObj);
         }
 
         @ExplodeLoop
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
-            DynamicObject store = getStore(thisObj);
+            JSDynamicObject store = getStore(thisObj);
             for (DefinePropertyCache resolved = cache; resolved != null; resolved = resolved.next) {
                 if (resolved.oldShape.check(store)) {
                     if (!resolved.isValid()) {
@@ -668,7 +671,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         @ExplodeLoop
         @Override
         protected boolean setValueInt(Object thisObj, int value, Object receiver, PropertySetNode root, boolean guard) {
-            DynamicObject store = getStore(thisObj);
+            JSDynamicObject store = getStore(thisObj);
             for (DefinePropertyCache resolved = cache; resolved != null; resolved = resolved.next) {
                 if (resolved.oldShape.check(store)) {
                     if (!resolved.isValid()) {
@@ -691,7 +694,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         @ExplodeLoop
         @Override
         protected boolean setValueDouble(Object thisObj, double value, Object receiver, PropertySetNode root, boolean guard) {
-            DynamicObject store = getStore(thisObj);
+            JSDynamicObject store = getStore(thisObj);
             for (DefinePropertyCache resolved = cache; resolved != null; resolved = resolved.next) {
                 if (resolved.oldShape.check(store)) {
                     if (!resolved.isValid()) {
@@ -712,7 +715,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         @ExplodeLoop
         @Override
         protected boolean setValueBoolean(Object thisObj, boolean value, Object receiver, PropertySetNode root, boolean guard) {
-            DynamicObject store = getStore(thisObj);
+            JSDynamicObject store = getStore(thisObj);
             for (DefinePropertyCache resolved = cache; resolved != null; resolved = resolved.next) {
                 if (resolved.oldShape.check(store)) {
                     if (!resolved.isValid()) {
@@ -1000,7 +1003,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
-            if (isObject.profile(JSObject.isJSObject(thisObj))) {
+            if (isObject.profile(JSDynamicObject.isJSDynamicObject(thisObj))) {
                 setValueInDynamicObject(thisObj, value, receiver, root);
             } else if (isStrictSymbol.profile(root.isStrict() && thisObj instanceof Symbol)) {
                 throw Errors.createTypeError("Cannot create property on symbol", this);
@@ -1017,15 +1020,15 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         }
 
         private void setValueInDynamicObject(Object thisObj, Object value, Object receiver, PropertySetNode root) {
-            DynamicObject thisJSObj = JSObject.castJSObject(thisObj);
+            JSDynamicObject thisJSObj = ((JSDynamicObject) thisObj);
             Object key = root.getKey();
             if (key instanceof HiddenKey) {
-                thisJSObj.define(key, value);
+                JSObjectUtil.putHiddenProperty(thisJSObj, key, value);
             } else if (root.isGlobal() && root.isStrict() && !JSObject.hasProperty(thisJSObj, key, jsclassProfile)) {
                 root.globalPropertySetInStrictMode(thisObj);
             } else if (root.isOwnProperty()) {
                 if (root.isDeclaration()) {
-                    assert JSGlobalObject.isJSGlobalObject(thisJSObj) && !JSObject.hasProperty(thisJSObj, key);
+                    assert JSGlobal.isJSGlobalObject(thisJSObj) && !JSObject.hasProperty(thisJSObj, key);
                     JSObjectUtil.putDeclaredDataProperty(root.getContext(), thisJSObj, key, value, root.getAttributeFlags());
                 } else {
                     JSObject.defineOwnProperty(thisJSObj, key, PropertyDescriptor.createData(value, root.getAttributeFlags()), root.isStrict());
@@ -1216,7 +1219,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 errorBranch.enter();
                 throw Errors.createRangeErrorInvalidArrayLength();
             }
-            arrayLengthWrite.executeVoid(store, value, guard);
+            arrayLengthWrite.executeVoid(store, value);
             return true;
         }
     }
@@ -1228,14 +1231,14 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
      */
     @Override
     protected SetCacheNode createCachedPropertyNode(Property property, Object thisObj, int depth, Object value, SetCacheNode currentHead) {
-        if (JSObject.isDynamicObject(thisObj)) {
-            return createCachedPropertyNodeJSObject(property, (DynamicObject) thisObj, depth, value);
+        if (JSDynamicObject.isJSDynamicObject(thisObj)) {
+            return createCachedPropertyNodeJSObject(property, (JSDynamicObject) thisObj, depth, value);
         } else {
             return createCachedPropertyNodeNotJSObject(property, thisObj, depth);
         }
     }
 
-    private SetCacheNode createCachedPropertyNodeJSObject(Property property, DynamicObject thisObj, int depth, Object value) {
+    private SetCacheNode createCachedPropertyNodeJSObject(Property property, JSDynamicObject thisObj, int depth, Object value) {
         Shape cacheShape = thisObj.getShape();
         AbstractShapeCheckNode shapeCheck = createShapeCheckNode(cacheShape, thisObj, depth, false, false);
 
@@ -1247,8 +1250,8 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         }
     }
 
-    private SetCacheNode createCachedDataPropertyNodeJSObject(DynamicObject thisObj, int depth, Object value, AbstractShapeCheckNode shapeCheck, Property property) {
-        assert !JSProperty.isConst(property) || (depth == 0 && isGlobal() && property.getLocation().isDeclared()) : "const assignment";
+    private SetCacheNode createCachedDataPropertyNodeJSObject(JSDynamicObject thisObj, int depth, Object value, AbstractShapeCheckNode shapeCheck, Property property) {
+        assert !JSProperty.isConst(property) || (depth == 0 && isGlobal() && property.getLocation().isValue() && property.getLocation().get(null) == Dead.instance()) : "const assignment";
         if (!JSProperty.isWritable(property)) {
             return new ReadOnlyPropertySetNode(shapeCheck, isStrict());
         } else if (superProperty) {
@@ -1299,7 +1302,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         return createResolvedDefinePropertyNode(key, shapeCheck, oldShape, newShape, property.getFlags());
     }
 
-    private SetCacheNode createCachedDataPropertyGeneralize(DynamicObject thisObj, int depth) {
+    private SetCacheNode createCachedDataPropertyGeneralize(JSDynamicObject thisObj, int depth) {
         Shape oldShape = thisObj.getShape();
         AbstractShapeCheckNode shapeCheck = createShapeCheckNode(oldShape, thisObj, depth, false, false);
         return new DataPropertySetNode(shapeCheck);
@@ -1329,8 +1332,8 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         if (specialized != null) {
             return specialized;
         }
-        if (JSObject.isDynamicObject(thisObj)) {
-            DynamicObject thisJSObj = (DynamicObject) thisObj;
+        if (JSDynamicObject.isJSDynamicObject(thisObj)) {
+            JSDynamicObject thisJSObj = (JSDynamicObject) thisObj;
             Shape cacheShape = thisJSObj.getShape();
             AbstractShapeCheckNode shapeCheck = createShapeCheckNode(cacheShape, thisJSObj, depth, false, true);
             if (JSAdapter.isJSAdapter(store)) {
@@ -1338,7 +1341,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 return new JSAdapterPropertySetNode(receiverCheck);
             } else if (isStrict() && isGlobal() && !JSObject.hasProperty(thisJSObj, key)) {
                 return new ReferenceErrorPropertySetNode(shapeCheck);
-            } else if (JSProxy.isProxy(store) && JSRuntime.isPropertyKey(key)) {
+            } else if (JSProxy.isJSProxy(store) && JSRuntime.isPropertyKey(key)) {
                 ReceiverCheckNode receiverCheck = (depth == 0) ? new JSClassCheckNode(JSObject.getJSClass(thisJSObj)) : shapeCheck;
                 return new JSProxyDispatcherPropertySetNode(context, receiverCheck, isStrict());
             } else if (!JSRuntime.isObject(thisJSObj)) {
@@ -1353,7 +1356,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             } else {
                 return new ReadOnlyPropertySetNode(createShapeCheckNode(cacheShape, thisJSObj, depth, false, false), isStrict());
             }
-        } else if (JSProxy.isProxy(store)) {
+        } else if (JSProxy.isJSProxy(store)) {
             ReceiverCheckNode receiverCheck = createPrimitiveReceiverCheck(thisObj, depth);
             return new JSProxyDispatcherPropertySetNode(context, receiverCheck, isStrict());
         } else {
@@ -1405,7 +1408,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     @TruffleBoundary
     protected void globalPropertySetInStrictMode(Object thisObj) {
-        assert JSObject.isDynamicObject(thisObj) && context.getRealm().getGlobalObject() == thisObj;
+        assert JSDynamicObject.isJSDynamicObject(thisObj) && context.getRealm().getGlobalObject() == thisObj;
         throw Errors.createReferenceErrorNotDefined(context, getKey(), this);
     }
 

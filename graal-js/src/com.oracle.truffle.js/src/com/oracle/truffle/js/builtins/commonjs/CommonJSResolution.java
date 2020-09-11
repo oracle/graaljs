@@ -63,6 +63,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 final class CommonJSResolution {
@@ -274,7 +275,7 @@ final class CommonJSResolution {
         TruffleFile packageJson = joinPaths(env, modulePath, PACKAGE_JSON);
         if (fileExists(packageJson)) {
             DynamicObject jsonObj = loadJsonObject(packageJson, cx);
-            if (JSObject.isJSObject(jsonObj)) {
+            if (JSDynamicObject.isJSDynamicObject(jsonObj)) {
                 Object main = JSObject.get(jsonObj, PACKAGE_JSON_MAIN_PROPERTY_NAME);
                 if (!JSRuntime.isString(main)) {
                     return loadIndex(env, modulePath);
@@ -308,7 +309,7 @@ final class CommonJSResolution {
                 DynamicObject parse = (DynamicObject) realm.getJsonParseFunctionObject();
                 String jsonString = source.getCharacters().toString();
                 Object jsonObj = JSFunction.call(JSArguments.create(parse, parse, jsonString));
-                if (JSObject.isJSObject(jsonObj)) {
+                if (JSDynamicObject.isJSDynamicObject(jsonObj)) {
                     return (DynamicObject) jsonObj;
                 }
             }

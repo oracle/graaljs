@@ -51,7 +51,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 import java.util.Set;
 
@@ -91,7 +91,7 @@ public class AsyncIteratorNextNode extends AwaitNode {
         } else {
             setState(frame, 0);
             Object result = resumeAwait(frame);
-            if (!JSObject.isJSObject(result)) {
+            if (!JSDynamicObject.isJSDynamicObject(result)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorIterResultNotAnObject(result, this);
             }

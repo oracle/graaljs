@@ -133,18 +133,18 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
+import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSURLDecoder;
 import com.oracle.truffle.js.runtime.builtins.JSURLEncoder;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 /**
  * Contains builtins for the global object.
@@ -252,7 +252,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, GlobalShell builtinEnum) {
             switch (builtinEnum) {
                 case quit:
-                    return JSGlobalExitNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
+                    return JSGlobalExitNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                 case readline:
                     return JSGlobalReadLineNodeGen.create(context, builtin, new JavaScriptNode[]{JSConstantNode.createUndefined()});
                 case read:
@@ -372,7 +372,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             switch (builtinEnum) {
                 case exit:
                 case quit:
-                    return JSGlobalExitNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
+                    return JSGlobalExitNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                 case readLine:
                     return JSGlobalReadLineNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                 case readFully:
@@ -1270,7 +1270,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             return source;
         }
 
-        @Specialization(guards = "isJSType(object)")
+        @Specialization(guards = "isJSDynamicObject(object)")
         public DynamicObject indirectEvalJSType(DynamicObject object) {
             return object;
         }
@@ -1436,7 +1436,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @TruffleBoundary(transferToInterpreterOnException = false)
         protected Object evalImpl(JSRealm realm, String fileName, String source, Object[] args) {
             JSRealm childRealm = realm.createChildRealm();
-            DynamicObject argObj = JSArgumentsObject.createStrict(getContext(), childRealm, args);
+            DynamicObject argObj = JSArgumentsArray.createStrictSlow(childRealm, args);
+            // TODO: should be a child realm array
             JSRuntime.createDataProperty(childRealm.getGlobalObject(), JSFunction.ARGUMENTS, argObj);
             return loadStringImpl(getContext(), fileName, source).run(childRealm);
         }
@@ -1448,7 +1449,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             TruffleContext childContext = childRealm.getTruffleContext();
             Object prev = childContext.enter();
             try {
-                DynamicObject argObj = JSArgumentsObject.createStrict(getContext(), childRealm, args);
+                DynamicObject argObj = JSArgumentsArray.createStrictSlow(childRealm, args);
+                // TODO: should be a child realm array
                 JSRuntime.createDataProperty(childRealm.getGlobalObject(), JSFunction.ARGUMENTS, argObj);
                 Source source = sourceFromPath(path, childRealm);
                 return runImpl(childRealm, source);
@@ -1468,14 +1470,29 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             super(context, builtin);
         }
 
+        @Specialization(guards = "isUndefined(arg)")
+        protected Object exit(@SuppressWarnings("unused") Object arg) {
+            return exit(0);
+        }
+
         @Specialization
-        protected Object exit(Object[] arg,
-                        @Cached("create()") JSToNumberNode toNumberNode) {
-            int exitCode = arg.length == 0 ? 0 : (int) JSRuntime.toInteger(toNumberNode.executeNumber(arg[0]));
+        protected Object exit(int exitCode) {
             if (getContext().isOptionNashornCompatibilityMode()) {
                 nashornExit(exitCode);
             }
-            throw new ExitException(exitCode, this);
+            throw newExitException(exitCode);
+        }
+
+        @Specialization
+        protected Object exit(Object arg,
+                        @Cached("create()") JSToNumberNode toNumberNode) {
+            int exitCode = (int) JSRuntime.toInteger(toNumberNode.executeNumber(arg));
+            return exit(exitCode);
+        }
+
+        @TruffleBoundary
+        private ExitException newExitException(int exitCode) {
+            return new ExitException(exitCode, this);
         }
 
         @TruffleBoundary

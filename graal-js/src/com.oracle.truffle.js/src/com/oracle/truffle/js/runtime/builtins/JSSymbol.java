@@ -40,16 +40,11 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.util.EnumSet;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.SymbolFunctionBuiltins;
@@ -61,10 +56,7 @@ import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -72,7 +64,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  *
  * @see Symbol
  */
-public final class JSSymbol extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
+public final class JSSymbol extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
     public static final JSSymbol INSTANCE = new JSSymbol();
 
@@ -81,37 +73,29 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
     public static final String PROTOTYPE_NAME = CLASS_NAME + ".prototype";
     public static final String DESCRIPTION = "description";
 
-    private static final HiddenKey SYMBOL_DATA_ID = new HiddenKey("Symbol");
-    private static final Property SYMBOL_DATA_PROPERTY;
-
-    static {
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        SYMBOL_DATA_PROPERTY = JSObjectUtil.makeHiddenProperty(SYMBOL_DATA_ID, allocator.locationForType(Symbol.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
-    }
-
     private JSSymbol() {
     }
 
     public static DynamicObject create(JSContext context, Symbol symbol) {
-        DynamicObject mapObj = JSObject.create(context, context.getSymbolFactory(), symbol);
+        DynamicObject mapObj = JSSymbolObject.create(context.getRealm(), context.getSymbolFactory(), symbol);
         assert isJSSymbol(mapObj);
-        return mapObj;
+        return context.trackAllocation(mapObj);
     }
 
     public static Symbol getSymbolData(DynamicObject symbolWrapper) {
         assert JSSymbol.isJSSymbol(symbolWrapper);
-        return (Symbol) SYMBOL_DATA_PROPERTY.get(symbolWrapper, JSSymbol.isJSSymbol(symbolWrapper));
+        return ((JSSymbolObject) symbolWrapper).getSymbol();
     }
 
     @Override
     public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, SymbolPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
         if (ctx.getContextOptions().getEcmaScriptVersion() >= JSConfig.ECMAScript2019) {
-            JSObjectUtil.putConstantAccessorProperty(ctx, prototype, DESCRIPTION, createDescriptionGetterFunction(realm), Undefined.instance);
+            JSObjectUtil.putBuiltinAccessorProperty(prototype, DESCRIPTION, createDescriptionGetterFunction(realm), Undefined.instance);
         }
         return prototype;
     }
@@ -119,7 +103,6 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSSymbol.INSTANCE, context);
-        initialShape = initialShape.addProperty(SYMBOL_DATA_PROPERTY);
         return initialShape;
     }
 
@@ -168,15 +151,12 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
     }
 
     public static boolean isJSSymbol(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSSymbol((DynamicObject) obj);
-    }
-
-    public static boolean isJSSymbol(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSSymbolObject;
     }
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getSymbolPrototype();
     }
+
 }

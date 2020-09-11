@@ -45,12 +45,13 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -81,26 +82,12 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
         this.context = context;
     }
 
-    @Specialization(guards = {"isJSObject(target)", "key == cachedKey"}, limit = "1")
-    Object doFieldCachedKey(DynamicObject target, @SuppressWarnings("unused") HiddenKey key,
-                    @Cached("key") @SuppressWarnings("unused") HiddenKey cachedKey,
-                    @Cached("create(key)") HasHiddenKeyCacheNode hasNode,
-                    @Cached("createGetHidden(key, context)") PropertyGetNode getNode,
-                    @Cached @Shared("errorBranch") BranchProfile errorBranch) {
-        if (hasNode.executeHasHiddenKey(target)) {
-            return getNode.getValue(target);
-        } else {
-            errorBranch.enter();
-            return missing(target, key);
-        }
-    }
-
-    @TruffleBoundary
-    @Specialization(guards = {"isJSObject(target)"}, replaces = "doFieldCachedKey")
-    Object doFieldUncachedKey(DynamicObject target, HiddenKey key,
-                    @Cached @Shared("errorBranch") BranchProfile errorBranch) {
-        if (target.containsKey(key)) {
-            return target.get(key, Undefined.instance);
+    @Specialization(guards = {"isJSObject(target)"}, limit = "3")
+    Object doField(DynamicObject target, HiddenKey key,
+                    @CachedLibrary("target") DynamicObjectLibrary access,
+                    @Cached BranchProfile errorBranch) {
+        if (access.containsKey(target, key)) {
+            return access.getOrDefault(target, key, Undefined.instance);
         } else {
             errorBranch.enter();
             return missing(target, key);
@@ -115,7 +102,7 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
     @Specialization(guards = {"isJSObject(target)"})
     Object doAccessor(DynamicObject target, Accessor accessor,
                     @Cached("createCall()") JSFunctionCallNode callNode,
-                    @Cached @Shared("errorBranch") BranchProfile errorBranch) {
+                    @Cached BranchProfile errorBranch) {
         DynamicObject getter = accessor.getGetter();
         if (getter == Undefined.instance) {
             errorBranch.enter();

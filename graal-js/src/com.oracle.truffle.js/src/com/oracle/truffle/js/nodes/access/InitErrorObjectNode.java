@@ -40,12 +40,12 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.InitErrorObjectNodeFactory.DefineStackPropertyNodeGen;
 import com.oracle.truffle.js.nodes.function.CreateMethodPropertyNode;
@@ -61,6 +61,8 @@ import com.oracle.truffle.js.runtime.objects.JSProperty;
 public final class InitErrorObjectNode extends JavaScriptBaseNode {
     @Child private PropertySetNode setException;
     @Child private PropertySetNode setFormattedStack;
+    @Child private DynamicObjectLibrary setMessage;
+    @Child private DynamicObjectLibrary setErrors;
     @Child private DefineStackPropertyNode defineStackProperty;
     private final boolean defaultColumnNumber;
     @Child private CreateMethodPropertyNode setLineNumber;
@@ -69,6 +71,7 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
     private InitErrorObjectNode(JSContext context, boolean defaultColumnNumber) {
         this.setException = PropertySetNode.createSetHidden(JSError.EXCEPTION_PROPERTY_NAME, context);
         this.setFormattedStack = PropertySetNode.createSetHidden(JSError.FORMATTED_STACK_NAME, context);
+        this.setMessage = JSObjectUtil.createDispatched(JSError.MESSAGE);
         this.defineStackProperty = DefineStackPropertyNode.create();
         this.defaultColumnNumber = defaultColumnNumber;
         if (context.isOptionNashornCompatibilityMode()) {
@@ -85,7 +88,18 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
         return new InitErrorObjectNode(context, defaultColumnNumber);
     }
 
-    public DynamicObject execute(DynamicObject errorObj, GraalJSException exception) {
+    public DynamicObject execute(DynamicObject errorObj, GraalJSException exception, String messageOpt) {
+        return execute(errorObj, exception, messageOpt, null);
+    }
+
+    public DynamicObject execute(DynamicObject errorObj, GraalJSException exception, String messageOpt, DynamicObject errorsOpt) {
+        if (messageOpt != null) {
+            setMessage.putWithFlags(errorObj, JSError.MESSAGE, messageOpt, JSError.MESSAGE_ATTRIBUTES);
+        }
+        if (errorsOpt != null) {
+            setErrorsNode().putWithFlags(errorObj, JSError.ERRORS_NAME, errorsOpt, JSError.ERRORS_ATTRIBUTES);
+        }
+
         setException.setValue(errorObj, exception);
         // stack is not formatted until it is accessed
         setFormattedStack.setValue(errorObj, null);
@@ -99,7 +113,15 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
         return errorObj;
     }
 
-    @ImportStatic(JSError.class)
+    private DynamicObjectLibrary setErrorsNode() {
+        DynamicObjectLibrary errorsLib = setErrors;
+        if (errorsLib == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            setErrors = errorsLib = insert(JSObjectUtil.createDispatched(JSError.ERRORS_NAME));
+        }
+        return errorsLib;
+    }
+
     public abstract static class DefineStackPropertyNode extends JavaScriptBaseNode {
         static DefineStackPropertyNode create() {
             return DefineStackPropertyNodeGen.create();
@@ -107,26 +129,10 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
 
         abstract void execute(DynamicObject errorObj);
 
-        @Specialization(guards = {"shapeAfter != null", "errorObj.getShape() == cachedShape"}, assumptions = {"cachedShape.getValidAssumption()", "shapeAfter.getValidAssumption()"}, limit = "3")
+        @Specialization(limit = "3")
         void doCached(DynamicObject errorObj,
-                        @Cached("errorObj.getShape()") Shape cachedShape,
-                        @Cached("addStackProperty(cachedShape)") Shape shapeAfter,
-                        @Cached("shapeAfter.getProperty(STACK_NAME)") Property cachedProperty) {
-            cachedProperty.setSafe(errorObj, JSError.STACK_PROXY, cachedShape, shapeAfter);
-        }
-
-        static Shape addStackProperty(Shape shape) {
-            Property stackProperty = shape.getProperty(JSError.STACK_NAME);
-            if (stackProperty != null) {
-                // if property already exists, switch to slow path
-                return null;
-            }
-            return shape.defineProperty(JSError.STACK_NAME, JSError.STACK_PROXY, JSAttributes.getDefaultNotEnumerable() | JSProperty.PROXY);
-        }
-
-        @Specialization(replaces = "doCached")
-        void doUncached(DynamicObject errorObj) {
-            Property stackProperty = errorObj.getShape().getProperty(JSError.STACK_NAME);
+                        @CachedLibrary("errorObj") DynamicObjectLibrary objectLibrary) {
+            Property stackProperty = objectLibrary.getProperty(errorObj, JSError.STACK_NAME);
             int attrs = JSAttributes.getDefaultNotEnumerable();
             if (stackProperty != null) {
                 if (!JSProperty.isConfigurable(stackProperty)) {
@@ -136,7 +142,7 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
                     attrs = JSAttributes.getDefault();
                 }
             }
-            JSObjectUtil.defineProxyProperty(errorObj, JSError.STACK_NAME, JSError.STACK_PROXY, attrs | JSProperty.PROXY);
+            objectLibrary.putConstant(errorObj, JSError.STACK_NAME, JSError.STACK_PROXY, attrs | JSProperty.PROXY);
         }
     }
 }

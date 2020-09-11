@@ -40,13 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.util.EnumSet;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.BigIntFunctionBuiltins;
 import com.oracle.truffle.js.builtins.BigIntPrototypeBuiltins;
@@ -54,13 +49,9 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSShape;
 
-public final class JSBigInt extends JSPrimitiveObject implements JSConstructorFactory.Default.WithFunctions {
+public final class JSBigInt extends JSPrimitive implements JSConstructorFactory.Default.WithFunctions {
 
     public static final String TYPE_NAME = "bigint";
     public static final String CLASS_NAME = "BigInt";
@@ -68,26 +59,18 @@ public final class JSBigInt extends JSPrimitiveObject implements JSConstructorFa
 
     public static final JSBigInt INSTANCE = new JSBigInt();
 
-    private static final Property VALUE_PROPERTY;
-    private static final HiddenKey VALUE_ID = new HiddenKey("value");
-
-    static {
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        VALUE_PROPERTY = JSObjectUtil.makeHiddenProperty(VALUE_ID, allocator.locationForType(BigInt.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
-    }
-
     private JSBigInt() {
     }
 
     public static DynamicObject create(JSContext context, BigInt value) {
-        DynamicObject objBigInt = JSObject.create(context, context.getBigIntFactory(), value);
-        assert isJSBigInt(objBigInt);
-        return objBigInt;
+        DynamicObject obj = JSBigIntObject.create(context.getRealm(), context.getBigIntFactory(), value);
+        assert isJSBigInt(obj);
+        return context.trackAllocation(obj);
     }
 
     private static BigInt getBigIntegerField(DynamicObject obj) {
         assert isJSBigInt(obj);
-        return (BigInt) VALUE_PROPERTY.get(obj, isJSBigInt(obj));
+        return ((JSBigIntObject) obj).getBigIntValue();
     }
 
     public static BigInt valueOf(DynamicObject obj) {
@@ -97,17 +80,16 @@ public final class JSBigInt extends JSPrimitiveObject implements JSConstructorFa
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext context = realm.getContext();
-        DynamicObject bigIntPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject bigIntPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(context, bigIntPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, bigIntPrototype, BigIntPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putDataProperty(context, bigIntPrototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putToStringTag(bigIntPrototype, CLASS_NAME);
         return bigIntPrototype;
     }
 
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
-        initialShape = initialShape.addProperty(VALUE_PROPERTY);
         return initialShape;
     }
 
@@ -116,11 +98,7 @@ public final class JSBigInt extends JSPrimitiveObject implements JSConstructorFa
     }
 
     public static boolean isJSBigInt(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSBigInt((DynamicObject) obj);
-    }
-
-    public static boolean isJSBigInt(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSBigIntObject;
     }
 
     @Override

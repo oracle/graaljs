@@ -51,6 +51,7 @@ import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
@@ -67,18 +68,14 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
         return JSArray.arrayGetLength(object);
     }
 
-    protected static long getCapacity(DynamicObject object, boolean condition) {
-        return JSArray.arrayGetLength(object, condition);
-    }
-
     @Override
-    public Object getElementInBounds(DynamicObject object, int index, boolean condition) {
+    public Object getElementInBounds(DynamicObject object, int index) {
         return Undefined.instance;
     }
 
     @Override
-    public int lengthInt(DynamicObject object, boolean condition) {
-        return (int) getCapacity(object, condition);
+    public int lengthInt(DynamicObject object) {
+        return (int) getCapacity(object);
     }
 
     @Override
@@ -90,39 +87,44 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
     }
 
     @Override
-    public boolean hasElement(DynamicObject object, long index, boolean condition) {
+    public Object cloneArray(DynamicObject object) {
+        return ScriptArray.EMPTY_OBJECT_ARRAY;
+    }
+
+    @Override
+    public boolean hasElement(DynamicObject object, long index) {
         return false;
     }
 
     @Override
-    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict, boolean condition) {
+    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict) {
         return this;
     }
 
     @Override
-    public long firstElementIndex(DynamicObject object, boolean condition) {
+    public long firstElementIndex(DynamicObject object) {
         return 0; // there is no element in this array
     }
 
     @Override
-    public long lastElementIndex(DynamicObject object, boolean condition) {
+    public long lastElementIndex(DynamicObject object) {
         return -1; // there is no element in this array
     }
 
     @Override
-    public long nextElementIndex(DynamicObject object, long index, boolean condition) {
+    public long nextElementIndex(DynamicObject object, long index) {
         return JSRuntime.MAX_SAFE_INTEGER_LONG;
     }
 
     @Override
-    public long previousElementIndex(DynamicObject object, long index, boolean condition) {
+    public long previousElementIndex(DynamicObject object, long index) {
         return -1;
     }
 
     @Override
-    public AbstractIntArray createWriteableInt(DynamicObject object, long index, int value, boolean condition, ProfileHolder profile) {
+    public AbstractIntArray createWriteableInt(DynamicObject object, long index, int value, ProfileHolder profile) {
         assert index >= 0; // corner case, length would not be int then
-        int capacity = lengthInt(object, condition);
+        int capacity = lengthInt(object);
         int[] initialArray = new int[calcNewArraySize(capacity, profile)];
         AbstractIntArray newArray;
         if (CREATE_WRITABLE_PROFILE.indexZero(profile, index == 0)) {
@@ -159,8 +161,8 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractDoubleArray createWriteableDouble(DynamicObject object, long index, double value, boolean condition, ProfileHolder profile) {
-        int capacity = lengthInt(object, condition);
+    public AbstractDoubleArray createWriteableDouble(DynamicObject object, long index, double value, ProfileHolder profile) {
+        int capacity = lengthInt(object);
         double[] initialArray = new double[calcNewArraySize(capacity, profile)];
         AbstractDoubleArray newArray;
         if (CREATE_WRITABLE_PROFILE.indexZero(profile, index == 0)) {
@@ -187,9 +189,9 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractJSObjectArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, boolean condition, ProfileHolder profile) {
-        int capacity = lengthInt(object, condition);
-        DynamicObject[] initialArray = new DynamicObject[calcNewArraySize(capacity, profile)];
+    public AbstractJSObjectArray createWriteableJSObject(DynamicObject object, long index, JSDynamicObject value, ProfileHolder profile) {
+        int capacity = lengthInt(object);
+        JSDynamicObject[] initialArray = new JSDynamicObject[calcNewArraySize(capacity, profile)];
         AbstractJSObjectArray newArray;
         if (CREATE_WRITABLE_PROFILE.indexZero(profile, index == 0)) {
             newArray = ZeroBasedJSObjectArray.makeZeroBasedJSObjectArray(object, capacity, 0, initialArray, integrityLevel);
@@ -203,7 +205,7 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
         return newArray;
     }
 
-    private AbstractJSObjectArray createWritableJSObjectContiguous(DynamicObject object, int capacity, long index, DynamicObject[] initialArray, ProfileHolder profile) {
+    private AbstractJSObjectArray createWritableJSObjectContiguous(DynamicObject object, int capacity, long index, JSDynamicObject[] initialArray, ProfileHolder profile) {
         long length = Math.max(index + 1, capacity);
         int arrayOffset = 0;
         long indexOffset = index;
@@ -215,8 +217,8 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractObjectArray createWriteableObject(DynamicObject object, long index, Object value, boolean condition, ProfileHolder profile) {
-        int capacity = lengthInt(object, condition);
+    public AbstractObjectArray createWriteableObject(DynamicObject object, long index, Object value, ProfileHolder profile) {
+        int capacity = lengthInt(object);
         Object[] initialArray = new Object[calcNewArraySize(capacity, profile)];
         AbstractObjectArray newArray;
         if (CREATE_WRITABLE_PROFILE.indexZero(profile, index == 0)) {
@@ -248,8 +250,8 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
     }
 
     @Override
-    public boolean hasHoles(DynamicObject object, boolean condition) {
-        return getCapacity(object, condition) != 0;
+    public boolean hasHoles(DynamicObject object) {
+        return getCapacity(object) != 0;
     }
 
     @Override

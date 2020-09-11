@@ -48,7 +48,7 @@ import org.junit.Test;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationTag;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class ArrayObjectsTest extends FineGrainedAccessTest {
@@ -106,7 +106,7 @@ public class ArrayObjectsTest extends FineGrainedAccessTest {
         }).exit((e) -> {
             Object[] vals = (Object[]) e.val;
             assertTrue(vals.length == 4);
-            assertTrue(JSObject.isJSObject(vals[1]));
+            assertTrue(JSDynamicObject.isJSDynamicObject(vals[1]));
             assertTrue(!JSFunction.isJSFunction(vals[1]));
             assertTrue(JSFunction.isJSFunction(vals[2]));
             assertEquals(vals[3], 42);
@@ -130,7 +130,7 @@ public class ArrayObjectsTest extends FineGrainedAccessTest {
         }).exit((e) -> {
             Object[] vals = (Object[]) e.val;
             assertTrue(vals.length == 6);
-            assertTrue(JSObject.isJSObject(vals[1]));
+            assertTrue(JSDynamicObject.isJSDynamicObject(vals[1]));
             assertTrue(!JSFunction.isJSFunction(vals[1]));
             assertTrue(JSFunction.isJSFunction(vals[2]));
             assertEquals(vals[3], 42);

@@ -55,6 +55,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.Dead;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 import java.util.Set;
 
@@ -100,7 +101,7 @@ abstract class GlobalScopeTDZCheckNode extends GlobalScopeNode {
     final Object doCached(DynamicObject scope,
                     @Cached("scope.getShape()") Shape cachedShape,
                     @Cached("isDead(cachedShape)") boolean dead) {
-        assert dead == (scope.get(varName) == Dead.instance());
+        assert dead == (JSDynamicObject.getOrNull(scope, varName) == Dead.instance());
         if (dead) {
             throw Errors.createReferenceErrorNotDefined(context, varName, this);
         }
@@ -120,7 +121,7 @@ abstract class GlobalScopeTDZCheckNode extends GlobalScopeNode {
 
     final boolean isDead(Shape shape) {
         Property property = shape.getProperty(varName);
-        return property != null && property.getLocation().isDeclared();
+        return property != null && property.getLocation().isValue() && property.getLocation().get(null) == Dead.instance();
     }
 
     @Override

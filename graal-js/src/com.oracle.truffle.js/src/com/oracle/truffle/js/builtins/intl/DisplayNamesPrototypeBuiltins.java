@@ -51,7 +51,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSDisplayNames;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDisplayNames;
 
 public final class DisplayNamesPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<DisplayNamesPrototypeBuiltins.DisplayNamesPrototype> {
 

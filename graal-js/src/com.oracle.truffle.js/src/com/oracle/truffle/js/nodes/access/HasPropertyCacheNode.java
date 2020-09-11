@@ -58,6 +58,7 @@ import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
@@ -229,7 +230,7 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
 
         @Override
         protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
-            if (JSObject.isJSObject(thisObj)) {
+            if (JSDynamicObject.isJSDynamicObject(thisObj)) {
                 Object key = root.getKey();
                 if (root.isOwnProperty()) {
                     return JSObject.hasOwnProperty((DynamicObject) thisObj, key, jsclassProfile);
@@ -277,9 +278,10 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
     protected HasCacheNode createCachedPropertyNode(Property property, Object thisObj, int depth, Object value, HasCacheNode currentHead) {
         assert !isOwnProperty() || depth == 0;
         ReceiverCheckNode check;
-        if (JSObject.isDynamicObject(thisObj)) {
-            Shape cacheShape = ((DynamicObject) thisObj).getShape();
-            check = createShapeCheckNode(cacheShape, (DynamicObject) thisObj, depth, false, false);
+        if (JSDynamicObject.isJSDynamicObject(thisObj)) {
+            JSDynamicObject thisJSObj = (JSDynamicObject) thisObj;
+            Shape cacheShape = thisJSObj.getShape();
+            check = createShapeCheckNode(cacheShape, thisJSObj, depth, false, false);
         } else {
             check = createPrimitiveReceiverCheck(thisObj, depth);
         }
@@ -292,14 +294,14 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
         if (specialized != null) {
             return specialized;
         }
-        if (JSObject.isDynamicObject(thisObj)) {
-            DynamicObject thisJSObj = (DynamicObject) thisObj;
+        if (JSDynamicObject.isJSDynamicObject(thisObj)) {
+            JSDynamicObject thisJSObj = (JSDynamicObject) thisObj;
             Shape cacheShape = thisJSObj.getShape();
             AbstractShapeCheckNode shapeCheck = createShapeCheckNode(cacheShape, thisJSObj, depth, false, false);
             ReceiverCheckNode receiverCheck = (depth == 0) ? new JSClassCheckNode(JSObject.getJSClass(thisJSObj)) : shapeCheck;
             if (JSAdapter.isJSAdapter(store)) {
                 return new JSAdapterHasPropertyCacheNode(key, receiverCheck);
-            } else if (JSProxy.isProxy(store)) {
+            } else if (JSProxy.isJSProxy(store)) {
                 return new JSProxyDispatcherPropertyHasNode(context, key, receiverCheck, isOwnProperty());
             } else if (JSModuleNamespace.isJSModuleNamespace(store)) {
                 return new UnspecializedHasPropertyCacheNode(receiverCheck);

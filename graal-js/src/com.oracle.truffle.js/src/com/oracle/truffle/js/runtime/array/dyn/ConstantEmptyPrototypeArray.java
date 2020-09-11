@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
@@ -65,33 +66,33 @@ public final class ConstantEmptyPrototypeArray extends AbstractConstantEmptyArra
     }
 
     @Override
-    public ScriptArray setLengthImpl(DynamicObject object, long length, boolean condition, ProfileHolder profile) {
+    public ScriptArray setLengthImpl(DynamicObject object, long length, ProfileHolder profile) {
         setCapacity(object, length);
         return this;
     }
 
     @Override
-    public AbstractIntArray createWriteableInt(DynamicObject object, long index, int value, boolean condition, ProfileHolder profile) {
+    public AbstractIntArray createWriteableInt(DynamicObject object, long index, int value, ProfileHolder profile) {
         getArrayPrototypeNoElementsAssumption(object).invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
-        return super.createWriteableInt(object, index, value, condition, profile);
+        return super.createWriteableInt(object, index, value, profile);
     }
 
     @Override
-    public AbstractDoubleArray createWriteableDouble(DynamicObject object, long index, double value, boolean condition, ProfileHolder profile) {
+    public AbstractDoubleArray createWriteableDouble(DynamicObject object, long index, double value, ProfileHolder profile) {
         getArrayPrototypeNoElementsAssumption(object).invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
-        return super.createWriteableDouble(object, index, value, condition, profile);
+        return super.createWriteableDouble(object, index, value, profile);
     }
 
     @Override
-    public AbstractJSObjectArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, boolean condition, ProfileHolder profile) {
+    public AbstractJSObjectArray createWriteableJSObject(DynamicObject object, long index, JSDynamicObject value, ProfileHolder profile) {
         getArrayPrototypeNoElementsAssumption(object).invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
-        return super.createWriteableJSObject(object, index, value, condition, profile);
+        return super.createWriteableJSObject(object, index, value, profile);
     }
 
     @Override
-    public AbstractObjectArray createWriteableObject(DynamicObject object, long index, Object value, boolean condition, ProfileHolder profile) {
+    public AbstractObjectArray createWriteableObject(DynamicObject object, long index, Object value, ProfileHolder profile) {
         getArrayPrototypeNoElementsAssumption(object).invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
-        return super.createWriteableObject(object, index, value, condition, profile);
+        return super.createWriteableObject(object, index, value, profile);
     }
 
     @Override

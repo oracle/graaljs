@@ -62,8 +62,8 @@ public abstract class TestArrayNode extends JavaScriptBaseNode {
         this.test = test;
     }
 
-    protected static ScriptArray getArrayType(DynamicObject target, boolean condition) {
-        return JSObject.getArray(target, condition);
+    protected static ScriptArray getArrayType(DynamicObject target) {
+        return JSObject.getArray(target);
     }
 
     protected static TestArrayNode create(Test test) {
@@ -74,21 +74,21 @@ public abstract class TestArrayNode extends JavaScriptBaseNode {
         return create(Test.HasHoles);
     }
 
-    public abstract boolean executeBoolean(DynamicObject target, boolean condition);
+    public abstract boolean executeBoolean(DynamicObject target);
 
-    @Specialization(guards = {"arrayType.isInstance(getArrayType(target, condition))", "arrayType.isStatelessType()"}, limit = "MAX_TYPE_COUNT")
-    protected final boolean doCached(DynamicObject target, boolean condition,
-                    @Cached("getArrayType(target, condition)") ScriptArray arrayType) {
+    @Specialization(guards = {"arrayType.isInstance(getArrayType(target))", "arrayType.isStatelessType()"}, limit = "MAX_TYPE_COUNT")
+    protected final boolean doCached(DynamicObject target,
+                    @Cached("getArrayType(target)") ScriptArray arrayType) {
         if (test == Test.HasHoles) {
-            return arrayType.hasHoles(target, condition);
+            return arrayType.hasHoles(target);
         } else {
             throw Errors.shouldNotReachHere();
         }
     }
 
     @Specialization(replaces = "doCached")
-    protected final boolean doUncached(DynamicObject target, boolean condition) {
-        ScriptArray arrayType = getArrayType(target, condition);
-        return doCached(target, condition, arrayType);
+    protected final boolean doUncached(DynamicObject target) {
+        ScriptArray arrayType = getArrayType(target);
+        return doCached(target, arrayType);
     }
 }

@@ -40,13 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
-import org.graalvm.collections.EconomicMap;
-
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.object.ShapeListener;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.util.DebugCounter;
@@ -54,59 +49,19 @@ import com.oracle.truffle.js.runtime.util.DebugCounter;
 /**
  * @see JSShape
  */
-public final class JSSharedData implements ShapeListener {
+public final class JSSharedData {
     private final JSContext context;
-    private final Property prototypeProperty;
-    private EconomicMap<Object, Assumption> propertyAssumptions;
     private Assumption prototypeAssumption;
 
-    private static final DebugCounter propertyAssumptionsCreated = DebugCounter.create("Property assumptions created");
-    private static final DebugCounter propertyAssumptionsRemoved = DebugCounter.create("Property assumptions removed");
     private static final DebugCounter prototypeAssumptionsCreated = DebugCounter.create("Prototype assumptions created");
     private static final DebugCounter prototypeAssumptionsRemoved = DebugCounter.create("Prototype assumptions removed");
 
-    public JSSharedData(JSContext context, Property prototypeProperty) {
+    public JSSharedData(JSContext context) {
         this.context = context;
-        this.prototypeProperty = prototypeProperty;
-    }
-
-    synchronized Assumption getPropertyAssumption(Object propertyName) {
-        CompilerAsserts.neverPartOfCompilation();
-        EconomicMap<Object, Assumption> map = propertyAssumptions;
-        if (map == null) {
-            map = EconomicMap.create();
-            propertyAssumptions = map;
-        } else {
-            Assumption assumption = map.get(propertyName);
-            if (assumption != null) {
-                return assumption;
-            }
-        }
-        Assumption assumption = Truffle.getRuntime().createAssumption(propertyName.toString());
-        map.put(propertyName, assumption);
-        propertyAssumptionsCreated.inc();
-        return assumption;
-    }
-
-    synchronized void invalidatePropertyAssumption(Object propertyName) {
-        CompilerAsserts.neverPartOfCompilation();
-        EconomicMap<Object, Assumption> map = propertyAssumptions;
-        if (map != null) {
-            Assumption assumption = map.get(propertyName);
-            if (assumption != null && assumption != NeverValidAssumption.INSTANCE) {
-                assumption.invalidate("invalidatePropertyAssumption");
-                map.put(propertyName, NeverValidAssumption.INSTANCE);
-                propertyAssumptionsRemoved.inc();
-            }
-        }
     }
 
     JSContext getContext() {
         return context;
-    }
-
-    Property getPrototypeProperty() {
-        return prototypeProperty;
     }
 
     synchronized Assumption getPrototypeAssumption() {
@@ -126,10 +81,5 @@ public final class JSSharedData implements ShapeListener {
             prototypeAssumption = NeverValidAssumption.INSTANCE;
             prototypeAssumptionsRemoved.inc();
         }
-    }
-
-    @Override
-    public void onPropertyTransition(Object key) {
-        invalidatePropertyAssumption(key);
     }
 }

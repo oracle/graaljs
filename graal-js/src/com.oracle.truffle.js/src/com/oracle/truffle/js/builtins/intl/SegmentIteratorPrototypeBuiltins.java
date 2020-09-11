@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
@@ -54,18 +53,15 @@ import com.oracle.truffle.js.builtins.intl.SegmentIteratorPrototypeBuiltinsFacto
 import com.oracle.truffle.js.builtins.intl.SegmentIteratorPrototypeBuiltinsFactory.SegmentIteratorNextNodeGen;
 import com.oracle.truffle.js.builtins.intl.SegmentIteratorPrototypeBuiltinsFactory.SegmentIteratorPrecedingNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
-import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSSegmenter;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
+import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenterIteratorObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
@@ -113,31 +109,22 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
 
     public abstract static class SegmentIteratorOpNode extends JSBuiltinNode {
 
-        @Child protected HasHiddenKeyCacheNode isSegmentIteratorNode;
-        @Child protected PropertyGetNode getSegmentIteratorGranularityNode;
-        @Child protected PropertyGetNode getIteratedObjectNode;
-        @Child protected PropertyGetNode getSegmenterNode;
-        @Child protected PropertySetNode setBreakTypeNode;
-        @Child protected PropertySetNode setIndexNode;
-
         public SegmentIteratorOpNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.isSegmentIteratorNode = HasHiddenKeyCacheNode.create(JSSegmenter.SEGMENT_ITERATOR_GRANULARITY_ID);
-            this.getSegmentIteratorGranularityNode = PropertyGetNode.createGetHidden(JSSegmenter.SEGMENT_ITERATOR_GRANULARITY_ID, context);
-            this.getIteratedObjectNode = PropertyGetNode.createGetHidden(JSRuntime.ITERATED_OBJECT_ID, context);
-            this.getSegmenterNode = PropertyGetNode.createGetHidden(JSSegmenter.SEGMENT_ITERATOR_SEGMENTER_ID, context);
-            this.setIndexNode = PropertySetNode.createSetHidden(JSSegmenter.SEGMENT_ITERATOR_INDEX_ID,
-                            context);
-            this.setBreakTypeNode = PropertySetNode.createSetHidden(JSSegmenter.SEGMENT_ITERATOR_BREAK_TYPE_ID, context);
         }
 
-        protected final boolean isSegmentIterator(Object thisObj) {
-            return isSegmentIteratorNode.executeHasHiddenKey(thisObj);
+        protected static boolean isSegmentIterator(Object thisObj) {
+            return JSSegmenter.isJSSegmenterIterator(thisObj);
         }
 
         @TruffleBoundary
         protected static int getRuleStatus(BreakIterator icuIterator) {
             return icuIterator.getRuleStatus();
+        }
+
+        protected static JSSegmenter.IteratorState getIteratorState(DynamicObject iterator) {
+            assert JSSegmenter.isJSSegmenterIterator(iterator);
+            return ((JSSegmenterIteratorObject) iterator).getIteratorState();
         }
     }
 
@@ -150,13 +137,13 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
             this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
         }
 
-        @Specialization(guards = "isSegmentIterator(iterator)")
-        protected DynamicObject doSegmentIterator(VirtualFrame frame, DynamicObject iterator) {
-
-            Object iteratedString = getIteratedObjectNode.getValue(iterator);
-            BreakIterator icuIterator = (BreakIterator) getSegmenterNode.getValue(iterator);
-            JSSegmenter.Granularity segmenterGranularity = (JSSegmenter.Granularity) getSegmentIteratorGranularityNode.getValue(iterator);
-            DynamicObject nextValue = nextValue(iterator, (String) iteratedString, segmenterGranularity, icuIterator);
+        @Specialization(guards = "isSegmentIterator(iteratorObj)")
+        protected DynamicObject doSegmentIterator(VirtualFrame frame, DynamicObject iteratorObj) {
+            JSSegmenter.IteratorState iterator = getIteratorState(iteratorObj);
+            String iteratedString = iterator.getIteratedString();
+            BreakIterator icuIterator = iterator.getBreakIterator();
+            JSSegmenter.Granularity segmenterGranularity = iterator.getSegmenterGranularity();
+            DynamicObject nextValue = nextValue(iterator, iteratedString, segmenterGranularity, icuIterator);
             return createIterResultObjectNode.execute(frame, nextValue, nextValue == Undefined.instance);
         }
 
@@ -167,14 +154,13 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @TruffleBoundary
-        protected DynamicObject nextValue(DynamicObject iterator, String s, JSSegmenter.Granularity segmenterGranularity, BreakIterator icuIterator) {
-
+        protected DynamicObject nextValue(JSSegmenter.IteratorState iterator, String s, JSSegmenter.Granularity segmenterGranularity, BreakIterator icuIterator) {
             int startIndex = icuIterator.current();
             int endIndex = icuIterator.next();
             boolean done = endIndex == BreakIterator.DONE;
 
             if (done) {
-                setBreakTypeNode.setValue(iterator, null);
+                iterator.setBreakType(null);
                 return Undefined.instance;
             }
 
@@ -183,14 +169,14 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
 
             DynamicObject result = makeIterationResultValue(endIndex, segment, breakType);
 
-            setBreakTypeNode.setValue(iterator, breakType);
-            setIndexNode.setValue(iterator, endIndex);
+            iterator.setBreakType(breakType);
+            iterator.setIndex(endIndex);
 
             return result;
         }
 
         protected DynamicObject makeIterationResultValue(int endIndex, String segment, String breakType) {
-            DynamicObject result = JSUserObject.create(getContext());
+            DynamicObject result = JSOrdinary.create(getContext());
             JSObject.set(result, IntlUtil.SEGMENT, segment);
             JSObject.set(result, IntlUtil.BREAK_TYPE, breakType == null ? Undefined.instance : breakType);
             JSObject.set(result, IntlUtil.INDEX, endIndex);
@@ -218,18 +204,19 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         private boolean checkRangeAndAdvanceOp(DynamicObject iterator, long offset) {
-            String iteratedString = (String) getIteratedObjectNode.getValue(iterator);
+            String iteratedString = getIteratorState(iterator).getIteratedString();
             doCheckOffsetRange(offset, iteratedString.length());
             return advanceOp(iterator, (int) offset);
         }
 
-        private boolean advanceOp(DynamicObject iterator, int offset) {
-            BreakIterator icuIterator = (BreakIterator) getSegmenterNode.getValue(iterator);
-            JSSegmenter.Granularity segmenterGranularity = (JSSegmenter.Granularity) getSegmentIteratorGranularityNode.getValue(iterator);
+        private boolean advanceOp(DynamicObject iteratorObj, int offset) {
+            JSSegmenter.IteratorState iterator = getIteratorState(iteratorObj);
+            BreakIterator icuIterator = iterator.getBreakIterator();
+            JSSegmenter.Granularity segmenterGranularity = iterator.getSegmenterGranularity();
             int newIndex = doAdvanceOp(icuIterator, offset);
             String breakType = segmenterGranularity.getBreakType(getRuleStatus(icuIterator));
-            setBreakTypeNode.setValue(iterator, breakType);
-            setIndexNode.setValue(iterator, newIndex);
+            iterator.setBreakType(breakType);
+            iterator.setIndex(newIndex);
             return newIndex == BreakIterator.DONE;
         }
 
@@ -239,13 +226,8 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @Specialization(guards = {"isSegmentIterator(iterator)", "isUndefined(from)"})
-        protected boolean doSegmentIteratorNoFrom(DynamicObject iterator, @SuppressWarnings("unused") Object from,
-                        @Cached("createGetHidden(SEGMENT_ITERATOR_INDEX_ID, getContext())") PropertyGetNode getIndexNode) {
-            try {
-                return advanceOp(iterator, getIndexNode.getValueInt(iterator));
-            } catch (UnexpectedResultException e) {
-                throw Errors.shouldNotReachHere();
-            }
+        protected boolean doSegmentIteratorNoFrom(DynamicObject iterator, @SuppressWarnings("unused") Object from) {
+            return advanceOp(iterator, getIteratorState(iterator).getIndex());
         }
 
         @SuppressWarnings("unused")

@@ -80,8 +80,8 @@ import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -134,7 +134,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
                 return Type.String;
             case JSBoolean.TYPE_NAME:
                 return Type.Boolean;
-            case JSUserObject.TYPE_NAME:
+            case JSOrdinary.TYPE_NAME:
                 return Type.Object;
             case Undefined.TYPE_NAME:
                 return Type.Undefined;
@@ -279,13 +279,13 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
         return (type == Type.String);
     }
 
-    @Specialization(guards = {"isJSType(value)"})
+    @Specialization(guards = {"isJSDynamicObject(value)"})
     protected final boolean doJSType(DynamicObject value,
                     @Cached("create()") BranchProfile proxyBranch) {
         if (type == Type.Number || type == Type.BigInt || type == Type.String || type == Type.Boolean || type == Type.Symbol || type == Type.False) {
             return false;
         } else if (type == Type.Object) {
-            if (JSProxy.isProxy(value)) {
+            if (JSProxy.isJSProxy(value)) {
                 proxyBranch.enter();
                 return checkProxy(value, false);
             } else {
@@ -296,7 +296,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
         } else if (type == Type.Function) {
             if (JSFunction.isJSFunction(value)) {
                 return true;
-            } else if (JSProxy.isProxy(value)) {
+            } else if (JSProxy.isJSProxy(value)) {
                 proxyBranch.enter();
                 return checkProxy(value, true);
             } else {
@@ -335,7 +335,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
         do {
             proxy = (DynamicObject) target;
             target = JSProxy.getTarget(proxy);
-        } while (JSProxy.isProxy(target));
+        } while (JSProxy.isJSProxy(target));
 
         if (target == Null.instance) { // revoked proxy
             return isFunction == JSRuntime.isRevokedCallableProxy(proxy);
@@ -343,7 +343,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
             if (isFunction) {
                 return JSFunction.isJSFunction(target) || JSRuntime.isCallableForeign(target) || JSRuntime.isConstructorForeign(target);
             } else {
-                return (JSObject.isJSObject(target) && !JSFunction.isJSFunction(target)) ||
+                return (JSDynamicObject.isJSDynamicObject(target) && !JSFunction.isJSFunction(target)) ||
                                 (JSRuntime.isForeignObject(target) && !JSRuntime.isCallableForeign(target) && !JSRuntime.isConstructorForeign(target));
             }
         }

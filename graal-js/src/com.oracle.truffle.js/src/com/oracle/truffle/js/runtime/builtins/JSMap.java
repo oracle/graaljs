@@ -40,16 +40,12 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.util.EnumSet;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltins;
@@ -61,13 +57,12 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
-public final class JSMap extends JSBuiltinObject implements JSConstructorFactory.Default.WithSpecies, PrototypeSupplier {
+public final class JSMap extends JSNonProxy implements JSConstructorFactory.Default.WithSpecies, PrototypeSupplier {
 
     public static final JSMap INSTANCE = new JSMap();
 
@@ -79,28 +74,22 @@ public final class JSMap extends JSBuiltinObject implements JSConstructorFactory
 
     private static final String SIZE = "size";
 
-    private static final HiddenKey MAP_ID = new HiddenKey("map");
-    private static final Property MAP_PROPERTY;
-
     public static final HiddenKey MAP_ITERATION_KIND_ID = new HiddenKey("MapIterationKind");
-
-    static {
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        MAP_PROPERTY = JSObjectUtil.makeHiddenProperty(MAP_ID, allocator.locationForType(JSHashMap.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
-    }
 
     private JSMap() {
     }
 
     public static DynamicObject create(JSContext context) {
-        DynamicObject obj = JSObject.create(context, context.getMapFactory(), new JSHashMap());
+        JSRealm realm = context.getRealm();
+        JSObjectFactory factory = context.getMapFactory();
+        DynamicObject obj = factory.initProto(new JSMapObject(factory.getShape(realm), new JSHashMap()), realm);
         assert isJSMap(obj);
-        return obj;
+        return context.trackAllocation(obj);
     }
 
     public static JSHashMap getInternalMap(DynamicObject obj) {
         assert isJSMap(obj);
-        return (JSHashMap) MAP_PROPERTY.get(obj, isJSMap(obj));
+        return ((JSMapObject) obj).getMap();
     }
 
     public static int getMapSize(DynamicObject obj) {
@@ -133,22 +122,22 @@ public final class JSMap extends JSBuiltinObject implements JSConstructorFactory
     @Override
     public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         // sets the size just for the prototype
-        JSObjectUtil.putConstantAccessorProperty(ctx, prototype, SIZE, createSizeGetterFunction(realm), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, SIZE, createSizeGetterFunction(realm), Undefined.instance);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, MapPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
         // The initial value of the @@iterator property is the same function object as
         // the initial value of the entries property.
-        JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_ITERATOR, prototype.get(JSArray.ENTRIES), JSAttributes.getDefaultNotEnumerable());
+        Object entriesFunction = JSDynamicObject.getOrNull(prototype, JSArray.ENTRIES);
+        JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_ITERATOR, entriesFunction, JSAttributes.getDefaultNotEnumerable());
         return prototype;
     }
 
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSMap.INSTANCE, context);
-        initialShape = initialShape.addProperty(MAP_PROPERTY);
         return initialShape;
     }
 
@@ -178,15 +167,12 @@ public final class JSMap extends JSBuiltinObject implements JSConstructorFactory
     }
 
     public static boolean isJSMap(Object obj) {
-        return JSObject.isDynamicObject(obj) && isJSMap((DynamicObject) obj);
-    }
-
-    public static boolean isJSMap(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof JSMapObject;
     }
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getMapPrototype();
     }
+
 }

@@ -40,15 +40,18 @@
  */
 package com.oracle.truffle.trufflenode;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.js.runtime.interop.InteropArray;
 
 @ExportLibrary(InteropLibrary.class)
 public final class RunnableInvoker implements TruffleObject {
+
+    private static final String RUN_METHOD_NAME = "run";
 
     private final Runnable runnable;
 
@@ -64,13 +67,15 @@ public final class RunnableInvoker implements TruffleObject {
 
     @SuppressWarnings("static-method")
     @ExportMessage
+    @TruffleBoundary
     boolean isMemberInvocable(String name) {
-        return "run".equals(name);
+        return RUN_METHOD_NAME.equals(name);
     }
 
     @ExportMessage
+    @TruffleBoundary
     Object invokeMember(String name, @SuppressWarnings("unused") Object[] args) throws UnknownIdentifierException {
-        if ("run".equals(name)) {
+        if (RUN_METHOD_NAME.equals(name)) {
             runnable.run();
             return null;
         } else {
@@ -80,7 +85,8 @@ public final class RunnableInvoker implements TruffleObject {
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
+    @TruffleBoundary
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        return InteropArray.create(new Object[]{RUN_METHOD_NAME});
     }
 }

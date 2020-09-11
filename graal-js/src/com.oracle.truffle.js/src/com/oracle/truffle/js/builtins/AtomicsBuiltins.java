@@ -76,10 +76,9 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -170,51 +169,51 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         }
 
         public static boolean isSharedBufferView(Object object) {
-            return JSObject.isJSObject(object) && isSharedBufferView((DynamicObject) object);
+            return JSDynamicObject.isJSDynamicObject(object) && isSharedBufferView((DynamicObject) object);
         }
 
         public static boolean isSharedBufferView(DynamicObject object) {
-            return JSArrayBufferView.isJSArrayBufferView(object) && JSSharedArrayBuffer.isJSSharedArrayBuffer(JSArrayBufferView.getArrayBuffer(object, JSArrayBufferView.isJSArrayBufferView(object)));
+            return JSArrayBufferView.isJSArrayBufferView(object) && JSSharedArrayBuffer.isJSSharedArrayBuffer(JSArrayBufferView.getArrayBuffer(object));
         }
 
         public static boolean isInt8SharedBufferView(DynamicObject object) {
-            return isSharedBufferView(object) && JSArrayBufferView.typedArrayGetArrayType(object, isSharedBufferView(object)) instanceof TypedArray.DirectInt8Array;
+            return isSharedBufferView(object) && JSArrayBufferView.typedArrayGetArrayType(object) instanceof TypedArray.DirectInt8Array;
         }
 
         public static boolean isUint8SharedBufferView(DynamicObject object) {
-            return isSharedBufferView(object) && JSArrayBufferView.typedArrayGetArrayType(object, isSharedBufferView(object)) instanceof TypedArray.DirectUint8Array;
+            return isSharedBufferView(object) && JSArrayBufferView.typedArrayGetArrayType(object) instanceof TypedArray.DirectUint8Array;
         }
 
         public static boolean isInt16SharedBufferView(DynamicObject object) {
-            return isSharedBufferView(object) && JSArrayBufferView.typedArrayGetArrayType(object, isSharedBufferView(object)) instanceof TypedArray.DirectInt16Array;
+            return isSharedBufferView(object) && JSArrayBufferView.typedArrayGetArrayType(object) instanceof TypedArray.DirectInt16Array;
         }
 
         public static boolean isUint16SharedBufferView(DynamicObject object) {
-            return isSharedBufferView(object) && JSArrayBufferView.typedArrayGetArrayType(object, isSharedBufferView(object)) instanceof TypedArray.DirectUint16Array;
+            return isSharedBufferView(object) && JSArrayBufferView.typedArrayGetArrayType(object) instanceof TypedArray.DirectUint16Array;
         }
 
         public static boolean isInt32SharedBufferView(Object object) {
-            return JSObject.isJSObject(object) && isInt32SharedBufferView((DynamicObject) object);
+            return JSDynamicObject.isJSDynamicObject(object) && isInt32SharedBufferView((DynamicObject) object);
         }
 
         public static boolean isInt32SharedBufferView(DynamicObject object) {
-            return isSharedBufferView(object) && JSArrayBufferView.typedArrayGetArrayType(object, isSharedBufferView(object)) instanceof TypedArray.DirectInt32Array;
+            return isSharedBufferView(object) && JSArrayBufferView.typedArrayGetArrayType(object) instanceof TypedArray.DirectInt32Array;
         }
 
         public static boolean isUint32SharedBufferView(DynamicObject object) {
-            return isSharedBufferView(object) && JSArrayBufferView.typedArrayGetArrayType(object, isSharedBufferView(object)) instanceof TypedArray.DirectUint32Array;
+            return isSharedBufferView(object) && JSArrayBufferView.typedArrayGetArrayType(object) instanceof TypedArray.DirectUint32Array;
         }
 
         public static boolean isBigInt64SharedBufferView(DynamicObject object) {
-            return isSharedBufferView(object) && JSArrayBufferView.typedArrayGetArrayType(object, isSharedBufferView(object)) instanceof TypedArray.DirectBigInt64Array;
+            return isSharedBufferView(object) && JSArrayBufferView.typedArrayGetArrayType(object) instanceof TypedArray.DirectBigInt64Array;
         }
 
         public static boolean isBigUint64SharedBufferView(DynamicObject object) {
-            return isSharedBufferView(object) && JSArrayBufferView.typedArrayGetArrayType(object, isSharedBufferView(object)) instanceof TypedArray.DirectBigUint64Array;
+            return isSharedBufferView(object) && JSArrayBufferView.typedArrayGetArrayType(object) instanceof TypedArray.DirectBigUint64Array;
         }
 
         public static boolean isBigInt64SharedBufferView(Object object) {
-            return JSObject.isJSObject(object) && isBigInt64SharedBufferView((DynamicObject) object);
+            return JSDynamicObject.isJSDynamicObject(object) && isBigInt64SharedBufferView((DynamicObject) object);
         }
 
         /* ES8 24.4.1.2 ValidateAtomicAccess */
@@ -256,12 +255,8 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             return (DynamicObject) maybeTarget;
         }
 
-        public static ByteBuffer getBuffer(DynamicObject thisObj, boolean condition) {
-            return JSArrayBufferView.typedArrayGetByteBuffer(thisObj, condition).duplicate();
-        }
-
         public static ByteBuffer getBuffer(DynamicObject thisObj) {
-            return getBuffer(thisObj, JSArrayBuffer.isJSDirectArrayBuffer(thisObj));
+            return JSArrayBufferView.typedArrayGetByteBuffer(thisObj).duplicate();
         }
 
         protected static boolean inboundFast(DynamicObject target, int index) {

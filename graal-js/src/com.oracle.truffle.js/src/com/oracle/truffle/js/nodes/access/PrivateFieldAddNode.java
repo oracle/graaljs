@@ -41,10 +41,11 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -77,23 +78,11 @@ public abstract class PrivateFieldAddNode extends JavaScriptBaseNode {
      */
     public abstract void execute(Object target, Object key, Object value);
 
-    @Specialization(guards = {"key == cachedKey", "isJSObject(target)"}, limit = "1")
-    void doCachedKey(DynamicObject target, HiddenKey key, Object value,
-                    @Cached("key") @SuppressWarnings("unused") HiddenKey cachedKey,
-                    @Cached("create(key)") HasHiddenKeyCacheNode hasNode,
-                    @Cached("createSetHidden(key, context)") PropertySetNode setNode) {
-        if (!hasNode.executeHasHiddenKey(target)) {
-            setNode.setValue(target, value);
-        } else {
-            duplicate(key);
-        }
-    }
-
-    @TruffleBoundary
-    @Specialization(guards = {"isJSObject(target)"}, replaces = "doCachedKey")
-    void doUncachedKey(DynamicObject target, HiddenKey key, Object value) {
-        if (!target.containsKey(key)) {
-            target.define(key, value, JSAttributes.getDefaultNotEnumerable());
+    @Specialization(guards = {"isJSObject(target)"}, limit = "3")
+    void doFieldAdd(DynamicObject target, HiddenKey key, Object value,
+                    @CachedLibrary("target") DynamicObjectLibrary access) {
+        if (!access.containsKey(target, key)) {
+            access.putWithFlags(target, key, value, JSAttributes.getDefaultNotEnumerable());
         } else {
             duplicate(key);
         }

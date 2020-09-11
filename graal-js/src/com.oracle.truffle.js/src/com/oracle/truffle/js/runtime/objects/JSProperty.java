@@ -46,6 +46,7 @@ import static com.oracle.truffle.js.runtime.objects.JSAttributes.NOT_WRITABLE;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -122,14 +123,12 @@ public class JSProperty {
         } else {
             if (isWritable(property)) {
                 if (isProxy(property)) {
-                    boolean ret = ((PropertyProxy) property.get(store, false)).set(store, value);
-                    if (!ret && isStrict) {
-                        throw Errors.createTypeErrorNotWritableProperty(property.getKey(), thisObj);
-                    }
-                    return ret;
+                    return setValueProxy(property, store, thisObj, value, isStrict);
                 } else {
                     assert isData(property);
-                    property.setGeneric(store, value, null);
+                    assert !(value instanceof Accessor || value instanceof PropertyProxy);
+                    boolean success = DynamicObjectLibrary.getUncached().putIfPresent(store, property.getKey(), value);
+                    assert success;
                     return true;
                 }
             } else {
@@ -142,7 +141,7 @@ public class JSProperty {
     }
 
     private static boolean setValueAccessor(Property property, DynamicObject store, Object thisObj, Object value, boolean isStrict) {
-        DynamicObject setter = ((Accessor) property.get(store, false)).getSetter();
+        DynamicObject setter = ((Accessor) JSDynamicObject.getOrNull(store, property.getKey())).getSetter();
         if (setter != Undefined.instance) {
             JSRuntime.call(setter, thisObj, new Object[]{value});
             return true;
@@ -153,27 +152,12 @@ public class JSProperty {
         }
     }
 
-    public static Property seal(Property property) {
-        if (property.isHidden()) {
-            return property;
+    private static boolean setValueProxy(Property property, DynamicObject store, Object thisObj, Object value, boolean isStrict) {
+        boolean ret = ((PropertyProxy) JSDynamicObject.getOrNull(store, property.getKey())).set(store, value);
+        if (!ret && isStrict) {
+            throw Errors.createTypeErrorNotWritableProperty(property.getKey(), thisObj);
         }
-        if (isConfigurable(property)) {
-            return property.copyWithFlags(property.getFlags() | NOT_CONFIGURABLE);
-        }
-        return property;
-    }
-
-    public static Property freeze(Property property) {
-        if (property.isHidden()) {
-            return property;
-        }
-        if (isAccessor(property)) {
-            return seal(property);
-        }
-        if (isConfigurable(property) || isWritable(property)) {
-            return property.copyWithFlags(property.getFlags() | NOT_CONFIGURABLE | NOT_WRITABLE);
-        }
-        return property;
+        return ret;
     }
 
     public static boolean isConfigurable(Property property) {
@@ -202,6 +186,34 @@ public class JSProperty {
 
     public static boolean isConst(Property property) {
         return (property.getFlags() & CONST) != 0;
+    }
+
+    public static boolean isConfigurable(int flags) {
+        return (flags & NOT_CONFIGURABLE) == 0;
+    }
+
+    public static boolean isEnumerable(int flags) {
+        return (flags & NOT_ENUMERABLE) == 0;
+    }
+
+    public static boolean isWritable(int flags) {
+        return (flags & NOT_WRITABLE) == 0;
+    }
+
+    public static boolean isProxy(int flags) {
+        return (flags & PROXY) != 0;
+    }
+
+    public static boolean isAccessor(int flags) {
+        return (flags & ACCESSOR) != 0;
+    }
+
+    public static boolean isData(int flags) {
+        return (flags & ACCESSOR) == 0;
+    }
+
+    public static boolean isConst(int flags) {
+        return (flags & CONST) == 0;
     }
 
     public static PropertyProxy getConstantProxy(Property proxyProperty) {

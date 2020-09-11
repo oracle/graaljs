@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,7 +56,7 @@ import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 
 @ImportStatic(JSInteropUtil.class)
 abstract class GetLengthHelperNode extends JavaScriptBaseNode {
@@ -85,15 +85,15 @@ abstract class GetLengthHelperNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isArray", rewriteOn = UnexpectedResultException.class)
-    public int getArrayLengthInt(DynamicObject target, boolean isArray,
+    public int getArrayLengthInt(DynamicObject target, @SuppressWarnings("unused") boolean isArray,
                     @Cached("create()") ArrayLengthReadNode arrayLengthReadNode) throws UnexpectedResultException {
-        return arrayLengthReadNode.executeInt(target, isArray);
+        return arrayLengthReadNode.executeInt(target);
     }
 
     @Specialization(guards = "isArray")
-    public double getArrayLength(DynamicObject target, boolean isArray,
+    public double getArrayLength(DynamicObject target, @SuppressWarnings("unused") boolean isArray,
                     @Cached("create()") ArrayLengthReadNode arrayLengthReadNode) {
-        return arrayLengthReadNode.executeDouble(target, isArray);
+        return arrayLengthReadNode.executeDouble(target);
     }
 
     @Specialization(guards = "!isArray")

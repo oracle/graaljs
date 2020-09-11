@@ -61,7 +61,7 @@ import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
@@ -335,7 +335,7 @@ public class Deserializer {
     }
 
     private DynamicObject readJSObject(JSContext context) {
-        DynamicObject object = JSUserObject.create(context);
+        DynamicObject object = JSOrdinary.create(context);
         assignId(object);
         int read = readJSObjectProperties(context, object, SerializationTag.END_JS_OBJECT);
         int expected = readVarInt();

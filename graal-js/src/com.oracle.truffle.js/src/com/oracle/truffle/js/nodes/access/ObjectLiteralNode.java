@@ -75,6 +75,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
@@ -366,8 +367,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             Shape newShape;
             Property newProperty;
             if (property != null) {
-                if (JSProperty.isData(property) && !JSProperty.isProxy(property)) {
-                    assert JSProperty.isWritable(property);
+                if (JSProperty.isData(property) && !JSProperty.isProxy(property) && (property.getFlags() & JSAttributes.ATTRIBUTES_MASK) == attributes) {
                     property.setGeneric(obj, value, null);
                 } else {
                     JSObjectUtil.defineDataProperty(obj, name, value, attributes);
@@ -605,7 +605,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         @Override
         public final void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSContext context) {
             Object value = valueNode.execute(frame);
-            if (JSObject.isDynamicObject(value)) {
+            if (JSDynamicObject.isJSDynamicObject(value)) {
                 if (value == Undefined.instance) {
                     return;
                 }

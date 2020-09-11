@@ -811,6 +811,7 @@ public final class GraalJSEvaluator implements JSParser {
         return JSFunctionData.createCallOnly(context, callTarget, 1, "");
     }
 
+    @TruffleBoundary
     private static Object asyncModuleExecutionFulfilled(JSRealm realm, JSModuleRecord module, Object dynamicImportResolutionResult) {
         assert module.getStatus() == Status.Evaluated;
         if (!module.isAsyncEvaluating()) {
@@ -849,6 +850,7 @@ public final class GraalJSEvaluator implements JSParser {
         return Undefined.instance;
     }
 
+    @TruffleBoundary
     private static Object asyncModuleExecutionRejected(JSRealm realm, JSModuleRecord module, Object error) {
         assert error != null : "Cannot reject a module creation with null error";
         assert module.getStatus() == Status.Evaluated;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -79,7 +79,7 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
         boolean isProxy = false;
         for (DynamicObject proto = target; proto != Null.instance; proto = JSObject.getPrototype(proto)) {
             desc = JSObject.getOwnProperty(proto, key);
-            if (JSProxy.isProxy(proto)) {
+            if (JSProxy.isJSProxy(proto)) {
                 isProxy = true;
                 break;
             }
@@ -128,7 +128,7 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
         PropertyDescriptor desc = null;
         for (DynamicObject proto = target; proto != Null.instance; proto = JSObject.getPrototype(proto)) {
             desc = JSObject.getOwnProperty(proto, key);
-            if (JSProxy.isProxy(proto)) {
+            if (JSProxy.isJSProxy(proto)) {
                 break;
             }
             if (desc != null) {

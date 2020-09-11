@@ -86,11 +86,12 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 /**
@@ -523,7 +524,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         @Specialization
         protected boolean reflectSetPrototypeOf(Object target, Object proto) {
             ensureJSObject(target);
-            if (!(JSObject.isJSObject(proto) || proto == Null.instance) || proto == Undefined.instance) {
+            if (!(JSDynamicObject.isJSDynamicObject(proto) || proto == Null.instance) || proto == Undefined.instance) {
                 throw Errors.createTypeErrorInvalidPrototype(proto);
             }
             return JSObject.setPrototype((DynamicObject) target, (DynamicObject) proto);

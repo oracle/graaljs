@@ -40,28 +40,32 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-import java.util.function.IntUnaryOperator;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.LocationFactory;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.Builtin;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 
 /**
  * @see DynamicObject
@@ -73,8 +77,50 @@ public final class JSObjectUtil {
         // this utility class should not be instantiated
     }
 
-    public static Location createConstantLocation(Object value) {
-        return JSObject.LAYOUT.createAllocator().constantLocation(value);
+    /**
+     * Formats {@link JSDynamicObject#defaultToString()}, by default returns "[object ...]".
+     *
+     * @param object object to be used
+     * @return "[object ...]" by default
+     */
+    @TruffleBoundary
+    public static String formatToString(String object) {
+        return "[object " + object + "]";
+    }
+
+    public static DynamicObject createOrdinaryPrototypeObject(JSRealm realm) {
+        CompilerAsserts.neverPartOfCompilation();
+        return createOrdinaryPrototypeObject(realm, realm.getObjectPrototype());
+    }
+
+    public static DynamicObject createOrdinaryPrototypeObject(JSRealm realm, DynamicObject prototype) {
+        CompilerAsserts.neverPartOfCompilation();
+        // slow; only use for initialization
+        assert prototype == Null.instance || JSRuntime.isObject(prototype);
+
+        JSContext context = realm.getContext();
+        DynamicObject obj;
+        if (context.isMultiContext()) {
+            obj = JSOrdinary.createInitWithInstancePrototype(prototype, context);
+        } else {
+            Shape initialShape = prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, JSOrdinary.INSTANCE, context);
+            obj = JSOrdinaryObject.create(initialShape);
+        }
+        return obj;
+    }
+
+    public static void setOrVerifyPrototype(JSContext context, DynamicObject obj, DynamicObject prototype) {
+        CompilerAsserts.neverPartOfCompilation();
+        assert prototype == Null.instance || JSRuntime.isObject(prototype);
+        if (context.isMultiContext()) {
+            JSObjectUtil.putHiddenProperty(obj, JSObject.HIDDEN_PROTO, prototype);
+        } else {
+            assert JSObjectUtil.getHiddenProperty(obj, JSObject.HIDDEN_PROTO) == prototype;
+        }
+    }
+
+    public static boolean isValidPrototype(Object proto) {
+        return proto == Null.instance || JSRuntime.isObject(proto);
     }
 
     private static LocationFactory declaredLocationFactory() {
@@ -86,27 +132,32 @@ public final class JSObjectUtil {
         return shape.defineProperty(checkForNoSuchPropertyOrMethod(context, key), value, flags);
     }
 
+    @SuppressWarnings("deprecation")
     public static Shape shapeDefineDeclaredDataProperty(JSContext context, Shape shape, Object key, Object value, int flags) {
         CompilerAsserts.neverPartOfCompilation();
-        return shape.defineProperty(checkForNoSuchPropertyOrMethod(context, key), value, flags, declaredLocationFactory());
+        checkForNoSuchPropertyOrMethod(context, key);
+        return shape.defineProperty(key, value, flags, declaredLocationFactory());
     }
 
     @TruffleBoundary
     public static void putDataProperty(JSContext context, DynamicObject thisObj, Object key, Object value, int flags) {
         assert checkForExistingProperty(thisObj, key);
-
-        thisObj.define(checkForNoSuchPropertyOrMethod(context, key), value, flags);
+        defineDataProperty(context, thisObj, key, value, flags);
     }
 
+    @TruffleBoundary
     public static void putDataProperty(DynamicObject thisObj, Object name, Object value, int flags) {
         JSContext context = JSObject.getJSContext(thisObj);
         putDataProperty(context, thisObj, name, value, flags);
     }
 
+    @TruffleBoundary
     public static void defineDataProperty(JSContext context, DynamicObject thisObj, Object key, Object value, int flags) {
-        thisObj.define(checkForNoSuchPropertyOrMethod(context, key), value, flags);
+        checkForNoSuchPropertyOrMethod(context, key);
+        DynamicObjectLibrary.getUncached().putWithFlags(thisObj, key, value, flags);
     }
 
+    @TruffleBoundary
     public static void defineDataProperty(DynamicObject thisObj, Object key, Object value, int flags) {
         JSContext context = JSObject.getJSContext(thisObj);
         defineDataProperty(context, thisObj, key, value, flags);
@@ -120,94 +171,43 @@ public final class JSObjectUtil {
         }
     }
 
-    public static Property makeDataProperty(Object key, Location location, int flags) {
-        assert JSRuntime.isPropertyKey(key);
-        return Property.create(key, location, flags);
-    }
-
-    public static Property makeAccessorProperty(String name, Location location, int flags) {
-        return Property.create(name, location, flags | JSProperty.ACCESSOR);
-    }
-
-    public static Property makeProxyProperty(String name, PropertyProxy proxy, int flags) {
-        return makeProxyProperty(name, createConstantLocation(proxy), flags);
-    }
-
-    public static Property makeProxyProperty(String name, Location location, int flags) {
-        return Property.create(name, location, flags | JSProperty.PROXY);
-    }
-
-    public static Property makeHiddenProperty(HiddenKey id, Location location) {
-        return makeHiddenProperty(id, location, false);
-    }
-
-    public static Property makeHiddenProperty(HiddenKey id, Location location, boolean relocatable) {
-        return Property.create(id, location, 0).copyWithRelocatable(relocatable);
-    }
-
+    @TruffleBoundary
     public static void defineAccessorProperty(DynamicObject thisObj, Object key, Accessor accessor, int flags) {
         int finalFlags = flags | JSProperty.ACCESSOR;
 
         JSContext context = JSObject.getJSContext(thisObj);
-        thisObj.define(checkForNoSuchPropertyOrMethod(context, key), accessor, finalFlags);
+        checkForNoSuchPropertyOrMethod(context, key);
+        DynamicObjectLibrary.getUncached().putWithFlags(thisObj, key, accessor, finalFlags);
     }
 
+    @TruffleBoundary
     public static void defineProxyProperty(DynamicObject thisObj, Object key, PropertyProxy proxy, int flags) {
         int finalFlags = flags | JSProperty.PROXY;
 
         JSContext context = JSObject.getJSContext(thisObj);
-        thisObj.define(checkForNoSuchPropertyOrMethod(context, key), proxy, finalFlags);
-    }
-
-    public static void changeFlags(DynamicObject thisObj, Object key, int flags) {
-        // only javascript flags allowed here
-        assert flags == (flags & JSAttributes.ATTRIBUTES_MASK);
-
-        changeFlags(thisObj, key, (attr) -> (attr & ~JSAttributes.ATTRIBUTES_MASK) | flags);
+        checkForNoSuchPropertyOrMethod(context, key);
+        DynamicObjectLibrary.getUncached().putConstant(thisObj, key, proxy, finalFlags);
     }
 
     @TruffleBoundary
-    private static boolean changeFlags(DynamicObject obj, Object key, IntUnaryOperator flagsOp) {
-        Shape oldShape = obj.getShape();
-        Property existing = oldShape.getProperty(key);
-        if (existing != null) {
-            int newFlags = flagsOp.applyAsInt(existing.getFlags());
-            if (existing.getFlags() != newFlags) {
-                Property newProperty = existing.copyWithFlags(newFlags);
-                Shape newShape = oldShape.replaceProperty(existing, newProperty);
-                obj.setShapeAndGrow(oldShape, newShape);
-            }
-            return true;
-        } else {
-            return false;
-        }
-    }
+    public static void changePropertyFlags(DynamicObject thisObj, Object key, int flags) {
+        // only javascript flags allowed here
+        assert flags == (flags & JSAttributes.ATTRIBUTES_MASK);
 
-    /**
-     * Put preallocated data property that must not be moved.
-     */
-    public static void putDataProperty(JSContext context, DynamicObject thisObj, Property dataProperty, Object value) {
-        assert JSProperty.isData(dataProperty);
-        assert checkForExistingProperty(thisObj, dataProperty.getKey());
-
-        checkForNoSuchPropertyOrMethod(context, dataProperty.getKey());
-        defineProperty(thisObj, dataProperty, value);
-    }
-
-    private static void defineProperty(DynamicObject thisObj, Property property, Object value) {
-        thisObj.define(property.getKey(), value, property.getFlags(), (shape, val) -> property.getLocation());
+        JSDynamicObject.updatePropertyFlags(thisObj, key, (attr) -> (attr & ~JSAttributes.ATTRIBUTES_MASK) | flags);
     }
 
     public static void putDataProperty(JSContext context, DynamicObject thisObj, String name, Object value) {
-        assert checkForExistingProperty(thisObj, name);
         putDataProperty(context, thisObj, name, value, JSAttributes.notConfigurableNotEnumerableNotWritable());
     }
 
     @TruffleBoundary
     public static void putDeclaredDataProperty(JSContext context, DynamicObject thisObj, Object key, Object value, int flags) {
+        assert JSRuntime.isPropertyKey(key);
         assert checkForExistingProperty(thisObj, key);
 
-        thisObj.define(checkForNoSuchPropertyOrMethod(context, key), value, flags, declaredLocationFactory());
+        checkForNoSuchPropertyOrMethod(context, key);
+        DynamicObjectLibrary.getUncached().putConstant(thisObj, key, value, flags);
     }
 
     public static void putConstructorProperty(JSContext context, DynamicObject prototype, DynamicObject constructor) {
@@ -218,41 +218,52 @@ public final class JSObjectUtil {
         putDataProperty(ctx, constructor, JSObject.PROTOTYPE, prototype, JSAttributes.notConfigurableNotEnumerableNotWritable());
     }
 
+    public static void putToStringTag(DynamicObject prototype, String toStringTag) {
+        assert checkForExistingProperty(prototype, Symbol.SYMBOL_TO_STRING_TAG);
+        DynamicObjectLibrary.getUncached().putWithFlags(prototype, Symbol.SYMBOL_TO_STRING_TAG, toStringTag, JSAttributes.configurableNotEnumerableNotWritable());
+    }
+
+    @TruffleBoundary
     public static void putAccessorProperty(JSContext context, DynamicObject thisObj, Object key, DynamicObject getter, DynamicObject setter, int flags) {
         Accessor accessor = new Accessor(getter, setter);
         putAccessorProperty(context, thisObj, key, accessor, flags);
     }
 
+    @TruffleBoundary
     public static void putAccessorProperty(JSContext context, DynamicObject thisObj, Object key, Accessor accessor, int flags) {
         assert JSRuntime.isPropertyKey(key);
         assert checkForExistingProperty(thisObj, key);
 
-        thisObj.define(checkForNoSuchPropertyOrMethod(context, key), accessor, flags | JSProperty.ACCESSOR);
+        checkForNoSuchPropertyOrMethod(context, key);
+        DynamicObjectLibrary.getUncached().putWithFlags(thisObj, key, accessor, flags | JSProperty.ACCESSOR);
     }
 
-    public static void putConstantAccessorProperty(JSContext context, DynamicObject thisObj, Object key, DynamicObject getter, DynamicObject setter) {
-        putConstantAccessorProperty(context, thisObj, key, getter, setter, JSAttributes.configurableNotEnumerable());
+    public static void putBuiltinAccessorProperty(DynamicObject thisObj, Object key, DynamicObject getter, DynamicObject setter) {
+        putBuiltinAccessorProperty(thisObj, key, getter, setter, JSAttributes.configurableNotEnumerable());
     }
 
-    public static void putConstantAccessorProperty(JSContext context, DynamicObject thisObj, Object key, DynamicObject getter, DynamicObject setter, int flags) {
-        putAccessorProperty(context, thisObj, key, getter, setter, flags);
+    @TruffleBoundary
+    public static void putBuiltinAccessorProperty(DynamicObject thisObj, Object key, DynamicObject getter, DynamicObject setter, int flags) {
+        Accessor accessor = new Accessor(getter, setter);
+        putBuiltinAccessorProperty(thisObj, key, accessor, flags);
     }
 
-    public static void putProxyProperty(DynamicObject thisObj, Property proxyProperty) {
-        assert JSProperty.isProxy(proxyProperty);
-        assert checkForExistingProperty(thisObj, proxyProperty.getKey());
+    @TruffleBoundary
+    public static void putBuiltinAccessorProperty(DynamicObject thisObj, Object key, Accessor accessor, int flags) {
+        assert JSRuntime.isPropertyKey(key) && !isNoSuchPropertyOrMethod(key);
+        assert checkForExistingProperty(thisObj, key);
+        DynamicObjectLibrary.getUncached().putWithFlags(thisObj, key, accessor, flags | JSProperty.ACCESSOR);
+    }
 
-        defineProperty(thisObj, proxyProperty, JSProperty.getConstantProxy(proxyProperty));
+    public static void putProxyProperty(DynamicObject thisObj, Object key, PropertyProxy proxy, int flags) {
+        assert JSRuntime.isPropertyKey(key) && !isNoSuchPropertyOrMethod(key);
+        assert checkForExistingProperty(thisObj, key);
+        defineProxyProperty(thisObj, key, proxy, flags);
     }
 
     private static boolean checkForExistingProperty(DynamicObject thisObj, Object key) {
         assert !thisObj.getShape().hasProperty(key) : "Don't put a property that already exists. Use the setters.";
         return true;
-    }
-
-    public static void putHiddenProperty(DynamicObject thisObj, Property property, Object value) {
-        assert property.isHidden();
-        defineProperty(thisObj, property, value);
     }
 
     /**
@@ -262,7 +273,7 @@ public final class JSObjectUtil {
     public static Shape getProtoChildShape(DynamicObject obj, JSClass jsclass, JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
         if (obj == null) {
-            return context.makeEmptyShapeWithPrototypeInObject(jsclass, JSObject.PROTO_PROPERTY);
+            return context.makeEmptyShapeWithPrototypeInObject(jsclass);
         }
         assert JSRuntime.isObject(obj);
         Shape protoChild = getProtoChildShapeMaybe(obj, jsclass);
@@ -298,9 +309,10 @@ public final class JSObjectUtil {
         return prototypeData.getOrAddProtoChildTree(jsclass, createChildRootShape(obj, jsclass, context));
     }
 
-    private static Shape createChildRootShape(DynamicObject obj, JSClass jsclass, JSContext context) {
+    private static Shape createChildRootShape(DynamicObject proto, JSClass jsclass, JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
-        return JSShape.makeRootShape(JSObject.LAYOUT, new JSSharedData(context, JSShape.makePrototypeProperty(obj)), jsclass);
+        assert proto != null && proto != Null.instance;
+        return JSShape.createObjectShape(context, jsclass, proto);
     }
 
     public static JSPrototypeData putPrototypeData(DynamicObject obj) {
@@ -312,18 +324,13 @@ public final class JSObjectUtil {
     }
 
     private static void putPrototypeData(DynamicObject obj, JSPrototypeData prototypeData) {
-        boolean wasNotExtensible = !JSShape.isExtensible(obj.getShape());
-        obj.define(PROTOTYPE_DATA, prototypeData);
-        if (wasNotExtensible && JSObject.isExtensible(obj)) {
-            // not-extensible marker property is expected to be the last property; ensure it is.
-            obj.delete(JSShape.NOT_EXTENSIBLE_KEY);
-            JSObject.preventExtensions(obj);
-            assert !JSObject.isExtensible(obj);
-        }
+        boolean extensible = JSShape.isExtensible(obj.getShape());
+        JSObjectUtil.putHiddenProperty(obj, PROTOTYPE_DATA, prototypeData);
+        assert extensible == JSShape.isExtensible(obj.getShape());
     }
 
     static JSPrototypeData getPrototypeData(DynamicObject obj) {
-        return (JSPrototypeData) obj.get(PROTOTYPE_DATA);
+        return (JSPrototypeData) JSDynamicObject.getOrNull(obj, PROTOTYPE_DATA);
     }
 
     public static Map<Object, Object> archive(DynamicObject obj) {
@@ -338,8 +345,9 @@ public final class JSObjectUtil {
     }
 
     @TruffleBoundary
-    public static void setPrototype(DynamicObject object, DynamicObject newPrototype) {
-        CompilerAsserts.neverPartOfCompilation("do not set object prototype from compiled code");
+    public static void setPrototypeImpl(DynamicObject object, DynamicObject newPrototype) {
+        CompilerAsserts.neverPartOfCompilation();
+        assert JSShape.isPrototypeInShape(object.getShape());
 
         final JSContext context = JSObject.getJSContext(object);
         final Shape oldShape = object.getShape();
@@ -351,35 +359,36 @@ public final class JSObjectUtil {
             assert JSRuntime.isObject(newPrototype) : newPrototype;
             newRootShape = JSObjectUtil.getProtoChildShape(newPrototype, JSShape.getJSClass(oldShape), context);
         }
-        Map<Object, Object> archive = archive(object);
-        object.setShapeAndResize(oldShape, newRootShape);
 
-        Shape newShape = newRootShape;
-        boolean sameLocations = true;
-        for (Property p : oldShape.getPropertyListInternal(true)) {
-            Object key = p.getKey();
+        DynamicObjectLibrary lib = DynamicObjectLibrary.getUncached();
+
+        List<Property> allProperties = oldShape.getPropertyListInternal(true);
+        List<Object> archive = new ArrayList<>(allProperties.size());
+        for (Property prop : allProperties) {
+            Object value = lib.getOrDefault(object, prop.getKey(), null);
+            archive.add(value);
+        }
+
+        lib.resetShape(object, newRootShape);
+
+        for (int i = 0; i < allProperties.size(); i++) {
+            Property property = allProperties.get(i);
+            Object key = property.getKey();
             if (!newRootShape.hasProperty(key)) {
-                if (p.getLocation().isValue()) {
-                    newShape = newShape.addProperty(p);
-                    object.setShapeAndGrow(newShape.getParent(), newShape);
-                } else if (p.isHidden() && sameLocations) {
-                    newShape = newShape.addProperty(p);
-                    newShape.getLastProperty().setSafe(object, archive.get(key), newShape.getParent(), newShape);
+                Object value = archive.get(i);
+                int propertyFlags = property.getFlags();
+                if (property.getLocation().isConstant()) {
+                    lib.putConstant(object, key, value, propertyFlags);
                 } else {
-                    sameLocations = false;
-
-                    // we're allocating new property locations, so previous assumptions are invalid
-                    JSShape.invalidatePropertyAssumption(oldShape, key);
-
-                    Object value = archive.get(key);
-                    newShape = newShape.defineProperty(key, value, p.getFlags());
-                    newShape.getLastProperty().setSafe(object, value, newShape.getParent(), newShape);
+                    lib.putWithFlags(object, key, value, propertyFlags);
                 }
+
             }
         }
     }
 
     public static <T> T checkForNoSuchPropertyOrMethod(JSContext context, T key) {
+        CompilerAsserts.neverPartOfCompilation();
         if (context != null && key != null && context.isOptionNashornCompatibilityMode()) {
             if (context.getNoSuchPropertyUnusedAssumption().isValid() && JSObject.NO_SUCH_PROPERTY_NAME.equals(key)) {
                 context.getNoSuchPropertyUnusedAssumption().invalidate("NoSuchProperty is used");
@@ -389,6 +398,15 @@ public final class JSObjectUtil {
             }
         }
         return key;
+    }
+
+    public static boolean isNoSuchPropertyOrMethod(Object key) {
+        CompilerAsserts.neverPartOfCompilation();
+        return (key instanceof String && (key.equals(JSObject.NO_SUCH_PROPERTY_NAME) || key.equals(JSObject.NO_SUCH_METHOD_NAME)));
+    }
+
+    public static DynamicObject createSymbolSpeciesGetterFunction(JSRealm realm) {
+        return JSFunction.create(realm, JSFunctionData.createCallOnly(realm.getContext(), realm.getContext().getSpeciesGetterFunctionCallTarget(), 0, "get [Symbol.species]"));
     }
 
     public static void putFunctionsFromContainer(JSRealm realm, DynamicObject thisObj, JSBuiltinsContainer container) {
@@ -405,5 +423,51 @@ public final class JSObjectUtil {
                 putDataProperty(context, thisObj, builtin.getKey(), JSFunction.create(realm, functionData), builtin.getAttributeFlags());
             }
         });
+    }
+
+    public static void putHiddenProperty(DynamicObject obj, Object key, Object value) {
+        assert key instanceof HiddenKey;
+        DynamicObjectLibrary.getUncached().put(obj, key, value);
+    }
+
+    public static Object getHiddenProperty(DynamicObject obj, Object key) {
+        assert key instanceof HiddenKey;
+        return DynamicObjectLibrary.getUncached().getOrDefault(obj, key, null);
+    }
+
+    public static boolean hasHiddenProperty(DynamicObject obj, Object key) {
+        assert key instanceof HiddenKey;
+        return DynamicObjectLibrary.getUncached().containsKey(obj, key);
+    }
+
+    public static DynamicObjectLibrary createCached(Object key, DynamicObject obj) {
+        assert key != null;
+        return DynamicObjectLibrary.getFactory().create(obj);
+    }
+
+    public static DynamicObjectLibrary createDispatched(Object key, int limit) {
+        assert key != null;
+        return DynamicObjectLibrary.getFactory().createDispatched(limit);
+    }
+
+    public static DynamicObjectLibrary createDispatched(Object key) {
+        return createDispatched(key, JSConfig.PropertyCacheLimit);
+    }
+
+    public static <T extends DynamicObject> T copyProperties(T target, DynamicObject source) {
+        DynamicObjectLibrary objectLibrary = DynamicObjectLibrary.getUncached();
+        for (Property property : source.getShape().getPropertyListInternal(true)) {
+            Object key = property.getKey();
+            if (objectLibrary.containsKey(target, key)) {
+                continue;
+            }
+            Object value = objectLibrary.getOrDefault(source, key, null);
+            if (property.getLocation().isConstant()) {
+                objectLibrary.putConstant(target, key, value, property.getFlags());
+            } else {
+                objectLibrary.putWithFlags(target, key, value, property.getFlags());
+            }
+        }
+        return target;
     }
 }

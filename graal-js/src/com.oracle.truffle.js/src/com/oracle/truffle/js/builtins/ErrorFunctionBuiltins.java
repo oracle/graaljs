@@ -94,10 +94,10 @@ public final class ErrorFunctionBuiltins extends JSBuiltinsContainer.Lambda {
                 errorProfile.enter();
                 throw Errors.createTypeError("Cannot define property:stack, object is not extensible.");
             }
-            int stackTraceLimit = stackTraceLimitNode.executeInt(frame);
+            int stackTraceLimit = stackTraceLimitNode.executeInt();
             Object skipFramesUpTo = JSFunction.isJSFunction(skipUpTo) ? skipUpTo : JSArguments.getFunctionObject(frame.getArguments());
             UserScriptException ex = UserScriptException.createCapture(obj, getContext().isOptionNashornCompatibilityMode() ? this : null, stackTraceLimit, (DynamicObject) skipFramesUpTo);
-            initErrorObjectNode.execute(obj, ex);
+            initErrorObjectNode.execute(obj, ex, null);
             return Undefined.instance;
         }
 

@@ -47,23 +47,28 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.ErrorStackTraceLimitNode;
+import com.oracle.truffle.js.nodes.access.InitErrorObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -149,6 +154,8 @@ public class PerformPromiseAnyNode extends PerformPromiseCombinatorNode {
             @Child private JavaScriptNode errorNode = AccessIndexedArgumentNode.create(0);
             @Child private PropertyGetNode getArgs = PropertyGetNode.createGetHidden(REJECT_ELEMENT_ARGS_KEY, context);
             @Child private JSFunctionCallNode callReject = JSFunctionCallNode.createCall();
+            @Child private ErrorStackTraceLimitNode stackTraceLimitNode = ErrorStackTraceLimitNode.create(context);
+            @Child private InitErrorObjectNode initErrorObjectNode = InitErrorObjectNode.create(context);
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -162,11 +169,22 @@ public class PerformPromiseAnyNode extends PerformPromiseCombinatorNode {
                 args.errors.set(args.index, error);
                 args.remainingElements.value--;
                 if (args.remainingElements.value == 0) {
-                    Object errorsArray = JSArray.createConstantObjectArray(context, args.errors.toArray());
-                    Object argumentObject = JSObject.create(context, context.getErrorFactory(JSErrorType.AggregateError, false), errorsArray);
-                    return callReject.executeCall(JSArguments.createOneArg(Undefined.instance, args.capability.getReject(), argumentObject));
+                    DynamicObject aggregateErrorObject = createAggregateError(args.errors.toArray());
+                    return callReject.executeCall(JSArguments.createOneArg(Undefined.instance, args.capability.getReject(), aggregateErrorObject));
                 }
                 return Undefined.instance;
+            }
+
+            private DynamicObject createAggregateError(Object[] errors) {
+                int stackTraceLimit = stackTraceLimitNode.executeInt();
+                JSRealm realm = context.getRealm();
+                DynamicObject errorsArray = JSArray.createConstantObjectArray(context, errors);
+                DynamicObject aggregateErrorObject = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
+                String message = null;
+                DynamicObject errorFunction = realm.getErrorConstructor(JSErrorType.AggregateError);
+                GraalJSException exception = JSException.createCapture(JSErrorType.AggregateError, message, aggregateErrorObject, realm, stackTraceLimit, errorFunction);
+                initErrorObjectNode.execute(aggregateErrorObject, exception, message, errorsArray);
+                return aggregateErrorObject;
             }
         }
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseAnyRejectElementRootNode());

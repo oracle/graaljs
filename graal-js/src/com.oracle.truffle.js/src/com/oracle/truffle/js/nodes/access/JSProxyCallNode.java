@@ -56,9 +56,9 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 @NodeInfo(cost = NodeCost.NONE)
 @ImportStatic({JSProxy.class, JSArguments.class})
@@ -95,7 +95,7 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
     protected Object doCall(Object[] arguments) {
         Object thisObj = JSArguments.getThisObject(arguments);
         Object function = JSArguments.getFunctionObject(arguments);
-        assert JSProxy.isProxy(function);
+        assert JSProxy.isJSProxy(function);
         DynamicObject proxy = (DynamicObject) function;
 
         if (!JSRuntime.isCallableProxy(proxy)) {
@@ -120,7 +120,7 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
     @Specialization(guards = {"isNew || isNewTarget"})
     protected Object doConstruct(Object[] arguments) {
         Object function = JSArguments.getFunctionObject(arguments);
-        assert JSProxy.isProxy(function);
+        assert JSProxy.isJSProxy(function);
         DynamicObject proxy = (DynamicObject) function;
 
         if (!JSRuntime.isConstructorProxy(proxy)) {
@@ -133,7 +133,7 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
             Object newTarget = isNewTarget ? JSArguments.getNewTarget(arguments) : proxy;
             Object[] constructorArguments = JSArguments.extractUserArguments(arguments, isNewTarget ? 1 : 0);
             if (pxTrapFunProfile.profile(pxTrapFun == Undefined.instance)) {
-                if (!JSObject.isJSObject(pxTarget)) {
+                if (!JSDynamicObject.isJSDynamicObject(pxTarget)) {
                     return JSInteropUtil.construct(pxTarget, constructorArguments);
                 }
                 return callNode.executeCall(isNewTarget

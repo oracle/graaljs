@@ -946,26 +946,19 @@ void GraalIsolate::FindDynamicObjectFields(jobject context) {
     }
     jobjectArray field_info_array = static_cast<jobjectArray>(field_info_obj);
     int field_count = static_cast<int>(GraalAccessField::count);
-    if (field_info_array != NULL && env->GetArrayLength(field_info_array) == field_count * 2) {
+    if (field_info_array != NULL && env->GetArrayLength(field_info_array) == field_count) {
         for (int i = 0; i < field_count; i++) {
-            jobject class_obj = env->GetObjectArrayElement(field_info_array, i * 2);
-            jobject field_name_obj = env->GetObjectArrayElement(field_info_array, i * 2 + 1);
-            SetJNIField(static_cast<GraalAccessField>(i), class_obj, field_name_obj, "Ljava/lang/Object;");
+            jobject reflectedField = env->GetObjectArrayElement(field_info_array, i);
+            if (reflectedField != NULL) {
+                jfieldID field = env->FromReflectedField(reflectedField);
+                if (field == NULL) {
+                    env->ExceptionClear();
+                    continue;
+                }
+                SetJNIField(static_cast<GraalAccessField>(i), field);
+            }
         }
     }
-}
-
-void GraalIsolate::SetJNIField(GraalAccessField id, jobject holder_class_obj, jobject field_name_obj, const char* sig) {
-    JNIEnv* env = GetJNIEnv();
-    if (holder_class_obj == NULL || field_name_obj == NULL) {
-        return;
-    }
-    jclass holder_class = static_cast<jclass>(holder_class_obj);
-    jstring field_name_string = static_cast<jstring>(field_name_obj);
-    const char* field_name_utf = env->GetStringUTFChars(field_name_string, NULL);
-    jfieldID field = env->GetFieldID(holder_class, field_name_utf, sig);
-    env->ReleaseStringUTFChars(field_name_string, field_name_utf);
-    SetJNIField(id, field);
 }
 
 bool GraalIsolate::AddMessageListener(v8::MessageCallback callback, v8::Local<v8::Value> data) {

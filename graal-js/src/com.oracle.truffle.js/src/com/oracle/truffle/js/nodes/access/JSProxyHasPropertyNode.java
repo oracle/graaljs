@@ -56,9 +56,10 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 @NodeInfo(cost = NodeCost.NONE)
 @ImportStatic({JSProxy.class})
@@ -86,13 +87,13 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
     @Specialization
     protected boolean doGeneric(DynamicObject proxy, Object key,
                     @Cached("createBinaryProfile()") ConditionProfile trapFunProfile) {
-        assert JSProxy.isProxy(proxy);
+        assert JSProxy.isJSProxy(proxy);
         Object propertyKey = toPropertyKeyNode.execute(key);
         DynamicObject handler = JSProxy.getHandlerChecked(proxy, errorBranch);
         Object target = JSProxy.getTarget(proxy);
         Object trapFun = trapGetter.executeWithTarget(handler);
         if (trapFunProfile.profile(trapFun == Undefined.instance)) {
-            if (JSObject.isJSObject(target)) {
+            if (JSDynamicObject.isJSDynamicObject(target)) {
                 return JSObject.hasProperty((DynamicObject) target, propertyKey);
             } else {
                 return JSInteropUtil.hasProperty(target, propertyKey);

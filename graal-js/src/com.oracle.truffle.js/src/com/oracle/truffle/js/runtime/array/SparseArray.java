@@ -56,6 +56,7 @@ import java.util.TreeMap;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Boundaries;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -96,62 +97,62 @@ public final class SparseArray extends DynamicArray {
     }
 
     @SuppressWarnings("unchecked")
-    private static TreeMap<Long, Object> arrayMap(DynamicObject object, boolean condition) {
-        return (TreeMap<Long, Object>) arrayGetArray(object, condition);
+    private static TreeMap<Long, Object> arrayMap(DynamicObject object) {
+        return (TreeMap<Long, Object>) arrayGetArray(object);
     }
 
     @TruffleBoundary
     @Override
-    public Object getElement(DynamicObject object, long index, boolean condition) {
-        Object value = arrayMap(object, condition).get(index);
+    public Object getElement(DynamicObject object, long index) {
+        Object value = arrayMap(object).get(index);
         return value != null ? value : Undefined.instance;
     }
 
     @TruffleBoundary
     @Override
-    public Object getElementInBounds(DynamicObject object, long index, boolean condition) {
-        Object value = arrayMap(object, condition).get(index);
+    public Object getElementInBounds(DynamicObject object, long index) {
+        Object value = arrayMap(object).get(index);
         assert value != null;
         return value;
     }
 
     @TruffleBoundary
     @Override
-    public ScriptArray setElementImpl(DynamicObject object, long index, Object value, boolean strict, boolean condition) {
-        arrayMap(object, condition).put(index, value);
-        if (index >= length(object, condition)) {
+    public ScriptArray setElementImpl(DynamicObject object, long index, Object value, boolean strict) {
+        arrayMap(object).put(index, value);
+        if (index >= length(object)) {
             arraySetLength(object, index + 1);
         }
         return this;
     }
 
     @Override
-    public long length(DynamicObject object, boolean condition) {
-        return arrayGetLength(object, condition);
+    public long length(DynamicObject object) {
+        return arrayGetLength(object);
     }
 
     @Override
-    public int lengthInt(DynamicObject object, boolean condition) {
-        long len = arrayGetLength(object, condition);
+    public int lengthInt(DynamicObject object) {
+        long len = arrayGetLength(object);
         if (len > Integer.MAX_VALUE) {
-            throw new UnsupportedOperationException();
+            throw Errors.unsupported("array length too large");
         }
         return (int) len;
     }
 
     @TruffleBoundary
     @Override
-    public SparseArray setLengthImpl(DynamicObject object, long len, boolean condition, ProfileHolder profile) {
+    public SparseArray setLengthImpl(DynamicObject object, long len, ProfileHolder profile) {
         arraySetLength(object, len);
-        arrayMap(object, condition).tailMap(len).clear();
+        arrayMap(object).tailMap(len).clear();
         return this;
     }
 
     @TruffleBoundary
     @Override
-    public long firstElementIndex(DynamicObject object, boolean condition) {
+    public long firstElementIndex(DynamicObject object) {
         try {
-            return arrayMap(object, condition).firstKey();
+            return arrayMap(object).firstKey();
         } catch (NoSuchElementException ex) {
             return 0;
         }
@@ -159,9 +160,9 @@ public final class SparseArray extends DynamicArray {
 
     @TruffleBoundary
     @Override
-    public long lastElementIndex(DynamicObject object, boolean condition) {
+    public long lastElementIndex(DynamicObject object) {
         try {
-            return arrayMap(object, condition).lastKey();
+            return arrayMap(object).lastKey();
         } catch (NoSuchElementException ex) {
             return -1;
         }
@@ -169,15 +170,15 @@ public final class SparseArray extends DynamicArray {
 
     @TruffleBoundary
     @Override
-    public long nextElementIndex(DynamicObject object, long index, boolean condition) {
-        Long nextIndex = arrayMap(object, condition).higherKey(index);
+    public long nextElementIndex(DynamicObject object, long index) {
+        Long nextIndex = arrayMap(object).higherKey(index);
         return nextIndex != null ? nextIndex.longValue() : JSRuntime.MAX_SAFE_INTEGER_LONG;
     }
 
     @TruffleBoundary
     @Override
-    public long previousElementIndex(DynamicObject object, long index, boolean condition) {
-        Long nextIndex = arrayMap(object, condition).lowerKey(index);
+    public long previousElementIndex(DynamicObject object, long index) {
+        Long nextIndex = arrayMap(object).lowerKey(index);
         return nextIndex != null ? nextIndex.longValue() : -1;
     }
 
@@ -194,17 +195,22 @@ public final class SparseArray extends DynamicArray {
         return newArray;
     }
 
+    @Override
+    public Object cloneArray(DynamicObject object) {
+        return arrayMap(object).clone();
+    }
+
     @TruffleBoundary
     @Override
-    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict, boolean condition) {
-        arrayMap(object, condition).remove(index);
+    public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict) {
+        arrayMap(object).remove(index);
         return this;
     }
 
     @TruffleBoundary
     @Override
-    public boolean hasElement(DynamicObject object, long index, boolean condition) {
-        return arrayMap(object, condition).containsKey(index);
+    public boolean hasElement(DynamicObject object, long index) {
+        return arrayMap(object).containsKey(index);
     }
 
     @Override
@@ -213,7 +219,7 @@ public final class SparseArray extends DynamicArray {
     }
 
     @Override
-    public boolean hasHoles(DynamicObject object, boolean condition) {
+    public boolean hasHoles(DynamicObject object) {
         return true;
     }
 
@@ -226,18 +232,18 @@ public final class SparseArray extends DynamicArray {
         long delta = end - start + 1;
         long pos = start;
         if (!hasElement(object, pos)) {
-            pos = nextElementIndex(object, pos, arrayCondition());
+            pos = nextElementIndex(object, pos);
         }
         // delete the elements in the removed range
         while (pos <= end) {
-            deleteElementImpl(object, pos, false, arrayCondition());
-            pos = nextElementIndex(object, pos, arrayCondition());
+            deleteElementImpl(object, pos, false);
+            pos = nextElementIndex(object, pos);
         }
         // move all element higher downwards
         while (pos < length(object)) {
             setElement(object, pos - delta, getElement(object, pos), false);
-            deleteElementImpl(object, pos, false, arrayCondition());
-            pos = nextElementIndex(object, pos, arrayCondition());
+            deleteElementImpl(object, pos, false);
+            pos = nextElementIndex(object, pos);
         }
         return this;
     }
@@ -248,13 +254,13 @@ public final class SparseArray extends DynamicArray {
 
         long pos = length(object);
         if (!hasElement(object, pos)) {
-            pos = previousElementIndex(object, pos, arrayCondition());
+            pos = previousElementIndex(object, pos);
         }
         // move all element higher upwards
         while (pos >= offset) {
             setElement(object, pos + size, getElement(object, pos), false);
-            deleteElementImpl(object, pos, false, arrayCondition());
-            pos = previousElementIndex(object, pos, arrayCondition());
+            deleteElementImpl(object, pos, false);
+            pos = previousElementIndex(object, pos);
         }
         return this;
     }
@@ -262,7 +268,7 @@ public final class SparseArray extends DynamicArray {
     @TruffleBoundary
     @Override
     public List<Object> ownPropertyKeys(DynamicObject object) {
-        Set<Long> keySet = arrayMap(object, arrayCondition()).keySet();
+        Set<Long> keySet = arrayMap(object).keySet();
         List<Object> list = new ArrayList<>(keySet.size());
         for (long index : keySet) {
             list.add(Boundaries.stringValueOf(index));

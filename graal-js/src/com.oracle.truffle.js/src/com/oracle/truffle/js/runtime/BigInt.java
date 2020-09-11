@@ -52,7 +52,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.truffleinterop.JSMetaType;
+import com.oracle.truffle.js.runtime.interop.JSMetaType;
 
 @ExportLibrary(InteropLibrary.class)
 @ValueType

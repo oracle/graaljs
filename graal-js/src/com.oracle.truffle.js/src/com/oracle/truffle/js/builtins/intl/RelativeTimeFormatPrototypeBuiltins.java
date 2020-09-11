@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,7 +55,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
+import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
 
 public final class RelativeTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<RelativeTimeFormatPrototypeBuiltins.RelativeTimeFormatPrototype> {
 

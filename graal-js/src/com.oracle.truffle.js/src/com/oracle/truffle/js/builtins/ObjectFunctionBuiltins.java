@@ -120,9 +120,11 @@ import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -130,7 +132,6 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -144,7 +145,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
     public static final JSBuiltinsContainer BUILTINS_NASHORN_COMPAT = new ObjectFunctionNashornCompatBuiltins();
 
     protected ObjectFunctionBuiltins() {
-        super(JSUserObject.CLASS_NAME, ObjectFunction.class);
+        super(JSOrdinary.CLASS_NAME, ObjectFunction.class);
     }
 
     public enum ObjectFunction implements BuiltinEnum<ObjectFunction> {
@@ -297,7 +298,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 }
             } else {
                 Object tobject = toObject(object);
-                if (JSObject.isJSObject(tobject)) {
+                if (JSDynamicObject.isJSDynamicObject(tobject)) {
                     return JSObject.getPrototype((DynamicObject) tobject);
                 } else {
                     if (getContext().getContextOptions().hasForeignObjectPrototype()) {
@@ -379,7 +380,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"!isJSObject(thisObj)", "!isForeignObject(thisObj)"})
         protected DynamicObject getDefault(Object thisObj, Object property) {
             Object object = toObject(thisObj);
-            assert JSObject.isJSObject(object);
+            assert JSDynamicObject.isJSDynamicObject(object);
             return getJSObject((DynamicObject) object, property);
         }
 
@@ -402,7 +403,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached ListSizeNode listSize,
                         @Cached ListGetNode listGet,
                         @Cached JSClassProfile classProfile) {
-            DynamicObject retObj = JSUserObject.create(getContext());
+            DynamicObject retObj = JSOrdinary.create(getContext());
 
             List<Object> ownPropertyKeys = JSObject.ownPropertyKeys(thisObj, classProfile);
             int size = listSize.execute(ownPropertyKeys);
@@ -423,7 +424,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @CachedLibrary("thisObj") InteropLibrary interop,
                         @CachedLibrary(limit = "3") InteropLibrary members,
                         @Cached("create()") ImportValueNode toJSType) {
-            DynamicObject result = JSUserObject.create(getContext());
+            DynamicObject result = JSOrdinary.create(getContext());
 
             try {
                 if (interop.hasMembers(thisObj)) {
@@ -580,7 +581,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @SuppressWarnings("unused")
         @Specialization(guards = "isJSNull(prototype)")
         protected DynamicObject createPrototypeNull(Object prototype, Object properties) {
-            DynamicObject ret = JSObject.create(getContext(), getContext().getEmptyShapeNullPrototype());
+            DynamicObject ret = JSOrdinary.createWithNullPrototype(getContext());
             return objectDefineProperties(ret, properties);
         }
 
@@ -776,7 +777,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSType(thisObj)")
+        @Specialization(guards = "isJSDynamicObject(thisObj)")
         protected DynamicObject keysDynamicObject(DynamicObject thisObj) {
             UnmodifiableArrayList<? extends Object> keyList = enumerableOwnPropertyNames(toOrAsJSObject(thisObj));
             int len = keyList.size();
@@ -864,8 +865,6 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public abstract static class ObjectSetPrototypeOfNode extends ObjectOperation {
-        @Child private RequireObjectCoercibleNode objectCoercibleNode;
-        private final ConditionProfile isObjectProfile = ConditionProfile.createBinaryProfile();
         private final BranchProfile errorBranch = BranchProfile.create();
         private final JSClassProfile classProfile = JSClassProfile.create();
 
@@ -873,43 +872,35 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSObject(newProto)"})
-        protected Object setPrototypeOf(Object thisObj, DynamicObject newProto) {
-            return setPrototypeOfImpl(thisObj, newProto);
-        }
-
-        @Specialization(guards = {"isJSNull(newProto)"})
-        protected Object setPrototypeOfNull(Object thisObj, @SuppressWarnings("unused") DynamicObject newProto) {
-            return setPrototypeOfImpl(thisObj, Null.instance);
-        }
-
-        private Object setPrototypeOfImpl(Object thisObj, DynamicObject newProto) {
-            requireObjectCoercible(thisObj);
-            if (isObjectProfile.profile(JSObject.isDynamicObject(thisObj))) {
-                DynamicObject object = asJSObject(thisObj);
-                if (!JSObject.setPrototype(object, newProto, classProfile)) {
-                    errorBranch.enter();
-                    throw Errors.createTypeError("setPrototype failed");
-                }
-                return object;
-            } else {
-                return thisObj;
+        @Specialization(guards = {"isValidPrototype(newProto)"})
+        final Object setPrototypeOfJSObject(JSObject object, JSDynamicObject newProto) {
+            if (!JSObject.setPrototype(object, newProto, classProfile)) {
+                errorBranch.enter();
+                throw Errors.createTypeError("setPrototype failed");
             }
+            return object;
         }
 
-        @Specialization(guards = {"!isJSObject(newProto)", "!isJSNull(newProto)"})
-        protected Object setPrototypeOfInvalidNewProto(Object thisObj, Object newProto) {
-            assert newProto != null;
-            asJSObject(thisObj);
+        @Specialization(guards = {"!isValidPrototype(newProto)"})
+        static Object setPrototypeOfJSObjectToInvalidNewProto(@SuppressWarnings("unused") JSObject object, Object newProto) {
             throw Errors.createTypeErrorInvalidPrototype(newProto);
         }
 
-        protected final void requireObjectCoercible(Object target) {
-            if (objectCoercibleNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                objectCoercibleNode = insert(RequireObjectCoercibleNode.create());
-            }
-            objectCoercibleNode.executeVoid(target);
+        @Specialization(guards = {"isNullOrUndefined(object)"})
+        final Object setPrototypeOfNonObjectCoercible(Object object, @SuppressWarnings("unused") Object newProto) {
+            // ? RequireObjectCoercible(O).
+            throw createTypeErrorCalledOnNonObject(object);
+        }
+
+        @Specialization(guards = {"!isJSObject(object)", "!isNullOrUndefined(object)", "!isForeignObject(object)"})
+        static Object setPrototypeOfValue(Object object, @SuppressWarnings("unused") Object newProto) {
+            // If Type(O) is not Object, return O.
+            return object;
+        }
+
+        @Specialization(guards = {"isForeignObject(object)"})
+        final Object setPrototypeOfForeignObject(Object object, @SuppressWarnings("unused") Object newProto) {
+            throw createTypeErrorCalledOnNonObject(object);
         }
     }
 
@@ -1137,7 +1128,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected DynamicObject entries(Object iterable) {
             requireObjectCoercibleNode.executeVoid(iterable);
-            DynamicObject obj = JSUserObject.create(getContext());
+            DynamicObject obj = JSOrdinary.create(getContext());
             return addEntriesFromIterable(obj, iterable);
         }
 
@@ -1195,7 +1186,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             throw Errors.createTypeErrorNotAnObject(target, this);
         }
 
-        @Specialization(guards = {"isJSObject(target)", "isJSType(source)"})
+        @Specialization(guards = {"isJSObject(target)", "isJSDynamicObject(source)"})
         protected DynamicObject bindPropertiesDynamicObject(DynamicObject target, DynamicObject source) {
             DynamicObject sourceObject = toJSObject(source);
             boolean extensible = JSObject.isExtensible(target, targetProfile);
