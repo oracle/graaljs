@@ -443,6 +443,20 @@ public final class IntlUtil {
             String variant = locale.getVariant();
             if (!variant.isEmpty()) {
                 String[] variants = variant.toLowerCase().split("[_-]");
+                // Perform some replacements required by
+                // https://github.com/unicode-org/cldr/blob/master/common/supplemental/supplementalMetadata.xml
+                for (int i = 0; i < variants.length; i++) {
+                    if ("heploc".equals(variants[i])) {
+                        variants[i] = "alalc97";
+                    } else if ("arevela".equals(variants[i])) {
+                        variants[i] = "";
+                    } else if ("arevmda".equals(variants[i])) {
+                        variants[i] = "";
+                        if ("hy".equals(locale.getLanguage())) {
+                            builder.setLanguage("hyw");
+                        }
+                    }
+                }
                 if (new HashSet<>(Arrays.asList(variants)).size() != variants.length) {
                     throw Errors.createRangeErrorFormat("Language tag with duplicate variants: %s", null, languageTag);
                 }
