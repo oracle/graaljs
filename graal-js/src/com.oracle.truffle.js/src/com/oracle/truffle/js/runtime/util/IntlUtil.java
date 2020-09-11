@@ -433,7 +433,19 @@ public final class IntlUtil {
             String region = locale.getCountry();
             if (!region.isEmpty()) {
                 try {
-                    String canonicalRegion = Region.getInstance(region).toString();
+                    Region icuRegion = Region.getInstance(region);
+                    if (icuRegion.getType() == Region.RegionType.DEPRECATED) {
+                        ULocale baseLocale = new ULocale.Builder().setLanguage(language).setScript(locale.getScript()).build();
+                        String preferredRegionName = ULocale.addLikelySubtags(baseLocale).getCountry();
+                        Region preferredRegion = Region.getInstance(preferredRegionName);
+                        List<Region> replacements = icuRegion.getPreferredValues();
+                        if (replacements.contains(preferredRegion)) {
+                            icuRegion = preferredRegion;
+                        } else {
+                            icuRegion = replacements.get(0);
+                        }
+                    }
+                    String canonicalRegion = icuRegion.toString();
                     builder.setRegion(canonicalRegion);
                 } catch (IllegalArgumentException iaex) {
                     // ICU is not aware of this region => let's assume that it is canonicalized.
