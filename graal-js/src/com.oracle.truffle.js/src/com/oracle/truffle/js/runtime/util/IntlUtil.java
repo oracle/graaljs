@@ -421,6 +421,11 @@ public final class IntlUtil {
                 } else if ("cmn".equals(language)) {
                     canonicalLanguage = "zh";
                 } else {
+                    if ("cnr".equals(language)) {
+                        builder.setRegion("ME");
+                    } else if ("sh".equals(language) && locale.getScript().isEmpty()) {
+                        builder.setScript("Latn");
+                    }
                     // ULocale.createCanonical() fails to canonicalize other parts
                     // of language tag (like region) and even modifies extensions in an undesirable
                     // way => we use it for the canonicalization of the language only
