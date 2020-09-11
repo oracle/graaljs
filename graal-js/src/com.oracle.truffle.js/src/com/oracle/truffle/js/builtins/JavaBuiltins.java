@@ -542,7 +542,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             try {
                 return InteropLibrary.getUncached().readMember(adapter, "super");
             } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-                throw Errors.createTypeErrorInteropException(adapter, e, null, this);
+                return Undefined.instance;
             }
         }
     }
