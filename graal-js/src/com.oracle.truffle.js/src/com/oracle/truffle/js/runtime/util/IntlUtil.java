@@ -46,8 +46,10 @@ import java.util.HashSet;
 import java.util.IllformedLocaleException;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.Set;
+import java.util.TreeMap;
 
 import com.ibm.icu.text.CaseMap;
 import com.ibm.icu.text.CaseMap.Lower;
@@ -523,6 +525,12 @@ public final class IntlUtil {
                     }
                     builder.setUnicodeLocaleKeyword(key, type);
                 }
+
+                // Canonicalize transformed extension
+                String transformedExt = locale.getExtension('t');
+                if (transformedExt != null) {
+                    builder.setExtension('t', normalizeTransformedExtension(transformedExt));
+                }
             }
             return maybeAppendMissingLanguageSubTag(builder.build().toLanguageTag());
         } catch (IllformedLocaleException e) {
@@ -589,6 +597,55 @@ public final class IntlUtil {
             return "utc";
         }
         return type;
+    }
+
+    private static String normalizeTransformedExtension(String extension) {
+        // Parse transformed extension
+        String tlang = null;
+        Map<String, String> fields = new TreeMap<>();
+        boolean seenDash = true;
+        String lastKey = null;
+        int lastValueStart = -1;
+        for (int i = 0; i < extension.length() - 1; i++) {
+            if (seenDash && UTS35Validator.isAlpha(extension.charAt(i)) && UTS35Validator.isDigit(extension.charAt(i + 1)) && (i + 2 == extension.length() || extension.charAt(i + 2) == '-')) {
+                if (lastKey == null) {
+                    tlang = extension.substring(0, Math.max(0, i - 1));
+                } else {
+                    fields.put(lastKey, extension.substring(lastValueStart, i - 1));
+                }
+                lastKey = extension.substring(i, i + 2);
+                lastValueStart = i + 3;
+            }
+            seenDash = (extension.charAt(i) == '-');
+        }
+        if (tlang == null) {
+            tlang = extension;
+        }
+        if (lastKey != null) {
+            fields.put(lastKey, extension.substring(lastValueStart));
+        }
+
+        StringBuilder normalized = new StringBuilder();
+
+        // Canonicalize tlang
+        if (!tlang.isEmpty()) {
+            tlang = validateAndCanonicalizeLanguageTag(tlang);
+            normalized.append(tlang);
+        }
+
+        // Canonicalize fields
+        for (Map.Entry<String, String> entry : fields.entrySet()) {
+            if (normalized.length() != 0) {
+                normalized.append('-');
+            }
+            String value = entry.getValue();
+            if ("names".equalsIgnoreCase(value)) {
+                value = "prprname";
+            }
+            normalized.append(entry.getKey()).append('-').append(value);
+        }
+
+        return normalized.toString();
     }
 
     public static String maybeAppendMissingLanguageSubTag(String tag) {
