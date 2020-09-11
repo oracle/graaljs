@@ -171,7 +171,7 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
                     String optNumberingSystem) {
         Locale.Builder builder = new Locale.Builder().setLanguageTag(tag);
         if (optCalendar != null) {
-            setUnicodeLocaleKeywordHelper(builder, "ca", optCalendar);
+            setUnicodeLocaleKeywordHelper(builder, "ca", IntlUtil.normalizeCAType(optCalendar));
         }
         if (optCollation != null) {
             setUnicodeLocaleKeywordHelper(builder, "co", optCollation);

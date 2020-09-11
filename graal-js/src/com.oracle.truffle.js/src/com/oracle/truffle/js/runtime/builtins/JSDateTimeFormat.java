@@ -208,8 +208,8 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             hc = null;
         }
 
-        String caType = normalizeCalendar(selectedLocale.getUnicodeLocaleType("ca"));
-        String normCalendarOpt = normalizeCalendar(calendarOpt);
+        String caType = IntlUtil.normalizeCAType(selectedLocale.getUnicodeLocaleType("ca"));
+        String normCalendarOpt = IntlUtil.normalizeCAType(calendarOpt);
         if (caType != null && (normCalendarOpt == null || normCalendarOpt.equals(caType)) && isValidCAType(strippedLocale, caType)) {
             state.calendar = caType;
             builder.setUnicodeLocaleKeyword("ca", caType);
@@ -325,7 +325,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         state.dateFormat = dateFormat;
 
         if (state.calendar == null) {
-            state.calendar = normalizeCalendar(Calendar.getInstance(javaLocale).getType());
+            state.calendar = IntlUtil.normalizeCAType(Calendar.getInstance(javaLocale).getType());
         }
         if ("gregory".equals(state.calendar)) {
             // Ensure that Gregorian calendar is used for all dates.
@@ -408,27 +408,14 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
     }
 
     private static boolean isValidCAType(Locale locale, String calendar) {
-        assert Objects.equals(calendar, normalizeCalendar(calendar));
+        assert Objects.equals(calendar, IntlUtil.normalizeCAType(calendar));
         String[] validValues = Calendar.getKeywordValuesForLocale("ca", ULocale.forLocale(locale), false);
         for (String validValue : validValues) {
-            if (normalizeCalendar(validValue).equals(calendar)) {
+            if (IntlUtil.normalizeCAType(validValue).equals(calendar)) {
                 return true;
             }
         }
         return false;
-    }
-
-    private static String normalizeCalendar(String calendar) {
-        // (Preferred) aliases from
-        // https://github.com/unicode-org/cldr/blob/master/common/bcp47/calendar.xml
-        if ("gregorian".equals(calendar)) {
-            return "gregory";
-        } else if ("ethiopic-amete-alem".equals(calendar)) {
-            return "ethioaa";
-        } else if ("islamicc".equals(calendar)) {
-            return "islamic-civil";
-        }
-        return calendar;
     }
 
     private static String weekdayOptToSkeleton(String weekdayOpt) {

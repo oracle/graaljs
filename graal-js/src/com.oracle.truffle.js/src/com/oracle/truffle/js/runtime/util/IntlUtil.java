@@ -471,18 +471,93 @@ public final class IntlUtil {
                     }
                 }
 
-                // Canonicalization is supposed to remove "true" types but (U)Locale fails to do so.
                 for (String key : locale.getUnicodeLocaleKeys()) {
                     String type = locale.getUnicodeLocaleType(key);
                     if ("true".equals(type)) {
-                        builder.setUnicodeLocaleKeyword(key, "");
+                        type = "";
+                    } else if ("yes".equals(type)) {
+                        if ("kb".equals(key) || "kc".equals(key) || "kh".equals(key) || "kk".equals(key) || "kn".equals(key)) {
+                            type = "";
+                        }
+                    } else if ("ca".equals(key)) {
+                        type = normalizeCAType(type);
+                    } else if ("ks".equals(key)) {
+                        type = normalizeKSType(type);
+                    } else if ("ms".equals(key)) {
+                        type = normalizeMSType(type);
+                    } else if ("rg".equals(key) || "sd".equals(key)) {
+                        type = normalizeRGType(type);
+                    } else if ("tz".equals(key)) {
+                        type = normalizeTZType(type);
                     }
+                    builder.setUnicodeLocaleKeyword(key, type);
                 }
             }
             return maybeAppendMissingLanguageSubTag(builder.build().toLanguageTag());
         } catch (IllformedLocaleException e) {
             throw Errors.createRangeError(e.getMessage());
         }
+    }
+
+    public static String normalizeCAType(String type) {
+        // (Preferred) aliases from
+        // https://github.com/unicode-org/cldr/blob/master/common/bcp47/calendar.xml
+        if ("gregorian".equals(type)) {
+            return "gregory";
+        } else if ("ethiopic-amete-alem".equals(type)) {
+            return "ethioaa";
+        } else if ("islamicc".equals(type)) {
+            return "islamic-civil";
+        }
+        return type;
+    }
+
+    private static String normalizeKSType(String type) {
+        if ("primary".equals(type)) {
+            return "level1";
+        } else if ("tertiary".equals(type)) {
+            return "level3";
+        }
+        return type;
+    }
+
+    private static String normalizeMSType(String type) {
+        if ("imperial".equals(type)) {
+            return "uksystem";
+        }
+        return type;
+    }
+
+    private static String normalizeRGType(String type) {
+        if ("cn11".equals(type)) {
+            return "cnbj";
+        } else if ("cz10a".equals(type)) {
+            return "cz110";
+        } else if ("fra".equals(type) || "frg".equals(type)) {
+            return "frges";
+        } else if ("lud".equals(type)) {
+            return "lucl";
+        } else if ("no23".equals(type)) {
+            return "no50";
+        }
+        return type;
+    }
+
+    private static String normalizeTZType(String type) {
+        if ("cnckg".equals(type)) {
+            return "cnsha";
+        } else if ("eire".equals(type)) {
+            return "iedub";
+        } else if ("est".equals(type)) {
+            return "utcw05";
+        } else if ("gmt0".equals(type)) {
+            return "gmt";
+        } else if ("uct".equals(type)) {
+            return "utc";
+        } else if ("zulu".equals(type)) {
+            return "utc";
+        }
+        return type;
     }
 
     public static String maybeAppendMissingLanguageSubTag(String tag) {
