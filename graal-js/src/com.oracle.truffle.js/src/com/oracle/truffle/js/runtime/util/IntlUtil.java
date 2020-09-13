@@ -46,8 +46,10 @@ import java.util.HashSet;
 import java.util.IllformedLocaleException;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.Set;
+import java.util.TreeMap;
 
 import com.ibm.icu.text.CaseMap;
 import com.ibm.icu.text.CaseMap.Lower;
@@ -421,6 +423,11 @@ public final class IntlUtil {
                 } else if ("cmn".equals(language)) {
                     canonicalLanguage = "zh";
                 } else {
+                    if ("cnr".equals(language)) {
+                        builder.setRegion("ME");
+                    } else if ("sh".equals(language) && locale.getScript().isEmpty()) {
+                        builder.setScript("Latn");
+                    }
                     // ULocale.createCanonical() fails to canonicalize other parts
                     // of language tag (like region) and even modifies extensions in an undesirable
                     // way => we use it for the canonicalization of the language only
@@ -433,7 +440,19 @@ public final class IntlUtil {
             String region = locale.getCountry();
             if (!region.isEmpty()) {
                 try {
-                    String canonicalRegion = Region.getInstance(region).toString();
+                    Region icuRegion = Region.getInstance(region);
+                    if (icuRegion.getType() == Region.RegionType.DEPRECATED) {
+                        ULocale baseLocale = new ULocale.Builder().setLanguage(language).setScript(locale.getScript()).build();
+                        String preferredRegionName = ULocale.addLikelySubtags(baseLocale).getCountry();
+                        Region preferredRegion = Region.getInstance(preferredRegionName);
+                        List<Region> replacements = icuRegion.getPreferredValues();
+                        if (replacements.contains(preferredRegion)) {
+                            icuRegion = preferredRegion;
+                        } else {
+                            icuRegion = replacements.get(0);
+                        }
+                    }
+                    String canonicalRegion = icuRegion.toString();
                     builder.setRegion(canonicalRegion);
                 } catch (IllegalArgumentException iaex) {
                     // ICU is not aware of this region => let's assume that it is canonicalized.
@@ -443,6 +462,20 @@ public final class IntlUtil {
             String variant = locale.getVariant();
             if (!variant.isEmpty()) {
                 String[] variants = variant.toLowerCase().split("[_-]");
+                // Perform some replacements required by
+                // https://github.com/unicode-org/cldr/blob/master/common/supplemental/supplementalMetadata.xml
+                for (int i = 0; i < variants.length; i++) {
+                    if ("heploc".equals(variants[i])) {
+                        variants[i] = "alalc97";
+                    } else if ("arevela".equals(variants[i])) {
+                        variants[i] = "";
+                    } else if ("arevmda".equals(variants[i])) {
+                        variants[i] = "";
+                        if ("hy".equals(locale.getLanguage())) {
+                            builder.setLanguage("hyw");
+                        }
+                    }
+                }
                 if (new HashSet<>(Arrays.asList(variants)).size() != variants.length) {
                     throw Errors.createRangeErrorFormat("Language tag with duplicate variants: %s", null, languageTag);
                 }
@@ -471,18 +504,148 @@ public final class IntlUtil {
                     }
                 }
 
-                // Canonicalization is supposed to remove "true" types but (U)Locale fails to do so.
                 for (String key : locale.getUnicodeLocaleKeys()) {
                     String type = locale.getUnicodeLocaleType(key);
                     if ("true".equals(type)) {
-                        builder.setUnicodeLocaleKeyword(key, "");
+                        type = "";
+                    } else if ("yes".equals(type)) {
+                        if ("kb".equals(key) || "kc".equals(key) || "kh".equals(key) || "kk".equals(key) || "kn".equals(key)) {
+                            type = "";
+                        }
+                    } else if ("ca".equals(key)) {
+                        type = normalizeCAType(type);
+                    } else if ("ks".equals(key)) {
+                        type = normalizeKSType(type);
+                    } else if ("ms".equals(key)) {
+                        type = normalizeMSType(type);
+                    } else if ("rg".equals(key) || "sd".equals(key)) {
+                        type = normalizeRGType(type);
+                    } else if ("tz".equals(key)) {
+                        type = normalizeTZType(type);
                     }
+                    builder.setUnicodeLocaleKeyword(key, type);
+                }
+
+                // Canonicalize transformed extension
+                String transformedExt = locale.getExtension('t');
+                if (transformedExt != null) {
+                    builder.setExtension('t', normalizeTransformedExtension(transformedExt));
                 }
             }
             return maybeAppendMissingLanguageSubTag(builder.build().toLanguageTag());
         } catch (IllformedLocaleException e) {
             throw Errors.createRangeError(e.getMessage());
         }
+    }
+
+    public static String normalizeCAType(String type) {
+        // (Preferred) aliases from
+        // https://github.com/unicode-org/cldr/blob/master/common/bcp47/calendar.xml
+        if ("gregorian".equals(type)) {
+            return "gregory";
+        } else if ("ethiopic-amete-alem".equals(type)) {
+            return "ethioaa";
+        } else if ("islamicc".equals(type)) {
+            return "islamic-civil";
+        }
+        return type;
+    }
+
+    private static String normalizeKSType(String type) {
+        if ("primary".equals(type)) {
+            return "level1";
+        } else if ("tertiary".equals(type)) {
+            return "level3";
+        }
+        return type;
+    }
+
+    private static String normalizeMSType(String type) {
+        if ("imperial".equals(type)) {
+            return "uksystem";
+        }
+        return type;
+    }
+
+    private static String normalizeRGType(String type) {
+        if ("cn11".equals(type)) {
+            return "cnbj";
+        } else if ("cz10a".equals(type)) {
+            return "cz110";
+        } else if ("fra".equals(type) || "frg".equals(type)) {
+            return "frges";
+        } else if ("lud".equals(type)) {
+            return "lucl";
+        } else if ("no23".equals(type)) {
+            return "no50";
+        }
+        return type;
+    }
+
+    private static String normalizeTZType(String type) {
+        if ("cnckg".equals(type)) {
+            return "cnsha";
+        } else if ("eire".equals(type)) {
+            return "iedub";
+        } else if ("est".equals(type)) {
+            return "utcw05";
+        } else if ("gmt0".equals(type)) {
+            return "gmt";
+        } else if ("uct".equals(type)) {
+            return "utc";
+        } else if ("zulu".equals(type)) {
+            return "utc";
+        }
+        return type;
+    }
+
+    private static String normalizeTransformedExtension(String extension) {
+        // Parse transformed extension
+        String tlang = null;
+        Map<String, String> fields = new TreeMap<>();
+        boolean seenDash = true;
+        String lastKey = null;
+        int lastValueStart = -1;
+        for (int i = 0; i < extension.length() - 1; i++) {
+            if (seenDash && UTS35Validator.isAlpha(extension.charAt(i)) && UTS35Validator.isDigit(extension.charAt(i + 1)) && (i + 2 == extension.length() || extension.charAt(i + 2) == '-')) {
+                if (lastKey == null) {
+                    tlang = extension.substring(0, Math.max(0, i - 1));
+                } else {
+                    fields.put(lastKey, extension.substring(lastValueStart, i - 1));
+                }
+                lastKey = extension.substring(i, i + 2);
+                lastValueStart = i + 3;
+            }
+            seenDash = (extension.charAt(i) == '-');
+        }
+        if (tlang == null) {
+            tlang = extension;
+        }
+        if (lastKey != null) {
+            fields.put(lastKey, extension.substring(lastValueStart));
+        }
+
+        StringBuilder normalized = new StringBuilder();
+
+        // Canonicalize tlang
+        if (!tlang.isEmpty()) {
+            tlang = validateAndCanonicalizeLanguageTag(tlang);
+            normalized.append(tlang);
+        }
+
+        // Canonicalize fields
+        for (Map.Entry<String, String> entry : fields.entrySet()) {
+            if (normalized.length() != 0) {
+                normalized.append('-');
+            }
+            String value = entry.getValue();
+            if ("names".equalsIgnoreCase(value)) {
+                value = "prprname";
+            }
+            normalized.append(entry.getKey()).append('-').append(value);
+        }
+
+        return normalized.toString();
     }
 
     public static String maybeAppendMissingLanguageSubTag(String tag) {

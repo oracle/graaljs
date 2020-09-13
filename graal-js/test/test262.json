@@ -2,91 +2,91 @@
   "testFiles" : [ {
     "filePath" : "built-ins/Atomics/add/bigint/non-shared-bufferdata.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
     "filePath" : "built-ins/Atomics/add/non-shared-bufferdata.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
     "filePath" : "built-ins/Atomics/and/bigint/non-shared-bufferdata.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
     "filePath" : "built-ins/Atomics/and/non-shared-bufferdata.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
     "filePath" : "built-ins/Atomics/compareExchange/bigint/non-shared-bufferdata.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
     "filePath" : "built-ins/Atomics/compareExchange/non-shared-bufferdata.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
     "filePath" : "built-ins/Atomics/exchange/bigint/non-shared-bufferdata.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
     "filePath" : "built-ins/Atomics/exchange/non-shared-bufferdata.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
     "filePath" : "built-ins/Atomics/load/bigint/non-shared-bufferdata.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
     "filePath" : "built-ins/Atomics/load/non-shared-bufferdata.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
     "filePath" : "built-ins/Atomics/notify/bigint/non-shared-bufferdata-count-evaluation-throws.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
     "filePath" : "built-ins/Atomics/notify/bigint/non-shared-bufferdata-index-evaluation-throws.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
     "filePath" : "built-ins/Atomics/notify/bigint/non-shared-bufferdata-returns-0.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
     "filePath" : "built-ins/Atomics/notify/non-shared-bufferdata-count-evaluation-throws.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
     "filePath" : "built-ins/Atomics/notify/non-shared-bufferdata-index-evaluation-throws.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
     "filePath" : "built-ins/Atomics/notify/non-shared-bufferdata-returns-0.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
     "filePath" : "built-ins/Atomics/or/bigint/non-shared-bufferdata.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
     "filePath" : "built-ins/Atomics/or/non-shared-bufferdata.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
     "filePath" : "built-ins/Atomics/store/bigint/non-shared-bufferdata.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
     "filePath" : "built-ins/Atomics/store/non-shared-bufferdata.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
     "filePath" : "built-ins/Atomics/sub/bigint/non-shared-bufferdata.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
     "filePath" : "built-ins/Atomics/sub/non-shared-bufferdata.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
     "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-no-operation.js",
     "status" : "PASS",
@@ -216,11 +216,11 @@
   }, {
     "filePath" : "built-ins/Atomics/xor/bigint/non-shared-bufferdata.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
     "filePath" : "built-ins/Atomics/xor/non-shared-bufferdata.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
     "filePath" : "built-ins/RegExp/named-groups/non-unicode-property-names-valid.js",
     "status" : "FAIL",
@@ -1856,89 +1856,29 @@
     "status" : "FAIL",
     "comment" : "new failures after 2020-03 update"
   }, {
-    "filePath" : "intl402/Intl/getCanonicalLocales/complex-language-subtag-replacement.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
-    "filePath" : "intl402/Intl/getCanonicalLocales/complex-region-subtag-replacement.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
-    "filePath" : "intl402/Intl/getCanonicalLocales/non-iana-canon.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
-    "filePath" : "intl402/Intl/getCanonicalLocales/preferred-variant.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
-    "filePath" : "intl402/Intl/getCanonicalLocales/transformed-ext-canonical.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
-    "filePath" : "intl402/Intl/getCanonicalLocales/unicode-ext-canonicalize-calendar.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
-    "filePath" : "intl402/Intl/getCanonicalLocales/unicode-ext-canonicalize-col-strength.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
-    "filePath" : "intl402/Intl/getCanonicalLocales/unicode-ext-canonicalize-measurement-system.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
-    "filePath" : "intl402/Intl/getCanonicalLocales/unicode-ext-canonicalize-region.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
-    "filePath" : "intl402/Intl/getCanonicalLocales/unicode-ext-canonicalize-subdivision.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
-    "filePath" : "intl402/Intl/getCanonicalLocales/unicode-ext-canonicalize-timezone.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
-    "filePath" : "intl402/Intl/getCanonicalLocales/unicode-ext-canonicalize-yes-to-true.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
-    "filePath" : "intl402/Locale/constructor-apply-options-canonicalizes-twice.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
-    "filePath" : "intl402/Locale/constructor-non-iana-canon.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
-    "filePath" : "intl402/Locale/constructor-options-canonicalized.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
-  }, {
     "filePath" : "intl402/RelativeTimeFormat/prototype/format/pl-pl-style-long.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "ICU-21086: RelativeDateTimeFormatter should respect minimumGroupingDigits"
   }, {
     "filePath" : "intl402/RelativeTimeFormat/prototype/format/pl-pl-style-narrow.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "ICU-21086: RelativeDateTimeFormatter should respect minimumGroupingDigits"
   }, {
     "filePath" : "intl402/RelativeTimeFormat/prototype/format/pl-pl-style-short.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "ICU-21086: RelativeDateTimeFormatter should respect minimumGroupingDigits"
   }, {
     "filePath" : "intl402/RelativeTimeFormat/prototype/formatToParts/pl-pl-style-long.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "ICU-21086: RelativeDateTimeFormatter should respect minimumGroupingDigits"
   }, {
     "filePath" : "intl402/RelativeTimeFormat/prototype/formatToParts/pl-pl-style-narrow.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "ICU-21086: RelativeDateTimeFormatter should respect minimumGroupingDigits"
   }, {
     "filePath" : "intl402/RelativeTimeFormat/prototype/formatToParts/pl-pl-style-short.js",
     "status" : "FAIL",
-    "comment" : "new failures 2020-07-21"
+    "comment" : "ICU-21086: RelativeDateTimeFormatter should respect minimumGroupingDigits"
   }, {
     "filePath" : "intl402/Segmenter/prototype/segment/segment-tostring.js",
     "status" : "FAIL",
