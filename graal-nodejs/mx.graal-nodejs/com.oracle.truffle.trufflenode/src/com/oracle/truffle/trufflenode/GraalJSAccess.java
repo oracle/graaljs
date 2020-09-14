@@ -189,6 +189,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
@@ -196,7 +197,6 @@ import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -213,6 +213,7 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyReference;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
@@ -378,7 +379,7 @@ public final class GraalJSAccess {
     }
 
     public ByteBuffer getSharedBuffer() {
-        return sharedBuffer;
+        return DirectByteBufferHelper.cast(sharedBuffer);
     }
 
     public int valueType(Object value) {
