@@ -86,6 +86,11 @@ public final class Boundaries {
         return String.valueOf(o);
     }
 
+    @TruffleBoundary(allowInlining = true)
+    public static String stringValueOf(char[] chars) {
+        return String.valueOf(chars);
+    }
+
     @TruffleBoundary
     public static Integer integerValueOf(String s) {
         return Integer.valueOf(s);
