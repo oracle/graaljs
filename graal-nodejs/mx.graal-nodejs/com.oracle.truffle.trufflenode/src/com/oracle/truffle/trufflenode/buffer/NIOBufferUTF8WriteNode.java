@@ -142,16 +142,12 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
         asBaseBuffer(buffer).position(destOffset);
         asBaseBuffer(buffer).limit(Math.min(bufferLen, destOffset + bytes));
 
-        CoderResult res = doEncode(str, buffer);
-        if (cannotEncode(res)) {
-            errorBranch.enter();
-            throw new CharacterCodingException();
-        }
+        doEncode(str, buffer);
         return buffer.position() - destOffset;
     }
 
     @TruffleBoundary
-    private static CoderResult doEncode(String str, ByteBuffer buffer) {
+    private static CoderResult doEncode(String str, ByteBuffer buffer) throws CharacterCodingException {
         CharsetEncoder encoder = utf8.newEncoder();
         encoder.onMalformedInput(CodingErrorAction.REPORT);
         encoder.onUnmappableCharacter(CodingErrorAction.REPORT);
@@ -162,16 +158,18 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
             encoder.encode(cb, buffer, true);
             res = encoder.flush(buffer);
         }
+
+        assert res.isError() == (res.isMalformed() || res.isUnmappable());
+        if (res.isError()) {
+            res.throwException();
+        }
+
         return res;
     }
 
     @TruffleBoundary
     private static byte[] getBytes(String str) {
         return str.getBytes(utf8);
-    }
-
-    private static boolean cannotEncode(CoderResult res) {
-        return res.isMalformed() || res.isUnmappable() || res.isError();
     }
 
 }
