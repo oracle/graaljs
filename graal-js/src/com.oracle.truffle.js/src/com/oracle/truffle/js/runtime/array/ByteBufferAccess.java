@@ -1,0 +1,189 @@
+/*
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * The Universal Permissive License (UPL), Version 1.0
+ *
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
+ *
+ * (a) the Software, and
+ *
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+package com.oracle.truffle.js.runtime.array;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
+abstract class ByteBufferAccess {
+
+    @SuppressWarnings("static-method")
+    public final int getInt8(ByteBuffer buffer, int index) {
+        return buffer.get(index);
+    }
+
+    public final int getUint8(ByteBuffer buffer, int index) {
+        return getInt8(buffer, index) & 0xff;
+    }
+
+    public abstract int getInt16(ByteBuffer buffer, int index);
+
+    public final int getUint16(ByteBuffer buffer, int index) {
+        return getInt16(buffer, index) & 0xffff;
+    }
+
+    public abstract int getInt32(ByteBuffer buffer, int index);
+
+    public final long getUint32(ByteBuffer buffer, int index) {
+        return getInt32(buffer, index) & 0xffffffffL;
+    }
+
+    public abstract float getFloat(ByteBuffer buffer, int index);
+
+    public abstract double getDouble(ByteBuffer buffer, int index);
+
+    public abstract long getInt64(ByteBuffer buffer, int index);
+
+    @SuppressWarnings("static-method")
+    public final void putInt8(ByteBuffer buffer, int index, int value) {
+        buffer.put(index, (byte) value);
+    }
+
+    public abstract void putInt16(ByteBuffer buffer, int index, int value);
+
+    public abstract void putInt32(ByteBuffer buffer, int index, int value);
+
+    public abstract void putFloat(ByteBuffer buffer, int index, float value);
+
+    public abstract void putDouble(ByteBuffer buffer, int index, double value);
+
+    public abstract void putInt64(ByteBuffer buffer, int index, long value);
+
+    static final ByteBufferAccess littleEndian() {
+        return ByteBufferSupport.littleEndian();
+    }
+
+    static final ByteBufferAccess bigEndian() {
+        return ByteBufferSupport.bigEndian();
+    }
+
+    static final ByteBufferAccess nativeOrder() {
+        return ByteBufferSupport.nativeOrder();
+    }
+
+    static final ByteBufferAccess forOrder(boolean littleEndian) {
+        return littleEndian ? littleEndian() : bigEndian();
+    }
+}
+
+abstract class AbstractByteBufferAccess extends ByteBufferAccess {
+
+    @Override
+    public final int getInt16(ByteBuffer buffer, int index) {
+        return wrap(buffer).getShort(index);
+    }
+
+    @Override
+    public final int getInt32(ByteBuffer buffer, int index) {
+        return wrap(buffer).getInt(index);
+    }
+
+    @Override
+    public final float getFloat(ByteBuffer buffer, int index) {
+        return wrap(buffer).getFloat(index);
+    }
+
+    @Override
+    public final double getDouble(ByteBuffer buffer, int index) {
+        return wrap(buffer).getDouble(index);
+    }
+
+    @Override
+    public long getInt64(ByteBuffer buffer, int index) {
+        return wrap(buffer).getLong(index);
+    }
+
+    @Override
+    public final void putInt16(ByteBuffer buffer, int index, int value) {
+        wrap(buffer).putShort(index, (short) value);
+    }
+
+    @Override
+    public final void putInt32(ByteBuffer buffer, int index, int value) {
+        wrap(buffer).putInt(index, value);
+    }
+
+    @Override
+    public final void putInt64(ByteBuffer buffer, int index, long value) {
+        wrap(buffer).putLong(index, value);
+    }
+
+    @Override
+    public final void putFloat(ByteBuffer buffer, int index, float value) {
+        wrap(buffer).putFloat(index, value);
+    }
+
+    @Override
+    public final void putDouble(ByteBuffer buffer, int index, double value) {
+        wrap(buffer).putDouble(index, value);
+    }
+
+    protected ByteBuffer wrap(ByteBuffer buffer) {
+        return buffer;
+    }
+}
+
+final class NativeByteBufferAccess extends AbstractByteBufferAccess {
+    static final ByteBufferAccess INSTANCE = new NativeByteBufferAccess();
+
+    @Override
+    protected ByteBuffer wrap(ByteBuffer buffer) {
+        return buffer.duplicate().order(ByteOrder.nativeOrder());
+    }
+}
+
+final class LittleEndianByteBufferAccess extends AbstractByteBufferAccess {
+    static final ByteBufferAccess INSTANCE = new LittleEndianByteBufferAccess();
+
+    @Override
+    protected ByteBuffer wrap(ByteBuffer buffer) {
+        return buffer.duplicate().order(ByteOrder.LITTLE_ENDIAN);
+    }
+}
+
+final class BigEndianByteBufferAccess extends AbstractByteBufferAccess {
+    static final ByteBufferAccess INSTANCE = new BigEndianByteBufferAccess();
+
+    @Override
+    protected ByteBuffer wrap(ByteBuffer buffer) {
+        return buffer.duplicate().order(ByteOrder.BIG_ENDIAN);
+    }
+}
