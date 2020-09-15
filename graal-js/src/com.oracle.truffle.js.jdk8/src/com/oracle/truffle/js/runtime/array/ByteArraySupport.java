@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,74 +52,73 @@ final class ByteArraySupport {
     private ByteArraySupport() {
     }
 
-    static final ByteArrayAccess LITTLE_ENDIAN_ORDER = new LittleEndianByteArrayAccess();
-    static final ByteArrayAccess BIG_ENDIAN_ORDER = new BigEndianByteArrayAccess();
-    static final ByteArrayAccess NATIVE_ORDER = new SunMiscUnsafeNativeOrderByteArrayAccess();
+    static ByteArrayAccess littleEndian() {
+        return LittleEndianByteArrayAccess.INSTANCE;
+    }
+
+    static ByteArrayAccess bigEndian() {
+        return BigEndianByteArrayAccess.INSTANCE;
+    }
+
+    static ByteArrayAccess nativeOrder() {
+        return SunMiscUnsafeNativeOrderByteArrayAccess.INSTANCE;
+    }
 }
 
 final class SunMiscUnsafeNativeOrderByteArrayAccess extends ByteArrayAccess {
+    static final ByteArrayAccess INSTANCE = new SunMiscUnsafeNativeOrderByteArrayAccess();
+
     @Override
-    public int getInt8(byte[] buffer, int offset, int index, int bytesPerElement) {
-        return UNSAFE.getByte(buffer, offset(offset, index, bytesPerElement, buffer, Byte.BYTES));
+    public int getInt16(byte[] buffer, int byteIndex) {
+        return UNSAFE.getShort(buffer, offset(byteIndex, buffer, Short.BYTES));
     }
 
     @Override
-    public int getInt16(byte[] buffer, int offset, int index, int bytesPerElement) {
-        return UNSAFE.getShort(buffer, offset(offset, index, bytesPerElement, buffer, Short.BYTES));
+    public int getInt32(byte[] buffer, int byteIndex) {
+        return UNSAFE.getInt(buffer, offset(byteIndex, buffer, Integer.BYTES));
     }
 
     @Override
-    public int getInt32(byte[] buffer, int offset, int index, int bytesPerElement) {
-        return UNSAFE.getInt(buffer, offset(offset, index, bytesPerElement, buffer, Integer.BYTES));
+    public long getInt64(byte[] buffer, int byteIndex) {
+        return UNSAFE.getLong(buffer, offset(byteIndex, buffer, Long.BYTES));
     }
 
     @Override
-    public long getInt64(byte[] buffer, int offset, int index, int bytesPerElement) {
-        return UNSAFE.getLong(buffer, offset(offset, index, bytesPerElement, buffer, Long.BYTES));
+    public float getFloat(byte[] buffer, int byteIndex) {
+        return UNSAFE.getFloat(buffer, offset(byteIndex, buffer, Float.BYTES));
     }
 
     @Override
-    public float getFloat(byte[] buffer, int offset, int index, int bytesPerElement) {
-        return UNSAFE.getFloat(buffer, offset(offset, index, bytesPerElement, buffer, Float.BYTES));
+    public double getDouble(byte[] buffer, int byteIndex) {
+        return UNSAFE.getDouble(buffer, offset(byteIndex, buffer, Double.BYTES));
     }
 
     @Override
-    public double getDouble(byte[] buffer, int offset, int index, int bytesPerElement) {
-        return UNSAFE.getDouble(buffer, offset(offset, index, bytesPerElement, buffer, Double.BYTES));
+    public void putInt16(byte[] buffer, int byteIndex, int value) {
+        UNSAFE.putShort(buffer, offset(byteIndex, buffer, Short.BYTES), (short) value);
     }
 
     @Override
-    public void putInt8(byte[] buffer, int offset, int index, int bytesPerElement, int value) {
-        UNSAFE.putByte(buffer, offset(offset, index, bytesPerElement, buffer, Byte.BYTES), (byte) value);
+    public void putInt32(byte[] buffer, int byteIndex, int value) {
+        UNSAFE.putInt(buffer, offset(byteIndex, buffer, Integer.BYTES), value);
     }
 
     @Override
-    public void putInt16(byte[] buffer, int offset, int index, int bytesPerElement, int value) {
-        UNSAFE.putShort(buffer, offset(offset, index, bytesPerElement, buffer, Short.BYTES), (short) value);
+    public void putInt64(byte[] buffer, int byteIndex, long value) {
+        UNSAFE.putLong(buffer, offset(byteIndex, buffer, Long.BYTES), value);
     }
 
     @Override
-    public void putInt32(byte[] buffer, int offset, int index, int bytesPerElement, int value) {
-        UNSAFE.putInt(buffer, offset(offset, index, bytesPerElement, buffer, Integer.BYTES), value);
+    public void putFloat(byte[] buffer, int byteIndex, float value) {
+        UNSAFE.putFloat(buffer, offset(byteIndex, buffer, Float.BYTES), value);
     }
 
     @Override
-    public void putInt64(byte[] buffer, int offset, int index, int bytesPerElement, long value) {
-        UNSAFE.putLong(buffer, offset(offset, index, bytesPerElement, buffer, Long.BYTES), value);
+    public void putDouble(byte[] buffer, int byteIndex, double value) {
+        UNSAFE.putDouble(buffer, offset(byteIndex, buffer, Double.BYTES), value);
     }
 
-    @Override
-    public void putFloat(byte[] buffer, int offset, int index, int bytesPerElement, float value) {
-        UNSAFE.putFloat(buffer, offset(offset, index, bytesPerElement, buffer, Float.BYTES), value);
-    }
-
-    @Override
-    public void putDouble(byte[] buffer, int offset, int index, int bytesPerElement, double value) {
-        UNSAFE.putDouble(buffer, offset(offset, index, bytesPerElement, buffer, Double.BYTES), value);
-    }
-
-    private static long offset(int offset, int index, int bytesPerElement, byte[] buffer, int elementSize) {
-        int byteIndex = offset + index * bytesPerElement;
+    private static long offset(int byteIndex, byte[] buffer, int elementSize) {
         if (byteIndex < 0 || byteIndex > buffer.length - elementSize) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IndexOutOfBoundsException();

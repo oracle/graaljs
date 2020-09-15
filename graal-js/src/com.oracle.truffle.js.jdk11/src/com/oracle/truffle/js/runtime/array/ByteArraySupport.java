@@ -48,9 +48,17 @@ final class ByteArraySupport {
     private ByteArraySupport() {
     }
 
-    static final ByteArrayAccess LITTLE_ENDIAN_ORDER = new LittleEndianByteArrayAccess();
-    static final ByteArrayAccess BIG_ENDIAN_ORDER = new BigEndianByteArrayAccess();
-    static final ByteArrayAccess NATIVE_ORDER = new VarHandleNativeOrderByteArrayAccess();
+    static ByteArrayAccess littleEndian() {
+        return VarHandleLittleEndianByteArrayAccess.INSTANCE;
+    }
+
+    static ByteArrayAccess bigEndian() {
+        return VarHandleBigEndianByteArrayAccess.INSTANCE;
+    }
+
+    static ByteArrayAccess nativeOrder() {
+        return VarHandleNativeOrderByteArrayAccess.INSTANCE;
+    }
 }
 
 final class VarHandleNativeOrderByteArrayAccess extends ByteArrayAccess {
@@ -60,67 +68,175 @@ final class VarHandleNativeOrderByteArrayAccess extends ByteArrayAccess {
     private static final VarHandle FLOAT = MethodHandles.byteArrayViewVarHandle(float[].class, ByteOrder.nativeOrder());
     private static final VarHandle DOUBLE = MethodHandles.byteArrayViewVarHandle(double[].class, ByteOrder.nativeOrder());
 
+    static final ByteArrayAccess INSTANCE = new VarHandleNativeOrderByteArrayAccess();
+
     @Override
-    public int getInt8(byte[] buffer, int offset, int index, int bytesPerElement) {
-        return buffer[byteIndex(offset, index, bytesPerElement)];
+    public int getInt16(byte[] buffer, int byteIndex) {
+        return (short) INT16.get(buffer, byteIndex);
     }
 
     @Override
-    public int getInt16(byte[] buffer, int offset, int index, int bytesPerElement) {
-        return (short) INT16.get(buffer, byteIndex(offset, index, bytesPerElement));
+    public int getInt32(byte[] buffer, int byteIndex) {
+        return (int) INT32.get(buffer, byteIndex);
     }
 
     @Override
-    public int getInt32(byte[] buffer, int offset, int index, int bytesPerElement) {
-        return (int) INT32.get(buffer, byteIndex(offset, index, bytesPerElement));
+    public long getInt64(byte[] buffer, int byteIndex) {
+        return (long) INT64.get(buffer, byteIndex);
     }
 
     @Override
-    public long getInt64(byte[] buffer, int offset, int index, int bytesPerElement) {
-        return (long) INT64.get(buffer, byteIndex(offset, index, bytesPerElement));
+    public float getFloat(byte[] buffer, int byteIndex) {
+        return (float) FLOAT.get(buffer, byteIndex);
     }
 
     @Override
-    public float getFloat(byte[] buffer, int offset, int index, int bytesPerElement) {
-        return (float) FLOAT.get(buffer, byteIndex(offset, index, bytesPerElement));
+    public double getDouble(byte[] buffer, int byteIndex) {
+        return (double) DOUBLE.get(buffer, byteIndex);
     }
 
     @Override
-    public double getDouble(byte[] buffer, int offset, int index, int bytesPerElement) {
-        return (double) DOUBLE.get(buffer, byteIndex(offset, index, bytesPerElement));
+    public void putInt16(byte[] buffer, int byteIndex, int value) {
+        INT16.set(buffer, byteIndex, (short) value);
     }
 
     @Override
-    public void putInt8(byte[] buffer, int offset, int index, int bytesPerElement, int value) {
-        buffer[byteIndex(offset, index, bytesPerElement)] = (byte) value;
+    public void putInt32(byte[] buffer, int byteIndex, int value) {
+        INT32.set(buffer, byteIndex, value);
     }
 
     @Override
-    public void putInt16(byte[] buffer, int offset, int index, int bytesPerElement, int value) {
-        INT16.set(buffer, byteIndex(offset, index, bytesPerElement), (short) value);
+    public void putInt64(byte[] buffer, int byteIndex, long value) {
+        INT64.set(buffer, byteIndex, value);
     }
 
     @Override
-    public void putInt32(byte[] buffer, int offset, int index, int bytesPerElement, int value) {
-        INT32.set(buffer, byteIndex(offset, index, bytesPerElement), value);
+    public void putFloat(byte[] buffer, int byteIndex, float value) {
+        FLOAT.set(buffer, byteIndex, value);
     }
 
     @Override
-    public void putInt64(byte[] buffer, int offset, int index, int bytesPerElement, long value) {
-        INT64.set(buffer, byteIndex(offset, index, bytesPerElement), value);
+    public void putDouble(byte[] buffer, int byteIndex, double value) {
+        DOUBLE.set(buffer, byteIndex, value);
+    }
+}
+
+final class VarHandleLittleEndianByteArrayAccess extends ByteArrayAccess {
+    private static final VarHandle INT16 = MethodHandles.byteArrayViewVarHandle(short[].class, ByteOrder.LITTLE_ENDIAN);
+    private static final VarHandle INT32 = MethodHandles.byteArrayViewVarHandle(int[].class, ByteOrder.LITTLE_ENDIAN);
+    private static final VarHandle INT64 = MethodHandles.byteArrayViewVarHandle(long[].class, ByteOrder.LITTLE_ENDIAN);
+    private static final VarHandle FLOAT = MethodHandles.byteArrayViewVarHandle(float[].class, ByteOrder.LITTLE_ENDIAN);
+    private static final VarHandle DOUBLE = MethodHandles.byteArrayViewVarHandle(double[].class, ByteOrder.LITTLE_ENDIAN);
+
+    static final ByteArrayAccess INSTANCE = new VarHandleLittleEndianByteArrayAccess();
+
+    @Override
+    public int getInt16(byte[] buffer, int byteIndex) {
+        return (short) INT16.get(buffer, byteIndex);
     }
 
     @Override
-    public void putFloat(byte[] buffer, int offset, int index, int bytesPerElement, float value) {
-        FLOAT.set(buffer, byteIndex(offset, index, bytesPerElement), value);
+    public int getInt32(byte[] buffer, int byteIndex) {
+        return (int) INT32.get(buffer, byteIndex);
     }
 
     @Override
-    public void putDouble(byte[] buffer, int offset, int index, int bytesPerElement, double value) {
-        DOUBLE.set(buffer, byteIndex(offset, index, bytesPerElement), value);
+    public long getInt64(byte[] buffer, int byteIndex) {
+        return (long) INT64.get(buffer, byteIndex);
     }
 
-    private static int byteIndex(int offset, int index, int bytesPerElement) {
-        return offset + index * bytesPerElement;
+    @Override
+    public float getFloat(byte[] buffer, int byteIndex) {
+        return (float) FLOAT.get(buffer, byteIndex);
+    }
+
+    @Override
+    public double getDouble(byte[] buffer, int byteIndex) {
+        return (double) DOUBLE.get(buffer, byteIndex);
+    }
+
+    @Override
+    public void putInt16(byte[] buffer, int byteIndex, int value) {
+        INT16.set(buffer, byteIndex, (short) value);
+    }
+
+    @Override
+    public void putInt32(byte[] buffer, int byteIndex, int value) {
+        INT32.set(buffer, byteIndex, value);
+    }
+
+    @Override
+    public void putInt64(byte[] buffer, int byteIndex, long value) {
+        INT64.set(buffer, byteIndex, value);
+    }
+
+    @Override
+    public void putFloat(byte[] buffer, int byteIndex, float value) {
+        FLOAT.set(buffer, byteIndex, value);
+    }
+
+    @Override
+    public void putDouble(byte[] buffer, int byteIndex, double value) {
+        DOUBLE.set(buffer, byteIndex, value);
+    }
+}
+
+final class VarHandleBigEndianByteArrayAccess extends ByteArrayAccess {
+    private static final VarHandle INT16 = MethodHandles.byteArrayViewVarHandle(short[].class, ByteOrder.BIG_ENDIAN);
+    private static final VarHandle INT32 = MethodHandles.byteArrayViewVarHandle(int[].class, ByteOrder.BIG_ENDIAN);
+    private static final VarHandle INT64 = MethodHandles.byteArrayViewVarHandle(long[].class, ByteOrder.BIG_ENDIAN);
+    private static final VarHandle FLOAT = MethodHandles.byteArrayViewVarHandle(float[].class, ByteOrder.BIG_ENDIAN);
+    private static final VarHandle DOUBLE = MethodHandles.byteArrayViewVarHandle(double[].class, ByteOrder.BIG_ENDIAN);
+
+    static final ByteArrayAccess INSTANCE = new VarHandleBigEndianByteArrayAccess();
+
+    @Override
+    public int getInt16(byte[] buffer, int byteIndex) {
+        return (short) INT16.get(buffer, byteIndex);
+    }
+
+    @Override
+    public int getInt32(byte[] buffer, int byteIndex) {
+        return (int) INT32.get(buffer, byteIndex);
+    }
+
+    @Override
+    public long getInt64(byte[] buffer, int byteIndex) {
+        return (long) INT64.get(buffer, byteIndex);
+    }
+
+    @Override
+    public float getFloat(byte[] buffer, int byteIndex) {
+        return (float) FLOAT.get(buffer, byteIndex);
+    }
+
+    @Override
+    public double getDouble(byte[] buffer, int byteIndex) {
+        return (double) DOUBLE.get(buffer, byteIndex);
+    }
+
+    @Override
+    public void putInt16(byte[] buffer, int byteIndex, int value) {
+        INT16.set(buffer, byteIndex, (short) value);
+    }
+
+    @Override
+    public void putInt32(byte[] buffer, int byteIndex, int value) {
+        INT32.set(buffer, byteIndex, value);
+    }
+
+    @Override
+    public void putInt64(byte[] buffer, int byteIndex, long value) {
+        INT64.set(buffer, byteIndex, value);
+    }
+
+    @Override
+    public void putFloat(byte[] buffer, int byteIndex, float value) {
+        FLOAT.set(buffer, byteIndex, value);
+    }
+
+    @Override
+    public void putDouble(byte[] buffer, int byteIndex, double value) {
+        DOUBLE.set(buffer, byteIndex, value);
     }
 }
