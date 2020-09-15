@@ -3560,7 +3560,7 @@ public final class GraalJSAccess {
         currentMessagePortData = null;
     }
 
-    public void setCurrentMessagePortData(DynamicObject nativeMessagePortData) {
+    public void setCurrentMessagePortData(JSExternalObject nativeMessagePortData) {
         assert nativeMessagePortData != null;
         assert currentMessagePortData == null;
         currentMessagePortData = SharedMemMessagingManager.getJavaMessagePortDataFor(nativeMessagePortData);
