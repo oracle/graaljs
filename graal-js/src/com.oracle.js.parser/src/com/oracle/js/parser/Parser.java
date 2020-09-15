@@ -1384,7 +1384,7 @@ public class Parser extends AbstractParser {
                 return;
             case LET:
                 if (useBlockScope()) {
-                    TokenType lookahead = lookaheadOfLetDeclaration(false);
+                    TokenType lookahead = lookaheadOfLetDeclaration();
                     if (lookahead != null) { // lookahead is let declaration
                         if (singleStatement) {
                             // ExpressionStatement should not have "let [" in its lookahead.
@@ -2699,7 +2699,7 @@ public class Parser extends AbstractParser {
                 case SEMICOLON:
                     break;
                 default:
-                    if (useBlockScope() && (type == LET && lookaheadIsLetDeclaration(true) || type == CONST)) {
+                    if (useBlockScope() && (type == LET && lookaheadIsLetDeclaration() || type == CONST)) {
                         // LET/CONST declaration captured in container block created above.
                         varType = type;
                         varDeclList = variableDeclarationList(varType, false, forStart);
@@ -2865,11 +2865,11 @@ public class Parser extends AbstractParser {
         }
     }
 
-    private boolean lookaheadIsLetDeclaration(boolean ofContextualKeyword) {
-        return lookaheadOfLetDeclaration(ofContextualKeyword) != null;
+    private boolean lookaheadIsLetDeclaration() {
+        return lookaheadOfLetDeclaration() != null;
     }
 
-    private TokenType lookaheadOfLetDeclaration(boolean ofContextualKeyword) {
+    private TokenType lookaheadOfLetDeclaration() {
         assert type == LET;
         for (int i = 1;; i++) {
             TokenType t = T(k + i);
@@ -2878,10 +2878,6 @@ public class Parser extends AbstractParser {
                 case COMMENT:
                     continue;
                 case OF:
-                    if (ofContextualKeyword && ES6_FOR_OF) {
-                        return null;
-                    }
-                    // fall through
                 case IDENT:
                 case LBRACKET:
                 case LBRACE:
