@@ -12,6 +12,7 @@ const {
   RegExp,
   SafeMap,
   SafeSet,
+  String,
   StringPrototypeEndsWith,
   StringPrototypeIncludes,
   StringPrototypeIndexOf,
@@ -25,10 +26,6 @@ const assert = require('internal/assert');
 const internalFS = require('internal/fs/utils');
 const { NativeModule } = require('internal/bootstrap/loaders');
 const {
-  closeSync,
-  fstatSync,
-  openSync,
-  readFileSync,
   realpathSync,
   statSync,
   Stats,
@@ -48,9 +45,11 @@ const {
   ERR_INVALID_PACKAGE_TARGET,
   ERR_MODULE_NOT_FOUND,
   ERR_PACKAGE_PATH_NOT_EXPORTED,
+  ERR_UNSUPPORTED_DIR_IMPORT,
   ERR_UNSUPPORTED_ESM_URL_SCHEME,
 } = require('internal/errors').codes;
 
+const packageJsonReader = require('internal/modules/package_json_reader');
 const DEFAULT_CONDITIONS = ObjectFreeze(['node', 'import']);
 const DEFAULT_CONDITIONS_SET = new SafeSet(DEFAULT_CONDITIONS);
 
@@ -76,37 +75,25 @@ function tryStatSync(path) {
   }
 }
 
-function readIfFile(path) {
-  let fd;
-  try {
-    fd = openSync(path, 'r');
-  } catch {
-    return undefined;
-  }
-  try {
-    if (!fstatSync(fd).isFile()) return undefined;
-    return readFileSync(fd, 'utf8');
-  } finally {
-    closeSync(fd);
-  }
+/**
+ *
+ * '/foo/package.json' -> '/foo'
+ */
+function removePackageJsonFromPath(path) {
+  return StringPrototypeSlice(path, 0, path.length - 13);
 }
 
-function getPackageConfig(path, base) {
+function getPackageConfig(path) {
   const existing = packageJSONCache.get(path);
   if (existing !== undefined) {
-    if (!existing.isValid) {
-      throw new ERR_INVALID_PACKAGE_CONFIG(path, fileURLToPath(base), false);
-    }
     return existing;
   }
-
-  const source = readIfFile(path);
+  const source = packageJsonReader.read(path).string;
   if (source === undefined) {
     const packageConfig = {
       exists: false,
       main: undefined,
       name: undefined,
-      isValid: true,
       type: 'none',
       exports: undefined
     };
@@ -117,17 +104,9 @@ function getPackageConfig(path, base) {
   let packageJSON;
   try {
     packageJSON = JSONParse(source);
-  } catch {
-    const packageConfig = {
-      exists: true,
-      main: undefined,
-      name: undefined,
-      isValid: false,
-      type: 'none',
-      exports: undefined
-    };
-    packageJSONCache.set(path, packageConfig);
-    return packageConfig;
+  } catch (error) {
+    const errorPath = removePackageJsonFromPath(path);
+    throw new ERR_INVALID_PACKAGE_CONFIG(errorPath, error.message, true);
   }
 
   let { main, name, type } = packageJSON;
@@ -141,7 +120,6 @@ function getPackageConfig(path, base) {
     exists: true,
     main,
     name,
-    isValid: true,
     type,
     exports
   };
@@ -169,7 +147,6 @@ function getPackageScopeConfig(resolved, base) {
     exists: false,
     main: undefined,
     name: undefined,
-    isValid: true,
     type: 'none',
     exports: undefined
   };
@@ -270,10 +247,15 @@ function finalizeResolution(resolved, base) {
       resolved.pathname, fileURLToPath(base), 'module');
   }
 
-  if (StringPrototypeEndsWith(resolved.pathname, '/')) return resolved;
   const path = fileURLToPath(resolved);
+  const stats = tryStatSync(path);
 
-  if (!tryStatSync(path).isFile()) {
+  if (stats.isDirectory()) {
+    const err = new ERR_UNSUPPORTED_DIR_IMPORT(
+      path || resolved.pathname, fileURLToPath(base));
+    err.url = String(resolved);
+    throw err;
+  } else if (!stats.isFile()) {
     throw new ERR_MODULE_NOT_FOUND(
       path || resolved.pathname, fileURLToPath(base), 'module');
   }
@@ -448,10 +430,9 @@ function packageMainResolve(packageJSONUrl, packageConfig, base, conditions) {
       if (packageConfig.main !== undefined) {
         return finalizeResolution(
           new URL(packageConfig.main, packageJSONUrl), base);
-      } else {
-        return finalizeResolution(
-          new URL('index', packageJSONUrl), base);
       }
+      return finalizeResolution(
+        new URL('index', packageJSONUrl), base);
     }
     return legacyMainResolve(packageJSONUrl, packageConfig);
   }
@@ -571,10 +552,9 @@ function packageResolve(specifier, base, conditions) {
       } else if (packageSubpath === '') {
         return packageMainResolve(packageJSONUrl, packageConfig, base,
                                   conditions);
-      } else {
-        return packageExportsResolve(
-          packageJSONUrl, packageSubpath, packageConfig, base, conditions);
       }
+      return packageExportsResolve(
+        packageJSONUrl, packageSubpath, packageConfig, base, conditions);
     }
   }
 
@@ -583,8 +563,7 @@ function packageResolve(specifier, base, conditions) {
   let packageJSONPath = fileURLToPath(packageJSONUrl);
   let lastPath;
   do {
-    const stat = tryStatSync(
-      StringPrototypeSlice(packageJSONPath, 0, packageJSONPath.length - 13));
+    const stat = tryStatSync(removePackageJsonFromPath(packageJSONPath));
     if (!stat.isDirectory()) {
       lastPath = packageJSONPath;
       packageJSONUrl = new URL((isScoped ?
@@ -604,10 +583,9 @@ function packageResolve(specifier, base, conditions) {
     } else if (packageConfig.exports !== undefined) {
       return packageExportsResolve(
         packageJSONUrl, packageSubpath, packageConfig, base, conditions);
-    } else {
-      return finalizeResolution(
-        new URL(packageSubpath, packageJSONUrl), base);
     }
+    return finalizeResolution(
+      new URL(packageSubpath, packageJSONUrl), base);
     // Cross-platform root check.
   } while (packageJSONPath.length !== lastPath.length);
 
@@ -749,7 +727,11 @@ function defaultResolve(specifier, context = {}, defaultResolveUnused) {
   } catch (error) {
     // Try to give the user a hint of what would have been the
     // resolved CommonJS module
-    if (error.code === 'ERR_MODULE_NOT_FOUND') {
+    if (error.code === 'ERR_MODULE_NOT_FOUND' ||
+        error.code === 'ERR_UNSUPPORTED_DIR_IMPORT') {
+      if (StringPrototypeStartsWith(specifier, 'file://')) {
+        specifier = fileURLToPath(specifier);
+      }
       const found = resolveAsCommonJS(specifier, parentURL);
       if (found) {
         // Modify the stack and message string to include the hint

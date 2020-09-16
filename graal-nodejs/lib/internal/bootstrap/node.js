@@ -7,7 +7,7 @@
 // This file is expected not to perform any asynchronous operations itself
 // when being executed - those should be done in either
 // `lib/internal/bootstrap/pre_execution.js` or in main scripts. The majority
-// of the code here focus on setting up the global proxy and the process
+// of the code here focuses on setting up the global proxy and the process
 // object in a synchronous manner.
 // As special caution is given to the performance of the startup process,
 // many dependencies are invoked lazily.
@@ -34,7 +34,7 @@
 
 // This file is compiled as if it's wrapped in a function with arguments
 // passed by node::RunBootstrapping()
-/* global process, require, internalBinding */
+/* global process, require, internalBinding, primordials */
 
 setupPrepareStackTrace();
 

@@ -1,4 +1,4 @@
-# Internationalization Support
+# Internationalization support
 
 <!--introduced_in=v8.2.0-->
 <!-- type=misc -->
@@ -119,13 +119,13 @@ through either:
 
 * The [`NODE_ICU_DATA`][] environment variable:
 
-  ```shell
+  ```bash
   env NODE_ICU_DATA=/some/directory node
   ```
 
 * The [`--icu-data-dir`][] CLI parameter:
 
-  ```shell
+  ```bash
   node --icu-data-dir=/some/directory
   ```
 

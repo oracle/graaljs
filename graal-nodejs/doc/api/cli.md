@@ -1,4 +1,4 @@
-# Command Line Options
+# Command line options
 
 <!--introduced_in=v5.9.1-->
 <!--type=misc-->
@@ -160,7 +160,7 @@ added: v12.12.0
 
 > Stability: 1 - Experimental
 
-Enable experimental Source Map V3 support for stack traces.
+Enable experimental Source Map v3 support for stack traces.
 
 Currently, overriding `Error.prepareStackTrace` is ignored when the
 `--enable-source-maps` flag is set.
@@ -240,6 +240,13 @@ Enable experimental WebAssembly System Interface (WASI) support.
 <!-- YAML
 added: v12.3.0
 -->
+
+### `--force-context-aware`
+<!-- YAML
+added: v12.12.0
+-->
+
+Disable loading native addons that are not [context-aware][].
 
 Enable experimental WebAssembly module support.
 
@@ -494,13 +501,6 @@ added: v6.0.0
 -->
 
 Silence all process warnings (including deprecations).
-
-### `--force-context-aware`
-<!-- YAML
-added: v12.12.0
--->
-
-Disable loading native addons that are not [context-aware][].
 
 ### `--openssl-config=file`
 <!-- YAML
@@ -1051,7 +1051,7 @@ added: v0.1.3
 
 Print node's version.
 
-## Environment Variables
+## Environment variables
 
 ### `NODE_DEBUG=module[,…]`
 <!-- YAML
@@ -1317,7 +1317,7 @@ easier to instrument applications that call the `child_process.spawn()` family
 of functions. `NODE_V8_COVERAGE` can be set to an empty string, to prevent
 propagation.
 
-#### Coverage Output
+#### Coverage output
 
 Coverage is output as an array of [ScriptCoverage][] objects on the top-level
 key `result`:
@@ -1334,16 +1334,16 @@ key `result`:
 }
 ```
 
-#### Source Map Cache
+#### Source map cache
 
 > Stability: 1 - Experimental
 
-If found, Source Map data is appended to the top-level key `source-map-cache`
+If found, source map data is appended to the top-level key `source-map-cache`
 on the JSON coverage object.
 
 `source-map-cache` is an object with keys representing the files source maps
 were extracted from, and values which include the raw source-map URL
-(in the key `url`), the parsed Source Map V3 information (in the key `data`),
+(in the key `url`), the parsed Source Map v3 information (in the key `data`),
 and the line lengths of the source file (in the key `lineLengths`).
 
 ```json
@@ -1452,7 +1452,7 @@ options are of interest only to V8 developers. Despite this, there is a small
 set of V8 options that are widely applicable to Node.js, and they are
 documented here:
 
-### `--max-old-space-size=SIZE` (in Mbytes)
+### `--max-old-space-size=SIZE` (in megabytes)
 
 Sets the max memory size of V8's old memory section. As memory
 consumption approaches the limit, V8 will spend more time on

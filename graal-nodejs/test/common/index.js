@@ -27,7 +27,7 @@ const process = global.process;  // Some tests tamper with the process global.
 const assert = require('assert');
 const { exec, execSync, spawnSync } = require('child_process');
 const fs = require('fs');
-// Do not require 'os' until needed so that test-os-checked-fucnction can
+// Do not require 'os' until needed so that test-os-checked-function can
 // monkey patch it. If 'os' is required here, that test will fail.
 const path = require('path');
 const util = require('util');
@@ -111,6 +111,8 @@ const isFreeBSD = process.platform === 'freebsd';
 const isOpenBSD = process.platform === 'openbsd';
 const isLinux = process.platform === 'linux';
 const isOSX = process.platform === 'darwin';
+
+const isDumbTerminal = process.env.TERM === 'dumb';
 
 const rootDir = isWindows ? 'c:\\' : '/';
 
@@ -307,10 +309,9 @@ function runCallChecks(exitCode) {
     if ('minimum' in context) {
       context.messageSegment = `at least ${context.minimum}`;
       return context.actual < context.minimum;
-    } else {
-      context.messageSegment = `exactly ${context.exact}`;
-      return context.actual !== context.exact;
     }
+    context.messageSegment = `exactly ${context.exact}`;
+    return context.actual !== context.exact;
   });
 
   failed.forEach(function(context) {
@@ -416,9 +417,12 @@ function getCallSite(top) {
 
 function mustNotCall(msg) {
   const callSite = getCallSite(mustNotCall);
-  return function mustNotCall() {
+  return function mustNotCall(...args) {
+    const argsInfo = args.length > 0 ?
+      `\ncalled with arguments: ${args.map(util.inspect).join(', ')}` : '';
     assert.fail(
-      `${msg || 'function should not have been called'} at ${callSite}`);
+      `${msg || 'function should not have been called'} at ${callSite}` +
+      argsInfo);
   };
 }
 
@@ -463,9 +467,8 @@ function nodeProcessAborted(exitCode, signal) {
   // the expected exit codes or signals.
   if (signal !== null) {
     return expectedSignals.includes(signal);
-  } else {
-    return expectedExitCodes.includes(exitCode);
   }
+  return expectedExitCodes.includes(exitCode);
 }
 
 function isAlive(pid) {
@@ -666,6 +669,12 @@ function invalidArgTypeHelper(input) {
   return ` Received type ${typeof input} (${inspected})`;
 }
 
+function skipIfDumbTerminal() {
+  if (isDumbTerminal) {
+    skip('skipping - dumb terminal');
+  }
+}
+
 const common = {
   allowGlobals,
   buildType,
@@ -686,6 +695,7 @@ const common = {
   invalidArgTypeHelper,
   isAIX,
   isAlive,
+  isDumbTerminal,
   isFreeBSD,
   isLinux,
   isMainThread,
@@ -706,6 +716,7 @@ const common = {
   runWithInvalidFD,
   skip,
   skipIf32Bits,
+  skipIfDumbTerminal,
   skipIfEslintMissing,
   skipIfInspectorDisabled,
   skipIfWorker,

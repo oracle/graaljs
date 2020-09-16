@@ -614,9 +614,11 @@ function Zlib(opts, mode) {
          mode === UNZIP)) {
       windowBits = 0;
     } else {
+      // `{ windowBits: 8 }` is valid for deflate but not gzip.
+      const min = Z_MIN_WINDOWBITS + (mode === GZIP ? 1 : 0);
       windowBits = checkRangesOrGetDefault(
         opts.windowBits, 'options.windowBits',
-        Z_MIN_WINDOWBITS, Z_MAX_WINDOWBITS, Z_DEFAULT_WINDOWBITS);
+        min, Z_MAX_WINDOWBITS, Z_DEFAULT_WINDOWBITS);
     }
 
     level = checkRangesOrGetDefault(
@@ -761,15 +763,14 @@ function createConvenienceMethod(ctor, sync) {
     return function syncBufferWrapper(buffer, opts) {
       return zlibBufferSync(new ctor(opts), buffer);
     };
-  } else {
-    return function asyncBufferWrapper(buffer, opts, callback) {
-      if (typeof opts === 'function') {
-        callback = opts;
-        opts = {};
-      }
-      return zlibBuffer(new ctor(opts), buffer, callback);
-    };
   }
+  return function asyncBufferWrapper(buffer, opts, callback) {
+    if (typeof opts === 'function') {
+      callback = opts;
+      opts = {};
+    }
+    return zlibBuffer(new ctor(opts), buffer, callback);
+  };
 }
 
 const kMaxBrotliParam = MathMax(...ObjectKeys(constants).map((key) => {

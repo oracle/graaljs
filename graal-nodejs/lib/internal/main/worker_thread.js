@@ -101,6 +101,7 @@ if (process.env.NODE_CHANNEL_FD) {
 
 port.on('message', (message) => {
   if (message.type === LOAD_SCRIPT) {
+    port.unref();
     const {
       argv,
       cwdCounter,
@@ -149,7 +150,6 @@ port.on('message', (message) => {
 
     debug(`[${threadId}] starts worker script ${filename} ` +
           `(eval = ${eval}) at cwd = ${process.cwd()}`);
-    port.unref();
     port.postMessage({ type: UP_AND_RUNNING });
     if (doEval) {
       const { evalScript } = require('internal/process/execution');
@@ -171,8 +171,9 @@ port.on('message', (message) => {
       CJSLoader.Module.runMain(filename);
     }
   } else if (message.type === STDIO_PAYLOAD) {
-    const { stream, chunk, encoding } = message;
-    process[stream].push(chunk, encoding);
+    const { stream, chunks } = message;
+    for (const { chunk, encoding } of chunks)
+      process[stream].push(chunk, encoding);
   } else {
     assert(
       message.type === STDIO_WANTS_MORE_DATA,

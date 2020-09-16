@@ -1,10 +1,15 @@
 'use strict';
 
 const {
+  ArrayPrototypeJoin,
   ObjectSetPrototypeOf,
   PromiseAll,
   SafeSet,
   SafePromise,
+  StringPrototypeIncludes,
+  StringPrototypeMatch,
+  StringPrototypeReplace,
+  StringPrototypeSplit,
 } = primordials;
 
 const { ModuleWrap } = internalBinding('module_wrap');
@@ -93,6 +98,30 @@ class ModuleJob {
       }
     } catch (e) {
       decorateErrorStack(e);
+      if (StringPrototypeIncludes(e.message,
+                                  ' does not provide an export named')) {
+        const splitStack = StringPrototypeSplit(e.stack, '\n');
+        const parentFileUrl = splitStack[0];
+        const childSpecifier = StringPrototypeMatch(e.message, /module '(.*)' does/)[1];
+        const childFileURL =
+              await this.loader.resolve(childSpecifier, parentFileUrl);
+        const format = await this.loader.getFormat(childFileURL);
+        if (format === 'commonjs') {
+          const importStatement = splitStack[1];
+          const namedImports = StringPrototypeMatch(importStatement, /{.*}/)[0];
+          const destructuringAssignment = StringPrototypeReplace(namedImports, /\s+as\s+/g, ': ');
+          e.message = `The requested module '${childSpecifier}' is expected ` +
+            'to be of type CommonJS, which does not support named exports. ' +
+            'CommonJS modules can be imported by importing the default ' +
+            'export.\n' +
+            'For example:\n' +
+            `import pkg from '${childSpecifier}';\n` +
+            `const ${destructuringAssignment} = pkg;`;
+          const newStack = StringPrototypeSplit(e.stack, '\n');
+          newStack[3] = `SyntaxError: ${e.message}`;
+          e.stack = ArrayPrototypeJoin(newStack, '\n');
+        }
+      }
       throw e;
     }
     for (const dependencyJob of jobsInGraph) {
