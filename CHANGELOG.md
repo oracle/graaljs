@@ -3,6 +3,9 @@
 This changelog summarizes major changes between GraalVM versions of the GraalVM JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 
+## Version 20.3.0
+* Updated Node.js to version 12.18.4.
+
 ## Version 20.2.0
 * Implemented the [Intl.NumberFormat Unified API](https://github.com/tc39/proposal-unified-intl-numberformat) proposal.
 * Implemented the [Logical Assignment Operators](https://github.com/tc39/proposal-logical-assignment) proposal.
