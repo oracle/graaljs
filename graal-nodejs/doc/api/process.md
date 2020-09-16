@@ -12,7 +12,7 @@ accessed using `require()`:
 const process = require('process');
 ```
 
-## Process Events
+## Process events
 
 The `process` object is an instance of [`EventEmitter`][].
 
@@ -122,7 +122,7 @@ not be the same as what is originally sent.
 If the `serialization` option was set to `advanced` used when spawning the
 process, the `message` argument can contain data that JSON is not able
 to represent.
-See [Advanced Serialization for `child_process`][] for more details.
+See [Advanced serialization for `child_process`][] for more details.
 
 ### Event: `'multipleResolves'`
 <!-- YAML
@@ -231,8 +231,9 @@ changes:
 
 * `err` {Error} The uncaught exception.
 * `origin` {string} Indicates if the exception originates from an unhandled
-  rejection or from synchronous errors. Can either be `'uncaughtException'` or
-  `'unhandledRejection'`.
+  rejection or from an synchronous error. Can either be `'uncaughtException'` or
+  `'unhandledRejection'`. The latter is only used in conjunction with the
+  [`--unhandled-rejections`][] flag set to `strict` and an unhandled rejection.
 
 The `'uncaughtException'` event is emitted when an uncaught JavaScript
 exception bubbles all the way back to the event loop. By default, Node.js
@@ -452,7 +453,7 @@ The `*-deprecation` command line flags only affect warnings that use the name
 See the [`process.emitWarning()`][process_emit_warning] method for issuing
 custom or application-specific warnings.
 
-### Signal Events
+### Signal events
 
 <!--type=event-->
 <!--name=SIGINT, SIGHUP, etc.-->
@@ -553,7 +554,7 @@ environment variable.
 
 `process.allowedNodeEnvironmentFlags` extends `Set`, but overrides
 `Set.prototype.has` to recognize several different possible flag
-representations.  `process.allowedNodeEnvironmentFlags.has()` will
+representations. `process.allowedNodeEnvironmentFlags.has()` will
 return `true` in the following cases:
 
 * Flags may omit leading single (`-`) or double (`--`) dashes; e.g.,
@@ -2485,7 +2486,7 @@ Will generate an object similar to:
   unicode: '11.0' }
 ```
 
-## Exit Codes
+## Exit codes
 
 Node.js will normally exit with a `0` status code when no more async
 operations are pending. The following status codes are used in other
@@ -2535,6 +2536,7 @@ cases:
 [`'exit'`]: #process_event_exit
 [`'message'`]: child_process.html#child_process_event_message
 [`'uncaughtException'`]: #process_event_uncaughtexception
+[`--unhandled-rejections`]: cli.html#cli_unhandled_rejections_mode
 [`Buffer`]: buffer.html
 [`ChildProcess.disconnect()`]: child_process.html#child_process_subprocess_disconnect
 [`ChildProcess.send()`]: child_process.html#child_process_subprocess_send_message_sendhandle_options_callback
@@ -2565,7 +2567,7 @@ cases:
 [`require.resolve()`]: modules.html#modules_require_resolve_request_options
 [`subprocess.kill()`]: child_process.html#child_process_subprocess_kill_signal
 [`v8.setFlagsFromString()`]: v8.html#v8_v8_setflagsfromstring_flags
-[Advanced Serialization for `child_process`]: child_process.html#child_process_advanced_serialization
+[Advanced serialization for `child_process`]: child_process.html#child_process_advanced_serialization
 [Android building]: https://github.com/nodejs/node/blob/master/BUILDING.md#androidandroid-based-devices-eg-firefox-os
 [Child Process]: child_process.html
 [Cluster]: cluster.html

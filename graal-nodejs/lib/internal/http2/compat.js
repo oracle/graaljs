@@ -287,6 +287,9 @@ class Http2ServerRequest extends Readable {
       closed: false,
       didRead: false,
     };
+    // Headers in HTTP/1 are not initialized using Object.create(null) which,
+    // although preferable, would simply break too much code. Ergo header
+    // initialization using Object.create(null) in HTTP/2 is intentional.
     this[kHeaders] = headers;
     this[kRawHeaders] = rawHeaders;
     this[kTrailers] = {};
@@ -516,6 +519,18 @@ class Http2ServerResponse extends Stream {
     return this[kStream].writableCorked;
   }
 
+  get writableHighWaterMark() {
+    return this[kStream].writableHighWaterMark;
+  }
+
+  get writableFinished() {
+    return this[kStream].writableFinished;
+  }
+
+  get writableLength() {
+    return this[kStream].writableLength;
+  }
+
   set statusCode(code) {
     code |= 0;
     if (code >= 100 && code < 200)
@@ -552,7 +567,8 @@ class Http2ServerResponse extends Stream {
   }
 
   getHeaders() {
-    return { ...this[kHeaders] };
+    const headers = ObjectCreate(null);
+    return ObjectAssign(headers, this[kHeaders]);
   }
 
   hasHeader(name) {
@@ -682,17 +698,20 @@ class Http2ServerResponse extends Stream {
     const stream = this[kStream];
     const state = this[kState];
 
-    if ((state.closed || state.ending) &&
-        state.headRequest === stream.headRequest) {
-      return this;
-    }
-
     if (typeof chunk === 'function') {
       cb = chunk;
       chunk = null;
     } else if (typeof encoding === 'function') {
       cb = encoding;
       encoding = 'utf8';
+    }
+
+    if ((state.closed || state.ending) &&
+        state.headRequest === stream.headRequest) {
+      if (typeof cb === 'function') {
+        process.nextTick(cb);
+      }
+      return this;
     }
 
     if (chunk !== null && chunk !== undefined)

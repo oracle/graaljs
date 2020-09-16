@@ -40,13 +40,13 @@ runtime features.
 
 Coding guidelines are based on the following guides (highest priority first):
 
-1. This document
-2. The [Google C++ Style Guide][]
-3. The ISO [C++ Core Guidelines][]
+1. This document.
+2. The [Google C++ Style Guide][].
+3. The ISO [C++ Core Guidelines][].
 
-In general code should follow the C++ Core Guidelines, unless overridden by the
+In general, code should follow the C++ Core Guidelines, unless overridden by the
 Google C++ Style Guide or this document. At the moment these guidelines are
-checked manually by reviewers, with the goal to validate this with automatic
+checked manually by reviewers with the goal to validate this with automatic
 tools.
 
 ## Formatting
@@ -67,7 +67,7 @@ Comments should also start with uppercase and finish with a dot.
 
 Examples:
 
-```c++
+```cpp
 // A single-line comment.
 
 // Multi-line comments
@@ -82,14 +82,14 @@ comments.
 
 ### 2 spaces of indentation for blocks or bodies of conditionals
 
-```c++
+```cpp
 if (foo)
   bar();
 ```
 
 or
 
-```c++
+```cpp
 if (foo) {
   bar();
   baz();
@@ -102,7 +102,7 @@ Braces are optional if the statement body only has one line.
 
 ### 4 spaces of indentation for statement continuations
 
-```c++
+```cpp
 VeryLongTypeName very_long_result = SomeValueWithAVeryLongName +
     SomeOtherValueWithAVeryLongName;
 ```
@@ -111,7 +111,7 @@ Operators are before the line break in these cases.
 
 ### Align function arguments vertically
 
-```c++
+```cpp
 void FunctionWithAVeryLongName(int parameter_with_a_very_long_name,
                                double other_parameter_with_a_very_long_name,
                                ...);
@@ -119,7 +119,7 @@ void FunctionWithAVeryLongName(int parameter_with_a_very_long_name,
 
 If that doesn’t work, break after the `(` and use 4 spaces of indentation:
 
-```c++
+```cpp
 void FunctionWithAReallyReallyReallyLongNameSeriouslyStopIt(
     int okay_there_is_no_space_left_in_the_previous_line,
     ...);
@@ -129,7 +129,7 @@ void FunctionWithAReallyReallyReallyLongNameSeriouslyStopIt(
 
 Long initialization lists are formatted like this:
 
-```c++
+```cpp
 HandleWrap::HandleWrap(Environment* env,
                        Local<Object> object,
                        uv_handle_t* handle,
@@ -144,7 +144,7 @@ HandleWrap::HandleWrap(Environment* env,
 Exceptions are simple getters/setters, which are named `property_name()` and
 `set_property_name()`, respectively.
 
-```c++
+```cpp
 class FooBar {
  public:
   void DoSomething();
@@ -157,7 +157,7 @@ class FooBar {
 
 ### `snake_case` for local variables and parameters
 
-```c++
+```cpp
 int FunctionThatDoesSomething(const char* important_string) {
   const char* pointer_into_string = important_string;
 }
@@ -165,7 +165,7 @@ int FunctionThatDoesSomething(const char* important_string) {
 
 ### `snake_case_` for private class fields
 
-```c++
+```cpp
 class Foo {
  private:
   int counter_ = 0;
@@ -176,7 +176,7 @@ class Foo {
 
 For plain C-like structs snake_case can be used.
 
-```c++
+```cpp
 struct foo_bar {
   int name;
 }
@@ -184,7 +184,7 @@ struct foo_bar {
 
 ### Space after `template`
 
-```c++
+```cpp
 template <typename T>
 class FancyContainer {
  ...
@@ -232,7 +232,7 @@ Using non-const references often obscures which values are changed by an
 assignment. Consider using a pointer instead, which requires more explicit
 syntax to indicate that modifications take place.
 
-```c++
+```cpp
 class ExampleClass {
  public:
   explicit ExampleClass(OtherClass* other_ptr) : pointer_to_other_(other_ptr) {}
@@ -269,7 +269,7 @@ When working with typed arrays that involve direct data modification
 from C++, use an `AliasedBuffer` when possible. The API abstraction and
 the usage scope of `AliasedBuffer` are documented in [aliased_buffer.h][].
 
-```c++
+```cpp
 // Create an AliasedBuffer.
 AliasedBuffer<uint32_t, v8::Uint32Array> data;
 ...
@@ -282,11 +282,11 @@ data[0] = 12345;
 
 ### Type casting
 
-* Use `static_cast<T>` if casting is required, and it is valid
-* Use `reinterpret_cast` only when it is necessary
-* Avoid C-style casts (`(type)value`)
+* Use `static_cast<T>` if casting is required, and it is valid.
+* Use `reinterpret_cast` only when it is necessary.
+* Avoid C-style casts (`(type)value`).
 * `dynamic_cast` does not work because Node.js is built without
-  [Run Time Type Information][]
+  [Run Time Type Information][].
 
 Further reading:
 
@@ -313,13 +313,13 @@ for (const auto& item : some_map) {
 
 ### Do not include `*.h` if `*-inl.h` has already been included
 
-Do
+Do:
 
 ```cpp
 #include "util-inl.h"  // already includes util.h
 ```
 
-instead of
+Instead of:
 
 ```cpp
 #include "util.h"
@@ -383,9 +383,9 @@ exports.foo = function(str) {
 #### Avoid throwing JavaScript errors in nested C++ methods
 
 When you need to throw a JavaScript exception from C++ (i.e.
-`isolate()->ThrowException()`) prefer to do it as close to the return to JS as
-possible, and not inside of nested C++ calls. Since this changes the JS
-execution state doing it closest to where it is consumed reduces the chances of
+`isolate()->ThrowException()`), do it as close to the return to JavaScript as
+possible, and not inside of nested C++ calls. Since this changes the JavaScript
+execution state, doing it closest to where it is consumed reduces the chances of
 side effects.
 
 Node.js is built [without C++ exception handling][], so code using `throw` or

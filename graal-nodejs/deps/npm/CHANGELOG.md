@@ -1,3 +1,40 @@
+## 6.14.6 (2020-07-07)
+
+### BUG FIXES
+* [`a9857b8f6`](https://github.com/npm/cli/commit/a9857b8f6869451ff058789c4631fadfde5bbcbc) chore: remove auth info from logs ([@claudiahdz](https://github.com/claudiahdz))
+* [`b7ad77598`](https://github.com/npm/cli/commit/b7ad77598112908d60195d0fbc472b3c84275fd5) [#1416](https://github.com/npm/cli/pull/1416) fix: wrong `npm doctor` command result ([@vanishcode](https://github.com/vanishcode))
+
+### DEPENDENCIES
+* [`94eca6377`](https://github.com/npm/cli/commit/94eca637756376b949edfb697e179a1fdcc231ee) `npm-registry-fetch@4.0.5` ([@claudiahdz](https://github.com/claudiahdz))
+* [`c49b6ae28`](https://github.com/npm/cli/commit/c49b6ae28791ff7184288be16654f97168aa9705) [#1418](https://github.com/npm/cli/pull/1418) `spdx-license-ids@3.0.5` ([@kemitchell](https://github.com/kemitchell))
+
+### DOCUMENTATION
+* [`2e052984b`](https://github.com/npm/cli/commit/2e052984b08c09115ed75387fb2c961631d85d77)
+  [#1459](https://github.com/npm/cli/pull/1459)
+  chore(docs): fixed links to cli commands ([@claudiahdz](https://github.com/claudiahdz))
+* [`0ca3509ca`](https://github.com/npm/cli/commit/0ca3509ca940865392daeeabb39192f7d5af9f5e)
+  [#1283](https://github.com/npm/cli/pull/1283) Update npm-link.md ([@peterfich](https://github.com/peterfich))
+* [`3dd429e9a`](https://github.com/npm/cli/commit/3dd429e9aad760ce2ff9e522b34ebfebd85b460c)
+  [#1377](https://github.com/npm/cli/pull/1377)
+  Add note about dropped `*` filenames ([@maxwellgerber](https://github.com/maxwellgerber))
+* [`9a2e2e797`](https://github.com/npm/cli/commit/9a2e2e797e5c91e7f4f261583a1906e2c440cc2f)
+  [#1429](https://github.com/npm/cli/pull/1429) Fix typo ([@seanpoulter](https://github.com/seanpoulter))
+
+## 6.14.5 (2020-05-01)
+
+### BUG FIXES
+
+* [`33ec41f18`](https://github.com/npm/cli/commit/33ec41f18f557146607cb14a7a38c707fce6d42c) [#758](https://github.com/npm/cli/pull/758) fix: relativize file links when inflating shrinkwrap ([@jsnajdr](https://github.com/jsnajdr))
+* [`94ed456df`](https://github.com/npm/cli/commit/94ed456dfb0b122fd4192429024f034d06c3c454) [#1162](https://github.com/npm/cli/pull/1162) fix: npm init help output ([@mum-never-proud](https://github.com/mum-never-proud))
+
+### DEPENDENCIES
+
+* [`5587ac01f`](https://github.com/npm/cli/commit/5587ac01ffd0d2ea830a6bbb67bb34a611ffc409) `npm-registry-fetch@4.0.4`
+  * [`fc5d94c39`](https://github.com/npm/npm-registry-fetch/commit/fc5d94c39ca218d78df77249ab3a6bf1d9ed9db1) fix: removed default timeout
+* [`07a4d8884`](https://github.com/npm/cli/commit/07a4d8884448359bac485a49c05fd2d23d06834b) `graceful-fs@4.2.4`
+* [`8228d1f2e`](https://github.com/npm/cli/commit/8228d1f2e427ad9adee617266108acd1ee39b4a5) `mkdirp@0.5.5`
+* [`e6d208317`](https://github.com/npm/cli/commit/e6d20831740a84aea766da2a2913cf82a4d56ada) `nopt@4.0.3`
+
 ## 6.14.4 (2020-03-24)
 
 ### DEPENDENCIES

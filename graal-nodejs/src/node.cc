@@ -113,10 +113,8 @@ using native_module::NativeModuleEnv;
 using v8::EscapableHandleScope;
 using v8::Function;
 using v8::FunctionCallbackInfo;
-using v8::HandleScope;
 using v8::Isolate;
 using v8::Local;
-using v8::Maybe;
 using v8::MaybeLocal;
 using v8::Object;
 using v8::String;
@@ -165,11 +163,11 @@ MaybeLocal<Value> ExecuteBootstrapper(Environment* env,
   MaybeLocal<Function> maybe_fn =
       NativeModuleEnv::LookupAndCompile(env->context(), id, parameters, env);
 
-  if (maybe_fn.IsEmpty()) {
+  Local<Function> fn;
+  if (!maybe_fn.ToLocal(&fn)) {
     return MaybeLocal<Value>();
   }
 
-  Local<Function> fn = maybe_fn.ToLocalChecked();
   MaybeLocal<Value> result = fn->Call(env->context(),
                                       Undefined(env->isolate()),
                                       arguments->size(),
@@ -636,7 +634,10 @@ void ResetStdio() {
         err = tcsetattr(fd, TCSANOW, &s.termios);
       while (err == -1 && errno == EINTR);  // NOLINT
       CHECK_EQ(0, pthread_sigmask(SIG_UNBLOCK, &sa, nullptr));
-      CHECK_EQ(0, err);
+
+      // Normally we expect err == 0. But if macOS App Sandbox is enabled,
+      // tcsetattr will fail with err == -1 and errno == EPERM.
+      CHECK_IMPLIES(err != 0, err == -1 && errno == EPERM);
     }
   }
 #endif  // __POSIX__

@@ -216,12 +216,11 @@ class WritableWorkerStdio extends Writable {
     this[kWritableCallbacks] = [];
   }
 
-  _write(chunk, encoding, cb) {
+  _writev(chunks, cb) {
     this[kPort].postMessage({
       type: messageTypes.STDIO_PAYLOAD,
       stream: this[kName],
-      chunk,
-      encoding
+      chunks: chunks.map(({ chunk, encoding }) => ({ chunk, encoding }))
     });
     this[kWritableCallbacks].push(cb);
     if (this[kPort][kWaitingStreams]++ === 0)
@@ -232,7 +231,7 @@ class WritableWorkerStdio extends Writable {
     this[kPort].postMessage({
       type: messageTypes.STDIO_PAYLOAD,
       stream: this[kName],
-      chunk: null
+      chunks: [ { chunk: null, encoding: '' } ]
     });
     cb();
   }

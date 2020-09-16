@@ -366,13 +366,6 @@ Environment::Environment(IsolateData* isolate_data,
   }
 
   destroy_async_id_list_.reserve(512);
-  BeforeExit(
-      [](void* arg) {
-        Environment* env = static_cast<Environment*>(arg);
-        if (!env->destroy_async_id_list()->empty())
-          AsyncWrap::DestroyAsyncIdsCallback(env);
-      },
-      this);
 
   performance_state_ =
       std::make_unique<performance::PerformanceState>(isolate());
@@ -535,30 +528,15 @@ void Environment::RegisterHandleCleanups() {
     });
   };
 
-  RegisterHandleCleanup(
-      reinterpret_cast<uv_handle_t*>(timer_handle()),
-      close_and_finish,
-      nullptr);
-  RegisterHandleCleanup(
-      reinterpret_cast<uv_handle_t*>(immediate_check_handle()),
-      close_and_finish,
-      nullptr);
-  RegisterHandleCleanup(
-      reinterpret_cast<uv_handle_t*>(immediate_idle_handle()),
-      close_and_finish,
-      nullptr);
-  RegisterHandleCleanup(
-      reinterpret_cast<uv_handle_t*>(&idle_prepare_handle_),
-      close_and_finish,
-      nullptr);
-  RegisterHandleCleanup(
-      reinterpret_cast<uv_handle_t*>(&idle_check_handle_),
-      close_and_finish,
-      nullptr);
-  RegisterHandleCleanup(
-      reinterpret_cast<uv_handle_t*>(&task_queues_async_),
-      close_and_finish,
-      nullptr);
+  auto register_handle = [&](uv_handle_t* handle) {
+    RegisterHandleCleanup(handle, close_and_finish, nullptr);
+  };
+  register_handle(reinterpret_cast<uv_handle_t*>(timer_handle()));
+  register_handle(reinterpret_cast<uv_handle_t*>(immediate_check_handle()));
+  register_handle(reinterpret_cast<uv_handle_t*>(immediate_idle_handle()));
+  register_handle(reinterpret_cast<uv_handle_t*>(&idle_prepare_handle_));
+  register_handle(reinterpret_cast<uv_handle_t*>(&idle_check_handle_));
+  register_handle(reinterpret_cast<uv_handle_t*>(&task_queues_async_));
 }
 
 void Environment::CleanupHandles() {
@@ -655,19 +633,6 @@ void Environment::RunCleanup() {
   }
 }
 
-void Environment::RunBeforeExitCallbacks() {
-  TraceEventScope trace_scope(TRACING_CATEGORY_NODE1(environment),
-                              "BeforeExit", this);
-  for (ExitCallback before_exit : before_exit_functions_) {
-    before_exit.cb_(before_exit.arg_);
-  }
-  before_exit_functions_.clear();
-}
-
-void Environment::BeforeExit(void (*cb)(void* arg), void* arg) {
-  before_exit_functions_.push_back(ExitCallback{cb, arg});
-}
-
 void Environment::RunAtExitCallbacks() {
   TraceEventScope trace_scope(TRACING_CATEGORY_NODE1(environment),
                               "AtExit", this);
@@ -690,7 +655,7 @@ void Environment::RunAndClearInterrupts() {
     }
     DebugSealHandleScope seal_handle_scope(isolate());
 
-    while (std::unique_ptr<NativeImmediateCallback> head = queue.Shift())
+    while (auto head = queue.Shift())
       head->Call(this);
   }
 }
@@ -704,20 +669,10 @@ void Environment::RunAndClearNativeImmediates(bool only_refed) {
   // exceptions, so we do not need to handle that.
   RunAndClearInterrupts();
 
-  // It is safe to check .size() first, because there is a causal relationship
-  // between pushes to the threadsafe and this function being called.
-  // For the common case, it's worth checking the size first before establishing
-  // a mutex lock.
-  if (native_immediates_threadsafe_.size() > 0) {
-    Mutex::ScopedLock lock(native_immediates_threadsafe_mutex_);
-    native_immediates_.ConcatMove(std::move(native_immediates_threadsafe_));
-  }
-
-  auto drain_list = [&]() {
+  auto drain_list = [&](NativeImmediateQueue* queue) {
     TryCatchScope try_catch(this);
     DebugSealHandleScope seal_handle_scope(isolate());
-    while (std::unique_ptr<NativeImmediateCallback> head =
-               native_immediates_.Shift()) {
+    while (auto head = queue->Shift()) {
       if (head->is_refed())
         ref_count++;
 
@@ -735,12 +690,26 @@ void Environment::RunAndClearNativeImmediates(bool only_refed) {
     }
     return false;
   };
-  while (drain_list()) {}
+  while (drain_list(&native_immediates_)) {}
 
   immediate_info()->ref_count_dec(ref_count);
 
   if (immediate_info()->ref_count() == 0)
     ToggleImmediateRef(false);
+
+  // It is safe to check .size() first, because there is a causal relationship
+  // between pushes to the threadsafe immediate list and this function being
+  // called. For the common case, it's worth checking the size first before
+  // establishing a mutex lock.
+  // This is intentionally placed after the `ref_count` handling, because when
+  // refed threadsafe immediates are created, they are not counted towards the
+  // count in immediate_info() either.
+  NativeImmediateQueue threadsafe_immediates;
+  if (native_immediates_threadsafe_.size() > 0) {
+    Mutex::ScopedLock lock(native_immediates_threadsafe_mutex_);
+    threadsafe_immediates.ConcatMove(std::move(native_immediates_threadsafe_));
+  }
+  while (drain_list(&threadsafe_immediates)) {}
 }
 
 void Environment::RequestInterruptFromV8() {
@@ -1017,33 +986,16 @@ Environment* Environment::worker_parent_env() const {
   return worker_context_->env();
 }
 
-void MemoryTracker::TrackField(const char* edge_name,
-                               const CleanupHookCallback& value,
-                               const char* node_name) {
-  HandleScope handle_scope(isolate_);
-  // Here, we utilize the fact that CleanupHookCallback instances
-  // are all unique and won't be tracked twice in one BuildEmbedderGraph
-  // callback.
-  MemoryRetainerNode* n =
-      PushNode("CleanupHookCallback", sizeof(value), edge_name);
-  // TODO(joyeecheung): at the moment only arguments of type BaseObject will be
-  // identified and tracked here (based on their deleters),
-  // but we may convert and track other known types here.
-  BaseObject* obj = value.GetBaseObject();
-  if (obj != nullptr && obj->IsDoneInitializing()) {
-    TrackField("arg", obj);
-  }
-  CHECK_EQ(CurrentNode(), n);
-  CHECK_NE(n->size_, 0);
-  PopNode();
-}
-
 void Environment::BuildEmbedderGraph(Isolate* isolate,
                                      EmbedderGraph* graph,
                                      void* data) {
   MemoryTracker tracker(isolate, graph);
   Environment* env = static_cast<Environment*>(data);
   tracker.Track(env);
+  env->ForEachBaseObject([&](BaseObject* obj) {
+    if (obj->IsDoneInitializing())
+      tracker.Track(obj);
+  });
 }
 
 inline size_t Environment::SelfSize() const {
@@ -1073,7 +1025,8 @@ void Environment::MemoryInfo(MemoryTracker* tracker) const {
   tracker->TrackField("fs_stats_field_array", fs_stats_field_array_);
   tracker->TrackField("fs_stats_field_bigint_array",
                       fs_stats_field_bigint_array_);
-  tracker->TrackField("cleanup_hooks", cleanup_hooks_);
+  tracker->TrackFieldWithSize(
+      "cleanup_hooks", cleanup_hooks_.size() * sizeof(CleanupHookCallback));
   tracker->TrackField("async_hooks", async_hooks_);
   tracker->TrackField("immediate_info", immediate_info_);
   tracker->TrackField("tick_info", tick_info_);
@@ -1165,6 +1118,10 @@ bool BaseObject::IsDoneInitializing() const { return true; }
 
 Local<Object> BaseObject::WrappedObject() const {
   return object();
+}
+
+bool BaseObject::IsRootNode() const {
+  return !persistent_handle_.IsWeak();
 }
 
 }  // namespace node

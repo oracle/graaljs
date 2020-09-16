@@ -246,9 +246,9 @@ class InternalCallbackScope {
 
 class DebugSealHandleScope {
  public:
-  explicit inline DebugSealHandleScope(v8::Isolate* isolate)
+  explicit inline DebugSealHandleScope(v8::Isolate* isolate = nullptr)
 #ifdef DEBUG
-    : actual_scope_(isolate)
+    : actual_scope_(isolate != nullptr ? isolate : v8::Isolate::GetCurrent())
 #endif
   {}
 
@@ -396,6 +396,10 @@ using HeapSnapshotPointer =
 BaseObjectPtr<AsyncWrap> CreateHeapSnapshotStream(
     Environment* env, HeapSnapshotPointer&& snapshot);
 }  // namespace heap
+
+namespace fs {
+std::string Basename(const std::string& str, const std::string& extension);
+}  // namespace fs
 
 }  // namespace node
 

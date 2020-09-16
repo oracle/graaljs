@@ -31,7 +31,7 @@ when loading modules.
 Once this has been set, all modules must conform to a policy manifest file
 passed to the flag:
 
-```sh
+```bash
 node --experimental-policy=policy.json app.js
 ```
 
@@ -43,13 +43,13 @@ the policy file itself may be provided via `--policy-integrity`.
 This allows running `node` and asserting the policy file contents
 even if the file is changed on disk.
 
-```sh
+```bash
 node --experimental-policy=policy.json --policy-integrity="sha384-SggXRQHwCG8g+DktYYzxkXRIkTiEYWBHqev0xnpCxYlqMBufKZHAHQM3/boDaI/0" app.js
 ```
 
 ## Features
 
-### Error Behavior
+### Error behavior
 
 When a policy check fails, Node.js by default will throw an error.
 It is possible to change the error behavior to one of a few possibilities
@@ -73,7 +73,7 @@ available to change the behavior:
 }
 ```
 
-### Integrity Checks
+### Integrity checks
 
 Policy files must use integrity checks with Subresource Integrity strings
 compatible with the browser
@@ -115,7 +115,7 @@ body for the resource which can be useful for local development. It is not
 recommended in production since it would allow unexpected alteration of
 resources to be considered valid.
 
-### Dependency Redirection
+### Dependency redirection
 
 An application may need to ship patched versions of modules or to prevent
 modules from allowing all modules access to all other modules. Redirection
@@ -164,7 +164,7 @@ module to load any specifier without redirection. This can be useful for local
 development and may have some valid usage in production, but should be used
 only with care after auditing a module to ensure its behavior is valid.
 
-#### Example: Patched Dependency
+#### Example: Patched dependency
 
 Redirected dependencies can provide attenuated or modified functionality as fits
 the application. For example, log data about timing of function durations by

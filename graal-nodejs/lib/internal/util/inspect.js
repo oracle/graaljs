@@ -12,6 +12,8 @@ const {
   DatePrototypeToString,
   ErrorPrototypeToString,
   Float32Array,
+  FunctionPrototypeToString,
+  Int16Array,
   JSONStringify,
   Map,
   MapPrototype,
@@ -169,6 +171,10 @@ const numberRegExp = /^(0|[1-9][0-9]*)$/;
 
 const coreModuleRegExp = /^    at (?:[^/\\(]+ \(|)((?<![/\\]).+)\.js:\d+:\d+\)?$/;
 const nodeModulesRegExp = /[/\\]node_modules[/\\](.+?)(?=[/\\])/g;
+
+const classRegExp = /^(\s+[^(]*?)\s*{/;
+// eslint-disable-next-line node-core/no-unescaped-regexp-dot
+const stripCommentsRegExp = /(\/\/.*?\n)|(\/\*(.|\n)*?\*\/)/g;
 
 const kMinLineLength = 16;
 
@@ -467,7 +473,8 @@ function stylizeWithColor(str, styleType) {
   const style = inspect.styles[styleType];
   if (style !== undefined) {
     const color = inspect.colors[style];
-    return `\u001b[${color[0]}m${str}\u001b[${color[1]}m`;
+    if (color !== undefined)
+      return `\u001b[${color[0]}m${str}\u001b[${color[1]}m`;
   }
   return str;
 }
@@ -1054,7 +1061,39 @@ function getBoxedBase(value, ctx, keys, constructor, tag) {
   return ctx.stylize(base, type.toLowerCase());
 }
 
+function getClassBase(value, constructor, tag) {
+  const hasName = ObjectPrototypeHasOwnProperty(value, 'name');
+  const name = (hasName && value.name) || '(anonymous)';
+  let base = `class ${name}`;
+  if (constructor !== 'Function' && constructor !== null) {
+    base += ` [${constructor}]`;
+  }
+  if (tag !== '' && constructor !== tag) {
+    base += ` [${tag}]`;
+  }
+  if (constructor !== null) {
+    const superName = ObjectGetPrototypeOf(value).name;
+    if (superName) {
+      base += ` extends ${superName}`;
+    }
+  } else {
+    base += ' extends [null prototype]';
+  }
+  return `[${base}]`;
+}
+
 function getFunctionBase(value, constructor, tag) {
+  const stringified = FunctionPrototypeToString(value);
+  if (stringified.slice(0, 5) === 'class' && stringified.endsWith('}')) {
+    const slice = stringified.slice(5, -1);
+    const bracketIndex = slice.indexOf('{');
+    if (bracketIndex !== -1 &&
+        (!slice.slice(0, bracketIndex).includes('(') ||
+          // Slow path to guarantee that it's indeed a class.
+          classRegExp.test(slice.replace(stripCommentsRegExp)))) {
+      return getClassBase(value, constructor, tag);
+    }
+  }
   let type = 'Function';
   if (isGeneratorFunction(value)) {
     type = `Generator${type}`;
@@ -2008,9 +2047,11 @@ if (internalBinding('config').hasIntl) {
 
   const isZeroWidthCodePoint = (code) => {
     return code <= 0x1F || // C0 control codes
-      (code > 0x7F && code <= 0x9F) || // C1 control codes
+      (code >= 0x7F && code <= 0x9F) || // C1 control codes
       (code >= 0x300 && code <= 0x36F) || // Combining Diacritical Marks
       (code >= 0x200B && code <= 0x200F) || // Modifying Invisible Characters
+      // Combining Diacritical Marks for Symbols
+      (code >= 0x20D0 && code <= 0x20FF) ||
       (code >= 0xFE00 && code <= 0xFE0F) || // Variation Selectors
       (code >= 0xFE20 && code <= 0xFE2F) || // Combining Half Marks
       (code >= 0xE0100 && code <= 0xE01EF); // Variation Selectors
