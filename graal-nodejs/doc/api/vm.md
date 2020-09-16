@@ -1,4 +1,4 @@
-# VM (Executing JavaScript)
+# VM (executing JavaScript)
 
 <!--introduced_in=v0.10.0-->
 
@@ -160,7 +160,6 @@ the value of another global variable, then execute the code multiple times.
 The globals are contained in the `context` object.
 
 ```js
-const util = require('util');
 const vm = require('vm');
 
 const context = {
@@ -235,7 +234,6 @@ the code multiple times in different contexts. The globals are set on and
 contained within each individual `context`.
 
 ```js
-const util = require('util');
 const vm = require('vm');
 
 const script = new vm.Script('globalVar = "set"');
@@ -320,7 +318,7 @@ linking, and evaluation. These three steps are illustrated in the following
 example.
 
 This implementation lies at a lower level than the [ECMAScript Module
-loader][]. There is also currently no way to interact with the Loader, though
+loader][]. There is also no way to interact with the Loader yet, though
 support is planned.
 
 ```js
@@ -791,7 +789,6 @@ properties but also having the built-in objects and functions any standard
 will remain unchanged.
 
 ```js
-const util = require('util');
 const vm = require('vm');
 
 global.globalVar = 3;
@@ -896,7 +893,6 @@ The following example compiles and executes different scripts using a single
 [contextified][] object:
 
 ```js
-const util = require('util');
 const vm = require('vm');
 
 const contextObject = { globalVar: 1 };
@@ -992,7 +988,6 @@ The following example compiles and executes code that increments a global
 variable and sets a new one. These globals are contained in the `contextObject`.
 
 ```js
-const util = require('util');
 const vm = require('vm');
 
 const contextObject = {
@@ -1086,7 +1081,7 @@ local scope, so the value `localVar` is changed. In this way
 `vm.runInThisContext()` is much like an [indirect `eval()` call][], e.g.
 `(0,eval)('code')`.
 
-## Example: Running an HTTP Server within a VM
+## Example: Running an HTTP server within a VM
 
 When using either [`script.runInThisContext()`][] or
 [`vm.runInThisContext()`][], the code is executed within the current V8 global
@@ -1136,7 +1131,7 @@ within which it can operate. The process of creating the V8 Context and
 associating it with the `contextObject` is what this document refers to as
 "contextifying" the object.
 
-## Timeout limitations when using `process.nextTick()`, Promises, and `queueMicrotask()`
+## Timeout limitations when using `process.nextTick()`, promises, and `queueMicrotask()`
 
 Because of the internal mechanics of how the `process.nextTick()` queue and
 the microtask queue that underlies Promises are implemented within V8 and

@@ -42,7 +42,7 @@ callbackFunction((err, ret) => {
 
 Will print:
 
-```txt
+```text
 hello world
 ```
 
@@ -93,7 +93,7 @@ debuglog('hello from foo [%d]', 123);
 If this program is run with `NODE_DEBUG=foo` in the environment, then
 it will output something like:
 
-```txt
+```console
 FOO 3245: hello from foo [123]
 ```
 
@@ -112,7 +112,7 @@ debuglog('hi there, it\'s foo-bar [%d]', 2333);
 if it is run with `NODE_DEBUG=foo*` in the environment, then it will output
 something like:
 
-```txt
+```console
 FOO-BAR 3257: hi there, it's foo-bar [2333]
 ```
 
@@ -243,8 +243,7 @@ corresponding argument. Supported specifiers are:
 * `%O`: `Object`. A string representation of an object with generic JavaScript
   object formatting. Similar to `util.inspect()` without options. This will show
   the full object not including non-enumerable properties and proxies.
-* `%c`: `CSS`. This specifier is currently ignored, and will skip any CSS
-  passed in.
+* `%c`: `CSS`. This specifier is ignored and will skip any CSS passed in.
 * `%%`: single percent sign (`'%'`). This does not consume an argument.
 * Returns: {string} The formatted string
 
@@ -752,7 +751,7 @@ ignored, if not supported.
 * `bgCyanBright`
 * `bgWhiteBright`
 
-### Custom inspection functions on Objects
+### Custom inspection functions on objects
 
 <!-- type=misc -->
 
@@ -1041,7 +1040,7 @@ while (buffer = getNextChunkSomehow()) {
 string += decoder.decode(); // end-of-stream
 ```
 
-### WHATWG Supported Encodings
+### WHATWG supported encodings
 
 Per the [WHATWG Encoding Standard][], the encodings supported by the
 `TextDecoder` API are outlined in the tables below. For each encoding,
@@ -1067,7 +1066,7 @@ with ICU and using the full ICU data (see [Internationalization][]).
 | `'utf-16le'` | `'utf-16'`                        |
 | `'utf-16be'` |                                   |
 
-#### Encodings Requiring Full ICU Data
+#### Encodings requiring full ICU data
 
 | Encoding           | Aliases                          |
 | -----------------  | -------------------------------- |
@@ -1263,7 +1262,7 @@ added: v10.0.0
 * Returns: {boolean}
 
 Returns `true` if the value is an instance of one of the [`ArrayBuffer`][]
-views, such as typed array objects or [`DataView`][].  Equivalent to
+views, such as typed array objects or [`DataView`][]. Equivalent to
 [`ArrayBuffer.isView()`][].
 
 ```js
@@ -2420,7 +2419,7 @@ util.log('Timestamped message.');
 [`util.types.isNativeError()`]: #util_util_types_isnativeerror_value
 [`util.types.isSharedArrayBuffer()`]: #util_util_types_issharedarraybuffer_value
 [Common System Errors]: errors.html#errors_common_system_errors
-[Custom inspection functions on Objects]: #util_custom_inspection_functions_on_objects
+[Custom inspection functions on objects]: #util_custom_inspection_functions_on_objects
 [Custom promisified functions]: #util_custom_promisified_functions
 [Customizing `util.inspect` colors]: #util_customizing_util_inspect_colors
 [Internationalization]: intl.html

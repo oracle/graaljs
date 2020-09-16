@@ -27,6 +27,7 @@
 const {
   Map,
   MathMax,
+  Number,
   NumberIsSafeInteger,
   ObjectCreate,
   ObjectDefineProperties,
@@ -174,7 +175,10 @@ const isFd = isUint32;
 function isFileType(stats, fileType) {
   // Use stats array directly to avoid creating an fs.Stats instance just for
   // our internal use.
-  return (stats[1/* mode */] & S_IFMT) === fileType;
+  let mode = stats[1];
+  if (typeof mode === 'bigint')
+    mode = Number(mode);
+  return (mode & S_IFMT) === fileType;
 }
 
 function access(path, mode, callback) {
@@ -583,6 +587,9 @@ function readv(fd, buffers, position, callback) {
 
   return binding.readBuffers(fd, buffers, position, req);
 }
+
+ObjectDefineProperty(readv, internalUtil.customPromisifyArgs,
+                     { value: ['bytesRead', 'buffers'], enumerable: false });
 
 function readvSync(fd, buffers, position) {
   validateInt32(fd, 'fd', 0);
@@ -1508,9 +1515,8 @@ function encodeRealpathResult(result, options) {
   const asBuffer = Buffer.from(result);
   if (options.encoding === 'buffer') {
     return asBuffer;
-  } else {
-    return asBuffer.toString(options.encoding);
   }
+  return asBuffer.toString(options.encoding);
 }
 
 // Finds the next portion of a (partial) path, up to the next path delimiter
@@ -1611,7 +1617,7 @@ function realpathSync(p, options) {
 
       const baseLong = pathModule.toNamespacedPath(base);
       const ctx = { path: base };
-      const stats = binding.lstat(baseLong, false, undefined, ctx);
+      const stats = binding.lstat(baseLong, true, undefined, ctx);
       handleErrorFromBinding(ctx);
 
       if (!isFileType(stats, S_IFLNK)) {
@@ -1744,7 +1750,7 @@ function realpath(p, options, callback) {
       return process.nextTick(LOOP);
     }
 
-    return fs.lstat(base, gotStat);
+    return fs.lstat(base, { bigint: true }, gotStat);
   }
 
   function gotStat(err, stats) {

@@ -260,7 +260,7 @@ function _copyActual(source, target, targetStart, sourceStart, sourceEnd) {
   if (nb > sourceLen)
     nb = sourceLen;
 
-  if (sourceStart !== 0 || sourceEnd !== source.length)
+  if (sourceStart !== 0 || sourceEnd < source.length)
     source = new Uint8Array(source.buffer, source.byteOffset + sourceStart, nb);
 
   target.set(source, targetStart);
@@ -547,7 +547,6 @@ Buffer.isEncoding = function isEncoding(encoding) {
 Buffer[kIsEncodingSymbol] = Buffer.isEncoding;
 
 Buffer.concat = function concat(list, length) {
-  let i;
   if (!ArrayIsArray(list)) {
     throw new ERR_INVALID_ARG_TYPE('list', 'Array', list);
   }
@@ -557,7 +556,7 @@ Buffer.concat = function concat(list, length) {
 
   if (length === undefined) {
     length = 0;
-    for (i = 0; i < list.length; i++) {
+    for (let i = 0; i < list.length; i++) {
       if (list[i].length) {
         length += list[i].length;
       }
@@ -568,7 +567,7 @@ Buffer.concat = function concat(list, length) {
 
   const buffer = Buffer.allocUnsafe(length);
   let pos = 0;
-  for (i = 0; i < list.length; i++) {
+  for (let i = 0; i < list.length; i++) {
     const buf = list[i];
     if (!isUint8Array(buf)) {
       // TODO(BridgeAR): This should not be of type ERR_INVALID_ARG_TYPE.
