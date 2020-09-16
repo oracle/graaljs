@@ -210,7 +210,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             return jsonStrPrepareJSObject((DynamicObject) value);
         } else if (value instanceof Symbol) {
             return Undefined.instance;
-        } else if (JSRuntime.isForeignObject(value) && InteropLibrary.getFactory().getUncached(value).isExecutable(value)) {
+        } else if (JSRuntime.isCallableForeign(value)) {
             return Undefined.instance;
         }
         return value;

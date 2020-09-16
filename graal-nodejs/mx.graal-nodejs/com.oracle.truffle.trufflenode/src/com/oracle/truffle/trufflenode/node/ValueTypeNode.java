@@ -325,7 +325,7 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
     @Specialization(guards = "isForeignObject(value)", limit = "5")
     protected final int doForeignObject(TruffleObject value,
                     @CachedLibrary("value") InteropLibrary interop) {
-        if (interop.isExecutable(value)) {
+        if (interop.isExecutable(value) || interop.isInstantiable(value)) {
             return FUNCTION_OBJECT;
         } else if (interop.isNull(value)) {
             return NULL_VALUE;

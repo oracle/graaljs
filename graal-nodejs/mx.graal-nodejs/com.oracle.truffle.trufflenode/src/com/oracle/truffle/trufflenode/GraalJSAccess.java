@@ -423,7 +423,7 @@ public final class GraalJSAccess {
 
     private int valueTypeForeignObject(TruffleObject value, boolean useSharedBuffer) {
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
-        if (interop.isExecutable(value)) {
+        if (interop.isExecutable(value) || interop.isInstantiable(value)) {
             return FUNCTION_OBJECT;
         } else if (interop.isNull(value)) {
             return NULL_VALUE;
