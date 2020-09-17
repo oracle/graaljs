@@ -72,7 +72,7 @@ public final class JSMetaType implements TruffleObject {
     public static final JSMetaType BOOLEAN = new JSMetaType("boolean", InteropLibrary::isBoolean);
     public static final JSMetaType STRING = new JSMetaType("string", InteropLibrary::isString);
     public static final JSMetaType NUMBER = new JSMetaType("number", InteropLibrary::isNumber);
-    public static final JSMetaType FUNCTION = new JSMetaType("function", InteropLibrary::isExecutable);
+    public static final JSMetaType FUNCTION = new JSMetaType("function", (l, v) -> l.isExecutable(v) || l.isInstantiable(v));
     public static final JSMetaType DATE = new JSMetaType("date", InteropLibrary::isInstant);
     public static final JSMetaType ARRAY = new JSMetaType("array", InteropLibrary::hasArrayElements);
     public static final JSMetaType OBJECT = new JSMetaType("object", InteropLibrary::hasMembers);

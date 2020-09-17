@@ -203,7 +203,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
             return true;
         } else if (interop.hasArrayElements(object)) {
             return true;
-        } else if (interop.isExecutable(object)) {
+        } else if (interop.isExecutable(object) || interop.isInstantiable(object)) {
             return true;
         } else {
             return false;

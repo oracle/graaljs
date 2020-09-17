@@ -1109,7 +1109,7 @@ public final class JSRuntime {
                 }
             } else if (interop.isMetaObject(value)) {
                 return InteropLibrary.getFactory().getUncached().asString(interop.getMetaQualifiedName(value));
-            } else if (interop.hasMembers(value) && !interop.isExecutable(value)) {
+            } else if (interop.hasMembers(value) && !(interop.isExecutable(value) || interop.isInstantiable(value))) {
                 return foreignObjectToString(value, depth, allowSideEffects);
             } else {
                 return InteropLibrary.getFactory().getUncached().asString(interop.toDisplayString(value, allowSideEffects));
@@ -2376,7 +2376,8 @@ public final class JSRuntime {
     @TruffleBoundary
     public static boolean isCallableForeign(Object value) {
         if (isForeignObject(value)) {
-            return InteropLibrary.getFactory().getUncached().isExecutable(value);
+            InteropLibrary interop = InteropLibrary.getFactory().getUncached();
+            return interop.isExecutable(value) || interop.isInstantiable(value);
         }
         return false;
     }

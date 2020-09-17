@@ -91,7 +91,7 @@ public abstract class IsCallableNode extends JavaScriptBaseNode {
     @Specialization(guards = "isForeignObject(obj)", limit = "3")
     protected static boolean doTruffleObject(Object obj,
                     @CachedLibrary("obj") InteropLibrary interop) {
-        return interop.isExecutable(obj);
+        return interop.isExecutable(obj) || interop.isInstantiable(obj);
     }
 
     @Specialization
