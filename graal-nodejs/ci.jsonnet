@@ -10,7 +10,7 @@ local common = import '../common.jsonnet';
 
   local gateSubstrateVm = {
     run+: [
-      ['mx', '--env', 'svm', '--extra-image-builder-argument=-H:+TruffleCheckBlackListedMethods', 'build'],
+      ['mx', '--env', 'svm', 'build'],
       ['set-export', 'GRAALVM_HOME', ['mx', '--no-warning', '--env', 'svm', 'graalvm-home']],
       ['${GRAALVM_HOME}/bin/node', '-e', 'console.log(\'Hello, World!\')'],
       ['${GRAALVM_HOME}/bin/npm', '--version'],
