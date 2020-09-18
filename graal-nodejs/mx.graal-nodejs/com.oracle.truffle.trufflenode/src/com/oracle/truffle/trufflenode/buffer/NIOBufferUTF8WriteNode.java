@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.trufflenode.buffer;
 
-import static com.oracle.truffle.js.runtime.util.BufferUtil.asBaseBuffer;
-
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -55,6 +53,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -138,12 +137,10 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
             outOfBoundsFail();
         }
         ByteBuffer rawBuffer = getDirectByteBuffer(arrayBuffer);
-        ByteBuffer buffer = sliceBuffer(rawBuffer, bufferOffset);
-        asBaseBuffer(buffer).position(destOffset);
-        asBaseBuffer(buffer).limit(Math.min(bufferLen, destOffset + bytes));
-
+        int destLimit = Math.min(bufferLen, destOffset + bytes);
+        ByteBuffer buffer = Boundaries.byteBufferSlice(rawBuffer, bufferOffset + destOffset, bufferOffset + destLimit);
         doEncode(str, buffer);
-        return buffer.position() - destOffset;
+        return buffer.position();
     }
 
     @TruffleBoundary
