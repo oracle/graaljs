@@ -2977,7 +2977,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
         if (tryNode.getFinallyBody() != null) {
             JavaScriptNode finallyBlock = transform(tryNode.getFinallyBody());
-            result = factory.createTryFinally(result, wrapSaveAndRestoreCompletionValue(finallyBlock));
+            result = factory.createTryFinally(result, wrapSaveAndRestoreCompletionValue(wrapClearCompletionValue(finallyBlock)));
         }
         result = wrapClearAndGetCompletionValue(result);
         return result;
