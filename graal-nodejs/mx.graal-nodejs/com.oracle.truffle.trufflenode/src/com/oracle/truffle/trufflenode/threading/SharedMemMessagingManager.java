@@ -44,7 +44,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.trufflenode.JSExternal;
 import com.oracle.truffle.trufflenode.JSExternalObject;
 
 /**
@@ -67,7 +66,7 @@ public class SharedMemMessagingManager {
 
     @TruffleBoundary
     public static JavaMessagePortData getJavaMessagePortDataFor(JSExternalObject nativeMessagePortData) {
-        long pointer = JSExternal.getPointer(nativeMessagePortData);
+        long pointer = nativeMessagePortData.getPointer();
 
         JavaMessagePortData data = activeMessagePortRefs.get(pointer);
         if (data == null) {
@@ -79,7 +78,7 @@ public class SharedMemMessagingManager {
 
     @TruffleBoundary
     public static void disposeReferences(JSExternalObject nativeMessagePortData) {
-        long pointer = JSExternal.getPointer(nativeMessagePortData);
+        long pointer = nativeMessagePortData.getPointer();
         activeMessagePortRefs.remove(pointer);
     }
 }

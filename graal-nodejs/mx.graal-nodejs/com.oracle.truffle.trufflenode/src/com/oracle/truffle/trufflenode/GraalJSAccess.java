@@ -539,7 +539,7 @@ public final class GraalJSAccess {
     }
 
     public long valueExternal(Object obj) {
-        return JSExternal.getPointer((DynamicObject) obj);
+        return ((JSExternalObject) obj).getPointer();
     }
 
     public String valueUnknown(Object obj) {

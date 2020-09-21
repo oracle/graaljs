@@ -43,7 +43,6 @@ package com.oracle.truffle.trufflenode.threading;
 import java.util.Deque;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
-import com.oracle.truffle.trufflenode.JSExternal;
 import com.oracle.truffle.trufflenode.JSExternalObject;
 
 public class JavaMessagePortData {
@@ -55,7 +54,7 @@ public class JavaMessagePortData {
     public JavaMessagePortData(JSExternalObject external) {
         this.encodedRefs = 0;
         this.queue = new ConcurrentLinkedDeque<>();
-        this.nativePointer = JSExternal.getPointer(external);
+        this.nativePointer = external.getPointer();
     }
 
     public long getMessagePortDataPointer() {
