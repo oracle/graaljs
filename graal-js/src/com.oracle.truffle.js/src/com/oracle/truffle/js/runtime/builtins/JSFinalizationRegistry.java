@@ -81,11 +81,6 @@ public final class JSFinalizationRegistry extends JSNonProxy implements JSConstr
         return obj;
     }
 
-    public static ReferenceQueue<Object> getReferenceQueue(DynamicObject obj) {
-        assert isJSFinalizationRegistry(obj);
-        return ((JSFinalizationRegistryObject) obj).getReferenceQueue();
-    }
-
     @Override
     public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();

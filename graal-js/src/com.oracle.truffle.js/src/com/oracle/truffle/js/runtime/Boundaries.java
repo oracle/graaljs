@@ -86,6 +86,11 @@ public final class Boundaries {
         return String.valueOf(o);
     }
 
+    @TruffleBoundary(allowInlining = true)
+    public static String stringValueOf(char[] chars) {
+        return String.valueOf(chars);
+    }
+
     @TruffleBoundary
     public static Integer integerValueOf(String s) {
         return Integer.valueOf(s);
@@ -385,11 +390,16 @@ public final class Boundaries {
 
     @TruffleBoundary(allowInlining = true)
     public static void byteBufferPutSlice(ByteBuffer dst, int dstPos, ByteBuffer src, int srcPos, int srcLimit) {
-        ByteBuffer srcDup = src.duplicate();
-        BufferUtil.asBaseBuffer(srcDup).position(srcPos).limit(srcLimit);
-        ByteBuffer slice = srcDup.slice();
+        ByteBuffer slice = byteBufferSlice(src, srcPos, srcLimit);
         ByteBuffer dstDup = dst.duplicate();
         BufferUtil.asBaseBuffer(dstDup).position(dstPos);
         dstDup.put(slice);
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    public static ByteBuffer byteBufferSlice(ByteBuffer buf, int pos, int limit) {
+        ByteBuffer dup = buf.duplicate();
+        BufferUtil.asBaseBuffer(dup).position(pos).limit(limit);
+        return dup.slice();
     }
 }

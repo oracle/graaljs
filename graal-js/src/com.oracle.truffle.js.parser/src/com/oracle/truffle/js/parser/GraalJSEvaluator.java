@@ -113,6 +113,7 @@ import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord.Status;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -127,7 +128,7 @@ import com.oracle.truffle.js.runtime.util.Pair;
  */
 public final class GraalJSEvaluator implements JSParser {
 
-    private static HiddenKey STORE_MODULE_KEY = new HiddenKey("store-module-key");
+    private static final HiddenKey STORE_MODULE_KEY = new HiddenKey("store-module-key");
 
     /**
      * Evaluate indirect eval.
@@ -761,7 +762,7 @@ public final class GraalJSEvaluator implements JSParser {
         // AsyncModuleExecutionFulfilled ( module )
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncModuleExecutionFulfilled, (c) -> createCallAsyncModuleFulfilledImpl(c));
         DynamicObject function = JSFunction.create(context.getRealm(), functionData);
-        function.define(STORE_MODULE_KEY, module);
+        JSObjectUtil.putHiddenProperty(function, STORE_MODULE_KEY, module);
         return function;
     }
 
@@ -787,7 +788,7 @@ public final class GraalJSEvaluator implements JSParser {
         // AsyncModuleExecutionRejected ( module )
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncModuleExecutionRejected, (c) -> createCallAsyncModuleRejectedImpl(c));
         DynamicObject function = JSFunction.create(context.getRealm(), functionData);
-        function.define(STORE_MODULE_KEY, module);
+        JSObjectUtil.putHiddenProperty(function, STORE_MODULE_KEY, module);
         return function;
     }
 

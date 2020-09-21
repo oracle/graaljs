@@ -19,7 +19,7 @@ local common = import '../common.jsonnet';
   },
 
   local nativeImageSmokeTest = {
-    local baseNativeImageCmd = ['mx', '--dynamicimports', '/substratevm', '--native-images=js'],
+    local baseNativeImageCmd = ['mx', '--dynamicimports', '/substratevm', '--native-images=js', '--extra-image-builder-argument=H:+TruffleCheckBlackListedMethods'],
     run+: [
       ['git', 'clone', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/graalvm/js-benchmarks.git'], '../../js-benchmarks'],
       baseNativeImageCmd + ['build'],
@@ -63,6 +63,7 @@ local common = import '../common.jsonnet';
     graalJs + common.jdk8  + common.gate   + common.linux          + common.gateTags           + {environment+: {TAGS: 'latestversion'}}      + {name: 'js-gate-latestversion-jdk8-linux-amd64'},
     graalJs + common.jdk8  + common.gate   + common.linux          + common.gateTags           + {environment+: {TAGS: 'tck'}}                + {name: 'js-gate-tck-jdk8-linux-amd64'},
     graalJs + common.jdk8  + common.gate   + common.linux          + nativeImageSmokeTest                                                     + {name: 'js-gate-native-image-smoke-test-jdk8-linux-amd64'},
+    graalJs + common.jdk15 + common.gate   + common.linux          + nativeImageSmokeTest                                                     + {name: 'js-gate-native-image-smoke-test-jdk15-linux-amd64'},
 
     // jdk 8 - coverage
     graalJs + common.jdk8  + common.weekly + common.linux          + gateCoverage              + {environment+: {TAGS: 'build,default,tck'}}  + {name: 'js-coverage-jdk8-linux-amd64'},

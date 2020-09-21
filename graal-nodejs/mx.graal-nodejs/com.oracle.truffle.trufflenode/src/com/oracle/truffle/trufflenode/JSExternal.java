@@ -72,9 +72,4 @@ public final class JSExternal extends JSNonProxy {
     public String getClassName(DynamicObject object) {
         return CLASS_NAME;
     }
-
-    public static long getPointer(DynamicObject obj) {
-        assert isJSExternalObject(obj);
-        return ((JSExternalObject) obj).getPointer();
-    }
 }

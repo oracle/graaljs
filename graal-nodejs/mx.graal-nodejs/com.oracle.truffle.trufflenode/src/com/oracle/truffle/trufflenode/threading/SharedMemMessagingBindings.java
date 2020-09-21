@@ -71,8 +71,8 @@ public final class SharedMemMessagingBindings extends JSNonProxy {
     private SharedMemMessagingBindings() {
     }
 
-    public static GraalJSAccess getApiField(DynamicObject self) {
-        return ((Instance) self).graalJSAccess;
+    public static GraalJSAccess getApiField(SharedMemMessagingBindings.Instance self) {
+        return self.graalJSAccess;
     }
 
     @TruffleBoundary

@@ -40,15 +40,18 @@
  */
 package com.oracle.truffle.trufflenode.threading;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.JSExternal;
+import com.oracle.truffle.trufflenode.JSExternalObject;
 import com.oracle.truffle.trufflenode.threading.SharedMemMessagingBuiltinsFactory.DisposeNodeGen;
 import com.oracle.truffle.trufflenode.threading.SharedMemMessagingBuiltinsFactory.EncodedRefsNodeGen;
 import com.oracle.truffle.trufflenode.threading.SharedMemMessagingBuiltinsFactory.EnterNodeGen;
@@ -105,12 +108,21 @@ public class SharedMemMessagingBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             super(context, builtin);
         }
 
+        @TruffleBoundary
         @Specialization
-        public Object enter(DynamicObject self, DynamicObject nativeMessagePortData) {
-            assert JSExternal.isJSExternalObject(nativeMessagePortData);
+        public Object enter(SharedMemMessagingBindings.Instance self, JSExternalObject nativeMessagePortData) {
             GraalJSAccess access = SharedMemMessagingBindings.getApiField(self);
             access.setCurrentMessagePortData(nativeMessagePortData);
             return self;
+        }
+
+        @TruffleBoundary(transferToInterpreterOnException = false)
+        @Fallback
+        public Object incompatibleReceiver(Object self, @SuppressWarnings("unused") Object external) {
+            if (self instanceof SharedMemMessagingBindings.Instance) {
+                throw Errors.createTypeErrorTypeXExpected(JSExternal.CLASS_NAME);
+            }
+            throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getFullName(), self);
         }
     }
 
@@ -123,11 +135,18 @@ public class SharedMemMessagingBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             super(context, builtin);
         }
 
+        @TruffleBoundary
         @Specialization
-        public boolean encodedJavaRefs(DynamicObject self) {
+        static boolean encodedJavaRefs(SharedMemMessagingBindings.Instance self) {
             GraalJSAccess access = SharedMemMessagingBindings.getApiField(self);
             assert access.getCurrentMessagePortData() != null;
             return access.getCurrentMessagePortData().encodedJavaRefs();
+        }
+
+        @TruffleBoundary(transferToInterpreterOnException = false)
+        @Fallback
+        final Object incompatibleReceiver(Object self) {
+            throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getFullName(), self);
         }
     }
 
@@ -140,11 +159,18 @@ public class SharedMemMessagingBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             super(context, builtin);
         }
 
+        @TruffleBoundary
         @Specialization
-        public Object free(DynamicObject self) {
+        static Object free(SharedMemMessagingBindings.Instance self) {
             GraalJSAccess access = SharedMemMessagingBindings.getApiField(self);
             access.getCurrentMessagePortData().disposeLastMessageRefs();
             return self;
+        }
+
+        @TruffleBoundary(transferToInterpreterOnException = false)
+        @Fallback
+        final Object incompatibleReceiver(Object self) {
+            throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getFullName(), self);
         }
     }
 
@@ -157,11 +183,18 @@ public class SharedMemMessagingBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             super(context, builtin);
         }
 
+        @TruffleBoundary
         @Specialization
-        public Object leave(DynamicObject self) {
+        static Object leave(SharedMemMessagingBindings.Instance self) {
             GraalJSAccess access = SharedMemMessagingBindings.getApiField(self);
             access.unsetCurrentMessagePortData();
             return self;
+        }
+
+        @TruffleBoundary(transferToInterpreterOnException = false)
+        @Fallback
+        final Object incompatibleReceiver(Object self) {
+            throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getFullName(), self);
         }
     }
 
@@ -174,11 +207,20 @@ public class SharedMemMessagingBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             super(context, builtin);
         }
 
+        @TruffleBoundary
         @Specialization
-        public Object dispose(DynamicObject self, DynamicObject external) {
-            assert JSExternal.isJSExternalObject(external);
+        static Object dispose(SharedMemMessagingBindings.Instance self, JSExternalObject external) {
             SharedMemMessagingManager.disposeReferences(external);
             return self;
+        }
+
+        @TruffleBoundary(transferToInterpreterOnException = false)
+        @Fallback
+        final Object incompatibleReceiver(Object self, @SuppressWarnings("unused") Object external) {
+            if (self instanceof SharedMemMessagingBindings.Instance) {
+                throw Errors.createTypeErrorTypeXExpected(JSExternal.CLASS_NAME);
+            }
+            throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getFullName(), self);
         }
     }
 

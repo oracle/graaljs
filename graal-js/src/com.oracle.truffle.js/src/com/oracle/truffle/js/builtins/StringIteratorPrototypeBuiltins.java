@@ -53,6 +53,7 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -137,7 +138,7 @@ public final class StringIteratorPrototypeBuiltins extends JSBuiltinsContainer.S
             } else {
                 char second = string.charAt(index + 1);
                 if (isLowSurrogate.profile(Character.isLowSurrogate(second))) {
-                    result = new String(new char[]{first, second});
+                    result = Boundaries.stringValueOf(new char[]{first, second});
                 } else {
                     result = String.valueOf(first);
                 }

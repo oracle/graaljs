@@ -65,6 +65,7 @@ local common = import '../common.jsonnet';
     graalNodeJs + common.jdk8  + common.gate      + common.darwin         + gateSubstrateVm                                                                                         + {name: 'nodejs-gate-substratevm-jdk8-darwin-amd64'},
     graalNodeJs + common.jdk11 + common.gate      + common.linux          + gateSubstrateVm                                                                                         + {name: 'nodejs-gate-substratevm-jdk11-linux-amd64'},
     graalNodeJs + common.jdk11 + common.gate      + common.darwin         + gateSubstrateVm                                                                                         + {name: 'nodejs-gate-substratevm-jdk11-darwin-amd64'},
+    graalNodeJs + common.jdk15 + common.gate      + common.linux          + gateSubstrateVm                                                                                         + {name: 'nodejs-gate-substratevm-jdk15-linux-amd64'},
     graalNodeJs + common.jdk8  + common.gate      + common.windows_vs2010 + gateSubstrateVm                                                                                         + {name: 'nodejs-gate-substratevm-jdk8-windows-amd64'},
     graalNodeJs + common.jdk11 + common.gate      + common.windows        + gateSubstrateVm                                                                                         + {name: 'nodejs-gate-substratevm-jdk11-windows-amd64'},
 

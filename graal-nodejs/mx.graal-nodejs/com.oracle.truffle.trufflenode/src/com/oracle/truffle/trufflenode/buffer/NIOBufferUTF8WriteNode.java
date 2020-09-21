@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.trufflenode.buffer;
 
-import static com.oracle.truffle.js.runtime.util.BufferUtil.asBaseBuffer;
-
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -55,6 +53,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -138,20 +137,14 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
             outOfBoundsFail();
         }
         ByteBuffer rawBuffer = getDirectByteBuffer(arrayBuffer);
-        ByteBuffer buffer = sliceBuffer(rawBuffer, bufferOffset);
-        asBaseBuffer(buffer).position(destOffset);
-        asBaseBuffer(buffer).limit(Math.min(bufferLen, destOffset + bytes));
-
-        CoderResult res = doEncode(str, buffer);
-        if (cannotEncode(res)) {
-            errorBranch.enter();
-            throw new CharacterCodingException();
-        }
-        return buffer.position() - destOffset;
+        int destLimit = Math.min(bufferLen, destOffset + bytes);
+        ByteBuffer buffer = Boundaries.byteBufferSlice(rawBuffer, bufferOffset + destOffset, bufferOffset + destLimit);
+        doEncode(str, buffer);
+        return buffer.position();
     }
 
     @TruffleBoundary
-    private static CoderResult doEncode(String str, ByteBuffer buffer) {
+    private static CoderResult doEncode(String str, ByteBuffer buffer) throws CharacterCodingException {
         CharsetEncoder encoder = utf8.newEncoder();
         encoder.onMalformedInput(CodingErrorAction.REPORT);
         encoder.onUnmappableCharacter(CodingErrorAction.REPORT);
@@ -162,16 +155,18 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
             encoder.encode(cb, buffer, true);
             res = encoder.flush(buffer);
         }
+
+        assert res.isError() == (res.isMalformed() || res.isUnmappable());
+        if (res.isError()) {
+            res.throwException();
+        }
+
         return res;
     }
 
     @TruffleBoundary
     private static byte[] getBytes(String str) {
         return str.getBytes(utf8);
-    }
-
-    private static boolean cannotEncode(CoderResult res) {
-        return res.isMalformed() || res.isUnmappable() || res.isError();
     }
 
 }

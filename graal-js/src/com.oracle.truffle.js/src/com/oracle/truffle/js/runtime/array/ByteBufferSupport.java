@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,47 +38,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.trufflenode.threading;
+package com.oracle.truffle.js.runtime.array;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.trufflenode.JSExternalObject;
-
-/**
- * Registry of active node::MessagePortData objects that have exchanged Java object references
- * during message encoding using Node's workers.
- */
-public class SharedMemMessagingManager {
-
-    /**
-     * Active MessagePortData objects allocated by node Workers that have exchanged Java objects in
-     * messages. Map from their native pointer address to their Java-space representation.
-     */
-    private static final Map<Long, JavaMessagePortData> activeMessagePortRefs = new ConcurrentHashMap<>();
-
-    @TruffleBoundary
-    public static JavaMessagePortData getMessagePortDataFor(long nativePointer) {
-        assert activeMessagePortRefs.containsKey(nativePointer);
-        return activeMessagePortRefs.get(nativePointer);
+final class ByteBufferSupport {
+    private ByteBufferSupport() {
     }
 
-    @TruffleBoundary
-    public static JavaMessagePortData getJavaMessagePortDataFor(JSExternalObject nativeMessagePortData) {
-        long pointer = nativeMessagePortData.getPointer();
-
-        JavaMessagePortData data = activeMessagePortRefs.get(pointer);
-        if (data == null) {
-            data = new JavaMessagePortData(nativeMessagePortData);
-            activeMessagePortRefs.put(pointer, data);
-        }
-        return data;
+    static ByteBufferAccess littleEndian() {
+        return LittleEndianByteBufferAccess.INSTANCE;
     }
 
-    @TruffleBoundary
-    public static void disposeReferences(JSExternalObject nativeMessagePortData) {
-        long pointer = nativeMessagePortData.getPointer();
-        activeMessagePortRefs.remove(pointer);
+    static ByteBufferAccess bigEndian() {
+        return BigEndianByteBufferAccess.INSTANCE;
+    }
+
+    static ByteBufferAccess nativeOrder() {
+        return NativeByteBufferAccess.INSTANCE;
     }
 }
