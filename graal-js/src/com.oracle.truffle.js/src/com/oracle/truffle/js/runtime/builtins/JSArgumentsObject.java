@@ -54,14 +54,13 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
+import com.oracle.truffle.js.nodes.interop.ArrayElementInfoNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
-import com.oracle.truffle.js.nodes.interop.KeyInfoNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -139,18 +138,14 @@ public class JSArgumentsObject extends JSArrayBase {
                     @Cached(value = "create(languageRef.get().getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
                     @Cached ExportValueNode exportNode,
                     @CachedLibrary("this") InteropLibrary thisLibrary) throws InvalidArrayIndexException, UnsupportedMessageException {
-        if (!hasArrayElements()) {
-            throw UnsupportedMessageException.create();
-        }
-        DynamicObject target = this;
-        if (index < 0 || index >= thisLibrary.getArraySize(target)) {
+        if (index < 0 || index >= thisLibrary.getArraySize(this)) {
             throw InvalidArrayIndexException.create(index);
         }
         Object result;
         if (readNode == null) {
-            result = JSObject.getOrDefault(target, index, target, Undefined.instance, JSClassProfile.getUncached());
+            result = JSObject.getOrDefault(this, index, this, Undefined.instance, JSClassProfile.getUncached());
         } else {
-            result = readNode.executeWithTargetAndIndexOrDefault(target, index, Undefined.instance);
+            result = readNode.executeWithTargetAndIndexOrDefault(this, index, Undefined.instance);
         }
         return exportNode.execute(result);
     }
@@ -159,7 +154,7 @@ public class JSArgumentsObject extends JSArrayBase {
     public final boolean isArrayElementReadable(long index,
                     @CachedLibrary("this") InteropLibrary thisLibrary) {
         try {
-            return hasArrayElements() && (index >= 0 && index < thisLibrary.getArraySize(this));
+            return index >= 0 && index < thisLibrary.getArraySize(this);
         } catch (UnsupportedMessageException e) {
             throw Errors.shouldNotReachHere(e);
         }
@@ -167,35 +162,28 @@ public class JSArgumentsObject extends JSArrayBase {
 
     @ExportMessage
     public final void writeArrayElement(long index, Object value,
-                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo,
+                    @Shared("elementInfo") @Cached ArrayElementInfoNode elements,
                     @Cached ImportValueNode castValueNode,
                     @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
-                    @Cached(value = "createCachedInterop(languageRef)", uncached = "getUncachedWrite()") WriteElementNode writeNode)
-                    throws InvalidArrayIndexException, UnsupportedMessageException {
-        if (!hasArrayElements() || testIntegrityLevel(true)) {
-            throw UnsupportedMessageException.create();
-        }
-        DynamicObject target = this;
-        if (!keyInfo.execute(target, index, KeyInfoNode.WRITABLE)) {
-            throw InvalidArrayIndexException.create(index);
-        }
+                    @Cached(value = "createCachedInterop(languageRef)", uncached = "getUncachedWrite()") WriteElementNode writeNode) throws InvalidArrayIndexException, UnsupportedMessageException {
+        elements.executeCheck(this, index, ArrayElementInfoNode.WRITABLE);
         Object importedValue = castValueNode.executeWithTarget(value);
         if (writeNode == null) {
-            JSObject.set(target, index, importedValue, true);
+            JSObject.set(this, index, importedValue, true);
         } else {
-            writeNode.executeWithTargetAndIndexAndValue(target, index, importedValue);
+            writeNode.executeWithTargetAndIndexAndValue(this, index, importedValue);
         }
     }
 
     @ExportMessage
     public final boolean isArrayElementModifiable(long index,
-                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
-        return hasArrayElements() && keyInfo.execute(this, index, KeyInfoNode.MODIFIABLE);
+                    @Shared("elementInfo") @Cached ArrayElementInfoNode elements) {
+        return elements.executeBoolean(this, index, ArrayElementInfoNode.MODIFIABLE);
     }
 
     @ExportMessage
     public final boolean isArrayElementInsertable(long index,
-                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
-        return hasArrayElements() && keyInfo.execute(this, index, KeyInfoNode.INSERTABLE);
+                    @Shared("elementInfo") @Cached ArrayElementInfoNode elements) {
+        return elements.executeBoolean(this, index, ArrayElementInfoNode.INSERTABLE);
     }
 }
