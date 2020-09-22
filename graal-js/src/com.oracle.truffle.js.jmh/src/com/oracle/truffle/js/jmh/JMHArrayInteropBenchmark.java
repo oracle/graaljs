@@ -52,6 +52,7 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
+import org.openjdk.jmh.infra.Blackhole;
 
 @Warmup(iterations = 5)
 @Measurement(iterations = 5)
@@ -63,11 +64,15 @@ public class JMHArrayInteropBenchmark {
 
         Context context;
         Source preSizedArraySource;
+        Value preallocatedArray;
+        Value preallocatedTypedArray;
 
         @Setup(Level.Trial)
         public void doSetup() {
             context = Context.create("js");
             preSizedArraySource = Source.create("js", "new Array(" + ARRAY_SIZE + ")");
+            preallocatedArray = context.eval(Source.create("js", "new Array(" + ARRAY_SIZE + ").fill(0)"));
+            preallocatedTypedArray = context.eval(Source.create("js", "new Int32Array(" + ARRAY_SIZE + ")"));
         }
 
         @TearDown(Level.Trial)
@@ -81,6 +86,42 @@ public class JMHArrayInteropBenchmark {
         Value array = state.context.eval(state.preSizedArraySource);
         for (int i = 0; i < MyState.ARRAY_SIZE; i++) {
             array.setArrayElement(i, i);
+        }
+        return array;
+    }
+
+    @Benchmark
+    public Value testWriteJSArrayFromJava(MyState state) {
+        Value array = state.preallocatedArray;
+        for (int i = 0; i < MyState.ARRAY_SIZE; i++) {
+            array.setArrayElement(i, i);
+        }
+        return array;
+    }
+
+    @Benchmark
+    public Value testReadJSArrayFromJava(MyState state, Blackhole blackhole) {
+        Value array = state.preallocatedArray;
+        for (int i = 0; i < MyState.ARRAY_SIZE; i++) {
+            blackhole.consume(array.getArrayElement(i));
+        }
+        return array;
+    }
+
+    @Benchmark
+    public Value testWriteJSTypedArrayFromJava(MyState state) {
+        Value array = state.preallocatedTypedArray;
+        for (int i = 0; i < MyState.ARRAY_SIZE; i++) {
+            array.setArrayElement(i, i);
+        }
+        return array;
+    }
+
+    @Benchmark
+    public Value testReadJSTypedArrayFromJava(MyState state, Blackhole blackhole) {
+        Value array = state.preallocatedTypedArray;
+        for (int i = 0; i < MyState.ARRAY_SIZE; i++) {
+            blackhole.consume(array.getArrayElement(i));
         }
         return array;
     }
