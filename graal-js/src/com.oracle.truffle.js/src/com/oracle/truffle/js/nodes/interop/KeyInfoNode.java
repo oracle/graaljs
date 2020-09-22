@@ -44,7 +44,6 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -53,7 +52,7 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
- * This node implements the {@code isMember*} and {@code isArrayElement*} messages.
+ * This node implements the {@code isMember*} messages.
  */
 @GenerateUncached
 public abstract class KeyInfoNode extends JavaScriptBaseNode {
@@ -70,8 +69,6 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
     }
 
     public abstract boolean execute(DynamicObject receiver, String key, int query);
-
-    public abstract boolean execute(DynamicObject receiver, long index, int query);
 
     @Specialization
     static boolean member(DynamicObject target, String key, int query) {
@@ -113,43 +110,6 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
             return true;
         }
         if ((query & INVOCABLE) != 0 && desc.isDataDescriptor() && JSRuntime.isCallable(desc.getValue())) {
-            return true;
-        }
-        if ((query & REMOVABLE) != 0 && desc.getConfigurable()) {
-            return true;
-        }
-        return false;
-    }
-
-    @Specialization
-    static boolean element(DynamicObject target, long index, int query) {
-        assert query == (query & (READABLE | MODIFIABLE | INSERTABLE | REMOVABLE));
-        String key = Boundaries.stringValueOf(index);
-        PropertyDescriptor desc = null;
-        for (DynamicObject proto = target; proto != Null.instance; proto = JSObject.getPrototype(proto)) {
-            desc = JSObject.getOwnProperty(proto, key);
-            if (JSProxy.isJSProxy(proto)) {
-                break;
-            }
-            if (desc != null) {
-                break;
-            }
-        }
-        if (desc == null) {
-            if ((query & INSERTABLE) != 0 && JSObject.isExtensible(target)) {
-                return true;
-            }
-            return false;
-        }
-
-        boolean hasGet = desc.hasGet() && desc.getGet() != Undefined.instance;
-        boolean hasSet = desc.hasSet() && desc.getSet() != Undefined.instance;
-        boolean readable = hasGet || !hasSet;
-        boolean writable = hasSet || (!hasGet && desc.getIfHasWritable(true));
-        if ((query & READABLE) != 0 && readable) {
-            return true;
-        }
-        if ((query & MODIFIABLE) != 0 && writable) {
             return true;
         }
         if ((query & REMOVABLE) != 0 && desc.getConfigurable()) {
