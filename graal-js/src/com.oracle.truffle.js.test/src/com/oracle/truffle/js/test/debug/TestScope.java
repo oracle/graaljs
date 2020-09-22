@@ -48,7 +48,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -721,7 +721,7 @@ public class TestScope {
         DebugScope dscope = topScope;
         for (String[] expectedScope : expectedScopes) {
             Assert.assertNotNull("No debug scope for " + Arrays.toString(expectedScope), dscope);
-            Map<String, DebugValue> values = new HashMap<>();
+            Map<String, DebugValue> values = new LinkedHashMap<>();
             for (DebugValue value : dscope.getDeclaredValues()) {
                 values.put(value.getName(), value);
             }
