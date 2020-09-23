@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -53,7 +52,7 @@ import com.oracle.truffle.js.runtime.objects.Dead;
 
 public abstract class FrameSlotNode extends JavaScriptNode {
 
-    @CompilationFinal protected FrameSlot frameSlot;
+    protected final FrameSlot frameSlot;
 
     protected FrameSlotNode(FrameSlot frameSlot) {
         assert frameSlot != null : "Frame slot must not be null";
@@ -62,11 +61,6 @@ public abstract class FrameSlotNode extends JavaScriptNode {
 
     public final FrameSlot getFrameSlot() {
         return frameSlot;
-    }
-
-    public final void setFrameSlot(FrameSlot frameSlot) {
-        assert frameSlot != null;
-        this.frameSlot = frameSlot;
     }
 
     /**
