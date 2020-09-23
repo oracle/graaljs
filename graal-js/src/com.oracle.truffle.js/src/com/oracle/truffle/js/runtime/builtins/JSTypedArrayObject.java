@@ -42,7 +42,6 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -57,7 +56,6 @@ import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
-import com.oracle.truffle.js.nodes.interop.KeyInfoNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.interop.InteropArray;
@@ -122,11 +120,8 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
                     @Cached(value = "create(languageRef.get().getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
                     @Cached ExportValueNode exportNode,
                     @CachedLibrary("this") InteropLibrary thisLibrary) throws InvalidArrayIndexException, UnsupportedMessageException {
-        if (!hasArrayElements()) {
-            throw UnsupportedMessageException.create();
-        }
         DynamicObject target = this;
-        if (index < 0 || index >= thisLibrary.getArraySize(target)) {
+        if (index < 0 || index >= thisLibrary.getArraySize(this)) {
             throw InvalidArrayIndexException.create(index);
         }
         Object result;
@@ -138,11 +133,12 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
         return exportNode.execute(result);
     }
 
-    @ExportMessage
+    @ExportMessage(name = "isArrayElementReadable")
+    @ExportMessage(name = "isArrayElementModifiable")
     public boolean isArrayElementReadable(long index,
                     @CachedLibrary("this") InteropLibrary thisLibrary) {
         try {
-            return hasArrayElements() && (index >= 0 && index < thisLibrary.getArraySize(this));
+            return (index >= 0 && index < thisLibrary.getArraySize(this));
         } catch (UnsupportedMessageException e) {
             throw Errors.shouldNotReachHere(e);
         }
@@ -150,15 +146,12 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
 
     @ExportMessage
     public void writeArrayElement(long index, Object value,
-                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo,
                     @Cached ImportValueNode castValueNode,
                     @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
-                    @Cached(value = "createCachedInterop(languageRef)", uncached = "getUncachedWrite()") WriteElementNode writeNode) throws InvalidArrayIndexException, UnsupportedMessageException {
-        if (!hasArrayElements() || testIntegrityLevel(true)) {
-            throw UnsupportedMessageException.create();
-        }
+                    @Cached(value = "createCachedInterop(languageRef)", uncached = "getUncachedWrite()") WriteElementNode writeNode,
+                    @CachedLibrary("this") InteropLibrary thisLibrary) throws InvalidArrayIndexException, UnsupportedMessageException {
         DynamicObject target = this;
-        if (!keyInfo.execute(target, index, KeyInfoNode.WRITABLE)) {
+        if (index < 0 || index >= thisLibrary.getArraySize(this)) {
             throw InvalidArrayIndexException.create(index);
         }
         Object importedValue = castValueNode.executeWithTarget(value);
@@ -169,15 +162,10 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
         }
     }
 
+    @SuppressWarnings("static-method")
     @ExportMessage
-    public boolean isArrayElementModifiable(long index,
-                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
-        return hasArrayElements() && keyInfo.execute(this, index, KeyInfoNode.MODIFIABLE);
-    }
-
-    @ExportMessage
-    public boolean isArrayElementInsertable(long index,
-                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
-        return hasArrayElements() && keyInfo.execute(this, index, KeyInfoNode.INSERTABLE);
+    public boolean isArrayElementInsertable(@SuppressWarnings("unused") long index) {
+        // typed array elements are never insertable
+        return false;
     }
 }
