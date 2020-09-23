@@ -426,6 +426,44 @@ public class InteropArrayTest {
         }
     }
 
+    @Test
+    public void testManyTypes() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Value arrays = context.eval(ID, "var arrays = [];" +
+                            "var a;" +
+                            "a = [1,2,3,4];" +
+                            "arrays.push(a);" +
+                            "a = [1000,2000,3000];" +
+                            "arrays.push(a);" +
+                            "a = [1.1,2.2,3.3];" +
+                            "arrays.push(a);" +
+                            "a = ['a','b','c'];" +
+                            "arrays.push(a);" +
+                            "a = [1,2,3,4]; a.push(5);" +
+                            "arrays.push(a);" +
+                            "a = [1000,2000,3000]; a.push(4000);" +
+                            "arrays.push(a);" +
+                            "a = [1.1,2.2,3.3]; a.push(4.4);" +
+                            "arrays.push(a);" +
+                            "a = ['a','b','c']; a.push('d');" +
+                            "arrays.push(a);" +
+                            "a = [,,1,2,3,4]; delete a[4];" +
+                            "arrays.push(a);" +
+                            "a = [1,,2,,3]; a.push(4);" +
+                            "arrays.push(a);" +
+                            "a = ['a',,'b',,'c']; a.push('d');" +
+                            "arrays.push(a);" +
+                            "a = [1]; a[2**31] = 2;" +
+                            "arrays.push(a);" +
+                            "arrays;");
+            for (int i = 0; i < arrays.getArraySize(); i++) {
+                Value array = arrays.getArrayElement(i);
+                assertTrue(array.hasArrayElements());
+                array.setArrayElement(0, i);
+            }
+        }
+    }
+
     private static final class LazyArray implements ProxyArray {
 
         private final Iterator<?> it;
