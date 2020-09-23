@@ -313,8 +313,9 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         return value;
     }
 
-    @Specialization(guards = {"isBoolean(frame)", "ensureObjectKind(frame)"}, replaces = "doBooleanDouble")
+    @Specialization(guards = {"isBoolean(frame)"}, replaces = "doBooleanDouble")
     public int doBooleanObject(Frame frame) {
+        ensureObjectKind(frame);
         int value = JSRuntime.booleanToNumber(getBoolean(frame));
         int newValue = op.doInt(value);
         frame.setObject(frameSlot, newValue);
@@ -337,8 +338,9 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         return value;
     }
 
-    @Specialization(guards = {"isInt(frame)", "ensureObjectKind(frame)"}, replaces = "doIntDouble")
+    @Specialization(guards = {"isInt(frame)"}, replaces = "doIntDouble")
     public int doIntObject(Frame frame) {
+        ensureObjectKind(frame);
         int value = getInt(frame);
         double newValue = op.doDouble(value);
         frame.setObject(frameSlot, newValue);
@@ -352,20 +354,22 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         return doubleValue;
     }
 
-    @Specialization(guards = {"isDouble(frame)", "ensureObjectKind(frame)"}, replaces = "doDouble")
+    @Specialization(guards = {"isDouble(frame)"}, replaces = "doDouble")
     public double doDoubleObject(Frame frame) {
+        ensureObjectKind(frame);
         double doubleValue = getDouble(frame);
         frame.setObject(frameSlot, op.doDouble(doubleValue));
         return doubleValue;
     }
 
-    @Specialization(guards = {"isObject(frame)", "ensureObjectKind(frame)"})
+    @Specialization(guards = {"isObject(frame)"})
     public Object doObject(Frame frame,
                     @Cached("createBinaryProfile()") ConditionProfile isIntegerProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isBigIntProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isBoundaryProfile,
                     @Cached("create()") JSToNumericNode toNumeric,
                     @Cached("create()") BranchProfile deadBranch) {
+        ensureObjectKind(frame);
         Object value = getObject(frame);
         if (hasTemporalDeadZone()) {
             checkNotDead(value, deadBranch);
@@ -395,8 +399,9 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         return oldValue;
     }
 
-    @Specialization(guards = {"isLong(frame)", "ensureObjectKind(frame)"}, replaces = "doSafeIntegerToDouble")
+    @Specialization(guards = {"isLong(frame)"}, replaces = "doSafeIntegerToDouble")
     public double doSafeIntegerObject(Frame frame) {
+        ensureObjectKind(frame);
         double oldValue = getLong(frame);
         double newValue = op.doDouble(oldValue);
         frame.setObject(frameSlot, newValue);
@@ -443,8 +448,9 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         return newValue;
     }
 
-    @Specialization(guards = {"isBoolean(frame)", "ensureObjectKind(frame)"}, replaces = "doBooleanDouble")
+    @Specialization(guards = {"isBoolean(frame)"}, replaces = "doBooleanDouble")
     public int doBooleanObject(Frame frame) {
+        ensureObjectKind(frame);
         int value = JSRuntime.booleanToNumber(getBoolean(frame));
         int newValue = op.doInt(value);
         frame.setObject(frameSlot, newValue);
@@ -467,8 +473,9 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         return newValue;
     }
 
-    @Specialization(guards = {"isInt(frame)", "ensureObjectKind(frame)"}, replaces = "doIntOverflow")
+    @Specialization(guards = {"isInt(frame)"}, replaces = "doIntOverflow")
     public double doIntOverflowObject(Frame frame) {
+        ensureObjectKind(frame);
         int value = getInt(frame);
         double newValue = op.doDouble(value);
         frame.setObject(frameSlot, newValue);
@@ -483,21 +490,23 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         return newValue;
     }
 
-    @Specialization(guards = {"isDouble(frame)", "ensureObjectKind(frame)"}, replaces = "doDouble")
+    @Specialization(guards = {"isDouble(frame)"}, replaces = "doDouble")
     public double doDoubleObject(Frame frame) {
+        ensureObjectKind(frame);
         double doubleValue = getDouble(frame);
         double newValue = op.doDouble(doubleValue);
         frame.setObject(frameSlot, newValue);
         return newValue;
     }
 
-    @Specialization(guards = {"isObject(frame)", "ensureObjectKind(frame)"})
+    @Specialization(guards = {"isObject(frame)"})
     public Object doObject(Frame frame,
                     @Cached("createBinaryProfile()") ConditionProfile isIntegerProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isBigIntProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isBoundaryProfile,
                     @Cached("create()") JSToNumericNode toNumeric,
                     @Cached("create()") BranchProfile deadBranch) {
+        ensureObjectKind(frame);
         Object value = getObject(frame);
         if (hasTemporalDeadZone()) {
             checkNotDead(value, deadBranch);
@@ -529,8 +538,9 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         return newValue;
     }
 
-    @Specialization(guards = {"isLong(frame)", "ensureObjectKind(frame)"}, replaces = "doSafeIntegerToDouble")
+    @Specialization(guards = {"isLong(frame)"}, replaces = "doSafeIntegerToDouble")
     public double doSafeIntegerToObject(Frame frame) {
+        ensureObjectKind(frame);
         double oldValue = getLong(frame);
         double newValue = op.doDouble(oldValue);
         frame.setObject(frameSlot, newValue);

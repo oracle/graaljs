@@ -128,12 +128,11 @@ public abstract class FrameSlotNode extends JavaScriptNode {
         return isKind(frame, FrameSlotKind.Long) || intToLong(frame);
     }
 
-    protected final boolean ensureObjectKind(Frame frame) {
+    protected final void ensureObjectKind(Frame frame) {
         if (frame.getFrameDescriptor().getFrameSlotKind(frameSlot) != FrameSlotKind.Object) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             frame.getFrameDescriptor().setFrameSlotKind(frameSlot, FrameSlotKind.Object);
         }
-        return true;
     }
 
     private boolean isKind(Frame frame, FrameSlotKind kind) {
