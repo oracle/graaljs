@@ -58,7 +58,6 @@ import org.graalvm.polyglot.Source;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.debug.DebugScope;
@@ -164,7 +163,6 @@ public class TestScope {
         assertEquals("30", tester.expectDone());
     }
 
-    @Ignore
     @Test
     public void testFunctionArguments() {
         String function = "function main(a1, a2) {\n" +
