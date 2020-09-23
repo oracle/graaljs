@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
@@ -50,14 +52,11 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.SafeInteger;
-
-import java.util.Set;
 
 @GenerateWrapper
 public abstract class JavaScriptNode extends JavaScriptBaseNode implements InstrumentableNode {
@@ -157,26 +156,8 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
         }
     }
 
-    /**
-     * Like {@link #execute(VirtualFrame)} except that it tries to convert the result value to a
-     * String. A node can override this method if it has a better way to producing a value of type
-     * String.
-     *
-     * @param frame the frame of the currently executing guest language method
-     * @return the value of the execution as a boolean
-     * @throws UnexpectedResultException if a loss-free conversion of the result to double is not
-     *             possible
-     */
     public String executeString(VirtualFrame frame) throws UnexpectedResultException {
         return JSTypesGen.expectString(execute(frame));
-    }
-
-    public DynamicObject executeDynamicObject(VirtualFrame frame) throws UnexpectedResultException {
-        return JSTypesGen.expectDynamicObject(execute(frame));
-    }
-
-    public Object[] executeObjectArray(VirtualFrame frame) throws UnexpectedResultException {
-        return JSTypesGen.expectObjectArray(execute(frame));
     }
 
     public long executeLong(VirtualFrame frame) throws UnexpectedResultException {

@@ -78,11 +78,6 @@ public class GlobalObjectNode extends JavaScriptNode implements RepeatableNode {
         return executeDynamicObject();
     }
 
-    @Override
-    public DynamicObject executeDynamicObject(VirtualFrame frame) {
-        return executeDynamicObject();
-    }
-
     public DynamicObject executeDynamicObject() {
         return getGlobalObject(context);
     }

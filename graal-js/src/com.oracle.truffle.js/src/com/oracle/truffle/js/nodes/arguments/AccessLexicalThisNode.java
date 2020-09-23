@@ -40,15 +40,14 @@
  */
 package com.oracle.truffle.js.nodes.arguments;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-
-import java.util.Set;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 
 public final class AccessLexicalThisNode extends JavaScriptNode implements RepeatableNode {
     @Child private JavaScriptNode readFunctionObject;
@@ -63,12 +62,8 @@ public final class AccessLexicalThisNode extends JavaScriptNode implements Repea
 
     @Override
     public Object execute(VirtualFrame frame) {
-        try {
-            DynamicObject function = readFunctionObject.executeDynamicObject(frame);
-            return JSFunction.getLexicalThis(function);
-        } catch (UnexpectedResultException e) {
-            throw new AssertionError();
-        }
+        JSFunctionObject function = (JSFunctionObject) readFunctionObject.execute(frame);
+        return JSFunction.getLexicalThis(function);
     }
 
     @Override

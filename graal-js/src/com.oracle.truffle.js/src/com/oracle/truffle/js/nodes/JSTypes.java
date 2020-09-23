@@ -57,7 +57,7 @@ import com.oracle.truffle.js.runtime.objects.PropertyReference;
 /**
  * @see JavaScriptNode
  */
-@TypeSystem({boolean.class, int.class, double.class, long.class, SafeInteger.class, BigInt.class, String.class, DynamicObject.class, Object[].class})
+@TypeSystem({boolean.class, int.class, double.class, long.class, SafeInteger.class, BigInt.class, String.class})
 public class JSTypes {
 
     protected JSTypes() {

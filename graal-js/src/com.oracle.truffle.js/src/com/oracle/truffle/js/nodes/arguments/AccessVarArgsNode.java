@@ -70,11 +70,6 @@ public class AccessVarArgsNode extends AccessIndexedArgumentNode {
 
     @Override
     public final Object[] execute(VirtualFrame frame) {
-        return executeObjectArray(frame);
-    }
-
-    @Override
-    public final Object[] executeObjectArray(VirtualFrame frame) {
         Object[] arguments = frame.getArguments();
         int currentUserArgumentCount = JSArguments.getUserArgumentCount(arguments);
 
