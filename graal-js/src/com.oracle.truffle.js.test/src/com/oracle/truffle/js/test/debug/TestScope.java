@@ -49,7 +49,6 @@ import static org.junit.Assert.assertTrue;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -59,12 +58,14 @@ import org.graalvm.polyglot.Source;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
+import com.oracle.truffle.api.debug.SourceElement;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.test.JSTest;
@@ -97,31 +98,26 @@ public class TestScope {
             tester.startEval(globalCode);
 
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{});
                 checkScope(event, ":program", 1, "var v1 = 10", new String[]{});
                 checkGlobalScope(event, new String[]{}, new String[]{"v1", "undefined"});
                 event.prepareStepOver(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{});
                 checkScope(event, ":program", 2, "let v2 = 1234", new String[]{});
                 checkGlobalScope(event, new String[]{}, new String[]{"v1", "10"});
                 event.prepareStepOver(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{});
                 checkScope(event, ":program", 3, "let v3 = {}", new String[]{});
                 checkGlobalScope(event, new String[]{"v2", "1234"}, new String[]{"v1", "10"});
                 event.prepareStepOver(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{});
                 checkScope(event, ":program", 4, "v3.a = \"a\"", new String[]{});
                 checkGlobalScope(event, new String[]{"v2", "1234", "v3", "{}"}, new String[]{"v1", "10"});
                 event.prepareStepOver(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{});
                 checkScope(event, ":program", 5, "v1", new String[]{});
                 checkGlobalScope(event, new String[]{"v2", "1234", "v3", "{a: \"a\"}"}, new String[]{"v1", "10"});
                 event.prepareStepOver(1);
@@ -145,27 +141,52 @@ public class TestScope {
             tester.startEval(function);
 
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{});
+                checkScope(event, ":program", 8, "main(10, 20)", new String[]{});
                 event.prepareStepInto(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{"a1", "10", "a2", "20"});
                 checkScope(event, "main", 2, "var v1 = a1 + a2", new String[]{"a1", "10", "a2", "20", "v1", "undefined"});
                 event.prepareStepOver(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{"a1", "10", "a2", "20"});
                 checkScope(event, "main", 3, "let v2 = 1234", new String[]{"a1", "10", "a2", "20", "v1", "30"});
                 event.prepareStepOver(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{"a1", "10", "a2", "20"});
                 checkScope(event, "main", 4, "let v3 = {}", new String[]{"a1", "10", "a2", "20", "v1", "30", "v2", "1234"});
                 event.prepareStepOver(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{"a1", "10", "a2", "20"});
                 checkScope(event, "main", 5, "v3.a = \"a\"", new String[]{"a1", "10", "a2", "20", "v1", "30", "v2", "1234", "v3", "{}"});
+                event.prepareContinue();
+            });
+        }
+        assertEquals("30", tester.expectDone());
+    }
+
+    @Ignore
+    @Test
+    public void testFunctionArguments() {
+        String function = "function main(a1, a2) {\n" +
+                        "  var v1 = a1 + a2;\n" +
+                        "  let v2 = 1234;\n" +
+                        "  let v3 = {};\n" +
+                        "  v3.a = \"a\";\n" +
+                        "  return v1;\n" +
+                        "}";
+        Source source = Source.newBuilder("js", function + "\n" +
+                        "main(10, 20);\n", "function.js").buildLiteral();
+        try (DebuggerSession session = tester.startSession(SourceElement.ROOT)) {
+            session.suspendNextExecution();
+            tester.startEval(source);
+
+            tester.expectSuspended((SuspendedEvent event) -> {
+                checkScope(event, ":program", 1, source.getCharacters().toString(), new String[]{});
+                event.prepareStepInto(1);
+            });
+            tester.expectSuspended((SuspendedEvent event) -> {
+                // We have the function arguments:
+                checkScope(event, "main", 1, function, new String[]{"a1", "10", "a2", "20"});
                 event.prepareContinue();
             });
         }
@@ -190,38 +211,31 @@ public class TestScope {
             tester.startEval(function);
 
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{});
                 event.prepareStepInto(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{"a1", "10", "a2", "20"});
                 checkScope(event, "main", 2, "var v1 = a1 + a2", new String[]{"a1", "10", "a2", "20", "v1", "undefined"});
                 event.prepareStepOver(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{"a1", "10", "a2", "20"});
                 checkScope(event, "main", 3, "let v2 = 1234", new String[]{"a1", "10", "a2", "20", "v1", "30"});
                 event.prepareStepOver(1);
             });
             // In block:
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, null, new String[]{"a1", "10", "a2", "20"});
                 checkScope(event, "main", 5, "let v3 = {}", new String[]{}, new String[]{"a1", "10", "a2", "20", "v1", "30", "v2", "1234"});
                 event.prepareStepOver(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, null, new String[]{"a1", "10", "a2", "20"});
                 checkScope(event, "main", 6, "let v2 = 11.11", new String[]{"v3", "{}"}, new String[]{"a1", "10", "a2", "20", "v1", "30", "v2", "1234"});
                 event.prepareStepOver(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, null, new String[]{"a1", "10", "a2", "20"});
                 checkScope(event, "main", 7, "v3.a = \"a\"", new String[]{"v3", "{}", "v2", "11.11"}, new String[]{"a1", "10", "a2", "20", "v1", "30", "v2", "1234"});
                 event.prepareStepOver(1);
             });
             // Out of block:
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{"a1", "10", "a2", "20"});
                 checkScope(event, "main", 9, "return v1;", new String[]{"a1", "10", "a2", "20", "v1", "30", "v2", "1234"});
                 event.prepareContinue();
             });
@@ -237,32 +251,26 @@ public class TestScope {
             tester.startEval(function);
 
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{});
                 checkScope(event, ":program", 1, "foo()", new String[]{});
                 event.prepareStepInto(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{});
                 checkScope(event, "foo", 1, "var i = 0", new String[]{"i", "undefined"});
                 event.prepareStepInto(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{});
                 checkScope(event, "foo", 1, "i++", new String[]{"i", "0"});
                 event.prepareStepInto(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{});
                 checkScope(event, "foo", 1, "i++", new String[]{"i", "1"});
                 event.prepareStepOver(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{});
                 checkScope(event, "foo", 1, "return i;", new String[]{"i", "2"});
                 event.prepareStepOver(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{});
                 checkScope(event, ":program", 1, "foo()", new String[]{});
                 event.prepareStepInto(1);
             });
@@ -290,11 +298,9 @@ public class TestScope {
             tester.startEval(function);
 
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{});
                 event.prepareStepInto(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{"n", ns});
                 checkScope(event, "loops", 2, "let s = 0", new String[]{"n", ns});
                 event.prepareStepOver(1);
             });
@@ -379,20 +385,13 @@ public class TestScope {
             tester.startEval(function);
 
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{});
+                checkScope(event, ":program", 7, "main(10, 20)", new String[]{});
                 event.prepareStepInto(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{"a1", "10", "a2", "20"});
                 checkScope(event, "main", 2, "var v1 = a1 + a2", new String[]{"a1", "10", "a2", "20", "v1", "undefined"});
                 DebugStackFrame frame = event.getTopStackFrame();
                 DebugScope dscope = frame.getScope();
-
-                Iterator<DebugValue> arguments = dscope.getArguments().iterator();
-                DebugValue arg1 = arguments.next();
-                DebugValue arg2 = arguments.next();
-                assertFalse(arg1.isWritable());
-                assertFalse(arg2.isWritable());
 
                 DebugValue a1 = dscope.getDeclaredValue("a1");
                 DebugValue a2 = dscope.getDeclaredValue("a2");
@@ -405,7 +404,6 @@ public class TestScope {
                 event.prepareStepOver(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{"a1", "10", "a2", "20"});
                 checkScope(event, "main", 3, "let v2 = a1 - a2", new String[]{"a1", "100", "a2", "200", "v1", "300"});
                 DebugStackFrame frame = event.getTopStackFrame();
                 DebugScope dscope = frame.getScope();
@@ -416,7 +414,6 @@ public class TestScope {
                 event.prepareStepOver(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{"a1", "10", "a2", "20"});
                 checkScope(event, "main", 4, "let v3 = v1 + v2", new String[]{"a1", "100", "a2", "200", "v1", "333", "v2", "-100"});
                 DebugStackFrame frame = event.getTopStackFrame();
                 DebugScope dscope = frame.getScope();
@@ -427,7 +424,6 @@ public class TestScope {
                 event.prepareStepOver(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{"a1", "10", "a2", "20"});
                 checkScope(event, "main", 5, "return v3;", new String[]{"a1", "100", "a2", "200", "v1", "333", "v2", "222", "v3", "555"});
                 DebugStackFrame frame = event.getTopStackFrame();
                 DebugScope dscope = frame.getScope();
@@ -515,30 +511,25 @@ public class TestScope {
             tester.startEval(function);
 
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{});
                 checkScope(event, ":program", 1, "let outerMost = 42", new String[]{});
                 event.prepareStepOver(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{});
                 checkScope(event, ":program", 13, "f = main(10, 20)", new String[]{});
                 checkGlobalScope(event, new String[]{"outerMost", "42"}, new String[]{"main", IGNORE_VALUE});
                 event.prepareStepInto(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{"a1", "10", "a2", "20"});
                 checkScope(event, "main", 3, "var v1 = a1 + a2 + outerMost", new String[]{"a1", "10", "a2", "20", "v1", "undefined"});
                 checkGlobalScope(event, new String[]{"outerMost", "42"}, new String[]{"main", IGNORE_VALUE});
                 event.prepareStepOut(1).prepareStepOver(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{});
                 checkScope(event, ":program", 14, "f(5)", new String[]{});
                 checkGlobalScope(event, new String[]{"outerMost", "42"}, new String[]{"main", IGNORE_VALUE, "f", IGNORE_VALUE});
                 event.prepareStepInto(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{"ia1", "5"}, null);
                 checkScope(event, "f", 6, "let v3 = {}", new String[]{"ia1", "5"}, new String[]{"a1", "10", "a2", "20", "v1", "72", "v2", "1234", "f", IGNORE_VALUE});
                 checkGlobalScope(event, new String[]{"outerMost", "42"}, new String[]{"main", IGNORE_VALUE, "f", IGNORE_VALUE});
                 event.prepareStepOut(1).prepareStepOver(1);
@@ -568,32 +559,27 @@ public class TestScope {
             tester.startEval(function);
 
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{});
+                checkScope(event, ":program", 10, "main(10, 20)", new String[]{});
                 event.prepareStepInto(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{"a1", "10", "a2", "20"});
                 checkScope(event, "main", 2, "let v1 = a1 + a2", new String[]{"a1", "10", "a2", "20", "nested", IGNORE_VALUE});
                 event.prepareStepOver(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{"a1", "10", "a2", "20"});
                 checkScope(event, "main", 8, "return nested();", new String[]{"a1", "10", "a2", "20", "v1", "30", "nested", IGNORE_VALUE});
                 event.prepareStepInto(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{}, null);
                 checkScope(event, "nested", 3, "let v2 = a1 + 2", new String[]{}, new String[]{"a1", "10", "a2", "20", "v1", "30", "nested", IGNORE_VALUE});
                 event.prepareStepOver(1);
                 event.prepareStepInto(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{}, null, null);
                 checkScope(event, "nested2", 5, "let v3 = v1 + v2", new String[]{}, new String[]{"v2", "12"}, new String[]{"a1", "10", "a2", "20", "v1", "30", "nested", IGNORE_VALUE});
                 event.prepareStepOver(1);
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event, new String[]{}, null, null);
                 checkScope(event, "nested2", 6, "return v3;", new String[]{"v3", "42"}, new String[]{"v2", "12"}, new String[]{"a1", "10", "a2", "20", "v1", "30", "nested", IGNORE_VALUE});
                 event.prepareContinue();
             });
@@ -757,37 +743,6 @@ public class TestScope {
                 if (!Objects.equals(IGNORE_VALUE, expectedValue)) {
                     Assert.assertEquals("Variable " + expectedIdentifier, expectedValue, value.toDisplayString());
                 }
-            }
-            dscope = dscope.getParent();
-        }
-        Assert.assertNull("An extra scope", dscope);
-    }
-
-    private static void checkArgs(SuspendedEvent suspendedEvent, final String[]... expectedScopedArgs) {
-        DebugStackFrame frame = suspendedEvent.getTopStackFrame();
-        DebugScope dscope = frame.getScope();
-        for (String[] expectedArgs : expectedScopedArgs) {
-            Assert.assertNotNull("No debug scope for " + Arrays.toString(expectedArgs), dscope);
-            Map<String, DebugValue> values = new HashMap<>();
-            Iterable<DebugValue> arguments = dscope.getArguments();
-            if (expectedArgs == null) {
-                Assert.assertNull("No arguments", arguments);
-                dscope = dscope.getParent();
-                continue;
-            }
-            Assert.assertNotNull("Expecting arguments " + Arrays.toString(expectedArgs), arguments);
-            for (DebugValue value : arguments) {
-                values.put(value.getName(), value);
-            }
-            String message = String.format("Frame expected arguments %s got %s", Arrays.toString(expectedArgs), values.toString());
-            Assert.assertEquals(message, expectedArgs.length / 2, values.size());
-
-            for (int i = 0; i < expectedArgs.length; i = i + 2) {
-                String expectedIdentifier = expectedArgs[i];
-                String expectedValue = expectedArgs[i + 1];
-                DebugValue value = values.get(expectedIdentifier);
-                Assert.assertNotNull(expectedIdentifier + " not found", value);
-                Assert.assertEquals("Variable " + expectedIdentifier, expectedValue, value.toDisplayString());
             }
             dscope = dscope.getParent();
         }

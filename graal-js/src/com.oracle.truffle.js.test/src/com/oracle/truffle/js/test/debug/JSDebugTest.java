@@ -318,19 +318,6 @@ public class JSDebugTest {
         }
     }
 
-    private static void checkArgs(DebugStackFrame frame, String... expectedArgs) {
-        Iterable<DebugValue> arguments = null;
-        DebugScope scope = frame.getScope();
-        while (scope != null) {
-            if (scope.isFunctionScope()) {
-                arguments = scope.getArguments();
-                break;
-            }
-            scope = scope.getParent();
-        }
-        checkDebugValues("arguments", arguments, expectedArgs);
-    }
-
     @Test
     public void testBreakpoint() throws Throwable {
         final Source factorial = createFactorial();
@@ -878,27 +865,23 @@ public class JSDebugTest {
             expectSuspended((SuspendedEvent event) -> {
                 DebugStackFrame frame = event.getTopStackFrame();
                 assertEquals(6, frame.getSourceSection().getStartLine());
-                checkArgs(frame, "n", "11", "m", "20");
                 checkStack(frame, "fnc", "n", "11", "m", "20");
                 event.prepareStepOver(4);
             });
             expectSuspended((SuspendedEvent event) -> {
                 DebugStackFrame frame = event.getTopStackFrame();
                 assertEquals(10, frame.getSourceSection().getStartLine());
-                checkArgs(frame, "n", "11", "m", "20");
                 checkStack(frame, "fnc", "n", "9", "m", "10", "x", "121");
                 event.prepareUnwindFrame(frame);
             });
             expectSuspended((SuspendedEvent event) -> {
                 DebugStackFrame frame = event.getTopStackFrame();
                 assertEquals(3, frame.getSourceSection().getStartLine());
-                checkArgs(frame);
                 checkStack(frame, "main", "i", "11");
             });
             expectSuspended((SuspendedEvent event) -> {
                 DebugStackFrame frame = event.getTopStackFrame();
                 assertEquals(6, frame.getSourceSection().getStartLine());
-                checkArgs(frame, "n", "11", "m", "20");
                 checkStack(frame, "fnc", "n", "11", "m", "20");
             });
             assertEquals("121", expectDone());
@@ -922,19 +905,19 @@ public class JSDebugTest {
             tester.startEval(source);
 
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event.getTopStackFrame(), new String[]{"a1", "undefined", "a2", "undefined"});
+                checkStack(event.getTopStackFrame(), "main", new String[]{"a1", "undefined", "a2", "undefined"});
                 event.prepareContinue();
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event.getTopStackFrame(), new String[]{"a1", "10", "a2", "undefined"});
+                checkStack(event.getTopStackFrame(), "main", new String[]{"a1", "10", "a2", "undefined"});
                 event.prepareContinue();
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event.getTopStackFrame(), new String[]{"a1", "10", "a2", "20"});
+                checkStack(event.getTopStackFrame(), "main", new String[]{"a1", "10", "a2", "20"});
                 event.prepareContinue();
             });
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkArgs(event.getTopStackFrame(), new String[]{"a1", "10", "a2", "20"});
+                checkStack(event.getTopStackFrame(), "main", new String[]{"a1", "10", "a2", "20"});
                 event.prepareContinue();
             });
         }
