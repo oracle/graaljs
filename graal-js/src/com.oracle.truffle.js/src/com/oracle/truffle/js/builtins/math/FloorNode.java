@@ -40,14 +40,11 @@
  */
 package com.oracle.truffle.js.builtins.math;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.nodes.JSTypesGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -75,60 +72,44 @@ public abstract class FloorNode extends MathOperation {
         return a;
     }
 
-    @Specialization(rewriteOn = UnexpectedResultException.class)
-    protected int floorDoubleMightReturnInt(double d,
-                    @Cached("createBinaryProfile()") @Shared("smaller") ConditionProfile smaller) throws UnexpectedResultException {
-        if (Double.isNaN(d) || JSRuntime.isNegativeZero(d) || d < Integer.MIN_VALUE || d > Integer.MAX_VALUE) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new UnexpectedResultException(mathFloor(d));
-        }
-        int i = (int) d;
-        return smaller.profile(d < i) ? i - 1 : i;
-    }
-
     @Specialization
-    protected static double floorDouble(double d,
+    protected static Object floorDouble(double d,
                     @Cached("createBinaryProfile()") @Shared("isNaN") ConditionProfile isNaN,
-                    @Cached("createBinaryProfile()") @Shared("isNegativeZero") ConditionProfile isNegativeZero,
+                    @Cached("createBinaryProfile()") @Shared("isZero") ConditionProfile isZero,
+                    @Cached("createBinaryProfile()") @Shared("fitsInt") ConditionProfile fitsInt,
                     @Cached("createBinaryProfile()") @Shared("fitsSafeLong") ConditionProfile fitsSafeLong,
                     @Cached("createBinaryProfile()") @Shared("smaller") ConditionProfile smaller) {
-        if (isNaN.profile(Double.isNaN(d))) {
-            return Double.NaN;
-        }
-        if (isNegativeZero.profile(JSRuntime.isNegativeZero(d))) {
-            return -0.0;
-        }
-        if (fitsSafeLong.profile(JSRuntime.isSafeInteger(d))) {
-            long i = (long) d;
+        if (isZero.profile(d == 0.0)) {
+            // floor(-0.0) => -0.0
+            // floor(+0.0) => +0.0
+            return d;
+        } else if (fitsInt.profile(d >= Integer.MIN_VALUE && d <= Integer.MAX_VALUE)) {
+            int i = (int) d;
             return smaller.profile(d < i) ? i - 1 : i;
+        } else if (fitsSafeLong.profile(JSRuntime.isSafeInteger(d))) {
+            long i = (long) d;
+            long result = smaller.profile(d < i) ? i - 1 : i;
+            return SafeInteger.valueOf(result);
+        } else if (isNaN.profile(Double.isNaN(d))) {
+            return Double.NaN;
         } else {
             return mathFloor(d);
         }
     }
 
-    @Specialization(guards = {"!isImplicitDouble(a)"}, rewriteOn = UnexpectedResultException.class)
-    protected int floorMightReturnInt(Object a,
-                    @Cached("createBinaryProfile()") @Shared("smaller") ConditionProfile smaller) throws UnexpectedResultException {
-        double d = toDouble(a);
-        return floorDoubleMightReturnInt(d, smaller);
-    }
-
-    @Specialization(guards = {"!isImplicitDouble(a)"})
-    protected double floorToDouble(Object a,
+    @Specialization(replaces = "floorDouble")
+    protected Object floorToDouble(Object a,
                     @Cached("createBinaryProfile()") @Shared("isNaN") ConditionProfile isNaN,
-                    @Cached("createBinaryProfile()") @Shared("isNegativeZero") ConditionProfile isNegativeZero,
+                    @Cached("createBinaryProfile()") @Shared("isZero") ConditionProfile isZero,
+                    @Cached("createBinaryProfile()") @Shared("fitsInt") ConditionProfile fitsInt,
                     @Cached("createBinaryProfile()") @Shared("fitsSafeLong") ConditionProfile fitsSafeLong,
                     @Cached("createBinaryProfile()") @Shared("smaller") ConditionProfile smaller) {
         double d = toDouble(a);
-        return floorDouble(d, isNaN, isNegativeZero, fitsSafeLong, smaller);
+        return floorDouble(d, isNaN, isZero, fitsInt, fitsSafeLong, smaller);
     }
 
     @TruffleBoundary
     private static double mathFloor(double d) {
         return Math.floor(d);
-    }
-
-    protected static boolean isImplicitDouble(Object a) {
-        return JSTypesGen.isImplicitDouble(a);
     }
 }

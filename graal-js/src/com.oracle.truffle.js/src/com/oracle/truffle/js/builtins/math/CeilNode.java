@@ -40,14 +40,11 @@
  */
 package com.oracle.truffle.js.builtins.math;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.nodes.JSTypesGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -75,68 +72,51 @@ public abstract class CeilNode extends MathOperation {
         return a;
     }
 
-    @Specialization(rewriteOn = UnexpectedResultException.class)
-    protected int ceilDoubleMightReturnInt(double d) throws UnexpectedResultException {
-        if (Double.isNaN(d) || JSRuntime.isNegativeZero(d) || d < Integer.MIN_VALUE || d > Integer.MAX_VALUE) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new UnexpectedResultException(mathCeil(d));
-        }
-        int i = (int) d;
-        int result = d > i ? i + 1 : i;
-        if (result == 0 && d < 0) {
-            // special-case: return -0.0
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new UnexpectedResultException(-0.0);
-        }
-        return result;
-    }
-
     @Specialization
-    protected static double ceilDouble(double d,
+    protected static Object ceilDouble(double d,
                     @Cached("createBinaryProfile()") @Shared("isNaN") ConditionProfile isNaN,
-                    @Cached("createBinaryProfile()") @Shared("isNegativeZero") ConditionProfile isNegativeZero,
+                    @Cached("createBinaryProfile()") @Shared("isZero") ConditionProfile isZero,
                     @Cached("createBinaryProfile()") @Shared("requiresNegativeZero") ConditionProfile requiresNegativeZero,
+                    @Cached("createBinaryProfile()") @Shared("fitsInt") ConditionProfile fitsInt,
                     @Cached("createBinaryProfile()") @Shared("fitsSafeLong") ConditionProfile fitsSafeLong) {
-        if (isNaN.profile(Double.isNaN(d))) {
-            return Double.NaN;
-        }
-        if (isNegativeZero.profile(JSRuntime.isNegativeZero(d))) {
-            return -0.0;
-        }
-        if (fitsSafeLong.profile(JSRuntime.isSafeInteger(d))) {
+        if (isZero.profile(d == 0.0)) {
+            // ceil(-0.0) => -0.0
+            // ceil(+0.0) => +0.0
+            return d;
+        } else if (fitsInt.profile(d >= Integer.MIN_VALUE && d <= Integer.MAX_VALUE)) {
+            int i = (int) d;
+            int result = d > i ? i + 1 : i;
+            if (requiresNegativeZero.profile(result == 0 && d < 0)) {
+                return -0.0;
+            }
+            return result;
+        } else if (fitsSafeLong.profile(JSRuntime.isSafeInteger(d))) {
             long i = (long) d;
             long result = d > i ? i + 1 : i;
             if (requiresNegativeZero.profile(result == 0 && d < 0)) {
                 return -0.0;
             }
-            return result;
+            return SafeInteger.valueOf(result);
+        } else if (isNaN.profile(Double.isNaN(d))) {
+            return Double.NaN;
         } else {
             return mathCeil(d);
         }
     }
 
-    @Specialization(guards = {"!isImplicitDouble(a)"}, rewriteOn = UnexpectedResultException.class)
-    protected int ceilMightReturnInt(Object a) throws UnexpectedResultException {
-        double d = toDouble(a);
-        return ceilDoubleMightReturnInt(d);
-    }
-
-    @Specialization(guards = {"!isImplicitDouble(a)"})
-    protected double ceilToDouble(Object a,
+    @Specialization(replaces = "ceilDouble")
+    protected Object ceilToDouble(Object a,
                     @Cached("createBinaryProfile()") @Shared("isNaN") ConditionProfile isNaN,
-                    @Cached("createBinaryProfile()") @Shared("isNegativeZero") ConditionProfile isNegativeZero,
+                    @Cached("createBinaryProfile()") @Shared("isZero") ConditionProfile isZero,
                     @Cached("createBinaryProfile()") @Shared("requiresNegativeZero") ConditionProfile requiresNegativeZero,
+                    @Cached("createBinaryProfile()") @Shared("fitsInt") ConditionProfile fitsInt,
                     @Cached("createBinaryProfile()") @Shared("fitsSafeLong") ConditionProfile fitsSafeLong) {
         double d = toDouble(a);
-        return ceilDouble(d, isNaN, isNegativeZero, requiresNegativeZero, fitsSafeLong);
+        return ceilDouble(d, isNaN, isZero, requiresNegativeZero, fitsInt, fitsSafeLong);
     }
 
     @TruffleBoundary
     private static double mathCeil(double d) {
         return Math.ceil(d);
-    }
-
-    protected static boolean isImplicitDouble(Object a) {
-        return JSTypesGen.isImplicitDouble(a);
     }
 }
