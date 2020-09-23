@@ -79,11 +79,6 @@ public class JSTypes {
         return value;
     }
 
-    @TypeCast(double.class)
-    public static double asDouble(Object value) {
-        return ((Double) value).doubleValue();
-    }
-
     @TypeCheck(CharSequence.class)
     public static boolean isCharSequence(Object value) {
         return JSRuntime.isString(value);
