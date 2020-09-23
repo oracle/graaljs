@@ -40,12 +40,14 @@
  */
 package com.oracle.truffle.js.builtins.math;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.SlowPathException;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.nodes.JSNodeUtil;
+import com.oracle.truffle.js.nodes.JSTypesGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -64,36 +66,37 @@ public abstract class CeilNode extends MathOperation {
     }
 
     @Specialization
-    protected static int ceil(int a) {
+    protected static int ceilInt(int a) {
         return a;
     }
 
     @Specialization
-    protected static SafeInteger ceil(SafeInteger a) {
+    protected static SafeInteger ceilSafeInt(SafeInteger a) {
         return a;
     }
 
-    @Specialization(rewriteOn = SlowPathException.class)
-    protected int ceilMightReturnInt(Object a) throws SlowPathException {
-        double d = toDouble(a);
+    @Specialization(rewriteOn = UnexpectedResultException.class)
+    protected int ceilDoubleMightReturnInt(double d) throws UnexpectedResultException {
         if (Double.isNaN(d) || JSRuntime.isNegativeZero(d) || d < Integer.MIN_VALUE || d > Integer.MAX_VALUE) {
-            throw JSNodeUtil.slowPathException();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new UnexpectedResultException(mathCeil(d));
         }
         int i = (int) d;
         int result = d > i ? i + 1 : i;
         if (result == 0 && d < 0) {
-            throw JSNodeUtil.slowPathException(); // special-case: return -0.0
+            // special-case: return -0.0
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new UnexpectedResultException(-0.0);
         }
         return result;
     }
 
     @Specialization
-    protected double ceilReturnsDouble(Object a,
-                    @Cached("createBinaryProfile()") ConditionProfile isNaN,
-                    @Cached("createBinaryProfile()") ConditionProfile isNegativeZero,
-                    @Cached("createBinaryProfile()") ConditionProfile requiresNegativeZero,
-                    @Cached("createBinaryProfile()") ConditionProfile fitsSafeLong) {
-        double d = toDouble(a);
+    protected static double ceilDouble(double d,
+                    @Cached("createBinaryProfile()") @Shared("isNaN") ConditionProfile isNaN,
+                    @Cached("createBinaryProfile()") @Shared("isNegativeZero") ConditionProfile isNegativeZero,
+                    @Cached("createBinaryProfile()") @Shared("requiresNegativeZero") ConditionProfile requiresNegativeZero,
+                    @Cached("createBinaryProfile()") @Shared("fitsSafeLong") ConditionProfile fitsSafeLong) {
         if (isNaN.profile(Double.isNaN(d))) {
             return Double.NaN;
         }
@@ -112,8 +115,28 @@ public abstract class CeilNode extends MathOperation {
         }
     }
 
+    @Specialization(guards = {"!isImplicitDouble(a)"}, rewriteOn = UnexpectedResultException.class)
+    protected int ceilMightReturnInt(Object a) throws UnexpectedResultException {
+        double d = toDouble(a);
+        return ceilDoubleMightReturnInt(d);
+    }
+
+    @Specialization(guards = {"!isImplicitDouble(a)"})
+    protected double ceilToDouble(Object a,
+                    @Cached("createBinaryProfile()") @Shared("isNaN") ConditionProfile isNaN,
+                    @Cached("createBinaryProfile()") @Shared("isNegativeZero") ConditionProfile isNegativeZero,
+                    @Cached("createBinaryProfile()") @Shared("requiresNegativeZero") ConditionProfile requiresNegativeZero,
+                    @Cached("createBinaryProfile()") @Shared("fitsSafeLong") ConditionProfile fitsSafeLong) {
+        double d = toDouble(a);
+        return ceilDouble(d, isNaN, isNegativeZero, requiresNegativeZero, fitsSafeLong);
+    }
+
     @TruffleBoundary
     private static double mathCeil(double d) {
         return Math.ceil(d);
+    }
+
+    protected static boolean isImplicitDouble(Object a) {
+        return JSTypesGen.isImplicitDouble(a);
     }
 }
