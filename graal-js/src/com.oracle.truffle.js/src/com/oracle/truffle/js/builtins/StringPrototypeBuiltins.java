@@ -2756,7 +2756,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             // it is lazily constructed just before its first execution. Furthermore, an execution
             // of the CreateRegExpStringIteratorNode necessitates the execution of all its children,
             // therefore there is nothing to gain by constructing the children of this node lazily.
-            this.createObjectNode = CreateObjectNode.createWithPrototype(context, null);
+            this.createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
             this.setIteratingRegExpNode = PropertySetNode.createSetHidden(JSString.REGEXP_ITERATOR_ITERATING_REGEXP_ID, context);
             this.setIteratedStringNode = PropertySetNode.createSetHidden(JSString.REGEXP_ITERATOR_ITERATED_STRING_ID, context);
             this.setGlobalNode = PropertySetNode.createSetHidden(JSString.REGEXP_ITERATOR_GLOBAL_ID, context);
@@ -2784,7 +2784,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         public CreateStringIteratorNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.createObjectNode = CreateObjectNode.createWithPrototype(context, null);
+            this.createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
             this.setIteratedObjectNode = PropertySetNode.createSetHidden(JSString.ITERATED_STRING_ID, context);
             this.setNextIndexNode = PropertySetNode.createSetHidden(JSString.STRING_ITERATOR_NEXT_INDEX_ID, context);
         }

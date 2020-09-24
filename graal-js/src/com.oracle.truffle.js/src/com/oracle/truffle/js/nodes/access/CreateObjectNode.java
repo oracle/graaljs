@@ -76,7 +76,11 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         return new CreateOrdinaryObjectNode(context);
     }
 
-    public static CreateObjectWithPrototypeNode createWithPrototype(JSContext context, JavaScriptNode prototypeExpression) {
+    public static CreateObjectWithPrototypeNode createOrdinaryWithPrototype(JSContext context) {
+        return createWithPrototype(context, null, JSOrdinary.INSTANCE);
+    }
+
+    public static CreateObjectWithPrototypeNode createOrdinaryWithPrototype(JSContext context, JavaScriptNode prototypeExpression) {
         return createWithPrototype(context, prototypeExpression, JSOrdinary.INSTANCE);
     }
 
@@ -121,6 +125,11 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         }
 
         public abstract DynamicObject execute(VirtualFrame frame, DynamicObject prototype);
+
+        public final DynamicObject execute(DynamicObject prototype) {
+            assert prototypeExpression == null;
+            return execute(null, prototype);
+        }
 
         @Override
         protected abstract CreateObjectWithPrototypeNode copyUninitialized(Set<Class<? extends Tag>> materializedTags);

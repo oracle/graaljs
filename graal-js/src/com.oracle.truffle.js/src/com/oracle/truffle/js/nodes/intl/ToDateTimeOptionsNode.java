@@ -41,10 +41,12 @@
 package com.oracle.truffle.js.nodes.intl;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.CreateObjectNode.CreateObjectWithPrototypeNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -57,7 +59,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public abstract class ToDateTimeOptionsNode extends JavaScriptBaseNode {
 
     @Child JSToObjectNode toObjectNode;
-    private final JSContext context;
+    final JSContext context;
 
     public JSContext getContext() {
         return context;
@@ -77,8 +79,10 @@ public abstract class ToDateTimeOptionsNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "!isUndefined(opts)")
-    public DynamicObject fromOtherThenUndefined(Object opts, String required, String defaults) {
-        return setDefaultsIfNeeded(JSOrdinary.createWithPrototype(toDynamicObject(opts), getContext()), required, defaults);
+    public DynamicObject fromOtherThenUndefined(Object opts, String required, String defaults,
+                    @Cached("createOrdinaryWithPrototype(context)") CreateObjectWithPrototypeNode createObjectNode) {
+        DynamicObject options = createObjectNode.execute(toDynamicObject(opts));
+        return setDefaultsIfNeeded(options, required, defaults);
     }
 
     // from step 4 (Let needDefaults be true)
