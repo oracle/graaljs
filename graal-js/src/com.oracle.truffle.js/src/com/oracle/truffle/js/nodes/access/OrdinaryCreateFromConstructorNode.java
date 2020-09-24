@@ -81,7 +81,7 @@ public class OrdinaryCreateFromConstructorNode extends JavaScriptNode {
     }
 
     private DynamicObject executeWithPrototype(VirtualFrame frame, DynamicObject proto) {
-        return createObjectNode.executeDynamicObject(frame, proto);
+        return createObjectNode.execute(frame, proto);
     }
 
     @Override

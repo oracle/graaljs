@@ -625,7 +625,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 objectCreateNode = insert(CreateObjectNode.createWithPrototype(getContext(), null));
             }
-            return objectCreateNode.executeDynamicObject(frame, prototype);
+            return objectCreateNode.execute(frame, prototype);
         }
     }
 

@@ -2767,7 +2767,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         public DynamicObject createIterator(VirtualFrame frame, Object regex, String string, Boolean global, Boolean fullUnicode) {
             DynamicObject regExpStringIteratorPrototype = context.getRealm().getRegExpStringIteratorPrototype();
-            DynamicObject iterator = createObjectNode.executeDynamicObject(frame, regExpStringIteratorPrototype);
+            DynamicObject iterator = createObjectNode.execute(frame, regExpStringIteratorPrototype);
             setIteratingRegExpNode.setValue(iterator, regex);
             setIteratedStringNode.setValue(iterator, string);
             setGlobalNode.setValueBoolean(iterator, global);
@@ -2791,7 +2791,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         protected DynamicObject doString(VirtualFrame frame, String string) {
-            DynamicObject iterator = createObjectNode.executeDynamicObject(frame, getContext().getRealm().getStringIteratorPrototype());
+            DynamicObject iterator = createObjectNode.execute(frame, getContext().getRealm().getStringIteratorPrototype());
             setIteratedObjectNode.setValue(iterator, string);
             setNextIndexNode.setValueInt(iterator, 0);
             return iterator;

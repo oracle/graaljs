@@ -3110,7 +3110,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         public DynamicObject execute(VirtualFrame frame, Object array) {
             assert JSGuards.isJSObject(array) || JSGuards.isForeignObject(array);
-            DynamicObject iterator = createObjectNode.executeDynamicObject(frame, context.getRealm().getArrayIteratorPrototype());
+            DynamicObject iterator = createObjectNode.execute(frame, context.getRealm().getArrayIteratorPrototype());
             setIteratedObjectNode.setValue(iterator, array);
             setNextIndexNode.setValue(iterator, 0L);
             setIterationKindNode.setValueInt(iterator, iterationKind);

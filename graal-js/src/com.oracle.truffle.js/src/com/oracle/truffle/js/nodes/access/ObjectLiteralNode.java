@@ -855,7 +855,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
     @Override
     public DynamicObject execute(VirtualFrame frame) {
-        DynamicObject ret = objectCreateNode.executeDynamicObject(frame);
+        DynamicObject ret = objectCreateNode.execute(frame);
         return executeWithObject(frame, ret);
     }
 

@@ -142,7 +142,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
 
         /* Let proto be ObjectCreate(protoParent). */
         assert protoParent == Null.instance || JSRuntime.isObject(protoParent);
-        DynamicObject proto = createObjectNode.executeDynamicObject(frame, ((DynamicObject) protoParent));
+        DynamicObject proto = createObjectNode.execute(frame, ((DynamicObject) protoParent));
 
         /*
          * Let constructorInfo be the result of performing DefineMethod for constructor with

@@ -280,7 +280,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @Specialization(guards = "isJSSet(set)")
         protected DynamicObject doSet(VirtualFrame frame, DynamicObject set) {
-            DynamicObject iterator = createObjectNode.executeDynamicObject(frame, getContext().getRealm().getSetIteratorPrototype());
+            DynamicObject iterator = createObjectNode.execute(frame, getContext().getRealm().getSetIteratorPrototype());
             setIteratedObjectNode.setValue(iterator, set);
             setNextIndexNode.setValue(iterator, JSSet.getInternalSet(set).getEntries());
             setIterationKindNode.setValueInt(iterator, iterationKind);
