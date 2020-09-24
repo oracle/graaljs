@@ -322,19 +322,26 @@ public final class JSArrayBufferView extends JSNonProxy {
     }
 
     public static DynamicObject createArrayBufferView(JSContext context, JSObjectFactory objectFactory, DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length) {
-        Object backingStorage = arrayType.isDirect() ? JSArrayBuffer.getDirectByteBuffer(arrayBuffer) : JSArrayBuffer.getByteArray(arrayBuffer);
-        return createArrayBufferView(context, objectFactory, arrayBuffer, arrayType, offset, length, backingStorage, false);
+        JSRealm realm = context.getRealm();
+        return createArrayBufferView(context, objectFactory, arrayBuffer, arrayType, offset, length, realm, objectFactory.getPrototype(realm));
+    }
+
+    public static DynamicObject createArrayBufferViewWithProto(JSContext context, JSObjectFactory objectFactory, DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length,
+                    DynamicObject prototype) {
+        JSRealm realm = context.getRealm();
+        return createArrayBufferView(context, objectFactory, arrayBuffer, arrayType, offset, length, realm, prototype);
     }
 
     private static DynamicObject createArrayBufferView(JSContext context, JSObjectFactory objectFactory, DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length,
-                    Object backingStorage, boolean shareable) {
-        assert offset >= 0 && offset + length * arrayType.bytesPerElement() <= (arrayType.isDirect() ? ((ByteBuffer) backingStorage).limit() : ((byte[]) backingStorage).length);
+                    JSRealm realm, DynamicObject prototype) {
+        assert !JSArrayBuffer.isDetachedBuffer(arrayBuffer);
+        assert offset >= 0 && offset + length * arrayType.bytesPerElement() <= (arrayType.isDirect()
+                        ? JSArrayBuffer.getDirectByteBuffer(arrayBuffer).limit()
+                        : JSArrayBuffer.getByteArray(arrayBuffer).length);
         assert offset != 0 == arrayType.hasOffset();
-        assert !shareable;
 
-        JSRealm realm = context.getRealm();
         DynamicObject obj = JSTypedArrayObject.create(objectFactory.getShape(realm), arrayType, (JSArrayBufferObject) arrayBuffer, length, offset);
-        objectFactory.initProto(obj, realm);
+        objectFactory.initProto(obj, prototype);
         assert JSArrayBuffer.isJSAbstractBuffer(arrayBuffer);
         assert isJSArrayBufferView(obj);
         return context.trackAllocation(obj);
