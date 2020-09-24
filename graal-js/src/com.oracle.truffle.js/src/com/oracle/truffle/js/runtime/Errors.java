@@ -280,7 +280,7 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createTypeErrorNotIterable(Object value, Node originatingNode) {
-        return Errors.createTypeError(JSRuntime.safeToString(value) + "  is not iterable", originatingNode);
+        return Errors.createTypeError(JSRuntime.safeToString(value) + " is not iterable", originatingNode);
     }
 
     @TruffleBoundary
