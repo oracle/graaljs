@@ -86,7 +86,7 @@ public final class JSShape {
     }
 
     static Shape createObjectShape(JSContext context, JSClass jsclass, DynamicObject prototype) {
-        Shape rootShape = newBuilder(context, jsclass).build();
+        Shape rootShape = newBuilder(context, jsclass, prototype).build();
         return Shape.newBuilder(rootShape).addConstantProperty(JSObject.HIDDEN_PROTO, prototype, 0).build();
     }
 
@@ -179,7 +179,7 @@ public final class JSShape {
         return createObjectShape(context, jsclass, Null.instance);
     }
 
-    public static Shape createRootWithProto(JSContext context, JSClass jsclass, DynamicObject prototype) {
+    public static Shape createRootWithProto(JSContext context, JSClass jsclass, JSDynamicObject prototype) {
         return createObjectShape(context, jsclass, prototype);
     }
 
@@ -187,11 +187,11 @@ public final class JSShape {
      * Empty shape constructor with prototype in field.
      */
     public static Shape makeEmptyRootWithInstanceProto(JSContext context, JSClass jsclass) {
-        return newBuilder(context, jsclass).build();
+        return newBuilder(context, jsclass, null).build();
     }
 
-    public static JSSharedData makeJSSharedData(JSContext context) {
-        return new JSSharedData(context);
+    public static JSSharedData makeJSSharedData(JSContext context, JSDynamicObject proto) {
+        return new JSSharedData(context, proto);
     }
 
     public static Class<? extends DynamicObject> getLayout(JSClass jsclass) {
@@ -201,11 +201,12 @@ public final class JSShape {
         return JSDynamicObject.class;
     }
 
-    public static Shape.Builder newBuilder(JSContext context, JSClass jsclass) {
+    public static Shape.Builder newBuilder(JSContext context, JSClass jsclass, DynamicObject proto) {
+        assert !context.isMultiContext() || (proto == null || proto == Null.instance);
         return Shape.newBuilder().//
                         layout(getLayout(jsclass)).//
                         dynamicType(jsclass).//
-                        sharedData(JSShape.makeJSSharedData(context)).//
+                        sharedData(JSShape.makeJSSharedData(context, (JSDynamicObject) proto)).//
                         shapeFlags(getDefaultShapeFlags(jsclass)).//
                         allowImplicitCastIntToDouble(true);
     }

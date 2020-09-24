@@ -353,11 +353,16 @@ public final class JSObjectUtil {
         final Shape oldShape = object.getShape();
         JSShape.invalidatePrototypeAssumption(oldShape);
         final Shape newRootShape;
+        JSClass jsclass = JSShape.getJSClass(oldShape);
         if (newPrototype == Null.instance) {
-            newRootShape = context.makeEmptyShapeWithNullPrototype(JSShape.getJSClass(oldShape));
+            newRootShape = context.makeEmptyShapeWithNullPrototype(jsclass);
         } else {
             assert JSRuntime.isObject(newPrototype) : newPrototype;
-            newRootShape = JSObjectUtil.getProtoChildShape(newPrototype, JSShape.getJSClass(oldShape), context);
+            if (context.isMultiContext()) {
+                newRootShape = context.makeEmptyShapeWithPrototypeInObject(jsclass);
+            } else {
+                newRootShape = JSObjectUtil.getProtoChildShape(newPrototype, jsclass, context);
+            }
         }
 
         DynamicObjectLibrary lib = DynamicObjectLibrary.getUncached();
@@ -377,14 +382,28 @@ public final class JSObjectUtil {
             if (!newRootShape.hasProperty(key)) {
                 Object value = archive.get(i);
                 int propertyFlags = property.getFlags();
-                if (property.getLocation().isConstant()) {
+                if (JSObject.HIDDEN_PROTO.equals(key)) {
+                    // Note possible transition from constant shape prototype to instance property
+                    lib.putWithFlags(object, key, newPrototype, propertyFlags);
+                } else if (property.getLocation().isConstant()) {
                     lib.putConstant(object, key, value, propertyFlags);
                 } else {
                     lib.putWithFlags(object, key, value, propertyFlags);
                 }
-
             }
         }
+
+        assert JSObjectUtil.getPrototype(object) == newPrototype;
+    }
+
+    public static JSDynamicObject getPrototype(DynamicObject thisObj) {
+        JSSharedData sharedData = JSShape.getSharedData(thisObj.getShape());
+        JSDynamicObject proto = sharedData.getPrototype();
+        if (proto != null) {
+            assert proto == JSDynamicObject.getOrDefault(thisObj, JSObject.HIDDEN_PROTO, Null.instance);
+            return proto;
+        }
+        return (JSDynamicObject) JSDynamicObject.getOrDefault(thisObj, JSObject.HIDDEN_PROTO, Null.instance);
     }
 
     public static <T> T checkForNoSuchPropertyOrMethod(JSContext context, T key) {
