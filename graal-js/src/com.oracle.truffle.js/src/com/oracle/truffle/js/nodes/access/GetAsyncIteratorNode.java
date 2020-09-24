@@ -47,6 +47,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -77,16 +78,17 @@ public abstract class GetAsyncIteratorNode extends GetIteratorNode {
     @Override
     @Specialization(guards = {"!isForeignObject(iteratedObject)"})
     protected IteratorRecord doGetIterator(Object iteratedObject,
+                    @Cached("create()") IsCallableNode isCallableNode,
                     @Cached("createCall()") JSFunctionCallNode methodCallNode,
                     @Cached("create()") IsJSObjectNode isObjectNode) {
         Object method = getAsyncIteratorMethodNode.executeWithTarget(iteratedObject);
         if (asyncToSync.profile(method == Undefined.instance)) {
             Object syncMethod = getIteratorMethodNode().executeWithTarget(iteratedObject);
-            IteratorRecord syncIteratorRecord = getIterator(iteratedObject, syncMethod, methodCallNode, isObjectNode);
+            IteratorRecord syncIteratorRecord = getIterator(iteratedObject, syncMethod, isCallableNode, methodCallNode, isObjectNode);
             DynamicObject asyncIterator = createAsyncFromSyncIterator(syncIteratorRecord);
             return IteratorRecord.create(asyncIterator, getNextMethodNode.getValue(asyncIterator), false);
         }
-        return getIterator(iteratedObject, method, methodCallNode, isObjectNode);
+        return getIterator(iteratedObject, method, isCallableNode, methodCallNode, isObjectNode);
     }
 
     @Override

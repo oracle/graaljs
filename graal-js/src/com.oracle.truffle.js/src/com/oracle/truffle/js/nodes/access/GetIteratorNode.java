@@ -52,6 +52,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -71,6 +72,7 @@ public abstract class GetIteratorNode extends JavaScriptNode {
     @Child @Executed protected JavaScriptNode objectNode;
     @Child private GetMethodNode getIteratorMethodNode;
     @Child protected PropertyGetNode getNextMethodNode;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected final JSContext context;
 
@@ -98,13 +100,18 @@ public abstract class GetIteratorNode extends JavaScriptNode {
 
     @Specialization(guards = {"!isForeignObject(iteratedObject)"})
     protected IteratorRecord doGetIterator(Object iteratedObject,
+                    @Cached("create()") IsCallableNode isCallableNode,
                     @Cached("createCall()") JSFunctionCallNode methodCallNode,
                     @Cached("create()") IsJSObjectNode isObjectNode) {
         Object method = getIteratorMethodNode().executeWithTarget(iteratedObject);
-        return getIterator(iteratedObject, method, methodCallNode, isObjectNode);
+        return getIterator(iteratedObject, method, isCallableNode, methodCallNode, isObjectNode);
     }
 
-    protected final IteratorRecord getIterator(Object iteratedObject, Object method, JSFunctionCallNode methodCallNode, IsJSObjectNode isObjectNode) {
+    protected final IteratorRecord getIterator(Object iteratedObject, Object method, IsCallableNode isCallableNode, JSFunctionCallNode methodCallNode, IsJSObjectNode isObjectNode) {
+        if (!isCallableNode.executeBoolean(method)) {
+            errorBranch.enter();
+            throw Errors.createTypeErrorNotIterable(iteratedObject, this);
+        }
         return getIterator(iteratedObject, method, methodCallNode, isObjectNode, getNextMethodNode, this);
     }
 
