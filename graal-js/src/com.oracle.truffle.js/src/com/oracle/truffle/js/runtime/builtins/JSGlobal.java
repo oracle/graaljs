@@ -63,10 +63,9 @@ public final class JSGlobal extends JSNonProxy {
     public static DynamicObject create(JSRealm realm, DynamicObject objectPrototype) {
         CompilerAsserts.neverPartOfCompilation();
         JSContext context = realm.getContext();
-        Shape globalObjectShape = makeGlobalObjectShape(context, objectPrototype);
-
-        DynamicObject global = new JSGlobalObject(globalObjectShape);
-        JSObjectUtil.setOrVerifyPrototype(context, global, objectPrototype);
+        JSObjectFactory factory = context.getGlobalObjectFactory();
+        DynamicObject global = new JSGlobalObject(factory.getShape(realm));
+        factory.initProto(global, objectPrototype);
 
         JSObjectUtil.putToStringTag(global, CLASS_NAME);
         return global;
