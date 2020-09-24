@@ -403,6 +403,8 @@ public abstract class Environment {
     private VarRef newFrameSlotVarRef(FrameSlot slot, int scopeLevel, int frameLevel, String name, Environment current) {
         if (current instanceof DebugEnvironment) {
             return new LazyFrameSlotVarRef(slot, scopeLevel, frameLevel, name, current);
+        } else if (isMappedArgumentsParameter(slot, current)) {
+            return new MappedArgumentVarRef(slot, scopeLevel, frameLevel, name, current);
         } else {
             return new FrameSlotVarRef(slot, scopeLevel, frameLevel, name, current);
         }
@@ -415,31 +417,17 @@ public abstract class Environment {
             FunctionEnvironment currentFunction = current.function();
             JavaScriptNode createArgumentsObjectNode = factory.createArgumentsObjectNode(context, isStrictMode(), currentFunction.getLeadingArgumentCount(),
                             currentFunction.getTrailingArgumentCount());
-            JavaScriptNode writeNode = factory.createWriteFrameSlot(currentFunction.getArgumentsSlot(), frameLevel, scopeLevel, getParentSlots(frameLevel, scopeLevel), createArgumentsObjectNode);
+            JavaScriptNode writeNode = factory.createWriteFrameSlot(currentFunction.getArgumentsSlot(), frameLevel, scopeLevel, currentFunction.getFunctionFrameDescriptor(),
+                            getParentSlots(frameLevel, scopeLevel), createArgumentsObjectNode);
             return factory.createAccessArgumentsArrayDirectly(writeNode, argumentsVarNode, currentFunction.getLeadingArgumentCount(), currentFunction.getTrailingArgumentCount());
         } else {
             return argumentsVarNode;
         }
     }
 
-    private JavaScriptNode createReadLocalVarNodeFromSlot(Environment current, int frameLevel, FrameSlot slot, int scopeLevel, boolean checkTDZ) {
-        FunctionEnvironment currentFunction = current.function();
-        if (currentFunction.getArgumentsSlot() != null && !currentFunction.isStrictMode() && currentFunction.hasSimpleParameterList() && currentFunction.isParam(slot)) {
-            return createReadParameterFromMappedArguments(current, frameLevel, scopeLevel, slot);
-        }
-        JavaScriptNode readNode = createLocal(slot, frameLevel, scopeLevel, checkTDZ);
-        if (JSFrameUtil.isImportBinding(slot)) {
-            return factory.createReadImportBinding(readNode);
-        }
-        return readNode;
-    }
-
-    private JavaScriptNode createWriteLocalVarNodeFromSlot(Environment current, int frameLevel, FrameSlot slot, int scopeLevel, boolean checkTDZ, JavaScriptNode rhs) {
-        FunctionEnvironment currentFunction = current.function();
-        if (currentFunction.getArgumentsSlot() != null && !currentFunction.isStrictMode() && currentFunction.hasSimpleParameterList() && currentFunction.isParam(slot)) {
-            return createWriteParameterFromMappedArguments(current, frameLevel, scopeLevel, slot, rhs);
-        }
-        return factory.createWriteFrameSlot(slot, frameLevel, scopeLevel, getParentSlots(frameLevel, scopeLevel), rhs, checkTDZ);
+    private static boolean isMappedArgumentsParameter(FrameSlot slot, Environment current) {
+        FunctionEnvironment function = current.function();
+        return function.getArgumentsSlot() != null && !function.isStrictMode() && function.hasSimpleParameterList() && function.isParam(slot);
     }
 
     private JavaScriptNode createReadParameterFromMappedArguments(Environment current, int frameLevel, int scopeLevel, FrameSlot slot) {
@@ -519,7 +507,7 @@ public abstract class Environment {
 
             @Override
             public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
-                return factory.createWriteFrameSlot(var, 0, getScopeLevel(), getParentSlots(), rhs);
+                return factory.createWriteFrameSlot(var, 0, getScopeLevel(), getFunctionFrameDescriptor(), getParentSlots(), rhs);
             }
 
             @Override
@@ -644,6 +632,10 @@ public abstract class Environment {
         public VarRef withRequired(@SuppressWarnings("unused") boolean required) {
             return this;
         }
+
+        public boolean hasTDZCheck() {
+            return false;
+        }
     }
 
     public abstract class AbstractFrameVarRef extends VarRef {
@@ -681,6 +673,14 @@ public abstract class Environment {
         public JavaScriptNode createDeleteNode() {
             return factory.createConstantBoolean(false);
         }
+
+        public ScopeFrameNode createScopeFrameNode() {
+            return factory.createScopeFrame(frameLevel, scopeLevel, getParentSlots(frameLevel, scopeLevel));
+        }
+
+        public FrameDescriptor getFrameDescriptor() {
+            return current.getBlockFrameDescriptor();
+        }
     }
 
     public class FrameSlotVarRef extends AbstractFrameVarRef {
@@ -709,12 +709,16 @@ public abstract class Environment {
 
         @Override
         public JavaScriptNode createReadNode() {
-            return createReadLocalVarNodeFromSlot(current, frameLevel, frameSlot, scopeLevel, checkTDZ);
+            JavaScriptNode readNode = createLocal(frameSlot, frameLevel, scopeLevel, checkTDZ);
+            if (JSFrameUtil.isImportBinding(frameSlot)) {
+                return factory.createReadImportBinding(readNode);
+            }
+            return readNode;
         }
 
         @Override
         public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
-            return createWriteLocalVarNodeFromSlot(current, frameLevel, frameSlot, scopeLevel, checkTDZ, rhs);
+            return factory.createWriteFrameSlot(frameSlot, frameLevel, scopeLevel, current.getBlockFrameDescriptor(), getParentSlots(frameLevel, scopeLevel), rhs, checkTDZ);
         }
 
         @Override
@@ -723,6 +727,11 @@ public abstract class Environment {
                 return this;
             }
             return new FrameSlotVarRef(frameSlot, scopeLevel, frameLevel, name, current, true);
+        }
+
+        @Override
+        public boolean hasTDZCheck() {
+            return checkTDZ;
         }
     }
 
@@ -766,7 +775,27 @@ public abstract class Environment {
         @Override
         public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
             assert !current.function().isDirectArgumentsAccess();
-            return factory.createWriteFrameSlot(current.function().getArgumentsSlot(), frameLevel, scopeLevel, getParentSlots(frameLevel, scopeLevel), rhs);
+            return factory.createWriteFrameSlot(current.function().getArgumentsSlot(), frameLevel, scopeLevel, current.getFunctionFrameDescriptor(), getParentSlots(frameLevel, scopeLevel), rhs);
+        }
+    }
+
+    public class MappedArgumentVarRef extends AbstractArgumentsVarRef {
+        protected final FrameSlot frameSlot;
+
+        public MappedArgumentVarRef(FrameSlot frameSlot, int scopeLevel, int frameLevel, String name, Environment current) {
+            super(scopeLevel, frameLevel, name, current);
+            this.frameSlot = frameSlot;
+            assert !JSFrameUtil.hasTemporalDeadZone(frameSlot);
+        }
+
+        @Override
+        public JavaScriptNode createReadNode() {
+            return createReadParameterFromMappedArguments(current, frameLevel, scopeLevel, frameSlot);
+        }
+
+        @Override
+        public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
+            return createWriteParameterFromMappedArguments(current, frameLevel, scopeLevel, frameSlot, rhs);
         }
     }
 
@@ -906,6 +935,11 @@ public abstract class Environment {
             }
             return this;
         }
+
+        @Override
+        public boolean hasTDZCheck() {
+            return checkTDZ;
+        }
     }
 
     public class WrappedVarRef extends VarRef {
@@ -967,6 +1001,11 @@ public abstract class Environment {
         @Override
         public VarRef withRequired(boolean required) {
             return new WrappedVarRef(name, wrappee.withRequired(required), wrapClosure);
+        }
+
+        @Override
+        public boolean hasTDZCheck() {
+            return wrappee.hasTDZCheck();
         }
     }
 

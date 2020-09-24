@@ -45,6 +45,7 @@ import java.util.Set;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -57,9 +58,9 @@ import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.SafeInteger;
 
-public abstract class JSWriteFrameSlotNode extends FrameSlotNode implements WriteNode {
-    protected JSWriteFrameSlotNode(FrameSlot frameSlot) {
-        super(frameSlot);
+public abstract class JSWriteFrameSlotNode extends FrameSlotNode.WithDescriptor implements WriteNode {
+    protected JSWriteFrameSlotNode(FrameSlot frameSlot, FrameDescriptor frameDescriptor) {
+        super(frameSlot, frameDescriptor);
     }
 
     @Override
@@ -96,15 +97,16 @@ public abstract class JSWriteFrameSlotNode extends FrameSlotNode implements Writ
 
     public abstract Object executeWithFrame(Frame frame, Object value);
 
-    public static JSWriteFrameSlotNode create(FrameSlot frameSlot, int frameLevel, int scopeLevel, FrameSlot[] parentSlots, JavaScriptNode rhs, boolean hasTemporalDeadZone) {
+    public static JSWriteFrameSlotNode create(FrameSlot frameSlot, int frameLevel, int scopeLevel, FrameDescriptor frameDescriptor, FrameSlot[] parentSlots, JavaScriptNode rhs,
+                    boolean hasTemporalDeadZone) {
         if (frameLevel == 0 && scopeLevel == 0 && !hasTemporalDeadZone) {
-            return JSWriteCurrentFrameSlotNodeGen.create(frameSlot, rhs);
+            return JSWriteCurrentFrameSlotNodeGen.create(frameSlot, rhs, frameDescriptor);
         }
-        return create(frameSlot, ScopeFrameNode.create(frameLevel, scopeLevel, parentSlots), rhs, hasTemporalDeadZone);
+        return create(frameSlot, ScopeFrameNode.create(frameLevel, scopeLevel, parentSlots), rhs, frameDescriptor, hasTemporalDeadZone);
     }
 
-    public static JSWriteFrameSlotNode create(FrameSlot frameSlot, ScopeFrameNode levelFrameNode, JavaScriptNode rhs, boolean hasTemporalDeadZone) {
-        return JSWriteScopeFrameSlotNodeGen.create(frameSlot, levelFrameNode, hasTemporalDeadZone ? TemporalDeadZoneCheckNode.create(frameSlot, levelFrameNode, rhs) : rhs);
+    public static JSWriteFrameSlotNode create(FrameSlot frameSlot, ScopeFrameNode levelFrameNode, JavaScriptNode rhs, FrameDescriptor frameDescriptor, boolean hasTemporalDeadZone) {
+        return JSWriteScopeFrameSlotNodeGen.create(frameSlot, levelFrameNode, hasTemporalDeadZone ? TemporalDeadZoneCheckNode.create(frameSlot, levelFrameNode, rhs) : rhs, frameDescriptor);
     }
 
     @Override
@@ -117,8 +119,8 @@ abstract class JSWriteScopeFrameSlotNode extends JSWriteFrameSlotNode {
     @Child @Executed ScopeFrameNode scopeFrameNode;
     @Child @Executed JavaScriptNode rhsNode;
 
-    protected JSWriteScopeFrameSlotNode(FrameSlot frameSlot, ScopeFrameNode scopeFrameNode, JavaScriptNode rhsNode) {
-        super(frameSlot);
+    protected JSWriteScopeFrameSlotNode(FrameSlot frameSlot, ScopeFrameNode scopeFrameNode, JavaScriptNode rhsNode, FrameDescriptor frameDescriptor) {
+        super(frameSlot, frameDescriptor);
         this.scopeFrameNode = scopeFrameNode;
         this.rhsNode = rhsNode;
     }
@@ -191,15 +193,15 @@ abstract class JSWriteScopeFrameSlotNode extends JSWriteFrameSlotNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return JSWriteScopeFrameSlotNodeGen.create(frameSlot, getLevelFrameNode(), cloneUninitialized(getRhs(), materializedTags));
+        return JSWriteScopeFrameSlotNodeGen.create(frameSlot, getLevelFrameNode(), cloneUninitialized(getRhs(), materializedTags), frameDescriptor);
     }
 }
 
 abstract class JSWriteCurrentFrameSlotNode extends JSWriteFrameSlotNode {
     @Child @Executed JavaScriptNode rhsNode;
 
-    protected JSWriteCurrentFrameSlotNode(FrameSlot frameSlot, JavaScriptNode rhsNode) {
-        super(frameSlot);
+    protected JSWriteCurrentFrameSlotNode(FrameSlot frameSlot, JavaScriptNode rhsNode, FrameDescriptor frameDescriptor) {
+        super(frameSlot, frameDescriptor);
         this.rhsNode = rhsNode;
     }
 
@@ -266,11 +268,11 @@ abstract class JSWriteCurrentFrameSlotNode extends JSWriteFrameSlotNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return JSWriteCurrentFrameSlotNodeGen.create(frameSlot, cloneUninitialized(getRhs(), materializedTags));
+        return JSWriteCurrentFrameSlotNodeGen.create(frameSlot, cloneUninitialized(getRhs(), materializedTags), frameDescriptor);
     }
 
     @Override
     public ScopeFrameNode getLevelFrameNode() {
-        return ScopeFrameNode.create(0);
+        return ScopeFrameNode.createCurrent();
     }
 }

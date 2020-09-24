@@ -113,7 +113,6 @@ import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.DeclareEvalVariableNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalNode;
-import com.oracle.truffle.js.nodes.access.FrameSlotNode;
 import com.oracle.truffle.js.nodes.access.GlobalPropertyNode;
 import com.oracle.truffle.js.nodes.access.GlobalScopeVarWrapperNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
@@ -160,6 +159,7 @@ import com.oracle.truffle.js.parser.env.BlockEnvironment;
 import com.oracle.truffle.js.parser.env.DebugEnvironment;
 import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.parser.env.Environment.AbstractFrameVarRef;
+import com.oracle.truffle.js.parser.env.Environment.FrameSlotVarRef;
 import com.oracle.truffle.js.parser.env.Environment.VarRef;
 import com.oracle.truffle.js.parser.env.EvalEnvironment;
 import com.oracle.truffle.js.parser.env.FunctionEnvironment;
@@ -846,15 +846,16 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (parameterSlots.length != 0) {
             JavaScriptNode[] parameterAssignment = javaScriptNodeArray(parameterSlots.length + 1);
             int i = 0;
-            boolean hasRestParameter = currentFunction().hasRestParameter();
-            for (int argIndex = currentFunction().getLeadingArgumentCount(); i < parameterSlots.length; i++, argIndex++) {
+            FunctionEnvironment currentFunction = currentFunction();
+            boolean hasRestParameter = currentFunction.hasRestParameter();
+            for (int argIndex = currentFunction.getLeadingArgumentCount(); i < parameterSlots.length; i++, argIndex++) {
                 final JavaScriptNode valueNode;
                 if (hasRestParameter && i == parameterSlots.length - 1) {
-                    valueNode = tagHiddenExpression(factory.createAccessRestArgument(context, argIndex, currentFunction().getTrailingArgumentCount()));
+                    valueNode = tagHiddenExpression(factory.createAccessRestArgument(context, argIndex, currentFunction.getTrailingArgumentCount()));
                 } else {
                     valueNode = tagHiddenExpression(factory.createAccessArgument(argIndex));
                 }
-                parameterAssignment[i] = tagHiddenExpression(factory.createWriteFrameSlot(parameterSlots[i], 0, 0, ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY, valueNode));
+                parameterAssignment[i] = tagHiddenExpression(factory.createWriteCurrentFrameSlot(parameterSlots[i], currentFunction.getFunctionFrameDescriptor(), valueNode));
             }
             parameterAssignment[i] = body;
             return factory.createExprBlock(parameterAssignment);
@@ -2048,39 +2049,25 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode enterUnaryIncDecNode(UnaryNode unaryNode) {
-        JavaScriptNode operand = transform(unaryNode.getExpression());
-
-        if (JSConfig.LocalVarIncDecNode && isLocalVariableOperand(operand)) {
-            FrameSlot frameSlot = ((FrameSlotNode) operand).getFrameSlot();
-            if (JSFrameUtil.isConst(frameSlot)) {
-                // we know this is going to throw. do the read and throw TypeError.
-                return checkMutableBinding(operand, frameSlot.getIdentifier());
+        if (JSConfig.LocalVarIncDecNode && unaryNode.getExpression() instanceof IdentNode) {
+            IdentNode identNode = (IdentNode) unaryNode.getExpression();
+            assert !identNode.isPropertyName() && !identNode.isThis() && !identNode.isMetaProperty() && !identNode.isSuper();
+            VarRef varRef = findScopeVarCheckTDZ(identNode.getName(), false);
+            if (varRef instanceof FrameSlotVarRef) {
+                FrameSlotVarRef frameVarRef = (FrameSlotVarRef) varRef;
+                FrameSlot frameSlot = frameVarRef.getFrameSlot();
+                if (JSFrameUtil.isConst(frameSlot)) {
+                    // we know this is going to throw. do the read and throw TypeError.
+                    return tagExpression(checkMutableBinding(frameVarRef.createReadNode(), frameSlot.getIdentifier()), unaryNode);
+                }
+                return tagExpression(factory.createLocalVarInc(tokenTypeToUnaryOperation(unaryNode.tokenType()), frameSlot, frameVarRef.hasTDZCheck(),
+                                frameVarRef.createScopeFrameNode(), frameVarRef.getFrameDescriptor()), unaryNode);
             }
-            return tagExpression(createUnaryIncDecLocalNode(unaryNode, operand), unaryNode);
-        } else {
-            BinaryOperation operation = unaryNode.tokenType() == TokenType.INCPREFIX || unaryNode.tokenType() == TokenType.INCPOSTFIX ? BinaryOperation.ADD : BinaryOperation.SUBTRACT;
-            boolean isPostfix = unaryNode.tokenType() == TokenType.INCPOSTFIX || unaryNode.tokenType() == TokenType.DECPOSTFIX;
-            return tagExpression(transformCompoundAssignment(unaryNode, unaryNode.getExpression(), factory.createConstantNumericUnit(), operation, isPostfix, true), unaryNode);
         }
-    }
 
-    private static boolean isLocalVariableOperand(JavaScriptNode operand) {
-        return operand instanceof JSReadFrameSlotNode;
-    }
-
-    private JavaScriptNode createUnaryIncDecLocalNode(UnaryNode unaryNode, JavaScriptNode operand) {
-        switch (unaryNode.tokenType()) {
-            case INCPREFIX:
-                return factory.createUnary(UnaryOperation.PREFIX_LOCAL_INCREMENT, operand);
-            case INCPOSTFIX:
-                return factory.createUnary(UnaryOperation.POSTFIX_LOCAL_INCREMENT, operand);
-            case DECPREFIX:
-                return factory.createUnary(UnaryOperation.PREFIX_LOCAL_DECREMENT, operand);
-            case DECPOSTFIX:
-                return factory.createUnary(UnaryOperation.POSTFIX_LOCAL_DECREMENT, operand);
-            default:
-                throw Errors.shouldNotReachHere();
-        }
+        BinaryOperation operation = unaryNode.tokenType() == TokenType.INCPREFIX || unaryNode.tokenType() == TokenType.INCPOSTFIX ? BinaryOperation.ADD : BinaryOperation.SUBTRACT;
+        boolean isPostfix = unaryNode.tokenType() == TokenType.INCPOSTFIX || unaryNode.tokenType() == TokenType.DECPOSTFIX;
+        return tagExpression(transformCompoundAssignment(unaryNode, unaryNode.getExpression(), factory.createConstantNumericUnit(), operation, isPostfix, true), unaryNode);
     }
 
     private static UnaryOperation tokenTypeToUnaryOperation(TokenType tokenType) {
@@ -2098,9 +2085,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             case VOID:
                 return UnaryOperation.VOID;
             case DECPREFIX:
+                return UnaryOperation.PREFIX_LOCAL_DECREMENT;
             case DECPOSTFIX:
+                return UnaryOperation.POSTFIX_LOCAL_DECREMENT;
             case INCPREFIX:
+                return UnaryOperation.PREFIX_LOCAL_INCREMENT;
             case INCPOSTFIX:
+                return UnaryOperation.POSTFIX_LOCAL_INCREMENT;
             case NEW:
             case DELETE:
             default:

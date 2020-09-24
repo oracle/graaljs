@@ -113,61 +113,6 @@ public abstract class FrameSlotNode extends JavaScriptNode {
         return frame.isLong(frameSlot);
     }
 
-    protected final boolean isBooleanKind(Frame frame) {
-        return isOrSetKind(frame, FrameSlotKind.Boolean);
-    }
-
-    protected final boolean isIntegerKind(Frame frame) {
-        return isOrSetKind(frame, FrameSlotKind.Int);
-    }
-
-    protected final boolean isDoubleKind(Frame frame) {
-        return isOrSetKind(frame, FrameSlotKind.Double);
-    }
-
-    protected final boolean isLongKind(Frame frame) {
-        return isOrSetKind(frame, FrameSlotKind.Long);
-    }
-
-    protected final void ensureObjectKind(Frame frame) {
-        FrameDescriptor frameDescriptor = frame.getFrameDescriptor();
-        if (frameDescriptor.getFrameSlotKind(frameSlot) != FrameSlotKind.Object) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            frameDescriptor.setFrameSlotKind(frameSlot, FrameSlotKind.Object);
-        }
-    }
-
-    private boolean isOrSetKind(Frame frame, FrameSlotKind targetKind) {
-        FrameDescriptor frameDescriptor = frame.getFrameDescriptor();
-        FrameSlotKind currentKind = frameDescriptor.getFrameSlotKind(frameSlot);
-        if (currentKind == targetKind) {
-            return true;
-        } else if (currentKind == FrameSlotKind.Illegal) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            frameDescriptor.setFrameSlotKind(frameSlot, targetKind);
-            return true;
-        } else {
-            if (targetKind == FrameSlotKind.Double) {
-                if (currentKind == FrameSlotKind.Int || currentKind == FrameSlotKind.Long) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    frameDescriptor.setFrameSlotKind(frameSlot, FrameSlotKind.Double);
-                    return true;
-                }
-            } else if (targetKind == FrameSlotKind.Long) {
-                if (currentKind == FrameSlotKind.Int) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    frameDescriptor.setFrameSlotKind(frameSlot, FrameSlotKind.Long);
-                    return true;
-                }
-            }
-            return false;
-        }
-    }
-
-    protected final FrameSlotKind getKind(Frame frame) {
-        return frame.getFrameDescriptor().getFrameSlotKind(frameSlot);
-    }
-
     public boolean hasTemporalDeadZone() {
         return false;
     }
@@ -178,5 +123,66 @@ public abstract class FrameSlotNode extends JavaScriptNode {
             throw Errors.createReferenceErrorNotDefined(frameSlot.getIdentifier(), this);
         }
         return value;
+    }
+
+    public abstract static class WithDescriptor extends FrameSlotNode {
+        protected final FrameDescriptor frameDescriptor;
+
+        protected WithDescriptor(FrameSlot frameSlot, FrameDescriptor frameDescriptor) {
+            super(frameSlot);
+            this.frameDescriptor = frameDescriptor;
+            assert frameDescriptor != null;
+        }
+
+        protected final boolean isBooleanKind(Frame frame) {
+            return isOrSetKind(frame, FrameSlotKind.Boolean);
+        }
+
+        protected final boolean isIntegerKind(Frame frame) {
+            return isOrSetKind(frame, FrameSlotKind.Int);
+        }
+
+        protected final boolean isDoubleKind(Frame frame) {
+            return isOrSetKind(frame, FrameSlotKind.Double);
+        }
+
+        protected final boolean isLongKind(Frame frame) {
+            return isOrSetKind(frame, FrameSlotKind.Long);
+        }
+
+        protected final void ensureObjectKind(Frame frame) {
+            assert frameDescriptor == frame.getFrameDescriptor();
+            if (frameDescriptor.getFrameSlotKind(frameSlot) != FrameSlotKind.Object) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                frameDescriptor.setFrameSlotKind(frameSlot, FrameSlotKind.Object);
+            }
+        }
+
+        private boolean isOrSetKind(Frame frame, FrameSlotKind targetKind) {
+            assert frameDescriptor == frame.getFrameDescriptor();
+            FrameSlotKind currentKind = frameDescriptor.getFrameSlotKind(frameSlot);
+            if (currentKind == targetKind) {
+                return true;
+            } else if (currentKind == FrameSlotKind.Illegal) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                frameDescriptor.setFrameSlotKind(frameSlot, targetKind);
+                return true;
+            } else {
+                if (targetKind == FrameSlotKind.Double) {
+                    if (currentKind == FrameSlotKind.Int || currentKind == FrameSlotKind.Long) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        frameDescriptor.setFrameSlotKind(frameSlot, FrameSlotKind.Double);
+                        return true;
+                    }
+                } else if (targetKind == FrameSlotKind.Long) {
+                    if (currentKind == FrameSlotKind.Int) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        frameDescriptor.setFrameSlotKind(frameSlot, FrameSlotKind.Long);
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
     }
 }
