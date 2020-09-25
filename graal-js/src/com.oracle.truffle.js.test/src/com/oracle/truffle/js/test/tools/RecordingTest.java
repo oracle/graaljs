@@ -40,52 +40,126 @@
  */
 package com.oracle.truffle.js.test.tools;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
 import org.junit.Test;
 
-import com.ibm.icu.impl.Assert;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
-import com.oracle.truffle.js.parser.JavaScriptTranslator;
+import com.oracle.truffle.js.parser.JSParser;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.snapshot.Recording;
-import com.oracle.truffle.js.snapshot.RecordingProxy;
 import com.oracle.truffle.js.test.JSTest;
 
 public class RecordingTest extends JSTest {
 
-    @Test
-    public void recordingEncodeDecodeTest() {
+    @Override
+    public void setup() {
+        super.setup();
         testHelper.enterContext();
+    }
 
+    @Override
+    public void close() {
+        testHelper.leaveContext();
+        super.close();
+    }
+
+    @Test
+    public void recordingEncodeDecodeTest() throws IOException {
         JSContext context = testHelper.getJSContext();
-        Source source = Source.newBuilder(JavaScriptLanguage.ID,
-                        "const PI=3.14; const TRUE=true; const bi=new BigInt(123456); const theBiggestInt = 9007199254740990n;" +
-                                        "switch (TRUE) { case true: break; default: 1; };" +
-                                        "var sqr = (y)=>{return y*y;};" +
-                                        "function test(n) { label: for (var i=0;i<sqr(n);i++) { " +
-                                        "if (i%2 == 0) { print('hello' + i); continue; } else { break label; }; }; }; " +
-                                        "test(5.5);",
-                        "recordingTest").build();
+        Source source = Source.newBuilder(JavaScriptLanguage.ID, "" +
+                        "const PI = 3.14;" +
+                        "const TRUE = true;" +
+                        "const bi = BigInt(123456);" +
+                        "const theBiggestInt = 9007199254740990n;" +
+                        "switch (TRUE) { case true: break; default: 1; };" +
+                        "var sqr = (y) => y * y;" +
+                        "let print = function(){};" +
+                        "function test(n) {" +
+                        "  let me = 40;" +
+                        "  if (!n) { return -1; }" +
+                        "  const ant = 69;" +
+                        "  label: for (let i = 0; i < sqr(n); i++) { " +
+                        "    if (i % 2 == 0) {" +
+                        "      --me;" +
+                        "      print('hello' + ant);" +
+                        "      continue;" +
+                        "    } else {" +
+                        "      break label;" +
+                        "    }" +
+                        "  }" +
+                        "  function closure(a) { me += a; return ++me; }" +
+                        "  return closure(2);" +
+                        "}" +
+                        "test(5.5);" +
+                        "",
+                        "recordingTest.js").build();
 
         String prefix = "";
         String suffix = "";
+        Recording rec = Recording.recordSource(source, context, false, prefix, suffix);
 
-        Recording rec = new Recording();
-        ScriptNode program = JavaScriptTranslator.translateScript(RecordingProxy.createRecordingNodeFactory(rec, NodeFactory.getInstance(context)), context, source, false, prefix, suffix);
-        rec.finish(program.getRootNode());
-
+        byte[] snapshot;
+        try (ByteArrayOutputStream outs = new ByteArrayOutputStream()) {
+            rec.saveToStream(source.getName(), outs, true);
+            snapshot = outs.toByteArray();
+        }
         try (OutputStream outs = new ByteArrayOutputStream()) {
-            rec.saveToStream("recordingTest", outs, true);
-        } catch (IOException ex) {
-            Assert.fail(ex);
+            rec.saveToStream(source.getName(), outs, false);
         }
 
-        testHelper.close();
+        ScriptNode script = ((JSParser) context.getEvaluator()).parseScript(context, source, ByteBuffer.wrap(snapshot));
+        Object result = script.run(testHelper.getRealm());
+        assertEquals(42, result);
+    }
+
+    @Test
+    public void testFunctionWrap() throws IOException {
+        JSContext context = testHelper.getJSContext();
+        Source source = Source.newBuilder(JavaScriptLanguage.ID, "" +
+                        "const {" +
+                        "  Array," +
+                        "} = {Array: primordials?.Array ?? globalThis?.Array};" +
+                        "let array = new Array();" +
+                        "for (let i = 0; i < 3; ++i) {" +
+                        "  array.push(...[1,3,3,7]);" +
+                        "}" +
+                        "let ok = [...'ok'];" +
+                        "function test(str) {" +
+                        "  const len = str.length;" +
+                        "  if (len === 0) return '';" +
+                        "  let res = '', i = 0;" +
+                        "  do {" +
+                        "    res += str[i].toUpperCase();" +
+                        "  } while (++i < len);" +
+                        "  return res;" +
+                        "}" +
+                        "return test(ok);" +
+                        "",
+                        "recordingTest.js").build();
+
+        String prefix = "(function (exports, require, module, process, internalBinding, primordials) {'use strict';";
+        String suffix = "\n})()";
+        Recording rec = Recording.recordSource(source, context, false, prefix, suffix);
+
+        byte[] snapshot;
+        try (ByteArrayOutputStream outs = new ByteArrayOutputStream()) {
+            rec.saveToStream(source.getName(), outs, true);
+            snapshot = outs.toByteArray();
+        }
+        try (OutputStream outs = new ByteArrayOutputStream()) {
+            rec.saveToStream(source.getName(), outs, false);
+        }
+
+        ScriptNode script = ((JSParser) context.getEvaluator()).parseScript(context, source, ByteBuffer.wrap(snapshot));
+        Object result = script.run(testHelper.getRealm());
+        assertEquals("OK", result);
     }
 }
