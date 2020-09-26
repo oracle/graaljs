@@ -57,7 +57,7 @@ public class BinaryEncoder {
     }
 
     public ByteBuffer getBuffer() {
-        return (ByteBuffer) buffer.duplicate().flip();
+        return (ByteBuffer) buffer.duplicate().order(ByteOrder.LITTLE_ENDIAN).flip();
     }
 
     protected void putU1(long value) {

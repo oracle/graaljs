@@ -1836,9 +1836,7 @@ public class Recording {
     }
 
     private static void encodeMethod(JSNodeEncoder encoder, String name, List<Inst> methodInsts, List<Inst> params) {
-        encoder.markExtractedPosition(name);
-        int regs = countRegs(methodInsts, params);
-        encoder.encodeRegisterArraySize(regs);
+        encoder.beginMethod(name);
         for (int i = 0; i < params.size(); i++) {
             Inst param = params.get(i);
             encoder.encodeLoadArg(param.getId(), i);
@@ -1846,12 +1844,7 @@ public class Recording {
         for (Inst inst : methodInsts) {
             inst.encodeTo(encoder);
         }
-    }
-
-    private static int countRegs(List<Inst> methodInsts, List<Inst> params) {
-        int count = methodInsts.size() + params.size();
-        logv(() -> String.format("regs: %d => %d", (methodInsts.stream().mapToInt(Inst::getId).max().orElse(-1) + 1), count));
-        return count;
+        encoder.endMethod();
     }
 
     private void testDecode(ByteBuffer buffer) {
