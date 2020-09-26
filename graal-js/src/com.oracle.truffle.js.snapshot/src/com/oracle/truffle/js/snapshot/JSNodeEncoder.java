@@ -163,7 +163,7 @@ public class JSNodeEncoder {
 
     private void encodeReg(int id) {
         int reg = valueIdToRegMap.computeIfAbsent(id, i -> nextReg++);
-        assert reg < regsMax : id + " => " + reg;
+        assert reg < regsMax : id + ": reg " + reg + " < " + regsMax;
         putUInt(reg);
     }
 

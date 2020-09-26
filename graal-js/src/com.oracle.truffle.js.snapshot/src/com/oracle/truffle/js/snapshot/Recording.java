@@ -358,10 +358,12 @@ public class Recording {
 
     private static class ConstInst extends Inst {
         private final Object constant;
+        private final boolean inVar;
 
-        ConstInst(Object constant, Class<?> declaredType) {
+        ConstInst(Object constant, Class<?> declaredType, boolean inVar) {
             super(declaredType);
             this.constant = constant;
+            this.inVar = inVar;
         }
 
         @Override
@@ -391,7 +393,7 @@ public class Recording {
 
         @Override
         public boolean inVar() {
-            return CONST_IN_VAR;
+            return inVar;
         }
 
         @Override
@@ -900,7 +902,7 @@ public class Recording {
                 joiner.add(node + "." + "addExpressionTag" + "()");
             }
             if (hasRootBodyTag) {
-                joiner.add(node + "." + "addRootTag" + "()");
+                joiner.add(node + "." + "addRootBodyTag" + "()");
             }
             return joiner.toString();
         }
@@ -1149,7 +1151,7 @@ public class Recording {
     }
 
     private Inst dumpConst(Object arg, Class<?> declaredType) {
-        return getOrPut(arg, (v) -> new ConstInst(v, declaredType));
+        return getOrPut(arg, (v) -> new ConstInst(v, arg == null ? Object.class : declaredType, CONST_IN_VAR));
     }
 
     private Inst dumpNode(Node arg) {
@@ -1463,6 +1465,8 @@ public class Recording {
 
             logv("starting batch '%s' at: %s", startInst.getName(), startInst);
 
+            // visit all values transitively referenced from the start instruction
+            // but stop at boundaries (functions)
             List<Inst> boundaryValues = new ArrayList<>();
             BitSet visited = new BitSet();
             startInst.accept(inst1 -> {
@@ -1476,7 +1480,6 @@ public class Recording {
                         if (isBatchBoundary(inst1)) {
                             return false;
                         } else if (outerExtractedSet.get(index) && !inst1.isPrimitiveValue()) {
-                            boundaryValues.add(inst1.asVar());
                             return false;
                         }
                     }
@@ -1486,8 +1489,16 @@ public class Recording {
                 }
             });
 
+            if (VERBOSE) {
+                if (!visited.isEmpty()) {
+                    logv("search for usages " + startInst + " " + visited.cardinality());
+                    visited.stream().mapToObj(insts::get).forEachOrdered(in -> logv("--" + in));
+                }
+            }
+
             BitSet usageSet = new BitSet();
             usageSet.set(indexOf(startInst));
+            usageSet.or(visited);
             addInputsToSet(usageSet, startInst);
             addFixUpsToSet(usageSet, startInst, outerExtractedSet);
             fixpoint(() -> {
@@ -1499,11 +1510,6 @@ public class Recording {
             });
 
             if (VERBOSE) {
-                if (!usageSet.isEmpty()) {
-                    logv("search for usages " + startInst + " " + usageSet.cardinality());
-                    usageSet.stream().mapToObj(insts::get).forEachOrdered(in -> logv("--" + in));
-                }
-
                 BitSet added = new BitSet();
                 added.or(usageSet);
                 added.andNot(visited);
@@ -1511,6 +1517,7 @@ public class Recording {
                     logv("added usages " + startInst + " " + added.cardinality());
                     added.stream().mapToObj(insts::get).forEachOrdered(in -> logv("--" + in));
                 }
+
                 BitSet removed = new BitSet();
                 removed.or(visited);
                 removed.andNot(usageSet);
@@ -1520,6 +1527,22 @@ public class Recording {
                 }
             }
 
+            // find and remember values that should be passed between boundaries
+            usageSet.stream().forEach(index -> {
+                if (outerExtractedSet.get(index)) {
+                    Inst inst = insts.get(index);
+                    if (inst == startInst || isBatchBoundary(inst)) {
+                        return;
+                    }
+                    if (!inst.isPrimitiveValue()) {
+                        logv("already extracted %s", inst);
+                        boundaryValues.add(inst.asVar());
+                    }
+                }
+            });
+
+            // clear values that are already used in the outer function and forward them through
+            // captured arguments instead of creating/emitting them again.
             usageSet.stream().filter(outerExtractedSet::get).mapToObj(insts::get).filter(in -> !in.isPrimitiveValue()).filter(in -> !isBatchBoundary(in)).forEach(in -> {
                 logv("cleared %s", in);
                 usageSet.clear(indexOf(in));
@@ -1597,7 +1620,7 @@ public class Recording {
     }
 
     private static BitSet mergeBitSets(BitSet first, BitSet second) {
-        BitSet merged = new BitSet();
+        BitSet merged = new BitSet(Math.max(first.length(), second.length()));
         merged.or(first);
         merged.or(second);
         return merged;
@@ -1801,12 +1824,8 @@ public class Recording {
             Inst param = params.get(i);
             encoder.encodeLoadArg(param.getId(), i);
         }
-        try {
-            for (Inst inst : methodInsts) {
-                inst.encodeTo(encoder);
-            }
-        } catch (RuntimeException e) {
-            e.printStackTrace();
+        for (Inst inst : methodInsts) {
+            inst.encodeTo(encoder);
         }
     }
 
