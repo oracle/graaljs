@@ -135,7 +135,6 @@ public class Recording {
     private final ArrayDeque<Function<Boolean, Boolean>> lateFixups = new ArrayDeque<>();
 
     private final Map<Inst, Collection<Inst>> usageMap = new HashMap<>();
-    private final Map<Inst, Integer> indexMap = new HashMap<>();
     private final List<InstBatch> instBatches = new ArrayList<>();
 
     private Source source;
@@ -181,6 +180,7 @@ public class Recording {
         private int resultId;
         private final Class<?> declaredType;
         private final Type genericDeclaredType;
+        private int index = UNASSIGNED_ID;
         private int varCount;
 
         protected Inst() {
@@ -283,6 +283,18 @@ public class Recording {
                 throw new IllegalStateException("result id already assigned");
             }
             this.resultId = id;
+        }
+
+        /**
+         * Index of this in {@link Recording#insts} array.
+         */
+        public int getIndex() {
+            assert index >= 0;
+            return index;
+        }
+
+        public void setIndex(int index) {
+            this.index = index;
         }
 
         @SuppressWarnings("unused")
@@ -1383,9 +1395,6 @@ public class Recording {
         dce();
 
         if (BATCHES_ENABLED) {
-            buildUsageMap();
-            buildIndexMap();
-
             buildBatches();
         }
 
@@ -1404,14 +1413,10 @@ public class Recording {
         }
     }
 
-    private void buildIndexMap() {
+    private void assignIndices() {
         for (int i = 0; i < insts.size(); i++) {
-            indexMap.put(insts.get(i), i);
+            insts.get(i).setIndex(i);
         }
-    }
-
-    private Integer indexOf(Inst inst1) {
-        return indexMap.getOrDefault(inst1, -1);
     }
 
     private void buildBatches() {
@@ -1446,6 +1451,9 @@ public class Recording {
             }
         }
 
+        buildUsageMap();
+        assignIndices();
+
         Map<Inst, BitSet> batches = new LinkedHashMap<>();
 
         Inst returnInst = insts.get(insts.size() - 1);
@@ -1473,7 +1481,7 @@ public class Recording {
                 if (!inst1.inVar()) {
                     return true;
                 }
-                int index = indexOf(inst1);
+                int index = inst1.getIndex();
                 if (!visited.get(index)) {
                     visited.set(index);
                     if (startInst != inst1) {
@@ -1497,7 +1505,7 @@ public class Recording {
             }
 
             BitSet usageSet = new BitSet();
-            usageSet.set(indexOf(startInst));
+            usageSet.set(startInst.getIndex());
             usageSet.or(visited);
             addInputsToSet(usageSet, startInst);
             addFixUpsToSet(usageSet, startInst, outerExtractedSet);
@@ -1545,12 +1553,12 @@ public class Recording {
             // captured arguments instead of creating/emitting them again.
             usageSet.stream().filter(outerExtractedSet::get).mapToObj(insts::get).filter(in -> !in.isPrimitiveValue()).filter(in -> !isBatchBoundary(in)).forEach(in -> {
                 logv("cleared %s", in);
-                usageSet.clear(indexOf(in));
+                usageSet.clear(in.getIndex());
             });
 
             boundaryValues.forEach(var -> {
                 Inst in = deref(var);
-                int index = indexOf(in);
+                int index = in.getIndex();
                 usageSet.clear(index);
                 for (BatchWorkItem caller = batchBoundary.caller; caller != null; caller = caller.caller) {
                     if (caller.extractedSet.get(index)) {
@@ -1626,7 +1634,7 @@ public class Recording {
         return merged;
     }
 
-    private boolean isContained(Inst in, BitSet usageSet) {
+    private static boolean isContained(Inst in, BitSet usageSet) {
         AtomicBoolean result = new AtomicBoolean(true);
         in.forEachInput(input -> {
             if (result.get()) {
@@ -1634,7 +1642,7 @@ public class Recording {
                 if (!input.inVar()) {
                     return;
                 }
-                if (!usageSet.get(indexOf(input))) {
+                if (!usageSet.get(input.getIndex())) {
                     result.set(false);
                 }
             }
@@ -1680,12 +1688,12 @@ public class Recording {
         });
     }
 
-    private void addInputsToSet(BitSet usageSet, Inst inst) {
+    private static void addInputsToSet(BitSet usageSet, Inst inst) {
         inst.forEachInput(input -> {
             if (!input.inVar()) {
                 return;
             }
-            int index = indexOf(input);
+            int index = input.getIndex();
             if (!usageSet.get(index)) {
                 usageSet.set(index);
             }
@@ -1705,7 +1713,7 @@ public class Recording {
 
             // if inst has a fix-up inst usage, add the usage to the set
             usageMap.get(inst).stream().filter(usage -> usage instanceof FixUpInst && ((FixUpInst) usage).getFixUpTarget().getId() == inst.getId()).forEach(fixup -> {
-                int index = indexOf(fixup);
+                int index = fixup.getIndex();
                 if (!usageSet.get(index) && !outerExtractedSet.get(index)) {
                     logv("fixup %s -> %s", fixup, inst);
                     usageSet.set(index);
