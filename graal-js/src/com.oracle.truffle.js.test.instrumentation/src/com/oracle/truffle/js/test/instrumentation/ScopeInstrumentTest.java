@@ -109,16 +109,6 @@ public class ScopeInstrumentTest {
     }
 
     @Test
-    public void asyncFindScopes() {
-        asyncFindScopes("Promise.resolve(42).then(async function foo (x) {});", "foo");
-    }
-
-    @Test
-    public void anonAsyncFindScopes() {
-        asyncFindScopes("Promise.resolve(42).then(async (x) => {});", ":=>");
-    }
-
-    @Test
     public void testParams() throws Throwable {
         Source source = Source.create(ID, "" +
                         "function testParams(a, [b, c], d = 9) {\n" +
@@ -151,7 +141,48 @@ public class ScopeInstrumentTest {
         TestJSScopeInstrument.instance.checkSuccess(1);
     }
 
-    public void asyncFindScopes(String src, String expectedAsyncFunctionName) {
+    @Test
+    public void testParamsSourceLocation() throws Throwable {
+        Source source = Source.create(ID, "" +
+                        "function testParams(a, [b, c], d = 9) {\n" +
+                        "   return a + b + c + d;\n" +
+                        "}\n" +
+                        "testParams(4, [7, 6, 2]);\n");
+
+        TestJSScopeInstrument.filter = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootBodyTag.class).rootNameIs("testParams"::equals).build();
+        ensureCreated(context.getEngine().getInstruments().get("TestJSScopeInstrument"));
+        TestJSScopeInstrument.instance.setTester((env, node, frame) -> {
+            Object scope = findLocalScope(node, frame);
+            int line = node.getSourceSection().getStartLine();
+            assertEquals("Function name", "testParams", getScopeName(scope));
+            assertEquals("Line = " + line, 2, line);
+
+            Object keys = getKeys(scope);
+            int nKeys = getSize(keys);
+            for (int i = 0; i < nKeys; i++) {
+                Object key = INTEROP.readArrayElement(keys, i);
+                assertTrue(INTEROP.isString(key));
+                String keyAsString = INTEROP.asString(key);
+                assertTrue(keyAsString, INTEROP.hasSourceLocation(key));
+                assertTrue(keyAsString, INTEROP.getSourceLocation(key).isAvailable());
+                assertEquals(keyAsString, 1, INTEROP.getSourceLocation(key).getStartLine());
+            }
+        });
+        context.eval(source);
+        TestJSScopeInstrument.instance.checkSuccess(1);
+    }
+
+    @Test
+    public void asyncFindScopes() {
+        asyncFindScopes("Promise.resolve(42).then(async function foo (x) {});", "foo");
+    }
+
+    @Test
+    public void anonAsyncFindScopes() {
+        asyncFindScopes("Promise.resolve(42).then(async (x) => {});", ":=>");
+    }
+
+    private void asyncFindScopes(String src, String expectedAsyncFunctionName) {
         Source source = Source.create(ID, src);
         TestJSScopeInstrument.filter = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootBodyTag.class).build();
         ensureCreated(context.getEngine().getInstruments().get("TestJSScopeInstrument"));
