@@ -67,6 +67,7 @@ import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SourceElement;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.test.JSTest;
 import com.oracle.truffle.tck.DebuggerTester;
@@ -686,6 +687,66 @@ public class TestScope {
             });
         }
         tester.expectDone();
+    }
+
+    @Test
+    public void testScopeSourceSection() {
+        Source function = Source.newBuilder("js", "function main(a1, a2) {\n" +
+                        "  var v1 = a1 + a2;\n" +
+                        "  {\n" +
+                        "    let v3 = {};\n" +
+                        "    let v2 = 11.11;\n" +
+                        "    v3.a = v2;\n" +
+                        "  }\n" +
+                        "  return v1;\n" +
+                        "}\n" +
+                        "main(10, 20);\n", "function.js").buildLiteral();
+        try (DebuggerSession session = tester.startSession()) {
+            session.suspendNextExecution();
+            tester.startEval(function);
+
+            tester.expectSuspended((SuspendedEvent event) -> {
+                event.prepareStepInto(1);
+            });
+            tester.expectSuspended((SuspendedEvent event) -> {
+                checkScope(event, "main", 2, "var v1 = a1 + a2", new String[]{"a1", "10", "a2", "20", "v1", "undefined"});
+                SourceSection scopeSourceSection = event.getTopStackFrame().getScope().getSourceSection();
+                assertTrue(String.valueOf(scopeSourceSection), scopeSourceSection != null && scopeSourceSection.isAvailable());
+                assertEquals(1, scopeSourceSection.getStartLine());
+                event.prepareStepOver(1);
+            });
+            // In block:
+            tester.expectSuspended((SuspendedEvent event) -> {
+                checkScope(event, "main", 4, "let v3 = {}", new String[]{}, new String[]{"a1", "10", "a2", "20", "v1", "30"});
+                SourceSection scopeSourceSection = event.getTopStackFrame().getScope().getSourceSection();
+                assertTrue(String.valueOf(scopeSourceSection), scopeSourceSection != null && scopeSourceSection.isAvailable());
+                assertEquals(3, scopeSourceSection.getStartLine());
+                event.prepareStepOver(1);
+            });
+            tester.expectSuspended((SuspendedEvent event) -> {
+                checkScope(event, "main", 5, "let v2 = 11.11", new String[]{"v3", "{}"}, new String[]{"a1", "10", "a2", "20", "v1", "30"});
+                SourceSection scopeSourceSection = event.getTopStackFrame().getScope().getSourceSection();
+                assertTrue(String.valueOf(scopeSourceSection), scopeSourceSection != null && scopeSourceSection.isAvailable());
+                assertEquals(3, scopeSourceSection.getStartLine());
+                event.prepareStepOver(1);
+            });
+            tester.expectSuspended((SuspendedEvent event) -> {
+                checkScope(event, "main", 6, "v3.a = v2", new String[]{"v3", "{}", "v2", "11.11"}, new String[]{"a1", "10", "a2", "20", "v1", "30"});
+                SourceSection scopeSourceSection = event.getTopStackFrame().getScope().getSourceSection();
+                assertTrue(String.valueOf(scopeSourceSection), scopeSourceSection != null && scopeSourceSection.isAvailable());
+                assertEquals(3, scopeSourceSection.getStartLine());
+                event.prepareStepOver(1);
+            });
+            // Out of block:
+            tester.expectSuspended((SuspendedEvent event) -> {
+                checkScope(event, "main", 8, "return v1;", new String[]{"a1", "10", "a2", "20", "v1", "30"});
+                SourceSection scopeSourceSection = event.getTopStackFrame().getScope().getSourceSection();
+                assertTrue(String.valueOf(scopeSourceSection), scopeSourceSection != null && scopeSourceSection.isAvailable());
+                assertEquals(1, scopeSourceSection.getStartLine());
+                event.prepareContinue();
+            });
+        }
+        assertEquals("30", tester.expectDone());
     }
 
     private static String getScopeReceiver(SuspendedEvent suspendedEvent) {
