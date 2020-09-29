@@ -74,7 +74,6 @@ public abstract class CeilNode extends MathOperation {
 
     @Specialization
     protected static Object ceilDouble(double d,
-                    @Cached("createBinaryProfile()") @Shared("isNaN") ConditionProfile isNaN,
                     @Cached("createBinaryProfile()") @Shared("isZero") ConditionProfile isZero,
                     @Cached("createBinaryProfile()") @Shared("requiresNegativeZero") ConditionProfile requiresNegativeZero,
                     @Cached("createBinaryProfile()") @Shared("fitsInt") ConditionProfile fitsInt,
@@ -97,8 +96,6 @@ public abstract class CeilNode extends MathOperation {
                 return -0.0;
             }
             return SafeInteger.valueOf(result);
-        } else if (isNaN.profile(Double.isNaN(d))) {
-            return Double.NaN;
         } else {
             return mathCeil(d);
         }
@@ -106,13 +103,12 @@ public abstract class CeilNode extends MathOperation {
 
     @Specialization(replaces = "ceilDouble")
     protected Object ceilToDouble(Object a,
-                    @Cached("createBinaryProfile()") @Shared("isNaN") ConditionProfile isNaN,
                     @Cached("createBinaryProfile()") @Shared("isZero") ConditionProfile isZero,
                     @Cached("createBinaryProfile()") @Shared("requiresNegativeZero") ConditionProfile requiresNegativeZero,
                     @Cached("createBinaryProfile()") @Shared("fitsInt") ConditionProfile fitsInt,
                     @Cached("createBinaryProfile()") @Shared("fitsSafeLong") ConditionProfile fitsSafeLong) {
         double d = toDouble(a);
-        return ceilDouble(d, isNaN, isZero, requiresNegativeZero, fitsInt, fitsSafeLong);
+        return ceilDouble(d, isZero, requiresNegativeZero, fitsInt, fitsSafeLong);
     }
 
     @TruffleBoundary

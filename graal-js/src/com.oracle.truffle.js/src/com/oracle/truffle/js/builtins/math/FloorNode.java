@@ -74,7 +74,6 @@ public abstract class FloorNode extends MathOperation {
 
     @Specialization
     protected static Object floorDouble(double d,
-                    @Cached("createBinaryProfile()") @Shared("isNaN") ConditionProfile isNaN,
                     @Cached("createBinaryProfile()") @Shared("isZero") ConditionProfile isZero,
                     @Cached("createBinaryProfile()") @Shared("fitsInt") ConditionProfile fitsInt,
                     @Cached("createBinaryProfile()") @Shared("fitsSafeLong") ConditionProfile fitsSafeLong,
@@ -90,8 +89,6 @@ public abstract class FloorNode extends MathOperation {
             long i = (long) d;
             long result = smaller.profile(d < i) ? i - 1 : i;
             return SafeInteger.valueOf(result);
-        } else if (isNaN.profile(Double.isNaN(d))) {
-            return Double.NaN;
         } else {
             return mathFloor(d);
         }
@@ -99,13 +96,12 @@ public abstract class FloorNode extends MathOperation {
 
     @Specialization(replaces = "floorDouble")
     protected Object floorToDouble(Object a,
-                    @Cached("createBinaryProfile()") @Shared("isNaN") ConditionProfile isNaN,
                     @Cached("createBinaryProfile()") @Shared("isZero") ConditionProfile isZero,
                     @Cached("createBinaryProfile()") @Shared("fitsInt") ConditionProfile fitsInt,
                     @Cached("createBinaryProfile()") @Shared("fitsSafeLong") ConditionProfile fitsSafeLong,
                     @Cached("createBinaryProfile()") @Shared("smaller") ConditionProfile smaller) {
         double d = toDouble(a);
-        return floorDouble(d, isNaN, isZero, fitsInt, fitsSafeLong, smaller);
+        return floorDouble(d, isZero, fitsInt, fitsSafeLong, smaller);
     }
 
     @TruffleBoundary
