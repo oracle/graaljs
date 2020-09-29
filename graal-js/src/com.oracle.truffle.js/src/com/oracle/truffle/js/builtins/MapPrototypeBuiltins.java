@@ -300,7 +300,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         public CreateMapIteratorNode(JSContext context, JSBuiltin builtin, int iterationKind) {
             super(context, builtin);
             this.iterationKind = iterationKind;
-            this.createObjectNode = CreateObjectNode.createWithPrototype(context, null);
+            this.createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
             this.setIteratedObjectNode = PropertySetNode.createSetHidden(JSRuntime.ITERATED_OBJECT_ID, context);
             this.setNextIndexNode = PropertySetNode.createSetHidden(JSRuntime.ITERATOR_NEXT_INDEX, context);
             this.setIterationKindNode = PropertySetNode.createSetHidden(JSMap.MAP_ITERATION_KIND_ID, context);
@@ -308,7 +308,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
 
         @Specialization(guards = "isJSMap(map)")
         protected DynamicObject doMap(VirtualFrame frame, DynamicObject map) {
-            DynamicObject iterator = createObjectNode.executeDynamicObject(frame, getContext().getRealm().getMapIteratorPrototype());
+            DynamicObject iterator = createObjectNode.execute(frame, getContext().getRealm().getMapIteratorPrototype());
             setIteratedObjectNode.setValue(iterator, map);
             setNextIndexNode.setValue(iterator, JSMap.getInternalMap(map).getEntries());
             setIterationKindNode.setValueInt(iterator, iterationKind);

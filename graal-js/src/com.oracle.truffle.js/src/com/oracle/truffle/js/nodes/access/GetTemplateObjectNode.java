@@ -96,8 +96,8 @@ public abstract class GetTemplateObjectNode extends JavaScriptNode {
     }
 
     private DynamicObject buildTemplateObject(VirtualFrame frame) {
-        DynamicObject template = cookedStrings.executeDynamicObject(frame);
-        DynamicObject rawObj = rawStrings.executeDynamicObject(frame);
+        DynamicObject template = cookedStrings.execute(frame);
+        DynamicObject rawObj = rawStrings.execute(frame);
         JSObject.setIntegrityLevel(rawObj, true);
         JSObjectUtil.putDataProperty(context, template, "raw", rawObj, JSAttributes.notConfigurableNotEnumerableNotWritable());
         JSObject.setIntegrityLevel(template, true);

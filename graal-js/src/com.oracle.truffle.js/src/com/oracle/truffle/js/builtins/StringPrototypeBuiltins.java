@@ -2756,7 +2756,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             // it is lazily constructed just before its first execution. Furthermore, an execution
             // of the CreateRegExpStringIteratorNode necessitates the execution of all its children,
             // therefore there is nothing to gain by constructing the children of this node lazily.
-            this.createObjectNode = CreateObjectNode.createWithPrototype(context, null);
+            this.createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
             this.setIteratingRegExpNode = PropertySetNode.createSetHidden(JSString.REGEXP_ITERATOR_ITERATING_REGEXP_ID, context);
             this.setIteratedStringNode = PropertySetNode.createSetHidden(JSString.REGEXP_ITERATOR_ITERATED_STRING_ID, context);
             this.setGlobalNode = PropertySetNode.createSetHidden(JSString.REGEXP_ITERATOR_GLOBAL_ID, context);
@@ -2767,7 +2767,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         public DynamicObject createIterator(VirtualFrame frame, Object regex, String string, Boolean global, Boolean fullUnicode) {
             DynamicObject regExpStringIteratorPrototype = context.getRealm().getRegExpStringIteratorPrototype();
-            DynamicObject iterator = createObjectNode.executeDynamicObject(frame, regExpStringIteratorPrototype);
+            DynamicObject iterator = createObjectNode.execute(frame, regExpStringIteratorPrototype);
             setIteratingRegExpNode.setValue(iterator, regex);
             setIteratedStringNode.setValue(iterator, string);
             setGlobalNode.setValueBoolean(iterator, global);
@@ -2784,14 +2784,14 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         public CreateStringIteratorNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.createObjectNode = CreateObjectNode.createWithPrototype(context, null);
+            this.createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
             this.setIteratedObjectNode = PropertySetNode.createSetHidden(JSString.ITERATED_STRING_ID, context);
             this.setNextIndexNode = PropertySetNode.createSetHidden(JSString.STRING_ITERATOR_NEXT_INDEX_ID, context);
         }
 
         @Specialization
         protected DynamicObject doString(VirtualFrame frame, String string) {
-            DynamicObject iterator = createObjectNode.executeDynamicObject(frame, getContext().getRealm().getStringIteratorPrototype());
+            DynamicObject iterator = createObjectNode.execute(frame, getContext().getRealm().getStringIteratorPrototype());
             setIteratedObjectNode.setValue(iterator, string);
             setNextIndexNode.setValueInt(iterator, 0);
             return iterator;

@@ -593,7 +593,7 @@ public abstract class JSNonProxy extends JSClass {
     @TruffleBoundary
     @Override
     public final DynamicObject getPrototypeOf(DynamicObject thisObj) {
-        return (DynamicObject) JSDynamicObject.getOrDefault(thisObj, JSObject.HIDDEN_PROTO, Null.instance);
+        return JSObjectUtil.getPrototype(thisObj);
     }
 
     @Override

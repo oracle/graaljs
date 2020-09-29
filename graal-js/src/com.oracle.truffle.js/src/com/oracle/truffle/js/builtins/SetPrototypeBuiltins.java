@@ -272,7 +272,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         public CreateSetIteratorNode(JSContext context, JSBuiltin builtin, int iterationKind) {
             super(context, builtin);
             this.iterationKind = iterationKind;
-            this.createObjectNode = CreateObjectNode.createWithPrototype(context, null);
+            this.createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
             this.setIteratedObjectNode = PropertySetNode.createSetHidden(JSRuntime.ITERATED_OBJECT_ID, context);
             this.setNextIndexNode = PropertySetNode.createSetHidden(JSRuntime.ITERATOR_NEXT_INDEX, context);
             this.setIterationKindNode = PropertySetNode.createSetHidden(JSSet.SET_ITERATION_KIND_ID, context);
@@ -280,7 +280,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @Specialization(guards = "isJSSet(set)")
         protected DynamicObject doSet(VirtualFrame frame, DynamicObject set) {
-            DynamicObject iterator = createObjectNode.executeDynamicObject(frame, getContext().getRealm().getSetIteratorPrototype());
+            DynamicObject iterator = createObjectNode.execute(frame, getContext().getRealm().getSetIteratorPrototype());
             setIteratedObjectNode.setValue(iterator, set);
             setNextIndexNode.setValue(iterator, JSSet.getInternalSet(set).getEntries());
             setIterationKindNode.setValueInt(iterator, iterationKind);

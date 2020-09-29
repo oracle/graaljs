@@ -51,17 +51,23 @@ import com.oracle.truffle.js.runtime.util.DebugCounter;
  */
 public final class JSSharedData {
     private final JSContext context;
+    private final JSDynamicObject proto;
     private Assumption prototypeAssumption;
 
     private static final DebugCounter prototypeAssumptionsCreated = DebugCounter.create("Prototype assumptions created");
     private static final DebugCounter prototypeAssumptionsRemoved = DebugCounter.create("Prototype assumptions removed");
 
-    public JSSharedData(JSContext context) {
+    public JSSharedData(JSContext context, JSDynamicObject prototype) {
         this.context = context;
+        this.proto = prototype;
     }
 
     JSContext getContext() {
         return context;
+    }
+
+    public JSDynamicObject getPrototype() {
+        return proto;
     }
 
     synchronized Assumption getPrototypeAssumption() {

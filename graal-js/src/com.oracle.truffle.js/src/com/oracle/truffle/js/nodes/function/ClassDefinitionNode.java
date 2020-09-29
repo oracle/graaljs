@@ -76,7 +76,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
     @Child private JSWriteFrameSlotNode writeClassBindingNode;
     @Child private PropertyGetNode getPrototypeNode;
     @Child private CreateMethodPropertyNode setConstructorNode;
-    @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
+    @Child private CreateObjectNode.CreateObjectWithPrototypeNode createPrototypeNode;
     @Child private DefineMethodNode defineConstructorMethodNode;
     @Child private PropertySetNode setFieldsNode;
     @Child private InitializeInstanceElementsNode staticFieldsNode;
@@ -100,7 +100,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         this.writeClassBindingNode = writeClassBindingNode;
         this.getPrototypeNode = PropertyGetNode.create(JSObject.PROTOTYPE, false, context);
         this.setConstructorNode = CreateMethodPropertyNode.create(context, JSObject.CONSTRUCTOR);
-        this.createObjectNode = CreateObjectNode.createWithPrototype(context, null);
+        this.createPrototypeNode = CreateObjectNode.createOrdinaryWithPrototype(context);
         this.defineConstructorMethodNode = DefineMethodNode.create(context, constructorFunctionNode);
         this.setFieldsNode = instanceFieldCount != 0 ? PropertySetNode.createSetHidden(JSFunction.CLASS_FIELDS_ID, context) : null;
         this.setPrivateBrandNode = hasPrivateInstanceMethods ? PropertySetNode.createSetHidden(JSFunction.PRIVATE_BRAND_ID, context) : null;
@@ -142,7 +142,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
 
         /* Let proto be ObjectCreate(protoParent). */
         assert protoParent == Null.instance || JSRuntime.isObject(protoParent);
-        DynamicObject proto = createObjectNode.executeDynamicObject(frame, ((DynamicObject) protoParent));
+        DynamicObject proto = createPrototypeNode.execute(frame, ((DynamicObject) protoParent));
 
         /*
          * Let constructorInfo be the result of performing DefineMethod for constructor with

@@ -347,12 +347,6 @@ public abstract class JSDynamicObject extends DynamicObject implements TruffleOb
         return (JSClass) getObjectType(obj);
     }
 
-    public static DynamicObject getPrototype(DynamicObject thisObj) {
-        Object proto = JSDynamicObject.getOrNull(thisObj, JSObject.HIDDEN_PROTO);
-        assert JSObjectUtil.isValidPrototype(proto);
-        return (DynamicObject) proto;
-    }
-
     public static void setJSClass(DynamicObject obj, JSClass jsclass) {
         DynamicObjectLibrary.getUncached().setDynamicType(obj, jsclass);
     }

@@ -371,11 +371,6 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
         }
 
         @Override
-        public DynamicObject executeDynamicObject(VirtualFrame frame) {
-            return objectValue;
-        }
-
-        @Override
         public boolean isResultAlwaysOfType(Class<?> clazz) {
             return clazz == DynamicObject.class;
         }
@@ -405,11 +400,6 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
         }
 
         @Override
-        public DynamicObject executeDynamicObject(VirtualFrame frame) {
-            return Null.instance;
-        }
-
-        @Override
         public boolean isResultAlwaysOfType(Class<?> clazz) {
             return clazz == DynamicObject.class;
         }
@@ -426,11 +416,6 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
 
         @Override
         public Object execute(VirtualFrame frame) {
-            return Undefined.instance;
-        }
-
-        @Override
-        public DynamicObject executeDynamicObject(VirtualFrame frame) {
             return Undefined.instance;
         }
 

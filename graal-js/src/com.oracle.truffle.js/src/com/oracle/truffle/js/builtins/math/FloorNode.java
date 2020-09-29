@@ -42,10 +42,9 @@ package com.oracle.truffle.js.builtins.math;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -73,36 +72,36 @@ public abstract class FloorNode extends MathOperation {
         return a;
     }
 
-    @Specialization(rewriteOn = SlowPathException.class)
-    protected int floorMightReturnInt(Object a,
-                    @Cached("createBinaryProfile()") ConditionProfile smaller) throws SlowPathException {
-        double d = toDouble(a);
-        if (Double.isNaN(d) || JSRuntime.isNegativeZero(d) || d < Integer.MIN_VALUE || d > Integer.MAX_VALUE) {
-            throw JSNodeUtil.slowPathException();
-        }
-        int i = (int) d;
-        return smaller.profile(d < i) ? i - 1 : i;
-    }
-
     @Specialization
-    protected double floorReturnsDouble(Object a,
-                    @Cached("createBinaryProfile()") ConditionProfile isNaN,
-                    @Cached("createBinaryProfile()") ConditionProfile isNegativeZero,
-                    @Cached("createBinaryProfile()") ConditionProfile fitsSafeLong,
-                    @Cached("createBinaryProfile()") ConditionProfile smaller) {
-        double d = toDouble(a);
-        if (isNaN.profile(Double.isNaN(d))) {
-            return Double.NaN;
-        }
-        if (isNegativeZero.profile(JSRuntime.isNegativeZero(d))) {
-            return -0.0;
-        }
-        if (fitsSafeLong.profile(JSRuntime.isSafeInteger(d))) {
-            long i = (long) d;
+    protected static Object floorDouble(double d,
+                    @Cached("createBinaryProfile()") @Shared("isZero") ConditionProfile isZero,
+                    @Cached("createBinaryProfile()") @Shared("fitsInt") ConditionProfile fitsInt,
+                    @Cached("createBinaryProfile()") @Shared("fitsSafeLong") ConditionProfile fitsSafeLong,
+                    @Cached("createBinaryProfile()") @Shared("smaller") ConditionProfile smaller) {
+        if (isZero.profile(d == 0.0)) {
+            // floor(-0.0) => -0.0
+            // floor(+0.0) => +0.0
+            return d;
+        } else if (fitsInt.profile(d >= Integer.MIN_VALUE && d <= Integer.MAX_VALUE)) {
+            int i = (int) d;
             return smaller.profile(d < i) ? i - 1 : i;
+        } else if (fitsSafeLong.profile(JSRuntime.isSafeInteger(d))) {
+            long i = (long) d;
+            long result = smaller.profile(d < i) ? i - 1 : i;
+            return SafeInteger.valueOf(result);
         } else {
             return mathFloor(d);
         }
+    }
+
+    @Specialization(replaces = "floorDouble")
+    protected Object floorToDouble(Object a,
+                    @Cached("createBinaryProfile()") @Shared("isZero") ConditionProfile isZero,
+                    @Cached("createBinaryProfile()") @Shared("fitsInt") ConditionProfile fitsInt,
+                    @Cached("createBinaryProfile()") @Shared("fitsSafeLong") ConditionProfile fitsSafeLong,
+                    @Cached("createBinaryProfile()") @Shared("smaller") ConditionProfile smaller) {
+        double d = toDouble(a);
+        return floorDouble(d, isZero, fitsInt, fitsSafeLong, smaller);
     }
 
     @TruffleBoundary

@@ -44,8 +44,8 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.LoopConditionProfile;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.BasicArrayOperation;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.array.JSArrayFirstElementIndexNode;
@@ -102,7 +102,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
 
     @Child private IsArrayNode isArrayNode = IsArrayNode.createIsAnyArray();
     protected final JSClassProfile targetClassProfile = JSClassProfile.create();
-    protected final BranchProfile needLoop = BranchProfile.create();
+    protected final LoopConditionProfile loopCond = LoopConditionProfile.createCountingProfile();
     @Child private CallbackNode callbackNode;
     @Child protected MaybeResultNode maybeResultNode;
 
@@ -222,23 +222,20 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         protected Object executeForEachIndexFast(DynamicObject target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult) {
             long index = fromIndexZero.profile(fromIndex == 0) ? firstElementIndex(target, length) : nextElementIndex(target, fromIndex - 1, length);
             Object currentResult = initialResult;
-            if (index < length) {
-                needLoop.enter();
-                long count = 0;
-                while (index < length && index <= lastElementIndex(target, length)) {
-                    Object value = readElementInBounds(target, index);
-                    Object callbackResult = callback(index, value, target, callback, callbackThisArg, currentResult);
-                    MaybeResult<Object> maybeResult = maybeResultNode.apply(index, value, callbackResult, currentResult);
-                    checkHasDetachedBuffer(target);
-                    currentResult = maybeResult.get();
-                    if (maybeResult.isPresent()) {
-                        break;
-                    }
-                    count++;
-                    index = nextElementIndex(target, index, length);
+            long count = 0;
+            while (loopCond.profile(index < length && index <= lastElementIndex(target, length))) {
+                Object value = readElementInBounds(target, index);
+                Object callbackResult = callback(index, value, target, callback, callbackThisArg, currentResult);
+                MaybeResult<Object> maybeResult = maybeResultNode.apply(index, value, callbackResult, currentResult);
+                checkHasDetachedBuffer(target);
+                currentResult = maybeResult.get();
+                if (maybeResult.isPresent()) {
+                    break;
                 }
-                BasicArrayOperation.reportLoopCount(this, count);
+                count++;
+                index = nextElementIndex(target, index, length);
             }
+            BasicArrayOperation.reportLoopCount(this, count);
             return currentResult;
         }
 
@@ -290,23 +287,20 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
             long index = previousElementIndex(target, fromIndex + 1);
             // NB: cannot rely on lastElementIndex here: can be > length (e.g. arguments object)
             Object currentResult = initialResult;
-            if (index >= 0) {
-                needLoop.enter();
-                long count = 0;
-                while (index >= 0 && index >= firstElementIndex(target, length)) {
-                    Object value = readElementInBounds(target, index);
-                    Object callbackResult = callback(index, value, target, callback, callbackThisArg, currentResult);
-                    MaybeResult<Object> maybeResult = maybeResultNode.apply(index, value, callbackResult, currentResult);
-                    checkHasDetachedBuffer(target);
-                    currentResult = maybeResult.get();
-                    if (maybeResult.isPresent()) {
-                        break;
-                    }
-                    count++;
-                    index = previousElementIndex(target, index);
+            long count = 0;
+            while (loopCond.profile(index >= 0 && index >= firstElementIndex(target, length))) {
+                Object value = readElementInBounds(target, index);
+                Object callbackResult = callback(index, value, target, callback, callbackThisArg, currentResult);
+                MaybeResult<Object> maybeResult = maybeResultNode.apply(index, value, callbackResult, currentResult);
+                checkHasDetachedBuffer(target);
+                currentResult = maybeResult.get();
+                if (maybeResult.isPresent()) {
+                    break;
                 }
-                BasicArrayOperation.reportLoopCount(this, count);
+                count++;
+                index = previousElementIndex(target, index);
             }
+            BasicArrayOperation.reportLoopCount(this, count);
             return currentResult;
         }
 

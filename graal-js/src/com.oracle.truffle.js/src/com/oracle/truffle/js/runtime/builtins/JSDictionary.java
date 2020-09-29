@@ -328,7 +328,7 @@ public final class JSDictionary extends JSNonProxy {
         if (!prototypeProperty.getLocation().isConstant()) {
             return context.makeEmptyShapeWithPrototypeInObject(jsclass);
         } else {
-            DynamicObject prototype = JSDynamicObject.getPrototype(fromObject);
+            DynamicObject prototype = JSObjectUtil.getPrototype(fromObject);
             if (prototype == Null.instance) {
                 return context.makeEmptyShapeWithNullPrototype(jsclass);
             } else {

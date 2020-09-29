@@ -42,10 +42,9 @@ package com.oracle.truffle.js.builtins.math;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -64,52 +63,52 @@ public abstract class CeilNode extends MathOperation {
     }
 
     @Specialization
-    protected static int ceil(int a) {
+    protected static int ceilInt(int a) {
         return a;
     }
 
     @Specialization
-    protected static SafeInteger ceil(SafeInteger a) {
+    protected static SafeInteger ceilSafeInt(SafeInteger a) {
         return a;
     }
 
-    @Specialization(rewriteOn = SlowPathException.class)
-    protected int ceilMightReturnInt(Object a) throws SlowPathException {
-        double d = toDouble(a);
-        if (Double.isNaN(d) || JSRuntime.isNegativeZero(d) || d < Integer.MIN_VALUE || d > Integer.MAX_VALUE) {
-            throw JSNodeUtil.slowPathException();
-        }
-        int i = (int) d;
-        int result = d > i ? i + 1 : i;
-        if (result == 0 && d < 0) {
-            throw JSNodeUtil.slowPathException(); // special-case: return -0.0
-        }
-        return result;
-    }
-
     @Specialization
-    protected double ceilReturnsDouble(Object a,
-                    @Cached("createBinaryProfile()") ConditionProfile isNaN,
-                    @Cached("createBinaryProfile()") ConditionProfile isNegativeZero,
-                    @Cached("createBinaryProfile()") ConditionProfile requiresNegativeZero,
-                    @Cached("createBinaryProfile()") ConditionProfile fitsSafeLong) {
-        double d = toDouble(a);
-        if (isNaN.profile(Double.isNaN(d))) {
-            return Double.NaN;
-        }
-        if (isNegativeZero.profile(JSRuntime.isNegativeZero(d))) {
-            return -0.0;
-        }
-        if (fitsSafeLong.profile(JSRuntime.isSafeInteger(d))) {
+    protected static Object ceilDouble(double d,
+                    @Cached("createBinaryProfile()") @Shared("isZero") ConditionProfile isZero,
+                    @Cached("createBinaryProfile()") @Shared("requiresNegativeZero") ConditionProfile requiresNegativeZero,
+                    @Cached("createBinaryProfile()") @Shared("fitsInt") ConditionProfile fitsInt,
+                    @Cached("createBinaryProfile()") @Shared("fitsSafeLong") ConditionProfile fitsSafeLong) {
+        if (isZero.profile(d == 0.0)) {
+            // ceil(-0.0) => -0.0
+            // ceil(+0.0) => +0.0
+            return d;
+        } else if (fitsInt.profile(d >= Integer.MIN_VALUE && d <= Integer.MAX_VALUE)) {
+            int i = (int) d;
+            int result = d > i ? i + 1 : i;
+            if (requiresNegativeZero.profile(result == 0 && d < 0)) {
+                return -0.0;
+            }
+            return result;
+        } else if (fitsSafeLong.profile(JSRuntime.isSafeInteger(d))) {
             long i = (long) d;
             long result = d > i ? i + 1 : i;
             if (requiresNegativeZero.profile(result == 0 && d < 0)) {
                 return -0.0;
             }
-            return result;
+            return SafeInteger.valueOf(result);
         } else {
             return mathCeil(d);
         }
+    }
+
+    @Specialization(replaces = "ceilDouble")
+    protected Object ceilToDouble(Object a,
+                    @Cached("createBinaryProfile()") @Shared("isZero") ConditionProfile isZero,
+                    @Cached("createBinaryProfile()") @Shared("requiresNegativeZero") ConditionProfile requiresNegativeZero,
+                    @Cached("createBinaryProfile()") @Shared("fitsInt") ConditionProfile fitsInt,
+                    @Cached("createBinaryProfile()") @Shared("fitsSafeLong") ConditionProfile fitsSafeLong) {
+        double d = toDouble(a);
+        return ceilDouble(d, isZero, requiresNegativeZero, fitsInt, fitsSafeLong);
     }
 
     @TruffleBoundary

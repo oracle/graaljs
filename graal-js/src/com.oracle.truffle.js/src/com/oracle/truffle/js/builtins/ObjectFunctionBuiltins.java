@@ -50,7 +50,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
@@ -594,15 +593,15 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = {"isJSObject(prototype)", "isJSObject(properties)"})
-        protected DynamicObject createObjectObject(VirtualFrame frame, DynamicObject prototype, DynamicObject properties) {
-            DynamicObject ret = createObjectWithPrototype(frame, prototype);
+        protected DynamicObject createObjectObject(DynamicObject prototype, DynamicObject properties) {
+            DynamicObject ret = createObjectWithPrototype(prototype);
             intlDefineProperties(ret, properties);
             return ret;
         }
 
         @Specialization(guards = {"isJSObject(prototype)", "!isJSNull(properties)"})
-        protected DynamicObject createObjectNotNull(VirtualFrame frame, DynamicObject prototype, Object properties) {
-            DynamicObject ret = createObjectWithPrototype(frame, prototype);
+        protected DynamicObject createObjectNotNull(DynamicObject prototype, Object properties) {
+            DynamicObject ret = createObjectWithPrototype(prototype);
             return objectDefineProperties(ret, properties);
         }
 
@@ -620,12 +619,12 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return ret;
         }
 
-        private DynamicObject createObjectWithPrototype(VirtualFrame frame, DynamicObject prototype) {
+        private DynamicObject createObjectWithPrototype(DynamicObject prototype) {
             if (objectCreateNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                objectCreateNode = insert(CreateObjectNode.createWithPrototype(getContext(), null));
+                objectCreateNode = insert(CreateObjectNode.createOrdinaryWithPrototype(getContext()));
             }
-            return objectCreateNode.executeDynamicObject(frame, prototype);
+            return objectCreateNode.execute(prototype);
         }
     }
 

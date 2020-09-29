@@ -99,7 +99,7 @@ public abstract class JSObject extends JSDynamicObject {
     public static final String CONSTRUCTOR = "constructor";
     public static final String PROTOTYPE = "prototype";
     public static final String PROTO = "__proto__";
-    public static final HiddenKey HIDDEN_PROTO = new HiddenKey(PROTO);
+    public static final HiddenKey HIDDEN_PROTO = new HiddenKey("[[Prototype]]");
 
     public static final String NO_SUCH_PROPERTY_NAME = "__noSuchProperty__";
     public static final String NO_SUCH_METHOD_NAME = "__noSuchMethod__";

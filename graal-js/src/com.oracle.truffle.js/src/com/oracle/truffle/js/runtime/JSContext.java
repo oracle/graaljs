@@ -396,6 +396,8 @@ public class JSContext {
     private final JSObjectFactory jsAdapterFactory;
     private final JSObjectFactory dictionaryObjectFactory;
 
+    private final JSObjectFactory globalObjectFactory;
+
     private final int factoryCount;
 
     @CompilationFinal private Locale locale;
@@ -542,6 +544,8 @@ public class JSContext {
         this.javaImporterFactory = nashornCompat ? builder.create(JavaImporter.instance()) : null;
 
         this.dictionaryObjectFactory = JSConfig.DictionaryObject ? builder.create(objectPrototypeSupplier, JSDictionary::makeDictionaryShape) : null;
+
+        this.globalObjectFactory = builder.create(objectPrototypeSupplier, JSGlobal::makeGlobalObjectShape);
 
         this.factoryCount = builder.finish();
 
@@ -936,6 +940,10 @@ public class JSContext {
 
     public JSObjectFactory getDictionaryObjectFactory() {
         return dictionaryObjectFactory;
+    }
+
+    public JSObjectFactory getGlobalObjectFactory() {
+        return globalObjectFactory;
     }
 
     private static final String REGEX_LANGUAGE_ID = "regex";

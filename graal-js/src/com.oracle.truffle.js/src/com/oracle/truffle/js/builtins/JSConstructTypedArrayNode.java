@@ -494,8 +494,8 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     }
 
     abstract static class IntegerIndexedObjectCreateNode extends JavaScriptBaseNode {
-        private final JSContext context;
-        private final TypedArrayFactory factory;
+        final JSContext context;
+        final TypedArrayFactory factory;
 
         IntegerIndexedObjectCreateNode(JSContext context, TypedArrayFactory factory) {
             this.context = context;
@@ -506,20 +506,25 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
 
         @Specialization(guards = "isDefaultPrototype(proto)")
         DynamicObject doDefaultProto(DynamicObject arrayBuffer, TypedArray typedArray, int offset, int length, @SuppressWarnings("unused") DynamicObject proto) {
-            assert !JSArrayBuffer.isDetachedBuffer(arrayBuffer);
             JSObjectFactory objectFactory = context.getArrayBufferViewFactory(factory);
             return JSArrayBufferView.createArrayBufferView(context, objectFactory, arrayBuffer, typedArray, offset, length);
         }
 
+        @Specialization(guards = {"!isDefaultPrototype(proto)", "context.isMultiContext()"})
+        DynamicObject doMultiContext(DynamicObject arrayBuffer, TypedArray typedArray, int offset, int length, DynamicObject proto) {
+            JSObjectFactory objectFactory = context.getArrayBufferViewFactory(factory);
+            return JSArrayBufferView.createArrayBufferViewWithProto(context, objectFactory, arrayBuffer, typedArray, offset, length, proto);
+        }
+
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!isDefaultPrototype(proto)", "proto == cachedProto"}, limit = "1")
+        @Specialization(guards = {"!isDefaultPrototype(proto)", "!context.isMultiContext()", "proto == cachedProto"}, limit = "1")
         DynamicObject doCachedProto(DynamicObject arrayBuffer, TypedArray typedArray, int offset, int length, DynamicObject proto,
                         @Cached("proto") DynamicObject cachedProto,
                         @Cached("makeObjectFactory(cachedProto)") JSObjectFactory objectFactory) {
             return JSArrayBufferView.createArrayBufferView(context, objectFactory, arrayBuffer, typedArray, offset, length);
         }
 
-        @Specialization(guards = "!isDefaultPrototype(proto)", replaces = "doCachedProto")
+        @Specialization(guards = {"!isDefaultPrototype(proto)", "!context.isMultiContext()"}, replaces = "doCachedProto")
         DynamicObject doUncachedProto(DynamicObject arrayBuffer, TypedArray typedArray, int offset, int length, DynamicObject proto) {
             return JSArrayBufferView.createArrayBufferView(context, makeObjectFactory(proto), arrayBuffer, typedArray, offset, length);
         }

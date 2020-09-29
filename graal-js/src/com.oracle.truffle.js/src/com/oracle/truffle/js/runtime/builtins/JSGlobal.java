@@ -63,10 +63,9 @@ public final class JSGlobal extends JSNonProxy {
     public static DynamicObject create(JSRealm realm, DynamicObject objectPrototype) {
         CompilerAsserts.neverPartOfCompilation();
         JSContext context = realm.getContext();
-        Shape globalObjectShape = makeGlobalObjectShape(context, objectPrototype);
-
-        DynamicObject global = new JSGlobalObject(globalObjectShape);
-        JSObjectUtil.setOrVerifyPrototype(context, global, objectPrototype);
+        JSObjectFactory factory = context.getGlobalObjectFactory();
+        DynamicObject global = new JSGlobalObject(factory.getShape(realm));
+        factory.initProto(global, objectPrototype);
 
         JSObjectUtil.putToStringTag(global, CLASS_NAME);
         return global;
@@ -75,7 +74,7 @@ public final class JSGlobal extends JSNonProxy {
     public static Shape makeGlobalObjectShape(JSContext context, DynamicObject objectPrototype) {
         // keep a separate shape tree for the global object in order not to pollute user objects
         boolean singleContext = !context.isMultiContext();
-        Shape globalObjectShape = JSShape.newBuilder(context, JSGlobal.INSTANCE).propertyAssumptions(singleContext).singleContextAssumption(
+        Shape globalObjectShape = JSShape.newBuilder(context, JSGlobal.INSTANCE, singleContext ? objectPrototype : null).propertyAssumptions(singleContext).singleContextAssumption(
                         singleContext ? context.getSingleRealmAssumption() : null).build();
         if (singleContext) {
             globalObjectShape = Shape.newBuilder(globalObjectShape).addConstantProperty(JSObject.HIDDEN_PROTO, objectPrototype, 0).build();

@@ -48,7 +48,6 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.js.nodes.JSTypesGen;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -130,11 +129,7 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
 
     @Override
     public Object executeWithTarget(VirtualFrame frame, Object target) {
-        try {
-            return getCache().getValue(JSTypesGen.expectDynamicObject(target));
-        } catch (UnexpectedResultException e) {
-            throw new AssertionError("target must always be a JSObject");
-        }
+        return getCache().getValue(target);
     }
 
     @Override

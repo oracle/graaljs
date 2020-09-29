@@ -3098,7 +3098,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected CreateArrayIteratorNode(JSContext context, int iterationKind) {
             this.context = context;
             this.iterationKind = iterationKind;
-            this.createObjectNode = CreateObjectNode.createWithPrototype(context, null);
+            this.createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
             this.setIteratedObjectNode = PropertySetNode.createSetHidden(JSRuntime.ITERATED_OBJECT_ID, context);
             this.setNextIndexNode = PropertySetNode.createSetHidden(JSRuntime.ITERATOR_NEXT_INDEX, context);
             this.setIterationKindNode = PropertySetNode.createSetHidden(JSArray.ARRAY_ITERATION_KIND_ID, context);
@@ -3110,7 +3110,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         public DynamicObject execute(VirtualFrame frame, Object array) {
             assert JSGuards.isJSObject(array) || JSGuards.isForeignObject(array);
-            DynamicObject iterator = createObjectNode.executeDynamicObject(frame, context.getRealm().getArrayIteratorPrototype());
+            DynamicObject iterator = createObjectNode.execute(frame, context.getRealm().getArrayIteratorPrototype());
             setIteratedObjectNode.setValue(iterator, array);
             setNextIndexNode.setValue(iterator, 0L);
             setIterationKindNode.setValueInt(iterator, iterationKind);

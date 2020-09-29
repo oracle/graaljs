@@ -88,9 +88,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
     }
 
     @Override
-    public final Object execute(VirtualFrame frame) {
-        return executeDynamicObject(frame);
-    }
+    public abstract DynamicObject execute(VirtualFrame frame);
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
@@ -110,9 +108,6 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
     public WrapperNode createWrapper(ProbeNode probe) {
         return new ArrayLiteralNodeWrapper(this, this, probe);
     }
-
-    @Override
-    public abstract DynamicObject executeDynamicObject(VirtualFrame frame);
 
     public static ArrayLiteralNode create(JSContext context, JavaScriptNode[] elements) {
         if (elements == null || elements.length == 0) {
@@ -297,7 +292,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        public DynamicObject executeDynamicObject(VirtualFrame frame) {
+        public DynamicObject execute(VirtualFrame frame) {
             if (state == 0) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 Object[] values = new Object[getLength()];
@@ -461,7 +456,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
 
         @ExplodeLoop
         @Override
-        public DynamicObject executeDynamicObject(VirtualFrame frame) {
+        public DynamicObject execute(VirtualFrame frame) {
             Object[] primitiveArray = new Object[elements.length];
             int holeCount = 0;
             int arrayOffset = 0;
@@ -501,7 +496,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        public DynamicObject executeDynamicObject(VirtualFrame frame) {
+        public DynamicObject execute(VirtualFrame frame) {
             return JSArray.create(context, arrayType, array, length);
         }
 
@@ -521,7 +516,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        public DynamicObject executeDynamicObject(VirtualFrame frame) {
+        public DynamicObject execute(VirtualFrame frame) {
             return JSArray.createConstantEmptyArray(context, capacity);
         }
 
@@ -538,7 +533,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        public DynamicObject executeDynamicObject(VirtualFrame frame) {
+        public DynamicObject execute(VirtualFrame frame) {
             return JSArray.createConstantEmptyArray(context);
         }
 
@@ -559,7 +554,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
 
         @ExplodeLoop
         @Override
-        public DynamicObject executeDynamicObject(VirtualFrame frame) {
+        public DynamicObject execute(VirtualFrame frame) {
             SimpleArrayList<Object> evaluatedElements = new SimpleArrayList<>(elements.length + JSConfig.SpreadArgumentPlaceholderCount);
             int holeCount = 0;
             int arrayOffset = 0;

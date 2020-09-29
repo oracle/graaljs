@@ -76,7 +76,11 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         return new CreateOrdinaryObjectNode(context);
     }
 
-    public static CreateObjectWithPrototypeNode createWithPrototype(JSContext context, JavaScriptNode prototypeExpression) {
+    public static CreateObjectWithPrototypeNode createOrdinaryWithPrototype(JSContext context) {
+        return createWithPrototype(context, null, JSOrdinary.INSTANCE);
+    }
+
+    public static CreateObjectWithPrototypeNode createOrdinaryWithPrototype(JSContext context, JavaScriptNode prototypeExpression) {
         return createWithPrototype(context, prototypeExpression, JSOrdinary.INSTANCE);
     }
 
@@ -88,11 +92,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         return new CreateDictionaryObjectNode(context);
     }
 
-    public final DynamicObject execute(VirtualFrame frame) {
-        return executeDynamicObject(frame);
-    }
-
-    public abstract DynamicObject executeDynamicObject(VirtualFrame frame);
+    public abstract DynamicObject execute(VirtualFrame frame);
 
     protected abstract CreateObjectNode copyUninitialized(Set<Class<? extends Tag>> materializedTags);
 
@@ -106,7 +106,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         }
 
         @Override
-        public DynamicObject executeDynamicObject(VirtualFrame frame) {
+        public DynamicObject execute(VirtualFrame frame) {
             return JSOrdinary.create(context);
         }
 
@@ -124,7 +124,12 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
             this.prototypeExpression = prototypeExpression;
         }
 
-        public abstract DynamicObject executeDynamicObject(VirtualFrame frame, DynamicObject prototype);
+        public abstract DynamicObject execute(VirtualFrame frame, DynamicObject prototype);
+
+        public final DynamicObject execute(DynamicObject prototype) {
+            assert prototypeExpression == null;
+            return execute(null, prototype);
+        }
 
         @Override
         protected abstract CreateObjectWithPrototypeNode copyUninitialized(Set<Class<? extends Tag>> materializedTags);
@@ -201,7 +206,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         }
 
         @Override
-        public DynamicObject executeDynamicObject(VirtualFrame frame) {
+        public DynamicObject execute(VirtualFrame frame) {
             return JSDictionary.create(context);
         }
 

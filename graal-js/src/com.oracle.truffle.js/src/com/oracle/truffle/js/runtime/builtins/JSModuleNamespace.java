@@ -113,7 +113,7 @@ public final class JSModuleNamespace extends JSNonProxy {
     }
 
     public static Shape makeInitialShape(JSContext context) {
-        Shape initialShape = JSShape.newBuilder(context, INSTANCE).shapeFlags(JSShape.NOT_EXTENSIBLE_FLAG).build();
+        Shape initialShape = JSShape.newBuilder(context, INSTANCE, Null.instance).shapeFlags(JSShape.NOT_EXTENSIBLE_FLAG).build();
 
         /*
          * The initial value of the @@toStringTag property is the String value "Module".
