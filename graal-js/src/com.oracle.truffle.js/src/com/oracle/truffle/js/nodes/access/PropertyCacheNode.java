@@ -1056,16 +1056,16 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             return copy;
         }
 
-        protected boolean isGeneric() {
+        protected final boolean isGeneric() {
             return receiverCheck == null;
         }
 
-        protected boolean accepts(Object thisObj) {
-            return receiverCheck.accept(thisObj);
+        protected final boolean accepts(Object thisObj) {
+            return receiverCheck == null || receiverCheck.accept(thisObj);
         }
 
         protected boolean isValid() {
-            return receiverCheck.isValid();
+            return receiverCheck == null || receiverCheck.isValid();
         }
 
         protected boolean acceptsValue(Object value) {

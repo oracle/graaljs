@@ -184,6 +184,13 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     @TruffleBoundary
     private boolean setValueAndSpecialize(Object thisObj, Object value, Object receiver) {
+        SetCacheNode node = specialize(thisObj);
+        if (node.accepts(thisObj)) {
+            node.setValue(thisObj, value, receiver, this, false);
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError("Inconsistent guards.");
+        }
         return specialize(thisObj, value).setValue(thisObj, value, receiver, this, false);
     }
 
@@ -211,7 +218,13 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     @TruffleBoundary
     private void setValueIntAndSpecialize(Object thisObj, int value, Object receiver) {
-        specialize(thisObj, value).setValueInt(thisObj, value, receiver, this, false);
+        SetCacheNode node = specialize(thisObj);
+        if (node.accepts(thisObj)) {
+            node.setValueInt(thisObj, value, receiver, this, false);
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError("Inconsistent guards.");
+        }
     }
 
     @ExplodeLoop
@@ -238,7 +251,13 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     @TruffleBoundary
     private void setValueDoubleAndSpecialize(Object thisObj, double value, Object receiver) {
-        specialize(thisObj, value).setValueDouble(thisObj, value, receiver, this, false);
+        SetCacheNode node = specialize(thisObj);
+        if (node.accepts(thisObj)) {
+            node.setValueDouble(thisObj, value, receiver, this, false);
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError("Inconsistent guards.");
+        }
     }
 
     @ExplodeLoop
@@ -265,7 +284,13 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     @TruffleBoundary
     private void setValueBooleanAndSpecialize(Object thisObj, boolean value, Object receiver) {
-        specialize(thisObj, value).setValueBoolean(thisObj, value, receiver, this, false);
+        SetCacheNode node = specialize(thisObj);
+        if (node.accepts(thisObj)) {
+            node.setValueBoolean(thisObj, value, receiver, this, false);
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError("Inconsistent guards.");
+        }
     }
 
     public abstract static class SetCacheNode extends PropertyCacheNode.CacheNode<SetCacheNode> {

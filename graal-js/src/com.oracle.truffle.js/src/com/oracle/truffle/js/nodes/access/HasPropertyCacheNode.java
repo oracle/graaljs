@@ -49,6 +49,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode.GetCacheNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -103,7 +104,13 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
 
     @TruffleBoundary
     private boolean hasPropertyAndSpecialize(Object thisObj) {
-        return specialize(thisObj).hasProperty(thisObj, this);
+        HasCacheNode node = specialize(thisObj);
+        if (node.accepts(thisObj)) {
+            return node.hasProperty(thisObj, this);
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError("Inconsistent guards.");
+        }
     }
 
     public abstract static class HasCacheNode extends PropertyCacheNode.CacheNode<HasCacheNode> {

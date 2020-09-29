@@ -156,13 +156,13 @@ abstract class JSWriteScopeFrameSlotNode extends JSWriteFrameSlotNode {
         return value;
     }
 
-    @Specialization(guards = "isDoubleKind(levelFrame)", replaces = {"doInteger", "doLargeInteger"})
+    @Specialization(guards = "isDoubleKind(levelFrame)", replaces = {"doInteger", "doSafeInteger"})
     protected final double doDouble(Frame levelFrame, double value) {
         levelFrame.setDouble(frameSlot, value);
         return value;
     }
 
-    @Specialization(replaces = {"doBoolean", "doInteger", "doDouble", "doLargeInteger", "doLong"})
+    @Specialization(replaces = {"doBoolean", "doInteger", "doDouble", "doSafeInteger", "doLong"})
     protected final Object doObject(Frame levelFrame, Object value) {
         ensureObjectKind(levelFrame);
         levelFrame.setObject(frameSlot, value);
@@ -236,13 +236,13 @@ abstract class JSWriteCurrentFrameSlotNode extends JSWriteFrameSlotNode {
         return value;
     }
 
-    @Specialization(guards = "isDoubleKind(frame)", replaces = {"doInteger", "doLargeInteger"})
+    @Specialization(guards = "isDoubleKind(frame)", replaces = {"doInteger", "doSafeInteger"})
     protected final double doDouble(VirtualFrame frame, double value) {
         frame.setDouble(frameSlot, value);
         return value;
     }
 
-    @Specialization(replaces = {"doBoolean", "doInteger", "doDouble", "doLargeInteger", "doLong"})
+    @Specialization(replaces = {"doBoolean", "doInteger", "doDouble", "doSafeInteger", "doLong"})
     protected final Object doObject(VirtualFrame frame, Object value) {
         ensureObjectKind(frame);
         frame.setObject(frameSlot, value);
