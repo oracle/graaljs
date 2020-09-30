@@ -318,6 +318,7 @@ public class JSDebugTest {
             String expectedValue = expectedFrame[i + 1];
             DebugValue value = valMap.get(expectedIdentifier);
             Assert.assertNotNull(expectedIdentifier + " not found", value);
+            Assert.assertEquals(expectedIdentifier, value.getName());
             Assert.assertEquals(expectedValue, value.toDisplayString());
         }
     }

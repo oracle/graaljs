@@ -801,6 +801,7 @@ public class TestScope {
                 String expectedValue = expectedScope[i + 1];
                 DebugValue value = values.get(expectedIdentifier);
                 Assert.assertNotNull(expectedIdentifier + " not found", value);
+                Assert.assertEquals(expectedIdentifier, value.getName());
                 if (!Objects.equals(IGNORE_VALUE, expectedValue)) {
                     Assert.assertEquals("Variable " + expectedIdentifier, expectedValue, value.toDisplayString());
                 }
