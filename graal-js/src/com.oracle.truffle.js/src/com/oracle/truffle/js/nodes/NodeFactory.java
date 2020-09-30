@@ -60,7 +60,6 @@ import com.oracle.truffle.js.nodes.access.DeclareGlobalLexicalVariableNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalVariableNode;
 import com.oracle.truffle.js.nodes.access.EnumerateNode;
-import com.oracle.truffle.js.nodes.access.FrameSlotNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.GetTemplateObjectNode;
@@ -279,18 +278,25 @@ public class NodeFactory {
                 return JSUnaryPlusNode.create(operand);
             case NOT:
                 return JSNotNode.create(operand);
-            case POSTFIX_LOCAL_INCREMENT:
-                return LocalVarIncNode.createPostfix(LocalVarIncNode.Op.Inc, ((FrameSlotNode) operand));
-            case PREFIX_LOCAL_INCREMENT:
-                return LocalVarIncNode.createPrefix(LocalVarIncNode.Op.Inc, ((FrameSlotNode) operand));
-            case POSTFIX_LOCAL_DECREMENT:
-                return LocalVarIncNode.createPostfix(LocalVarIncNode.Op.Dec, ((FrameSlotNode) operand));
-            case PREFIX_LOCAL_DECREMENT:
-                return LocalVarIncNode.createPrefix(LocalVarIncNode.Op.Dec, ((FrameSlotNode) operand));
             case TYPE_OF:
                 return TypeOfNode.create(operand);
             case VOID:
                 return VoidNode.create(operand);
+            default:
+                throw new IllegalArgumentException();
+        }
+    }
+
+    public JavaScriptNode createLocalVarInc(UnaryOperation operation, FrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode, FrameDescriptor frameDescriptor) {
+        switch (operation) {
+            case POSTFIX_LOCAL_INCREMENT:
+                return LocalVarIncNode.createPostfix(LocalVarIncNode.Op.Inc, frameSlot, hasTemporalDeadZone, scopeFrameNode, frameDescriptor);
+            case PREFIX_LOCAL_INCREMENT:
+                return LocalVarIncNode.createPrefix(LocalVarIncNode.Op.Inc, frameSlot, hasTemporalDeadZone, scopeFrameNode, frameDescriptor);
+            case POSTFIX_LOCAL_DECREMENT:
+                return LocalVarIncNode.createPostfix(LocalVarIncNode.Op.Dec, frameSlot, hasTemporalDeadZone, scopeFrameNode, frameDescriptor);
+            case PREFIX_LOCAL_DECREMENT:
+                return LocalVarIncNode.createPrefix(LocalVarIncNode.Op.Dec, frameSlot, hasTemporalDeadZone, scopeFrameNode, frameDescriptor);
             default:
                 throw new IllegalArgumentException();
         }
@@ -486,7 +492,7 @@ public class NodeFactory {
         for (int i = 0; i < slots.size(); i++) {
             FrameSlot slot = slots.get(i);
             reads[i] = JSReadFrameSlotNode.create(slot, 0, 0, ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY, false);
-            writes[i] = JSWriteFrameSlotNode.create(slot, 0, 0, ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY, null, false);
+            writes[i] = JSWriteFrameSlotNode.create(slot, 0, 0, frameDescriptor, ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY, null, false);
         }
         return IterationScopeNode.create(frameDescriptor, reads, writes);
     }
@@ -543,12 +549,21 @@ public class NodeFactory {
         return JSReadFrameSlotNode.create(frameSlot, frameLevel, scopeLevel, parentSlots, hasTemporalDeadZone);
     }
 
-    public JSWriteFrameSlotNode createWriteFrameSlot(FrameSlot frameSlot, int frameLevel, int scopeLevel, FrameSlot[] parentSlots, JavaScriptNode rhs) {
-        return JSWriteFrameSlotNode.create(frameSlot, frameLevel, scopeLevel, parentSlots, rhs, false);
+    public JSWriteFrameSlotNode createWriteFrameSlot(FrameSlot frameSlot, int frameLevel, int scopeLevel, FrameDescriptor frameDescriptor, FrameSlot[] parentSlots, JavaScriptNode rhs) {
+        return JSWriteFrameSlotNode.create(frameSlot, frameLevel, scopeLevel, frameDescriptor, parentSlots, rhs, false);
     }
 
-    public JSWriteFrameSlotNode createWriteFrameSlot(FrameSlot frameSlot, int frameLevel, int scopeLevel, FrameSlot[] parentSlots, JavaScriptNode rhs, boolean hasTemporalDeadZone) {
-        return JSWriteFrameSlotNode.create(frameSlot, frameLevel, scopeLevel, parentSlots, rhs, hasTemporalDeadZone);
+    public JSWriteFrameSlotNode createWriteFrameSlot(FrameSlot frameSlot, int frameLevel, int scopeLevel, FrameDescriptor frameDescriptor, FrameSlot[] parentSlots, JavaScriptNode rhs,
+                    boolean hasTemporalDeadZone) {
+        return JSWriteFrameSlotNode.create(frameSlot, frameLevel, scopeLevel, frameDescriptor, parentSlots, rhs, hasTemporalDeadZone);
+    }
+
+    public JSWriteFrameSlotNode createWriteCurrentFrameSlot(FrameSlot frameSlot, FrameDescriptor frameDescriptor, JavaScriptNode rhs) {
+        return JSWriteFrameSlotNode.create(frameSlot, 0, 0, frameDescriptor, ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY, rhs, false);
+    }
+
+    public ScopeFrameNode createScopeFrame(int frameLevel, int scopeLevel, FrameSlot[] parentSlots) {
+        return ScopeFrameNode.create(frameLevel, scopeLevel, parentSlots);
     }
 
     public JavaScriptNode createReadLexicalGlobal(String name, boolean hasTemporalDeadZone, JSContext context) {

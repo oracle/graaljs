@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,8 @@ public interface NodeDecoder<F> {
 
         public DecoderState(BinaryDecoder decoder, Object[] arguments) {
             this.decoder = decoder;
-            this.objRegs = new Object[getUInt()];
+            int nRegs = getInt32();
+            this.objRegs = new Object[nRegs];
             this.arguments = arguments;
         }
 

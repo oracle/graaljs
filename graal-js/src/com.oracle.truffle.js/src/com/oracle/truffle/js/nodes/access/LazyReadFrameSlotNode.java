@@ -46,6 +46,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -92,14 +93,16 @@ public abstract class LazyReadFrameSlotNode extends JavaScriptNode implements Re
                 Frame outerScope = outerFrame;
                 List<FrameSlot> parentSlotList = new ArrayList<>();
                 for (int scopeLevel = 0;; scopeLevel++) {
-                    FrameSlot slot = outerScope.getFrameDescriptor().findFrameSlot(identifier);
+                    FrameDescriptor outerFrameDescriptor = outerScope.getFrameDescriptor();
+                    FrameSlot slot = outerFrameDescriptor.findFrameSlot(identifier);
                     if (slot != null) {
                         FrameSlot[] parentSlots = parentSlotList.toArray(ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY);
-                        JSReadFrameSlotNode resolved = JSReadFrameSlotNode.create(slot, ScopeFrameNode.create(frameLevel, scopeLevel, parentSlots), JSFrameUtil.hasTemporalDeadZone(slot));
+                        ScopeFrameNode scopeFrameNode = ScopeFrameNode.create(frameLevel, scopeLevel, parentSlots);
+                        JSReadFrameSlotNode resolved = JSReadFrameSlotNode.create(slot, scopeFrameNode, JSFrameUtil.hasTemporalDeadZone(slot));
                         return this.replace(resolved).execute(frame);
                     }
 
-                    FrameSlot parentSlot = outerScope.getFrameDescriptor().findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER);
+                    FrameSlot parentSlot = outerFrameDescriptor.findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER);
                     if (parentSlot == null) {
                         break;
                     }

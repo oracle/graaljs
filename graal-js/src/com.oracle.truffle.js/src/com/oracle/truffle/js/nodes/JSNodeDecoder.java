@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -287,18 +287,15 @@ public class JSNodeDecoder {
                     break;
                 }
                 case ID_CALL_EXTRACTED_LAZY: {
-                    if (VERBOSE) {
-                        System.err.println("callex-lazy@:" + state.getBuffer().position());
-                    }
+                    int bcPos = state.getBuffer().position() - 1;
                     final int position = state.getInt32();
                     if (VERBOSE) {
-                        System.err.println("callex-lazy pos:" + position);
+                        System.err.println("callex-lazy pos:" + position + " @" + bcPos);
                     }
                     JSFunctionData functionData = (JSFunctionData) state.getObject();
                     final Object[] arguments = getObjectArray(state);
+                    final ByteBuffer buffer = ((ByteBuffer) asBaseBuffer(state.getBuffer().duplicate()).position(position));
                     functionData.setLazyInit(new JSFunctionData.Initializer() {
-                        private final ByteBuffer buffer = ((ByteBuffer) asBaseBuffer(state.getBuffer().duplicate()).position(position));
-
                         @Override
                         public void initializeRoot(JSFunctionData fd) {
                             if (VERBOSE) {

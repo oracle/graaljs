@@ -53,9 +53,6 @@ import org.graalvm.polyglot.Context;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.nodes.NodeFactory;
-import com.oracle.truffle.js.nodes.ScriptNode;
-import com.oracle.truffle.js.parser.JavaScriptTranslator;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -142,11 +139,8 @@ public class SnapshotTool {
             prefix = "";
             suffix = "";
         }
-        final Recording rec;
         try (TimerCloseable timer = timeStats.file(fileName)) {
-            rec = new Recording();
-            ScriptNode program = JavaScriptTranslator.translateScript(RecordingProxy.createRecordingNodeFactory(rec, NodeFactory.getInstance(context)), context, source, false, prefix, suffix);
-            rec.finish(program.getRootNode());
+            final Recording rec = Recording.recordSource(source, context, false, prefix, suffix);
             outputFile.getParentFile().mkdirs();
             try (FileOutputStream outs = new FileOutputStream(outputFile)) {
                 rec.saveToStream(fileName, outs, binary);

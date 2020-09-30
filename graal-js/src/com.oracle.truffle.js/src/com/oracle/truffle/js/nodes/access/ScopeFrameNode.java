@@ -58,6 +58,10 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
     public static final Object PARENT_SCOPE_IDENTIFIER = "<parent>";
     public static final FrameSlot[] EMPTY_FRAME_SLOT_ARRAY = {};
 
+    public static ScopeFrameNode createCurrent() {
+        return CurrentFrameNode.instance();
+    }
+
     public static ScopeFrameNode create(int frameLevel) {
         return create(frameLevel, 0, EMPTY_FRAME_SLOT_ARRAY);
     }

@@ -46,12 +46,12 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -64,7 +64,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 
-public abstract class LocalVarIncNode extends FrameSlotNode {
+public abstract class LocalVarIncNode extends FrameSlotNode.WithDescriptor {
     public enum Op {
         Inc(new IncOp()),
         Dec(new DecOp());
@@ -166,19 +166,19 @@ public abstract class LocalVarIncNode extends FrameSlotNode {
     protected final boolean hasTemporalDeadZone;
     @Child @Executed protected ScopeFrameNode scopeFrameNode;
 
-    protected LocalVarIncNode(LocalVarOp op, FrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode) {
-        super(frameSlot);
+    protected LocalVarIncNode(LocalVarOp op, FrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode, FrameDescriptor frameDescriptor) {
+        super(frameSlot, frameDescriptor);
         this.op = op;
         this.hasTemporalDeadZone = hasTemporalDeadZone;
         this.scopeFrameNode = scopeFrameNode;
     }
 
-    public static LocalVarIncNode createPrefix(Op op, FrameSlotNode frameSlotNode) {
-        return LocalVarPrefixIncNodeGen.create(op.op, frameSlotNode.getFrameSlot(), frameSlotNode.hasTemporalDeadZone(), frameSlotNode.getLevelFrameNode());
+    public static LocalVarIncNode createPrefix(Op op, FrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode, FrameDescriptor frameDescriptor) {
+        return LocalVarPrefixIncNodeGen.create(op.op, frameSlot, hasTemporalDeadZone, scopeFrameNode, frameDescriptor);
     }
 
-    public static LocalVarIncNode createPostfix(Op op, FrameSlotNode frameSlotNode) {
-        return LocalVarPostfixIncNodeGen.create(op.op, frameSlotNode.getFrameSlot(), frameSlotNode.hasTemporalDeadZone(), frameSlotNode.getLevelFrameNode());
+    public static LocalVarIncNode createPostfix(Op op, FrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode, FrameDescriptor frameDescriptor) {
+        return LocalVarPostfixIncNodeGen.create(op.op, frameSlot, hasTemporalDeadZone, scopeFrameNode, frameDescriptor);
     }
 
     @Override
@@ -198,11 +198,11 @@ abstract class LocalVarOpMaterializedNode extends LocalVarIncNode {
     @Child protected JavaScriptNode writeNew;
 
     LocalVarOpMaterializedNode(LocalVarIncNode from, Set<Class<? extends Tag>> materializedTags) {
-        super(from.op, from.frameSlot, from.hasTemporalDeadZone, from.scopeFrameNode);
+        super(from.op, from.frameSlot, from.hasTemporalDeadZone, from.scopeFrameNode, from.frameDescriptor);
 
         JavaScriptNode readOld = JSReadFrameSlotNode.create(frameSlot, scopeFrameNode, hasTemporalDeadZone);
         JavaScriptNode convert = (JavaScriptNode) JSToNumericNode.create(readOld).materializeInstrumentableNodes(materializedTags);
-        convertOld = cloneUninitialized(JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, convert, hasTemporalDeadZone), materializedTags);
+        convertOld = cloneUninitialized(JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, convert, frameDescriptor, hasTemporalDeadZone), materializedTags);
 
         JavaScriptNode readTmp = JSReadFrameSlotNode.create(frameSlot, scopeFrameNode, hasTemporalDeadZone);
         JavaScriptNode one = JSConstantNode.createInt(1);
@@ -219,13 +219,13 @@ abstract class LocalVarOpMaterializedNode extends LocalVarIncNode {
         transferSourceSectionAddExpressionTag(from, readTmp);
         transferSourceSectionAddExpressionTag(from, one);
         transferSourceSectionAddExpressionTag(from, opNode);
-        this.writeNew = cloneUninitialized(JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, opNode, hasTemporalDeadZone), materializedTags);
+        this.writeNew = cloneUninitialized(JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, opNode, frameDescriptor, hasTemporalDeadZone), materializedTags);
         transferSourceSectionAddExpressionTag(from, writeNew);
         transferSourceSectionAndTags(from, this);
     }
 
-    LocalVarOpMaterializedNode(LocalVarOp op, FrameSlot slot, boolean hasTdz, ScopeFrameNode scope, JavaScriptNode convert, JavaScriptNode write) {
-        super(op, slot, hasTdz, scope);
+    LocalVarOpMaterializedNode(LocalVarOp op, FrameSlot slot, boolean hasTdz, ScopeFrameNode scope, JavaScriptNode convert, JavaScriptNode write, FrameDescriptor frameDescriptor) {
+        super(op, slot, hasTdz, scope, frameDescriptor);
         this.convertOld = convert;
         this.writeNew = write;
     }
@@ -233,8 +233,8 @@ abstract class LocalVarOpMaterializedNode extends LocalVarIncNode {
 
 class LocalVarPostfixIncMaterializedNode extends LocalVarOpMaterializedNode {
 
-    LocalVarPostfixIncMaterializedNode(LocalVarOp op, FrameSlot slot, boolean hasTdz, ScopeFrameNode scope, JavaScriptNode read, JavaScriptNode write) {
-        super(op, slot, hasTdz, scope, read, write);
+    LocalVarPostfixIncMaterializedNode(LocalVarOp op, FrameSlot slot, boolean hasTdz, ScopeFrameNode scope, JavaScriptNode read, JavaScriptNode write, FrameDescriptor frameDescriptor) {
+        super(op, slot, hasTdz, scope, read, write, frameDescriptor);
     }
 
     LocalVarPostfixIncMaterializedNode(LocalVarPostfixIncNode from, Set<Class<? extends Tag>> materializedTags) {
@@ -251,14 +251,14 @@ class LocalVarPostfixIncMaterializedNode extends LocalVarOpMaterializedNode {
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return new LocalVarPostfixIncMaterializedNode(op, frameSlot, hasTemporalDeadZone(), scopeFrameNode, cloneUninitialized(convertOld, materializedTags),
-                        cloneUninitialized(writeNew, materializedTags));
+                        cloneUninitialized(writeNew, materializedTags), frameDescriptor);
     }
 }
 
 class LocalVarPrefixIncMaterializedNode extends LocalVarOpMaterializedNode {
 
-    LocalVarPrefixIncMaterializedNode(LocalVarOp op, FrameSlot slot, boolean hasTdz, ScopeFrameNode scope, JavaScriptNode read, JavaScriptNode write) {
-        super(op, slot, hasTdz, scope, read, write);
+    LocalVarPrefixIncMaterializedNode(LocalVarOp op, FrameSlot slot, boolean hasTdz, ScopeFrameNode scope, JavaScriptNode read, JavaScriptNode write, FrameDescriptor frameDescriptor) {
+        super(op, slot, hasTdz, scope, read, write, frameDescriptor);
     }
 
     LocalVarPrefixIncMaterializedNode(LocalVarPrefixIncNode from, Set<Class<? extends Tag>> materializedTags) {
@@ -274,15 +274,15 @@ class LocalVarPrefixIncMaterializedNode extends LocalVarOpMaterializedNode {
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return new LocalVarPrefixIncMaterializedNode(op, frameSlot, hasTemporalDeadZone(), scopeFrameNode, cloneUninitialized(convertOld, materializedTags),
-                        cloneUninitialized(writeNew, materializedTags));
+                        cloneUninitialized(writeNew, materializedTags), frameDescriptor);
     }
 
 }
 
 abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
 
-    protected LocalVarPostfixIncNode(LocalVarOp op, FrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode) {
-        super(op, frameSlot, hasTemporalDeadZone, scopeFrameNode);
+    protected LocalVarPostfixIncNode(LocalVarOp op, FrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode, FrameDescriptor frameDescriptor) {
+        super(op, frameSlot, hasTemporalDeadZone, scopeFrameNode, frameDescriptor);
     }
 
     @Override
@@ -313,8 +313,9 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         return value;
     }
 
-    @Specialization(guards = {"isBoolean(frame)", "ensureObjectKind(frame)"}, replaces = "doBooleanDouble")
+    @Specialization(guards = {"isBoolean(frame)"}, replaces = "doBooleanDouble")
     public int doBooleanObject(Frame frame) {
+        ensureObjectKind(frame);
         int value = JSRuntime.booleanToNumber(getBoolean(frame));
         int newValue = op.doInt(value);
         frame.setObject(frameSlot, newValue);
@@ -337,8 +338,9 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         return value;
     }
 
-    @Specialization(guards = {"isInt(frame)", "ensureObjectKind(frame)"}, replaces = "doIntDouble")
+    @Specialization(guards = {"isInt(frame)"}, replaces = "doIntDouble")
     public int doIntObject(Frame frame) {
+        ensureObjectKind(frame);
         int value = getInt(frame);
         double newValue = op.doDouble(value);
         frame.setObject(frameSlot, newValue);
@@ -352,20 +354,22 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         return doubleValue;
     }
 
-    @Specialization(guards = {"isDouble(frame)", "ensureObjectKind(frame)"}, replaces = "doDouble")
+    @Specialization(guards = {"isDouble(frame)"}, replaces = "doDouble")
     public double doDoubleObject(Frame frame) {
+        ensureObjectKind(frame);
         double doubleValue = getDouble(frame);
         frame.setObject(frameSlot, op.doDouble(doubleValue));
         return doubleValue;
     }
 
-    @Specialization(guards = {"isObject(frame)", "ensureObjectKind(frame)"})
+    @Specialization(guards = {"isObject(frame)"})
     public Object doObject(Frame frame,
                     @Cached("createBinaryProfile()") ConditionProfile isIntegerProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isBigIntProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isBoundaryProfile,
                     @Cached("create()") JSToNumericNode toNumeric,
                     @Cached("create()") BranchProfile deadBranch) {
+        ensureObjectKind(frame);
         Object value = getObject(frame);
         if (hasTemporalDeadZone()) {
             checkNotDead(value, deadBranch);
@@ -395,8 +399,9 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         return oldValue;
     }
 
-    @Specialization(guards = {"isLong(frame)", "ensureObjectKind(frame)"}, replaces = "doSafeIntegerToDouble")
+    @Specialization(guards = {"isLong(frame)"}, replaces = "doSafeIntegerToDouble")
     public double doSafeIntegerObject(Frame frame) {
+        ensureObjectKind(frame);
         double oldValue = getLong(frame);
         double newValue = op.doDouble(oldValue);
         frame.setObject(frameSlot, newValue);
@@ -405,14 +410,14 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return LocalVarPostfixIncNodeGen.create(op, getFrameSlot(), hasTemporalDeadZone(), NodeUtil.cloneNode(getLevelFrameNode()));
+        return LocalVarPostfixIncNodeGen.create(op, getFrameSlot(), hasTemporalDeadZone(), getLevelFrameNode(), frameDescriptor);
     }
 }
 
 abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
 
-    protected LocalVarPrefixIncNode(LocalVarOp op, FrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode) {
-        super(op, frameSlot, hasTemporalDeadZone, scopeFrameNode);
+    protected LocalVarPrefixIncNode(LocalVarOp op, FrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode, FrameDescriptor frameDescriptor) {
+        super(op, frameSlot, hasTemporalDeadZone, scopeFrameNode, frameDescriptor);
     }
 
     @Override
@@ -443,8 +448,9 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         return newValue;
     }
 
-    @Specialization(guards = {"isBoolean(frame)", "ensureObjectKind(frame)"}, replaces = "doBooleanDouble")
+    @Specialization(guards = {"isBoolean(frame)"}, replaces = "doBooleanDouble")
     public int doBooleanObject(Frame frame) {
+        ensureObjectKind(frame);
         int value = JSRuntime.booleanToNumber(getBoolean(frame));
         int newValue = op.doInt(value);
         frame.setObject(frameSlot, newValue);
@@ -467,8 +473,9 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         return newValue;
     }
 
-    @Specialization(guards = {"isInt(frame)", "ensureObjectKind(frame)"}, replaces = "doIntOverflow")
+    @Specialization(guards = {"isInt(frame)"}, replaces = "doIntOverflow")
     public double doIntOverflowObject(Frame frame) {
+        ensureObjectKind(frame);
         int value = getInt(frame);
         double newValue = op.doDouble(value);
         frame.setObject(frameSlot, newValue);
@@ -483,21 +490,23 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         return newValue;
     }
 
-    @Specialization(guards = {"isDouble(frame)", "ensureObjectKind(frame)"}, replaces = "doDouble")
+    @Specialization(guards = {"isDouble(frame)"}, replaces = "doDouble")
     public double doDoubleObject(Frame frame) {
+        ensureObjectKind(frame);
         double doubleValue = getDouble(frame);
         double newValue = op.doDouble(doubleValue);
         frame.setObject(frameSlot, newValue);
         return newValue;
     }
 
-    @Specialization(guards = {"isObject(frame)", "ensureObjectKind(frame)"})
+    @Specialization(guards = {"isObject(frame)"})
     public Object doObject(Frame frame,
                     @Cached("createBinaryProfile()") ConditionProfile isIntegerProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isBigIntProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isBoundaryProfile,
                     @Cached("create()") JSToNumericNode toNumeric,
                     @Cached("create()") BranchProfile deadBranch) {
+        ensureObjectKind(frame);
         Object value = getObject(frame);
         if (hasTemporalDeadZone()) {
             checkNotDead(value, deadBranch);
@@ -529,8 +538,9 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         return newValue;
     }
 
-    @Specialization(guards = {"isLong(frame)", "ensureObjectKind(frame)"}, replaces = "doSafeIntegerToDouble")
+    @Specialization(guards = {"isLong(frame)"}, replaces = "doSafeIntegerToDouble")
     public double doSafeIntegerToObject(Frame frame) {
+        ensureObjectKind(frame);
         double oldValue = getLong(frame);
         double newValue = op.doDouble(oldValue);
         frame.setObject(frameSlot, newValue);
@@ -539,6 +549,6 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return LocalVarPrefixIncNodeGen.create(op, getFrameSlot(), hasTemporalDeadZone(), NodeUtil.cloneNode(getLevelFrameNode()));
+        return LocalVarPrefixIncNodeGen.create(op, getFrameSlot(), hasTemporalDeadZone(), getLevelFrameNode(), frameDescriptor);
     }
 }

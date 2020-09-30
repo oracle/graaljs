@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -59,8 +61,6 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.SafeInteger;
-
-import java.util.Set;
 
 @ImportStatic(FrameSlotKind.class)
 public abstract class JSReadFrameSlotNode extends FrameSlotNode implements RepeatableNode, ReadNode {
@@ -85,7 +85,7 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
 
     public static JSReadFrameSlotNode create(FrameSlot slot) {
         if (JSFrameUtil.hasTemporalDeadZone(slot)) {
-            return JSReadScopeFrameSlotWithTDZNodeGen.create(slot, ScopeFrameNode.create(0));
+            return JSReadScopeFrameSlotWithTDZNodeGen.create(slot, ScopeFrameNode.createCurrent());
         } else {
             return JSReadCurrentFrameSlotNodeGen.create(slot);
         }
@@ -219,7 +219,7 @@ abstract class JSReadCurrentFrameSlotNode extends JSReadFrameSlotNode {
 
     @Override
     public ScopeFrameNode getLevelFrameNode() {
-        return ScopeFrameNode.create(0);
+        return ScopeFrameNode.createCurrent();
     }
 
     @Override

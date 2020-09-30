@@ -70,11 +70,9 @@ import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_NODE_SOURCE_
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_NODE_TAGS_FIXUP;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_RETURN;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_SOURCE_SECTION;
-import static com.oracle.truffle.js.runtime.util.BufferUtil.asBaseBuffer;
 
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -98,9 +96,10 @@ public class JSNodeEncoder {
     private final HashMap<String, Integer> resolvedPositions = new HashMap<>();
 
     private static final int FIRST_REG = 1;
+    private static final int UNRESOLVED_INT32 = -1;
     private final HashMap<Integer, Integer> valueIdToRegMap = new HashMap<>();
     private int nextReg;
-    private int regsMax;
+    private int regCountPosition = UNRESOLVED_INT32;
 
     private static final NodeDecoder<NodeFactory> GEN = NodeFactoryDecoderGen.create();
 
@@ -163,7 +162,6 @@ public class JSNodeEncoder {
 
     private void encodeReg(int id) {
         int reg = valueIdToRegMap.computeIfAbsent(id, i -> nextReg++);
-        assert reg < regsMax : id + " => " + reg;
         putUInt(reg);
     }
 
@@ -348,7 +346,7 @@ public class JSNodeEncoder {
 
         assert !patchPositions.containsKey(name) : name;
         patchPositions.put(name, encoder.getPosition());
-        encoder.putInt32(-1);
+        encoder.putInt32(UNRESOLVED_INT32);
     }
 
     public void markExtractedPosition(String name) {
@@ -356,12 +354,10 @@ public class JSNodeEncoder {
         resolvedPositions.put(name, mark);
         if (patchPositions.containsKey(name)) {
             int pos = patchPositions.get(name);
-            ByteBuffer bb = encoder.getBuffer().duplicate().order(ByteOrder.LITTLE_ENDIAN);
-            asBaseBuffer(bb).position(pos);
-            assert bb.getInt() == -1;
+            ByteBuffer bb = encoder.getBuffer();
+            assert bb.getInt(pos) == UNRESOLVED_INT32;
             Recording.logv(" -- %d: %d %s", pos, mark, name);
-            asBaseBuffer(bb).position(pos);
-            bb.putInt(mark);
+            bb.putInt(pos, mark);
         } else {
             Recording.logv("nothing to patch: %s (%d)", name, mark);
         }
@@ -372,11 +368,31 @@ public class JSNodeEncoder {
         nextReg = FIRST_REG;
     }
 
-    public void encodeRegisterArraySize(int regsSize) {
+    private void reserveRegisterArraySize() {
+        assert regCountPosition == UNRESOLVED_INT32;
+        regCountPosition = encoder.getPosition();
         resetRegisterMapping();
-        int limit = FIRST_REG + regsSize;
-        putUInt(limit);
-        this.regsMax = limit;
+        putInt32(UNRESOLVED_INT32);
+    }
+
+    private void patchRegisterArraySize() {
+        int pos = regCountPosition;
+        assert pos >= 0;
+        regCountPosition = UNRESOLVED_INT32;
+        ByteBuffer bb = encoder.getBuffer();
+        assert bb.getInt(pos) == UNRESOLVED_INT32;
+        int usedRegCount = nextReg;
+        Recording.logv(" -- %d: regs: %d", pos, usedRegCount);
+        bb.putInt(pos, usedRegCount);
+    }
+
+    public void beginMethod(String name) {
+        markExtractedPosition(name);
+        reserveRegisterArraySize();
+    }
+
+    public void endMethod() {
+        patchRegisterArraySize();
     }
 
     public void encodeNodeSourceSectionFixup(int nodeArg, int charIndex, int charLength) {

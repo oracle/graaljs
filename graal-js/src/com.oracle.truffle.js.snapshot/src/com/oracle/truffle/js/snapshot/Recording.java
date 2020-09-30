@@ -92,11 +92,13 @@ import com.oracle.truffle.js.codec.BinaryEncoder;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
+import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.control.BreakTarget;
 import com.oracle.truffle.js.nodes.control.ContinueTarget;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.parser.BinarySnapshotProvider;
+import com.oracle.truffle.js.parser.JavaScriptTranslator;
 import com.oracle.truffle.js.parser.SnapshotProvider;
 import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.parser.json.JSONParserUtil;
@@ -135,7 +137,6 @@ public class Recording {
     private final ArrayDeque<Function<Boolean, Boolean>> lateFixups = new ArrayDeque<>();
 
     private final Map<Inst, Collection<Inst>> usageMap = new HashMap<>();
-    private final Map<Inst, Integer> indexMap = new HashMap<>();
     private final List<InstBatch> instBatches = new ArrayList<>();
 
     private Source source;
@@ -181,6 +182,7 @@ public class Recording {
         private int resultId;
         private final Class<?> declaredType;
         private final Type genericDeclaredType;
+        private int index = UNASSIGNED_ID;
         private int varCount;
 
         protected Inst() {
@@ -285,6 +287,18 @@ public class Recording {
             this.resultId = id;
         }
 
+        /**
+         * Index of this in {@link Recording#insts} array.
+         */
+        public int getIndex() {
+            assert index >= 0;
+            return index;
+        }
+
+        public void setIndex(int index) {
+            this.index = index;
+        }
+
         @SuppressWarnings("unused")
         public int getVarCount() {
             return varCount;
@@ -358,10 +372,12 @@ public class Recording {
 
     private static class ConstInst extends Inst {
         private final Object constant;
+        private final boolean inVar;
 
-        ConstInst(Object constant, Class<?> declaredType) {
+        ConstInst(Object constant, Class<?> declaredType, boolean inVar) {
             super(declaredType);
             this.constant = constant;
+            this.inVar = inVar;
         }
 
         @Override
@@ -391,7 +407,7 @@ public class Recording {
 
         @Override
         public boolean inVar() {
-            return CONST_IN_VAR;
+            return inVar;
         }
 
         @Override
@@ -900,7 +916,7 @@ public class Recording {
                 joiner.add(node + "." + "addExpressionTag" + "()");
             }
             if (hasRootBodyTag) {
-                joiner.add(node + "." + "addRootTag" + "()");
+                joiner.add(node + "." + "addRootBodyTag" + "()");
             }
             return joiner.toString();
         }
@@ -1149,7 +1165,7 @@ public class Recording {
     }
 
     private Inst dumpConst(Object arg, Class<?> declaredType) {
-        return getOrPut(arg, (v) -> new ConstInst(v, declaredType));
+        return getOrPut(arg, (v) -> new ConstInst(v, arg == null ? Object.class : declaredType, CONST_IN_VAR));
     }
 
     private Inst dumpNode(Node arg) {
@@ -1381,9 +1397,6 @@ public class Recording {
         dce();
 
         if (BATCHES_ENABLED) {
-            buildUsageMap();
-            buildIndexMap();
-
             buildBatches();
         }
 
@@ -1402,14 +1415,10 @@ public class Recording {
         }
     }
 
-    private void buildIndexMap() {
+    private void assignIndices() {
         for (int i = 0; i < insts.size(); i++) {
-            indexMap.put(insts.get(i), i);
+            insts.get(i).setIndex(i);
         }
-    }
-
-    private Integer indexOf(Inst inst1) {
-        return indexMap.getOrDefault(inst1, -1);
     }
 
     private void buildBatches() {
@@ -1444,6 +1453,9 @@ public class Recording {
             }
         }
 
+        buildUsageMap();
+        assignIndices();
+
         Map<Inst, BitSet> batches = new LinkedHashMap<>();
 
         Inst returnInst = insts.get(insts.size() - 1);
@@ -1463,20 +1475,21 @@ public class Recording {
 
             logv("starting batch '%s' at: %s", startInst.getName(), startInst);
 
+            // visit all values transitively referenced from the start instruction
+            // but stop at boundaries (functions)
             List<Inst> boundaryValues = new ArrayList<>();
             BitSet visited = new BitSet();
             startInst.accept(inst1 -> {
                 if (!inst1.inVar()) {
                     return true;
                 }
-                int index = indexOf(inst1);
+                int index = inst1.getIndex();
                 if (!visited.get(index)) {
                     visited.set(index);
                     if (startInst != inst1) {
                         if (isBatchBoundary(inst1)) {
                             return false;
                         } else if (outerExtractedSet.get(index) && !inst1.isPrimitiveValue()) {
-                            boundaryValues.add(inst1.asVar());
                             return false;
                         }
                     }
@@ -1486,8 +1499,16 @@ public class Recording {
                 }
             });
 
+            if (VERBOSE) {
+                if (!visited.isEmpty()) {
+                    logv("search for usages " + startInst + " " + visited.cardinality());
+                    visited.stream().mapToObj(insts::get).forEachOrdered(in -> logv("--" + in));
+                }
+            }
+
             BitSet usageSet = new BitSet();
-            usageSet.set(indexOf(startInst));
+            usageSet.set(startInst.getIndex());
+            usageSet.or(visited);
             addInputsToSet(usageSet, startInst);
             addFixUpsToSet(usageSet, startInst, outerExtractedSet);
             fixpoint(() -> {
@@ -1499,11 +1520,6 @@ public class Recording {
             });
 
             if (VERBOSE) {
-                if (!usageSet.isEmpty()) {
-                    logv("search for usages " + startInst + " " + usageSet.cardinality());
-                    usageSet.stream().mapToObj(insts::get).forEachOrdered(in -> logv("--" + in));
-                }
-
                 BitSet added = new BitSet();
                 added.or(usageSet);
                 added.andNot(visited);
@@ -1511,6 +1527,7 @@ public class Recording {
                     logv("added usages " + startInst + " " + added.cardinality());
                     added.stream().mapToObj(insts::get).forEachOrdered(in -> logv("--" + in));
                 }
+
                 BitSet removed = new BitSet();
                 removed.or(visited);
                 removed.andNot(usageSet);
@@ -1520,14 +1537,30 @@ public class Recording {
                 }
             }
 
+            // find and remember values that should be passed between boundaries
+            usageSet.stream().forEach(index -> {
+                if (outerExtractedSet.get(index)) {
+                    Inst inst = insts.get(index);
+                    if (inst == startInst || isBatchBoundary(inst)) {
+                        return;
+                    }
+                    if (!inst.isPrimitiveValue()) {
+                        logv("already extracted %s", inst);
+                        boundaryValues.add(inst.asVar());
+                    }
+                }
+            });
+
+            // clear values that are already used in the outer function and forward them through
+            // captured arguments instead of creating/emitting them again.
             usageSet.stream().filter(outerExtractedSet::get).mapToObj(insts::get).filter(in -> !in.isPrimitiveValue()).filter(in -> !isBatchBoundary(in)).forEach(in -> {
                 logv("cleared %s", in);
-                usageSet.clear(indexOf(in));
+                usageSet.clear(in.getIndex());
             });
 
             boundaryValues.forEach(var -> {
                 Inst in = deref(var);
-                int index = indexOf(in);
+                int index = in.getIndex();
                 usageSet.clear(index);
                 for (BatchWorkItem caller = batchBoundary.caller; caller != null; caller = caller.caller) {
                     if (caller.extractedSet.get(index)) {
@@ -1597,13 +1630,13 @@ public class Recording {
     }
 
     private static BitSet mergeBitSets(BitSet first, BitSet second) {
-        BitSet merged = new BitSet();
+        BitSet merged = new BitSet(Math.max(first.length(), second.length()));
         merged.or(first);
         merged.or(second);
         return merged;
     }
 
-    private boolean isContained(Inst in, BitSet usageSet) {
+    private static boolean isContained(Inst in, BitSet usageSet) {
         AtomicBoolean result = new AtomicBoolean(true);
         in.forEachInput(input -> {
             if (result.get()) {
@@ -1611,7 +1644,7 @@ public class Recording {
                 if (!input.inVar()) {
                     return;
                 }
-                if (!usageSet.get(indexOf(input))) {
+                if (!usageSet.get(input.getIndex())) {
                     result.set(false);
                 }
             }
@@ -1657,12 +1690,12 @@ public class Recording {
         });
     }
 
-    private void addInputsToSet(BitSet usageSet, Inst inst) {
+    private static void addInputsToSet(BitSet usageSet, Inst inst) {
         inst.forEachInput(input -> {
             if (!input.inVar()) {
                 return;
             }
-            int index = indexOf(input);
+            int index = input.getIndex();
             if (!usageSet.get(index)) {
                 usageSet.set(index);
             }
@@ -1682,7 +1715,7 @@ public class Recording {
 
             // if inst has a fix-up inst usage, add the usage to the set
             usageMap.get(inst).stream().filter(usage -> usage instanceof FixUpInst && ((FixUpInst) usage).getFixUpTarget().getId() == inst.getId()).forEach(fixup -> {
-                int index = indexOf(fixup);
+                int index = fixup.getIndex();
                 if (!usageSet.get(index) && !outerExtractedSet.get(index)) {
                     logv("fixup %s -> %s", fixup, inst);
                     usageSet.set(index);
@@ -1700,6 +1733,13 @@ public class Recording {
                 return false;
             }
         });
+    }
+
+    public static Recording recordSource(Source source, JSContext context, boolean strict, String prefix, String suffix) {
+        Recording rec = new Recording();
+        ScriptNode program = JavaScriptTranslator.translateScript(RecordingProxy.createRecordingNodeFactory(rec, NodeFactory.getInstance(context)), context, source, strict, prefix, suffix);
+        rec.finish(program.getRootNode());
+        return rec;
     }
 
     public void saveToStream(String fileName, OutputStream outs, boolean binary) {
@@ -1742,20 +1782,22 @@ public class Recording {
     }
 
     private void saveAsJava(String fileName, OutputStream outs) {
-        String qualifiedClassName = mangleFileName(fileName);
-        String packageName = qualifiedClassName.substring(0, qualifiedClassName.lastIndexOf('.'));
-        String unqualifiedClassName = qualifiedClassName.substring(qualifiedClassName.lastIndexOf('.') + 1, qualifiedClassName.length());
+        int extSep = fileName.lastIndexOf('.');
+        String unqualifiedClassName = mangleFileName(fileName.substring(0, extSep >= 0 ? extSep : fileName.length()));
+        String packageName = "";
         try (PrintStream out = new PrintStream(outs, false, "UTF-8")) {
-            saveImpl(fileName, packageName, unqualifiedClassName, out);
+            saveAsJavaImpl(fileName, packageName, unqualifiedClassName, out);
         } catch (UnsupportedEncodingException e) {
             throw new UncheckedIOException(e);
         }
     }
 
-    private void saveImpl(String fileName, String packageName, String unqualifiedClassName, PrintStream out) {
+    private void saveAsJavaImpl(String fileName, String packageName, String unqualifiedClassName, PrintStream out) {
         out.println("// Checkstyle: stop");
         out.println("// Autogenerated from " + fileName);
-        out.println("package " + packageName + ";");
+        if (!packageName.isEmpty()) {
+            out.println("package " + packageName + ";");
+        }
         out.println();
         out.println("@SuppressWarnings(\"all\")");
         out.println("public class " + unqualifiedClassName + " implements " + typeName(SnapshotProvider.class) + " {");
@@ -1794,26 +1836,15 @@ public class Recording {
     }
 
     private static void encodeMethod(JSNodeEncoder encoder, String name, List<Inst> methodInsts, List<Inst> params) {
-        encoder.markExtractedPosition(name);
-        int regs = countRegs(methodInsts, params);
-        encoder.encodeRegisterArraySize(regs);
+        encoder.beginMethod(name);
         for (int i = 0; i < params.size(); i++) {
             Inst param = params.get(i);
             encoder.encodeLoadArg(param.getId(), i);
         }
-        try {
-            for (Inst inst : methodInsts) {
-                inst.encodeTo(encoder);
-            }
-        } catch (RuntimeException e) {
-            e.printStackTrace();
+        for (Inst inst : methodInsts) {
+            inst.encodeTo(encoder);
         }
-    }
-
-    private static int countRegs(List<Inst> methodInsts, List<Inst> params) {
-        int count = methodInsts.size() + params.size();
-        logv(() -> String.format("regs: %d => %d", (methodInsts.stream().mapToInt(Inst::getId).max().orElse(-1) + 1), count));
-        return count;
+        encoder.endMethod();
     }
 
     private void testDecode(ByteBuffer buffer) {
