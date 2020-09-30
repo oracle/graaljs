@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.interop;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
@@ -56,9 +57,11 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.FrameDescriptorProvider;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -125,7 +128,7 @@ final class ScopeMembers implements TruffleObject {
                     if (JSFrameUtil.isInternal(slot)) {
                         continue;
                     }
-                    membersList.add(new Key(slot.getIdentifier().toString(), descNode));
+                    membersList.add(new Key(slot.getIdentifier().toString(), descNode, slot));
                 }
 
                 descNode = JavaScriptNode.findBlockScopeNode(descNode.getParent());
@@ -143,12 +146,12 @@ final class ScopeMembers implements TruffleObject {
                         if (isUnsetFrameSlot(outerScope, slot)) {
                             continue;
                         }
-                        membersList.add(new Key(slot.getIdentifier().toString(), descNode));
+                        membersList.add(new Key(slot.getIdentifier().toString(), descNode, slot));
                     }
 
                     FrameSlot parentSlot = outerScope.getFrameDescriptor().findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER);
                     if (parentSlot == null) {
-                        membersList.add(new Key(ScopeVariables.RECEIVER_MEMBER, descNode));
+                        membersList.add(new Key(ScopeVariables.RECEIVER_MEMBER, descNode, null));
                         break;
                     }
                     outerScope = (Frame) FrameUtil.getObjectSafe(outerScope, parentSlot);
@@ -185,10 +188,12 @@ final class ScopeMembers implements TruffleObject {
 
         private final String name;
         private final Node blockOrRoot;
+        private final FrameSlot slot;
         private SourceSection sourceLocation;
 
-        Key(String name, Node blockOrRoot) {
+        Key(String name, Node blockOrRoot, FrameSlot slot) {
             this.name = name;
+            this.slot = slot;
             this.blockOrRoot = blockOrRoot;
         }
 
@@ -203,10 +208,15 @@ final class ScopeMembers implements TruffleObject {
             return name;
         }
 
+        @Override
+        public String toString() {
+            return asString();
+        }
+
         @ExportMessage
         @TruffleBoundary
         boolean hasSourceLocation() {
-            return getSourceLocationImpl().isAvailable();
+            return getOrFindSourceLocation().isAvailable();
         }
 
         @ExportMessage
@@ -215,18 +225,52 @@ final class ScopeMembers implements TruffleObject {
             if (!hasSourceLocation()) {
                 throw UnsupportedMessageException.create();
             }
-            return getSourceLocationImpl();
+            return sourceLocation;
         }
 
-        private SourceSection getSourceLocationImpl() {
+        private SourceSection getOrFindSourceLocation() {
+            CompilerAsserts.neverPartOfCompilation();
             if (sourceLocation == null && blockOrRoot != null) {
-                sourceLocation = blockOrRoot.getEncapsulatingSourceSection();
+                sourceLocation = findSourceLocation();
             }
             if (sourceLocation == null) {
                 // unavailable source section
                 sourceLocation = JSBuiltin.createSourceSection();
             }
             return sourceLocation;
+        }
+
+        private SourceSection findSourceLocation() {
+            if (slot != null) {
+                class DeclarationFinder implements NodeVisitor {
+                    JavaScriptNode found;
+
+                    @Override
+                    public boolean visit(Node node) {
+                        if (node instanceof JavaScriptNode) {
+                            if (node instanceof JSWriteFrameSlotNode) {
+                                JSWriteFrameSlotNode write = (JSWriteFrameSlotNode) node;
+                                if (write.getFrameSlot() == slot && write.hasSourceSection()) {
+                                    found = write;
+                                    return false;
+                                }
+                            }
+                            return true;
+                        } else if (node == blockOrRoot) {
+                            return true;
+                        } else {
+                            return false;
+                        }
+                    }
+                }
+
+                DeclarationFinder finder = new DeclarationFinder();
+                blockOrRoot.accept(finder);
+                if (finder.found != null) {
+                    return finder.found.getSourceSection();
+                }
+            }
+            return blockOrRoot.getEncapsulatingSourceSection();
         }
     }
 }

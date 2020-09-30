@@ -71,7 +71,8 @@ import com.oracle.truffle.api.nodes.Node;
 
 public class ScopeInstrumentTest {
 
-    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+    private static final InteropLibrary INTEROP = InteropLibrary.getUncached();
+    private static final NodeLibrary NODE_LIBRARY = NodeLibrary.getUncached();
 
     protected Context context;
 
@@ -166,6 +167,47 @@ public class ScopeInstrumentTest {
                 assertTrue(keyAsString, INTEROP.hasSourceLocation(key));
                 assertTrue(keyAsString, INTEROP.getSourceLocation(key).isAvailable());
                 assertEquals(keyAsString, 1, INTEROP.getSourceLocation(key).getStartLine());
+            }
+        });
+        context.eval(source);
+        TestJSScopeInstrument.instance.checkSuccess(1);
+    }
+
+    @Test
+    public void testVariableSourceLocation() throws Throwable {
+        Source source = Source.create(ID, "" +
+                        "function testFunction() {\n" +
+                        "  var a = 10;\n" +
+                        "  let b = 20;\n" +
+                        "  const c = 30\n" +
+                        "  return a + b + c;\n" +
+                        "}\n" +
+                        "testFunction();\n");
+
+        TestJSScopeInstrument.filter = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootBodyTag.class).rootNameIs("testFunction"::equals).build();
+        ensureCreated(context.getEngine().getInstruments().get("TestJSScopeInstrument"));
+        TestJSScopeInstrument.instance.setTester((env, node, frame) -> {
+            Object scope = findLocalScope(node, frame);
+            int line = node.getSourceSection().getStartLine();
+            assertEquals("Function name", "testFunction", getScopeName(scope));
+            assertEquals("Line = " + line, 1, line);
+
+            Object keys = getKeys(scope);
+            int nKeys = getSize(keys);
+            for (int i = 0; i < nKeys; i++) {
+                Object key = INTEROP.readArrayElement(keys, i);
+                assertTrue(INTEROP.isString(key));
+                String keyAsString = INTEROP.asString(key);
+
+                if (NODE_LIBRARY.hasReceiverMember(node, frame)) {
+                    if (INTEROP.asString(NODE_LIBRARY.getReceiverMember(node, frame)).equals(keyAsString)) {
+                        continue;
+                    }
+                }
+
+                assertTrue(keyAsString, INTEROP.hasSourceLocation(key));
+                assertTrue(keyAsString, INTEROP.getSourceLocation(key).isAvailable());
+                assertEquals(keyAsString, 2 + i, INTEROP.getSourceLocation(key).getStartLine());
             }
         });
         context.eval(source);
@@ -269,8 +311,8 @@ public class ScopeInstrumentTest {
     }
 
     private static Object findLocalScope(Node node, VirtualFrame frame) throws UnsupportedMessageException {
-        assertTrue(NodeLibrary.getUncached().hasScope(node, frame));
-        return NodeLibrary.getUncached().getScope(node, frame, true);
+        assertTrue(NODE_LIBRARY.hasScope(node, frame));
+        return NODE_LIBRARY.getScope(node, frame, true);
     }
 
     private static String getScopeName(Object scope) throws UnsupportedMessageException {
