@@ -48,8 +48,10 @@ import static org.junit.Assert.assertTrue;
 import java.io.ByteArrayOutputStream;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -57,6 +59,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;
+import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Test;
 
 import com.oracle.truffle.js.test.JSTest;
@@ -461,6 +464,21 @@ public class InteropArrayTest {
                 assertTrue(array.hasArrayElements());
                 array.setArrayElement(0, i);
             }
+        }
+    }
+
+    @Test
+    public void testArrayFromForeignArrayLike() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("length", 2);
+            map.put("0", 42);
+            map.put("1", 211);
+            Object arrayLike = ProxyObject.fromMap(map);
+            context.getBindings(ID).putMember("arrayLike", arrayLike);
+            Value result = context.eval(ID, "var array = Array.from(arrayLike); array.length === 2 && array[0] === 42 && array[1] === 211;");
+            assertTrue(result.isBoolean());
+            assertTrue(result.asBoolean());
         }
     }
 

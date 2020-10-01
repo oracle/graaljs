@@ -278,10 +278,6 @@
     "status" : "SKIP",
     "comment" : "names of anonymous functions are not defined by the standard"
   }, {
-    "filePath" : "basic/JDK-8026125.js",
-    "status" : "FAIL",
-    "comment" : "Java interop migration"
-  }, {
     "filePath" : "basic/JDK-8026161.js",
     "status" : "FAIL"
   }, {
@@ -368,10 +364,6 @@
     "filePath" : "basic/JDK-8046026.js",
     "status" : "SKIP",
     "comment" : "non-deterministic failures because of multi-threading"
-  }, {
-    "filePath" : "basic/JDK-8047369.js",
-    "status" : "FAIL",
-    "comment" : "Java interop migration"
   }, {
     "filePath" : "basic/JDK-8048071.js",
     "status" : "FAIL"
