@@ -53,8 +53,10 @@ import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.array.ArrayLengthNode.ArrayLengthReadNode;
 import com.oracle.truffle.js.nodes.cast.JSToLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 
@@ -104,8 +106,13 @@ abstract class GetLengthHelperNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "!isDynamicObject(target)", limit = "3")
     public double getLengthForeign(Object target, @SuppressWarnings("unused") boolean isArray,
-                    @CachedLibrary("target") InteropLibrary interop) {
-        return JSInteropUtil.getArraySize(target, interop, this);
+                    @CachedLibrary("target") InteropLibrary interop,
+                    @Cached("create()") ImportValueNode importValueNode) {
+        if (interop.hasArrayElements(target)) {
+            return JSInteropUtil.getArraySize(target, interop, this);
+        } else {
+            return toLengthDouble(JSInteropUtil.readMemberOrDefault(target, JSAbstractArray.LENGTH, 0, interop, importValueNode, this));
+        }
     }
 
     protected PropertyNode createLengthProperty() {
