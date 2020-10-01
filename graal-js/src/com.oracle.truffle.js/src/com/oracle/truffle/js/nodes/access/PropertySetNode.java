@@ -1109,11 +1109,17 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         private boolean performWriteMember(Object truffleObject, Object value, PropertySetNode root) {
             String stringKey = (String) root.getKey();
+            if (context.isOptionNashornCompatibilityMode()) {
+                if (tryInvokeSetter(truffleObject, value, root)) {
+                    return true;
+                }
+            }
             if (optimistic) {
                 try {
                     interop.writeMember(truffleObject, stringKey, value);
                 } catch (UnknownIdentifierException e) {
-                    unknownIdentifier(truffleObject, value, root);
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    optimistic = false;
                 } catch (UnsupportedTypeException | UnsupportedMessageException e) {
                     throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", stringKey, this);
                 }
@@ -1124,46 +1130,35 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                     } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
                         throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", stringKey, this);
                     }
-                } else if (context.isOptionNashornCompatibilityMode()) {
-                    tryInvokeSetter(truffleObject, value, root);
                 }
             }
             return true;
         }
 
-        private void unknownIdentifier(Object truffleObject, Object value, PropertySetNode root) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            optimistic = false;
-            if (context.isOptionNashornCompatibilityMode()) {
-                tryInvokeSetter(truffleObject, value, root);
-            }
-        }
-
         // in nashorn-compat mode, `javaObj.xyz = a` can mean `javaObj.setXyz(a)`.
-        private void tryInvokeSetter(Object thisObj, Object value, PropertySetNode root) {
+        private boolean tryInvokeSetter(Object thisObj, Object value, PropertySetNode root) {
             assert context.isOptionNashornCompatibilityMode();
-            if (!(root.getKey() instanceof String)) {
-                return;
-            }
             TruffleLanguage.Env env = context.getRealm().getEnv();
             if (env.isHostObject(thisObj)) {
                 String setterKey = root.getAccessorKey("set");
                 if (setterKey == null) {
-                    return;
+                    return false;
                 }
                 if (setterInterop == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     setterInterop = insert(InteropLibrary.getFactory().createDispatched(3));
                 }
                 if (!setterInterop.isMemberInvocable(thisObj, setterKey)) {
-                    return;
+                    return false;
                 }
                 try {
                     setterInterop.invokeMember(thisObj, setterKey, value);
+                    return true;
                 } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
                     // silently ignore
                 }
             }
+            return false;
         }
     }
 

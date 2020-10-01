@@ -941,6 +941,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 return Undefined.instance;
             }
             String stringKey = (String) key;
+            if (context.isOptionNashornCompatibilityMode()) {
+                Object result = tryGetters(thisObj, root);
+                if (result != null) {
+                    return result;
+                }
+            }
             Object foreignResult;
             if (optimistic) {
                 try {
@@ -948,7 +954,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     optimistic = false;
-                    foreignResult = fallback(thisObj, key, root, e instanceof UnknownIdentifierException);
+                    foreignResult = maybeGetFromPrototype(thisObj, key);
                 }
             } else {
                 if (interop.isMemberReadable(thisObj, stringKey)) {
@@ -958,18 +964,10 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                         return Undefined.instance;
                     }
                 } else {
-                    foreignResult = fallback(thisObj, key, root, true);
+                    foreignResult = maybeGetFromPrototype(thisObj, key);
                 }
             }
             return importValueNode.executeWithTarget(foreignResult);
-        }
-
-        private Object fallback(Object thisObj, Object key, PropertyGetNode root, boolean mayHaveMembers) {
-            if (mayHaveMembers && context.isOptionNashornCompatibilityMode()) {
-                return tryInvokeGetter(thisObj, root);
-            } else {
-                return maybeGetFromPrototype(thisObj, key);
-            }
         }
 
         private Object maybeGetFromPrototype(Object thisObj, Object key) {
@@ -986,24 +984,26 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return Undefined.instance;
         }
 
-        // in nashorn-compat mode, `javaObj.xyz` can mean `javaObj.getXyz()`.
-        private Object tryInvokeGetter(Object thisObj, PropertyGetNode root) {
+        // in nashorn-compat mode, `javaObj.xyz` can mean `javaObj.getXyz()` or `javaObj.isXyz()`.
+        private Object tryGetters(Object thisObj, PropertyGetNode root) {
             assert context.isOptionNashornCompatibilityMode();
             TruffleLanguage.Env env = context.getRealm().getEnv();
             if (env.isHostObject(thisObj)) {
-                Object result = tryGetResult(thisObj, "get", root);
+                Object result = tryInvokeGetter(thisObj, "get", root);
                 if (result != null) {
                     return result;
                 }
-                result = tryGetResult(thisObj, "is", root);
+                result = tryInvokeGetter(thisObj, "is", root);
+                // Nashorn would only accept `isXyz` of type boolean. We cannot check upfront!
                 if (result != null) {
                     return result;
                 }
             }
-            return maybeGetFromPrototype(thisObj, root.getKey());
+            return null;
         }
 
-        private Object tryGetResult(Object thisObj, String prefix, PropertyGetNode root) {
+        private Object tryInvokeGetter(Object thisObj, String prefix, PropertyGetNode root) {
+            assert context.isOptionNashornCompatibilityMode();
             String getterKey = root.getAccessorKey(prefix);
             if (getterKey == null) {
                 return null;
