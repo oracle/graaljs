@@ -45,15 +45,12 @@ import java.util.function.Consumer;
 import org.graalvm.options.OptionDescriptors;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.nodes.ExecutableNode;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.test.polyglot.TestLanguage.LanguageContext;
 
 /**
@@ -241,22 +238,12 @@ public class TestLanguage extends TruffleLanguage<LanguageContext> {
     }
 
     @Override
-    protected Iterable<Scope> findTopScopes(LanguageContext context) {
+    protected Object getScope(LanguageContext context) {
         if (wrapper) {
             delegate.languageInstance = this;
-            return delegate.findTopScopes(context);
+            return delegate.getScope(context);
         } else {
-            return super.findTopScopes(context);
-        }
-    }
-
-    @Override
-    protected Iterable<Scope> findLocalScopes(LanguageContext context, Node node, Frame frame) {
-        if (wrapper) {
-            delegate.languageInstance = this;
-            return delegate.findLocalScopes(context, node, frame);
-        } else {
-            return super.findLocalScopes(context, node, frame);
+            return super.getScope(context);
         }
     }
 

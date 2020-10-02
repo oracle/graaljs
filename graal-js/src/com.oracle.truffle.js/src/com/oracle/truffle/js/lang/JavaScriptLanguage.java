@@ -57,13 +57,11 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.debug.DebuggerTags;
-import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
@@ -111,7 +109,6 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.interop.JavaScriptLanguageView;
-import com.oracle.truffle.js.runtime.objects.JSScope;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 @ProvidedTags({
@@ -440,13 +437,8 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     }
 
     @Override
-    protected Iterable<Scope> findLocalScopes(JSRealm realm, Node node, Frame frame) {
-        return JSScope.createLocalScopes(node, frame == null ? null : frame.materialize());
-    }
-
-    @Override
-    protected Iterable<Scope> findTopScopes(JSRealm realm) {
-        return JSScope.createGlobalScopes(realm);
+    protected Object getScope(JSRealm context) {
+        return context.getTopScopeObject();
     }
 
     public static JSContext getJSContext(Context context) {

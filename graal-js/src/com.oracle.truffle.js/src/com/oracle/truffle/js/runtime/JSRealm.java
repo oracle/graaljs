@@ -140,6 +140,8 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSPluralRules;
 import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
+import com.oracle.truffle.js.runtime.interop.DynamicScopeWrapper;
+import com.oracle.truffle.js.runtime.interop.TopScopeObject;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.Accessor;
@@ -311,7 +313,9 @@ public class JSRealm {
 
     private final DynamicObject globalScope;
 
-    private DynamicObject scriptEngineImportScope;
+    private final DynamicObject scriptEngineImportScope;
+
+    @CompilationFinal private TopScopeObject topScope;
 
     private TruffleLanguage.Env truffleLanguageEnv;
 
@@ -409,7 +413,10 @@ public class JSRealm {
         this.globalScope = JSGlobal.createGlobalScope(context);
         if (context.getContextOptions().isScriptEngineGlobalScopeImport()) {
             this.scriptEngineImportScope = JSOrdinary.createWithNullPrototypeInit(context);
+        } else {
+            this.scriptEngineImportScope = null;
         }
+        this.topScope = createTopScope();
 
         this.objectConstructor = createObjectConstructor(this, objectPrototype);
         JSObjectUtil.putDataProperty(context, this.objectPrototype, JSObject.CONSTRUCTOR, objectConstructor, JSAttributes.getDefaultNotEnumerable());
@@ -692,6 +699,11 @@ public class JSRealm {
 
     public final void setGlobalObject(DynamicObject global) {
         this.globalObject = global;
+        this.topScope = createTopScope();
+    }
+
+    private TopScopeObject createTopScope() {
+        return new TopScopeObject(new Object[]{scriptEngineImportScope, new DynamicScopeWrapper(globalScope), globalObject});
     }
 
     public final DynamicObject getObjectConstructor() {
@@ -1618,6 +1630,10 @@ public class JSRealm {
 
     public DynamicObject getScriptEngineImportScope() {
         return scriptEngineImportScope;
+    }
+
+    public Object getTopScopeObject() {
+        return topScope;
     }
 
     /**

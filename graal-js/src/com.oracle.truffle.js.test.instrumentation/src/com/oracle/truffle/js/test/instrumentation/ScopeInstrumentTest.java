@@ -42,12 +42,11 @@ package com.oracle.truffle.js.test.instrumentation;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Instrument;
@@ -57,20 +56,23 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.truffle.api.Scope;
-import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 
 public class ScopeInstrumentTest {
+
+    private static final InteropLibrary INTEROP = InteropLibrary.getUncached();
+    private static final NodeLibrary NODE_LIBRARY = NodeLibrary.getUncached();
 
     protected Context context;
 
@@ -108,16 +110,6 @@ public class ScopeInstrumentTest {
     }
 
     @Test
-    public void asyncFindScopes() {
-        asyncFindScopes("Promise.resolve(42).then(async function foo (x) {});", "foo");
-    }
-
-    @Test
-    public void anonAsyncFindScopes() {
-        asyncFindScopes("Promise.resolve(42).then(async (x) => {});", ":=>");
-    }
-
-    @Test
     public void testParams() throws Throwable {
         Source source = Source.create(ID, "" +
                         "function testParams(a, [b, c], d = 9) {\n" +
@@ -128,41 +120,126 @@ public class ScopeInstrumentTest {
         TestJSScopeInstrument.filter = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootBodyTag.class).rootNameIs("testParams"::equals).build();
         ensureCreated(context.getEngine().getInstruments().get("TestJSScopeInstrument"));
         TestJSScopeInstrument.instance.setTester((env, node, frame) -> {
-            Scope scope = findFirstLocalScope(env, node, frame);
+            Object scope = findLocalScope(node, frame);
             int line = node.getSourceSection().getStartLine();
-            assertEquals("Function name", "testParams", scope.getName());
+            assertEquals("Function name", "testParams", getScopeName(scope));
             assertEquals("Line = " + line, 2, line);
 
-            Object vars = scope.getVariables();
-            int varCount = getSize(getKeys(vars));
+            List<String> keyList = getKeyList(scope);
+            keyList.remove("this");
+            int varCount = keyList.size();
             assertEquals("Line = " + line + ", num vars:", 4, varCount);
-            assertTrue("Param a", INTEROP.isMemberReadable(vars, "a"));
-            assertTrue("Param b", INTEROP.isMemberReadable(vars, "b"));
-            assertTrue("Param c", INTEROP.isMemberReadable(vars, "c"));
-            assertTrue("Param d", INTEROP.isMemberReadable(vars, "d"));
-            assertEquals("Param a", 4, INTEROP.readMember(vars, "a"));
-            assertEquals("Param b", 7, INTEROP.readMember(vars, "b"));
-            assertEquals("Param c", 6, INTEROP.readMember(vars, "c"));
-            assertEquals("Param d", 9, INTEROP.readMember(vars, "d"));
+            assertTrue("Param a", INTEROP.isMemberReadable(scope, "a"));
+            assertTrue("Param b", INTEROP.isMemberReadable(scope, "b"));
+            assertTrue("Param c", INTEROP.isMemberReadable(scope, "c"));
+            assertTrue("Param d", INTEROP.isMemberReadable(scope, "d"));
+            assertEquals("Param a", 4, INTEROP.readMember(scope, "a"));
+            assertEquals("Param b", 7, INTEROP.readMember(scope, "b"));
+            assertEquals("Param c", 6, INTEROP.readMember(scope, "c"));
+            assertEquals("Param d", 9, INTEROP.readMember(scope, "d"));
         });
         context.eval(source);
         TestJSScopeInstrument.instance.checkSuccess(1);
     }
 
-    public void asyncFindScopes(String src, String expectedAsyncFunctionName) {
+    @Test
+    public void testParamsSourceLocation() throws Throwable {
+        Source source = Source.create(ID, "" +
+                        "function testParams(a, [b, c], d = 9) {\n" +
+                        "   return a + b + c + d;\n" +
+                        "}\n" +
+                        "testParams(4, [7, 6, 2]);\n");
+
+        TestJSScopeInstrument.filter = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootBodyTag.class).rootNameIs("testParams"::equals).build();
+        ensureCreated(context.getEngine().getInstruments().get("TestJSScopeInstrument"));
+        TestJSScopeInstrument.instance.setTester((env, node, frame) -> {
+            Object scope = findLocalScope(node, frame);
+            int line = node.getSourceSection().getStartLine();
+            assertEquals("Function name", "testParams", getScopeName(scope));
+            assertEquals("Line = " + line, 2, line);
+
+            Object keys = getKeys(scope);
+            int nKeys = getSize(keys);
+            for (int i = 0; i < nKeys; i++) {
+                Object key = INTEROP.readArrayElement(keys, i);
+                assertTrue(INTEROP.isString(key));
+                String keyAsString = INTEROP.asString(key);
+                assertTrue(keyAsString, INTEROP.hasSourceLocation(key));
+                assertTrue(keyAsString, INTEROP.getSourceLocation(key).isAvailable());
+                assertEquals(keyAsString, 1, INTEROP.getSourceLocation(key).getStartLine());
+            }
+        });
+        context.eval(source);
+        TestJSScopeInstrument.instance.checkSuccess(1);
+    }
+
+    @Test
+    public void testVariableSourceLocation() throws Throwable {
+        Source source = Source.create(ID, "" +
+                        "function testFunction() {\n" +
+                        "  var a = 10;\n" +
+                        "  let b = 20;\n" +
+                        "  const c = 30\n" +
+                        "  return a + b + c;\n" +
+                        "}\n" +
+                        "testFunction();\n");
+
+        TestJSScopeInstrument.filter = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootBodyTag.class).rootNameIs("testFunction"::equals).build();
+        ensureCreated(context.getEngine().getInstruments().get("TestJSScopeInstrument"));
+        TestJSScopeInstrument.instance.setTester((env, node, frame) -> {
+            Object scope = findLocalScope(node, frame);
+            int line = node.getSourceSection().getStartLine();
+            assertEquals("Function name", "testFunction", getScopeName(scope));
+            assertEquals("Line = " + line, 1, line);
+
+            Object keys = getKeys(scope);
+            int nKeys = getSize(keys);
+            for (int i = 0; i < nKeys; i++) {
+                Object key = INTEROP.readArrayElement(keys, i);
+                assertTrue(INTEROP.isString(key));
+                String keyAsString = INTEROP.asString(key);
+
+                if (NODE_LIBRARY.hasReceiverMember(node, frame)) {
+                    if (INTEROP.asString(NODE_LIBRARY.getReceiverMember(node, frame)).equals(keyAsString)) {
+                        continue;
+                    }
+                }
+
+                assertTrue(keyAsString, INTEROP.hasSourceLocation(key));
+                assertTrue(keyAsString, INTEROP.getSourceLocation(key).isAvailable());
+                assertEquals(keyAsString, 2 + i, INTEROP.getSourceLocation(key).getStartLine());
+            }
+        });
+        context.eval(source);
+        TestJSScopeInstrument.instance.checkSuccess(1);
+    }
+
+    @Test
+    public void asyncFindScopes() {
+        asyncFindScopes("Promise.resolve(42).then(async function foo (x) {});", "foo");
+    }
+
+    @Test
+    public void anonAsyncFindScopes() {
+        asyncFindScopes("Promise.resolve(42).then(async (x) => {});", ":=>");
+    }
+
+    private void asyncFindScopes(String src, String expectedAsyncFunctionName) {
         Source source = Source.create(ID, src);
         TestJSScopeInstrument.filter = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootBodyTag.class).build();
         ensureCreated(context.getEngine().getInstruments().get("TestJSScopeInstrument"));
         int[] scopes = new int[]{0, 0};
         TestJSScopeInstrument.instance.setTester((env, node, frame) -> {
-            Scope scope = findFirstLocalScope(env, node, frame);
-            if (expectedAsyncFunctionName.equals(scope.getName())) {
-                Object vars = scope.getVariables();
-                int varCount = getSize(getKeys(vars));
+            Object scope = findLocalScope(node, frame);
+            String scopeName = getScopeName(scope);
+            if (expectedAsyncFunctionName.equals(scopeName)) {
+                List<String> keyList = getKeyList(scope);
+                keyList.remove("this");
+                int varCount = keyList.size();
                 int line = node.getSourceSection().getStartLine();
-                assertEquals("Line = " + line + ", num vars:", 1, varCount);
-                assertTrue("Param x", INTEROP.isMemberReadable(vars, "x"));
-                assertEquals("Param x", 42, INTEROP.readMember(vars, "x"));
+                assertEquals("Line = " + line + ", num vars: " + varCount + " " + keyList, 1, varCount);
+                assertTrue("Param x", INTEROP.isMemberReadable(scope, "x"));
+                assertEquals("Param x", 42, INTEROP.readMember(scope, "x"));
                 scopes[1] = 1;
             }
             scopes[0]++;
@@ -233,16 +310,13 @@ public class ScopeInstrumentTest {
         void testScope(TruffleInstrument.Env env, Node node, VirtualFrame frame) throws Exception;
     }
 
-    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+    private static Object findLocalScope(Node node, VirtualFrame frame) throws UnsupportedMessageException {
+        assertTrue(NODE_LIBRARY.hasScope(node, frame));
+        return NODE_LIBRARY.getScope(node, frame, true);
+    }
 
-    private static Scope findFirstLocalScope(TruffleInstrument.Env env, Node node, Frame frame) {
-        Iterable<Scope> lscopes = env.findLocalScopes(node, frame);
-        assertNotNull(lscopes);
-        Iterator<Scope> iterator = lscopes.iterator();
-        assertTrue(iterator.hasNext());
-        Scope lscope = iterator.next();
-        assertFalse(iterator.hasNext());
-        return lscope;
+    private static String getScopeName(Object scope) throws UnsupportedMessageException {
+        return INTEROP.asString(INTEROP.toDisplayString(scope));
     }
 
     private static Object getKeys(Object object) throws UnsupportedMessageException {
@@ -253,45 +327,59 @@ public class ScopeInstrumentTest {
         return (int) INTEROP.getArraySize(keys);
     }
 
+    private static List<String> getKeyList(Object membersObj) throws InteropException {
+        Object keys = getKeys(membersObj);
+        int len = getSize(keys);
+        List<String> list = new ArrayList<>(len);
+        for (int i = 0; i < len; i++) {
+            list.add(INTEROP.asString(INTEROP.readArrayElement(keys, i)));
+        }
+        return list;
+    }
+
     private static class DefaultScopeTester implements ScopeTester {
 
         @Override
         public void testScope(TruffleInstrument.Env env, Node node, VirtualFrame frame) throws Exception {
-            Scope dynamicScope = findFirstLocalScope(env, node, frame);
-            Scope lexicalScope = findFirstLocalScope(env, node, null);
+            Object dynamicScope = findLocalScope(node, frame);
+            Object lexicalScope = findLocalScope(node, null);
             int line = node.getSourceSection().getStartLine();
             if (line > 1 && line < 6) {
-                assertEquals("Line = " + line + ", function name: ", "testFunction", lexicalScope.getName());
+                assertEquals("Line = " + line + ", function name: ", "testFunction", getScopeName(lexicalScope));
 
                 final int numVars = 2;
                 final int setVars = Math.min(Math.max(0, line - 2), numVars);
-                Object vars;
                 int varCount;
+                List<String> keyList;
 
                 // Dynamic access:
-                vars = dynamicScope.getVariables();
-                varCount = getSize(getKeys(vars));
+                keyList = getKeyList(dynamicScope);
+                keyList.remove("this");
+                varCount = keyList.size();
+
                 assertEquals("Line = " + line + ", num vars:", numVars, varCount);
-                assertTrue("Var a: ", INTEROP.isMemberReadable(vars, "a"));
-                assertTrue("Var b: ", INTEROP.isMemberReadable(vars, "b"));
+                assertTrue("Var a: ", INTEROP.isMemberReadable(dynamicScope, "a"));
+                assertTrue("Var b: ", INTEROP.isMemberReadable(dynamicScope, "b"));
                 if (setVars >= 1) {
-                    assertEquals("Var a: ", 10, INTEROP.readMember(vars, "a"));
+                    assertEquals("Var a: ", 10, INTEROP.readMember(dynamicScope, "a"));
                 }
                 if (setVars >= 2) {
-                    assertEquals("Var b: ", 20, INTEROP.readMember(vars, "b"));
+                    assertEquals("Var b: ", 20, INTEROP.readMember(dynamicScope, "b"));
                 }
 
                 // Lexical access:
-                vars = lexicalScope.getVariables();
-                varCount = getSize(getKeys(vars));
+                keyList = getKeyList(lexicalScope);
+                keyList.remove("this");
+                varCount = keyList.size();
+
                 assertEquals("Line = " + line + ", num vars:", numVars, varCount);
-                assertTrue("Var a: ", INTEROP.isMemberReadable(vars, "a"));
-                assertTrue("Var b: ", INTEROP.isMemberReadable(vars, "b"));
+                assertTrue("Var a: ", INTEROP.isMemberReadable(lexicalScope, "a"));
+                assertTrue("Var b: ", INTEROP.isMemberReadable(lexicalScope, "b"));
                 if (setVars >= 1) {
-                    assertTrue(INTEROP.isNull(INTEROP.readMember(vars, "a")));
+                    assertTrue(INTEROP.isNull(INTEROP.readMember(lexicalScope, "a")));
                 }
                 if (setVars >= 2) {
-                    assertTrue(INTEROP.isNull(INTEROP.readMember(vars, "b")));
+                    assertTrue(INTEROP.isNull(INTEROP.readMember(lexicalScope, "b")));
                 }
             }
             if (line == 6) {
@@ -300,22 +388,14 @@ public class ScopeInstrumentTest {
         }
 
         private static void testGlobalScope(TruffleInstrument.Env env) throws Exception {
-            Iterable<Scope> topScopes = env.findTopScopes(ID);
-            Iterator<Scope> iterator = topScopes.iterator();
-            assertTrue(iterator.hasNext());
-            iterator.next(); // skip lexical global scope
-            assertTrue(iterator.hasNext());
-            Scope globalScope = iterator.next();
-            assertEquals("global", globalScope.getName());
-            assertNull(globalScope.getNode());
-            assertNull(globalScope.getArguments());
-            Object variables = globalScope.getVariables();
-            Object keys = getKeys(variables);
+            Object globalScope = env.getScope(env.getLanguages().get(ID));
+            assertEquals("global", getScopeName(globalScope));
+            Object keys = getKeys(globalScope);
             assertNotNull(keys);
             assertTrue("number of keys >= 1", getSize(keys) >= 1);
             String functionName = "testFunction";
             assertTrue(hasValue(keys, "testFunction"));
-            Object function = INTEROP.readMember(variables, functionName);
+            Object function = INTEROP.readMember(globalScope, functionName);
             assertTrue(INTEROP.isExecutable(function));
         }
 

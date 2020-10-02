@@ -49,6 +49,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.interop.JSMetaType;
 
 /**
  * This type represents an integer value in the range of -(2<sup>53</sup>-1) to -2<sup>53</sup>-1,
@@ -167,5 +168,17 @@ public final class SafeInteger extends Number implements Comparable<SafeInteger>
     @ExportMessage
     Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return toString();
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasMetaObject() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    Object getMetaObject() {
+        return JSMetaType.NUMBER;
     }
 }

@@ -51,7 +51,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -303,17 +303,22 @@ public class JSDebugTest {
     }
 
     private static void checkDebugValues(String msg, Iterable<DebugValue> values, String... expectedFrame) {
-        Map<String, DebugValue> valMap = new HashMap<>();
+        Map<String, DebugValue> valMap = new LinkedHashMap<>();
         for (DebugValue value : values) {
+            if ("this".equals(value.getName())) {
+                continue;
+            }
             valMap.put(value.getName(), value);
         }
-        String message = String.format("Frame %s expected %s got %s", msg, Arrays.toString(expectedFrame), values.toString());
+        String message = String.format("Frame %s expected %s got %s", msg, Arrays.toString(expectedFrame),
+                        valMap.entrySet().stream().map(e -> e.getKey() + ", " + e.getValue().toDisplayString()).collect(Collectors.joining(", ", "[", "]")));
         Assert.assertEquals(message, expectedFrame.length / 2, valMap.size());
         for (int i = 0; i < expectedFrame.length; i = i + 2) {
             String expectedIdentifier = expectedFrame[i];
             String expectedValue = expectedFrame[i + 1];
             DebugValue value = valMap.get(expectedIdentifier);
             Assert.assertNotNull(expectedIdentifier + " not found", value);
+            Assert.assertEquals(expectedIdentifier, value.getName());
             Assert.assertEquals(expectedValue, value.toDisplayString());
         }
     }

@@ -43,22 +43,33 @@ package com.oracle.truffle.js.nodes;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.NodeLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.interop.ScopeVariables;
 
 @GenerateWrapper
+@ExportLibrary(NodeLibrary.class)
 public abstract class JavaScriptNode extends JavaScriptBaseNode implements InstrumentableNode {
     /** Source or SourceSection. */
     private Object source;
@@ -378,4 +389,72 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
     public String expressionToString() {
         return null;
     }
+
+    // NodeLibrary
+
+    @ExportMessage
+    boolean accepts(@Cached(value = "this", adopt = false) JavaScriptNode cachedNode) {
+        return this == cachedNode;
+    }
+
+    @ExportMessage
+    final boolean hasScope(@SuppressWarnings("unused") Frame frame) {
+        return this.getParent() != null;
+    }
+
+    @ExportMessage
+    final Object getScope(Frame frame, boolean nodeEnter,
+                    @Cached(value = "findBlockScopeNode(this)", allowUncached = true, adopt = false) Node block) throws UnsupportedMessageException {
+        if (hasScope(frame)) {
+            return new ScopeVariables(frame, nodeEnter, block);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    final boolean hasReceiverMember(Frame frame) {
+        return frame != null;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    final Object getReceiverMember(Frame frame) throws UnsupportedMessageException {
+        if (frame == null) {
+            throw UnsupportedMessageException.create();
+        }
+        return ScopeVariables.RECEIVER_MEMBER;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasRootInstance(Frame frame) {
+        return frame != null;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    Object getRootInstance(Frame frame) throws UnsupportedMessageException {
+        if (frame == null) {
+            throw UnsupportedMessageException.create();
+        }
+        return JSFrameUtil.getFunctionObject(frame);
+    }
+
+    @TruffleBoundary
+    public static Node findBlockScopeNode(Node node) {
+        if (node == null) {
+            return null;
+        }
+        Node parent = node;
+        for (Node n = parent; n != null; parent = n, n = n.getParent()) {
+            if (n instanceof BlockScopeNode) {
+                return n;
+            }
+        }
+        assert parent instanceof RootNode : "Node " + node + " is not adopted.";
+        return parent;
+    }
+
 }
