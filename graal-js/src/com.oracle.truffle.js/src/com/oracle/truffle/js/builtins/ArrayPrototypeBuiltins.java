@@ -3032,7 +3032,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             boolean isArray = isArrayNode.execute(array);
             boolean hasHoles = isArray && hasHolesNode.executeBoolean((DynamicObject) array);
 
-            while (lower <= upper) {
+            while (lower < upper) {
                 boolean lowerExists;
                 boolean upperExists;
                 Object lowerValue = null;
