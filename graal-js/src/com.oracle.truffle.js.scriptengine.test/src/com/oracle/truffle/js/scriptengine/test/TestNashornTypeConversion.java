@@ -69,9 +69,13 @@ public class TestNashornTypeConversion {
         }
     }
 
-    private static void testToString(Object value, String expectedResult) throws ScriptException {
+    private static ScriptEngine getEngineNashornCompat() {
         ScriptEngineManager manager = new ScriptEngineManager();
-        ScriptEngine engine = TestUtil.getEngineNashornCompat(manager);
+        return TestUtil.getEngineNashornCompat(manager);
+    }
+
+    private static void testToString(Object value, String expectedResult) throws ScriptException {
+        ScriptEngine engine = getEngineNashornCompat();
         ValueHolder holder = new ValueHolder();
         Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
         bindings.put("holder", holder);
@@ -97,21 +101,72 @@ public class TestNashornTypeConversion {
     }
 
     @Test
+    public void testNumberToDouble() throws ScriptException {
+        ScriptEngine engine = getEngineNashornCompat();
+        Object result = engine.eval("java.lang.Math.sin(java.math.BigDecimal.valueOf(42));");
+        assertEquals(String.valueOf(result), Math.sin(42), result);
+    }
+
+    @Test
+    public void testNumberToInteger() throws ScriptException {
+        ScriptEngine engine = getEngineNashornCompat();
+        Object result;
+        result = engine.eval("java.lang.Integer.hashCode(java.math.BigDecimal.valueOf(42));");
+        assertEquals(String.valueOf(result), Integer.hashCode(42), result);
+        result = engine.eval("java.lang.Integer.hashCode(42.5);");
+        assertEquals(String.valueOf(result), Integer.hashCode(42), result);
+    }
+
+    @Test
+    public void testNumberToLong() throws ScriptException {
+        ScriptEngine engine = getEngineNashornCompat();
+        Object result;
+        result = engine.eval("java.lang.Long.hashCode(java.math.BigDecimal.valueOf(42));");
+        assertEquals(String.valueOf(result), Long.hashCode(42), result);
+        result = engine.eval("java.lang.Long.hashCode(42.5);");
+        assertEquals(String.valueOf(result), Long.hashCode(42), result);
+    }
+
+    @Test
+    public void testStringToBoolean() throws ScriptException {
+        ScriptEngine engine = getEngineNashornCompat();
+        Object result;
+        result = engine.eval("var list = new java.util.ArrayList(); list.add('x'); list.add(''); list.stream().filter(function(e) { return e; }).count();");
+        assertEquals(String.valueOf(result), 1, result);
+        result = engine.eval("java.lang.Boolean.hashCode('x');");
+        assertEquals(String.valueOf(result), Boolean.hashCode(true), result);
+        result = engine.eval("java.lang.Boolean.hashCode('');");
+        assertEquals(String.valueOf(result), Boolean.hashCode(false), result);
+    }
+
+    @Test
+    public void testNumberToBoolean() throws ScriptException {
+        ScriptEngine engine = getEngineNashornCompat();
+        Object result;
+        result = engine.eval("java.lang.Boolean.hashCode(java.math.BigDecimal.valueOf(42));");
+        assertEquals(String.valueOf(result), Boolean.hashCode(true), result);
+        result = engine.eval("java.lang.Boolean.hashCode(java.math.BigDecimal.valueOf(0));");
+        assertEquals(String.valueOf(result), Boolean.hashCode(false), result);
+        result = engine.eval("java.lang.Boolean.hashCode(42);");
+        assertEquals(String.valueOf(result), Boolean.hashCode(true), result);
+        result = engine.eval("java.lang.Boolean.hashCode(0);");
+        assertEquals(String.valueOf(result), Boolean.hashCode(false), result);
+    }
+
+    @Test
     public void testNewLong() throws ScriptException {
-        ScriptEngineManager manager = new ScriptEngineManager();
-        ScriptEngine engine = TestUtil.getEngineNashornCompat(manager);
+        ScriptEngine engine = getEngineNashornCompat();
         engine.eval("var Long = Java.type('java.lang.Long');");
         Object result;
         result = engine.eval("new Long(33);");
-        assertTrue(String.valueOf(result), result instanceof Number && ((Number) result).intValue() == 33);
+        assertEquals(String.valueOf(result), 33, result);
         result = engine.eval("Long.valueOf(33);");
-        assertTrue(String.valueOf(result), result instanceof Number && ((Number) result).intValue() == 33);
+        assertEquals(String.valueOf(result), 33, result);
     }
 
     @Test
     public void testUser1() throws ScriptException {
-        ScriptEngineManager manager = new ScriptEngineManager();
-        ScriptEngine engine = TestUtil.getEngineNashornCompat(manager);
+        ScriptEngine engine = getEngineNashornCompat();
         Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
         bindings.put("user", new User1());
         Object result;
@@ -123,8 +178,7 @@ public class TestNashornTypeConversion {
 
     @Test
     public void testUser2() throws ScriptException {
-        ScriptEngineManager manager = new ScriptEngineManager();
-        ScriptEngine engine = TestUtil.getEngineNashornCompat(manager);
+        ScriptEngine engine = getEngineNashornCompat();
         Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
         bindings.put("user", new User2());
         bindings.put("throwable", new Throwable());
@@ -145,8 +199,7 @@ public class TestNashornTypeConversion {
 
     @Test
     public void testUser3() throws ScriptException {
-        ScriptEngineManager manager = new ScriptEngineManager();
-        ScriptEngine engine = TestUtil.getEngineNashornCompat(manager);
+        ScriptEngine engine = getEngineNashornCompat();
         Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
         bindings.put("user", new User3());
         bindings.put("throwable", new Throwable());
@@ -159,8 +212,7 @@ public class TestNashornTypeConversion {
 
     @Test
     public void testUser4() throws ScriptException {
-        ScriptEngineManager manager = new ScriptEngineManager();
-        ScriptEngine engine = TestUtil.getEngineNashornCompat(manager);
+        ScriptEngine engine = getEngineNashornCompat();
         Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
         bindings.put("user", new User4());
         bindings.put("throwable", new Throwable());
