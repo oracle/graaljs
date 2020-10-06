@@ -6,6 +6,8 @@ The main focus is on user-observable behavior of the engine.
 ## Version 20.3.0
 * Updated Node.js to version 12.18.4.
 * Fixed field/getter/setter access order in nashorn-compat mode, see [issue #343](https://github.com/graalvm/graaljs/issues/343).
+* ScriptEngine: Fixed "Multiple applicable overloads found" error in nashorn-compat mode, see [issue #286](https://github.com/graalvm/graaljs/issues/286).
+* ScriptEngine: Enabled low precedence lossy number, string-to-boolean, and number-to-boolean conversions in nashorn-compat mode.
 
 ## Version 20.2.0
 * Implemented the [Intl.NumberFormat Unified API](https://github.com/tc39/proposal-unified-intl-numberformat) proposal.
