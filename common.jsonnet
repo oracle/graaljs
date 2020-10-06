@@ -88,6 +88,17 @@ local jdks = (import "common.json").jdks;
     capabilities: ['darwin', 'amd64'],
   },
 
+  windows_vs2019: common + {
+    packages+: {
+      'devkit:VS2019-16.5.3+1': '==0',
+    },
+    setup+: [
+      ['set-export', 'DEVKIT_ROOT', '$VS2019_16_5_3_1_0_ROOT'],
+      ['set-export', 'DEVKIT_VERSION', '2019'],
+    ],
+    capabilities: ['windows', 'amd64'],
+  },
+
   windows: common + {
     packages+: {
       'devkit:VS2017-15.5.5+1': '==0',
