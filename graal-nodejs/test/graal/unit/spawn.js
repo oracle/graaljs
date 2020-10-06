@@ -91,10 +91,12 @@ describe('Spawn', function () {
             envPairs: envPairs
         });
     });
-    it('should print help when --help option is used', function () {
-        var result = spawnSync(process.execPath, ['--help']);
-        assert.strictEqual(result.status, 0);
-        assert.match(result.stdout.toString(), /^\n?Usage:/);
+    ['--help', '-h', '--v8-options'].forEach(function (option) {
+        it('should print help when ' + option + ' option is used', function () {
+            var result = spawnSync(process.execPath, [option]);
+            assert.strictEqual(result.status, 0);
+            assert.match(result.stdout.toString(), /^\n?Usage:/);
+        });
     });
     if (typeof java === 'object') {
         it('should finish gracefully when a native method is called from a wrong thread', function () {
