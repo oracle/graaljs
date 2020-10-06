@@ -1112,6 +1112,7 @@ namespace v8 {
     }
 
     void V8::SetFlagsFromCommandLine(int* argc, char** argv, bool remove_flags) {
+        bool show_help = false;
         bool use_jvm = false;
         bool use_native = false;
         bool show_jvm_warning = false;
@@ -1171,6 +1172,9 @@ namespace v8 {
             } else if (!strcmp(arg, "--use-classpath-env-var")) {
                 GraalIsolate::use_classpath_env_var = true;
             } else {
+                if (!strcmp(arg, "--help")) {
+                    show_help = true;
+                }
                 argv[++unprocessed] = arg;
             }
             if (classpath != nullptr) {
@@ -1207,6 +1211,11 @@ namespace v8 {
         }
         if (show_native_warning) {
             fprintf(stderr, "'--native.*' options are deprecated, use '--vm.*' instead.\n");
+        }
+        if (show_help) {
+            // show help and terminate
+            v8::Isolate::CreateParams params;
+            GraalIsolate::New(params);
         }
     }
 
