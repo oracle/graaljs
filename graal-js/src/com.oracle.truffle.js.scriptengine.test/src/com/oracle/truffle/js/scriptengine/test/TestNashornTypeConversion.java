@@ -40,16 +40,34 @@
  */
 package com.oracle.truffle.js.scriptengine.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.awt.Point;
+import java.util.Map;
+import java.util.function.Supplier;
+
 import javax.script.Bindings;
 import javax.script.ScriptContext;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
-import org.junit.Assert;
+
 import org.junit.Test;
 
 public class TestNashornTypeConversion {
+
+    public static class ValueHolder {
+        private String value;
+
+        public void setValue(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+    }
 
     private static void testToString(Object value, String expectedResult) throws ScriptException {
         ScriptEngineManager manager = new ScriptEngineManager();
@@ -59,7 +77,7 @@ public class TestNashornTypeConversion {
         bindings.put("holder", holder);
         bindings.put("value", value);
         engine.eval("holder.setValue(value)");
-        Assert.assertEquals(expectedResult, holder.getValue());
+        assertEquals(expectedResult, holder.getValue());
     }
 
     @Test
@@ -78,16 +96,143 @@ public class TestNashornTypeConversion {
         testToString(p, p.toString());
     }
 
-    public static class ValueHolder {
-        private String value;
+    @Test
+    public void testNewLong() throws ScriptException {
+        ScriptEngineManager manager = new ScriptEngineManager();
+        ScriptEngine engine = TestUtil.getEngineNashornCompat(manager);
+        engine.eval("var Long = Java.type('java.lang.Long');");
+        Object result;
+        result = engine.eval("new Long(33);");
+        assertTrue(String.valueOf(result), result instanceof Number && ((Number) result).intValue() == 33);
+        result = engine.eval("Long.valueOf(33);");
+        assertTrue(String.valueOf(result), result instanceof Number && ((Number) result).intValue() == 33);
+    }
 
-        public void setValue(String value) {
-            this.value = value;
+    @Test
+    public void testUser1() throws ScriptException {
+        ScriptEngineManager manager = new ScriptEngineManager();
+        ScriptEngine engine = TestUtil.getEngineNashornCompat(manager);
+        Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        bindings.put("user", new User1());
+        Object result;
+        result = engine.eval("user.test(1, 3);");
+        assertTrue(String.valueOf(result), "(int,Integer)".equals(result));
+        result = engine.eval("user.test(1, 'test');");
+        assertTrue(String.valueOf(result), "(int,String)".equals(result));
+    }
+
+    @Test
+    public void testUser2() throws ScriptException {
+        ScriptEngineManager manager = new ScriptEngineManager();
+        ScriptEngine engine = TestUtil.getEngineNashornCompat(manager);
+        Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        bindings.put("user", new User2());
+        bindings.put("throwable", new Throwable());
+        Object result;
+        result = engine.eval("user.test('msg');");
+        assertTrue(String.valueOf(result), "(String)".equals(result));
+        result = engine.eval("user.test('msg', throwable);");
+        assertTrue(String.valueOf(result), "(String,Throwable)".equals(result));
+        result = engine.eval("user.test('msg', {});");
+        assertTrue(String.valueOf(result), "(String,Object)".equals(result));
+        result = engine.eval("user.test('msg', 'str');");
+        assertTrue(String.valueOf(result), "(String,String)".equals(result));
+        result = engine.eval("user.test('msg', {}, {});");
+        assertTrue(String.valueOf(result), "(String,Object,Object)".equals(result));
+        result = engine.eval("user.test('msg', 'str', {}, 3);");
+        assertTrue(String.valueOf(result), "(String,Object[])".equals(result));
+    }
+
+    @Test
+    public void testUser3() throws ScriptException {
+        ScriptEngineManager manager = new ScriptEngineManager();
+        ScriptEngine engine = TestUtil.getEngineNashornCompat(manager);
+        Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        bindings.put("user", new User3());
+        bindings.put("throwable", new Throwable());
+        Object result;
+        result = engine.eval("user.test(33);");
+        assertTrue(String.valueOf(result), "(String)".equals(result));
+        result = engine.eval("user.test({});");
+        assertTrue(String.valueOf(result), "(Map)".equals(result));
+    }
+
+    @Test
+    public void testUser4() throws ScriptException {
+        ScriptEngineManager manager = new ScriptEngineManager();
+        ScriptEngine engine = TestUtil.getEngineNashornCompat(manager);
+        Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        bindings.put("user", new User4());
+        bindings.put("throwable", new Throwable());
+        Object result;
+        result = engine.eval("user.test(33);");
+        assertTrue(String.valueOf(result), "(String)".equals(result));
+        result = engine.eval("user.test({get: () => 42});");
+        assertTrue(String.valueOf(result), "(Supplier)".equals(result));
+    }
+
+    @SuppressWarnings("unused")
+    public static class User1 {
+        public String test(int n1, Integer n2) {
+            return "(int,Integer)";
         }
 
-        public String getValue() {
-            return value;
+        public String test(int n1, String n2) {
+            return "(int,String)";
         }
     }
 
+    @SuppressWarnings("unused")
+    public static class User2 {
+        public String test(String msg) {
+            return "(String)";
+        }
+
+        public String test(String format, Object arg) {
+            return "(String,Object)";
+        }
+
+        public String test(String format, Object arg1, Object arg2) {
+            return "(String,Object,Object)";
+        }
+
+        public String test(String msg, Throwable t) {
+            return "(String,Throwable)";
+        }
+
+        public String test(String format, Object... args) {
+            return "(String,Object[])";
+        }
+
+        public String test(String format, String arg) {
+            return "(String,String)";
+        }
+
+        public String test(String msg, Map<?, ?> t) {
+            return "(String,Map)";
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class User3 {
+        public String test(String arg) {
+            return "(String)";
+        }
+
+        public String test(Map<?, ?> t) {
+            return "(Map)";
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class User4 {
+        public String test(String arg) {
+            return "(String)";
+        }
+
+        public String test(Supplier<Object> t) {
+            assertEquals(42, t.get());
+            return "(Supplier)";
+        }
+    }
 }
