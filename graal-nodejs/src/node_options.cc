@@ -652,10 +652,10 @@ PerProcessOptionsParser::PerProcessOptionsParser(
   AddOption("--completion-bash",
             "print source-able bash completion script",
             &PerProcessOptions::print_bash_completion);
-//  AddOption("--help",
-//            "print node command line options",
-//            &PerProcessOptions::print_help);
-//  AddAlias("-h", "--help");
+  AddOption("--help",
+            "print node command line options",
+            &PerProcessOptions::print_v8_help);
+  AddAlias("-h", "--help");
   AddOption(
       "--version", "print Node.js version", &PerProcessOptions::print_version);
   AddAlias("-v", "--version");
