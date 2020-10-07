@@ -65,6 +65,7 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.builtins.helper.ListGetNode;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JSTypesGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -97,6 +98,7 @@ import com.oracle.truffle.js.runtime.array.dyn.HolesDoubleArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesJSObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesObjectArray;
+import com.oracle.truffle.js.runtime.array.dyn.LazyArray;
 import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultArray;
 import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultIndicesArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
@@ -834,6 +836,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             return new LazyRegexResultArrayReadElementCacheNode(array, next);
         } else if (array instanceof LazyRegexResultIndicesArray) {
             return new LazyRegexResultIndicesArrayReadElementCacheNode(array, next);
+        } else if (array instanceof LazyArray) {
+            return new LazyArrayReadElementCacheNode(array, next);
         } else if (array instanceof AbstractConstantArray) {
             return new ConstantArrayReadElementCacheNode(array, next);
         } else if (array instanceof HolesIntArray) {
@@ -1042,6 +1046,26 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             LazyRegexResultIndicesArray lazyRegexResultIndicesArray = (LazyRegexResultIndicesArray) array;
             if (inBounds.profile(lazyRegexResultIndicesArray.hasElement(target, (int) index))) {
                 return LazyRegexResultIndicesArray.materializeGroup(context, getResultAccessor(), target, (int) index);
+            } else {
+                return readOutOfBounds(target, index, receiver, defaultValue, context);
+            }
+        }
+    }
+
+    private static class LazyArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
+        @Child private ListGetNode listGetNode;
+
+        LazyArrayReadElementCacheNode(ScriptArray arrayType, ArrayReadElementCacheNode next) {
+            super(arrayType, next);
+            this.listGetNode = ListGetNode.create();
+        }
+
+        @Override
+        protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
+            LazyArray lazyRegexResultArray = (LazyArray) array;
+            int intIndex = (int) index;
+            if (inBounds.profile(lazyRegexResultArray.hasElement(target, intIndex))) {
+                return lazyRegexResultArray.getElementInBounds(target, intIndex, listGetNode);
             } else {
                 return readOutOfBounds(target, index, receiver, defaultValue, context);
             }

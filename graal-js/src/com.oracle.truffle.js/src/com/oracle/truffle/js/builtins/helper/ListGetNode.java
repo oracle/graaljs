@@ -57,7 +57,7 @@ public abstract class ListGetNode extends JavaScriptBaseNode {
         return ListGetNodeGen.create();
     }
 
-    public abstract Object execute(List<?> list, int index);
+    public abstract Object execute(Object list, int index);
 
     @Specialization
     static Object unmodifiableArrayList(UnmodifiableArrayList<?> list, int index) {
@@ -65,8 +65,8 @@ public abstract class ListGetNode extends JavaScriptBaseNode {
     }
 
     @Fallback
-    static Object list(List<?> list, int index) {
-        return Boundaries.listGet(list, index);
+    static Object list(Object list, int index) {
+        return Boundaries.listGet((List<?>) list, index);
     }
 
 }
