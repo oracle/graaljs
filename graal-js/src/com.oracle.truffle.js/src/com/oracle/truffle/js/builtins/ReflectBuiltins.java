@@ -64,6 +64,7 @@ import com.oracle.truffle.js.builtins.ReflectBuiltinsFactory.ReflectOwnKeysNodeG
 import com.oracle.truffle.js.builtins.ReflectBuiltinsFactory.ReflectPreventExtensionsNodeGen;
 import com.oracle.truffle.js.builtins.ReflectBuiltinsFactory.ReflectSetNodeGen;
 import com.oracle.truffle.js.builtins.ReflectBuiltinsFactory.ReflectSetPrototypeOfNodeGen;
+import com.oracle.truffle.js.builtins.helper.ListSizeNode;
 import com.oracle.truffle.js.nodes.access.FromPropertyDescriptorNode;
 import com.oracle.truffle.js.nodes.access.IsExtensibleNode;
 import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNode;
@@ -440,9 +441,10 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
         @Specialization(guards = "isJSObject(target)")
         protected DynamicObject reflectOwnKeys(Object target,
-                        @Cached("create()") JSClassProfile jsclassProfile) {
+                        @Cached JSClassProfile jsclassProfile,
+                        @Cached ListSizeNode listSize) {
             List<Object> list = JSObject.ownPropertyKeys((DynamicObject) target, jsclassProfile);
-            return JSArray.createLazyArray(getContext(), list);
+            return JSArray.createLazyArray(getContext(), list, listSize.execute(list));
         }
 
         @Specialization(guards = {"isForeignObject(target)"}, limit = "3")
