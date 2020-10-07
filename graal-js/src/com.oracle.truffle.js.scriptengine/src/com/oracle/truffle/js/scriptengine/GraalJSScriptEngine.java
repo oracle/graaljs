@@ -53,7 +53,6 @@ import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CharsetEncoder;
-import java.util.Objects;
 import java.util.function.Predicate;
 
 import javax.script.AbstractScriptEngine;
@@ -71,6 +70,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -95,7 +95,24 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     private static final String NASHORN_COMPATIBILITY_MODE_SYSTEM_PROPERTY = "polyglot.js.nashorn-compat";
     static final String MAGIC_OPTION_PREFIX = "polyglot.js.";
 
-    private static final HostAccess NASHORN_HOST_ACCESS = HostAccess.newBuilder(HostAccess.ALL).targetTypeMapping(Object.class, String.class, Objects::nonNull, String::valueOf).build();
+    private static final HostAccess NASHORN_HOST_ACCESS = createNashornHostAccess();
+
+    private static HostAccess createNashornHostAccess() {
+        HostAccess.Builder b = HostAccess.newBuilder(HostAccess.ALL);
+        // Last resort conversions similar to those in NashornBottomLinker.
+        b.targetTypeMapping(Value.class, String.class, v -> !v.isNull() && v.isHostObject(), Value::toString, TargetMappingPrecedence.LOW);
+        b.targetTypeMapping(Value.class, String.class, v -> !v.isNull() && !v.isHostObject(), Value::toString, TargetMappingPrecedence.LOWEST);
+        b.targetTypeMapping(Number.class, Integer.class, n -> true, n -> n.intValue(), TargetMappingPrecedence.LOW);
+        b.targetTypeMapping(Number.class, Double.class, n -> true, n -> n.doubleValue(), TargetMappingPrecedence.LOW);
+        b.targetTypeMapping(Number.class, Long.class, n -> true, n -> n.longValue(), TargetMappingPrecedence.LOW);
+        b.targetTypeMapping(Number.class, Boolean.class, n -> true, n -> toBoolean(n.doubleValue()), TargetMappingPrecedence.LOW);
+        b.targetTypeMapping(String.class, Boolean.class, n -> true, n -> !n.isEmpty(), TargetMappingPrecedence.LOWEST);
+        return b.build();
+    }
+
+    private static boolean toBoolean(double d) {
+        return d != 0.0 && !Double.isNaN(d);
+    }
 
     interface MagicBindingsOptionSetter {
 
