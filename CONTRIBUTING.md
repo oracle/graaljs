@@ -10,7 +10,7 @@ Please make sure to include a clear description of the intention of the change.
 
 ## Workflow
 
-Please follow the [testing guidelines](../docs/contributor/Testing.md) before creating a pull request.
+Please follow the [testing guidelines](./docs/contributor/Testing.md) before creating a pull request.
 
 In addition to the publically available tests, we run a comprehensive CI system.
 All incoming pull requests will be evaluated there.
