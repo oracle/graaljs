@@ -157,10 +157,6 @@
     "filePath" : "basic/JDK-8010946.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "basic/JDK-8011362.js",
-    "status" : "FAIL",
-    "comment" : "Java interop migration"
-  }, {
     "filePath" : "basic/JDK-8011555.js",
     "status" : "FAIL"
   }, {
