@@ -138,7 +138,8 @@ Such modules are not available in the `Context` API.
 Thankfully, the Node.js community has developed high-quality JavaScript implementations for many Node.js core modules (e.g.,: the ['buffer'](https://www.npmjs.com/package/buffer) module for the browser).
 Such alternative module implementations can be exposed to a JavaScript `Context` using the `js.commonjs-core-modules-replacements` option, in the following way:
 ```
-options.put("js.commonjs-core-modules-replacements", "buffer:my-buffer-implementation");
+options.put("js.commonjs-core-modules-replacements",
+    "buffer:my-buffer-implementation");
 ```
 As the code suggests, the option instructs the GraalVM JavaScript runtime to load a module called `my-buffer-implementation` when an application attempts to load the Node.js `'buffer'` built-in module using `require('buffer')`.
 

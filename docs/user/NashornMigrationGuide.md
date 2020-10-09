@@ -32,10 +32,13 @@ js --experimental-options --js.nashorn-compat=true
 ```
 
 2. by using the Polyglot API:
-```java
+```
 import org.graalvm.polyglot.Context;
 
-try (Context context = Context.newBuilder().allowExperimentalOptions(true).option("js.nashorn-compat", "true").build()) {
+try (Context context = Context.newBuilder()
+        .allowExperimentalOptions(true)
+        .option("js.nashorn-compat", "true")
+        .build()) {
     context.eval("js", "print(__LINE__)");
 }
 ```
