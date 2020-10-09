@@ -135,8 +135,11 @@ public class Minified {
     Function<Value, String> javaCallback = (test) -> {
       return "passed";
     };
-    try(Context ctx = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
-      Value jsFn = ctx.eval("js", "f => function() { return f(arguments); }");
+    try(Context ctx = Context.newBuilder()
+        .allowHostAccess(HostAccess.ALL)
+        .build()) {
+      String src = "f => function() { return f(arguments); }";
+      Value jsFn = ctx.eval("js", src);
       Value javaFn = jsFn.execute(javaCallback);
       System.out.println("finished: "+javaFn.execute());
     }
@@ -164,7 +167,8 @@ An example that triggers a `Message not supported` error with certain `HostAcces
 {
   ...
   Value jsFn = ...; //a JS function expecting a function as argument
-  jsFn.execute((Function<Integer, Integer>)this::javaFn); //called with a functional interface as argument
+  //called with a functional interface as argument
+  jsFn.execute((Function<Integer, Integer>)this::javaFn);
   ...
 }
 
@@ -188,15 +192,18 @@ import org.graalvm.polyglot.HostAccess;
 
 public class FAQ {
   public static void main(String[] args) {
-    try(Context ctx = Context.newBuilder().allowHostAccess(HostAccess.EXPLICIT).build()) {
-      Value jsFn = ctx.eval("js", "f => function() { return f(arguments); }");
-      Value javaFn = jsFn.execute(new MyExportedFunction());
+    try(Context ctx = Context.newBuilder()
+        .allowHostAccess(HostAccess.EXPLICIT)
+        .build()) {
+      String src = "f => function() { return f(arguments); }";
+      Value jsFn = ctx.eval("js", src);
+      Value javaFn = jsFn.execute(new MyFunction());
       System.out.println("finished: " + javaFn.execute());
     }
   }
 
   @FunctionalInterface
-  public static class MyExportedFunction implements Function<Object, String> {
+  public static class MyFunction implements Function<Object, String> {
     @Override
     @HostAccess.Export
     public String apply(Object s) {

@@ -34,7 +34,7 @@ For that, a new `org.graalvm.polyglot.Context` is built with the `hostAccess` op
 ```java
 Context context = Context.newBuilder("js").
     allowHostAccess(HostAccess.ALL).
-    allowHostClassLookup(className -> true).  //allows access to all Java classes
+    allowHostClassLookup(className -> true). //all Java classes permitted
     build();
 context.eval("js", jsSourceCode);
 ```
@@ -68,14 +68,18 @@ By default, Java classes are not automatically mapped to global variables, e.g.,
 Existing code accessing e.g. `java.io.File` should be rewritten to use the `Java.type(name)` function.
 
 ```js
-var FileClass = Java.type("java.io.File"); //GraalVM JavaScript compliant syntax
-var FileClass = java.io.File;              //FAILS in GraalVM JavaScript
+//GraalVM JavaScript compliant syntax
+var FileClass = Java.type("java.io.File");
+//backwards-compatible syntax
+var FileClass = java.io.File;
 ```
 
-GraalVM JavaScript provides a `Packages` global property (and `java` etc. if the `js.nashorn-compat` option is set) for compatibility.
+GraalVM JavaScript provides a `Packages` global property and `java` and similar global properties for compatibility.
 However, explicitly accessing the required class with `Java.type` should be preferred whenever possible for two reasons:
 1. It allows resolving the class in one step rather than trying to resolve each property as a class.
 2. `Java.type` immediately throws a `TypeError` if the class cannot be found or is not accessible rather than silently treating an unresolved name as a package.
+
+The `js.java-package-globals` flag can be used to deactivate the global fields of Java packages (set `false` to avoid creation of the fields; default is `true`).
 
 ### Constructing Java Objects
 Java objects can be constructed with JavaScript's `new` keyword.
@@ -284,7 +288,8 @@ public interface PromiseExecutor {
 ```
 Any Java object implementing `PromiseExecutor` can be used to create a JavaScript `Promise`:
 ```
-// `javaExecutable` is a Java object implementing the `PromiseExecutor` interface
+// `javaExecutable` is a Java object
+// implementing the `PromiseExecutor` interface
 var myPromise = new Promise(javaExecutable).then(...);
 ```
 JavaScript `Promise` objects can be created not only using functional interfaces, but also using any other Java object that can be executed by the GraalVM JavaScript engine (for example, any Java object implementing the Polyglot [ProxyExecutable](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/proxy/ProxyExecutable.html) interface).
@@ -309,7 +314,8 @@ Java code can access such objects like normal `Value` objects, with the possibil
 As an example, the following Java code registers a Java callback to be executed when a JavaScript promise resolves:
 ```
 Value jsPromise = context.eval(ID, "Promise.resolve(42);");
-Consumer<Object> javaThen = (value) -> System.out.println("Resolved from JavaScript: " + value);
+Consumer<Object> javaThen =
+    (value) -> System.out.println("Resolved from JavaScript: " + value);
 jsPromise.invokeMember("then", javaThen);
 ```
 More detailed example usages are available in the GraalVM JavaScript [unit tests](https://github.com/graalvm/graaljs/blob/master/graal-js/src/com.oracle.truffle.js.test/src/com/oracle/truffle/js/test/interop/AsyncInteropTest.java).

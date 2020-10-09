@@ -26,12 +26,14 @@ To set an option via `Bindings`, use `Bindings.put(<option name>, true)` **befor
 even a call to `Bindings#get(String)` may lead to context initialization.
 The following code shows how to enable `polyglot.js.allowHostAccess` via `Bindings`:
 ```
-ScriptEngine engine = new ScriptEngineManager().getEngineByName("JavaScript");
-Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+ScriptEngine eng = new ScriptEngineManager().getEngineByName("JavaScript");
+Bindings bindings = eng.getBindings(ScriptContext.ENGINE_SCOPE);
 bindings.put("polyglot.js.allowHostAccess", true);
-bindings.put("polyglot.js.allowHostClassLookup", (Predicate<String>) s -> true);
+bindings.put("polyglot.js.allowHostClassLookup",
+    (Predicate<String>) s -> true);
 bindings.put("javaObj", new Object());
-engine.eval("(javaObj instanceof Java.type('java.lang.Object'));"); // would not work without allowHostAccess and allowHostClassLookup
+// next line would fail without allowHostAccess and allowHostClassLookup
+eng.eval("(javaObj instanceof Java.type('java.lang.Object'));");
 ```
 This example would not work if the user would call e.g. `engine.eval("var x = 1;")` before calling `bindings.put("polyglot.js.allowHostAccess", true);`, since
 any call to `eval` forces context initialization.
