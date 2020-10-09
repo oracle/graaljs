@@ -26,28 +26,23 @@ Note that you have to enable [experimental options](Options.md#stable-and-experi
 Further note that setting this flag defeats the [secure by default](#secure-by-default) approach of GraalVM JavaScript in some cases, e.g., when operating on a legacy `ScriptEngine`.
 
 The `js.nashorn-compat` option can be set:
-1. by using a command line option:
-```
+
+a) by using a command line option:
+```shell
 js --experimental-options --js.nashorn-compat=true
 ```
-
-2. by using the Polyglot API:
-```
+b)  by using the Polyglot API:
+```java
 import org.graalvm.polyglot.Context;
 
-try (Context context = Context.newBuilder()
-        .allowExperimentalOptions(true)
-        .option("js.nashorn-compat", "true")
-        .build()) {
+try (Context context = Context.newBuilder().allowExperimentalOptions(true).option("js.nashorn-compat", "true").build()) {
     context.eval("js", "print(__LINE__)");
 }
 ```
-
-3. by using a system property when starting a Java application (remember to enable `allowExperimentalOptions` on the `Context.Builder` in your application as well):
-```
+c) by using a system property when starting a Java application (remember to enable `allowExperimentalOptions` on the `Context.Builder` in your application as well):
+```shell
 java -Dpolyglot.js.nashorn-compat=true MyApplication
 ```
-
 Functionality only available under this flag includes:
 * `Java.isJavaFunction`, `Java.isJavaMethod`, `Java.isScriptObject`, `Java.isScriptFunction`
 * `new Interface|AbstractClass(fn|obj)`
