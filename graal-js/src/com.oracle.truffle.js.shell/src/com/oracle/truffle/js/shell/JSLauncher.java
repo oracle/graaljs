@@ -47,6 +47,7 @@ import static com.oracle.truffle.js.shell.JSLauncher.PreprocessResult.Unhandled;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -80,16 +81,37 @@ public class JSLauncher extends AbstractLanguageLauncher {
 
     @Override
     protected void launch(Context.Builder contextBuilder) {
+        int exitCode;
         if (fuzzilliREPRL) {
-            System.exit(JSFuzzilliRunner.runFuzzilliREPRL(contextBuilder));
+            exitCode = JSFuzzilliRunner.runFuzzilliREPRL(contextBuilder);
         } else {
-            System.exit(executeScripts(contextBuilder));
+            exitCode = executeScripts(contextBuilder);
+        }
+        if (exitCode != 0) {
+            throw abort("", exitCode);
         }
     }
 
     @Override
     protected String getLanguageId() {
         return "js";
+    }
+
+    private void loadSourcesFromImage(Set<Source> imageSources) {
+        for (UnparsedSource unparsedSource : unparsedSources) {
+            for (Source source : imageSources) {
+                String path;
+                try {
+                    path = new File(unparsedSource.src).getAbsoluteFile().getCanonicalPath();
+                    if (source.getPath() != null && source.getPath().equals(path)) {
+                        unparsedSource.parsedSource = source;
+                        break;
+                    }
+                } catch (IOException e) {
+                    throw abort(e);
+                }
+            }
+        }
     }
 
     protected void preEval(@SuppressWarnings("unused") Context context) {
@@ -310,12 +332,11 @@ public class JSLauncher extends AbstractLanguageLauncher {
 
     protected int executeScripts(Context.Builder contextBuilder) {
         int status;
-        contextBuilder.arguments("js", programArgs);
-        contextBuilder.option("js.shell", "true");
         try (Context context = contextBuilder.build()) {
             runVersionAction(versionAction, context.getEngine());
             preEval(context);
             if (hasSources()) {
+                loadSourcesFromImage(context.getEngine().getCachedSources());
                 // Every engine runs different Source objects.
                 Source[] sources = parseSources();
                 status = -1;
@@ -452,6 +473,7 @@ public class JSLauncher extends AbstractLanguageLauncher {
     private static final class UnparsedSource {
         private final String src;
         private final SourceType type;
+        private Source parsedSource;
 
         private UnparsedSource(String src, SourceType type) {
             this.src = src;
@@ -459,6 +481,14 @@ public class JSLauncher extends AbstractLanguageLauncher {
         }
 
         private Source parse() throws IOException {
+            Source source = this.parsedSource;
+            if (source == null) {
+                source = this.parsedSource = parseImpl();
+            }
+            return source;
+        }
+
+        private Source parseImpl() throws IOException, UnsupportedEncodingException {
             switch (type) {
                 case FILE:
                     return Source.newBuilder("js", new File(src)).build();
