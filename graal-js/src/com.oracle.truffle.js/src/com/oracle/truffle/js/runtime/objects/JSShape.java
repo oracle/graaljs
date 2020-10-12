@@ -53,6 +53,7 @@ import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSDictionary;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
+import com.oracle.truffle.js.runtime.util.UnmodifiablePropertyKeyList;
 
 /**
  * Static helper methods for JS-specific operations on shapes.
@@ -152,6 +153,11 @@ public final class JSShape {
     public static UnmodifiableArrayList<Property> getProperties(Shape shape) {
         assert JSConfig.FastOwnKeys;
         return JSShapeData.getProperties(shape);
+    }
+
+    public static <T> UnmodifiablePropertyKeyList<T> getPropertyKeyList(Shape shape, boolean strings, boolean symbols) {
+        assert JSConfig.FastOwnKeys;
+        return JSShapeData.getPropertyKeyList(shape, strings, symbols);
     }
 
     public static UnmodifiableArrayList<String> getEnumerablePropertyNames(Shape shape) {

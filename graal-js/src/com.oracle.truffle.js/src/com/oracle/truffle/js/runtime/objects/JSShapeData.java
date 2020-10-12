@@ -51,8 +51,10 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.util.DebugCounter;
 import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
+import com.oracle.truffle.js.runtime.util.UnmodifiablePropertyKeyList;
 
 /**
  * Extra metadata associated with JavaScript object shapes.
@@ -62,8 +64,13 @@ import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
 public final class JSShapeData {
     private static final Property[] EMPTY_PROPERTY_ARRAY = new Property[0];
     private static final String[] EMPTY_STRING_ARRAY = new String[0];
+    private static final int UNKNOWN = -1;
 
+    /** The position in the property array where strings end and symbols start. */
+    private int symbolsStartPos = UNKNOWN;
+    /** All properties, sorted using {@link JSRuntime#comparePropertyKeys}. */
     private Property[] propertyArray;
+    /** Only enumerable properties with string keys (no symbols). */
     private String[] enumerablePropertyNames;
 
     private JSShapeData() {
@@ -130,6 +137,25 @@ public final class JSShapeData {
         return propertyArray;
     }
 
+    private static int getSymbolsStart(JSShapeData shapeData, Property[] propertyArray) {
+        int symbolsStart = shapeData.symbolsStartPos;
+        if (symbolsStart == UNKNOWN) {
+            shapeData.symbolsStartPos = symbolsStart = getSymbolsStart(propertyArray);
+        }
+        return symbolsStart;
+    }
+
+    private static int getSymbolsStart(Property[] propertyArray) {
+        int pos = propertyArray.length;
+        for (; pos > 0; pos--) {
+            Property prev = propertyArray[pos - 1];
+            if (!(prev.getKey() instanceof Symbol)) {
+                break;
+            }
+        }
+        return pos;
+    }
+
     static UnmodifiableArrayList<Property> getProperties(Shape shape) {
         return asUnmodifiableList(shape.getPropertyCount() == 0 ? EMPTY_PROPERTY_ARRAY : getPropertiesArray(shape));
     }
@@ -166,6 +192,33 @@ public final class JSShapeData {
 
     static UnmodifiableArrayList<Property> getPropertiesIfHasEnumerablePropertyNames(Shape shape) {
         return asUnmodifiableList(shape.getPropertyCount() == 0 ? EMPTY_PROPERTY_ARRAY : getPropertiesArrayIfHasEnumerablePropertyNames(shape));
+    }
+
+    static <T> UnmodifiablePropertyKeyList<T> getPropertyKeyList(Shape shape, boolean strings, boolean symbols) {
+        CompilerAsserts.neverPartOfCompilation();
+        Property[] propertyArray;
+        int start;
+        int end;
+        if (shape.getPropertyCount() == 0) {
+            propertyArray = EMPTY_PROPERTY_ARRAY;
+            start = 0;
+            end = 0;
+        } else {
+            JSShapeData shapeData = getShapeData(shape);
+            propertyArray = getPropertiesArray(shapeData, shape);
+            start = 0;
+            end = propertyArray.length;
+            if (!strings || !symbols) {
+                int symbolsStart = getSymbolsStart(shapeData, propertyArray);
+                if (!strings) {
+                    start = symbolsStart;
+                }
+                if (!symbols) {
+                    end = symbolsStart;
+                }
+            }
+        }
+        return UnmodifiablePropertyKeyList.create(propertyArray, start, end);
     }
 
     private static <T> UnmodifiableArrayList<T> asUnmodifiableList(T[] array) {

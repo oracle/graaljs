@@ -69,7 +69,6 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
-import com.oracle.truffle.js.runtime.util.IteratorUtil;
 
 /**
  * Common base class for non-proxy object types.
@@ -167,8 +166,7 @@ public abstract class JSNonProxy extends JSClass {
     @TruffleBoundary
     protected static List<Object> ordinaryOwnPropertyKeys(DynamicObject thisObj, boolean strings, boolean symbols) {
         if (JSConfig.FastOwnKeys) {
-            List<Object> all = IteratorUtil.convertList(JSShape.getProperties(thisObj.getShape()), Property::getKey);
-            return filterOwnPropertyKeys(all, strings, symbols);
+            return JSShape.getPropertyKeyList(thisObj.getShape(), strings, symbols);
         } else {
             return ordinaryOwnPropertyKeysSlow(thisObj, strings, symbols);
         }
