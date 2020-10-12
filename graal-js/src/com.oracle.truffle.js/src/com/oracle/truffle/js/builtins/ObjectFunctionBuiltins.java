@@ -490,15 +490,18 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = "isJSObject(thisObj)")
         protected DynamicObject getJSObject(DynamicObject thisObj,
-                        @Cached @Shared("jsclassProfile") JSClassProfile jsclassProfile) {
-            return JSArray.createLazyArray(getContext(), jsclassProfile.getJSClass(thisObj).getOwnPropertyKeys(thisObj, !symbols, symbols));
+                        @Cached @Shared("jsclassProfile") JSClassProfile jsclassProfile,
+                        @Cached @Shared("listSize") ListSizeNode listSize) {
+            List<Object> ownPropertyKeys = jsclassProfile.getJSClass(thisObj).getOwnPropertyKeys(thisObj, !symbols, symbols);
+            return JSArray.createLazyArray(getContext(), ownPropertyKeys, listSize.execute(ownPropertyKeys));
         }
 
         @Specialization(guards = {"!isJSObject(thisObj)", "!isForeignObject(thisObj)"})
         protected DynamicObject getDefault(Object thisObj,
-                        @Cached @Shared("jsclassProfile") JSClassProfile jsclassProfile) {
+                        @Cached @Shared("jsclassProfile") JSClassProfile jsclassProfile,
+                        @Cached @Shared("listSize") ListSizeNode listSize) {
             DynamicObject object = toOrAsJSObject(thisObj);
-            return getJSObject(object, jsclassProfile);
+            return getJSObject(object, jsclassProfile, listSize);
         }
 
         @Specialization(guards = {"isForeignObject(thisObj)", "symbols"})

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,41 +38,37 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins.helper;
+package com.oracle.truffle.js.runtime.util;
 
-import java.util.List;
+import java.util.AbstractList;
+import java.util.RandomAccess;
 
-import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.Boundaries;
-import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
-import com.oracle.truffle.js.runtime.util.UnmodifiablePropertyKeyList;
+import com.oracle.truffle.api.object.Property;
 
-public abstract class ListSizeNode extends JavaScriptBaseNode {
+public final class UnmodifiablePropertyKeyList<T> extends AbstractList<T> implements RandomAccess {
+    private final Property[] array;
+    private final int start;
+    private final int end;
 
-    protected ListSizeNode() {
+    private UnmodifiablePropertyKeyList(Property[] array, int start, int end) {
+        this.array = array;
+        this.start = start;
+        this.end = end;
+        assert start <= end && start >= 0 && start <= array.length && end >= 0 && end <= array.length;
     }
 
-    public static ListSizeNode create() {
-        return ListSizeNodeGen.create();
+    public static <T> UnmodifiablePropertyKeyList<T> create(Property[] array, int start, int end) {
+        return new UnmodifiablePropertyKeyList<>(array, start, end);
     }
 
-    public abstract int execute(List<?> list);
-
-    @Specialization
-    static int unmodifiableArrayList(UnmodifiableArrayList<?> list) {
-        return list.size();
+    @SuppressWarnings("unchecked")
+    @Override
+    public T get(int index) {
+        return (T) array[start + index].getKey();
     }
 
-    @Specialization
-    static int unmodifiablePropertyKeyList(UnmodifiablePropertyKeyList<?> list) {
-        return list.size();
+    @Override
+    public int size() {
+        return end - start;
     }
-
-    @Fallback
-    static int list(List<?> list) {
-        return Boundaries.listSize(list);
-    }
-
 }

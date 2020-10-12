@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
+import com.oracle.truffle.js.runtime.util.UnmodifiablePropertyKeyList;
 
 public abstract class ListGetNode extends JavaScriptBaseNode {
 
@@ -57,16 +58,21 @@ public abstract class ListGetNode extends JavaScriptBaseNode {
         return ListGetNodeGen.create();
     }
 
-    public abstract Object execute(List<?> list, int index);
+    public abstract Object execute(Object list, int index);
 
     @Specialization
     static Object unmodifiableArrayList(UnmodifiableArrayList<?> list, int index) {
         return list.get(index);
     }
 
+    @Specialization
+    static Object unmodifiablePropertyKeyList(UnmodifiablePropertyKeyList<?> list, int index) {
+        return list.get(index);
+    }
+
     @Fallback
-    static Object list(List<?> list, int index) {
-        return Boundaries.listGet(list, index);
+    static Object list(Object list, int index) {
+        return Boundaries.listGet((List<?>) list, index);
     }
 
 }

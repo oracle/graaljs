@@ -47,6 +47,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetLen
 import java.util.List;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.builtins.helper.ListGetNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
@@ -84,6 +85,10 @@ public class LazyArray extends AbstractConstantArray {
     @Override
     public Object getElementInBounds(DynamicObject object, int index) {
         return Boundaries.listGet(arrayGetLazyList(object), index);
+    }
+
+    public Object getElementInBounds(DynamicObject object, int index, ListGetNode listGetNode) {
+        return listGetNode.execute(arrayGetArray(object), index);
     }
 
     @Override
