@@ -470,7 +470,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             if (!promiseJobsQueueEmptyAssumption.isValid()) {
                 agent.processAllPromises(true);
             }
-            if (realm.getContext().getContextOptions().isTestV8Mode()) {
+            if (getJSContext().getContextOptions().isTestV8Mode()) {
                 processTimeoutCallbacks(realm);
             }
         }
