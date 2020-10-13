@@ -56,12 +56,8 @@ public final class ForeignDynamicObject extends DynamicObject {
 
     private static final Shape SHAPE = Shape.newBuilder().build();
 
-    private ForeignDynamicObject() {
+    public ForeignDynamicObject() {
         super(SHAPE);
-    }
-
-    public static DynamicObject createNew() {
-        return new ForeignDynamicObject();
     }
 
     @SuppressWarnings({"static-method", "unused"})
