@@ -224,13 +224,21 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
                 Field unmodifiableListField = unmodifiableListClazz.getDeclaredField("list");
                 unmodifiableListField.setAccessible(true);
 
-                List<?> list = (List<?>) unmodifiableListField.get(immutableList);
+                Class<?> unmodifiableCollectionClazz = Class.forName("java.util.Collections$UnmodifiableCollection");
+                Field unmodifiableCField = unmodifiableCollectionClazz.getDeclaredField("c");
+                unmodifiableCField.setAccessible(true);
 
-                for (int i = 0; i < list.size(); i++) {
-                    if (RegisterAsNashornScriptEngineFactory || !list.get(i).toString().toLowerCase().equals("nashorn")) {
-                        list.set(i, null);
+                List<?> list = (List<?>) unmodifiableListField.get(immutableList);
+                List<Object> filteredList = new ArrayList<>();
+
+                for (Object item : list) {
+                    if (!RegisterAsNashornScriptEngineFactory && item.toString().toLowerCase().equals("nashorn")) {
+                        filteredList.add(item);
                     }
                 }
+
+                unmodifiableListField.set(immutableList, filteredList);
+                unmodifiableCField.set(immutableList, filteredList);
             }
         } catch (NullPointerException | ClassNotFoundException | IllegalAccessException | IllegalArgumentException | NoSuchFieldException | SecurityException e) {
             System.err.println("Failed to clear engine names [" + factory.getEngineName() + "]");

@@ -279,4 +279,15 @@ public class TestEngine {
         }
     }
 
+    @Test
+    public void noNullInNashornEngine() {
+        ScriptEngine engine = manager.getEngineByName("nashorn");
+        if (engine != null) {
+            ScriptEngineFactory factory = engine.getFactory();
+            assertEquals(-1, factory.getNames().indexOf(null));
+            assertEquals(-1, factory.getMimeTypes().indexOf(null));
+            assertEquals(-1, factory.getExtensions().indexOf(null));
+        } // else no nashorn engine anymore
+    }
+
 }
