@@ -85,7 +85,7 @@ public abstract class JSFunctionFactory {
         Shape shape = getShape(realm, prototype);
         assert functionData != null;
         assert enclosingFrame != null; // use JSFrameUtil.NULL_MATERIALIZED_FRAME instead
-        assert shape.getObjectType() == JSFunction.INSTANCE;
+        assert shape.getDynamicType() == JSFunction.INSTANCE;
         DynamicObject obj = JSFunctionObject.create(shape, functionData, enclosingFrame, realm, classPrototype);
         objectFactory.initProto(obj, prototype);
         initProperties(obj, functionData);
@@ -100,7 +100,7 @@ public abstract class JSFunctionFactory {
     public final DynamicObject createBound(JSFunctionData functionData, Object classPrototype, JSRealm realm, DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
         Shape shape = objectFactory.getShape(realm);
         assert functionData != null;
-        assert shape.getObjectType() == JSFunction.INSTANCE;
+        assert shape.getDynamicType() == JSFunction.INSTANCE;
         assert functionData.hasStrictFunctionProperties();
         if (context.getEcmaScriptVersion() < 6) {
             return createBoundES5(shape, functionData, classPrototype, realm, boundTargetFunction, boundThis, boundArguments);

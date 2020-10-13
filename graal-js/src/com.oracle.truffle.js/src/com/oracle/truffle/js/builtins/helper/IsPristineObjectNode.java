@@ -134,7 +134,7 @@ public abstract class IsPristineObjectNode extends Node {
     }
 
     boolean isInstanceAndDoesNotOverwriteProps(Shape objectShape) {
-        if (objectShape.getObjectType() != jsClass) {
+        if (objectShape.getDynamicType() != jsClass) {
             return false;
         }
         for (Object key : propertyKeys) {

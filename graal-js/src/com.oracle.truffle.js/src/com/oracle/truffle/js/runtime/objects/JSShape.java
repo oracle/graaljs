@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.objects;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -92,11 +91,11 @@ public final class JSShape {
     }
 
     public static JSClass getJSClass(Shape shape) {
-        return (JSClass) shape.getObjectType();
+        return (JSClass) shape.getDynamicType();
     }
 
-    public static ObjectType getJSClassNoCast(Shape shape) {
-        return shape.getObjectType();
+    public static Object getJSClassNoCast(Shape shape) {
+        return shape.getDynamicType();
     }
 
     public static JSSharedData getSharedData(Shape shape) {

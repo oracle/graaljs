@@ -54,7 +54,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -264,13 +263,13 @@ public final class JSRuntime {
      * objects.
      */
     public static boolean isObject(Object vo) {
-        assert vo instanceof JSObject == hasJSObjectType(vo);
+        assert vo instanceof JSObject == hasJSDynamicType(vo);
         return vo instanceof JSObject;
     }
 
-    private static boolean hasJSObjectType(Object vo) {
+    private static boolean hasJSDynamicType(Object vo) {
         if (JSDynamicObject.isJSDynamicObject(vo)) {
-            ObjectType type = ((JSDynamicObject) vo).getShape().getObjectType();
+            Object type = ((JSDynamicObject) vo).getShape().getDynamicType();
             return (type instanceof JSClass) && (type != Null.NULL_CLASS);
         } else {
             return false;

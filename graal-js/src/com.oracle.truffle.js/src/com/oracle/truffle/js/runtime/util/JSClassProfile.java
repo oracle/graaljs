@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.NodeCloneable;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -75,7 +74,7 @@ public abstract class JSClassProfile extends NodeCloneable {
 
         @Override
         public JSClass getJSClass(DynamicObject jsobject) {
-            ObjectType jsobjectClass = JSShape.getJSClassNoCast(jsobject.getShape());
+            Object jsobjectClass = JSShape.getJSClassNoCast(jsobject.getShape());
             if (!polymorphicJSClass) {
                 if (jsobjectClass == expectedJSClass) {
                     return expectedJSClass;

@@ -142,7 +142,7 @@ public final class JSGuards {
     }
 
     public static boolean isJSFunctionShape(Shape shape) {
-        return shape.getObjectType() == JSFunction.INSTANCE;
+        return shape.getDynamicType() == JSFunction.INSTANCE;
     }
 
     public static boolean isBoundJSFunction(Object value) {
@@ -460,7 +460,7 @@ public final class JSGuards {
     }
 
     public static boolean isJSObjectShape(Shape shape) {
-        return shape.getObjectType() instanceof JSClass;
+        return shape.getDynamicType() instanceof JSClass;
     }
 
     public static boolean isArrayIndexLengthInRange(String str) {
