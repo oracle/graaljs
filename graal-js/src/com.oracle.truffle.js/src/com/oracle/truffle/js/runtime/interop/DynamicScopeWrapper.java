@@ -96,7 +96,6 @@ public final class DynamicScopeWrapper implements TruffleObject {
     }
 
     @ExportMessage
-    @TruffleBoundary
     boolean isMemberReadable(String name,
                     @CachedLibrary("this.scope") DynamicObjectLibrary access) {
         Object value = access.getOrDefault(scope, name, null);
@@ -107,7 +106,6 @@ public final class DynamicScopeWrapper implements TruffleObject {
     }
 
     @ExportMessage
-    @TruffleBoundary
     boolean isMemberModifiable(String name,
                     @CachedLibrary("this.scope") DynamicObjectLibrary access) {
         return isMemberReadable(name, access) && !isConst(name, access);
@@ -120,7 +118,6 @@ public final class DynamicScopeWrapper implements TruffleObject {
     }
 
     @ExportMessage
-    @TruffleBoundary
     Object readMember(String name,
                     @CachedLibrary("this.scope") DynamicObjectLibrary access,
                     @Cached ExportValueNode exportValueNode) throws UnknownIdentifierException {
@@ -133,7 +130,6 @@ public final class DynamicScopeWrapper implements TruffleObject {
     }
 
     @ExportMessage
-    @TruffleBoundary
     void writeMember(String name, Object value,
                     @CachedLibrary("this.scope") DynamicObjectLibrary access) throws UnsupportedMessageException, UnknownIdentifierException {
         Object curValue = access.getOrDefault(scope, name, null);
