@@ -422,7 +422,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected DynamicObject getForeignObject(Object thisObj,
                         @CachedLibrary("thisObj") InteropLibrary interop,
                         @CachedLibrary(limit = "3") InteropLibrary members,
-                        @Cached("create()") ImportValueNode toJSType) {
+                        @Cached("create()") ImportValueNode toJSType,
+                        @Cached BranchProfile errorBranch) {
             DynamicObject result = JSOrdinary.create(getContext());
 
             try {
@@ -430,6 +431,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     Object keysObj = interop.getMembers(thisObj);
                     long size = members.getArraySize(keysObj);
                     if (size < 0 || size >= Integer.MAX_VALUE) {
+                        errorBranch.enter();
                         throw Errors.createRangeErrorInvalidArrayLength();
                     }
                     for (int i = 0; i < size; i++) {
@@ -448,6 +450,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 if (interop.hasArrayElements(thisObj)) {
                     long size = interop.getArraySize(thisObj);
                     if (size < 0 || size >= Integer.MAX_VALUE) {
+                        errorBranch.enter();
                         throw Errors.createRangeErrorInvalidArrayLength();
                     }
                     for (long i = 0; i < size; i++) {
@@ -513,13 +516,15 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"isForeignObject(thisObj)", "!symbols"}, limit = "3")
         protected DynamicObject getForeignObjectNames(Object thisObj,
                         @CachedLibrary("thisObj") InteropLibrary interop,
-                        @CachedLibrary(limit = "3") InteropLibrary members) {
+                        @CachedLibrary(limit = "3") InteropLibrary members,
+                        @Cached BranchProfile errorBranch) {
             Object[] array;
             if (interop.hasMembers(thisObj)) {
                 try {
                     Object keysObj = interop.getMembers(thisObj);
                     long size = members.getArraySize(keysObj);
                     if (size < 0 || size >= Integer.MAX_VALUE) {
+                        errorBranch.enter();
                         throw Errors.createRangeErrorInvalidArrayLength();
                     }
                     array = new Object[(int) size];
@@ -819,12 +824,14 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected DynamicObject keysForeign(Object obj,
                         @CachedLibrary("obj") InteropLibrary interop,
                         @CachedLibrary(limit = "3") InteropLibrary members,
-                        @Cached BranchProfile growProfile) {
+                        @Cached BranchProfile growProfile,
+                        @Cached BranchProfile errorBranch) {
             if (interop.hasMembers(obj)) {
                 try {
                     Object keysObj = interop.getMembers(obj);
                     long size = members.getArraySize(keysObj);
                     if (size < 0 || size >= Integer.MAX_VALUE) {
+                        errorBranch.enter();
                         throw Errors.createRangeErrorInvalidArrayLength();
                     }
                     if (size > 0) {
@@ -1060,11 +1067,13 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @CachedLibrary("thisObj") InteropLibrary interop,
                         @CachedLibrary(limit = "3") InteropLibrary members,
                         @Cached ImportValueNode importValue,
-                        @Cached BranchProfile growProfile) {
+                        @Cached BranchProfile growProfile,
+                        @Cached BranchProfile errorBranch) {
             try {
                 Object keysObj = interop.getMembers(thisObj);
                 long size = members.getArraySize(keysObj);
                 if (size < 0 || size >= Integer.MAX_VALUE) {
+                    errorBranch.enter();
                     throw Errors.createRangeErrorInvalidArrayLength();
                 }
                 SimpleArrayList<Object> values = SimpleArrayList.create(size);
