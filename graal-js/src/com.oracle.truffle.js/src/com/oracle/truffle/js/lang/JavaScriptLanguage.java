@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -160,7 +161,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     public static final String IMPLEMENTATION_NAME = "GraalVM JavaScript";
     public static final String ID = "js";
 
-    private volatile JSContext languageContext;
+    @CompilationFinal private volatile JSContext languageContext;
     private volatile boolean multiContext;
 
     private final Assumption promiseJobsQueueEmptyAssumption;
@@ -297,6 +298,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     protected JSRealm createContext(Env env) {
+        CompilerAsserts.neverPartOfCompilation();
         JSContext context = languageContext;
         if (context == null) {
             context = initLanguageContext(env);
@@ -314,6 +316,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     }
 
     private synchronized JSContext initLanguageContext(Env env) {
+        CompilerAsserts.neverPartOfCompilation();
         JSContext curContext = languageContext;
         if (curContext != null) {
             assert curContext.getContextOptions().equals(JSContextOptions.fromOptionValues(env.getOptions()));
@@ -335,6 +338,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     protected boolean patchContext(JSRealm realm, Env newEnv) {
+        CompilerAsserts.neverPartOfCompilation();
         assert realm.getContext().getLanguage() == this;
 
         if (optionsAllowPreInitializedContext(realm.getEnv(), newEnv) && realm.patchContext(newEnv)) {
@@ -491,7 +495,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     }
 
     public JSContext getJSContext() {
-        return languageContext;
+        return Objects.requireNonNull(languageContext);
     }
 
     public boolean bindMemberFunctions() {
