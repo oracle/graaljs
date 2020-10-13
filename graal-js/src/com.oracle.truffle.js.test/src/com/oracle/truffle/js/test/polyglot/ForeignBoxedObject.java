@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,148 +41,28 @@
 package com.oracle.truffle.js.test.polyglot;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectFactory;
-import com.oracle.truffle.api.object.Layout;
-import com.oracle.truffle.api.object.ObjectType;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 
-@ExportLibrary(value = InteropLibrary.class, receiverType = DynamicObject.class)
-public final class ForeignBoxedObject extends ObjectType {
-    private static final Layout LAYOUT = Layout.createLayout();
-    private static final ForeignBoxedObject SINGLETON = new ForeignBoxedObject();
-    private static final DynamicObjectFactory FACTORY;
-    private static final Property VALUE_PROPERTY;
+@ExportLibrary(value = InteropLibrary.class, delegateTo = "value")
+public final class ForeignBoxedObject extends DynamicObject {
 
-    static {
-        Shape.Allocator allocator = LAYOUT.createAllocator();
-        Shape shape = LAYOUT.createShape(SINGLETON);
-        VALUE_PROPERTY = Property.create("value", allocator.locationForType(Object.class), 0);
-        FACTORY = shape.addProperty(VALUE_PROPERTY).createFactory();
-    }
+    private static final Shape SHAPE = Shape.newBuilder().build();
 
-    private ForeignBoxedObject() {
+    final Object value;
+
+    private ForeignBoxedObject(Object value) {
+        super(SHAPE);
+        this.value = value;
     }
 
     public static DynamicObject createNew(Object value) {
-        return FACTORY.newInstance(value);
+        return new ForeignBoxedObject(value);
     }
 
-    private static Object getValue(DynamicObject object) {
-        return VALUE_PROPERTY.getLocation().get(object);
+    public Object getValue() {
+        return value;
     }
 
-    @Override
-    public Class<?> dispatch() {
-        return ForeignBoxedObject.class;
-    }
-
-    @ExportMessage
-    static boolean isBoolean(DynamicObject object) {
-        return getValue(object) instanceof Boolean;
-    }
-
-    @ExportMessage
-    static boolean asBoolean(DynamicObject object) throws UnsupportedMessageException {
-        if (!isBoolean(object)) {
-            throw UnsupportedMessageException.create();
-        }
-        return (boolean) getValue(object);
-    }
-
-    @ExportMessage
-    static boolean isString(DynamicObject object) {
-        return getValue(object) instanceof String;
-    }
-
-    @ExportMessage
-    static String asString(DynamicObject object) throws UnsupportedMessageException {
-        if (!isString(object)) {
-            throw UnsupportedMessageException.create();
-        }
-        return (String) getValue(object);
-    }
-
-    @ExportMessage
-    static boolean isNumber(DynamicObject receiver,
-                    @CachedLibrary(limit = "1") InteropLibrary interop) {
-        return interop.isNumber(getValue(receiver));
-    }
-
-    @ExportMessage
-    static boolean fitsInByte(DynamicObject receiver,
-                    @CachedLibrary(limit = "1") InteropLibrary interop) {
-        return interop.fitsInByte(getValue(receiver));
-    }
-
-    @ExportMessage
-    static boolean fitsInShort(DynamicObject receiver,
-                    @CachedLibrary(limit = "1") InteropLibrary interop) {
-        return interop.fitsInShort(getValue(receiver));
-    }
-
-    @ExportMessage
-    static boolean fitsInInt(DynamicObject receiver,
-                    @CachedLibrary(limit = "1") InteropLibrary interop) {
-        return interop.fitsInInt(getValue(receiver));
-    }
-
-    @ExportMessage
-    static boolean fitsInLong(DynamicObject receiver,
-                    @CachedLibrary(limit = "1") InteropLibrary interop) {
-        return interop.fitsInLong(getValue(receiver));
-    }
-
-    @ExportMessage
-    static boolean fitsInFloat(DynamicObject receiver,
-                    @CachedLibrary(limit = "1") InteropLibrary interop) {
-        return interop.fitsInFloat(getValue(receiver));
-    }
-
-    @ExportMessage
-    static boolean fitsInDouble(DynamicObject receiver,
-                    @CachedLibrary(limit = "1") InteropLibrary interop) {
-        return interop.fitsInDouble(getValue(receiver));
-    }
-
-    @ExportMessage
-    static byte asByte(DynamicObject receiver,
-                    @CachedLibrary(limit = "1") InteropLibrary interop) throws UnsupportedMessageException {
-        return interop.asByte(getValue(receiver));
-    }
-
-    @ExportMessage
-    static short asShort(DynamicObject receiver,
-                    @CachedLibrary(limit = "1") InteropLibrary interop) throws UnsupportedMessageException {
-        return interop.asShort(getValue(receiver));
-    }
-
-    @ExportMessage
-    static int asInt(DynamicObject receiver,
-                    @CachedLibrary(limit = "1") InteropLibrary interop) throws UnsupportedMessageException {
-        return interop.asInt(getValue(receiver));
-    }
-
-    @ExportMessage
-    static long asLong(DynamicObject receiver,
-                    @CachedLibrary(limit = "1") InteropLibrary interop) throws UnsupportedMessageException {
-        return interop.asLong(getValue(receiver));
-    }
-
-    @ExportMessage
-    static float asFloat(DynamicObject receiver,
-                    @CachedLibrary(limit = "1") InteropLibrary interop) throws UnsupportedMessageException {
-        return interop.asFloat(getValue(receiver));
-    }
-
-    @ExportMessage
-    static double asDouble(DynamicObject receiver,
-                    @CachedLibrary(limit = "1") InteropLibrary interop) throws UnsupportedMessageException {
-        return interop.asDouble(getValue(receiver));
-    }
 }
