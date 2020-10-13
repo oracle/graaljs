@@ -65,7 +65,6 @@ import java.util.regex.Pattern;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.junit.Assert;
 import org.junit.internal.TextListener;
 import org.junit.runner.Description;
@@ -80,8 +79,7 @@ import org.junit.runners.model.InitializationError;
 
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.JSTest;
-import com.oracle.truffle.js.test.polyglot.ForeignDynamicObject;
-import com.oracle.truffle.js.test.polyglot.ForeignTestMap;
+import com.oracle.truffle.js.test.polyglot.PolyglotBuiltinTest;
 import com.oracle.truffle.js.test.suite.JSTestRunner.TestCase;
 
 public final class JSTestRunner extends ParentRunner<TestCase> {
@@ -275,10 +273,7 @@ public final class JSTestRunner extends ParentRunner<TestCase> {
     private static void setTestGlobals(Context context, boolean inNashornMode) {
         Value globalBindings = context.getBindings("js");
         globalBindings.putMember("OptionNashornCompat", inNashornMode);
-
-        Value polyglotObject = globalBindings.getMember("Polyglot");
-        polyglotObject.putMember("createForeignObject", (ProxyExecutable) (args) -> new ForeignTestMap());
-        polyglotObject.putMember("createForeignDynamicObject", (ProxyExecutable) (args) -> new ForeignDynamicObject());
+        PolyglotBuiltinTest.addTestPolyglotBuiltins(context);
     }
 
     public static void runInMain(Class<?> testClass, String[] args) throws InitializationError, NoTestsRemainException {

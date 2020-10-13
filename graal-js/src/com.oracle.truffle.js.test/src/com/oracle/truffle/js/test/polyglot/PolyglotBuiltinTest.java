@@ -92,7 +92,7 @@ public class PolyglotBuiltinTest extends JSTest {
         }
     }
 
-    private static void addTestPolyglotBuiltins(Context context) {
+    public static void addTestPolyglotBuiltins(Context context) {
         Value polyglotObject = context.getBindings("js").getMember("Polyglot");
         polyglotObject.putMember("createForeignObject", (ProxyExecutable) (args) -> new ForeignTestMap());
         polyglotObject.putMember("createForeignDynamicObject", (ProxyExecutable) (args) -> new ForeignDynamicObject());
