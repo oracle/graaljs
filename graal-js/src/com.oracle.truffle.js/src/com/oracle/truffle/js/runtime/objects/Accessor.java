@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
-import com.oracle.truffle.api.object.*;
+import com.oracle.truffle.api.object.DynamicObject;
 
 public final class Accessor {
     private final DynamicObject getter;
@@ -57,5 +57,13 @@ public final class Accessor {
 
     public DynamicObject getSetter() {
         return setter;
+    }
+
+    public boolean hasGetter() {
+        return getter != Undefined.instance;
+    }
+
+    public boolean hasSetter() {
+        return setter != Undefined.instance;
     }
 }

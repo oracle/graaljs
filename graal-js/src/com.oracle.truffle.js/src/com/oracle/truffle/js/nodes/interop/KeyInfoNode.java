@@ -40,16 +40,22 @@
  */
 package com.oracle.truffle.js.nodes.interop;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.IsExtensibleNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -73,7 +79,48 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
 
     public abstract boolean execute(DynamicObject receiver, String key, int query);
 
-    @Specialization
+    @Specialization(guards = {"!isJSProxy(target)", "property != null"}, limit = "2")
+    static boolean cachedOwnProperty(DynamicObject target, String key, int query,
+                    @CachedLibrary("target") DynamicObjectLibrary objectLibrary,
+                    @Bind("objectLibrary.getProperty(target, key)") Property property,
+                    @Cached IsCallableNode isCallable) {
+        if (JSProperty.isAccessor(property)) {
+            Accessor accessor = (Accessor) objectLibrary.getOrDefault(target, key, null);
+            if ((query & READABLE) != 0 && accessor.hasGetter()) {
+                return true;
+            }
+            if ((query & MODIFIABLE) != 0 && accessor.hasSetter()) {
+                return true;
+            }
+            if ((query & READ_SIDE_EFFECTS) != 0 && accessor.hasGetter()) {
+                return true;
+            }
+            if ((query & WRITE_SIDE_EFFECTS) != 0 && accessor.hasSetter()) {
+                return true;
+            }
+            if ((query & REMOVABLE) != 0 && JSProperty.isConfigurable(property)) {
+                return true;
+            }
+            return false;
+        } else {
+            assert JSProperty.isData(property);
+            if ((query & READABLE) != 0) {
+                return true;
+            }
+            if ((query & MODIFIABLE) != 0 && JSProperty.isWritable(property)) {
+                return true;
+            }
+            if ((query & INVOCABLE) != 0 && isCallable.executeBoolean(objectLibrary.getOrDefault(target, key, Undefined.instance))) {
+                return true;
+            }
+            if ((query & REMOVABLE) != 0 && JSProperty.isConfigurable(property)) {
+                return true;
+            }
+            return false;
+        }
+    }
+
+    @Specialization(replaces = "cachedOwnProperty")
     static boolean member(DynamicObject target, String key, int query,
                     @Cached GetPrototypeNode getPrototype,
                     @Cached IsCallableNode isCallable,
