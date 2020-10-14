@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -55,6 +56,7 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 /**
  * Implements abstract operation IsExtensible.
  */
+@GenerateUncached
 @ImportStatic({JSShape.class})
 public abstract class IsExtensibleNode extends JavaScriptBaseNode {
 

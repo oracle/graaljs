@@ -40,11 +40,14 @@
  */
 package com.oracle.truffle.js.nodes.interop;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
+import com.oracle.truffle.js.nodes.access.IsExtensibleNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -71,10 +74,13 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
     public abstract boolean execute(DynamicObject receiver, String key, int query);
 
     @Specialization
-    static boolean member(DynamicObject target, String key, int query) {
+    static boolean member(DynamicObject target, String key, int query,
+                    @Cached GetPrototypeNode getPrototype,
+                    @Cached IsCallableNode isCallable,
+                    @Cached IsExtensibleNode isExtensible) {
         PropertyDescriptor desc = null;
         boolean isProxy = false;
-        for (DynamicObject proto = target; proto != Null.instance; proto = JSObject.getPrototype(proto)) {
+        for (DynamicObject proto = target; proto != Null.instance; proto = getPrototype.executeJSObject(proto)) {
             desc = JSObject.getOwnProperty(proto, key);
             if (JSProxy.isJSProxy(proto)) {
                 isProxy = true;
@@ -85,7 +91,7 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
             }
         }
         if (desc == null) {
-            if ((query & INSERTABLE) != 0 && JSObject.isExtensible(target)) {
+            if ((query & INSERTABLE) != 0 && isExtensible.executeBoolean(target)) {
                 return true;
             }
             return false;
@@ -109,7 +115,7 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
         if ((query & WRITE_SIDE_EFFECTS) != 0 && writeSideEffects) {
             return true;
         }
-        if ((query & INVOCABLE) != 0 && desc.isDataDescriptor() && JSRuntime.isCallable(desc.getValue())) {
+        if ((query & INVOCABLE) != 0 && desc.isDataDescriptor() && isCallable.executeBoolean(desc.getValue())) {
             return true;
         }
         if ((query & REMOVABLE) != 0 && desc.getConfigurable()) {
