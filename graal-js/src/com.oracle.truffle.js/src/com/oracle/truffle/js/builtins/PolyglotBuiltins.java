@@ -41,8 +41,6 @@
 package com.oracle.truffle.js.builtins;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.NoSuchFileException;
 
@@ -62,12 +60,9 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotConstructNodeGen;
-import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotCreateForeignDynamicObjectNodeGen;
-import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotCreateForeignObjectNodeGen;
 import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotEvalFileNodeGen;
 import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotEvalNodeGen;
 import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotExecuteNodeGen;
@@ -93,7 +88,6 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -165,20 +159,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             keys(1),
             hasKeys(1),
             isInstantiable(1),
-            evalFile(2), // under special flag
-
-            createForeignObject(0) {
-                @Override
-                public boolean isAOTSupported() {
-                    return false;
-                }
-            },
-            createForeignDynamicObject(0) {
-                @Override
-                public boolean isAOTSupported() {
-                    return false;
-                }
-            };
+            evalFile(2); // under special flag
 
             private final int length;
 
@@ -229,16 +210,6 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                     return PolyglotHasKeysNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                 case evalFile:
                     return PolyglotEvalFileNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
-                case createForeignObject:
-                    if (!JSConfig.SubstrateVM) {
-                        return PolyglotCreateForeignObjectNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
-                    }
-                    break;
-                case createForeignDynamicObject:
-                    if (!JSConfig.SubstrateVM) {
-                        return PolyglotCreateForeignDynamicObjectNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
-                    }
-                    break;
             }
             return null;
         }
@@ -907,71 +878,6 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @Specialization(guards = "!isTruffleObject(obj)")
         protected static boolean unsupported(@SuppressWarnings("unused") Object obj) {
             return false;
-        }
-    }
-
-    /**
-     * This node exists for debugging purposes. You can call Interop.createForeignObject() from
-     * JavaScript code to create a {@link TruffleObject}. It is used to simplify testing interop
-     * features in JavaScript code.
-     *
-     */
-    abstract static class PolyglotCreateForeignObjectNode extends JSBuiltinNode {
-
-        private static Class<?> testMapClass;
-
-        PolyglotCreateForeignObjectNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        @TruffleBoundary
-        protected Object createForeignObject() {
-            if (!JSConfig.SubstrateVM) {
-                try {
-                    if (testMapClass == null) {
-                        testMapClass = Class.forName("com.oracle.truffle.js.test.polyglot.ForeignTestMap");
-                    }
-                    return getContext().getRealm().getEnv().asGuestValue(testMapClass.newInstance());
-                } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
-                    throw Errors.createTypeError("cannot test with ForeignTestMap: " + e.getMessage());
-                }
-            } else {
-                return Undefined.instance;
-            }
-        }
-    }
-
-    /**
-     * This node exists for debugging purposes. You can call Interop.createForeignDynamicObject()
-     * from JavaScript code to create a {@link DynamicObject}. It is used to simplify testing
-     * interop features in JavaScript code.
-     *
-     */
-    abstract static class PolyglotCreateForeignDynamicObjectNode extends JSBuiltinNode {
-
-        private static Class<?> testMapClass;
-
-        PolyglotCreateForeignDynamicObjectNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        @TruffleBoundary
-        protected Object createForeignDynamicObject() {
-            if (!JSConfig.SubstrateVM) {
-                try {
-                    if (testMapClass == null) {
-                        testMapClass = Class.forName("com.oracle.truffle.js.test.polyglot.ForeignDynamicObject");
-                    }
-                    Method createNew = testMapClass.getMethod("createNew");
-                    return createNew.invoke(null);
-                } catch (ClassNotFoundException | NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
-                    throw Errors.createTypeError("cannot test with ForeignDynamicObject: " + e.getMessage());
-                }
-            } else {
-                return Undefined.instance;
-            }
         }
     }
 

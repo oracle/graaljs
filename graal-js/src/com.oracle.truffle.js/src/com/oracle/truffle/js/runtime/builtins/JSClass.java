@@ -305,7 +305,7 @@ public abstract class JSClass extends ObjectType {
     }
 
     public static boolean isInstance(DynamicObject object, JSClass jsclass) {
-        return object.getShape().getObjectType() == jsclass;
+        return object.getShape().getDynamicType() == jsclass;
     }
 
     /**

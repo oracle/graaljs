@@ -44,8 +44,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Layout;
-import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
 
 /**
@@ -53,27 +51,18 @@ import com.oracle.truffle.api.object.Shape;
  * JavaScript object type to simulate usage of a non-JS DynamicObject.
  *
  */
-@ExportLibrary(value = InteropLibrary.class, receiverType = DynamicObject.class)
-public final class ForeignDynamicObject extends ObjectType {
-    private static final ObjectType SINGLETON = new ForeignDynamicObject();
-    private static final Layout LAYOUT = Layout.createLayout();
-    private static final Shape emptyShape = LAYOUT.createShape(SINGLETON);
+@ExportLibrary(value = InteropLibrary.class)
+public final class ForeignDynamicObject extends DynamicObject {
 
-    private ForeignDynamicObject() {
-    }
+    private static final Shape SHAPE = Shape.newBuilder().build();
 
-    public static DynamicObject createNew() {
-        return emptyShape.newInstance();
-    }
-
-    @Override
-    public Class<?> dispatch() {
-        return ForeignDynamicObject.class;
+    public ForeignDynamicObject() {
+        super(SHAPE);
     }
 
     @SuppressWarnings({"static-method", "unused"})
     @ExportMessage
-    static Object toDisplayString(DynamicObject receiver, boolean allowSideEffects) {
+    Object toDisplayString(boolean allowSideEffects) {
         return "{}";
     }
 }

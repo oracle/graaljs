@@ -96,7 +96,7 @@ public class CollectionsInteropTest {
 
     @Test
     public void testForeignDynamicObjectNormalization() {
-        DynamicObject object = ForeignDynamicObject.createNew();
+        DynamicObject object = new ForeignDynamicObject();
         checkNormalization(object, object);
     }
 
