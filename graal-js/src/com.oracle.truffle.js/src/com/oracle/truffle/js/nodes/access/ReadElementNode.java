@@ -62,7 +62,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.helper.ListGetNode;
@@ -114,8 +113,6 @@ import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSProperty;
-import com.oracle.truffle.js.runtime.objects.PropertyReference;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
@@ -666,7 +663,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     return getProperty(targetObject, Boundaries.stringValueOf(index), receiver, defaultValue);
                 }
             } else {
-                return getNonArrayNode().getPropertyGeneric(targetObject, index, receiver, defaultValue, root);
+                return readNonArrayObjectIndex(targetObject, index, receiver, defaultValue, root);
             }
         }
 
@@ -702,7 +699,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     return JSTypesGen.expectInteger(getProperty(targetObject, Boundaries.stringValueOf(index), receiver, defaultValue));
                 }
             } else {
-                return JSTypesGen.expectInteger(getNonArrayNode().getPropertyGeneric(targetObject, index, receiver, defaultValue, root));
+                return JSTypesGen.expectInteger(readNonArrayObjectIndex(targetObject, index, receiver, defaultValue, root));
             }
         }
 
@@ -738,7 +735,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     return JSTypesGen.expectDouble(getProperty(targetObject, Boundaries.stringValueOf(index), receiver, defaultValue));
                 }
             } else {
-                return JSTypesGen.expectDouble(getNonArrayNode().getPropertyGeneric(targetObject, index, receiver, defaultValue, root));
+                return JSTypesGen.expectDouble(readNonArrayObjectIndex(targetObject, index, receiver, defaultValue, root));
             }
         }
 
@@ -762,38 +759,12 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     private static class JSObjectReadElementNonArrayTypeCacheNode extends JavaScriptBaseNode {
 
-        private final ConditionProfile propertyReferenceProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isDataPropertyBranch = ConditionProfile.createBinaryProfile();
         @Child private CachedGetPropertyNode getPropertyCachedNode;
 
         JSObjectReadElementNonArrayTypeCacheNode() {
         }
 
         public Object execute(DynamicObject targetObject, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
-            if (propertyReferenceProfile.profile(
-                            index instanceof PropertyReference && ((PropertyReference) index).getDepth() == 0 && ((PropertyReference) index).getShape() == targetObject.getShape())) {
-                return readPropertyReference(index, targetObject);
-            } else {
-                return getPropertyGeneric(targetObject, index, receiver, defaultValue, root);
-            }
-        }
-
-        private Object readPropertyReference(Object index, DynamicObject targetObject) {
-            Property property = ((PropertyReference) index).getProperty();
-            if (isDataPropertyBranch.profile(JSProperty.isData(property))) {
-                // TODO PIC for location class
-                // return locationClassProfile.profileClass(property.getLocation())
-                return property.getLocation().get(targetObject, false);
-            } else {
-                return JSProperty.getValue(property, targetObject, targetObject, false);
-            }
-        }
-
-        public Object getPropertyGeneric(DynamicObject targetObject, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
-            return getCachedProperty(targetObject, index, receiver, defaultValue, root);
-        }
-
-        private Object getCachedProperty(DynamicObject targetObject, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
             if (getPropertyCachedNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getPropertyCachedNode = insert(CachedGetPropertyNode.create(root.context));
