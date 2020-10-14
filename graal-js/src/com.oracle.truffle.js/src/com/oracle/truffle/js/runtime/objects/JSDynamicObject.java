@@ -72,7 +72,7 @@ public abstract class JSDynamicObject extends DynamicObject implements TruffleOb
     }
 
     public JSClass getJSClass() {
-        return (JSClass) getObjectType(this);
+        return (JSClass) getDynamicType(this);
     }
 
     /**
@@ -344,14 +344,14 @@ public abstract class JSDynamicObject extends DynamicObject implements TruffleOb
     }
 
     public static JSClass getJSClass(DynamicObject obj) {
-        return (JSClass) getObjectType(obj);
+        return (JSClass) getDynamicType(obj);
     }
 
     public static void setJSClass(DynamicObject obj, JSClass jsclass) {
         DynamicObjectLibrary.getUncached().setDynamicType(obj, jsclass);
     }
 
-    public static Object getObjectType(DynamicObject obj) {
+    public static Object getDynamicType(DynamicObject obj) {
         return DynamicObjectLibrary.getUncached().getDynamicType(obj);
     }
 
