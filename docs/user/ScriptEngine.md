@@ -43,7 +43,7 @@ java -Dpolyglot.js.ecmascript-version=2020 MyApplication
 ```
 
 Or, options to the JavaScript engine can be set programmatically from within Java before creating `ScriptEngine`. This, however, only works for the options passed to the JavaScript engine (like `js.ecmascript`), not for the six options mentioned above that can be set via the `Bindings`.
-Another caveat is that those system properties are shared by all concurrently executed ScriptEngines.
+Another caveat is that those system properties are shared by all concurrently executed `ScriptEngine`s.
 
 ## Manually Creating `Context` for More Flexibility
 `Context` options can also be passed to `GraalJSScriptEngine` directly, via an instance of `Context.Builder`:
