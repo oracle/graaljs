@@ -51,6 +51,8 @@ import java.util.Set;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -85,12 +87,38 @@ public class JSONStringifyInteropTest {
         }
     }
 
+    private static void checkStringification(Object objectToStringify, String expectedResult) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).build()) {
+            context.getBindings(ID).putMember("objectToStringify", objectToStringify);
+            Value result = context.eval(ID, "JSON.stringify(objectToStringify)");
+            assertEquals(expectedResult, result.asString());
+        }
+    }
+
     @Test
     public void testNonReadableMembers() {
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).build()) {
-            context.getBindings(ID).putMember("myObj", new InvocableMemberObject(Collections.singletonMap("someKey", "someValue")));
-            Value result = context.eval(ID, "JSON.stringify(myObj)");
-            assertEquals("{}", result.asString());
+        checkStringification(new InvocableMemberObject(Collections.singletonMap("someKey", "someValue")), "{}");
+    }
+
+    @Test
+    public void testToJSONOfProxyObject() {
+        Object object = ProxyObject.fromMap(Collections.singletonMap("toJSON", new ProxyExecutable() {
+            @Override
+            public Object execute(Value... arguments) {
+                return "fromToJSON";
+            }
+        }));
+        checkStringification(object, "\"fromToJSON\"");
+    }
+
+    @Test
+    public void testToJSONOfHostObject() {
+        checkStringification(new HostObjectWithToJSON(), "\"HostObjectWithToJSON\"");
+    }
+
+    public static class HostObjectWithToJSON {
+        public Object toJSON(@SuppressWarnings("unused") String key) {
+            return "HostObjectWithToJSON";
         }
     }
 
