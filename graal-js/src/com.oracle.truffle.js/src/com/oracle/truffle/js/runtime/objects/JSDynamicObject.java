@@ -352,7 +352,7 @@ public abstract class JSDynamicObject extends DynamicObject implements TruffleOb
     }
 
     public static Object getDynamicType(DynamicObject obj) {
-        return DynamicObjectLibrary.getUncached().getDynamicType(obj);
+        return obj.getShape().getDynamicType();
     }
 
     public static boolean hasProperty(DynamicObject obj, Object key) {
@@ -388,7 +388,7 @@ public abstract class JSDynamicObject extends DynamicObject implements TruffleOb
     }
 
     public static int getObjectFlags(DynamicObject obj) {
-        return DynamicObjectLibrary.getUncached().getShapeFlags(obj);
+        return obj.getShape().getFlags();
     }
 
     public static void setObjectFlags(DynamicObject obj, int flags) {
