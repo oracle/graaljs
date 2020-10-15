@@ -199,7 +199,14 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
 
     private Object jsonStrPreparePart2(JSONData data, String key, Object holder, Object valueArg) {
         Object value = valueArg;
+        boolean tryToJSON = false;
         if (JSRuntime.isObject(value) || JSRuntime.isBigInt(value)) {
+            tryToJSON = true;
+        } else if (JSRuntime.isForeignObject(value)) {
+            InteropLibrary interop = InteropLibrary.getUncached(value);
+            tryToJSON = interop.hasMembers(value) && !interop.isNull(value) && !interop.isBoolean(value) && !interop.isString(value) && !interop.isNumber(value);
+        }
+        if (tryToJSON) {
             value = jsonStrPrepareObject(key, value);
         }
 
@@ -241,12 +248,12 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         }
         Object toJSON = getToJSONProperty.getValue(value);
         if (JSRuntime.isCallable(toJSON)) {
-            return jsonStrPrepareObjectFunction(key, value, (DynamicObject) toJSON);
+            return jsonStrPrepareObjectFunction(key, value, toJSON);
         }
         return value;
     }
 
-    private Object jsonStrPrepareObjectFunction(Object key, Object value, DynamicObject toJSON) {
+    private Object jsonStrPrepareObjectFunction(Object key, Object value, Object toJSON) {
         if (callToJSONFunction == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             callToJSONFunction = insert(JSFunctionCallNode.createCall());
