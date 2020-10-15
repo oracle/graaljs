@@ -86,7 +86,6 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Nullish;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
-import com.oracle.truffle.js.runtime.objects.PropertyReference;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
@@ -1342,8 +1341,6 @@ public final class JSRuntime {
             return (String) obj;
         } else if (obj instanceof JSLazyString) {
             return ((JSLazyString) obj).toString();
-        } else if (obj instanceof PropertyReference) {
-            return ((PropertyReference) obj).toString();
         }
         return Boundaries.javaToString(obj);
     }
@@ -1459,8 +1456,6 @@ public final class JSRuntime {
             return JSString.create(ctx, (JSLazyString) value);
         } else if (value instanceof BigInt) {
             return JSBigInt.create(ctx, (BigInt) value);
-        } else if (value instanceof PropertyReference) {
-            return JSString.create(ctx, value.toString());
         } else if (isNumber(value)) {
             return JSNumber.create(ctx, (Number) value);
         } else if (value instanceof Symbol) {
@@ -1967,11 +1962,11 @@ public final class JSRuntime {
      * Is value is a {@link CharSequence} that lazily evaluates to a {@link String}).
      */
     public static boolean isLazyString(Object value) {
-        return value instanceof JSLazyString || value instanceof PropertyReference;
+        return value instanceof JSLazyString;
     }
 
     public static boolean isStringClass(Class<?> clazz) {
-        return String.class.isAssignableFrom(clazz) || JSLazyString.class.isAssignableFrom(clazz) || PropertyReference.class.isAssignableFrom(clazz);
+        return String.class.isAssignableFrom(clazz) || JSLazyString.class.isAssignableFrom(clazz);
     }
 
     public static Object nullToUndefined(Object value) {

@@ -210,7 +210,6 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
-import com.oracle.truffle.js.runtime.objects.PropertyReference;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
@@ -861,8 +860,6 @@ public final class GraalJSAccess {
             return value;
         } else if (value instanceof JSLazyString) {
             return ((JSLazyString) value).toString();
-        } else if (value instanceof PropertyReference) {
-            return ((PropertyReference) value).toString();
         } else if (JSRuntime.isForeignObject(value)) {
             InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
             if (interop.isString(value)) {
