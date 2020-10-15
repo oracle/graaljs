@@ -12,7 +12,7 @@ engines, migration guides are available.
 
 ## Running JavaScript
 
-GraalVM can execute plain JavaScript code:
+GraalVM can run plain JavaScript code:
 ```shell
 js [options] [filename...] -- [args]
 ```
@@ -26,7 +26,7 @@ To run Node.js-based applications, use the `node` utility bundled with GraalVM b
 node [options] [filename] [args]
 ```
 
-To install a Node.js module, use the `npm` executable from the GraalVM's `/bin` folder. The `npm` command is equivalent to the default Node.js command and supports all Node.js APIs.
+To install a Node.js module, use the `npm` launcher from the GraalVM's `/bin` folder. The `npm` executable is equivalent to the default Node.js command and supports all Node.js APIs.
 
 1&#46; Install the `colors` and `ansispan` modules using `npm install` as
 follows:
