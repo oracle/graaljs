@@ -120,53 +120,58 @@ The `console` object is available by default and can be deactivated by setting t
 #### `read(file)`
 
 - reads the content of `file`
-- the result is returned as a String. <!---capitalize string?--->
+
+The result is returned as a String.
 
 The argument `file` can be of type:
-
 * `java.io.File`: the file is used directly.
 * all other types: `file` is converted to a String and interpreted as a file name.
 
 #### `readbuffer(file)`
 
 - reads the content of `file` similar to the `read` function
-- the result is returned as a JavaScript `ArrayBuffer` object.
+
+The result is returned as a JavaScript `ArrayBuffer` object.
 
 #### `readline()`
 
 - reads one line of input from the input stream
-- the result is returned as a String. <!---capitalize string?--->
+
+The result is returned as a String.
 
 ### Object
 
 #### `Object.prototype.__defineGetter__(prop, func)`
 
-- defines the `prop` property of `this` to be the getter function `func`.
+- defines the `prop` property of `this` to be the getter function `func`
+
 This functionality is deprecated in most JavaScript engines.
 In recent ECMAScript versions, getters and setters are natively supported by the language.
 
 #### `Object.prototype.__defineSetter__(prop, func)`
 
-- defines the `prop` property of `this` to be the setter function `func`.
+- defines the `prop` property of `this` to be the setter function `func`
+
 This functionality is deprecated in most JavaScript engines.
 In recent ECMAScript versions, getters and setters are natively supported by the language.
 
 #### `Object.prototype.__lookupGetter__(prop)`
 
-- returns the getter function for property `prop` of the object as set by `__defineGetter__`.
+- returns the getter function for property `prop` of the object as set by `__defineGetter__`
+
 This functionality is deprecated in most JavaScript engines.
 In recent ECMAScript versions, getters and setters are natively supported by the language.
 
 #### `Object.prototype.__lookupSetter__(prop)`
 
-- returns the setter function for property `prop` of the object as set by `__defineSetter__`.
+- returns the setter function for property `prop` of the object as set by `__defineSetter__`
+
 This functionality is deprecated in most JavaScript engines.
 In recent ECMAScript versions, getters and setters are natively supported by the language.
 
 ### Nashorn Scripting Mode
 GraalVM JavaScript provides a scripting mode compatible with the one provided by the Nashorn engine.
 It is enabled with the `js.scripting` option. Make sure to have `--experimental-options` set:
-
 ```shell
 js --experimental-options --js.scripting=true
 ```
@@ -203,7 +208,8 @@ The Graal object is available in GraalVM JavaScript by default, unless deactivat
 
 #### `Graal.isGraalRuntime`
 
-- provides whether GraalVM JavaScript is executed on a GraalVM-enabled runtime.
+- provides whether GraalVM JavaScript is executed on a GraalVM-enabled runtime
+
 If `true`, hot code is compiled by the GraalVM compiler, resulting in high peak performance.
 If `false`, GraalVM JavaScript will not be optimized by the GraalVM Compiler, typically resulting in lower performance.
 
