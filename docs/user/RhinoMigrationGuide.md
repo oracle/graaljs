@@ -1,9 +1,8 @@
 # Migration Guide from Rhino to GraalVM JavaScript
 
-This document serves as migration guide for code previously targeted to the Rhino engine.
+This document serves as a migration guide for code previously targeted to the Rhino engine.
 See the [Java Interoperability](JavaInteroperability.md) guide for an overview of supported features.
 
-### Overview
 Both Rhino and GraalVM JavaScript support a similar set of syntax and semantics for Java interoperability.
 The most important differences relevant for migration are listed here.
 
@@ -19,7 +18,7 @@ It tries to special-case its behavior on Java classes and Java objects to provid
 
 Note that GraalVM JavaScript also provides a `console.log` function.
 This is an alias for `print` in pure JavaScript mode, but uses an implementation provided by Node.js when in Node mode.
-Behavior around interop objects differs for `console.log` in Node mode as it does not implement special treatment for such objects.
+The behavior around interop objects differs for `console.log` in Node mode as it does not implement special treatment for such objects.
 
 ### JavaScript vs Java Strings
 GraalVM JavaScript uses Java strings internally to represent JavaScript strings.
