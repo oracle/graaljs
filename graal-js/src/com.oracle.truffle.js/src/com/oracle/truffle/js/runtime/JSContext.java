@@ -105,8 +105,8 @@ import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.builtins.JSUncheckedProxyHandler;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalTime;
+import com.oracle.truffle.js.runtime.builtins.JSUncheckedProxyHandler;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
@@ -306,6 +306,12 @@ public class JSContext {
         WebAssemblySourceInstantiation,
         FinishImportModuleDynamicallyReject,
         FinishImportModuleDynamicallyResolve,
+        TemporalTimeHour,
+        TemporalTimeMinute,
+        TemporalTimeSecond,
+        TemporalTimeMillisecond,
+        TemporalTimeMicrosecond,
+        TemporalTimeNanosecond
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;
