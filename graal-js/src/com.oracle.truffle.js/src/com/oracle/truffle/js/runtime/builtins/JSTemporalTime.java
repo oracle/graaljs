@@ -52,28 +52,6 @@ public class JSTemporalTime extends JSNonProxy implements JSConstructorFactory.D
         return CLASS_NAME;
     }
 
-    private static DynamicObject createHourGetterFunction(JSRealm realm) {
-        JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.TemporalTimeHour, (c) -> {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
-                private final BranchProfile errorBranch = BranchProfile.create();
-
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object obj = frame.getArguments()[0];
-                    if (JSTemporalTime.isJSTemporalTime(obj)) {
-                        return ((JSTemporalTimeObject) obj).getHours();
-                    } else {
-                        errorBranch.enter();
-                        throw Errors.createTypeErrorTemporalTimeExpected();
-                    }
-                }
-            });
-            return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + HOUR);
-        });
-        DynamicObject hourGetter = JSFunction.create(realm, getterData);
-        return hourGetter;
-    }
-
     private static DynamicObject createGetterFunction(JSRealm realm, BuiltinFunctionKey functionKey, String property) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(functionKey, (c) -> {
             CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
