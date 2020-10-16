@@ -2,6 +2,7 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.builtins.TemporalTimePrototypeBuiltinsFactory.JSTemporalTimeEqualsNodeGen;
 import com.oracle.truffle.js.builtins.TemporalTimePrototypeBuiltinsFactory.JSTemporalTimeToStringNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -19,6 +20,7 @@ public class TemporalTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     }
 
     public enum TemporalTimePrototype implements BuiltinEnum<TemporalTimePrototype> {
+        equals(1),
         toString(0),
         toJSON(0);
 
@@ -37,11 +39,50 @@ public class TemporalTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, TemporalTimePrototype builtinEnum) {
         switch (builtinEnum) {
+            case equals:
+                return JSTemporalTimeEqualsNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case toString:
             case toJSON:
                 return JSTemporalTimeToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
+    }
+
+    public abstract static class JSTemporalTimeEquals extends JSBuiltinNode {
+
+        protected JSTemporalTimeEquals(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = "isJSTemporalTime(otherObj)")
+        protected static boolean equals(DynamicObject thisObj, DynamicObject otherObj) {
+            JSTemporalTimeObject temporalTime = (JSTemporalTimeObject) thisObj;
+            JSTemporalTimeObject other = (JSTemporalTimeObject) otherObj;
+            if (temporalTime.getHours() != other.getHours()) {
+                return false;
+            }
+            if (temporalTime.getMinutes() != other.getMinutes()) {
+                return false;
+            }
+            if (temporalTime.getSeconds() != other.getSeconds()) {
+                return false;
+            }
+            if (temporalTime.getMilliseconds() != other.getMilliseconds()) {
+                return false;
+            }
+            if (temporalTime.getMicroseconds() != other.getMicroseconds()) {
+                return false;
+            }
+            if (temporalTime.getNanoseconds() != other.getNanoseconds()) {
+                return false;
+            }
+            return true;
+        }
+
+        @Specialization(guards = {"!isJSTemporalTime(otherObj) || isJavaPrimitive(otherObj)"})
+        protected static boolean otherNotTemporalTime(DynamicObject thisObj, DynamicObject otherObj) {
+            return false;
+        }
     }
 
     public abstract static class JSTemporalTimeToStringNode extends JSBuiltinNode {
