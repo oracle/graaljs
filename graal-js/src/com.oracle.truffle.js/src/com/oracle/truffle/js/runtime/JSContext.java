@@ -100,6 +100,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalTime;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
@@ -394,6 +395,8 @@ public class JSContext {
     private final JSObjectFactory jsAdapterFactory;
     private final JSObjectFactory dictionaryObjectFactory;
 
+    private final JSObjectFactory temporalTimeFactory;
+
     private final JSObjectFactory globalObjectFactory;
 
     private final JSObjectFactory webAssemblyModuleFactory;
@@ -547,6 +550,8 @@ public class JSContext {
         boolean nashornCompat = isOptionNashornCompatibilityMode();
         this.jsAdapterFactory = nashornCompat ? builder.create(JSAdapter.INSTANCE) : null;
         this.javaImporterFactory = nashornCompat ? builder.create(JavaImporter.instance()) : null;
+
+        this.temporalTimeFactory = builder.create(JSTemporalTime.INSTANCE);
 
         this.dictionaryObjectFactory = JSConfig.DictionaryObject ? builder.create(objectPrototypeSupplier, JSDictionary::makeDictionaryShape) : null;
 
@@ -958,6 +963,10 @@ public class JSContext {
 
     public final JSObjectFactory getJavaPackageFactory() {
         return javaPackageFactory;
+    }
+
+    public final JSObjectFactory getTemporalTimeFactory() {
+        return temporalTimeFactory;
     }
 
     public JSObjectFactory getDictionaryObjectFactory() {

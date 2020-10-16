@@ -56,6 +56,7 @@ import java.util.SplittableRandom;
 import java.util.WeakHashMap;
 
 import org.graalvm.collections.Pair;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalTime;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
 
@@ -239,6 +240,9 @@ public class JSRealm {
 
     private final Shape initialRegExpPrototypeShape;
     private final JSObjectFactory.RealmData objectFactories;
+
+    private final DynamicObject temporalTimeConstructor;
+    private final DynamicObject temporalTimePrototype;
 
     // ES6:
     private final DynamicObject symbolConstructor;
@@ -754,6 +758,10 @@ public class JSRealm {
         }
 
         this.foreignIterablePrototype = createForeignIterablePrototype();
+
+        ctor = JSTemporalTime.createConstructor(this);
+        this.temporalTimeConstructor = ctor.getFunctionObject();
+        this.temporalTimePrototype = ctor.getPrototype();
     }
 
     private void initializeTypedArrayConstructors() {
@@ -1146,6 +1154,14 @@ public class JSRealm {
         return javaPackageToPrimitiveFunction;
     }
 
+    public final DynamicObject getTemporalTimeConstructor() {
+        return temporalTimeConstructor;
+    }
+
+    public final DynamicObject getTemporalTimePrototype() {
+        return temporalTimePrototype;
+    }
+
     public final Map<Object, DynamicObject> getTemplateRegistry() {
         if (templateRegistry == null) {
             createTemplateRegistry();
@@ -1405,6 +1421,8 @@ public class JSRealm {
         if (context.getContextOptions().isProfileTime()) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
         }
+
+        addTemporalGlobals();
     }
 
     private void initGlobalNashornExtensions() {
@@ -1533,6 +1551,10 @@ public class JSRealm {
         if (context.isOptionIntl402()) {
             putGlobalProperty(JSIntl.CLASS_NAME, preinitIntlObject != null ? preinitIntlObject : createIntlObject());
         }
+    }
+
+    private void addTemporalGlobals() {
+        putGlobalProperty(JSTemporalTime.CLASS_NAME, getTemporalTimeConstructor());
     }
 
     private DynamicObject createIntlObject() {
