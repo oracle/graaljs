@@ -19,7 +19,8 @@ public class TemporalTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     }
 
     public enum TemporalTimePrototype implements BuiltinEnum<TemporalTimePrototype> {
-        toString(0);
+        toString(0),
+        toJSON(0);
 
         private final int length;
 
@@ -37,6 +38,7 @@ public class TemporalTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, TemporalTimePrototype builtinEnum) {
         switch (builtinEnum) {
             case toString:
+            case toJSON:
                 return JSTemporalTimeToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
