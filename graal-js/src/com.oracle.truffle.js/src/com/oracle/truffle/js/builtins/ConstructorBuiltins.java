@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import java.nio.ByteBuffer;
 import java.util.EnumSet;
 import java.util.Objects;
 import java.util.StringJoiner;
@@ -109,6 +110,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSegmen
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSetNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructStringNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSymbolNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalTimeNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakMapNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakRefNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakSetNodeGen;
@@ -210,6 +212,7 @@ import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalTime;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
@@ -321,6 +324,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         Memory(1),
         Module(1),
         Table(1),
+
+        TemporalTime(6),
 
         // --- not new.target-capable below ---
         TypedArray(0),
@@ -594,6 +599,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 if (construct) {
                     return newTarget ? PromiseConstructorNodeGen.create(context, builtin, args().newTarget().fixedArgs(1).createArgumentNodes(context))
                                     : PromiseConstructorNodeGen.create(context, builtin, args().function().fixedArgs(1).createArgumentNodes(context));
+                } else {
+                    return createCallRequiresNew(context, builtin);
+                }
+
+            case TemporalTime:
+                if(construct) {
+                    return newTarget ? ConstructTemporalTimeNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context))
+                                    : ConstructTemporalTimeNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
@@ -979,6 +992,68 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return realm.getDatePrototype();
         }
 
+    }
+
+    public abstract static class ConstructTemporalTimeNode extends ConstructWithNewTargetNode {
+
+        protected ConstructTemporalTimeNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
+            super(context, builtin, isNewTargetCase);
+        }
+
+        @Specialization(guards = {"args.length == 0"})
+        protected DynamicObject constructTemporalTime(DynamicObject newTarget, Object[] args) {
+            return swapPrototype(JSTemporalTime.create(getContext(),
+                    0, 0, 0, 0, 0, 0
+            ), newTarget);
+        }
+
+        @Specialization(guards = {"args.length == 1"})
+        protected DynamicObject constructTemporalTimeH(DynamicObject newTarget, Object[] args) {
+            return swapPrototype(JSTemporalTime.create(getContext(),
+                    (Integer) args[0], 0, 0, 0, 0, 0
+            ), newTarget);
+        }
+
+        @Specialization(guards = {"args.length == 2"})
+        protected DynamicObject constructTemporalTimeHM(DynamicObject newTarget, Object[] args) {
+            return swapPrototype(JSTemporalTime.create(getContext(),
+                    (Integer) args[0], (Integer) args[1], 0, 0, 0, 0
+            ), newTarget);
+        }
+
+        @Specialization(guards = {"args.length == 3"})
+        protected DynamicObject constructTemporalTimeHMS(DynamicObject newTarget, Object[] args) {
+            return swapPrototype(JSTemporalTime.create(getContext(),
+                    (Integer) args[0], (Integer) args[1], (Integer) args[2], 0, 0, 0
+            ), newTarget);
+        }
+
+        @Specialization(guards = {"args.length == 4"})
+        protected DynamicObject constructTemporalTimeHMSMil(DynamicObject newTarget, Object[] args) {
+            return swapPrototype(JSTemporalTime.create(getContext(),
+                    (Integer) args[0], (Integer) args[1], (Integer) args[2], (Integer) args[3], 0, 0
+            ), newTarget);
+        }
+
+        @Specialization(guards = {"args.length == 5"})
+        protected DynamicObject constructTemporalTimeHMSMilMic(DynamicObject newTarget, Object[] args) {
+            return swapPrototype(JSTemporalTime.create(getContext(),
+                    (Integer) args[0], (Integer) args[1], (Integer) args[2], (Integer) args[3], (Integer) args[4], 0
+            ), newTarget);
+        }
+
+        @Specialization(guards = {"args.length == 6"})
+        protected DynamicObject constructTemporalTimeHMSMilMicN(DynamicObject newTarget, Object[] args) {
+            return swapPrototype(JSTemporalTime.create(getContext(),
+                    (Integer) args[0], (Integer) args[1], (Integer) args[2], (Integer) args[3], (Integer) args[4],
+                    (Integer) args[5]
+            ), newTarget);
+        }
+
+        @Override
+        protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getTemporalTimePrototype();
+        }
     }
 
     public abstract static class ConstructRegExpNode extends ConstructWithNewTargetNode {
