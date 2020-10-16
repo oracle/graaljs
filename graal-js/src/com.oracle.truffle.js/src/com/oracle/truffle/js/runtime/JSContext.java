@@ -294,6 +294,12 @@ public class JSContext {
         WebAssemblyGlobalGetValue,
         WebAssemblyGlobalSetValue,
         WebAssemblySourceInstantiation,
+        TemporalTimeHour,
+        TemporalTimeMinute,
+        TemporalTimeSecond,
+        TemporalTimeMillisecond,
+        TemporalTimeMicrosecond,
+        TemporalTimeNanosecond
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;
