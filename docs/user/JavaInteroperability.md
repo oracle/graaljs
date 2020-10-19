@@ -54,7 +54,7 @@ Object result = inv.invokeMethod(fn, "call", fn);
 
 ## Access Java from JavaScript
 GraalVM provides a set of features to allow interoperability from `JavaScript` to `Java`.
-While Rhino, Nashorn, and GraalVM JavaScript engines have a mostly comparable overall feature set, they differ in exact syntax, and, partly, semantics.
+While Rhino, Nashorn, and GraalVM JavaScript have a mostly comparable overall feature set, they differ in exact syntax, and, partly, semantics.
 
 ### Class Access
 To access a Java class, GraalVM JavaScript supports the `Java.type(typeName)` function:
@@ -73,7 +73,7 @@ var FileClass = Java.type("java.io.File");
 var FileClass = java.io.File;
 ```
 
-GraalVM JavaScript provides `Packages`, `java`, and similar global properties (if the `js.nashorn-compat` option is set) for compatibility.
+GraalVM JavaScript provides `Packages`, `java`, and similar global properties for compatibility.
 However, explicitly accessing the required class with `Java.type` is preferred whenever possible for two reasons:
 1. It allows resolving the class in one step rather than trying to resolve each property as a class.
 2. `Java.type` immediately throws a `TypeError` if the class cannot be found or is not accessible, rather than silently treating an unresolved name as a package.
