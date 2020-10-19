@@ -203,14 +203,12 @@ var myYear = date.year; // calls date.getYear()
 date.year = myYear + 1; // calls date.setYear(myYear + 1);
 ```
 
-GraalVM JavaScript defines an ordering in which it searches for the field or getters.
-It will always first try to read or write the field with the name as provided in the property.
-If the field cannot be read or written, it will try to call a getter or setter:
-* In case of a read operation, GraalVM JavaScript will first try to call a getter with the name `get` and the property name in camel case. If that is not available, a getter with the name `is` and the property name in camel case is called. In the second case, the value is returned even if it is not of type boolean.
-* In case of a write operation, GraalVM JavaScript will try to call a setter with the name `set` and the property name in camel case, providing the value as argument to that function.
+GraalVM JavaScript mimics the behavior of Nashorn regarding the ordering of the access:
+* In case of a read operation, GraalVM JavaScript will first try to call a getter with the name `get` and the property name in camel case. If that is not available, a getter with the name `is` and the property name in camel case is called. In the second case, unlike Nashorn, the resulting value is returned even if it is not of type boolean. Only if both methods are not available, the property itself will be read.
+* In case of a write operation, GraalVM JavaScript will try to call a setter with the name `set` and the property name in camel case, providing the value as argument to that function. If the setter is not available, the property itself will be written.
 
-Nashorn can expose random behavior when both `getFieldName` and `isFieldName` are available.
-Nashorn also gives precedence to getters, even when a public field of the exact name is available.
+Note that Nashorn (and thus, GraalVM JavaScript) makes a clear distinction between property read/writes and function calls.
+When the Java class has both a field and a method of the same name publicly available, `obj.property` will always read the field (or the getter as discussed above), while `obj.property()` will always call the respective method.
 
 ## Additional Aspects to Consider
 
