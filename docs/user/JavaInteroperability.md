@@ -69,7 +69,7 @@ Existing code accessing, e.g., `java.io.File`, should be rewritten to use the `J
 ```js
 //GraalVM JavaScript compliant syntax
 var FileClass = Java.type("java.io.File");
-//Fails in GraalVM JavaScript
+//backwards-compatible syntax
 var FileClass = java.io.File;
 ```
 
@@ -77,6 +77,8 @@ GraalVM JavaScript provides `Packages`, `java`, and similar global properties fo
 However, explicitly accessing the required class with `Java.type` is preferred whenever possible for two reasons:
 1. It allows resolving the class in one step rather than trying to resolve each property as a class.
 2. `Java.type` immediately throws a `TypeError` if the class cannot be found or is not accessible, rather than silently treating an unresolved name as a package.
+
+The `js.java-package-globals` flag can be used to deactivate the global fields of Java packages (set `false` to avoid creation of the fields; default is `true`).
 
 ### Constructing Java Objects
 Java objects can be constructed with JavaScript's `new` keyword:
