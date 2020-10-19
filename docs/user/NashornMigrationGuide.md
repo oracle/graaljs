@@ -3,10 +3,12 @@
 This guide serves as a migration guide for code previously targeted to the Nashorn engine.
 See the [Java Interoperability](JavaInteroperability.md) guide for an overview of supported Java interoperability features.
 
-The Nashorn engine has been deprecated in JDK 11 as part of [JEP 335](https://openjdk.java.net/jeps/335) and is scheduled to be removed from future JDK releases as part of [JEP 372](https://openjdk.java.net/jeps/372).
+The Nashorn engine has been deprecated in JDK 11 as part of [JEP 335](https://openjdk.java.net/jeps/335) and
+and has been removed from JDK15 as part of [JEP 372](https://openjdk.java.net/jeps/372).
 
 GraalVM can step in as a replacement for JavaScript code previously executed on the Nashorn engine.
-GraalVM JavaScript provides all the features previously provided by Nashorn. Many are available by default, some are behind flags, and others require minor modifications to your source code.
+GraalVM provides all the features for JavaScript previously provided by Nashorn.
+Many are available by default, some are behind flags, and others require minor modifications to your source code.
 
 Both Nashorn and GraalVM JavaScript support a similar set of syntax and semantics for Java interoperability.
 One notable difference is that GraalVM JavaScript takes a _secure by default_ approach, meaning some features need to be explicitly enabled that were available by default on Nashorn.
@@ -20,7 +22,7 @@ Nashorn features available by default (dependent on [security settings](#secure-
 
 ## Nashorn Compatibility Mode
 
-GraalVM JavaScript provides the Nashorn compatibility mode.
+GraalVM JavaScript provides a Nashorn compatibility mode.
 Some of the functionality necessary for Nashorn compatibility is only available when the `js.nashorn-compat` option is enabled.
 This is the case for Nashorn-specific extensions that GraalVM JavaScript does not want to expose by default.
 
@@ -87,9 +89,9 @@ GraalVM JavaScript comes with a binary launcher named `js`.
 Note that, depending on the build setup, GraalVM might still ship Nashorn and its `jjs` launcher.
 
 ### ScriptEngine Name `graal.js`
-GraalVM JavaScript is shipped with the `ScriptEngine` support.
-It registers under several names, including "graal.js," "JavaScript," and "js".
-Be sure to activate the Nashorn compatibility mode as described above if you need a full Nashorn compatibility.
+GraalVM JavaScript is shipped with support for `ScriptEngine`.
+It registers under several names, including "graal.js", "JavaScript", and "js".
+Be sure to activate the Nashorn compatibility mode as described above if you need full Nashorn compatibility.
 Depending on the build setup, GraalVM might still ship Nashorn and provide it via ScriptEngine.
 For more details, see [ScriptEngine Implementation](ScriptEngine.md).
 

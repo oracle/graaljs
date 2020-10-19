@@ -20,7 +20,7 @@ Still, several sources of differences have to be considered:
 GraalVM mostly mimicks the original setup of Node, including the `node` executable, `npm`, and similar. However, not all command-line options are supported (or behave exactly identically). You need to (re-)compile native modules against the v8.h file, etc.
 
 - **Internals:**
-GraalVM is implemented on top of a JVM, and thus there will be various internal architectures. This implies that some internal mechanisms behave differently and cannot exactly replicate V8 behaviour. This will hardly ever affect user code, but might affect modules implemented natively, depending on V8 internals.
+GraalVM is implemented on top of a JVM, and thus has a different internal architecture than Node.js based on V8. This implies that some internal mechanisms behave differently and cannot exactly replicate V8 behaviour. This will hardly ever affect user code, but might affect modules implemented natively, depending on V8 internals.
 
 - **Performance:**
 Due to GraalVM being implemented on top of a JVM, performance characteristics vary from the original native implementation. While GraalVM's peak performance can match V8 on many benchmarks, it will typically take longer to reach the peak (known as _warmup_). Be sure to give the GraalVM compiler some extra time when measuring (peak) performance.
@@ -36,7 +36,7 @@ Reason:
 * GraalVM JavaScript tries to be compatible with the ECMAScript specification, as well as competing engines (including Nashorn). In some cases, this is a contradicting requirement; then, ECMAScript is given precedence. Also, there are cases where GraalVM Javascript is not exactly replicating Nashorn features intentionally, e.g., for security reasons.
 
 Solution:
-* In many cases, enabling GraalVM's Nashorn compatibility mode enables features not enabled by default. Note that this can have negative effects on application security! See [Nashorn Migration Guide](NashornMigrationGuide.md) for details.
+* In many cases, enabling GraalVM's Nashorn compatibility mode enables features not enabled by default. Note that this can have negative effects on application security! See the [Nashorn Migration Guide](NashornMigrationGuide.md) for details.
 
 Specific applications:
 * For JSR 223 ScriptEngine, you might want to set the system property `polyglot.js.nashorn-compat` to `true` in order to use the Nashorn compatibility mode.
@@ -135,7 +135,9 @@ public class Minified {
     Function<Value, String> javaCallback = (test) -> {
       return "passed";
     };
-    try(Context ctx = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+    try(Context ctx = Context.newBuilder()
+    .allowHostAccess(HostAccess.ALL)
+    .build()) {
       Value jsFn = ctx.eval("js", "f => function() { return f(arguments); }");
       Value javaFn = jsFn.execute(javaCallback);
       System.out.println("finished: "+javaFn.execute());
@@ -163,8 +165,10 @@ An example that triggers a `Message not supported` error with certain `HostAcces
 ```java
 {
   ...
-  Value jsFn = ...; //a JS function expecting a function as argument
-  jsFn.execute((Function<Integer, Integer>)this::javaFn); //called with a functional interface as argument
+  //a JS function expecting a function as argument
+  Value jsFn = ...;
+  //called with a functional interface as argument
+  jsFn.execute((Function<Integer, Integer>)this::javaFn);
   ...
 }
 
@@ -175,7 +179,7 @@ public Object javaFn(Object x) { ... }
 public Callable<Integer> lambda42 = () -> 42;
 ```
 
-In the example above, the method `javaFn` is seemingly annotated with `@Export`, but the functional interface passed to `jsFn` is not, as the functional interface behaves like a wrapper around `javaFn`, thus hiding the annotation.
+In the example above, the method `javaFn` is seemingly annotated with `@Export`, but the functional interface passed to `jsFn` is **not**, as the functional interface behaves like a wrapper around `javaFn`, thus hiding the annotation.
 Neither is `lambda42` properly annotated - that pattern annotates the _field_ `lambda42`, not its executable function in the generated lambda class.
 
 In order to add the `@Export` annotation to a functional interface, use this pattern instead:
@@ -188,7 +192,9 @@ import org.graalvm.polyglot.HostAccess;
 
 public class FAQ {
   public static void main(String[] args) {
-    try(Context ctx = Context.newBuilder().allowHostAccess(HostAccess.EXPLICIT).build()) {
+    try(Context ctx = Context.newBuilder()
+    .allowHostAccess(HostAccess.EXPLICIT)
+    .build()) {
       Value jsFn = ctx.eval("js", "f => function() { return f(arguments); }");
       Value javaFn = jsFn.execute(new MyExportedFunction());
       System.out.println("finished: " + javaFn.execute());
@@ -211,7 +217,7 @@ However, note that this allows access to _ALL_ instances of this interface - in 
 
 ```java
 HostAccess ha = HostAccess.newBuilder(HostAccess.EXPLICIT)
-  //warning: too permissive for use in production!
+  //warning: too permissive for use in production
   .allowAccess(Function.class.getMethod("apply", Object.class))
   .build();
 

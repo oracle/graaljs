@@ -1,7 +1,7 @@
 # JavaScript Compatibility
 
-GraalVM provides is an ECMAScript-compliant JavaScript language runtime.
-This document explains the public API it provides to user applications written in JavaScript.
+GraalVM provides an ECMAScript-compliant JavaScript language runtime.
+This document explains the public API it presents for user applications written in JavaScript.
 
 * [ECMAScript Language Compliance](#ecmascript-language-compliance)
 * [Compatibility Extensions](#compatibility-extensions)
@@ -78,7 +78,7 @@ try {
 
 Source can be of type:
 
-* a String: the path of the source file or a URL to execute.<!---do we capitalize string?--->
+* a String: the path of the source file or a URL to execute.
 * `java.lang.URL`: the URL is queried for the source code to execute if the `js.load-from-url` option is set to `true`.
 * `java.io.File`: the file is read for the source code to execute.
 * a JavaScript object: the object is queried for a `name` and a `script` property, which represent the source name and code, respectively.

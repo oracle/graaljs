@@ -1,14 +1,9 @@
 # GraalVM JavaScript Implementation
 
-GraalVM provides the ECMAScript-compliant runtime to execute JavaScript
-and Node.js applications. It is fully standard compliant, execute applications
-with high performance, and provide all the benefits from the GraalVM stack,
-including language interoperability and common tooling. This reference
-documentation provides information on available JavaScript engine
-configurations, the Node.js runtime, the `javax.script.ScriptEngine`
-implementation, multithreading support details, possible embedding scenarios,
-and more. To migrate the code previously targeted to the Nashorn or Rhino
-engines, migration guides are available.
+GraalVM provides an ECMAScript-compliant runtime to execute JavaScript and Node.js applications.
+It is fully standard compliant, execute applications with high performance, and provide all benefits from the GraalVM stack, including language interoperability and common tooling.
+This reference documentation provides information on available JavaScript engine configurations, the Node.js runtime, the `javax.script.ScriptEngine` implementation, multithreading support details, possible embedding scenarios, and more.
+To migrate the code previously targeted to the Nashorn or Rhino engines, migration guides are available.
 
 ## Running JavaScript
 
@@ -36,8 +31,18 @@ npm install colors ansispan
 After the modules are installed, you can use them from your application.
 
 2&#46; Add the following code snippet to a file named `app.js` and save it in the same directory where you installed the Node.js modules:
+```js
+const http = require("http");
+const span = require("ansispan");
+require("colors");
 
-{% include snippet-highlight tabtype="javascript" path="js/app.js" %}
+http.createServer(function (request, response) {
+    response.writeHead(200, {"Content-Type": "text/html"});
+    response.end(span("Hello Graal.js!".green));
+}).listen(8000, function() { console.log("Graal.js server running at http://127.0.0.1:8000/".red); });
+
+setTimeout(function() { console.log("DONE!"); process.exit(); }, 2000);
+```
 
 3&#46; Execute it on GraalVM using the `node` command as follows:
 ```shell

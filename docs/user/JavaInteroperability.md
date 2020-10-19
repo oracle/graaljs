@@ -29,22 +29,24 @@ The preferred method of launching GraalVM JavaScript with Java interop support i
 For that, a new `org.graalvm.polyglot.Context` is built with the `hostAccess` option allowing access and a `hostClassLookup` predicate defining the Java classes you allow access to:
 
 ```java
-Context context = Context.newBuilder("js").
-    allowHostAccess(HostAccess.ALL).
-    allowHostClassLookup(className -> true).  //allows access to all Java classes
-    build();
+Context context = Context.newBuilder("js")
+    .allowHostAccess(HostAccess.ALL)
+    //allows access to all Java classes
+    .allowHostClassLookup(className -> true)
+    .build();
 context.eval("js", jsSourceCode);
 ```
 
 See the [Polyglot Programming](https://www.graalvm.org/reference-manual/polyglot-programming/) reference for more details.
 
 ## ScriptEngine (JSR 223)
-The `org.graalvm.polyglot.Context` is a preferred execution method for interoperability with GraalVM's languages and tools.
+The `org.graalvm.polyglot.Context` is the preferred execution method for interoperability with GraalVM's languages and tools.
 In addition, JavaScript running on GraalVM is fully compatible with JSR 223 and supports the `ScriptEngine API`.
 Internally, the GraalVM's JavaScript ScriptEngine wraps a polyglot context instance:
 
 ```java
-ScriptEngine eng = new ScriptEngineManager().getEngineByName("graal.js");
+ScriptEngine eng = new ScriptEngineManager()
+    .getEngineByName("graal.js");
 Object fn = eng.eval("(function() { return this; })");
 Invocable inv = (Invocable) eng;
 Object result = inv.invokeMethod(fn, "call", fn);
@@ -52,7 +54,7 @@ Object result = inv.invokeMethod(fn, "call", fn);
 
 ## Access Java from JavaScript
 GraalVM provides a set of features to allow interoperability from `JavaScript` to `Java`.
-While the overall feature set between Rhino, Nashorn, and GraalVM engines is mostly comparable, they differ in exact syntax, and, partly, semantics.
+While Rhino, Nashorn, and GraalVM JavaScript engines have a mostly comparable overall feature set, they differ in exact syntax, and, partly, semantics.
 
 ### Class Access
 To access a Java class, GraalVM JavaScript supports the `Java.type(typeName)` function:
@@ -65,11 +67,13 @@ By default, Java classes are not automatically mapped to global variables, e.g.,
 Existing code accessing, e.g., `java.io.File`, should be rewritten to use the `Java.type(name)` function:
 
 ```js
-var FileClass = Java.type("java.io.File"); //GraalVM JavaScript compliant syntax
-var FileClass = java.io.File;              //Fails in GraalVM JavaScript
+//GraalVM JavaScript compliant syntax
+var FileClass = Java.type("java.io.File");
+//Fails in GraalVM JavaScript
+var FileClass = java.io.File;
 ```
 
-GraalVM JavaScript provides a `Packages` global property (and `java`, etc., if the `js.nashorn-compat` option is set) for compatibility.
+GraalVM JavaScript provides `Packages`, `java`, and similar global properties (if the `js.nashorn-compat` option is set) for compatibility.
 However, explicitly accessing the required class with `Java.type` is preferred whenever possible for two reasons:
 1. It allows resolving the class in one step rather than trying to resolve each property as a class.
 2. `Java.type` immediately throws a `TypeError` if the class cannot be found or is not accessible, rather than silently treating an unresolved name as a package.
@@ -147,7 +151,7 @@ Future versions of GraalVM JavaScript might lift that restriction by providing a
 ### Package Access
 GraalVM JavaScript provides a `Packages` global property:
 
-```
+```shell
 > Packages.java.io.File
 JavaClass[java.io.File]
 ```
@@ -252,7 +256,8 @@ They are represented as Java objects:
 
 ```js
 try {
-    Java.type('java.lang.Class').forName("nonexistent");
+    Java.type('java.lang.Class')
+    .forName("nonexistent");
 } catch (e) {
     print(e.getMessage());
 }
@@ -303,7 +308,8 @@ Java code can access such objects like normal `Value` objects, with the possibil
 As an example, the following Java code registers a Java callback to be executed when a JavaScript promise resolves:
 ```java
 Value jsPromise = context.eval(ID, "Promise.resolve(42);");
-Consumer<Object> javaThen = (value) -> System.out.println("Resolved from JavaScript: " + value);
+Consumer<Object> javaThen = (value)
+    -> System.out.println("Resolved from JavaScript: " + value);
 jsPromise.invokeMember("then", javaThen);
 ```
 More detailed example usages are available in the GraalVM JavaScript [unit tests](https://github.com/graalvm/graaljs/blob/master/graal-js/src/com.oracle.truffle.js.test/src/com/oracle/truffle/js/test/interop/AsyncInteropTest.java).
