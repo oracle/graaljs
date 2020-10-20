@@ -58,7 +58,7 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
     private static final String ENGINE_NAME = "Graal.js";
     private static final String NAME = "javascript";
     private static final String LANGUAGE = "ECMAScript";
-    private static final String LANGUAGE_VERSION = "ECMA - 262 Edition 9";
+    private static final String LANGUAGE_VERSION = "ECMAScript 262 Edition 11";
 
     private static final String NASHORN_ENGINE_NAME = "Oracle Nashorn";
     private static final List<String> names;
