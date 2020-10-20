@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.scriptengine;
 
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -89,21 +90,36 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
         extensions = Collections.unmodifiableList(extensionList);
     }
 
-    private final Engine engine;
+    private WeakReference<Engine> defaultEngine;
+    private final Engine userDefinedEngine;
 
     public GraalJSEngineFactory() {
-        this.engine = Engine.newBuilder().allowExperimentalOptions(true).build();
+        this.defaultEngine = null; // lazy
+        this.userDefinedEngine = null;
     }
 
     GraalJSEngineFactory(Engine engine) {
-        this.engine = engine;
+        this.userDefinedEngine = engine;
+    }
+
+    private static Engine createDefaultEngine() {
+        return Engine.newBuilder().allowExperimentalOptions(true).build();
     }
 
     /**
      * Returns the underlying polyglot engine.
      */
     public Engine getPolyglotEngine() {
-        return engine;
+        if (userDefinedEngine != null) {
+            return userDefinedEngine;
+        } else {
+            Engine engine = defaultEngine == null ? null : defaultEngine.get();
+            if (engine == null) {
+                engine = createDefaultEngine();
+                defaultEngine = new WeakReference<>(engine);
+            }
+            return engine;
+        }
     }
 
     @Override
@@ -113,7 +129,7 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
 
     @Override
     public String getEngineVersion() {
-        return engine.getVersion();
+        return getPolyglotEngine().getVersion();
     }
 
     @Override
