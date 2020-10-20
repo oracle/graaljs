@@ -49,7 +49,7 @@ Reason:
 
 Solution:
 * While the objects do not have the methods of the prototype assigned, you can explicitly call them, e.g., `Array.prototype.call.sort(myArray)`.
-* We offer the experimental option `js.experimental-foreign-object-prototype`. When enabled, objects on the JavaScript side get the most prototype (e.g. `Array.prototype`, `Function.prototype`, `Object.prototype`) set and can thus behave more similarly to native JavaScript objects of the respective type. Normal JavaScript precedence rules apply here, e.g., own properties (of the Java object in that case) take precedence over and hide properties from the prototype.
+* We offer the option `js.foreign-object-prototype`. When enabled, objects on the JavaScript side get the most prototype (e.g. `Array.prototype`, `Function.prototype`, `Object.prototype`) set and can thus behave more similarly to native JavaScript objects of the respective type. Normal JavaScript precedence rules apply here, e.g., own properties (of the Java object in that case) take precedence over and hide properties from the prototype.
 
 Note that while the JavaScript builtin functions. e.g., from `Array.prototype` can be called on the respective Java types, those functions expect JavaScript semantics.
 This for instance means that operations might fail (typically with a `TypeError`: `Message not supported`) when an operation is not supported in Java.

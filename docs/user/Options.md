@@ -34,6 +34,7 @@ The following options are currently available:
    * `--js.array-sort-inherited`: define whether `Array.protoype.sort` should sort inherited keys (implementation-defined behavior). Boolean value, default is `true`.
    * `--js.atomics`: enable *ES2017 Atomics*. Boolean value, default is `true`.
    * `--js.ecmascript-version`: emulate a specific ECMAScript version. Integer value (`5`-`9`), default is the latest version.
+   * `--js.foreign-object-prototype`: provide JavaScript's default prototype to foreign objects that mimic JavaScript's own types (foreign Arrays, Objects and Functions). Boolean value, default is `false`.
    * `--js.intl-402`: enable ECMAScript Internationalization API. Boolean value, default is `false`.
    * `--js.regexp-static-result`: provide static `RegExp` properties containing the results of the last successful match, e.g., `RegExp.$1` (legacy). Boolean value, default is `true`.
    * `--js.shared-array-buffer`: enable *ES2017 SharedArrayBuffer*. Boolean value, default is `false`.
