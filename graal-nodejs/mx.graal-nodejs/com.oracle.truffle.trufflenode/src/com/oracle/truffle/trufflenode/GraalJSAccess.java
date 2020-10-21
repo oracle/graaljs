@@ -1964,7 +1964,7 @@ public final class GraalJSAccess {
         }
         JSRealm realm = boundScript.getRealm();
         Object[] arguments = scriptNode.argumentsToRun(realm);
-        Object prev = realm.getTruffleContext().enter();
+        Object prev = realm.getTruffleContext().enter(null);
         try {
             Object result;
             if (boundScript.isGraalInternal()) {
@@ -1974,7 +1974,7 @@ public final class GraalJSAccess {
             }
             return result;
         } finally {
-            realm.getTruffleContext().leave(prev);
+            realm.getTruffleContext().leave(null, prev);
         }
     }
 
@@ -2092,11 +2092,11 @@ public final class GraalJSAccess {
             if (scriptNode == null) {
                 JSParserOptions options = jsContext.getParserOptions();
                 NodeFactory factory = NodeFactory.getInstance(jsContext);
-                Object prev = jsRealm.getTruffleContext().enter();
+                Object prev = jsRealm.getTruffleContext().enter(null);
                 try {
                     scriptNode = JavaScriptTranslator.translateFunction(factory, jsContext, null, source, options.isStrict(), (FunctionNode) parseResult);
                 } finally {
-                    jsRealm.getTruffleContext().leave(prev);
+                    jsRealm.getTruffleContext().leave(null, prev);
                 }
                 if (!"repl".equals(source.getName())) {
                     contextData.getScriptNodeCache().put(source, scriptNode);
@@ -2904,7 +2904,7 @@ public final class GraalJSAccess {
             list = new LinkedList<>();
             isolateStack.set(list);
         }
-        Object previous = mainJSRealm.getTruffleContext().enter();
+        Object previous = mainJSRealm.getTruffleContext().enter(null);
         if (list.isEmpty()) {
             agent.setThread(Thread.currentThread());
         }
@@ -2915,7 +2915,7 @@ public final class GraalJSAccess {
         Deque<Pair<Long, Object>> list = isolateStack.get();
         Pair<Long, Object> pair = list.pop();
         assert pair.getFirst() == isolate;
-        mainJSRealm.getTruffleContext().leave(pair.getSecond());
+        mainJSRealm.getTruffleContext().leave(null, pair.getSecond());
         if (list.isEmpty()) {
             agent.setThread(null);
             return 0;

@@ -134,7 +134,7 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
 
             if (enterContext) {
                 childContext = realm.getTruffleContext();
-                prev = childContext.enter();
+                prev = childContext.enter(this);
             }
 
             try {
@@ -151,7 +151,7 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
                 }
             } finally {
                 if (enterContext) {
-                    childContext.leave(prev);
+                    childContext.leave(this, prev);
                 }
             }
             // The result is undefined for normal completion.
