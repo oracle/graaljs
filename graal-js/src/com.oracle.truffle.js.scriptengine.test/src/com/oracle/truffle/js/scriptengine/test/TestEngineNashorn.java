@@ -138,7 +138,7 @@ public class TestEngineNashorn {
 
         invertedAssertEquals(fac.getLanguageName(), "ECMAScript");
         invertedAssertEquals(fac.getParameter(ScriptEngine.NAME), "javascript");
-        invertedAssertEquals(fac.getLanguageVersion(), "ECMA - 262 Edition 9");
+        invertedAssertEquals(fac.getLanguageVersion(), "ECMAScript 262 Edition 11");
         invertedAssertEquals(fac.getEngineName(), "Graal.js");
         invertedAssertEquals(fac.getOutputStatement("context"), "print(context)");
         invertedAssertEquals(fac.getProgram("print('hello')", "print('world')"), "print('hello');print('world');");
