@@ -1447,7 +1447,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected Object loadFromPath(String path, JSRealm realm, Object[] args) {
             JSRealm childRealm = realm.createChildRealm();
             TruffleContext childContext = childRealm.getTruffleContext();
-            Object prev = childContext.enter();
+            Object prev = childContext.enter(this);
             try {
                 DynamicObject argObj = JSArgumentsArray.createStrictSlow(childRealm, args);
                 // TODO: should be a child realm array
@@ -1455,7 +1455,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 Source source = sourceFromPath(path, childRealm);
                 return runImpl(childRealm, source);
             } finally {
-                childContext.leave(prev);
+                childContext.leave(this, prev);
             }
         }
     }

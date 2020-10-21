@@ -1856,7 +1856,7 @@ public class JSRealm {
         CREATING_CHILD_REALM.set(Boolean.TRUE);
         try {
             TruffleContext nestedContext = getEnv().newContextBuilder().build();
-            Object prev = nestedContext.enter();
+            Object prev = nestedContext.enter(null);
             try {
                 JSRealm childRealm = JavaScriptLanguage.getCurrentJSRealm();
                 childRealm.agent = this.agent;
@@ -1872,7 +1872,7 @@ public class JSRealm {
 
                 return childRealm;
             } finally {
-                nestedContext.leave(prev);
+                nestedContext.leave(null, prev);
             }
         } finally {
             CREATING_CHILD_REALM.set(Boolean.FALSE);
