@@ -40,96 +40,24 @@
  */
 package com.oracle.truffle.js.runtime.java;
 
-import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
-import java.security.AccessControlContext;
-import java.security.AccessController;
-import java.security.Permissions;
-import java.security.PrivilegedAction;
-import java.security.ProtectionDomain;
-import java.util.Objects;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 
 /**
- * Java interop access check utility methods, mostly taken from Nashorn.
+ * Java interop access check utility methods.
  */
 public final class JavaAccess {
     private JavaAccess() {
     }
 
-    private static final AccessControlContext NO_PERMISSIONS_CONTEXT = createNoPermissionsContext();
     /**
      * Permission to use Java reflection/jsr292 from script code.
      */
     private static final String PERMISSION_JAVA_REFLECTION = "truffle.js.JavaReflection";
-
-    private static AccessControlContext createNoPermissionsContext() {
-        return new AccessControlContext(new ProtectionDomain[]{new ProtectionDomain(null, new Permissions())});
-    }
-
-    private static void checkPackageAccessInner(final SecurityManager sm, final String pkgName) {
-        AccessController.doPrivileged(new PrivilegedAction<Void>() {
-            @Override
-            public Void run() {
-                sm.checkPackageAccess(pkgName);
-                return null;
-            }
-        }, NO_PERMISSIONS_CONTEXT);
-    }
-
-    /**
-     * Checks that the given package can be accessed from no permissions context.
-     *
-     * @param sm current security manager instance
-     * @param fullName fully qualified package name
-     * @throw SecurityException if not accessible
-     */
-    public static void checkPackageAccess(final SecurityManager sm, final String fullName) {
-        Objects.requireNonNull(sm);
-        final int index = fullName.lastIndexOf('.');
-        if (index != -1) {
-            final String pkgName = fullName.substring(0, index);
-            checkPackageAccessInner(sm, pkgName);
-        }
-    }
-
-    /**
-     * Returns true if the class is either not public, or it resides in a package with restricted
-     * access.
-     *
-     * @param clazz the class to test
-     * @return true if the class is either not public, or it resides in a package with restricted
-     *         access.
-     */
-    public static boolean isRestrictedClass(final Class<?> clazz) {
-        if (!Modifier.isPublic(clazz.getModifiers())) {
-            // Non-public classes are always restricted
-            return true;
-        }
-        final SecurityManager sm = System.getSecurityManager();
-        if (sm == null) {
-            // No further restrictions if we don't have a security manager
-            return false;
-        }
-        final String name = clazz.getName();
-        final int i = name.lastIndexOf('.');
-        if (i == -1) {
-            // Classes in default package are never restricted
-            return false;
-        }
-        final String pkgName = name.substring(0, i);
-        // Do a package access check from within an access control context with no permissions
-        try {
-            checkPackageAccessInner(sm, pkgName);
-        } catch (final SecurityException e) {
-            return true;
-        }
-        return false;
-    }
 
     public static boolean isReflectionClass(final Class<?> type) {
         // Class or ClassLoader subclasses
@@ -173,48 +101,6 @@ public final class JavaAccess {
         sm.checkPermission(new RuntimePermission(PERMISSION_JAVA_REFLECTION));
     }
 
-    /**
-     * Checks that the given Class can be accessed from no permissions context.
-     *
-     * @param clazz Class object
-     * @throws SecurityException if not accessible
-     */
-    public static void checkPackageAccess(final Class<?> clazz) {
-        final SecurityManager sm = System.getSecurityManager();
-        if (sm != null) {
-            Class<?> bottomClazz = clazz;
-            while (bottomClazz.isArray()) {
-                bottomClazz = bottomClazz.getComponentType();
-            }
-            checkPackageAccess(sm, bottomClazz.getName());
-        }
-    }
-
-    /**
-     * Checks that the given Class can be accessed from no permissions context.
-     *
-     * @param clazz Class object
-     * @return true if package is accessible, false otherwise
-     */
-    private static boolean isAccessiblePackage(final Class<?> clazz) {
-        try {
-            checkPackageAccess(clazz);
-            return true;
-        } catch (final SecurityException se) {
-            return false;
-        }
-    }
-
-    /**
-     * Checks that the given Class is public and it can be accessed from no permissions context.
-     *
-     * @param clazz Class object to check
-     * @return true if Class is accessible, false otherwise
-     */
-    public static boolean isAccessibleClass(final Class<?> clazz) {
-        return Modifier.isPublic(clazz.getModifiers()) && isAccessiblePackage(clazz);
-    }
-
     public static boolean isReflectionAllowed(JSContext context) {
         TruffleLanguage.Env env = context.getRealm().getEnv();
         if (env != null && env.isHostLookupAllowed()) {
@@ -235,8 +121,6 @@ public final class JavaAccess {
         if (sm != null) {
             boolean allowReflection = JavaAccess.isReflectionAllowed(context);
             for (final Class<?> type : types) {
-                // check for restricted package access
-                JavaAccess.checkPackageAccess(type);
                 // check for classes, interfaces in reflection
                 JavaAccess.checkReflectionAccess(type, true, allowReflection);
             }
