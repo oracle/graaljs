@@ -408,7 +408,6 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
             options.push_back({const_cast<char*>(debugParam.c_str()), nullptr});
         }
         options.push_back({const_cast<char*>("-Dtruffle.node.js.verbose=true"), nullptr});
-        options.push_back({const_cast<char*>("-Dgraal.TruffleCompilationExceptionsArePrinted=true"), nullptr});
     #endif
 
         const char* no_spawn_options = "NODE_JVM_OPTIONS_NO_SPAWN";
