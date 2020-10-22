@@ -40,14 +40,13 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
-
-import java.util.Set;
 
 public final class GeneratorExprBlockNode extends AbstractGeneratorBlockNode {
 
@@ -59,43 +58,25 @@ public final class GeneratorExprBlockNode extends AbstractGeneratorBlockNode {
         return new GeneratorExprBlockNode(statements, readStateNode, writeStateNode);
     }
 
-    @ExplodeLoop
     @Override
     public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
-        int startIndex = getStateAndReset(frame);
-        assert startIndex < getStatements().length;
-        JavaScriptNode[] stmts = statements;
-        int last = stmts.length - 1;
-        for (int i = 0; i < last; ++i) {
-            executeVoid(frame, stmts[i], i, startIndex);
-        }
-        return executeBoolean(frame, stmts[last], last, startIndex);
+        int index = getStateAndReset(frame);
+        assert index < getStatements().length;
+        return block.executeBoolean(frame, index);
     }
 
-    @ExplodeLoop
     @Override
     public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
-        int startIndex = getStateAndReset(frame);
-        assert startIndex < getStatements().length;
-        JavaScriptNode[] stmts = statements;
-        int last = stmts.length - 1;
-        for (int i = 0; i < last; ++i) {
-            executeVoid(frame, stmts[i], i, startIndex);
-        }
-        return executeInt(frame, stmts[last], last, startIndex);
+        int index = getStateAndReset(frame);
+        assert index < getStatements().length;
+        return block.executeInt(frame, index);
     }
 
-    @ExplodeLoop
     @Override
     public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
-        int startIndex = getStateAndReset(frame);
-        assert startIndex < getStatements().length;
-        JavaScriptNode[] stmts = statements;
-        int last = stmts.length - 1;
-        for (int i = 0; i < last; ++i) {
-            executeVoid(frame, stmts[i], i, startIndex);
-        }
-        return executeDouble(frame, stmts[last], last, startIndex);
+        int index = getStateAndReset(frame);
+        assert index < getStatements().length;
+        return block.executeDouble(frame, index);
     }
 
     @Override

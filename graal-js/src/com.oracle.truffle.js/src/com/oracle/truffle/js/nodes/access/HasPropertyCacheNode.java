@@ -103,7 +103,13 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
 
     @TruffleBoundary
     private boolean hasPropertyAndSpecialize(Object thisObj) {
-        return specialize(thisObj).hasProperty(thisObj, this);
+        HasCacheNode node = specialize(thisObj);
+        if (node.accepts(thisObj)) {
+            return node.hasProperty(thisObj, this);
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError("Inconsistent guards.");
+        }
     }
 
     public abstract static class HasCacheNode extends PropertyCacheNode.CacheNode<HasCacheNode> {

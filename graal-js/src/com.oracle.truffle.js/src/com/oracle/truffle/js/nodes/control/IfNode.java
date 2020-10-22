@@ -53,6 +53,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -60,7 +61,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 import com.oracle.truffle.js.nodes.unary.JSNotNode;
-import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -235,22 +236,33 @@ public final class IfNode extends StatementNode implements ResumableNode {
             return condition.executeBoolean(frame);
         } catch (UnexpectedResultException ex) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            insertToBoolean();
-            return JSRuntime.toBoolean(ex.getResult());
+            JavaScriptNode node = insertToBoolean();
+            if (node instanceof JSConstantNode) {
+                try {
+                    return node.executeBoolean(frame);
+                } catch (UnexpectedResultException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
+                }
+            } else if (node instanceof JSUnaryNode) {
+                return (boolean) ((JSUnaryNode) node).execute(frame, ex.getResult());
+            } else {
+                throw CompilerDirectives.shouldNotReachHere("Unexpected result node of JSToBooleanNode.create");
+            }
         }
     }
 
-    private void insertToBoolean() {
+    private JavaScriptNode insertToBoolean() {
         CompilerAsserts.neverPartOfCompilation();
         Lock lock = getLock();
         lock.lock();
+        JavaScriptNode cond = condition;
         try {
-            JavaScriptNode cond = condition;
             if (!(cond instanceof JSToBooleanNode)) {
-                condition = insert(JSToBooleanNode.create(cond));
+                condition = cond = insert(JSToBooleanNode.create(cond));
             }
         } finally {
             lock.unlock();
         }
+        return cond;
     }
 }

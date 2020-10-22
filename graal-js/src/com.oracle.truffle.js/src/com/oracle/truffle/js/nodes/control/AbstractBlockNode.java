@@ -46,7 +46,6 @@ import java.util.Arrays;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.nodes.BlockNode;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -55,35 +54,25 @@ import com.oracle.truffle.js.nodes.binary.DualNode;
 
 @NodeInfo(cost = NodeCost.NONE)
 public abstract class AbstractBlockNode extends StatementNode implements SequenceNode, BlockNode.ElementExecutor<JavaScriptNode> {
-    @Children protected final JavaScriptNode[] statements;
+    @Child protected BlockNode<JavaScriptNode> block;
 
     protected AbstractBlockNode(JavaScriptNode[] statements) {
-        this.statements = statements;
+        this.block = BlockNode.create(statements, this);
     }
 
     @Override
     public final JavaScriptNode[] getStatements() {
-        return statements;
+        return block.getElements();
     }
 
-    @ExplodeLoop
     @Override
     public void executeVoid(VirtualFrame frame) {
-        JavaScriptNode[] stmts = statements;
-        for (int i = 0; i < stmts.length; ++i) {
-            executeVoid(frame, stmts[i], i, BlockNode.NO_ARGUMENT);
-        }
+        block.executeVoid(frame, BlockNode.NO_ARGUMENT);
     }
 
-    @ExplodeLoop
     @Override
     public Object execute(VirtualFrame frame) {
-        JavaScriptNode[] stmts = statements;
-        int last = stmts.length - 1;
-        for (int i = 0; i < last; ++i) {
-            executeVoid(frame, stmts[i], i, BlockNode.NO_ARGUMENT);
-        }
-        return executeGeneric(frame, stmts[last], last, BlockNode.NO_ARGUMENT);
+        return block.executeGeneric(frame, BlockNode.NO_ARGUMENT);
     }
 
     @Override

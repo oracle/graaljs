@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
 
@@ -66,28 +65,18 @@ public abstract class AbstractGeneratorBlockNode extends AbstractBlockNode {
         writeStateNode.executeWrite(frame, index);
     }
 
-    @ExplodeLoop
     @Override
     public void executeVoid(VirtualFrame frame) {
-        int startIndex = getStateAndReset(frame);
-        assert startIndex < getStatements().length;
-        JavaScriptNode[] stmts = statements;
-        for (int i = 0; i < stmts.length; ++i) {
-            executeVoid(frame, stmts[i], i, startIndex);
-        }
+        int index = getStateAndReset(frame);
+        assert index < getStatements().length;
+        block.executeVoid(frame, index);
     }
 
-    @ExplodeLoop
     @Override
     public Object execute(VirtualFrame frame) {
-        int startIndex = getStateAndReset(frame);
-        assert startIndex < getStatements().length;
-        JavaScriptNode[] stmts = statements;
-        int last = stmts.length - 1;
-        for (int i = 0; i < last; ++i) {
-            executeVoid(frame, stmts[i], i, startIndex);
-        }
-        return executeGeneric(frame, stmts[last], last, startIndex);
+        int index = getStateAndReset(frame);
+        assert index < getStatements().length;
+        return block.executeGeneric(frame, index);
     }
 
     @Override

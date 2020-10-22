@@ -139,9 +139,13 @@ abstract class JSReadScopeFrameSlotNode extends JSReadFrameSlotNode {
         return super.getInt(levelFrame);
     }
 
-    @Specialization(guards = "levelFrame.isDouble(frameSlot)")
+    @Specialization(guards = "levelFrame.isDouble(frameSlot) || levelFrame.isInt(frameSlot)")
     protected final double doDouble(Frame levelFrame) {
-        return super.getDouble(levelFrame);
+        if (levelFrame.isInt(frameSlot)) {
+            return super.getInt(levelFrame);
+        } else {
+            return super.getDouble(levelFrame);
+        }
     }
 
     @Specialization(guards = {"levelFrame.isObject(frameSlot)", "!hasTemporalDeadZone()"})
@@ -202,9 +206,13 @@ abstract class JSReadCurrentFrameSlotNode extends JSReadFrameSlotNode {
         return super.getInt(frame);
     }
 
-    @Specialization(guards = "frame.isDouble(frameSlot)")
+    @Specialization(guards = "frame.isDouble(frameSlot) || frame.isInt(frameSlot)")
     protected final double doDouble(VirtualFrame frame) {
-        return super.getDouble(frame);
+        if (frame.isInt(frameSlot)) {
+            return super.getInt(frame);
+        } else {
+            return super.getDouble(frame);
+        }
     }
 
     @Specialization(guards = "frame.isObject(frameSlot)")
