@@ -44,7 +44,6 @@ import java.lang.reflect.Proxy;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 
 /**
@@ -72,7 +71,7 @@ public final class JavaAccess {
 
     public static void checkReflectionAccess(final Class<?> clazz, final boolean isStatic, final boolean allowReflection) {
         if (!allowReflection && isReflectiveCheckNeeded(clazz, isStatic)) {
-            throw Errors.createTypeError("Java reflection not allowed");
+            throw new SecurityException("Java reflection not allowed");
         }
 
         final SecurityManager sm = System.getSecurityManager();

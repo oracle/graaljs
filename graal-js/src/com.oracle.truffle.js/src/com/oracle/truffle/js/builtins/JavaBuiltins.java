@@ -359,9 +359,8 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 types[i] = toHostClass(arguments[i], env);
             }
 
-            JavaAccess.checkAccess(types, getContext());
-
             try {
+                JavaAccess.checkAccess(types, getContext());
                 if (classOverrides != null) {
                     return env.createHostAdapterClassWithStaticOverrides(types, classOverrides);
                 } else {

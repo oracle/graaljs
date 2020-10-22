@@ -247,8 +247,8 @@ public abstract class JSNewNode extends JavaScriptNode {
         }
         // Equivalent to Java.extend(type)
         Class<?>[] types = new Class<?>[]{type};
-        JavaAccess.checkAccess(types, context);
         try {
+            JavaAccess.checkAccess(types, context);
             return env.createHostAdapterClass(types);
         } catch (Exception ex) {
             throw Errors.createTypeError(ex.getMessage(), ex, this);
