@@ -291,7 +291,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         if (c.accept(function)) {
             return c.executeCall(arguments);
         } else {
-            throw new AssertionError();
+            throw CompilerDirectives.shouldNotReachHere("Inconsistent guard.");
         }
     }
 
