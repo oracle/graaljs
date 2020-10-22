@@ -56,6 +56,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.source.SourceSection;
@@ -257,6 +258,8 @@ final class ScopeMembers implements TruffleObject {
                             }
                             return true;
                         } else if (node == blockOrRoot) {
+                            return true;
+                        } else if (node instanceof BlockNode) {
                             return true;
                         } else {
                             return false;
