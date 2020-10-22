@@ -224,12 +224,6 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             }
 
             @Override
-            @TruffleBoundary
-            public String getName() {
-                return "eval-root:" + source.getName();
-            }
-
-            @Override
             protected boolean isInstrumentable() {
                 return false;
             }
