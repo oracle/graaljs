@@ -88,7 +88,11 @@ local jdks = (import "common.json").jdks;
     capabilities: ['darwin', 'amd64'],
   },
 
-  windows_vs2019: common + {
+  windows: common + {
+    capabilities: ['windows', 'amd64'],
+  },
+
+  windows_vs2019: self.windows + {
     packages+: {
       'devkit:VS2019-16.5.3+1': '==0',
     },
@@ -96,27 +100,20 @@ local jdks = (import "common.json").jdks;
       ['set-export', 'DEVKIT_ROOT', '$VS2019_16_5_3_1_0_ROOT'],
       ['set-export', 'DEVKIT_VERSION', '2019'],
     ],
-    capabilities: ['windows', 'amd64'],
   },
 
-  windows: common + {
+  windows_vs2017: self.windows + {
     packages+: {
       'devkit:VS2017-15.5.5+1': '==0',
-    },
-    downloads+: {
-      NASM: {name: 'nasm', version: '2.14.02', platformspecific: true},
-    },
-    environment+: {
-      PATH: '$PATH;$NASM',
     },
     setup+: [
       ['set-export', 'DEVKIT_ROOT', '$VS2017_15_5_5_1_0_ROOT'],
       ['set-export', 'DEVKIT_VERSION', '2017'],
     ],
-    capabilities: ['windows', 'amd64'],
   },
 
-  windows_vs2010: self.windows + {
+  # Note: VS2017 is only used for Node.js
+  windows_vs2010: self.windows_vs2017 + {
     packages+: {
       msvc : '==10.0',
     },
