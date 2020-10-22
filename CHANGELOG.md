@@ -8,6 +8,8 @@ The main focus is on user-observable behavior of the engine.
 * Fixed field/getter/setter access order in nashorn-compat mode, see [issue #343](https://github.com/graalvm/graaljs/issues/343).
 * ScriptEngine: Fixed "Multiple applicable overloads found" error in nashorn-compat mode, see [issue #286](https://github.com/graalvm/graaljs/issues/286).
 * ScriptEngine: Enabled low precedence lossy number, string-to-boolean, and number-to-boolean conversions in nashorn-compat mode.
+* Fixed `Java.extend` to respect `HostAccess.Builder.allowImplementations`, see [issue #294](https://github.com/graalvm/graaljs/issues/294).
+* Added Java host interop support for mapping JS objects to abstract classes (if `HostAccess` allows it).
 * `js.foreign-object-prototype` is a supported option to set JavaScript prototypes for foreign objects mimicing JavaScript types. It was renamed from `js.experimental-foreign-object-prototype`.
 
 ## Version 20.2.0
