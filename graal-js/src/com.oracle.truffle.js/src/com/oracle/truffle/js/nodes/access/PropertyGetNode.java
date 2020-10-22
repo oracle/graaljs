@@ -214,13 +214,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     @TruffleBoundary
     private int getValueIntAndSpecialize(Object thisObj, Object receiver) throws UnexpectedResultException {
-        GetCacheNode node = specialize(thisObj);
-        if (node.accepts(thisObj)) {
-            return node.getValueInt(thisObj, receiver, this, false);
-        } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError("Inconsistent guards.");
-        }
+        return specialize(thisObj).getValueInt(thisObj, receiver, this, false);
     }
 
     @ExplodeLoop
@@ -244,13 +238,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     @TruffleBoundary
     private double getValueDoubleAndSpecialize(Object thisObj, Object receiver) throws UnexpectedResultException {
-        GetCacheNode node = specialize(thisObj);
-        if (node.accepts(thisObj)) {
-            return node.getValueDouble(thisObj, receiver, this, false);
-        } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError("Inconsistent guards.");
-        }
+        return specialize(thisObj).getValueDouble(thisObj, receiver, this, false);
     }
 
     @ExplodeLoop
@@ -274,13 +262,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     @TruffleBoundary
     private boolean getValueBooleanAndSpecialize(Object thisObj, Object receiver) throws UnexpectedResultException {
-        GetCacheNode node = specialize(thisObj);
-        if (node.accepts(thisObj)) {
-            return node.getValueBoolean(thisObj, receiver, this, false);
-        } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError("Inconsistent guards.");
-        }
+        return specialize(thisObj).getValueBoolean(thisObj, receiver, this, false);
     }
 
     @ExplodeLoop
@@ -304,13 +286,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     @TruffleBoundary
     private long getValueLongAndSpecialize(Object thisObj, Object receiver) throws UnexpectedResultException {
-        GetCacheNode node = specialize(thisObj);
-        if (node.accepts(thisObj)) {
-            return node.getValueLong(thisObj, receiver, this, false);
-        } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError("Inconsistent guards.");
-        }
+        return specialize(thisObj).getValueLong(thisObj, receiver, this, false);
     }
 
     @ExplodeLoop
@@ -334,13 +310,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     @TruffleBoundary
     private Object getValueAndSpecialize(Object thisObj, Object receiver, Object defaultValue) {
-        GetCacheNode node = specialize(thisObj);
-        if (node.accepts(thisObj)) {
-            return node.getValue(thisObj, receiver, defaultValue, this, false);
-        } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError("Inconsistent guards.");
-        }
+        return specialize(thisObj).getValue(thisObj, receiver, defaultValue, this, false);
     }
 
     public abstract static class GetCacheNode extends PropertyCacheNode.CacheNode<GetCacheNode> {

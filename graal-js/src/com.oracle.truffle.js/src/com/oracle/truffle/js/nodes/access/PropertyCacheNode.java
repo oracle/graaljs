@@ -777,7 +777,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                 }
             }
             // Return the shape check of the prototype we're going to access.
-            return true;
+            return result;
         }
 
         @ExplodeLoop
@@ -1056,16 +1056,16 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             return copy;
         }
 
-        protected final boolean isGeneric() {
+        protected boolean isGeneric() {
             return receiverCheck == null;
         }
 
-        protected final boolean accepts(Object thisObj) {
-            return receiverCheck == null || receiverCheck.accept(thisObj);
+        protected boolean accepts(Object thisObj) {
+            return receiverCheck.accept(thisObj);
         }
 
         protected boolean isValid() {
-            return receiverCheck == null || receiverCheck.isValid();
+            return receiverCheck.isValid();
         }
 
         protected boolean acceptsValue(Object value) {
