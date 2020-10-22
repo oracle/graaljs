@@ -370,10 +370,14 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT = new OptionKey<>(false);
     @CompilationFinal private boolean scriptEngineGlobalScopeImport;
 
-    public static final String FOREIGN_OBJECT_PROTOTYPE_NAME = JS_OPTION_PREFIX + "experimental-foreign-object-prototype";
-    @Option(name = FOREIGN_OBJECT_PROTOTYPE_NAME, category = OptionCategory.EXPERT, help = "Non-JS objects have prototype (Object/Function/Array.prototype) set.") //
+    public static final String FOREIGN_OBJECT_PROTOTYPE_NAME = JS_OPTION_PREFIX + "foreign-object-prototype";
+    @Option(name = FOREIGN_OBJECT_PROTOTYPE_NAME, category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Non-JS objects have prototype (Object/Function/Array.prototype) set.") //
     public static final OptionKey<Boolean> FOREIGN_OBJECT_PROTOTYPE = new OptionKey<>(false);
     @CompilationFinal private boolean hasForeignObjectPrototype;
+
+    public static final String EXPERIMENTAL_FOREIGN_OBJECT_PROTOTYPE_NAME = JS_OPTION_PREFIX + "experimental-foreign-object-prototype";
+    @Option(name = EXPERIMENTAL_FOREIGN_OBJECT_PROTOTYPE_NAME, category = OptionCategory.EXPERT, deprecated = true, help = "Non-JS objects have prototype (Object/Function/Array.prototype) set; deprecated old name.") //
+    protected static final OptionKey<Boolean> EXPERIMENTAL_FOREIGN_OBJECT_PROTOTYPE = new OptionKey<>(false);
 
     // limit originally from TestV8 regress-1122.js, regress-605470.js
     public static final String FUNCTION_ARGUMENTS_LIMIT_NAME = JS_OPTION_PREFIX + "function-arguments-limit";
@@ -542,7 +546,7 @@ public final class JSContextOptions {
         this.regexStepExecution = readBooleanOption(REGEX_STEP_EXECUTION);
         this.regexAlwaysEager = readBooleanOption(REGEX_ALWAYS_EAGER);
         this.scriptEngineGlobalScopeImport = readBooleanOption(SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT);
-        this.hasForeignObjectPrototype = readBooleanOption(FOREIGN_OBJECT_PROTOTYPE);
+        this.hasForeignObjectPrototype = readBooleanOption(FOREIGN_OBJECT_PROTOTYPE) || readBooleanOption(EXPERIMENTAL_FOREIGN_OBJECT_PROTOTYPE);
         this.functionArgumentsLimit = readLongOption(FUNCTION_ARGUMENTS_LIMIT);
         this.test262Mode = readBooleanOption(TEST262_MODE);
         this.testV8Mode = readBooleanOption(TESTV8_MODE);
