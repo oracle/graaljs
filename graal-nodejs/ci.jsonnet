@@ -60,7 +60,8 @@ local common = import '../common.jsonnet';
     graalNodeJs + common.jdk11 + common.gate      + common.darwin         + common.gateTags             + {environment+: {TAGS: 'all'}}                                             + {name: 'nodejs-gate-jdk11-darwin-amd64'},
     graalNodeJs + common.jdk8  + common.gate      + common.windows_vs2010 + common.gateTags             + {environment+: {TAGS: 'windows'}}                                         + {name: 'nodejs-gate-jdk8-windows-amd64'},
     graalNodeJs + common.jdk11 + common.gate      + common.windows_vs2017 + common.gateTags             + {environment+: {TAGS: 'windows'}}                                         + {name: 'nodejs-gate-jdk11-windows-amd64'},
-    graalNodeJs + common.jdk15 + common.gate      + common.windows_vs2019 + common.gateTags             + {environment+: {TAGS: 'windows'}}                                         + {name: 'nodejs-gate-jdk15-windows-amd64'},
+//  disabled due to GR-26245
+//    graalNodeJs + common.jdk15 + common.gate      + common.windows_vs2019 + common.gateTags             + {environment+: {TAGS: 'windows'}}                                         + {name: 'nodejs-gate-jdk15-windows-amd64'},
     graalNodeJs + common.jdk8  + common.gate      + common.linux          + gateSubstrateVm                                                                                         + {name: 'nodejs-gate-substratevm-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8  + common.gate      + common.darwin         + gateSubstrateVm                                                                                         + {name: 'nodejs-gate-substratevm-jdk8-darwin-amd64'},
     graalNodeJs + common.jdk11 + common.gate      + common.linux          + gateSubstrateVm                                                                                         + {name: 'nodejs-gate-substratevm-jdk11-linux-amd64'},
