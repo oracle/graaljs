@@ -88,7 +88,7 @@ public class JSLauncher extends AbstractLanguageLauncher {
             exitCode = executeScripts(contextBuilder);
         }
         if (exitCode != 0) {
-            throw abort("", exitCode);
+            throw abort((String) null, exitCode);
         }
     }
 
