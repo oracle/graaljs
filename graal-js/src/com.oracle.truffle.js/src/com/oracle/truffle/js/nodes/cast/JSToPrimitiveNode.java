@@ -40,12 +40,14 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -76,6 +78,9 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  *
  */
 public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
+
+    @Child private OrdinaryToPrimitiveNode ordinaryToPrimitiveNode;
+    @Child private IsPrimitiveNode isPrimitiveNode;
 
     public enum Hint {
         None,
@@ -217,7 +222,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
             } else if (JSGuards.isJavaArray(javaObject)) {
                 return JSRuntime.javaArrayToString(javaObject);
             } else {
-                return JSRuntime.toJSNull(Boundaries.javaToString(javaObject));
+                return hostToPrimitive(object, interop, javaObject);
             }
         }
         try {
@@ -237,13 +242,65 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         } catch (UnsupportedMessageException e) {
             throw Errors.createTypeErrorUnboxException(object, e, this);
         }
-        return JSRuntime.foreignToString(object);
+        Object result = ordinaryToPrimitive(realm.getContext(), object);
+        InteropLibrary resultInterop = InteropLibrary.getFactory().getUncached(result);
+        try {
+            if (resultInterop.isBoolean(result)) {
+                return resultInterop.asBoolean(result);
+            } else if (resultInterop.isString(result)) {
+                return resultInterop.asString(result);
+            } else if (resultInterop.isNumber(result)) {
+                if (resultInterop.fitsInInt(result)) {
+                    return resultInterop.asInt(result);
+                } else if (resultInterop.fitsInLong(result)) {
+                    return resultInterop.asLong(result);
+                } else if (resultInterop.fitsInDouble(result)) {
+                    return resultInterop.asDouble(result);
+                }
+            }
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorUnboxException(result, e, this);
+        }
+        throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
+    }
+
+    private Object hostToPrimitive(Object object, InteropLibrary interop, Object javaObject) {
+        if (isHintNumber()) {
+            if (interop.hasMembers(object) && interop.isMemberInvocable(object, JSRuntime.VALUE_OF)) {
+                Object result;
+                try {
+                    result = JSRuntime.importValue(interop.invokeMember(object, JSRuntime.VALUE_OF));
+                } catch (InteropException e) {
+                    result = null;
+                }
+                if (result != null && isPrimitive(result)) {
+                    return result;
+                }
+            }
+        }
+        return JSRuntime.toJSNull(Boundaries.javaToString(javaObject));
     }
 
     @Fallback
     protected Object doFallback(Object value) {
         assert value != null;
         throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
+    }
+
+    private Object ordinaryToPrimitive(JSContext context, Object object) {
+        if (ordinaryToPrimitiveNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            ordinaryToPrimitiveNode = insert(OrdinaryToPrimitiveNode.create(context, isHintString() ? Hint.String : Hint.Number));
+        }
+        return ordinaryToPrimitiveNode.execute(object);
+    }
+
+    private boolean isPrimitive(Object object) {
+        if (isPrimitiveNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            isPrimitiveNode = insert(IsPrimitiveNode.create());
+        }
+        return isPrimitiveNode.executeBoolean(object);
     }
 
     protected static PropertyNode createGetToPrimitive(DynamicObject object) {

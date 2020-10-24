@@ -98,4 +98,14 @@ public class ForeignTestFunction implements TruffleObject {
             return "f()";
         }
     }
+
+    @ExportMessage
+    public boolean hasExecutableName() {
+        return true;
+    }
+
+    @ExportMessage
+    final Object getExecutableName() {
+        return name;
+    }
 }

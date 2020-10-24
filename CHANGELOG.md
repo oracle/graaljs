@@ -9,6 +9,7 @@ The main focus is on user-observable behavior of the engine.
 * ScriptEngine: Fixed "Multiple applicable overloads found" error in nashorn-compat mode, see [issue #286](https://github.com/graalvm/graaljs/issues/286).
 * ScriptEngine: Enabled low precedence lossy number, string-to-boolean, and number-to-boolean conversions in nashorn-compat mode.
 * `js.foreign-object-prototype` is a supported option to set JavaScript prototypes for foreign objects mimicing JavaScript types. It was renamed from `js.experimental-foreign-object-prototype`.
+* Changed `ToPrimitive` abstract operation to follow the specification for foreign objects. `InteropLibrary.toDisplayString` is not used by `ToPrimitive/ToString` conversions anymore.
 
 ## Version 20.2.0
 * Implemented the [Intl.NumberFormat Unified API](https://github.com/tc39/proposal-unified-intl-numberformat) proposal.

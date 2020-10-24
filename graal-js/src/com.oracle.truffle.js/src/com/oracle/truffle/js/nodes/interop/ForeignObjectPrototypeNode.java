@@ -60,7 +60,6 @@ public abstract class ForeignObjectPrototypeNode extends JavaScriptBaseNode {
     public DynamicObject doTruffleObject(Object truffleObject,
                     @CachedContext(JavaScriptLanguage.class) JSRealm realm,
                     @CachedLibrary("truffleObject") InteropLibrary interop) {
-        assert realm.getContext().getContextOptions().hasForeignObjectPrototype();
         if (interop.hasArrayElements(truffleObject)) {
             return realm.getArrayPrototype();
         } else if (interop.isExecutable(truffleObject) || interop.isInstantiable(truffleObject)) {

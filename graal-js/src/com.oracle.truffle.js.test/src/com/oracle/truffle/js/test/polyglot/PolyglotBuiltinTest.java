@@ -226,8 +226,8 @@ public class PolyglotBuiltinTest extends JSTest {
 
     @Test
     public void testCreateForeignObject() {
-        assertEquals("{}", test("''+Polyglot.createForeignObject();"));
-        assertEquals("{}", test("''+Polyglot.createForeignDynamicObject();"));
+        assertEquals("[object Object]", test("''+Polyglot.createForeignObject();"));
+        assertEquals("[object Object]", test("''+Polyglot.createForeignDynamicObject();"));
     }
 
     @Test

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,10 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -49,6 +53,7 @@ import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode.Hint;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -58,7 +63,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 /**
  * Implements OrdinaryToPrimitive (O, hint).
  */
-public class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
+public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     private final Hint hint;
     private final JSContext context;
     private final ConditionProfile toStringFunctionProfile = ConditionProfile.createBinaryProfile();
@@ -69,6 +74,7 @@ public class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     @Child private JSFunctionCallNode callToStringNode;
     @Child private JSFunctionCallNode callValueOfNode;
     @Child private IsPrimitiveNode isPrimitiveNode;
+    @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
 
     protected OrdinaryToPrimitiveNode(JSContext context, Hint hint) {
         assert hint == Hint.String || hint == Hint.Number;
@@ -78,13 +84,26 @@ public class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
         this.isPrimitiveNode = IsPrimitiveNode.create();
     }
 
-    public Object execute(DynamicObject object) {
-        assert JSGuards.isJSObject(object);
+    public abstract Object execute(Object object);
+
+    @Specialization(guards = {"isJSObject(object)"})
+    protected Object doObject(DynamicObject object) {
         if (hint == Hint.String) {
             return doHintString(object);
         } else {
             assert hint == Hint.Number;
             return doHintNumber(object);
+        }
+    }
+
+    @Specialization(guards = {"isForeignObject(object)"}, limit = "5")
+    protected Object doForeign(Object object,
+                    @CachedLibrary("object") InteropLibrary interop) {
+        if (hint == Hint.String) {
+            return doForeignHintString(object, interop);
+        } else {
+            assert hint == Hint.Number;
+            return doForeignHintNumber(object, interop);
         }
     }
 
@@ -97,7 +116,7 @@ public class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     }
 
     public static OrdinaryToPrimitiveNode create(JSContext context, Hint hint) {
-        return new OrdinaryToPrimitiveNode(context, hint);
+        return OrdinaryToPrimitiveNodeGen.create(context, hint);
     }
 
     protected Object doHintString(DynamicObject object) {
@@ -141,6 +160,92 @@ public class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
     }
 
+    protected Object doForeignHintString(Object object, InteropLibrary interop) {
+        if (interop.hasMembers(object) && interop.isMemberInvocable(object, JSRuntime.TO_STRING)) {
+            Object result;
+            try {
+                result = JSRuntime.importValue(interop.invokeMember(object, JSRuntime.TO_STRING));
+            } catch (InteropException e) {
+                result = null;
+            }
+            if (result != null && isPrimitiveNode.executeBoolean(result)) {
+                return result;
+            }
+        }
+        DynamicObject proto = getForeignObjectPrototype(object);
+        Object func = getToString().executeWithTarget(proto);
+        if (toStringFunctionProfile.profile(isCallableNode.executeBoolean(func))) {
+            Object result = callToStringNode.executeCall(JSArguments.createZeroArg(object, func));
+            if (isPrimitiveNode.executeBoolean(result)) {
+                return result;
+            }
+        }
+
+        if (interop.hasMembers(object) && interop.isMemberInvocable(object, JSRuntime.VALUE_OF)) {
+            Object result;
+            try {
+                result = JSRuntime.importValue(interop.invokeMember(object, JSRuntime.VALUE_OF));
+            } catch (InteropException e) {
+                result = null;
+            }
+            if (result != null && isPrimitiveNode.executeBoolean(result)) {
+                return result;
+            }
+        }
+        func = getValueOf().executeWithTarget(proto);
+        if (valueOfFunctionProfile.profile(isCallableNode.executeBoolean(func))) {
+            Object result = callValueOfNode.executeCall(JSArguments.createZeroArg(object, func));
+            if (isPrimitiveNode.executeBoolean(result)) {
+                return result;
+            }
+        }
+
+        throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
+    }
+
+    protected Object doForeignHintNumber(Object object, InteropLibrary interop) {
+        if (interop.hasMembers(object) && interop.isMemberInvocable(object, JSRuntime.VALUE_OF)) {
+            Object result;
+            try {
+                result = JSRuntime.importValue(interop.invokeMember(object, JSRuntime.VALUE_OF));
+            } catch (InteropException e) {
+                result = null;
+            }
+            if (result != null && isPrimitiveNode.executeBoolean(result)) {
+                return result;
+            }
+        }
+        DynamicObject proto = getForeignObjectPrototype(object);
+        Object func = getValueOf().executeWithTarget(proto);
+        if (valueOfFunctionProfile.profile(isCallableNode.executeBoolean(func))) {
+            Object result = callValueOfNode.executeCall(JSArguments.createZeroArg(object, func));
+            if (isPrimitiveNode.executeBoolean(result)) {
+                return result;
+            }
+        }
+
+        if (interop.hasMembers(object) && interop.isMemberInvocable(object, JSRuntime.TO_STRING)) {
+            Object result;
+            try {
+                result = JSRuntime.importValue(interop.invokeMember(object, JSRuntime.TO_STRING));
+            } catch (InteropException e) {
+                result = null;
+            }
+            if (result != null && isPrimitiveNode.executeBoolean(result)) {
+                return result;
+            }
+        }
+        func = getToString().executeWithTarget(proto);
+        if (toStringFunctionProfile.profile(isCallableNode.executeBoolean(func))) {
+            Object result = callToStringNode.executeCall(JSArguments.createZeroArg(object, func));
+            if (isPrimitiveNode.executeBoolean(result)) {
+                return result;
+            }
+        }
+
+        throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
+    }
+
     private PropertyNode getToString() {
         if (getToStringNode == null || callToStringNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -157,5 +262,14 @@ public class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
             callValueOfNode = insert(JSFunctionCallNode.createCall());
         }
         return getValueOfNode;
+    }
+
+    private DynamicObject getForeignObjectPrototype(Object truffleObject) {
+        assert JSRuntime.isForeignObject(truffleObject);
+        if (foreignObjectPrototypeNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
+        }
+        return foreignObjectPrototypeNode.executeDynamicObject(truffleObject);
     }
 }
