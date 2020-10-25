@@ -22,7 +22,7 @@ local jdks = (import "common.json").jdks;
   deploy:      {targets+: ['deploy']},
   gate:        {targets+: ['gate']},
   postMerge:   {targets+: ['post-merge']},
-  bench:       {targets+: ['bench', 'post-merge']},
+  bench:       {targets+: ['bench']},
   dailyBench:  {targets+: ['bench', 'daily']},
   weeklyBench: {targets+: ['bench', 'weekly']},
   manualBench: {targets+: ['bench']},
@@ -36,6 +36,7 @@ local jdks = (import "common.json").jdks;
 
   local common = python3 + {
     packages+: {
+      'mx': '5.274.1',
       'pip:pylint': '==1.9.3',
       'pip:ninja_syntax': '==1.7.2',
     },
