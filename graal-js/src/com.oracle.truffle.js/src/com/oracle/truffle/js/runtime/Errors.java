@@ -133,6 +133,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeError(String message, Throwable cause, Node originatingNode) {
+        return JSException.create(JSErrorType.TypeError, message, cause, originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorCannotMixBigIntWithOtherTypes(Node originatingNode) {
         return createTypeError("Cannot mix BigInt and other types, use explicit conversions.", originatingNode);
     }
