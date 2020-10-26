@@ -3,6 +3,8 @@
 This changelog summarizes major changes between GraalVM versions of the GraalVM JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 
+## Version 21.0.0
+
 ## Version 20.3.0
 * Updated Node.js to version 12.18.4.
 * Fixed field/getter/setter access order in nashorn-compat mode, see [issue #343](https://github.com/graalvm/graaljs/issues/343).
