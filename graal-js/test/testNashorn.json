@@ -424,9 +424,6 @@
     "status" : "SKIP",
     "comment" : "using jdk.nashorn.api.scripting.JSObject"
   }, {
-    "filePath" : "basic/JDK-8068580.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "basic/JDK-8068903.js",
     "status" : "FAIL"
   }, {

@@ -86,7 +86,7 @@ public class JavaBuiltinsTest extends JSTest {
             assertTrue(failedMessage == null);
             return result.asString();
         } catch (Exception ex) {
-            assertTrue(failedMessage != null);
+            assertTrue(ex.getMessage(), failedMessage != null);
             assertTrue(ex.getMessage(), ex.getMessage().contains(failedMessage));
             return "FAILED_AS_EXPECTED";
         }

@@ -121,7 +121,6 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
-import com.oracle.truffle.js.runtime.java.adapter.JavaAdapterFactory;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -325,8 +324,6 @@ public class JSContext {
 
     private final JSPrototypeData nullPrototypeData = new JSPrototypeData();
     private final JSPrototypeData inObjectPrototypeData = new JSPrototypeData();
-
-    private volatile ClassValue<Class<?>> javaAdapterClasses;
 
     private final JSFunctionFactory functionFactory;
     private final JSFunctionFactory constructorFactory;
@@ -1500,25 +1497,6 @@ public class JSContext {
 
     public JSContextOptions getContextOptions() {
         return contextOptions;
-    }
-
-    public Class<?> getJavaAdapterClassFor(Class<?> clazz) {
-        if (JSConfig.SubstrateVM) {
-            throw Errors.unsupported("JavaAdapter");
-        }
-        if (javaAdapterClasses == null) {
-            synchronized (this) {
-                if (javaAdapterClasses == null) {
-                    javaAdapterClasses = new ClassValue<Class<?>>() {
-                        @Override
-                        protected Class<?> computeValue(Class<?> type) {
-                            return JavaAdapterFactory.getAdapterClassFor(type);
-                        }
-                    };
-                }
-            }
-        }
-        return javaAdapterClasses.get(clazz);
     }
 
     public final boolean isMultiContext() {
