@@ -150,6 +150,22 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
         }
     }
 
+    @Override
+    public final void executeVoid(VirtualFrame frame) {
+        try {
+            tryBlock.executeVoid(frame);
+        } catch (ControlFlowException cfe) {
+            throw cfe;
+        } catch (Throwable ex) {
+            catchBranch.enter();
+            if (shouldCatch(ex, typeProfile)) {
+                executeCatch(frame, ex);
+            } else {
+                throw ex;
+            }
+        }
+    }
+
     public static boolean shouldCatch(Throwable ex, ValueProfile vp) {
         return shouldCatch(vp.profile(ex));
     }

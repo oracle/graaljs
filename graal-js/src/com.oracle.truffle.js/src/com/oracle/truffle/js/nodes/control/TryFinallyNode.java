@@ -106,6 +106,31 @@ public class TryFinallyNode extends StatementNode implements ResumableNode {
     }
 
     @Override
+    public void executeVoid(VirtualFrame frame) {
+        Throwable throwable;
+        try {
+            tryBlock.executeVoid(frame);
+            throwable = null;
+        } catch (ControlFlowException cfe) {
+            throwable = cfe;
+        } catch (Throwable ex) {
+            catchBranch.enter();
+            if (TryCatchNode.shouldCatch(ex, typeProfile)) {
+                throwable = ex;
+            } else {
+                // skip finally block
+                throw ex;
+            }
+        }
+
+        finallyBlock.executeVoid(frame);
+
+        if (throwable != null) {
+            throw JSRuntime.rethrow(throwable);
+        }
+    }
+
+    @Override
     public Object resume(VirtualFrame frame) {
         Object result = EMPTY;
         Throwable throwable = null;
