@@ -56,11 +56,11 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
@@ -96,7 +96,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
         @Child private AsyncGeneratorRejectNode asyncGeneratorRejectNode;
         @Child private AsyncGeneratorResumeNextNode asyncGeneratorResumeNextNode;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
-        private final ValueProfile typeProfile = ValueProfile.createClassProfile();
+        @Child private InteropLibrary exceptions;
         private final JSContext context;
         private final String functionName;
 
@@ -188,12 +188,13 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
         }
 
         private boolean shouldCatch(Throwable exception) {
-            if (getErrorObjectNode == null || asyncGeneratorRejectNode == null) {
+            if (getErrorObjectNode == null || asyncGeneratorRejectNode == null || exceptions == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
                 asyncGeneratorRejectNode = insert(AsyncGeneratorRejectNode.create(context));
+                exceptions = insert(InteropLibrary.getFactory().createDispatched(5));
             }
-            return TryCatchNode.shouldCatch(exception, typeProfile);
+            return TryCatchNode.shouldCatch(exception, exceptions);
         }
 
         @Override

@@ -40,18 +40,18 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-
-import java.util.Set;
 
 public class IteratorCloseWrapperNode extends JavaScriptNode implements ResumableNode {
     @Child private JavaScriptNode blockNode;
@@ -61,7 +61,7 @@ public class IteratorCloseWrapperNode extends JavaScriptNode implements Resumabl
     private final BranchProfile throwBranch = BranchProfile.create();
     private final BranchProfile exitBranch = BranchProfile.create();
     private final BranchProfile notDoneBranch = BranchProfile.create();
-    private final ValueProfile typeProfile = ValueProfile.createClassProfile();
+    @Child private InteropLibrary exceptions;
 
     protected IteratorCloseWrapperNode(JSContext context, JavaScriptNode block, JavaScriptNode iterator) {
         this.context = context;
@@ -88,7 +88,7 @@ public class IteratorCloseWrapperNode extends JavaScriptNode implements Resumabl
             }
             throw e;
         } catch (Throwable e) {
-            if (TryCatchNode.shouldCatch(e, typeProfile)) {
+            if (TryCatchNode.shouldCatch(e, exceptions())) {
                 throwBranch.enter();
                 IteratorRecord iteratorRecord = getIteratorRecord(frame);
                 if (!iteratorRecord.isDone()) {
@@ -121,6 +121,15 @@ public class IteratorCloseWrapperNode extends JavaScriptNode implements Resumabl
             iteratorCloseNode = insert(IteratorCloseNode.create(context));
         }
         return iteratorCloseNode;
+    }
+
+    private InteropLibrary exceptions() {
+        InteropLibrary e = exceptions;
+        if (e == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            exceptions = e = insert(InteropLibrary.getFactory().createDispatched(5));
+        }
+        return e;
     }
 
     @Override

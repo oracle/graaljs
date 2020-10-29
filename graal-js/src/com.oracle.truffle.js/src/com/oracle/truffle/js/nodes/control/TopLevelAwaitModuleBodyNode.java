@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -48,15 +50,14 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
-
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.promise.AsyncRootNode;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -68,8 +69,6 @@ import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-import java.util.Set;
-
 public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
 
     @NodeInfo(cost = NodeCost.NONE, language = "JavaScript")
@@ -77,13 +76,13 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
 
         private final JSContext context;
         private final String functionName;
-        private final ValueProfile typeProfile = ValueProfile.createClassProfile();
 
         @Child private JavaScriptNode functionBody;
         @Child private JSFunctionCallNode callResolveNode;
         @Child private JSFunctionCallNode callRejectNode;
         @Child private JSWriteFrameSlotNode writeAsyncResult;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
+        @Child private InteropLibrary exceptions;
 
         TopLevelAwaitModuleRootNode(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode asyncResult, SourceSection functionSourceSection, String functionName) {
             super(context.getLanguage(), functionSourceSection, null);
@@ -122,12 +121,13 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
         }
 
         private boolean shouldCatch(Throwable exception) {
-            if (getErrorObjectNode == null || callRejectNode == null) {
+            if (getErrorObjectNode == null || callRejectNode == null || exceptions == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
                 callRejectNode = insert(JSFunctionCallNode.createCall());
+                exceptions = insert(InteropLibrary.getFactory().createDispatched(5));
             }
-            return TryCatchNode.shouldCatch(exception, typeProfile);
+            return TryCatchNode.shouldCatch(exception, exceptions);
         }
 
         @Override

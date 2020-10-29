@@ -40,13 +40,15 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
@@ -59,8 +61,6 @@ import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.util.Set;
 
 /**
  * ES8 5.2 AsyncIteratorClose(iterator, completion).
@@ -75,7 +75,7 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
     private final BranchProfile throwBranch = BranchProfile.create();
     private final BranchProfile exitBranch = BranchProfile.create();
     private final BranchProfile notDoneBranch = BranchProfile.create();
-    private final ValueProfile typeProfile = ValueProfile.createClassProfile();
+    @Child private InteropLibrary exceptions;
 
     protected AsyncIteratorCloseWrapperNode(JSContext context, JavaScriptNode loopNode, JavaScriptNode iteratorNode, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
         super(context, null, asyncContextNode, asyncResultNode);
@@ -112,7 +112,7 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
                     throw e;
                 }
             } catch (Throwable e) {
-                if (TryCatchNode.shouldCatch(e, typeProfile)) {
+                if (TryCatchNode.shouldCatch(e, exceptions())) {
                     throwBranch.enter();
                     IteratorRecord iteratorRecord = getIteratorRecord(frame);
                     DynamicObject iterator = iteratorRecord.getIterator();
@@ -182,6 +182,15 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
             returnMethodCallNode = insert(JSFunctionCallNode.createCall());
         }
         return returnMethodCallNode;
+    }
+
+    private InteropLibrary exceptions() {
+        InteropLibrary e = exceptions;
+        if (e == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            exceptions = e = insert(InteropLibrary.getFactory().createDispatched(5));
+        }
+        return e;
     }
 
     @Override

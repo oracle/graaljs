@@ -40,14 +40,18 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
+import static com.oracle.truffle.js.runtime.JSConfig.ECMAScript2021;
+
+import java.util.Set;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -71,10 +75,6 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.Triple;
 
-import java.util.Set;
-
-import static com.oracle.truffle.js.runtime.JSConfig.ECMAScript2021;
-
 /**
  * Represents the import call expression syntax: {@code import(specifier)}.
  */
@@ -88,9 +88,9 @@ public class ImportCallNode extends JavaScriptNode {
     // lazily initialized
     @Child private JSFunctionCallNode callRejectNode;
     @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
+    @Child private InteropLibrary exceptions;
 
     private final JSContext context;
-    private final ValueProfile typeProfile = ValueProfile.createClassProfile();
 
     protected ImportCallNode(JSContext context, JavaScriptNode argRefNode, JavaScriptNode activeScriptOrModuleNode) {
         this.context = context;
@@ -113,7 +113,7 @@ public class ImportCallNode extends JavaScriptNode {
         try {
             specifierString = toStringNode.executeString(specifier);
         } catch (Throwable ex) {
-            if (TryCatchNode.shouldCatch(ex, typeProfile)) {
+            if (TryCatchNode.shouldCatch(ex, exceptions())) {
                 return newRejectedPromiseFromException(ex);
             } else {
                 throw ex;
@@ -163,6 +163,15 @@ public class ImportCallNode extends JavaScriptNode {
         PromiseCapabilityRecord promiseCapability = newPromiseCapability();
         callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), getErrorObjectNode.execute(ex)));
         return promiseCapability.getPromise();
+    }
+
+    private InteropLibrary exceptions() {
+        InteropLibrary e = exceptions;
+        if (e == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            exceptions = e = insert(InteropLibrary.getFactory().createDispatched(5));
+        }
+        return e;
     }
 
     @TruffleBoundary
@@ -226,6 +235,7 @@ public class ImportCallNode extends JavaScriptNode {
             @Child private PerformPromiseThenNode promiseThenNode = PerformPromiseThenNode.create(context);
             @Child private JSFunctionCallNode callPromiseReaction = JSFunctionCallNode.createCall();
             @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
+            @Child private InteropLibrary exceptions;
 
             @SuppressWarnings("unchecked")
             @Override
@@ -265,11 +275,12 @@ public class ImportCallNode extends JavaScriptNode {
             }
 
             private boolean shouldCatch(Throwable exception) {
-                if (getErrorObjectNode == null) {
+                if (getErrorObjectNode == null || exceptions == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
+                    exceptions = insert(InteropLibrary.getFactory().createDispatched(5));
                 }
-                return TryCatchNode.shouldCatch(exception);
+                return TryCatchNode.shouldCatch(exception, exceptions);
             }
         }
 

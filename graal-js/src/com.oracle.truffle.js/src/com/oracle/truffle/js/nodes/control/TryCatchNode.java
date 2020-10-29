@@ -44,17 +44,19 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags.TryBlockTag;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.InitErrorObjectNode;
@@ -87,10 +89,8 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
     @Child private JavaScriptNode destructuring;
     @Child private JavaScriptNode conditionExpression; // non-standard extension
     @Child private GetErrorObjectNode getErrorObjectNode;
+    @Child private InteropLibrary exceptions;
     private final JSContext context;
-
-    private final BranchProfile catchBranch = BranchProfile.create();
-    private final ValueProfile typeProfile = ValueProfile.createClassProfile();
 
     protected TryCatchNode(JSContext context, JavaScriptNode tryBlock, JavaScriptNode catchBlock, JSWriteFrameSlotNode writeErrorVar, BlockScopeNode blockScope, JavaScriptNode destructuring,
                     JavaScriptNode conditionExpression) {
@@ -141,8 +141,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
         } catch (ControlFlowException cfe) {
             throw cfe;
         } catch (Throwable ex) {
-            catchBranch.enter();
-            if (shouldCatch(ex, typeProfile)) {
+            if (shouldCatch(ex, exceptions())) {
                 return executeCatch(frame, ex);
             } else {
                 throw ex;
@@ -157,8 +156,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
         } catch (ControlFlowException cfe) {
             throw cfe;
         } catch (Throwable ex) {
-            catchBranch.enter();
-            if (shouldCatch(ex, typeProfile)) {
+            if (shouldCatch(ex, exceptions())) {
                 executeCatch(frame, ex);
             } else {
                 throw ex;
@@ -166,17 +164,21 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
         }
     }
 
-    public static boolean shouldCatch(Throwable ex, ValueProfile vp) {
-        return shouldCatch(vp.profile(ex));
+    public static boolean shouldCatch(Throwable ex, InteropLibrary exceptions) {
+        if (exceptions.isException(ex)) {
+            try {
+                ExceptionType exceptionType = exceptions.getExceptionType(ex);
+                return exceptionType != ExceptionType.EXIT && exceptionType != ExceptionType.INTERRUPT;
+            } catch (UnsupportedMessageException e) {
+                throw Errors.createTypeErrorInteropException(ex, e, "getExceptionType", null);
+            }
+        } else {
+            return false;
+        }
     }
 
     public static boolean shouldCatch(Throwable ex) {
-        if (ex instanceof TruffleException) {
-            TruffleException tex = (TruffleException) ex;
-            return !(tex.isExit() || tex.isCancelled() || tex.isInternalError());
-        } else {
-            return (ex instanceof StackOverflowError);
-        }
+        return shouldCatch(ex, InteropLibrary.getUncached());
     }
 
     private Object executeCatch(VirtualFrame frame, Throwable ex) {
@@ -220,8 +222,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
             } catch (ControlFlowException cfe) {
                 throw cfe;
             } catch (Throwable ex) {
-                catchBranch.enter();
-                if (shouldCatch(ex, typeProfile)) {
+                if (shouldCatch(ex, exceptions())) {
                     VirtualFrame catchFrame = blockScope == null ? frame : blockScope.appendScopeFrame(frame);
                     try {
                         return executeCatchInner(catchFrame, ex);
@@ -248,6 +249,15 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
         }
     }
 
+    private InteropLibrary exceptions() {
+        InteropLibrary e = exceptions;
+        if (e == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            exceptions = e = insert(InteropLibrary.getFactory().createDispatched(5));
+        }
+        return e;
+    }
+
     public static final class GetErrorObjectNode extends JavaScriptBaseNode {
         @Child private InitErrorObjectNode initErrorObjectNode;
         private final ConditionProfile isJSError = ConditionProfile.createBinaryProfile();
@@ -264,6 +274,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
             return new GetErrorObjectNode(context);
         }
 
+        @SuppressWarnings("deprecation")
         public Object execute(Throwable ex) {
             if (isJSError.profile(ex instanceof JSException)) {
                 // fill in any missing stack trace elements
@@ -278,14 +289,8 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
                 return doJSException(rangeException);
             } else {
                 truffleExceptionBranch.enter();
-                assert ex instanceof TruffleException : ex;
-                TruffleException truffleException = (TruffleException) ex;
-                Object exceptionObject = truffleException.getExceptionObject();
-                if (exceptionObject != null) {
-                    return exceptionObject;
-                }
-
-                return context.getRealm().getEnv().asGuestValue(ex);
+                assert ex instanceof AbstractTruffleException || ex instanceof com.oracle.truffle.api.TruffleException : ex;
+                return ex;
             }
         }
 
