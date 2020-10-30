@@ -41,6 +41,10 @@
 package com.oracle.truffle.js.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -51,10 +55,11 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
+@ExportLibrary(value = InteropLibrary.class, delegateTo = "exceptionObject")
 public final class UserScriptException extends GraalJSException {
 
     private static final long serialVersionUID = -6624166672101791072L;
-    private final Object exceptionObject;
+    final Object exceptionObject;
 
     private UserScriptException(Object exceptionObject, Node originatingNode, int stackTraceLimit) {
         super(getMessage(exceptionObject), originatingNode, stackTraceLimit);
@@ -87,9 +92,22 @@ public final class UserScriptException extends GraalJSException {
         return exceptionObject;
     }
 
-    @Override
-    public Object getErrorObjectEager(JSContext context) {
-        return exceptionObject;
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public boolean isException() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public RuntimeException throwException() {
+        throw this;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public ExceptionType getExceptionType() {
+        return ExceptionType.RUNTIME_ERROR;
     }
 
     /**

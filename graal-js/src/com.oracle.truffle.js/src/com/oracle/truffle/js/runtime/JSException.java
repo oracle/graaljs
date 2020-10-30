@@ -42,6 +42,10 @@ package com.oracle.truffle.js.runtime;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.SourceSection;
@@ -50,6 +54,7 @@ import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
+@ExportLibrary(InteropLibrary.class)
 public final class JSException extends GraalJSException {
 
     private static final long serialVersionUID = -2139936643139844157L;
@@ -156,25 +161,28 @@ public final class JSException extends GraalJSException {
         this.exceptionObj = exceptionObj;
     }
 
+    @TruffleBoundary
     @Override
-    public Object getExceptionObject() {
-        if (exceptionObj == null) {
+    public Object getErrorObjectEager() {
+        DynamicObject jserror = exceptionObj;
+        if (jserror == null) {
             JSRealm innerRealm = this.realm != null ? this.realm : JavaScriptLanguage.getCurrentJSRealm();
             String message = getRawMessage();
-            exceptionObj = JSError.createFromJSException(this, innerRealm, (message == null) ? "" : message);
+            exceptionObj = jserror = JSError.createFromJSException(this, innerRealm, (message == null) ? "" : message);
         }
-        return super.getExceptionObject();
+        return jserror;
     }
 
     @TruffleBoundary
     @Override
     public Object getErrorObjectEager(JSContext context) {
-        if (exceptionObj == null) { // not thread safe, but should be all right in this case
-            JSRealm innerRealm = this.realm == null ? context.getRealm() : this.realm;
+        DynamicObject jserror = exceptionObj;
+        if (jserror == null) { // not thread safe, but should be all right in this case
+            JSRealm innerRealm = this.realm != null ? this.realm : context.getRealm();
             String message = getRawMessage();
-            exceptionObj = JSError.createFromJSException(this, innerRealm, (message == null) ? "" : message);
+            exceptionObj = jserror = JSError.createFromJSException(this, innerRealm, (message == null) ? "" : message);
         }
-        return exceptionObj;
+        return jserror;
     }
 
     public JSException setRealm(JSRealm realm) {
@@ -199,13 +207,13 @@ public final class JSException extends GraalJSException {
         return this;
     }
 
-    @Override
-    public boolean isSyntaxError() {
-        return this.type == JSErrorType.SyntaxError;
+    @ExportMessage
+    public ExceptionType getExceptionType() {
+        return this.type == JSErrorType.SyntaxError ? ExceptionType.PARSE_ERROR : ExceptionType.RUNTIME_ERROR;
     }
 
-    @Override
-    public boolean isIncompleteSource() {
+    @ExportMessage
+    public boolean isExceptionIncompleteSource() {
         return isIncompleteSource;
     }
 }
