@@ -12,7 +12,7 @@ This document describes how to run GraalVM JavaScript on stock Java VMs, and sho
 GraalVM JavaScript is open source and regularly pushed to Maven Central Repository by the community.
 You can find it as package [org.graalvm.js](https://mvnrepository.com/artifact/org.graalvm.js/js).
 
-There is an exemple Maven project for GraalVM JavaScript on JDK11 (or later) using the GraalVM compiler at [graal-js-jdk11-maven-demo](https://github.com/graalvm/graal-js-jdk11-maven-demo).
+There is an example Maven project for GraalVM JavaScript on JDK11 (or later) using the GraalVM compiler at [graal-js-jdk11-maven-demo](https://github.com/graalvm/graal-js-jdk11-maven-demo).
 The example contains a Maven project for a JavaScript benchmark (a prime number generator).
 It allows a user to compare the performance of GraalVM JavaScript running with or without the GraalVM compiler as the optimizing compiler.
 Running with the GraalVM compiler will siginificantly improve the execution performance of any relatively large JavaScript codebase.
