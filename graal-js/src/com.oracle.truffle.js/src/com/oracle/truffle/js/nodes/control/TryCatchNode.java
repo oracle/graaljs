@@ -172,6 +172,8 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
             } catch (UnsupportedMessageException e) {
                 throw Errors.createTypeErrorInteropException(ex, e, "getExceptionType", null);
             }
+        } else if (ex instanceof StackOverflowError) {
+            return true;
         } else {
             return false;
         }
