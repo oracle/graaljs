@@ -1729,7 +1729,11 @@ public class JSRealm {
     }
 
     private void addTemporalGlobals() {
-        putGlobalProperty(JSTemporalTime.CLASS_NAME, getTemporalTimeConstructor());
+        DynamicObject temporalObject = JSObjectUtil.createOrdinaryPrototypeObject(this);
+
+        JSObjectUtil.putDataProperty(context, temporalObject, "Time", getTemporalTimeConstructor());
+
+        putGlobalProperty("Temporal", temporalObject);
     }
 
     private DynamicObject createIntlObject() {

@@ -32,19 +32,45 @@ public class JSTemporalTime extends JSNonProxy implements JSConstructorFactory.D
     private JSTemporalTime() {
     }
 
-    public static DynamicObject create(JSContext context, int hours, int minutes, int seconds, int milliseconds,
-                                       int microseconds, int nanoseconds) {
+    public static DynamicObject create(JSContext context, long hours, long minutes, long seconds, long milliseconds,
+                                       long microseconds, long nanoseconds) {
+        if (!validateTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
+            throw Errors.createRangeError("Given time outside the range.");
+        }
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getTemporalTimeFactory();
         DynamicObject obj = factory.initProto(new JSTemporalTimeObject(factory.getShape(realm),
-                hours, minutes, seconds, milliseconds, microseconds, nanoseconds
+                (int) hours, (int) minutes, (int) seconds, (int) milliseconds, (int) microseconds, (int) nanoseconds
         ), realm);
         return context.trackAllocation(obj);
     }
 
+    private static boolean validateTime(long hours, long minutes, long seconds, long milliseconds, long microseconds,
+                                        long nanoseconds) {
+        if (hours < 0 || hours > 23) {
+            return false;
+        }
+        if (minutes < 0 || minutes > 59) {
+            return false;
+        }
+        if (seconds < 0 || seconds > 59) {
+            return false;
+        }
+        if (milliseconds < 0 || milliseconds > 999) {
+            return false;
+        }
+        if (microseconds < 0 || microseconds > 999) {
+            return false;
+        }
+        if (nanoseconds < 0 || nanoseconds > 999) {
+            return false;
+        }
+        return true;
+    }
+
     @Override
     public String getClassName(DynamicObject object) {
-        return getClassName();
+        return "Temporal.Time";
     }
 
     @Override
@@ -110,7 +136,7 @@ public class JSTemporalTime extends JSNonProxy implements JSConstructorFactory.D
         JSObjectUtil.putBuiltinAccessorProperty(prototype, NANOSECOND,
                 createGetterFunction(realm, BuiltinFunctionKey.TemporalTimeNanosecond, NANOSECOND), Undefined.instance);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalTimePrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
+        JSObjectUtil.putToStringTag(prototype, "Temporal.Time");
 
         return prototype;
     }

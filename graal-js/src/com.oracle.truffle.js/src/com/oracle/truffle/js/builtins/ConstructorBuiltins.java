@@ -151,6 +151,7 @@ import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
@@ -1008,45 +1009,71 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization(guards = {"args.length == 1"})
-        protected DynamicObject constructTemporalTimeH(DynamicObject newTarget, Object[] args) {
+        protected DynamicObject constructTemporalTimeH(DynamicObject newTarget, Object[] args,
+                                                       @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
+            final long hour = toIntegerNode.executeLong(args[0]);
             return swapPrototype(JSTemporalTime.create(getContext(),
-                    (Integer) args[0], 0, 0, 0, 0, 0
+                    hour, 0, 0, 0, 0, 0
             ), newTarget);
         }
 
         @Specialization(guards = {"args.length == 2"})
-        protected DynamicObject constructTemporalTimeHM(DynamicObject newTarget, Object[] args) {
+        protected DynamicObject constructTemporalTimeHM(DynamicObject newTarget, Object[] args,
+                                                        @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
+            final long hour = toIntegerNode.executeLong(args[0]);
+            final long minute = toIntegerNode.executeLong(args[1]);
             return swapPrototype(JSTemporalTime.create(getContext(),
-                    (Integer) args[0], (Integer) args[1], 0, 0, 0, 0
+                    hour, minute, 0, 0, 0, 0
             ), newTarget);
         }
 
         @Specialization(guards = {"args.length == 3"})
-        protected DynamicObject constructTemporalTimeHMS(DynamicObject newTarget, Object[] args) {
+        protected DynamicObject constructTemporalTimeHMS(DynamicObject newTarget, Object[] args,
+                                                         @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
+            final long hour = toIntegerNode.executeLong(args[0]);
+            final long minute = toIntegerNode.executeLong(args[1]);
+            final long second = toIntegerNode.executeLong(args[2]);
             return swapPrototype(JSTemporalTime.create(getContext(),
-                    (Integer) args[0], (Integer) args[1], (Integer) args[2], 0, 0, 0
+                    hour, minute, second, 0, 0, 0
             ), newTarget);
         }
 
         @Specialization(guards = {"args.length == 4"})
-        protected DynamicObject constructTemporalTimeHMSMil(DynamicObject newTarget, Object[] args) {
+        protected DynamicObject constructTemporalTimeHMSMil(DynamicObject newTarget, Object[] args,
+                                                            @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
+            final long hour = toIntegerNode.executeLong(args[0]);
+            final long minute = toIntegerNode.executeLong(args[1]);
+            final long second = toIntegerNode.executeLong(args[2]);
+            final long millisecond = toIntegerNode.executeLong(args[3]);
             return swapPrototype(JSTemporalTime.create(getContext(),
-                    (Integer) args[0], (Integer) args[1], (Integer) args[2], (Integer) args[3], 0, 0
+                    hour, minute, second, millisecond, 0, 0
             ), newTarget);
         }
 
         @Specialization(guards = {"args.length == 5"})
-        protected DynamicObject constructTemporalTimeHMSMilMic(DynamicObject newTarget, Object[] args) {
+        protected DynamicObject constructTemporalTimeHMSMilMic(DynamicObject newTarget, Object[] args,
+                                                               @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
+            final long hour = toIntegerNode.executeLong(args[0]);
+            final long minute = toIntegerNode.executeLong(args[1]);
+            final long second = toIntegerNode.executeLong(args[2]);
+            final long millisecond = toIntegerNode.executeLong(args[3]);
+            final long microsecond = toIntegerNode.executeLong(args[4]);
             return swapPrototype(JSTemporalTime.create(getContext(),
-                    (Integer) args[0], (Integer) args[1], (Integer) args[2], (Integer) args[3], (Integer) args[4], 0
+                    hour, minute, second, millisecond, microsecond, 0
             ), newTarget);
         }
 
         @Specialization(guards = {"args.length == 6"})
-        protected DynamicObject constructTemporalTimeHMSMilMicN(DynamicObject newTarget, Object[] args) {
+        protected DynamicObject constructTemporalTimeHMSMilMicN(DynamicObject newTarget, Object[] args,
+                                                                @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
+            final long hour = toIntegerNode.executeLong(args[0]);
+            final long minute = toIntegerNode.executeLong(args[1]);
+            final long second = toIntegerNode.executeLong(args[2]);
+            final long millisecond = toIntegerNode.executeLong(args[3]);
+            final long microsecond = toIntegerNode.executeLong(args[4]);
+            final long nanosecond = toIntegerNode.executeLong(args[5]);
             return swapPrototype(JSTemporalTime.create(getContext(),
-                    (Integer) args[0], (Integer) args[1], (Integer) args[2], (Integer) args[3], (Integer) args[4],
-                    (Integer) args[5]
+                    hour, minute, second, millisecond, microsecond, nanosecond
             ), newTarget);
         }
 
