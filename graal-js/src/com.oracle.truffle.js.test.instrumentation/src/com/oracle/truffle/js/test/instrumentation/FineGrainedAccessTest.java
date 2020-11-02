@@ -53,6 +53,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Source;
@@ -427,7 +428,7 @@ public abstract class FineGrainedAccessTest {
     @Before
     public void initTest() {
         collecting = false;
-        context = TestUtil.newContextBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build();
+        context = TestUtil.newContextBuilder().allowPolyglotAccess(PolyglotAccess.ALL).option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2021").build();
         instrument = context.getEngine().getInstruments().get(TestingExecutionInstrument.ID).lookup(TestingExecutionInstrument.class);
         instrumenter = instrument.getEnvironment().getInstrumenter();
         events = new ArrayList<>();

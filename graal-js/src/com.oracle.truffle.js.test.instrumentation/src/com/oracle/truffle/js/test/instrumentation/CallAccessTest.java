@@ -576,4 +576,21 @@ public class CallAccessTest extends FineGrainedAccessTest {
         }).exit();
     }
 
+    @Test
+    public void github367() {
+        evalWithTags("class C { #x = function() {}; m() { this.#x(42); } }; new C().m()", new Class[]{ObjectAllocationTag.class, FunctionCallTag.class});
+
+        enter(FunctionCallTag.class, (e, mCall) -> {
+            enter(ObjectAllocationTag.class, (n, newClassCall) -> {
+                newClassCall.input(assertJSFunctionInputWithName("C"));
+            }).exit(assertJSObjectReturn);
+            mCall.input(assertJSObjectInput);
+            mCall.input(assertJSFunctionInputWithName("m"));
+            enter(FunctionCallTag.class, (e2, fieldCall) -> {
+                fieldCall.input(assertJSObjectInput);
+                fieldCall.input(assertJSFunctionInputWithName("#x"));
+                fieldCall.input(42);
+            }).exit();
+        }).exit();
+    }
 }
