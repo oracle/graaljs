@@ -368,6 +368,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                     JSContextOptions.PERFORMANCE,
                     JSContextOptions.CLASS_FIELDS,
                     JSContextOptions.REGEXP_STATIC_RESULT,
+                    JSContextOptions.TIME_ZONE,
     };
 
     /**
