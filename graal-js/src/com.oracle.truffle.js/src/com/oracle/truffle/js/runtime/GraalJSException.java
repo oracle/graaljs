@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -521,6 +522,23 @@ public abstract class GraalJSException extends AbstractTruffleException {
         for (JSStackTraceElement jsste : jsstes) {
             System.err.println(jsste);
         }
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public final boolean hasLanguage() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public final Class<? extends TruffleLanguage<?>> getLanguage() {
+        return JavaScriptLanguage.class;
+    }
+
+    @ExportMessage
+    public final Object toDisplayString(boolean allowSideEffects) {
+        return JSRuntime.toDisplayString(this, allowSideEffects);
     }
 
     public static final class JSStackTraceElement {
