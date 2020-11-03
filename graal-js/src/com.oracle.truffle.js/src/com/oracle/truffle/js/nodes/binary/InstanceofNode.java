@@ -40,12 +40,14 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -54,6 +56,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
@@ -66,6 +69,7 @@ import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
@@ -76,8 +80,6 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.util.Set;
 
 /*
  * ES6, 12.9.4: Runtime Semantics: InstanceofOperator(O, C).
@@ -243,14 +245,20 @@ public abstract class InstanceofNode extends JSBinaryNode {
             return instanceofNode.executeBoolean(obj, boundTargetFunction);
         }
 
-        @Specialization(guards = {"!isJSObject(left)", "isJSFunction(right)", "!isBoundFunction(right)"})
+        @Specialization(guards = {"!isJSObjectOrException(left)", "isJSFunction(right)", "!isBoundFunction(right)"})
         protected boolean doNotAnObject(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") DynamicObject right) {
             return false;
         }
 
-        @Specialization(guards = {"!isJSObject(left)", "isJSProxy(right)", "isCallableProxy(right)"})
+        @Specialization(guards = {"!isJSObjectOrException(left)", "isJSProxy(right)", "isCallableProxy(right)"})
         protected boolean doNotAnObjectProxy(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") DynamicObject right) {
             return false;
+        }
+
+        @Specialization(guards = {"isJSFunction(right)", "!isBoundFunction(right)"})
+        protected boolean doJSException(GraalJSException exception, @SuppressWarnings("unused") DynamicObject right,
+                        @Cached("create(context)") OrdinaryHasInstanceNode recursiveNode) {
+            return recursiveNode.executeBoolean(exception.getErrorObjectEager(context), right);
         }
 
         @Specialization(guards = {"isObjectNode.executeBoolean(left)", "isJSFunction(right)", "!isBoundFunction(right)"}, limit = "1")
@@ -332,6 +340,10 @@ public abstract class InstanceofNode extends JSBinaryNode {
         @TruffleBoundary
         private JSException createTypeErrorInvalidPrototype(DynamicObject obj, Object proto) {
             return Errors.createTypeError("\"prototype\" of " + JSRuntime.safeToString(obj) + " is not an Object, it is " + JSRuntime.safeToString(proto), this);
+        }
+
+        protected static boolean isJSObjectOrException(Object value) {
+            return JSGuards.isJSObject(value) || value instanceof GraalJSException;
         }
     }
 
