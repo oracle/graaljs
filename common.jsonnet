@@ -1,21 +1,21 @@
-local jdks = (import "common.json").jdks;
+local common_json = (import "common.json");
 
 {
   jdk8: {
     downloads+: {
-      JAVA_HOME: jdks.oraclejdk8,
+      JAVA_HOME: common_json.jdks.oraclejdk8,
     },
   },
 
   jdk11: {
     downloads+: {
-      JAVA_HOME: jdks["labsjdk-ce-11"],
+      JAVA_HOME: common_json.jdks["labsjdk-ce-11"],
     },
   },
 
   jdk15: {
     downloads+: {
-      JAVA_HOME: jdks["oraclejdk15"],
+      JAVA_HOME: common_json.jdks["oraclejdk15"],
     },
   },
 
@@ -49,10 +49,9 @@ local jdks = (import "common.json").jdks;
   },
 
   linux: common + {
-    packages+: {
+    packages+: common_json.sulong.deps.linux.packages + {
       'apache/ab': '==2.3',
       binutils: '==2.23.2',
-      cmake: '==3.6.1',
       gcc: '==8.3.0',
       git: '>=1.8.3',
       maven: '==3.3.9',
@@ -81,6 +80,7 @@ local jdks = (import "common.json").jdks;
   },
 
   darwin: common + {
+    packages+: common_json.sulong.deps.darwin.packages,
     environment+: {
       // for compatibility with macOS El Capitan
       MACOSX_DEPLOYMENT_TARGET: '10.11',
