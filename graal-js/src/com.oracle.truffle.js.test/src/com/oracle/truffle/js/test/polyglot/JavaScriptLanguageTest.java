@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Collections;
@@ -158,6 +159,20 @@ public class JavaScriptLanguageTest {
         @Override
         public String toString() {
             return "string";
+        }
+    }
+
+    @Test
+    public void testRemoveBindings() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Value bindings = context.getBindings("js");
+            assertTrue(bindings.removeMember("eval"));
+
+            assertFalse(bindings.hasMember("foo"));
+            context.eval(JavaScriptLanguage.ID, "foo=42;");
+            assertTrue(bindings.hasMember("foo"));
+            assertTrue(bindings.removeMember("foo"));
+            assertFalse(bindings.hasMember("foo"));
         }
     }
 }
