@@ -6,6 +6,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.js.builtins.TemporalTimeFunctionBuiltins;
 import com.oracle.truffle.js.builtins.TemporalTimePrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -15,7 +16,8 @@ import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public class JSTemporalTime extends JSNonProxy implements JSConstructorFactory.Default.WithSpecies, PrototypeSupplier {
+public class JSTemporalTime extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
+        PrototypeSupplier {
 
     public static final JSTemporalTime INSTANCE = new JSTemporalTime();
 
@@ -147,16 +149,65 @@ public class JSTemporalTime extends JSNonProxy implements JSConstructorFactory.D
         return initialShape;
     }
 
+    @Override
+    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getTemporalTimePrototype();
+    }
+
+    @Override
+    public void fillConstructor(JSRealm realm, DynamicObject constructor) {
+        WithFunctionsAndSpecies.super.fillConstructor(realm, constructor);
+
+    }
+
     public static JSConstructor createConstructor(JSRealm realm) {
-        return INSTANCE.createConstructorAndPrototype(realm);
+        return INSTANCE.createConstructorAndPrototype(realm, TemporalTimeFunctionBuiltins.BUILTINS);
     }
 
     public static boolean isJSTemporalTime(Object obj) {
         return obj instanceof JSTemporalTimeObject;
     }
 
-    @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getTemporalTimePrototype();
+    //region Abstract methods
+    public static int compareTemporalTime(int h1, int min1, int s1, int ms1, int mus1, int ns1,
+                                          int h2, int min2, int s2, int ms2, int mus2, int ns2) {
+        if (h1 > h2) {
+            return 1;
+        }
+        if (h1 < h2) {
+            return -1;
+        }
+        if (min1 > min2) {
+            return 1;
+        }
+        if (min1 < min2) {
+            return -1;
+        }
+        if (s1 > s2) {
+            return 1;
+        }
+        if (s1 < s2) {
+            return -1;
+        }
+        if (ms1 > ms2) {
+            return 1;
+        }
+        if (ms1 < ms2) {
+            return -1;
+        }
+        if (mus1 > mus2) {
+            return 1;
+        }
+        if (mus1 < mus2) {
+            return -1;
+        }
+        if (ns1 > ns2) {
+            return 1;
+        }
+        if (ns1 < ns2) {
+            return -1;
+        }
+        return 0;
     }
+    //endregion
 }
