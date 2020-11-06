@@ -111,6 +111,7 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
@@ -359,7 +360,14 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            return JSProperty.getValue(property, receiverCheck.getStore(thisObj), receiver, guard);
+            DynamicObject store = receiverCheck.getStore(thisObj);
+            Object value = property.get(store, guard);
+            if (JSProperty.isProxy(property)) {
+                return ((PropertyProxy) value).get(store);
+            } else {
+                assert JSProperty.isData(property);
+                return value;
+            }
         }
     }
 

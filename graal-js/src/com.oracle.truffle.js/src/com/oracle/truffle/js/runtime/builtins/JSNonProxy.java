@@ -94,7 +94,7 @@ public abstract class JSNonProxy extends JSClass {
     public Object getOwnHelper(DynamicObject store, Object thisObj, Object key) {
         Property entry = DefinePropertyUtil.getPropertyByKey(store, key);
         if (entry != null) {
-            return JSProperty.getValue(entry, store, thisObj, false);
+            return JSProperty.getValue(entry, store, thisObj);
         } else {
             return null;
         }

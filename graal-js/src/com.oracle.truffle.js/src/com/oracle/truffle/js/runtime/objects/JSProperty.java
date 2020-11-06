@@ -88,8 +88,8 @@ public class JSProperty {
      * @param store the store that this property's value resides in
      * @return the value assigned to this property
      */
-    public static Object getValue(Property property, DynamicObject store, Object thisObj, boolean floatingCondition) {
-        Object value = property.get(store, floatingCondition);
+    public static Object getValue(Property property, DynamicObject store, Object thisObj) {
+        Object value = property.get(store, false);
         if (isAccessor(property)) {
             return getValueAccessor(thisObj, value);
         } else if (isProxy(property)) {
