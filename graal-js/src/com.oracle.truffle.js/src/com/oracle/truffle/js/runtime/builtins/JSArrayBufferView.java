@@ -153,13 +153,13 @@ public final class JSArrayBufferView extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public Object getHelper(DynamicObject store, Object receiver, long index) {
-        return getOwnHelper(store, receiver, index);
+    public Object getHelper(DynamicObject store, Object receiver, long index, Node encapsulatingNode) {
+        return getOwnHelper(store, receiver, index, encapsulatingNode);
     }
 
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object receiver, long index) {
+    public Object getOwnHelper(DynamicObject store, Object receiver, long index, Node encapsulatingNode) {
         checkDetachedView(store);
         return typedArrayGetArrayType(store).getElement(store, index);
     }
@@ -169,7 +169,7 @@ public final class JSArrayBufferView extends JSNonProxy {
      */
     @TruffleBoundary
     @Override
-    public Object getHelper(DynamicObject store, Object receiver, Object key) {
+    public Object getHelper(DynamicObject store, Object receiver, Object key, Node encapsulatingNode) {
         assert JSRuntime.isPropertyKey(key);
         if (key instanceof String) {
             Object numericIndex = JSRuntime.canonicalNumericIndexString((String) key);
@@ -177,12 +177,12 @@ public final class JSArrayBufferView extends JSNonProxy {
                 return integerIndexedElementGet(store, numericIndex);
             }
         }
-        return super.getHelper(store, receiver, key);
+        return super.getHelper(store, receiver, key, encapsulatingNode);
     }
 
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object receiver, Object key) {
+    public Object getOwnHelper(DynamicObject store, Object receiver, Object key, Node encapsulatingNode) {
         assert JSRuntime.isPropertyKey(key);
         if (key instanceof String) {
             Object numericIndex = JSRuntime.canonicalNumericIndexString((String) key);
@@ -190,7 +190,7 @@ public final class JSArrayBufferView extends JSNonProxy {
                 return integerIndexedElementGet(store, numericIndex);
             }
         }
-        return super.getOwnHelper(store, receiver, key);
+        return super.getOwnHelper(store, receiver, key, encapsulatingNode);
     }
 
     @TruffleBoundary
@@ -213,9 +213,9 @@ public final class JSArrayBufferView extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
+    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         if (thisObj != receiver) { // off-spec
-            return ordinarySetIndex(thisObj, index, value, receiver, isStrict);
+            return ordinarySetIndex(thisObj, index, value, receiver, isStrict, encapsulatingNode);
         }
         Object numValue = convertValue(thisObj, value);
         checkDetachedView(thisObj);
@@ -225,10 +225,10 @@ public final class JSArrayBufferView extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
+    public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         assert JSRuntime.isPropertyKey(key);
         if (thisObj != receiver) { // off-spec
-            return ordinarySet(thisObj, key, value, receiver, isStrict);
+            return ordinarySet(thisObj, key, value, receiver, isStrict, encapsulatingNode);
         }
         if (key instanceof String) {
             Object numericIndex = JSRuntime.canonicalNumericIndexString((String) key);
@@ -252,7 +252,7 @@ public final class JSArrayBufferView extends JSNonProxy {
                 }
             }
         }
-        return super.set(thisObj, key, value, receiver, isStrict);
+        return super.set(thisObj, key, value, receiver, isStrict, encapsulatingNode);
     }
 
     private static Object convertValue(DynamicObject thisObj, Object value) {
@@ -601,7 +601,7 @@ public final class JSArrayBufferView extends JSNonProxy {
         if (key instanceof String) {
             long numericIndex = JSRuntime.propertyKeyToIntegerIndex(key);
             if (numericIndex >= 0) {
-                Object value = getOwnHelper(thisObj, thisObj, numericIndex);
+                Object value = getOwnHelper(thisObj, thisObj, numericIndex, null);
                 if (value == Undefined.instance) {
                     return null;
                 }

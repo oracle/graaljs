@@ -1347,7 +1347,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             @Override
             public boolean set(DynamicObject store, Object value) {
-                return sourceClass.set(source, key, value, source, false);
+                return sourceClass.set(source, key, value, source, false, null);
             }
 
         }

@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Boundaries;
@@ -81,22 +82,22 @@ public final class JSSlowArray extends JSAbstractArray {
 
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object thisObj, long index) {
+    public Object getOwnHelper(DynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
         String indexAsString = Boundaries.stringValueOf(index);
         if (JSOrdinary.INSTANCE.hasOwnProperty(store, indexAsString)) {
-            return JSOrdinary.INSTANCE.getOwnHelper(store, thisObj, indexAsString);
+            return JSOrdinary.INSTANCE.getOwnHelper(store, thisObj, indexAsString, encapsulatingNode);
         }
-        return super.getOwnHelper(store, thisObj, index);
+        return super.getOwnHelper(store, thisObj, index, encapsulatingNode);
     }
 
     @TruffleBoundary
     @Override
-    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
+    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         String indexAsString = Boundaries.stringValueOf(index);
         if (JSOrdinary.INSTANCE.hasOwnProperty(thisObj, indexAsString)) {
-            return ordinarySet(thisObj, indexAsString, value, receiver, isStrict);
+            return ordinarySet(thisObj, indexAsString, value, receiver, isStrict, encapsulatingNode);
         }
-        return super.set(thisObj, index, value, receiver, isStrict);
+        return super.set(thisObj, index, value, receiver, isStrict, encapsulatingNode);
     }
 
     @TruffleBoundary
@@ -170,7 +171,7 @@ public final class JSSlowArray extends JSAbstractArray {
         boolean copyValue = (internalArray.hasElement(thisObj, index) && (!descriptor.hasValue() && !descriptor.hasGet()));
         boolean succeed = DefinePropertyUtil.ordinaryDefineOwnProperty(thisObj, Boundaries.stringValueOf(index), descriptor, doThrow);
         if (copyValue) {
-            JSObject.set(thisObj, index, internalArray.getElement(thisObj, index), doThrow);
+            JSObject.set(thisObj, index, internalArray.getElement(thisObj, index), doThrow, null);
         }
         return succeed;
     }

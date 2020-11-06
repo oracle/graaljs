@@ -51,6 +51,7 @@ import org.graalvm.collections.MapCursor;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -115,20 +116,20 @@ public final class JSDictionary extends JSNonProxy {
      */
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object thisObj, Object key) {
+    public Object getOwnHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
         PropertyDescriptor desc = getHashMap(store).get(key);
         if (desc != null) {
-            return getValue(desc, thisObj);
+            return getValue(desc, thisObj, encapsulatingNode);
         }
 
-        return super.getOwnHelper(store, thisObj, key);
+        return super.getOwnHelper(store, thisObj, key, encapsulatingNode);
     }
 
-    public static Object getValue(PropertyDescriptor property, Object receiver) {
+    public static Object getValue(PropertyDescriptor property, Object receiver, Node encapsulatingNode) {
         if (property.isAccessorDescriptor()) {
             DynamicObject getter = (DynamicObject) property.getGet();
             if (getter != Undefined.instance) {
-                return JSRuntime.call(getter, receiver, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+                return JSRuntime.call(getter, receiver, JSArguments.EMPTY_ARGUMENTS_ARRAY, encapsulatingNode);
             } else {
                 return Undefined.instance;
             }
@@ -187,37 +188,37 @@ public final class JSDictionary extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
+    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         Object key = Boundaries.stringValueOf(index);
-        return dictionaryObjectSet(thisObj, key, value, receiver, isStrict);
+        return dictionaryObjectSet(thisObj, key, value, receiver, isStrict, encapsulatingNode);
     }
 
     @TruffleBoundary
     @Override
-    public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
-        return dictionaryObjectSet(thisObj, key, value, receiver, isStrict);
+    public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+        return dictionaryObjectSet(thisObj, key, value, receiver, isStrict, encapsulatingNode);
     }
 
-    protected static boolean dictionaryObjectSet(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
+    protected static boolean dictionaryObjectSet(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         if (receiver != thisObj) {
-            return ordinarySetWithReceiver(thisObj, key, value, receiver, isStrict);
+            return ordinarySetWithReceiver(thisObj, key, value, receiver, isStrict, encapsulatingNode);
         }
         PropertyDescriptor property = getHashMap(thisObj).get(key);
         if (property != null) {
-            return setValue(key, property, thisObj, receiver, value, isStrict);
+            return setValue(key, property, thisObj, receiver, value, isStrict, encapsulatingNode);
         }
         Property entry = DefinePropertyUtil.getPropertyByKey(thisObj, key);
         if (entry != null) {
-            return JSProperty.setValue(entry, thisObj, receiver, value, isStrict);
+            return JSProperty.setValue(entry, thisObj, receiver, value, isStrict, encapsulatingNode);
         }
-        return setPropertySlow(thisObj, key, value, receiver, isStrict, false);
+        return setPropertySlow(thisObj, key, value, receiver, isStrict, false, encapsulatingNode);
     }
 
-    private static boolean setValue(Object key, PropertyDescriptor property, DynamicObject store, Object thisObj, Object value, boolean isStrict) {
+    private static boolean setValue(Object key, PropertyDescriptor property, DynamicObject store, Object thisObj, Object value, boolean isStrict, Node encapsulatingNode) {
         if (property.isAccessorDescriptor()) {
             DynamicObject setter = (DynamicObject) property.getSet();
             if (setter != Undefined.instance) {
-                JSRuntime.call(setter, thisObj, new Object[]{value});
+                JSRuntime.call(setter, thisObj, new Object[]{value}, encapsulatingNode);
                 return true;
             } else if (isStrict) {
                 throw Errors.createTypeErrorCannotSetAccessorProperty(key, store);

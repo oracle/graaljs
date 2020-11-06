@@ -53,9 +53,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -897,11 +895,9 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
             Object key = root.getKey();
-            if (root.isMethod()) {
-                return JSObject.getMethod((DynamicObject) thisObj, key);
-            } else {
-                return JSObject.get((DynamicObject) thisObj, key);
-            }
+            DynamicObject obj = (DynamicObject) thisObj;
+            Object result = root.isMethod() ? JSAdapter.INSTANCE.getMethodHelper(obj, obj, key, root) : JSAdapter.INSTANCE.getHelper(obj, obj, key, root);
+            return JSRuntime.nullToUndefined(result);
         }
     }
 
@@ -1174,15 +1170,9 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             }
 
             // 1. try to get a JS property
-            EncapsulatingNodeReference encapsulating = EncapsulatingNodeReference.getCurrent();
-            Node prev = encapsulating.set(this);
-            try {
-                Object value = isMethod ? jsclass.getMethodHelper(object, receiver, key) : jsclass.getHelper(object, receiver, key);
-                if (value != null) {
-                    return value;
-                }
-            } finally {
-                encapsulating.set(prev);
+            Object value = isMethod ? jsclass.getMethodHelper(object, receiver, key, this) : jsclass.getHelper(object, receiver, key, this);
+            if (value != null) {
+                return value;
             }
 
             // 2. try to call fallback handler or return undefined

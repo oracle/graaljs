@@ -46,6 +46,7 @@ import java.util.function.Predicate;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
@@ -133,36 +134,36 @@ public abstract class JSDynamicObject extends DynamicObject implements TruffleOb
      */
     @SuppressWarnings("javadoc")
     public Object getValue(Object key) {
-        return JSRuntime.nullToUndefined(getHelper(this, key));
+        return JSRuntime.nullToUndefined(getHelper(this, key, null));
     }
 
     public Object getValue(long index) {
-        return JSRuntime.nullToUndefined(getHelper(this, index));
+        return JSRuntime.nullToUndefined(getHelper(this, index, null));
     }
 
     @TruffleBoundary
-    public abstract Object getHelper(Object receiver, Object key);
+    public abstract Object getHelper(Object receiver, Object key, Node encapsulatingNode);
 
     @TruffleBoundary
-    public abstract Object getHelper(Object receiver, long index);
+    public abstract Object getHelper(Object receiver, long index, Node encapsulatingNode);
 
     @TruffleBoundary
-    public abstract Object getOwnHelper(Object receiver, Object key);
+    public abstract Object getOwnHelper(Object receiver, Object key, Node encapsulatingNode);
 
     @TruffleBoundary
-    public abstract Object getOwnHelper(Object receiver, long index);
+    public abstract Object getOwnHelper(Object receiver, long index, Node encapsulatingNode);
 
     @TruffleBoundary
-    public abstract Object getMethodHelper(Object receiver, Object key);
+    public abstract Object getMethodHelper(Object receiver, Object key, Node encapsulatingNode);
 
     /**
      * 9.1.9 [[Set]] (P, V, Receiver).
      */
     @TruffleBoundary
-    public abstract boolean set(Object key, Object value, Object receiver, boolean isStrict);
+    public abstract boolean set(Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode);
 
     @TruffleBoundary
-    public abstract boolean set(long index, Object value, Object receiver, boolean isStrict);
+    public abstract boolean set(long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode);
 
     /**
      * 9.1.10 [[Delete]] (P).

@@ -82,7 +82,7 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
     @Specialization(guards = {"isArrayIndex(index)", "!isJSProxy(target)"})
     Object doIntIndex(DynamicObject target, int index, Object receiver, Object defaultValue,
                     @Cached("create()") JSClassProfile jsclassProfile) {
-        return JSObject.getOrDefault(target, index, receiver, defaultValue, jsclassProfile);
+        return JSObject.getOrDefault(target, index, receiver, defaultValue, jsclassProfile, this);
     }
 
     @Specialization(guards = {"!isJSProxy(target)", "toArrayIndexNode.isResultArrayIndex(maybeIndex)"}, replaces = {"doIntIndex"})
@@ -93,7 +93,7 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
                     @Cached("create()") JSClassProfile jsclassProfile) {
         requireObjectCoercibleNode.executeVoid(target);
         long index = (long) maybeIndex;
-        return JSObject.getOrDefault(target, index, receiver, defaultValue, jsclassProfile);
+        return JSObject.getOrDefault(target, index, receiver, defaultValue, jsclassProfile, this);
     }
 
     @Specialization(guards = {"isJSProxy(target)"})
@@ -112,10 +112,10 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
         requireObjectCoercibleNode.executeVoid(target);
         Object arrayIndex = toArrayIndexNode.execute(key);
         if (getType.profile(arrayIndex instanceof Long)) {
-            return JSObject.getOrDefault(target, (long) arrayIndex, receiver, defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(target, (long) arrayIndex, receiver, defaultValue, jsclassProfile, this);
         } else {
             assert JSRuntime.isPropertyKey(arrayIndex);
-            return JSObject.getOrDefault(target, arrayIndex, receiver, defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(target, arrayIndex, receiver, defaultValue, jsclassProfile, this);
         }
     }
 
