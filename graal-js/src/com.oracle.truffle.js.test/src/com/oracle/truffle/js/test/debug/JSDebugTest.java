@@ -56,12 +56,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Source;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebugScope;
@@ -77,13 +82,26 @@ import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.JSTest;
 import com.oracle.truffle.tck.DebuggerTester;
 
+@RunWith(Parameterized.class)
 public class JSDebugTest {
 
+    @Parameters(name = "{0}")
+    public static List<Boolean> data() {
+        return Arrays.asList(Boolean.TRUE, Boolean.FALSE);
+    }
+
     private DebuggerTester tester;
+    @Parameter(value = 0) public boolean propertyCaches;
 
     @Before
     public void before() {
-        tester = new DebuggerTester(JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).option(JSContextOptions.DEBUG_BUILTIN_NAME, Boolean.toString(true)));
+        Context.Builder contextBuilder = JSTest.newContextBuilder();
+        contextBuilder.allowHostAccess(HostAccess.ALL);
+        contextBuilder.option(JSContextOptions.DEBUG_BUILTIN_NAME, Boolean.toString(true));
+        if (!propertyCaches) {
+            contextBuilder.option(JSContextOptions.PROPERTY_CACHE_LIMIT_NAME, String.valueOf(0));
+        }
+        tester = new DebuggerTester(contextBuilder);
     }
 
     @After
