@@ -53,7 +53,9 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.BooleanLocation;
@@ -1034,7 +1036,13 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                     JSObject.defineOwnProperty(thisJSObj, key, PropertyDescriptor.createData(value, root.getAttributeFlags()), root.isStrict());
                 }
             } else {
-                JSObject.setWithReceiver(thisJSObj, key, value, receiver, root.isStrict(), jsclassProfile);
+                EncapsulatingNodeReference encapsulating = EncapsulatingNodeReference.getCurrent();
+                Node prev = encapsulating.set(this);
+                try {
+                    JSObject.setWithReceiver(thisJSObj, key, value, receiver, root.isStrict(), jsclassProfile);
+                } finally {
+                    encapsulating.set(prev);
+                }
             }
         }
 
