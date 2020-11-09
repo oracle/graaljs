@@ -48,6 +48,9 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GlobalConstantNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
+import com.oracle.truffle.js.nodes.access.OptionalChainNode.OptionalTargetableNode;
+import com.oracle.truffle.js.nodes.access.OptionalChainNode.ShortCircuitTargetableNode;
+import com.oracle.truffle.js.nodes.access.PrivateFieldGetNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WithVarWrapperNode;
@@ -79,9 +82,8 @@ public abstract class JSMaterializedInvokeTargetableNode extends JSTargetableNod
             return new MaterializedTargetablePropertyNode((PropertyNode) target);
         } else if (target instanceof ReadElementNode) {
             return new MaterializedTargetableReadElementNode((ReadElementNode) target);
-        } else if (target instanceof WithVarWrapperNode) {
-            return target;
-        } else if (target instanceof GlobalConstantNode) {
+        } else if (target instanceof WithVarWrapperNode || target instanceof GlobalConstantNode || target instanceof PrivateFieldGetNode ||
+                        target instanceof ShortCircuitTargetableNode || target instanceof OptionalTargetableNode) {
             return target;
         } else {
             // Unknown targetable node: we might need to implement a new materialized node for it.
