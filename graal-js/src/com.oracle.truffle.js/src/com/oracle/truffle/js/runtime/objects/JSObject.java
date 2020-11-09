@@ -372,17 +372,6 @@ public abstract class JSObject extends JSDynamicObject {
     /**
      * [[Set]] with a receiver different than the default.
      */
-    @TruffleBoundary
-    public static boolean setWithReceiver(DynamicObject obj, Object key, Object value, Object receiver, boolean isStrict) {
-        assert JSRuntime.isPropertyKey(key);
-        return JSObject.getJSClass(obj).set(obj, key, value, receiver, isStrict, null);
-    }
-
-    @TruffleBoundary
-    public static boolean setWithReceiver(DynamicObject obj, long index, Object value, Object receiver, boolean isStrict) {
-        return JSObject.getJSClass(obj).set(obj, index, value, receiver, isStrict, null);
-    }
-
     public static boolean setWithReceiver(DynamicObject obj, Object key, Object value, Object receiver, boolean isStrict, JSClassProfile classProfile, Node encapsulatingNode) {
         assert JSRuntime.isPropertyKey(key);
         return classProfile.getJSClass(obj).set(obj, key, value, receiver, isStrict, encapsulatingNode);
