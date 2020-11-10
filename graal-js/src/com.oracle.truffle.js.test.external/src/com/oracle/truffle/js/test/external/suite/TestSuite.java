@@ -999,6 +999,7 @@ public abstract class TestSuite {
                     System.out.println(" outputfilter=X         ignore a given string when comparing with the expected output");
                     System.out.println(" externallauncher=X     run tests by invoking a given native image of JSLauncher");
                     System.out.println(" compile                run with TruffleCompileImmediately");
+                    System.out.println(" instrument             run with a dummy instrument that materializes all nodes");
                     System.out.println(" shareengine            use shared Engine for all tests");
                     System.out.println(" minesversion           minimal ECMAScript version used for test execution");
                     System.exit(-2);
@@ -1021,6 +1022,9 @@ public abstract class TestSuite {
                     break;
                 case "compile":
                     builder.setCompile(true);
+                    break;
+                case "instrument":
+                    builder.setInstrument(true);
                     break;
                 case "regression":
                     builder.setVerbose(false);

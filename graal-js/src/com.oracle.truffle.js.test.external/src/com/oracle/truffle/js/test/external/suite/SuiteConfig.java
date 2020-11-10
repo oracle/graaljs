@@ -66,6 +66,7 @@ public class SuiteConfig {
     private final boolean printScript;
     private final boolean saveOutput;
     private final boolean compile;
+    private final boolean instrument;
     private final boolean htmlOutput;
     private final boolean textOutput;
     private final boolean regenerateConfig;
@@ -84,7 +85,7 @@ public class SuiteConfig {
     SuiteConfig(String suiteName, String suiteDescription,
                     String suiteLoc, String suiteTestsLoc, String suiteHarnessLoc, String suiteConfigLoc,
                     boolean useThreads, boolean verbose, boolean verboseFail, boolean runOnGate, boolean gateResume, boolean printCommand, boolean printScript, boolean saveOutput, boolean compile,
-                    boolean htmlOutput, boolean textOutput, boolean regenerateConfig, int timeoutTest, int timeoutOverall, String containsFilter, String regexFilter,
+                    boolean instrument, boolean htmlOutput, boolean textOutput, boolean regenerateConfig, int timeoutTest, int timeoutOverall, String containsFilter, String regexFilter,
                     String endsWithFilter, boolean printFullOutput, String outputFilter, String extLauncher, boolean shareEngine, int minESVersion) {
         this.suiteName = suiteName;
         this.suiteDescription = suiteDescription;
@@ -101,6 +102,7 @@ public class SuiteConfig {
         this.printScript = printScript;
         this.saveOutput = saveOutput;
         this.compile = compile;
+        this.instrument = instrument;
         this.htmlOutput = htmlOutput;
         this.textOutput = textOutput;
         this.regenerateConfig = regenerateConfig;
@@ -176,6 +178,10 @@ public class SuiteConfig {
         return compile;
     }
 
+    public boolean isInstrument() {
+        return instrument;
+    }
+
     public boolean isHtmlOutput() {
         return htmlOutput;
     }
@@ -241,6 +247,9 @@ public class SuiteConfig {
             options.put("engine.CompileImmediately", "true");
             options.put("engine.BackgroundCompilation", "false");
         }
+        if (isInstrument()) {
+            options.put("TestInstrument", "true");
+        }
     }
 
     public static class Builder {
@@ -266,6 +275,7 @@ public class SuiteConfig {
         private boolean printScript;
         private boolean saveOutput;
         private boolean compile;
+        private boolean instrument;
         private boolean htmlOutput;
         private boolean textOutput;
         private boolean regenerateConfig;
@@ -347,6 +357,10 @@ public class SuiteConfig {
             this.compile = compile;
         }
 
+        public void setInstrument(boolean instrument) {
+            this.instrument = instrument;
+        }
+
         public void setHtmlOutput(boolean htmlOutput) {
             this.htmlOutput = htmlOutput;
         }
@@ -401,7 +415,7 @@ public class SuiteConfig {
 
         public SuiteConfig build() {
             return new SuiteConfig(suiteName, suiteDescription, suiteLoc, suiteTestsLoc, suiteHarnessLoc, suiteConfigLoc, useThreads, verbose, verboseFail, runOnGate, gateResume, printCommand,
-                            printScript, saveOutput, compile, htmlOutput, textOutput, regenerateConfig, timeoutTest, timeoutOverall, containsFilter, regexFilter,
+                            printScript, saveOutput, compile, instrument, htmlOutput, textOutput, regenerateConfig, timeoutTest, timeoutOverall, containsFilter, regexFilter,
                             endsWithFilter, printFullOutput, outputFilter, extLauncher, shareEngine, minESVersion);
         }
     }

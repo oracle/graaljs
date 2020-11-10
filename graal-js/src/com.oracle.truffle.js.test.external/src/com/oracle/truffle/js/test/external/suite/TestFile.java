@@ -372,6 +372,7 @@ public final class TestFile {
         LITTLE_ENDIAN(cfg -> ByteOrder.LITTLE_ENDIAN.equals(ByteOrder.nativeOrder())),
         SVM(cfg -> cfg.isExtLauncher()),
         COMPILE_IMMEDIATELY(cfg -> cfg.isCompile()),
+        INSTRUMENT(cfg -> cfg.isInstrument()),
         AMD64(cfg -> System.getProperty("os.arch").equals("amd64") || System.getProperty("os.arch").equals("x86_64")),
         AARCH64(cfg -> System.getProperty("os.arch").equals("aarch64")),
         WINDOWS(cfg -> System.getProperty("os.name").startsWith("Windows")),
