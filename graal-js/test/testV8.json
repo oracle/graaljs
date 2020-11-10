@@ -158,6 +158,12 @@
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
   }, {
+    "filePath" : "mjsunit/arguments-apply.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "INSTRUMENT" : "FAIL"
+    }
+  }, {
     "filePath" : "mjsunit/array-constructor-feedback.js",
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
@@ -307,7 +313,17 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) high memory usage that might influence other tests"
   }, {
+    "filePath" : "mjsunit/compiler/regress-stacktrace-methods.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "INSTRUMENT" : "FAIL"
+    }
+  }, {
     "filePath" : "mjsunit/compiler/string-add-try-catch.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "INSTRUMENT" : "FAIL"
+    },
     "runInIsolation" : true,
     "comment" : "memory intensive test"
   }, {
@@ -475,6 +491,12 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests, disabled on SVM (GR-21828)"
   }, {
+    "filePath" : "mjsunit/es6/regexp-constructor.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "INSTRUMENT" : "FAIL"
+    }
+  }, {
     "filePath" : "mjsunit/es6/regress/regress-576662.js",
     "status" : "FAIL"
   }, {
@@ -539,6 +561,12 @@
     "filePath" : "mjsunit/es7/exponentiation-operator.js",
     "status" : "SKIP",
     "comment" : "test should fail (V8 should report Early Error as we do)"
+  }, {
+    "filePath" : "mjsunit/es8/async-arrow-lexical-super.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "INSTRUMENT" : "FAIL"
+    }
   }, {
     "filePath" : "mjsunit/es8/async-await-basic.js",
     "status" : "FAIL"
@@ -644,9 +672,21 @@
     "status" : "FAIL",
     "comment" : "new test failures (update 2020-07-22)"
   }, {
+    "filePath" : "mjsunit/harmony/bigint/basics.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "INSTRUMENT" : "FAIL"
+    }
+  }, {
     "filePath" : "mjsunit/harmony/bigint/regressions.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+  }, {
+    "filePath" : "mjsunit/harmony/bigint/turbo.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "INSTRUMENT" : "FAIL"
+    }
   }, {
     "filePath" : "mjsunit/harmony/function-tostring.js",
     "status" : "FAIL",
@@ -734,6 +774,9 @@
       "minVersion" : 12
     },
     "status" : "PASS",
+    "statusOverrides" : {
+      "INSTRUMENT" : "FAIL"
+    },
     "comment" : "Uses public fields"
   }, {
     "filePath" : "mjsunit/harmony/regexp-property-emoji-flag-sequence-generated.js",
