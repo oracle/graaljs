@@ -183,7 +183,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      * If length is not explicitly specified, the length of the ArrayBuffer minus the byteOffset
      * must be a multiple of the element size of the specific type, or an exception is raised.
      */
-    @Specialization(guards = {"isJSFunction(newTarget)", "isJSHeapArrayBuffer(arrayBuffer)"})
+    @Specialization(guards = {"!isUndefined(newTarget)", "isJSHeapArrayBuffer(arrayBuffer)"})
     protected DynamicObject doArrayBuffer(DynamicObject newTarget, DynamicObject arrayBuffer, Object byteOffset0, Object length0,
                     @Cached("createBinaryProfile()") ConditionProfile lengthIsUndefined) {
         checkDetachedBuffer(arrayBuffer);
@@ -192,7 +192,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, arrayBufferLength, false, lengthIsUndefined);
     }
 
-    @Specialization(guards = {"isJSFunction(newTarget)", "isJSDirectArrayBuffer(arrayBuffer)"})
+    @Specialization(guards = {"!isUndefined(newTarget)", "isJSDirectArrayBuffer(arrayBuffer)"})
     protected DynamicObject doDirectArrayBuffer(DynamicObject newTarget, DynamicObject arrayBuffer, Object byteOffset0, Object length0,
                     @Cached("createBinaryProfile()") ConditionProfile lengthIsUndefined) {
         checkDetachedBuffer(arrayBuffer);
@@ -239,7 +239,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      * standard ArrayBuffer, optional parameters (byteOffset and length) can be used to limit the
      * section of the buffer referenced.
      */
-    @Specialization(guards = {"isJSFunction(newTarget)", "isJSSharedArrayBuffer(arrayBuffer)"})
+    @Specialization(guards = {"!isUndefined(newTarget)", "isJSSharedArrayBuffer(arrayBuffer)"})
     protected DynamicObject doSharedArrayBuffer(DynamicObject newTarget, DynamicObject arrayBuffer, Object byteOffset0, Object length0,
                     @Cached("createBinaryProfile()") ConditionProfile lengthCondition) {
         return doDirectArrayBuffer(newTarget, arrayBuffer, byteOffset0, length0, lengthCondition);
@@ -249,7 +249,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      * %TypedArray%(typedArray).
      */
     @SuppressWarnings("unused")
-    @Specialization(guards = {"isJSFunction(newTarget)", "isJSArrayBufferView(arrayBufferView)"})
+    @Specialization(guards = {"!isUndefined(newTarget)", "isJSArrayBufferView(arrayBufferView)"})
     protected DynamicObject doArrayBufferView(DynamicObject newTarget, DynamicObject arrayBufferView, Object byteOffset0, Object length0) {
         TypedArray sourceType = JSArrayBufferView.typedArrayGetArrayType(arrayBufferView);
         long length = sourceType.length(arrayBufferView);
@@ -298,7 +298,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      * This description applies only if the %TypedArray% function is called with no arguments.
      */
     @SuppressWarnings("unused")
-    @Specialization(guards = {"isJSFunction(newTarget)", "isUndefined(arg0)"})
+    @Specialization(guards = {"!isUndefined(newTarget)", "isUndefined(arg0)"})
     protected DynamicObject doEmpty(DynamicObject newTarget, DynamicObject arg0, Object byteOffset0, Object length0) {
         return createTypedArrayWithLength(0, newTarget);
     }
@@ -306,7 +306,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     /**
      * %TypedArray%(length).
      */
-    @Specialization(guards = {"isJSFunction(newTarget)", "length >= 0"})
+    @Specialization(guards = {"!isUndefined(newTarget)", "length >= 0"})
     protected DynamicObject doIntLength(DynamicObject newTarget, int length, @SuppressWarnings("unused") Object byteOffset0, @SuppressWarnings("unused") Object length0) {
         return createTypedArrayWithLength(length, newTarget);
     }
@@ -317,7 +317,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      * This description applies only if the %TypedArray% function is called with at least one
      * argument and the Type of the first argument is not Object.
      */
-    @Specialization(guards = {"isJSFunction(newTarget)", "!isJSObject(arg0)", "!isForeignObject(arg0)"}, replaces = "doIntLength")
+    @Specialization(guards = {"!isUndefined(newTarget)", "!isJSObject(arg0)", "!isForeignObject(arg0)"}, replaces = "doIntLength")
     protected DynamicObject doLength(DynamicObject newTarget, Object arg0, @SuppressWarnings("unused") Object byteOffset0, @SuppressWarnings("unused") Object length0) {
         return createTypedArrayWithLength(toIndex(arg0), newTarget);
     }
@@ -330,7 +330,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      * [[TypedArrayName]] or an [[ArrayBufferData]] internal slot.
      */
     @SuppressWarnings("unused")
-    @Specialization(guards = {"isJSFunction(newTarget)", "isJSObject(object)", "!isJSAbstractBuffer(object)", "!isJSArrayBufferView(object)"})
+    @Specialization(guards = {"!isUndefined(newTarget)", "isJSObject(object)", "!isJSAbstractBuffer(object)", "!isJSArrayBufferView(object)"})
     protected DynamicObject doObject(DynamicObject newTarget, DynamicObject object, Object byteOffset0, Object length0,
                     @Cached("createGetIteratorMethod()") GetMethodNode getIteratorMethodNode,
                     @Cached("createBinaryProfile()") ConditionProfile isIterableProfile,
@@ -376,7 +376,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         return obj;
     }
 
-    @Specialization(guards = {"isJSFunction(newTarget)", "isForeignObject(object)"}, limit = "3")
+    @Specialization(guards = {"!isUndefined(newTarget)", "isForeignObject(object)"}, limit = "3")
     protected DynamicObject doForeignObject(DynamicObject newTarget, Object object, @SuppressWarnings("unused") Object byteOffset0, @SuppressWarnings("unused") Object length0,
                     @CachedLibrary("object") InteropLibrary interop,
                     @Cached("createWriteOwn()") WriteElementNode writeOwnNode,
@@ -409,7 +409,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"!isJSFunction(newTarget)"})
+    @Specialization(guards = {"isUndefined(newTarget)"})
     protected DynamicObject doUndefinedNewTarget(Object newTarget, Object arg0, Object byteOffset0, Object length0) {
         throw Errors.createTypeError("newTarget is not a function");
     }
