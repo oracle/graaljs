@@ -74,8 +74,8 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
     private final BranchProfile errorBranch = BranchProfile.create();
 
     protected JSProxyCallNode(JSContext context, boolean isNew, boolean isNewTarget) {
-        this.callNode = isNewTarget ? JSFunctionCallNode.createNewTarget() : isNew ? JSFunctionCallNode.createNew() : JSFunctionCallNode.createCall();
-        this.callTrapNode = isNewTarget || isNew ? JSFunctionCallNode.createCall() : callNode;
+        this.callNode = (isNew || isNewTarget) ? JSFunctionCallNode.createNewTarget() : JSFunctionCallNode.createCall();
+        this.callTrapNode = JSFunctionCallNode.createCall();
         this.trapGetter = GetMethodNode.create(context, null, isNewTarget || isNew ? JSProxy.CONSTRUCT : JSProxy.APPLY);
         this.context = context;
         this.isNew = isNew;
@@ -133,12 +133,11 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
             Object newTarget = isNewTarget ? JSArguments.getNewTarget(arguments) : proxy;
             Object[] constructorArguments = JSArguments.extractUserArguments(arguments, isNewTarget ? 1 : 0);
             if (pxTrapFunProfile.profile(pxTrapFun == Undefined.instance)) {
-                if (!JSDynamicObject.isJSDynamicObject(pxTarget)) {
+                if (JSDynamicObject.isJSDynamicObject(pxTarget)) {
+                    return callNode.executeCall(JSArguments.createWithNewTarget(JSFunction.CONSTRUCT, pxTarget, newTarget, constructorArguments));
+                } else {
                     return JSInteropUtil.construct(pxTarget, constructorArguments);
                 }
-                return callNode.executeCall(isNewTarget
-                                ? JSArguments.createWithNewTarget(JSFunction.CONSTRUCT, pxTarget, newTarget, constructorArguments)
-                                : JSArguments.create(JSFunction.CONSTRUCT, pxTarget, constructorArguments));
             }
             Object[] trapArgs = new Object[]{pxTarget, JSArray.createConstant(context, constructorArguments), newTarget};
             Object result = callTrapNode.executeCall(JSArguments.create(pxHandler, pxTrapFun, trapArgs));

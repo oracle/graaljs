@@ -43,10 +43,10 @@ package com.oracle.truffle.js.nodes.function;
 import java.lang.reflect.Modifier;
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -71,15 +71,10 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
-import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSProxy;
-import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.java.JavaAccess;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -89,9 +84,6 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public abstract class JSNewNode extends JavaScriptNode {
 
     @Child @Executed protected JavaScriptNode targetNode;
-
-    @Child private JSFunctionCallNode callNew;
-    @Child private JSFunctionCallNode callNewTarget;
     @Child private AbstractFunctionArgumentsNode arguments;
 
     protected final JSContext context;
@@ -146,11 +138,18 @@ public abstract class JSNewNode extends JavaScriptNode {
     }
 
     @Specialization(guards = "isJSFunction(target)")
-    public Object doNewReturnThis(VirtualFrame frame, DynamicObject target) {
+    public Object doNewReturnThis(VirtualFrame frame, DynamicObject target,
+                    @Cached("createNew()") @Shared("callNew") JSFunctionCallNode callNew) {
         int userArgumentCount = arguments.getCount(frame);
         Object[] args = JSArguments.createInitial(JSFunction.CONSTRUCT, target, userArgumentCount);
         args = arguments.executeFillObjectArray(frame, args, JSArguments.RUNTIME_ARGUMENT_COUNT);
-        return getCallNew().executeCall(args);
+        return callNew.executeCall(args);
+    }
+
+    @Specialization(guards = "isJSProxy(proxy)")
+    protected Object doNewJSProxy(VirtualFrame frame, DynamicObject proxy,
+                    @Cached("createNew()") @Shared("callNew") JSFunctionCallNode callNew) {
+        return doNewReturnThis(frame, proxy, callNew);
     }
 
     @Specialization(guards = "isJSAdapter(target)")
@@ -162,37 +161,6 @@ public abstract class JSNewNode extends JavaScriptNode {
         } else {
             return Undefined.instance;
         }
-    }
-
-    /**
-     * Implements [[Construct]] for Proxy.
-     */
-    @Specialization(guards = "isJSProxy(proxy)")
-    protected Object doNewJSProxy(VirtualFrame frame, DynamicObject proxy) {
-        if (!JSRuntime.isConstructorProxy(proxy)) {
-            throw Errors.createTypeErrorNotAFunction(proxy, this);
-        }
-        DynamicObject handler = JSProxy.getHandlerChecked(proxy);
-        Object target = JSProxy.getTarget(proxy);
-        Object trap = JSProxy.getTrapFromObject(handler, JSProxy.CONSTRUCT);
-        if (trap == Undefined.instance) {
-            if (JSDynamicObject.isJSDynamicObject(target)) {
-                // Construct(F=target, argumentsList=frame, newTarget=proxy)
-                int userArgumentCount = arguments.getCount(frame);
-                Object[] args = JSArguments.createInitialWithNewTarget(JSFunction.CONSTRUCT, target, proxy, userArgumentCount);
-                args = arguments.executeFillObjectArray(frame, args, JSArguments.RUNTIME_ARGUMENT_COUNT + 1);
-                return getCallNewTarget().executeCall(args);
-            } else {
-                return JSInteropUtil.construct(target, getAbstractFunctionArguments(frame));
-            }
-        }
-        Object[] args = getAbstractFunctionArguments(frame);
-        Object[] trapArgs = new Object[]{target, JSArray.createConstantObjectArray(context, args), proxy};
-        Object result = JSRuntime.call(trap, handler, trapArgs);
-        if (!JSRuntime.isObject(result)) {
-            throw Errors.createTypeErrorNotAnObject(result, this);
-        }
-        return result;
     }
 
     @Specialization(guards = "isJavaPackage(target)")
@@ -276,22 +244,6 @@ public abstract class JSNewNode extends JavaScriptNode {
         Object[] args = new Object[arguments.getCount(frame)];
         args = arguments.executeFillObjectArray(frame, args, 0);
         return args;
-    }
-
-    private JSFunctionCallNode getCallNewTarget() {
-        if (callNewTarget == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            callNewTarget = insert(JSFunctionCallNode.createNewTarget());
-        }
-        return callNewTarget;
-    }
-
-    private JSFunctionCallNode getCallNew() {
-        if (callNew == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            callNew = insert(JSFunctionCallNode.createNew());
-        }
-        return callNew;
     }
 
     @Override
