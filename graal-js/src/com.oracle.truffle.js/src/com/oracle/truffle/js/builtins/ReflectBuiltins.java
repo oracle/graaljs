@@ -329,7 +329,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
                         @Cached("create()") JSClassProfile classProfile) {
             Object receiver = JSRuntime.getArg(optionalArgs, 0, target);
             Object key = toPropertyKeyNode.execute(propertyKey);
-            return JSRuntime.nullToUndefined(classProfile.getJSClass(target).getHelper(target, receiver, key));
+            return JSRuntime.nullToUndefined(classProfile.getJSClass(target).getHelper(target, receiver, key, this));
         }
 
         @Specialization(guards = {"isForeignObject(target)"}, limit = "3")
@@ -494,7 +494,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
                         @Cached JSClassProfile jsclassProfile) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             Object receiver = JSRuntime.getArg(optionalArgs, 0, target);
-            return JSObject.setWithReceiver(target, key, value, receiver, false, jsclassProfile);
+            return JSObject.setWithReceiver(target, key, value, receiver, false, jsclassProfile, this);
         }
 
         @Specialization(guards = {"isForeignObject(target)"}, limit = "3")

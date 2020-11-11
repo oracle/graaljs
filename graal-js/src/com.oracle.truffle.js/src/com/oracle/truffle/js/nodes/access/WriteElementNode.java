@@ -580,11 +580,11 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         private void setPropertyGenericEvaluatedIndex(DynamicObject targetObject, long index, Object value, Object receiver, WriteElementNode root) {
-            JSObject.setWithReceiver(targetObject, index, value, receiver, root.isStrict, jsclassProfile);
+            JSObject.setWithReceiver(targetObject, index, value, receiver, root.isStrict, jsclassProfile, root);
         }
 
         private void setPropertyGenericEvaluatedStringOrSymbol(DynamicObject targetObject, Object key, Object value, Object receiver, WriteElementNode root) {
-            JSObject.setWithReceiver(targetObject, key, value, receiver, root.isStrict, jsclassProfile);
+            JSObject.setWithReceiver(targetObject, key, value, receiver, root.isStrict, jsclassProfile, root);
         }
 
         private void setPropertyGeneric(DynamicObject targetObject, Object index, Object value, Object receiver, WriteElementNode root) {
@@ -1635,7 +1635,7 @@ public class WriteElementNode extends JSTargetableNode {
                 }
             }
             stringIndexBranch.enter();
-            JSObject.setWithReceiver(JSString.create(root.context, charSequence), toPropertyKey(index), value, target, root.isStrict, classProfile);
+            JSObject.setWithReceiver(JSString.create(root.context, charSequence), toPropertyKey(index), value, target, root.isStrict, classProfile, root);
         }
 
         @Override
@@ -1648,7 +1648,7 @@ public class WriteElementNode extends JSTargetableNode {
                 }
                 return;
             } else {
-                JSObject.setWithReceiver(JSString.create(root.context, charSequence), index, value, target, root.isStrict, classProfile);
+                JSObject.setWithReceiver(JSString.create(root.context, charSequence), index, value, target, root.isStrict, classProfile, root);
             }
         }
 
@@ -1669,13 +1669,13 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root) {
             Number number = (Number) target;
-            JSObject.setWithReceiver(JSNumber.create(root.context, number), toPropertyKey(index), value, target, root.isStrict, classProfile);
+            JSObject.setWithReceiver(JSNumber.create(root.context, number), toPropertyKey(index), value, target, root.isStrict, classProfile, root);
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root) {
             Number number = (Number) target;
-            JSObject.setWithReceiver(JSNumber.create(root.context, number), index, value, target, root.isStrict, classProfile);
+            JSObject.setWithReceiver(JSNumber.create(root.context, number), index, value, target, root.isStrict, classProfile, root);
         }
 
         @Override
@@ -1692,13 +1692,13 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root) {
             Boolean bool = (Boolean) target;
-            JSObject.setWithReceiver(JSBoolean.create(root.context, bool), toPropertyKey(index), value, target, root.isStrict, classProfile);
+            JSObject.setWithReceiver(JSBoolean.create(root.context, bool), toPropertyKey(index), value, target, root.isStrict, classProfile, root);
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root) {
             Boolean bool = (Boolean) target;
-            JSObject.setWithReceiver(JSBoolean.create(root.context, bool), index, value, target, root.isStrict, classProfile);
+            JSObject.setWithReceiver(JSBoolean.create(root.context, bool), index, value, target, root.isStrict, classProfile, root);
         }
 
         @Override
@@ -1718,7 +1718,7 @@ public class WriteElementNode extends JSTargetableNode {
                 throw Errors.createTypeError("cannot set element on Symbol in strict mode", this);
             }
             Symbol symbol = (Symbol) target;
-            JSObject.setWithReceiver(JSSymbol.create(root.context, symbol), toPropertyKey(index), value, receiver, root.isStrict, classProfile);
+            JSObject.setWithReceiver(JSSymbol.create(root.context, symbol), toPropertyKey(index), value, receiver, root.isStrict, classProfile, root);
         }
 
         @Override
@@ -1727,7 +1727,7 @@ public class WriteElementNode extends JSTargetableNode {
                 throw Errors.createTypeError("cannot set element on Symbol in strict mode", this);
             }
             Symbol symbol = (Symbol) target;
-            JSObject.setWithReceiver(JSSymbol.create(root.context, symbol), index, value, receiver, root.isStrict, classProfile);
+            JSObject.setWithReceiver(JSSymbol.create(root.context, symbol), index, value, receiver, root.isStrict, classProfile, root);
         }
 
         @Override
@@ -1744,13 +1744,13 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root) {
             BigInt bigInt = (BigInt) target;
-            JSObject.setWithReceiver(JSBigInt.create(root.context, bigInt), toPropertyKey(index), value, target, root.isStrict, classProfile);
+            JSObject.setWithReceiver(JSBigInt.create(root.context, bigInt), toPropertyKey(index), value, target, root.isStrict, classProfile, root);
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root) {
             BigInt bigInt = (BigInt) target;
-            JSObject.setWithReceiver(JSBigInt.create(root.context, bigInt), index, value, target, root.isStrict, classProfile);
+            JSObject.setWithReceiver(JSBigInt.create(root.context, bigInt), index, value, target, root.isStrict, classProfile, root);
         }
 
         @Override

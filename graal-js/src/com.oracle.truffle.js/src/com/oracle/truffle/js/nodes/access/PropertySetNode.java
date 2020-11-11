@@ -961,7 +961,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
-            JSObject.set((DynamicObject) thisObj, root.getKey(), value, root.isStrict());
+            JSObject.set((DynamicObject) thisObj, root.getKey(), value, root.isStrict(), root);
             return true;
         }
     }
@@ -1034,7 +1034,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                     JSObject.defineOwnProperty(thisJSObj, key, PropertyDescriptor.createData(value, root.getAttributeFlags()), root.isStrict());
                 }
             } else {
-                JSObject.setWithReceiver(thisJSObj, key, value, receiver, root.isStrict(), jsclassProfile);
+                JSObject.setWithReceiver(thisJSObj, key, value, receiver, root.isStrict(), jsclassProfile, root);
             }
         }
 

@@ -214,7 +214,7 @@ public final class DefinePropertyUtil {
                     JSObjectUtil.defineProxyProperty(thisObj, key, proxy, newAttr);
                 }
             } else if (descriptor.hasValue()) {
-                JSObject.set(thisObj, key, descriptor.getValue(), doThrow);
+                JSObject.set(thisObj, key, descriptor.getValue(), doThrow, null);
             }
             return true;
         } else {

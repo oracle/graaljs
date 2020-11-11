@@ -105,7 +105,7 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
         Object trapFun = trapGet.executeWithTarget(handler);
         if (hasTrap.profile(trapFun == Undefined.instance)) {
             if (JSDynamicObject.isJSDynamicObject(target)) {
-                return JSObject.setWithReceiver((DynamicObject) target, propertyKey, value, receiver, isStrict, targetClassProfile);
+                return JSObject.setWithReceiver((DynamicObject) target, propertyKey, value, receiver, isStrict, targetClassProfile, this);
             } else {
                 truffleWrite(target, propertyKey, value);
                 return true;

@@ -51,6 +51,8 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -2486,6 +2488,22 @@ public final class JSRuntime {
             return JSInteropUtil.call(fnObj, arguments);
         } else {
             throw Errors.createTypeErrorNotAFunction(fnObj);
+        }
+    }
+
+    public static Object call(Object fnObj, Object holder, Object[] arguments, Node encapsulatingNode) {
+        EncapsulatingNodeReference encapsulating = null;
+        Node prev = null;
+        if (encapsulatingNode != null) {
+            encapsulating = EncapsulatingNodeReference.getCurrent();
+            prev = encapsulating.set(encapsulatingNode);
+        }
+        try {
+            return call(fnObj, holder, arguments);
+        } finally {
+            if (encapsulatingNode != null) {
+                encapsulating.set(prev);
+            }
         }
     }
 

@@ -45,6 +45,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
@@ -139,28 +140,28 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
 
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object thisObj, Object key) {
+    public Object getOwnHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
         long value = JSRuntime.propertyKeyToArrayIndex(key);
         if (0 <= value && value < getStringLength(store)) {
             return String.valueOf(getCharSequence(store).charAt((int) value));
         }
-        return super.getOwnHelper(store, thisObj, key);
+        return super.getOwnHelper(store, thisObj, key, encapsulatingNode);
     }
 
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object thisObj, long index) {
+    public Object getOwnHelper(DynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
         if (0 <= index && index < getStringLength(store)) {
             return String.valueOf(getCharSequence(store).charAt((int) index));
         }
-        return super.getOwnHelper(store, thisObj, Boundaries.stringValueOf(index));
+        return super.getOwnHelper(store, thisObj, Boundaries.stringValueOf(index), encapsulatingNode);
     }
 
     @TruffleBoundary
     @Override
-    public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
+    public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         if (receiver != thisObj) {
-            return ordinarySetWithReceiver(thisObj, key, value, receiver, isStrict);
+            return ordinarySetWithReceiver(thisObj, key, value, receiver, isStrict, encapsulatingNode);
         }
         long index = JSRuntime.propertyKeyToArrayIndex(key);
         if (index >= 0 && index < getStringLength(thisObj)) {
@@ -170,15 +171,15 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
             }
             return true;
         } else {
-            return super.set(thisObj, key, value, receiver, isStrict);
+            return super.set(thisObj, key, value, receiver, isStrict, encapsulatingNode);
         }
     }
 
     @TruffleBoundary
     @Override
-    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
+    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         if (receiver != thisObj) {
-            return ordinarySetWithReceiver(thisObj, Boundaries.stringValueOf(index), value, receiver, isStrict);
+            return ordinarySetWithReceiver(thisObj, Boundaries.stringValueOf(index), value, receiver, isStrict, encapsulatingNode);
         }
         if (index < getStringLength(thisObj)) {
             // Indexed properties of a String are non-writable and non-configurable.
@@ -187,7 +188,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
             }
             return true;
         } else {
-            return super.set(thisObj, index, value, receiver, isStrict);
+            return super.set(thisObj, index, value, receiver, isStrict, encapsulatingNode);
         }
     }
 

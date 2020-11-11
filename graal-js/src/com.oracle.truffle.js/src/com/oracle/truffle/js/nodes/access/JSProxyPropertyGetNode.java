@@ -98,7 +98,7 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
         Object trapFun = trapGet.executeWithTarget(handler);
         if (hasTrap.profile(trapFun == Undefined.instance)) {
             if (JSDynamicObject.isJSDynamicObject(target)) {
-                return JSObject.getOrDefault((DynamicObject) target, propertyKey, receiver, Undefined.instance, targetClassProfile);
+                return JSObject.getOrDefault((DynamicObject) target, propertyKey, receiver, Undefined.instance, targetClassProfile, this);
             } else {
                 return JSInteropUtil.readMemberOrDefault(target, propertyKey, Undefined.instance);
             }

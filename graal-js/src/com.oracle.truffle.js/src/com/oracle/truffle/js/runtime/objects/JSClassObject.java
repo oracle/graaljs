@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime.objects;
 
 import java.util.List;
 
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
 
 /**
@@ -109,38 +110,38 @@ public abstract class JSClassObject extends JSObject {
     }
 
     @Override
-    public Object getHelper(Object receiver, Object key) {
-        return getJSClass().getHelper(this, receiver, key);
+    public Object getHelper(Object receiver, Object key, Node encapsulatingNode) {
+        return getJSClass().getHelper(this, receiver, key, encapsulatingNode);
     }
 
     @Override
-    public Object getHelper(Object receiver, long index) {
-        return getJSClass().getHelper(this, receiver, index);
+    public Object getHelper(Object receiver, long index, Node encapsulatingNode) {
+        return getJSClass().getHelper(this, receiver, index, encapsulatingNode);
     }
 
     @Override
-    public Object getOwnHelper(Object receiver, Object key) {
-        return getJSClass().getOwnHelper(this, receiver, key);
+    public Object getOwnHelper(Object receiver, Object key, Node encapsulatingNode) {
+        return getJSClass().getOwnHelper(this, receiver, key, encapsulatingNode);
     }
 
     @Override
-    public Object getOwnHelper(Object receiver, long index) {
-        return getJSClass().getOwnHelper(this, receiver, index);
+    public Object getOwnHelper(Object receiver, long index, Node encapsulatingNode) {
+        return getJSClass().getOwnHelper(this, receiver, index, encapsulatingNode);
     }
 
     @Override
-    public Object getMethodHelper(Object receiver, Object key) {
-        return getJSClass().getMethodHelper(this, receiver, key);
+    public Object getMethodHelper(Object receiver, Object key, Node encapsulatingNode) {
+        return getJSClass().getMethodHelper(this, receiver, key, encapsulatingNode);
     }
 
     @Override
-    public boolean set(Object key, Object value, Object receiver, boolean isStrict) {
-        return getJSClass().set(this, key, value, receiver, isStrict);
+    public boolean set(Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+        return getJSClass().set(this, key, value, receiver, isStrict, encapsulatingNode);
     }
 
     @Override
-    public boolean set(long index, Object value, Object receiver, boolean isStrict) {
-        return getJSClass().set(this, index, value, receiver, isStrict);
+    public boolean set(long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+        return getJSClass().set(this, index, value, receiver, isStrict, encapsulatingNode);
     }
 
     @Override

@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Boundaries;
@@ -211,8 +212,8 @@ public final class JavaPackage extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public Object getHelper(DynamicObject store, Object thisObj, Object name) {
-        Object propertyValue = super.getHelper(store, thisObj, name);
+    public Object getHelper(DynamicObject store, Object thisObj, Object name, Node encapsulatingNode) {
+        Object propertyValue = super.getHelper(store, thisObj, name, encapsulatingNode);
         if (propertyValue != null) {
             return propertyValue;
         }

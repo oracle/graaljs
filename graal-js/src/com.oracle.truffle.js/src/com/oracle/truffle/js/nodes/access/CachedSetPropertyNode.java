@@ -107,7 +107,7 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
         if (setOwn) {
             createDataPropertyOrThrow(target, Boundaries.stringValueOf(index), value);
         } else {
-            jsclass.set(target, index, value, receiver, strict);
+            jsclass.set(target, index, value, receiver, strict, this);
         }
     }
 
@@ -136,7 +136,7 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
             if (setOwn) {
                 createDataPropertyOrThrow(target, arrayIndex, value);
             } else {
-                JSObject.setWithReceiver(target, arrayIndex, value, receiver, strict, jsclassProfile);
+                JSObject.setWithReceiver(target, arrayIndex, value, receiver, strict, jsclassProfile, this);
             }
         }
     }
