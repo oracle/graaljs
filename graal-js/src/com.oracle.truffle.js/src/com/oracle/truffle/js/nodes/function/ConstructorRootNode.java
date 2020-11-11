@@ -81,8 +81,15 @@ public final class ConstructorRootNode extends JavaScriptRootNode {
     }
 
     private Object allocateThisObject(VirtualFrame frame, Object[] arguments) {
-        Object functionObject = newTarget ? arguments[2] : arguments[1];
-        Object thisObject = newObjectNode.execute(frame, (DynamicObject) functionObject);
+        // Only base constructors allocate a new object. Derived constructors have to call the super
+        // constructor to get the `this` object (which is then returned).
+        Object thisObject;
+        if (!getFunctionData().isDerived()) {
+            Object functionObject = newTarget ? arguments[2] : arguments[1];
+            thisObject = newObjectNode.execute(frame, (DynamicObject) functionObject);
+        } else {
+            thisObject = JSFunction.CONSTRUCT; // Just a placeholder value; not actually used.
+        }
         arguments[0] = thisObject;
         return thisObject;
     }
