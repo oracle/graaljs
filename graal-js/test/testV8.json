@@ -543,9 +543,6 @@
     "filePath" : "mjsunit/es8/async-await-basic.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es8/async-await-species.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/es8/async-destructuring.js",
     "status" : "FAIL"
   }, {
@@ -1124,13 +1121,6 @@
   }, {
     "filePath" : "mjsunit/regress/regress-5454.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/regress/regress-5638.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/regress/regress-5638b.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
     "filePath" : "mjsunit/regress/regress-575364.js",
     "status" : "SKIP",
