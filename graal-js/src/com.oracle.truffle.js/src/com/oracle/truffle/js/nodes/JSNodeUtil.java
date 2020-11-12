@@ -160,14 +160,22 @@ public final class JSNodeUtil {
             WrapperNode wrapper = (WrapperNode) node;
             // JavaScriptNode wrappers have a JavaScriptNode as delegate
             unwrapped = (JavaScriptNode) wrapper.getDelegateNode();
-        } else if (node instanceof GlobalScopeVarWrapperNode) {
-            unwrapped = ((GlobalScopeVarWrapperNode) node).getDelegateNode();
-        } else if (node instanceof JSInputGeneratingNodeWrapper) {
-            unwrapped = ((JSInputGeneratingNodeWrapper) node).getDelegateNode();
-        } else if (node instanceof JSTaggedExecutionNode) {
-            unwrapped = ((JSTaggedExecutionNode) node).getDelegateNode();
-        } else if (node instanceof JSTargetableWrapperNode) {
-            unwrapped = ((JSTargetableWrapperNode) node).getDelegate();
+        }
+        if (unwrapped instanceof JSInputGeneratingNodeWrapper) {
+            unwrapped = ((JSInputGeneratingNodeWrapper) unwrapped).getDelegateNode();
+        }
+        if (unwrapped instanceof JSTaggedExecutionNode) {
+            unwrapped = ((JSTaggedExecutionNode) unwrapped).getDelegateNode();
+        }
+        if (unwrapped instanceof GlobalScopeVarWrapperNode) {
+            unwrapped = ((GlobalScopeVarWrapperNode) unwrapped).getDelegateNode();
+        }
+        if (unwrapped instanceof JSTargetableWrapperNode) {
+            unwrapped = ((JSTargetableWrapperNode) unwrapped).getDelegate();
+        }
+        if (unwrapped instanceof WrapperNode) {
+            WrapperNode wrapper = (WrapperNode) unwrapped;
+            unwrapped = (JavaScriptNode) wrapper.getDelegateNode();
         }
         assert !isWrapperNode(unwrapped);
         return unwrapped;
