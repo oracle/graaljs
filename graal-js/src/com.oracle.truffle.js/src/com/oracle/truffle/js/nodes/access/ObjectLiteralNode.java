@@ -58,6 +58,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
@@ -507,8 +508,9 @@ public class ObjectLiteralNode extends JavaScriptNode {
             }
             Object key = executeKey(frame);
             Object value;
-            if (isAnonymousFunctionDefinition && valueNode instanceof ClassDefinitionNode) {
-                value = ((ClassDefinitionNode) valueNode).executeWithClassName(frame, key);
+            JavaScriptNode unwrappedValueNode;
+            if (isAnonymousFunctionDefinition && (unwrappedValueNode = JSNodeUtil.getWrappedNode(valueNode)) instanceof ClassDefinitionNode) {
+                value = ((ClassDefinitionNode) unwrappedValueNode).executeWithClassName(frame, key);
             } else {
                 value = executeWithHomeObject(valueNode, frame, homeObject);
                 if (setFunctionName != null) {
