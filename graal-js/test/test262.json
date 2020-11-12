@@ -222,30 +222,6 @@
     "status" : "FAIL",
     "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
-    "filePath" : "built-ins/BigInt/prototype/toString/a-z.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "INSTRUMENT" : "FAIL"
-    }
-  }, {
-    "filePath" : "built-ins/Promise/all/invoke-resolve-get-once-multiple-calls.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "INSTRUMENT" : "FAIL"
-    }
-  }, {
-    "filePath" : "built-ins/Promise/allSettled/invoke-resolve-get-once-multiple-calls.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "INSTRUMENT" : "FAIL"
-    }
-  }, {
-    "filePath" : "built-ins/Promise/race/invoke-resolve-get-once-multiple-calls.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "INSTRUMENT" : "FAIL"
-    }
-  }, {
     "filePath" : "built-ins/RegExp/named-groups/non-unicode-property-names-valid.js",
     "status" : "FAIL",
     "comment" : "new failures 2020-07-21"
@@ -1869,60 +1845,12 @@
     "filePath" : "built-ins/String/prototype/toLowerCase/special_casing_conditional.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "built-ins/TypedArray/prototype/every/BigInt/callbackfn-set-value-during-interaction.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "INSTRUMENT" : "FAIL"
-    }
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/fill/BigInt/fill-values-conversion-once.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "INSTRUMENT" : "FAIL"
-    }
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/filter/BigInt/callbackfn-set-value-during-iteration.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "INSTRUMENT" : "FAIL"
-    }
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/forEach/BigInt/callbackfn-set-value-during-interaction.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "INSTRUMENT" : "FAIL"
-    }
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/map/BigInt/callbackfn-set-value-during-interaction.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "INSTRUMENT" : "FAIL"
-    }
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/reduce/BigInt/callbackfn-set-value-during-iteration.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "INSTRUMENT" : "FAIL"
-    }
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/reduceRight/BigInt/callbackfn-set-value-during-iteration.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "INSTRUMENT" : "FAIL"
-    }
-  }, {
     "filePath" : "built-ins/TypedArray/prototype/set/typedarray-arg-set-values-same-buffer-other-type.js",
     "status" : "PASS",
     "statusOverrides" : {
       "BIG_ENDIAN" : "FAIL"
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/some/BigInt/callbackfn-set-value-during-interaction.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "INSTRUMENT" : "FAIL"
-    }
   }, {
     "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/hourCycle-default.js",
     "status" : "FAIL",
@@ -1999,24 +1927,6 @@
     "filePath" : "language/expressions/dynamic-import/usage-from-eval.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/super/prop-dot-cls-ref-this.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "INSTRUMENT" : "FAIL"
-    }
-  }, {
-    "filePath" : "language/expressions/super/prop-dot-obj-ref-this.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "INSTRUMENT" : "FAIL"
-    }
-  }, {
-    "filePath" : "language/global-code/script-decl-lex.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "INSTRUMENT" : "FAIL"
-    }
   }, {
     "filePath" : "language/statements/class/accessor-name-inst-computed-yield-expr.js",
     "status" : "FAIL",
