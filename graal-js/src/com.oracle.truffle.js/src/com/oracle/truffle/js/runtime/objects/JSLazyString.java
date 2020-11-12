@@ -145,7 +145,11 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
         if (left.length() == 0) {
             return String.valueOf(right); // bailout
         }
-        return new JSLazyString(left, new JSLazyIntWrapper(right));
+        JSLazyString result = new JSLazyString(left, new JSLazyIntWrapper(right));
+        if (result.length() > JavaScriptLanguage.getCurrentJSRealm().getContext().getStringLengthLimit()) {
+            throw Errors.createRangeErrorInvalidStringLength();
+        }
+        return result;
     }
 
     /**
@@ -159,7 +163,11 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
         if (right.length() == 0) {
             return String.valueOf(left); // bailout
         }
-        return new JSLazyString(new JSLazyIntWrapper(left), right);
+        JSLazyString result = new JSLazyString(new JSLazyIntWrapper(left), right);
+        if (result.length() > JavaScriptLanguage.getCurrentJSRealm().getContext().getStringLengthLimit()) {
+            throw Errors.createRangeErrorInvalidStringLength();
+        }
+        return result;
     }
 
     private CharSequence left;

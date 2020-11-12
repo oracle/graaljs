@@ -45,6 +45,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -96,7 +97,7 @@ public final class GlobalScopeVarWrapperNode extends JavaScriptNode implements R
         Object dynamicScope = dynamicScopeNode.execute(frame);
         if (scopeHasBinding.execute(dynamicScope)) {
             if (isWrite()) {
-                Object value = ((WriteNode) defaultDelegate).getRhs().execute(frame);
+                Object value = getRhs().execute(frame);
                 ((WritePropertyNode) scopeAccessNode).executeWithValue(dynamicScope, value);
                 return value;
             } else {
@@ -114,7 +115,7 @@ public final class GlobalScopeVarWrapperNode extends JavaScriptNode implements R
 
     @Override
     public JavaScriptNode getRhs() {
-        return ((WriteNode) defaultDelegate).getRhs();
+        return ((WriteNode) JSNodeUtil.getWrappedNode(defaultDelegate)).getRhs();
     }
 
     @Override

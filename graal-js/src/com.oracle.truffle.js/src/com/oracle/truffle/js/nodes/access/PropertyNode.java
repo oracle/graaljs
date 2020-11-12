@@ -101,7 +101,7 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
                 // this node is already materialized
                 return this;
             }
-            JavaScriptNode clonedTarget = JSTaggedExecutionNode.createForInput(target, this, materializedTags);
+            JavaScriptNode clonedTarget = JSTaggedExecutionNode.createForInput(target, target.hasSourceSection() ? target : this, materializedTags);
             if (clonedTarget == target) {
                 return this;
             }
