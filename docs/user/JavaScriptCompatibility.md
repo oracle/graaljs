@@ -34,10 +34,10 @@ If you run in the JVM mode (the `--jvm` flag is used), you do not need to specif
 
 Once you activate the Internationalization API, you can use the following built-ins:
 
-- Intl.NumberFormat
-- Intl.DateTimeFormat
-- Intl.Collator
-- Intl.PluralRules
+- `Intl.NumberFormat`
+- `Intl.DateTimeFormat`
+- `Intl.Collator`
+- `Intl.PluralRules`
 
 The functionality of a few other built-ins is then also updated according to the specification linked above.
 
@@ -58,6 +58,7 @@ Note that the behavior of such methods might not strictly match the semantics of
 ### Language Features
 
 #### Conditional Catch Clauses
+
 GraalVM JavaScript supports conditional catch clauses if the `js.syntax-extensions` option is enabled:
 
 ```js
