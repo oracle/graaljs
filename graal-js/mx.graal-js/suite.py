@@ -196,6 +196,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "sdk:LAUNCHER_COMMON",
+        "sdk:JLINE3",
       ],
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
