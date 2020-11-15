@@ -2770,12 +2770,12 @@ public final class GraalJSAccess {
         debugger.startSession(new SuspendedCallback() {
             @Override
             public void onSuspend(SuspendedEvent se) {
+                se.getSession().close();
                 synchronized (GraalJSAccess.this) {
                     if (!terminateExecution) {
                         return; // termination has been cancelled
                     }
                 }
-                se.getSession().close();
                 throw new GraalJSKillException();
             }
         }).suspendNextExecution();
