@@ -64,9 +64,9 @@ a.type {
   position: relative;
 }
 
-a,
 a:link,
-a:active {
+a:active,
+a:visited {
   color: #43853d;
   text-decoration: none;
   border-radius: 2px;
@@ -145,7 +145,7 @@ ol.version-picker {
   list-style: none;
   position: absolute;
   right: 0;
-  top: 1.25rem;
+  top: 100%;
   width: 100%;
 }
 
@@ -204,11 +204,11 @@ ol.version-picker li:last-child a {
 }
 
 .api_stability_1 {
-  background-color: #ec5315;
+  background-color: #ca5010;
 }
 
 .api_stability_2 {
-  background-color: #4eba0f;
+  background-color: #5a8147;
 }
 
 .api_metadata {
@@ -342,6 +342,7 @@ h5 {
 .srclink {
   float: right;
   font-size: smaller;
+  margin-right: 30px;
 }
 
 h1 span,
@@ -523,7 +524,7 @@ a code {
 
 #column2 .line {
   margin: 0 .5rem;
-  background-color: #707070;
+  border-color: #707070;
 }
 
 #column2 ul li:last-child {
@@ -538,9 +539,8 @@ a code {
 #column2 ul li a.active,
 #column2 ul li a.active:hover,
 #column2 ul li a.active:focus {
-  color: #43853d;
-  border-radius: 0;
-  border-bottom: 1px solid #43853d;
+  font-weight: 700;
+  color: #fff;
   background-color: transparent;
 }
 
@@ -610,7 +610,6 @@ td > *:last-child {
   }
   .apidoc #column2 > ul > li > a[href] {
     padding: .5rem 1.4375rem;
-    padding-right: 0;
     display: block;
   }
   .apidoc #column2 > ul > :first-child > a[href] {

@@ -45,7 +45,9 @@ const tls = require('tls');
 const common = require('_tls_common');
 const JSStreamSocket = require('internal/js_stream_socket');
 const { Buffer } = require('buffer');
-const debug = require('internal/util/debuglog').debuglog('tls');
+let debug = require('internal/util/debuglog').debuglog('tls', (fn) => {
+  debug = fn;
+});
 const { TCP, constants: TCPConstants } = internalBinding('tcp_wrap');
 const tls_wrap = internalBinding('tls_wrap');
 const { Pipe, constants: PipeConstants } = internalBinding('pipe_wrap');
@@ -487,7 +489,6 @@ function TLSSocket(socket, opts) {
     // handle, but a JS stream doesn't have one. Wrap it up to make it look like
     // a socket.
     wrap = new JSStreamSocket(socket);
-    wrap.once('close', () => this.destroy());
   }
 
   // Just a documented property to make secure sockets
@@ -1318,6 +1319,12 @@ Server.prototype.setSecureContext = function(options) {
                                   .slice(0, 32);
   }
 
+  if (options.sessionTimeout)
+    this.sessionTimeout = options.sessionTimeout;
+
+  if (options.ticketKeys)
+    this.ticketKeys = options.ticketKeys;
+
   this._sharedCreds = tls.createSecureContext({
     pfx: this.pfx,
     key: this.key,
@@ -1335,16 +1342,10 @@ Server.prototype.setSecureContext = function(options) {
     secureOptions: this.secureOptions,
     honorCipherOrder: this.honorCipherOrder,
     crl: this.crl,
-    sessionIdContext: this.sessionIdContext
+    sessionIdContext: this.sessionIdContext,
+    ticketKeys: this.ticketKeys,
+    sessionTimeout: this.sessionTimeout
   });
-
-  if (this.sessionTimeout)
-    this._sharedCreds.context.setSessionTimeout(this.sessionTimeout);
-
-  if (options.ticketKeys) {
-    this.ticketKeys = options.ticketKeys;
-    this.setTicketKeys(this.ticketKeys);
-  }
 };
 
 

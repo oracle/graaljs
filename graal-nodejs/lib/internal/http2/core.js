@@ -152,7 +152,9 @@ const { UV_EOF } = internalBinding('uv');
 
 const { StreamPipe } = internalBinding('stream_pipe');
 const { _connectionListener: httpConnectionListener } = http;
-const debug = require('internal/util/debuglog').debuglog('http2');
+let debug = require('internal/util/debuglog').debuglog('http2', (fn) => {
+  debug = fn;
+});
 const { getOptionValue } = require('internal/options');
 
 // TODO(addaleax): See if this can be made more efficient by figuring out
@@ -924,6 +926,9 @@ const validateSettings = hideStackFrames((settings) => {
                     0, kMaxStreams);
   assertWithinRange('maxHeaderListSize',
                     settings.maxHeaderListSize,
+                    0, kMaxInt);
+  assertWithinRange('maxHeaderSize',
+                    settings.maxHeaderSize,
                     0, kMaxInt);
   if (settings.enablePush !== undefined &&
       typeof settings.enablePush !== 'boolean') {
@@ -2180,7 +2185,7 @@ function callStreamClose(stream) {
   stream.close();
 }
 
-function processHeaders(oldHeaders) {
+function processHeaders(oldHeaders, options) {
   assertIsObject(oldHeaders, 'headers');
   const headers = ObjectCreate(null);
 
@@ -2196,7 +2201,13 @@ function processHeaders(oldHeaders) {
   const statusCode =
     headers[HTTP2_HEADER_STATUS] =
       headers[HTTP2_HEADER_STATUS] | 0 || HTTP_STATUS_OK;
-  headers[HTTP2_HEADER_DATE] = utcDate();
+
+  if (options.sendDate == null || options.sendDate) {
+    if (headers[HTTP2_HEADER_DATE] === null ||
+        headers[HTTP2_HEADER_DATE] === undefined) {
+      headers[HTTP2_HEADER_DATE] = utcDate();
+    }
+  }
 
   // This is intentionally stricter than the HTTP/1 implementation, which
   // allows values between 100 and 999 (inclusive) in order to allow for
@@ -2522,7 +2533,7 @@ class ServerHttp2Stream extends Http2Stream {
       state.flags |= STREAM_FLAGS_HAS_TRAILERS;
     }
 
-    headers = processHeaders(headers);
+    headers = processHeaders(headers, options);
     const headersList = mapToHeaders(headers, assertValidPseudoHeaderResponse);
     this[kSentHeaders] = headers;
 
@@ -2588,7 +2599,7 @@ class ServerHttp2Stream extends Http2Stream {
     this[kUpdateTimer]();
     this.ownsFd = false;
 
-    headers = processHeaders(headers);
+    headers = processHeaders(headers, options);
     const statusCode = headers[HTTP2_HEADER_STATUS] |= 0;
     // Payload/DATA frames are not permitted in these cases
     if (statusCode === HTTP_STATUS_NO_CONTENT ||
@@ -2649,7 +2660,7 @@ class ServerHttp2Stream extends Http2Stream {
     this[kUpdateTimer]();
     this.ownsFd = true;
 
-    headers = processHeaders(headers);
+    headers = processHeaders(headers, options);
     const statusCode = headers[HTTP2_HEADER_STATUS] |= 0;
     // Payload/DATA frames are not permitted in these cases
     if (statusCode === HTTP_STATUS_NO_CONTENT ||
@@ -3085,7 +3096,7 @@ function getUnpackedSettings(buf, options = {}) {
         settings.maxFrameSize = value;
         break;
       case NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE:
-        settings.maxHeaderListSize = value;
+        settings.maxHeaderListSize = settings.maxHeaderSize = value;
         break;
       case NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL:
         settings.enableConnectProtocol = value !== 0;

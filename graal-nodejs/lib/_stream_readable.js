@@ -39,7 +39,9 @@ const EE = require('events');
 const Stream = require('stream');
 const { Buffer } = require('buffer');
 
-const debug = require('internal/util/debuglog').debuglog('stream');
+let debug = require('internal/util/debuglog').debuglog('stream', (fn) => {
+  debug = fn;
+});
 const BufferList = require('internal/streams/buffer_list');
 const destroyImpl = require('internal/streams/destroy');
 const {
@@ -284,7 +286,8 @@ function readableAddChunk(stream, chunk, encoding, addToFront) {
 }
 
 function addChunk(stream, state, chunk, addToFront) {
-  if (state.flowing && state.length === 0 && !state.sync) {
+  if (state.flowing && state.length === 0 && !state.sync &&
+      stream.listenerCount('data') > 0) {
     // Use the guard to avoid creating `Set()` repeatedly
     // when we have multiple pipes.
     if (state.multiAwaitDrain) {

@@ -4,6 +4,8 @@
 
 > Stability: 2 - Stable
 
+<!-- source_link=lib/timers.js -->
+
 The `timer` module exposes a global API for scheduling functions to
 be called at some future period of time. Because the timer functions are
 globals, there is no need to call `require('timers')` to use the API.
@@ -122,6 +124,20 @@ the process may exit before the `Timeout` object's callback is invoked. Calling
 Calling `timeout.unref()` creates an internal timer that will wake the Node.js
 event loop. Creating too many of these can adversely impact performance
 of the Node.js application.
+
+### `timeout[Symbol.toPrimitive]()`
+<!-- YAML
+added: v12.19.0
+-->
+
+* Returns: {integer} a number that can be used to reference this `timeout`
+
+Coerce a `Timeout` to a primitive. The primitive can be used to
+clear the `Timeout`. The primitive can only be used in the
+same thread where the timeout was created. Therefore, to use it
+across [`worker_threads`][] it must first be passed to the correct
+thread. This allows enhanced compatibility with browser
+`setTimeout()` and `setInterval()` implementations.
 
 ## Scheduling timers
 
@@ -272,3 +288,4 @@ Cancels a `Timeout` object created by [`setTimeout()`][].
 [`setInterval()`]: timers.html#timers_setinterval_callback_delay_args
 [`setTimeout()`]: timers.html#timers_settimeout_callback_delay_args
 [`util.promisify()`]: util.html#util_util_promisify_original
+[`worker_threads`]: worker_threads.html

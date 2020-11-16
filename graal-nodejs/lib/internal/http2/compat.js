@@ -405,9 +405,9 @@ class Http2ServerRequest extends Readable {
   }
 
   setTimeout(msecs, callback) {
-    if (this[kState].closed)
-      return;
-    this[kStream].setTimeout(msecs, callback);
+    if (!this[kState].closed)
+      this[kStream].setTimeout(msecs, callback);
+    return this;
   }
 }
 
@@ -583,6 +583,13 @@ class Http2ServerResponse extends Stream {
       throw new ERR_HTTP2_HEADERS_SENT();
 
     name = name.trim().toLowerCase();
+
+    if (name === 'date') {
+      this[kState].sendDate = false;
+
+      return;
+    }
+
     delete this[kHeaders][name];
   }
 
@@ -775,6 +782,7 @@ class Http2ServerResponse extends Stream {
     const options = {
       endStream: state.ending,
       waitForTrailers: true,
+      sendDate: state.sendDate
     };
     this[kStream].respond(headers, options);
   }
