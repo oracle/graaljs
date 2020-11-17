@@ -73,6 +73,7 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -283,15 +284,15 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
                 TruffleStackTrace.fillIn(ex);
 
                 return doJSException((JSException) ex);
-            } else if (isJSException.profile(ex instanceof GraalJSException)) {
-                return ((GraalJSException) ex).getErrorObject();
+            } else if (isJSException.profile(ex instanceof UserScriptException)) {
+                return ((UserScriptException) ex).getErrorObject();
             } else if (ex instanceof StackOverflowError) {
                 CompilerDirectives.transferToInterpreter();
                 JSException rangeException = Errors.createRangeErrorStackOverflow(this);
                 return doJSException(rangeException);
             } else {
                 truffleExceptionBranch.enter();
-                assert ex instanceof AbstractTruffleException || ex instanceof com.oracle.truffle.api.TruffleException : ex;
+                assert !(ex instanceof GraalJSException) && (ex instanceof AbstractTruffleException || ex instanceof com.oracle.truffle.api.TruffleException) : ex;
                 return ex;
             }
         }
