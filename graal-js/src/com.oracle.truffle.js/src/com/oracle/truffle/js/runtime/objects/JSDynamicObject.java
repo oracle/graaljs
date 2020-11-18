@@ -45,13 +45,19 @@ import java.util.function.IntUnaryOperator;
 import java.util.function.Predicate;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -62,10 +68,31 @@ import com.oracle.truffle.js.runtime.builtins.JSClass;
 /**
  * The common base class for all JavaScript objects as well as {@code null} and {@code undefined}.
  */
+@ExportLibrary(InteropLibrary.class)
 public abstract class JSDynamicObject extends DynamicObject implements TruffleObject {
 
     protected JSDynamicObject(Shape shape) {
         super(shape);
+    }
+
+    @ExportMessage
+    public static final class IsIdenticalOrUndefined {
+        @Specialization
+        public static TriState doHostObject(JSDynamicObject receiver, JSDynamicObject other) {
+            return TriState.valueOf(receiver == other);
+        }
+
+        @SuppressWarnings("unused")
+        @Fallback
+        public static TriState doOther(JSDynamicObject receiver, Object other) {
+            return TriState.UNDEFINED;
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    public final int identityHashCode() {
+        return super.hashCode();
     }
 
     public final JSContext getJSContext() {
