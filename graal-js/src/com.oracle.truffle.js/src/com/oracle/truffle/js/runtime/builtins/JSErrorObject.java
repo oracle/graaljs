@@ -40,14 +40,25 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
+@ExportLibrary(InteropLibrary.class)
 public final class JSErrorObject extends JSNonProxyObject implements JSCopyableObject {
+
+    static final int LIMIT = 3;
+
     protected JSErrorObject(Shape shape) {
         super(shape);
     }
@@ -64,4 +75,45 @@ public final class JSErrorObject extends JSNonProxyObject implements JSCopyableO
     protected JSObject copyWithoutProperties(Shape shape) {
         return new JSErrorObject(shape);
     }
+
+    private GraalJSException getException() {
+        return JSError.getException(this);
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public boolean isException() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public RuntimeException throwException() {
+        throw getException();
+    }
+
+    @ExportMessage
+    public ExceptionType getExceptionType(
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary exceptions) throws UnsupportedMessageException {
+        return exceptions.getExceptionType(getException());
+    }
+
+    @ExportMessage
+    public boolean isExceptionIncompleteSource(
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary exceptions) throws UnsupportedMessageException {
+        return exceptions.isExceptionIncompleteSource(getException());
+    }
+
+    @ExportMessage
+    public boolean hasExceptionMessage(
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary exceptions) {
+        return exceptions.hasExceptionMessage(getException());
+    }
+
+    @ExportMessage
+    public Object getExceptionMessage(
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary exceptions) throws UnsupportedMessageException {
+        return exceptions.getExceptionMessage(getException());
+    }
+
 }
