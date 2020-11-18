@@ -315,4 +315,11 @@ public final class JSException extends GraalJSException {
                     @CachedLibrary(limit = "LIMIT") InteropLibrary delegateLib) throws UnsupportedMessageException {
         return delegateLib.getMetaObject(getErrorObjectEager());
     }
+
+    @ExportMessage
+    @TruffleBoundary
+    public int identityHashCode(
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary delegateLib) throws UnsupportedMessageException {
+        return delegateLib.identityHashCode(getErrorObjectEager());
+    }
 }

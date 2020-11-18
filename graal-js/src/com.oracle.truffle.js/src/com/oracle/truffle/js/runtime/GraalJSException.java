@@ -50,6 +50,8 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -61,10 +63,12 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseAllNode.PromiseAllMarkerRootNode;
 import com.oracle.truffle.js.nodes.promise.PromiseReactionJobNode.PromiseReactionJobRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -539,6 +543,31 @@ public abstract class GraalJSException extends AbstractTruffleException {
     @ExportMessage
     public final Object toDisplayString(boolean allowSideEffects) {
         return JSRuntime.toDisplayString(this, allowSideEffects);
+    }
+
+    @ExportMessage
+    public static final class IsIdenticalOrUndefined {
+        @Specialization
+        public static TriState doException(GraalJSException receiver, GraalJSException other) {
+            return TriState.valueOf(receiver == other);
+        }
+
+        @Specialization
+        public static TriState doError(GraalJSException receiver, JSErrorObject other) {
+            return TriState.valueOf(other.getException() == receiver);
+        }
+
+        @SuppressWarnings("unused")
+        @Fallback
+        public static TriState doOther(GraalJSException receiver, Object other) {
+            return TriState.UNDEFINED;
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    public int identityHashCode() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 
     public static final class JSStackTraceElement {

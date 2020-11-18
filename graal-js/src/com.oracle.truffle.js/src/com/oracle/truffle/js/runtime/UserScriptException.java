@@ -43,6 +43,8 @@ package com.oracle.truffle.js.runtime;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -108,6 +110,13 @@ public final class UserScriptException extends GraalJSException {
     @ExportMessage
     public ExceptionType getExceptionType() {
         return ExceptionType.RUNTIME_ERROR;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    public int identityHashCode(
+                    @CachedLibrary(limit = "3") InteropLibrary delegateLib) throws UnsupportedMessageException {
+        return delegateLib.identityHashCode(getErrorObject());
     }
 
     /**

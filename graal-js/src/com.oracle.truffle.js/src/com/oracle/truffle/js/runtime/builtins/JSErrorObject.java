@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -48,6 +50,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
@@ -76,7 +79,7 @@ public final class JSErrorObject extends JSNonProxyObject implements JSCopyableO
         return new JSErrorObject(shape);
     }
 
-    private GraalJSException getException() {
+    public GraalJSException getException() {
         return JSError.getException(this);
     }
 
@@ -114,6 +117,25 @@ public final class JSErrorObject extends JSNonProxyObject implements JSCopyableO
     public Object getExceptionMessage(
                     @CachedLibrary(limit = "LIMIT") InteropLibrary exceptions) throws UnsupportedMessageException {
         return exceptions.getExceptionMessage(getException());
+    }
+
+    @ExportMessage
+    public static final class IsIdenticalOrUndefined {
+        @Specialization
+        public static TriState doError(JSErrorObject receiver, JSErrorObject other) {
+            return TriState.valueOf(receiver == other);
+        }
+
+        @Specialization
+        public static TriState doException(JSErrorObject receiver, GraalJSException other) {
+            return TriState.valueOf(receiver.getException() == other);
+        }
+
+        @SuppressWarnings("unused")
+        @Fallback
+        public static TriState doOther(JSErrorObject receiver, Object other) {
+            return TriState.UNDEFINED;
+        }
     }
 
 }
