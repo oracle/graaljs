@@ -1643,19 +1643,20 @@ public final class GraalJSAccess {
         return functionObject;
     }
 
-    public boolean functionTemplateHasInstance(Object templateObj, Object instance) {
-        FunctionTemplate functionTemplate = (FunctionTemplate) templateObj;
-        DynamicObject functionObject = functionTemplate.getFunctionObject();
-        if (functionObject == null) {
-            return false;
-        }
+    public boolean functionTemplateHasInstance(Object functionTemplate, Object instance) {
         if (instance instanceof DynamicObject) {
             Object constructor = JSObjectUtil.getHiddenProperty((DynamicObject) instance, FunctionTemplate.CONSTRUCTOR);
-            if (constructor == null) {
+            if (!(constructor instanceof FunctionTemplate)) {
                 return false; // not created from FunctionTemplate
             }
-            DynamicObject templatePrototype = (DynamicObject) JSObject.get(functionObject, JSObject.PROTOTYPE);
-            return JSRuntime.isPrototypeOf((DynamicObject) instance, templatePrototype);
+            FunctionTemplate instanceTemplate = (FunctionTemplate) constructor;
+            while (instanceTemplate != null) {
+                if (instanceTemplate == functionTemplate) {
+                    return true;
+                } else {
+                    instanceTemplate = instanceTemplate.getParent();
+                }
+            }
         }
         return false;
     }
