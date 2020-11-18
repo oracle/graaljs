@@ -43,10 +43,12 @@ package com.oracle.truffle.js.test.interop;
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.Collections;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Test;
@@ -146,6 +148,21 @@ public class ObjectIdentityTest {
 
             assertTrue(interop.isIdentical(jsobj1, jsobj1, interop));
             assertFalse(interop.isIdentical(jsobj1, jsobj2, interop));
+        }
+    }
+
+    @Test
+    public void testJSErrorIdentity() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Value error = context.eval(ID, "try { throw new Error('expected'); } catch (e) { e }");
+            assertTrue(error.toString(), error.isException());
+            try {
+                error.throwException();
+                fail("should have thrown");
+            } catch (PolyglotException ex) {
+                Value exception = ex.getGuestObject();
+                assertTrue("Exception and Error object have the same identity", exception.equals(error));
+            }
         }
     }
 
