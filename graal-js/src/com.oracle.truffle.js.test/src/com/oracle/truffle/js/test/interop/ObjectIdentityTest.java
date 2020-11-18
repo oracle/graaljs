@@ -51,7 +51,9 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Test;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.js.test.JSTest;
+import com.oracle.truffle.js.test.TestHelper;
 import com.oracle.truffle.js.test.polyglot.ForeignBoxedObject;
 import com.oracle.truffle.js.test.polyglot.ForeignNull;
 
@@ -132,6 +134,18 @@ public class ObjectIdentityTest {
             // Always false because these values have no identity!
             assertFalse(identical.execute(value1, value1).asBoolean());
             assertFalse(identical.execute(value1, value2).asBoolean());
+        }
+    }
+
+    @Test
+    public void testJSObjectIdentity() {
+        InteropLibrary interop = InteropLibrary.getUncached();
+        try (TestHelper testHelper = new TestHelper()) {
+            Object jsobj1 = testHelper.runNoPolyglot("({})");
+            Object jsobj2 = testHelper.runNoPolyglot("({})");
+
+            assertTrue(interop.isIdentical(jsobj1, jsobj1, interop));
+            assertFalse(interop.isIdentical(jsobj1, jsobj2, interop));
         }
     }
 
