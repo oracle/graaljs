@@ -40,9 +40,18 @@
  */
 package com.oracle.truffle.js.runtime.interop;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.utilities.TriState;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
+@ExportLibrary(value = InteropLibrary.class)
 public abstract class InteropFunction implements TruffleObject {
     private final DynamicObject function;
 
@@ -53,4 +62,30 @@ public abstract class InteropFunction implements TruffleObject {
     public final DynamicObject getFunction() {
         return function;
     }
+
+    @ExportMessage
+    public static final class IsIdenticalOrUndefined {
+        @Specialization
+        public static TriState doInteropFunction(InteropFunction receiver, InteropFunction other) {
+            return TriState.valueOf(receiver == other);
+        }
+
+        @Specialization
+        public static TriState doJSFunction(InteropFunction receiver, JSDynamicObject other) {
+            return TriState.valueOf(receiver.function == other);
+        }
+
+        @SuppressWarnings("unused")
+        @Fallback
+        public static TriState doOther(InteropFunction receiver, Object other) {
+            return TriState.UNDEFINED;
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    public final int identityHashCode() {
+        return function.hashCode();
+    }
+
 }
