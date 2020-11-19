@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -52,15 +53,15 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.js.runtime.GraalJSException;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
+@ImportStatic({JSConfig.class})
 @ExportLibrary(InteropLibrary.class)
 public final class JSErrorObject extends JSNonProxyObject implements JSCopyableObject {
-
-    static final int LIMIT = 3;
 
     protected JSErrorObject(Shape shape) {
         super(shape);
@@ -97,25 +98,25 @@ public final class JSErrorObject extends JSNonProxyObject implements JSCopyableO
 
     @ExportMessage
     public ExceptionType getExceptionType(
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary exceptions) throws UnsupportedMessageException {
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) throws UnsupportedMessageException {
         return exceptions.getExceptionType(getException());
     }
 
     @ExportMessage
     public boolean isExceptionIncompleteSource(
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary exceptions) throws UnsupportedMessageException {
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) throws UnsupportedMessageException {
         return exceptions.isExceptionIncompleteSource(getException());
     }
 
     @ExportMessage
     public boolean hasExceptionMessage(
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary exceptions) {
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) {
         return exceptions.hasExceptionMessage(getException());
     }
 
     @ExportMessage
     public Object getExceptionMessage(
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary exceptions) throws UnsupportedMessageException {
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) throws UnsupportedMessageException {
         return exceptions.getExceptionMessage(getException());
     }
 

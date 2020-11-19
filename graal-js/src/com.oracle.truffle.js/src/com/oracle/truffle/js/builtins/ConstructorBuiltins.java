@@ -802,6 +802,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class ConstructDateNode extends ConstructWithNewTargetNode {
 
         public ConstructDateNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
@@ -838,7 +839,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization(guards = {"args.length == 1"})
         protected DynamicObject constructDateOne(DynamicObject newTarget, Object[] args,
                         @Cached("createBinaryProfile()") ConditionProfile isSpecialCase,
-                        @CachedLibrary(limit = "3") InteropLibrary interop) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
             double dateValue = getDateValue(args[0], interop);
             return swapPrototype(JSDate.create(getContext(), timeClip(dateValue, isSpecialCase)), newTarget);
         }

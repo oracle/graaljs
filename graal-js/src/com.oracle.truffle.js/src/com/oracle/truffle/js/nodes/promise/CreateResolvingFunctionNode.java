@@ -58,6 +58,7 @@ import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
@@ -201,7 +202,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     rejectPromiseNode = insert(RejectPromiseNode.create(context));
                     getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
-                    exceptions = insert(InteropLibrary.getFactory().createDispatched(5));
+                    exceptions = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
                 }
             }
 

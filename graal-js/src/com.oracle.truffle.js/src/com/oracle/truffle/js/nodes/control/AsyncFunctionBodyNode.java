@@ -71,6 +71,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.promise.AsyncRootNode;
 import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -163,7 +164,7 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
                 callRejectNode = insert(JSFunctionCallNode.createCall());
-                exceptions = insert(InteropLibrary.getFactory().createDispatched(5));
+                exceptions = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
             }
             return TryCatchNode.shouldCatch(exception, exceptions);
         }

@@ -69,6 +69,7 @@ import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.function.SpecializedNewObjectNode;
 import com.oracle.truffle.js.nodes.promise.AsyncRootNode;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -192,7 +193,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
                 asyncGeneratorRejectNode = insert(AsyncGeneratorRejectNode.create(context));
-                exceptions = insert(InteropLibrary.getFactory().createDispatched(5));
+                exceptions = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
             }
             return TryCatchNode.shouldCatch(exception, exceptions);
         }

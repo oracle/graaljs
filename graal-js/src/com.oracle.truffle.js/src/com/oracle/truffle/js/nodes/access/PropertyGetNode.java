@@ -829,7 +829,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         public JavaStringMethodGetNode(ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
-            this.interop = InteropLibrary.getFactory().createDispatched(3);
+            this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         @Override
@@ -934,7 +934,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             this.isLength = key.equals(JSAbstractArray.LENGTH);
             this.isMethod = isMethod;
             this.isGlobal = isGlobal;
-            this.interop = InteropLibrary.getFactory().createDispatched(5);
+            this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         private Object foreignGet(Object thisObj, PropertyGetNode root) {
@@ -1016,7 +1016,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             }
             if (getterInterop == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getterInterop = insert(InteropLibrary.getFactory().createDispatched(3));
+                getterInterop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
             }
             if (!getterInterop.isMemberInvocable(thisObj, getterKey)) {
                 return null;

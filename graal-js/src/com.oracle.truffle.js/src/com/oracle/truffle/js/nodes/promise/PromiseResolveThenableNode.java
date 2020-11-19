@@ -47,6 +47,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
@@ -88,7 +89,7 @@ public class PromiseResolveThenableNode extends JavaScriptBaseNode {
         if (getErrorObjectNode == null || exceptions == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
-            exceptions = insert(InteropLibrary.getFactory().createDispatched(5));
+            exceptions = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
         }
         return TryCatchNode.shouldCatch(exception, exceptions);
     }

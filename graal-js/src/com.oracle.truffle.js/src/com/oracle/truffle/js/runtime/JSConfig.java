@@ -79,6 +79,8 @@ public final class JSConfig {
     public static final boolean AnnexB = true;
 
     // Inline Cache options
+    /** Default cache limit for dispatched InteropLibrary. */
+    public static final int InteropLibraryLimit = 5;
     public static final int PropertyCacheLimit = 5;
     public static final int FunctionCacheLimit = 4;
     public static final boolean AssertFinalPropertySpecialization = false;

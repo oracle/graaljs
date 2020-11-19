@@ -980,8 +980,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             if (materializeResultNode == null || lazyRegexResultNode == null || lazyRegexResultOriginalInputNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 materializeResultNode = insert(TRegexUtil.TRegexMaterializeResultNode.create());
-                lazyRegexResultNode = insert(DynamicObjectLibrary.getFactory().createDispatched(5));
-                lazyRegexResultOriginalInputNode = insert(DynamicObjectLibrary.getFactory().createDispatched(5));
+                lazyRegexResultNode = insert(DynamicObjectLibrary.getFactory().createDispatched(JSConfig.PropertyCacheLimit));
+                lazyRegexResultOriginalInputNode = insert(DynamicObjectLibrary.getFactory().createDispatched(JSConfig.PropertyCacheLimit));
             }
             return materializeResultNode;
         }
@@ -1521,8 +1521,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             this.targetClass = targetClass;
             this.exportKeyNode = ExportValueNode.create();
             this.importValueNode = ImportValueNode.create();
-            this.interop = InteropLibrary.getFactory().createDispatched(3);
-            this.keyInterop = InteropLibrary.getFactory().createDispatched(3);
+            this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
+            this.keyInterop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
             this.toStringNode = JSToStringNode.create();
         }
 
@@ -1603,7 +1603,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
             if (getterInterop == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getterInterop = insert(InteropLibrary.getFactory().createDispatched(3));
+                getterInterop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
             }
             if (!getterInterop.isMemberInvocable(thisObj, getterKey)) {
                 return null;

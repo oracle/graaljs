@@ -49,6 +49,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -174,7 +175,7 @@ public class TryFinallyNode extends StatementNode implements ResumableNode {
         InteropLibrary e = exceptions;
         if (e == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            exceptions = e = insert(InteropLibrary.getFactory().createDispatched(5));
+            exceptions = e = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
         }
         return e;
     }

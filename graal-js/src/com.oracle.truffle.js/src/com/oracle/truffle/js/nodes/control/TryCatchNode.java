@@ -67,6 +67,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
@@ -256,7 +257,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
         InteropLibrary e = exceptions;
         if (e == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            exceptions = e = insert(InteropLibrary.getFactory().createDispatched(5));
+            exceptions = e = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
         }
         return e;
     }

@@ -214,7 +214,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (getErrorObjectNode == null || exception == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getContext()));
-                exceptions = insert(InteropLibrary.getFactory().createDispatched(5));
+                exceptions = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
             }
             return TryCatchNode.shouldCatch(exception, exceptions);
         }

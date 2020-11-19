@@ -1773,8 +1773,8 @@ public class WriteElementNode extends JSTargetableNode {
             this.targetClass = targetClass;
             this.exportKey = ExportValueNode.create();
             this.exportValue = ExportValueNode.create();
-            this.interop = InteropLibrary.getFactory().createDispatched(3);
-            this.keyInterop = InteropLibrary.getFactory().createDispatched(3);
+            this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
+            this.keyInterop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
             this.toStringNode = JSToStringNode.create();
         }
 
@@ -1832,7 +1832,7 @@ public class WriteElementNode extends JSTargetableNode {
                 }
                 if (setterInterop == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    setterInterop = insert(InteropLibrary.getFactory().createDispatched(3));
+                    setterInterop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
                 }
                 if (!setterInterop.isMemberInvocable(thisObj, setterKey)) {
                     return;

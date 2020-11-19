@@ -392,7 +392,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
         JavaFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.interop = InteropLibrary.getFactory().createDispatched(3);
+            this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         private void write(Object target, int index, Object value) {
@@ -462,8 +462,8 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             super(context, builtin);
             this.toObjectArrayNode = JSToObjectArrayNode.create(context);
             this.exportValue = ExportValueNode.create();
-            this.newArray = InteropLibrary.getFactory().createDispatched(3);
-            this.arrayElements = InteropLibrary.getFactory().createDispatched(3);
+            this.newArray = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
+            this.arrayElements = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
 
         }
 

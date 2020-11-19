@@ -1422,7 +1422,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         ForeignExecuteNode(int expectedArgumentCount) {
             super(expectedArgumentCount);
-            this.interop = InteropLibrary.getFactory().createDispatched(3);
+            this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         @Override
@@ -1536,7 +1536,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         ForeignInstantiateNode(int skip, int expectedArgumentCount) {
             super(expectedArgumentCount);
             this.skip = skip;
-            this.interop = InteropLibrary.getFactory().createDispatched(3);
+            this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         @Override

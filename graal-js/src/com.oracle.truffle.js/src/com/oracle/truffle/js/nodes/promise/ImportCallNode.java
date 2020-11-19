@@ -59,6 +59,7 @@ import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -169,7 +170,7 @@ public class ImportCallNode extends JavaScriptNode {
         InteropLibrary e = exceptions;
         if (e == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            exceptions = e = insert(InteropLibrary.getFactory().createDispatched(5));
+            exceptions = e = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
         }
         return e;
     }
@@ -278,7 +279,7 @@ public class ImportCallNode extends JavaScriptNode {
                 if (getErrorObjectNode == null || exceptions == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
-                    exceptions = insert(InteropLibrary.getFactory().createDispatched(5));
+                    exceptions = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
                 }
                 return TryCatchNode.shouldCatch(exception, exceptions);
             }
