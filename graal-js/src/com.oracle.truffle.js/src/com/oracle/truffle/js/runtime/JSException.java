@@ -318,10 +318,4 @@ public final class JSException extends GraalJSException {
         return delegateLib.getMetaObject(getErrorObjectEager());
     }
 
-    @ExportMessage
-    @TruffleBoundary
-    public int identityHashCode(
-                    @CachedLibrary(limit = "InteropLibraryLimit") @Shared("delegateLib") InteropLibrary delegateLib) throws UnsupportedMessageException {
-        return delegateLib.identityHashCode(getErrorObjectEager());
-    }
 }

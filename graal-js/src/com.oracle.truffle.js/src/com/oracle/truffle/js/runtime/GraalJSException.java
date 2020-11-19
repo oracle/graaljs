@@ -50,13 +50,14 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
-import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -69,7 +70,6 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseAllNode.PromiseAllMarkerRootNode;
 import com.oracle.truffle.js.nodes.promise.PromiseReactionJobNode.PromiseReactionJobRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSError;
-import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -547,29 +547,70 @@ public abstract class GraalJSException extends AbstractTruffleException {
         return JSRuntime.toDisplayString(this, allowSideEffects);
     }
 
+    @ImportStatic({JSConfig.class})
     @ExportMessage
     public static final class IsIdenticalOrUndefined {
         @Specialization
-        public static TriState doException(GraalJSException receiver, GraalJSException other) {
-            return TriState.valueOf(receiver == other);
+        public static TriState doException(GraalJSException receiver, GraalJSException other,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("thisLib") InteropLibrary thisLib,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("otherLib") InteropLibrary otherLib) {
+            if (receiver == other) {
+                return TriState.TRUE;
+            }
+            Object thisObj = receiver.getErrorObject();
+            if (thisObj == null) {
+                // Cannot be identical since this is a lazily allocated Error and receiver != other.
+                return TriState.FALSE;
+            }
+            Object otherObj = other.getErrorObject();
+            if (otherObj == null) {
+                return TriState.FALSE;
+            }
+            // If the values are not JS objects, we need to delegate to InteropLibrary.
+            if (thisLib.hasIdentity(thisObj) && otherLib.hasIdentity(other)) {
+                return TriState.valueOf(thisLib.isIdentical(thisObj, other, otherLib));
+            } else {
+                return TriState.UNDEFINED;
+            }
         }
 
         @Specialization
-        public static TriState doError(GraalJSException receiver, JSErrorObject other) {
-            return TriState.valueOf(other.getException() == receiver);
+        public static TriState doJSObject(GraalJSException receiver, JSDynamicObject other) {
+            Object thisObj = receiver.getErrorObject();
+            if (thisObj == null) {
+                // Cannot be identical since this is lazily allocated Error.
+                return TriState.FALSE;
+            }
+            return TriState.valueOf(thisObj == other);
         }
 
-        @SuppressWarnings("unused")
-        @Fallback
-        public static TriState doOther(GraalJSException receiver, Object other) {
-            return TriState.UNDEFINED;
+        @Specialization(guards = {"!isGraalJSException(other)"}, replaces = {"doJSObject"})
+        public static TriState doOther(GraalJSException receiver, Object other,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("thisLib") InteropLibrary thisLib,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("otherLib") InteropLibrary otherLib) {
+            Object thisObj = receiver.getErrorObject();
+            if (thisObj == null) {
+                // Cannot be identical since this is a lazily allocated Error.
+                return TriState.FALSE;
+            }
+            // If the values are not JS objects, we need to delegate to InteropLibrary.
+            if (thisLib.hasIdentity(thisObj) && otherLib.hasIdentity(other)) {
+                return TriState.valueOf(thisLib.isIdentical(thisObj, other, otherLib));
+            } else {
+                return TriState.UNDEFINED;
+            }
+        }
+
+        static boolean isGraalJSException(Object value) {
+            return value instanceof GraalJSException;
         }
     }
 
     @ExportMessage
     @TruffleBoundary
-    public int identityHashCode() throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
+    public final int identityHashCode(
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary delegateLib) throws UnsupportedMessageException {
+        return delegateLib.identityHashCode(getErrorObjectEager());
     }
 
     public static final class JSStackTraceElement {

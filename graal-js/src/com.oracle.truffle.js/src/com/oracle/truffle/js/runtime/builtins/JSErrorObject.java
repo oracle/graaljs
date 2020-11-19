@@ -56,6 +56,7 @@ import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
@@ -123,13 +124,13 @@ public final class JSErrorObject extends JSNonProxyObject implements JSCopyableO
     @ExportMessage
     public static final class IsIdenticalOrUndefined {
         @Specialization
-        public static TriState doError(JSErrorObject receiver, JSErrorObject other) {
+        public static TriState doError(JSErrorObject receiver, JSDynamicObject other) {
             return TriState.valueOf(receiver == other);
         }
 
         @Specialization
         public static TriState doException(JSErrorObject receiver, GraalJSException other) {
-            return TriState.valueOf(receiver.getException() == other);
+            return TriState.valueOf(receiver == other.getErrorObject());
         }
 
         @SuppressWarnings("unused")
