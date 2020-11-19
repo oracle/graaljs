@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -232,94 +233,94 @@ public final class JSException extends GraalJSException {
 
     @ExportMessage
     public Object getMembers(boolean internal,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary delegateLib) throws UnsupportedMessageException {
+                    @CachedLibrary(limit = "LIMIT") @Shared("delegateLib") InteropLibrary delegateLib) throws UnsupportedMessageException {
         return delegateLib.getMembers(getErrorObjectEager(), internal);
     }
 
     @ExportMessage
     public boolean isMemberReadable(String key,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary delegateLib) {
+                    @CachedLibrary(limit = "LIMIT") @Shared("delegateLib") InteropLibrary delegateLib) {
         return delegateLib.isMemberReadable(getErrorObjectEager(), key);
     }
 
     @ExportMessage
     public boolean isMemberModifiable(String key,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary delegateLib) {
+                    @CachedLibrary(limit = "LIMIT") @Shared("delegateLib") InteropLibrary delegateLib) {
         return delegateLib.isMemberModifiable(getErrorObjectEager(), key);
     }
 
     @ExportMessage
     public boolean isMemberInsertable(String key,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary delegateLib) {
+                    @CachedLibrary(limit = "LIMIT") @Shared("delegateLib") InteropLibrary delegateLib) {
         return delegateLib.isMemberInsertable(getErrorObjectEager(), key);
     }
 
     @ExportMessage
     public boolean isMemberRemovable(String key,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary delegateLib) {
+                    @CachedLibrary(limit = "LIMIT") @Shared("delegateLib") InteropLibrary delegateLib) {
         return delegateLib.isMemberRemovable(getErrorObjectEager(), key);
     }
 
     @ExportMessage
     public boolean isMemberInvocable(String key,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary delegateLib) {
+                    @CachedLibrary(limit = "LIMIT") @Shared("delegateLib") InteropLibrary delegateLib) {
         return delegateLib.isMemberInvocable(getErrorObjectEager(), key);
     }
 
     @ExportMessage
     public boolean hasMemberReadSideEffects(String key,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary delegateLib) {
+                    @CachedLibrary(limit = "LIMIT") @Shared("delegateLib") InteropLibrary delegateLib) {
         return delegateLib.hasMemberReadSideEffects(getErrorObjectEager(), key);
     }
 
     @ExportMessage
     public boolean hasMemberWriteSideEffects(String key,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary delegateLib) {
+                    @CachedLibrary(limit = "LIMIT") @Shared("delegateLib") InteropLibrary delegateLib) {
         return delegateLib.hasMemberWriteSideEffects(getErrorObjectEager(), key);
     }
 
     @ExportMessage
     public Object readMember(String key,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary delegateLib) throws UnknownIdentifierException, UnsupportedMessageException {
+                    @CachedLibrary(limit = "LIMIT") @Shared("delegateLib") InteropLibrary delegateLib) throws UnknownIdentifierException, UnsupportedMessageException {
         return delegateLib.readMember(getErrorObjectEager(), key);
     }
 
     @ExportMessage
     public void writeMember(String key, Object value,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary delegateLib)
+                    @CachedLibrary(limit = "LIMIT") @Shared("delegateLib") InteropLibrary delegateLib)
                     throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
         delegateLib.writeMember(getErrorObjectEager(), key, value);
     }
 
     @ExportMessage
     public void removeMember(String key,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary delegateLib) throws UnsupportedMessageException, UnknownIdentifierException {
+                    @CachedLibrary(limit = "LIMIT") @Shared("delegateLib") InteropLibrary delegateLib) throws UnsupportedMessageException, UnknownIdentifierException {
         delegateLib.removeMember(getErrorObjectEager(), key);
     }
 
     @ExportMessage
     public Object invokeMember(String key, Object[] args,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary delegateLib)
+                    @CachedLibrary(limit = "LIMIT") @Shared("delegateLib") InteropLibrary delegateLib)
                     throws UnsupportedMessageException, UnknownIdentifierException, ArityException, UnsupportedTypeException {
         return delegateLib.invokeMember(getErrorObjectEager(), key, args);
     }
 
     @ExportMessage
     public boolean hasMetaObject(
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary delegateLib) {
+                    @CachedLibrary(limit = "LIMIT") @Shared("delegateLib") InteropLibrary delegateLib) {
         return delegateLib.hasMetaObject(getErrorObjectEager());
     }
 
     @ExportMessage
     public Object getMetaObject(
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary delegateLib) throws UnsupportedMessageException {
+                    @CachedLibrary(limit = "LIMIT") @Shared("delegateLib") InteropLibrary delegateLib) throws UnsupportedMessageException {
         return delegateLib.getMetaObject(getErrorObjectEager());
     }
 
     @ExportMessage
     @TruffleBoundary
     public int identityHashCode(
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary delegateLib) throws UnsupportedMessageException {
+                    @CachedLibrary(limit = "LIMIT") @Shared("delegateLib") InteropLibrary delegateLib) throws UnsupportedMessageException {
         return delegateLib.identityHashCode(getErrorObjectEager());
     }
 }
