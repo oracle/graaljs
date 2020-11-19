@@ -42,16 +42,18 @@ package com.oracle.truffle.js.nodes.unary;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
+@ImportStatic({JSConfig.class})
 public abstract class IsNullNode extends IsIdenticalBaseNode {
-    protected static final int INTEROP_LIMIT = 5;
 
     protected IsNullNode(JavaScriptNode operand, boolean leftConstant) {
         super(operand, leftConstant);
@@ -72,7 +74,7 @@ public abstract class IsNullNode extends IsIdenticalBaseNode {
         return false;
     }
 
-    @Specialization(guards = {"!isJSDynamicObject(operand)"}, limit = "INTEROP_LIMIT")
+    @Specialization(guards = {"!isJSDynamicObject(operand)"}, limit = "InteropLibraryLimit")
     protected static boolean doCached(Object operand,
                     @CachedLibrary("operand") InteropLibrary interop) {
         assert operand != Undefined.instance;

@@ -326,6 +326,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class ObjectGetOwnPropertyDescriptorNode extends ObjectOperation {
         public ObjectGetOwnPropertyDescriptorNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -342,7 +343,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return fromPropertyDescriptorNode.execute(desc, getContext());
         }
 
-        @Specialization(guards = {"isForeignObject(thisObj)"}, limit = "3")
+        @Specialization(guards = {"isForeignObject(thisObj)"}, limit = "InteropLibraryLimit")
         protected DynamicObject getForeignObject(Object thisObj, Object property,
                         @CachedLibrary("thisObj") InteropLibrary interop,
                         @Cached("create()") ImportValueNode toJSType) {

@@ -55,13 +55,14 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 
 import java.util.Set;
 
-@ImportStatic({JSRuntime.class})
+@ImportStatic({JSRuntime.class, JSConfig.class})
 public abstract class JSToBooleanNode extends JSUnaryNode {
 
     protected JSToBooleanNode(JavaScriptNode operand) {
@@ -166,7 +167,7 @@ public abstract class JSToBooleanNode extends JSUnaryNode {
         return true;
     }
 
-    @Specialization(guards = "isForeignObject(value)", limit = "5")
+    @Specialization(guards = "isForeignObject(value)", limit = "InteropLibraryLimit")
     protected boolean doForeignObject(Object value,
                     @CachedLibrary("value") InteropLibrary interop) {
         if (interop.isNull(value)) {

@@ -608,6 +608,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class ConstructArrayNode extends ConstructWithNewTargetNode {
 
         public ConstructArrayNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
@@ -659,7 +660,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return arguments[0];
         }
 
-        @Specialization(guards = "isOneForeignArg(args)", limit = "3")
+        @Specialization(guards = "isOneForeignArg(args)", limit = "InteropLibraryLimit")
         protected DynamicObject constructWithForeignArg(DynamicObject newTarget, Object[] args,
                         @CachedLibrary("firstArg(args)") InteropLibrary interop,
                         @Cached("create(getContext())") ArrayCreateNode arrayCreateNode,

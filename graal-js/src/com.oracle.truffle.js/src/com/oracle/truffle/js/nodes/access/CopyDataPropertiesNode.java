@@ -129,7 +129,7 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
         return false;
     }
 
-    @Specialization(guards = {"!isJSDynamicObject(from)"}, limit = "3")
+    @Specialization(guards = {"!isJSDynamicObject(from)"}, limit = "InteropLibraryLimit")
     protected final DynamicObject copyDataPropertiesForeign(DynamicObject target, Object from, Object[] excludedItems, boolean withExcluded,
                     @CachedLibrary("from") InteropLibrary objInterop,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keysInterop,

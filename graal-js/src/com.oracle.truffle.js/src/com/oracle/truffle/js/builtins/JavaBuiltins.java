@@ -50,6 +50,7 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -450,6 +451,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
     }
 
+    @ImportStatic({JSConfig.class})
     abstract static class JavaToNode extends JSBuiltinNode {
 
         @Child private JSToObjectArrayNode toObjectArrayNode;
@@ -497,7 +499,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             }
         }
 
-        @Specialization(guards = {"!isJSObject(obj)"}, limit = "3")
+        @Specialization(guards = {"!isJSObject(obj)"}, limit = "InteropLibraryLimit")
         protected Object toNonObject(Object obj, @SuppressWarnings("unused") Object toType,
                         @CachedLibrary("obj") InteropLibrary interop) {
             if (interop.hasArrayElements(obj)) {
