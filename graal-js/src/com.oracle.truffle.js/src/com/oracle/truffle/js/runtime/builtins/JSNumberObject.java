@@ -40,21 +40,17 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-@ExportLibrary(InteropLibrary.class)
+@ExportLibrary(value = InteropLibrary.class, delegateTo = "number")
 public final class JSNumberObject extends JSNonProxyObject {
 
-    private final Number number;
+    final Number number;
 
     protected JSNumberObject(Shape shape, Number number) {
         super(shape);
@@ -78,105 +74,4 @@ public final class JSNumberObject extends JSNonProxyObject {
         return factory.initProto(new JSNumberObject(factory.getShape(realm), value), realm);
     }
 
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    public boolean isNumber() {
-        return true;
-    }
-
-    @ExportMessage
-    public boolean fitsInByte(
-                    @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) {
-        return numberLib.fitsInByte(JSNumber.valueOf(this));
-    }
-
-    @ExportMessage
-    public boolean fitsInShort(
-                    @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) {
-        return numberLib.fitsInShort(JSNumber.valueOf(this));
-    }
-
-    @ExportMessage
-    public boolean fitsInInt(
-                    @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) {
-        return numberLib.fitsInInt(JSNumber.valueOf(this));
-    }
-
-    @ExportMessage
-    public boolean fitsInLong(
-                    @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) {
-        return numberLib.fitsInLong(JSNumber.valueOf(this));
-    }
-
-    @ExportMessage
-    public boolean fitsInFloat(
-                    @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) {
-        return numberLib.fitsInFloat(JSNumber.valueOf(this));
-    }
-
-    @ExportMessage
-    public boolean fitsInDouble(
-                    @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) {
-        return numberLib.fitsInDouble(JSNumber.valueOf(this));
-    }
-
-    @ExportMessage
-    public byte asByte(
-                    @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) throws UnsupportedMessageException {
-        if (fitsInByte(numberLib)) {
-            return numberLib.asByte(JSNumber.valueOf(this));
-        } else {
-            throw UnsupportedMessageException.create();
-        }
-    }
-
-    @ExportMessage
-    public short asShort(
-                    @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) throws UnsupportedMessageException {
-        if (fitsInShort(numberLib)) {
-            return numberLib.asShort(JSNumber.valueOf(this));
-        } else {
-            throw UnsupportedMessageException.create();
-        }
-    }
-
-    @ExportMessage
-    public int asInt(
-                    @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) throws UnsupportedMessageException {
-        if (fitsInInt(numberLib)) {
-            return numberLib.asInt(JSNumber.valueOf(this));
-        } else {
-            throw UnsupportedMessageException.create();
-        }
-    }
-
-    @ExportMessage
-    public long asLong(
-                    @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) throws UnsupportedMessageException {
-        if (fitsInLong(numberLib)) {
-            return numberLib.asLong(JSNumber.valueOf(this));
-        } else {
-            throw UnsupportedMessageException.create();
-        }
-    }
-
-    @ExportMessage
-    public float asFloat(
-                    @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) throws UnsupportedMessageException {
-        if (fitsInFloat(numberLib)) {
-            return numberLib.asFloat(JSNumber.valueOf(this));
-        } else {
-            throw UnsupportedMessageException.create();
-        }
-    }
-
-    @ExportMessage
-    public double asDouble(
-                    @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) throws UnsupportedMessageException {
-        if (fitsInDouble(numberLib)) {
-            return numberLib.asDouble(JSNumber.valueOf(this));
-        } else {
-            throw UnsupportedMessageException.create();
-        }
-    }
 }
