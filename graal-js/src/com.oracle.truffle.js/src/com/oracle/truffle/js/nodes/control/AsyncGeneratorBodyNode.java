@@ -139,7 +139,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
 
             if (enterContext) {
                 childContext = realm.getTruffleContext();
-                prev = childContext.enter();
+                prev = childContext.enter(this);
             }
 
             try {
@@ -182,7 +182,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
                 }
             } finally {
                 if (enterContext) {
-                    childContext.leave(prev);
+                    childContext.leave(this, prev);
                 }
             }
         }
