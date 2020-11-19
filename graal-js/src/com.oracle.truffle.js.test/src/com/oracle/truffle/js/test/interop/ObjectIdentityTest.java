@@ -42,6 +42,8 @@ package com.oracle.truffle.js.test.interop;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -54,6 +56,9 @@ import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.js.nodes.interop.ExportValueNode;
+import com.oracle.truffle.js.runtime.UserScriptException;
+import com.oracle.truffle.js.runtime.interop.InteropBoundFunction;
 import com.oracle.truffle.js.test.JSTest;
 import com.oracle.truffle.js.test.TestHelper;
 import com.oracle.truffle.js.test.polyglot.ForeignBoxedObject;
@@ -166,4 +171,97 @@ public class ObjectIdentityTest {
         }
     }
 
+    @Test
+    public void testInteropFunctionIdentity() {
+        InteropLibrary interop = InteropLibrary.getUncached();
+        try (TestHelper testHelper = new TestHelper()) {
+            testHelper.getPolyglotContext().enter();
+
+            Object jsfun = testHelper.runNoPolyglot("(function(){})");
+            Object jsobj = testHelper.runNoPolyglot("({})");
+            ExportValueNode exportValueNode = ExportValueNode.getUncached();
+            Object interopBoundFunction = exportValueNode.execute(jsfun, jsobj, true);
+            assertTrue(interopBoundFunction.getClass().getName(), interopBoundFunction instanceof InteropBoundFunction);
+            assertTrue(interop.isIdentical(interopBoundFunction, jsfun, interop));
+            assertTrue(interop.isIdentical(jsfun, interopBoundFunction, interop));
+
+            testHelper.getPolyglotContext().leave();
+        }
+    }
+
+    @Test
+    public void testThrownIdentitylessValue() {
+        InteropLibrary interop = InteropLibrary.getUncached();
+        try (TestHelper testHelper = new TestHelper()) {
+            testHelper.getPolyglotContext().enter();
+
+            Object value = null;
+            Object ex1 = null;
+            Object ex2 = null;
+            try {
+                testHelper.runNoPolyglot("throw 42;");
+                fail("should have thrown");
+            } catch (UserScriptException ex) {
+                value = ex.getErrorObject();
+                ex1 = ex;
+            }
+            assertFalse(interop.hasIdentity(value));
+            assertFalse(interop.isIdentical(ex1, value, interop));
+            assertFalse(interop.isIdentical(value, ex1, interop));
+            try {
+                testHelper.runNoPolyglot("throw 42;");
+                fail("should have thrown");
+            } catch (UserScriptException ex) {
+                ex2 = ex;
+                assertSame(value, ex.getErrorObject());
+            }
+            assertNotSame(ex1, ex2);
+            assertFalse(interop.isIdentical(ex2, value, interop));
+            assertFalse(interop.isIdentical(value, ex2, interop));
+            assertFalse(interop.isIdentical(ex1, ex2, interop));
+
+            Object jserror = testHelper.runNoPolyglot("try { throw new Error('expected'); } catch (e) { e }");
+            assertFalse(interop.isIdentical(jserror, ex1, interop));
+
+            testHelper.getPolyglotContext().leave();
+        }
+    }
+
+    @Test
+    public void testOneIdentityTwoExceptions() {
+        InteropLibrary interop = InteropLibrary.getUncached();
+        try (TestHelper testHelper = new TestHelper()) {
+            testHelper.getPolyglotContext().enter();
+
+            Object value = null;
+            Object ex1 = null;
+            Object ex2 = null;
+            try {
+                testHelper.runNoPolyglot("throw null;");
+                fail("should have thrown");
+            } catch (UserScriptException ex) {
+                value = ex.getErrorObject();
+                ex1 = ex;
+            }
+            assertTrue(interop.hasIdentity(value));
+            assertTrue(interop.isIdentical(ex1, value, interop));
+            assertTrue(interop.isIdentical(value, ex1, interop));
+            try {
+                testHelper.runNoPolyglot("throw null;");
+                fail("should have thrown");
+            } catch (UserScriptException ex) {
+                ex2 = ex;
+                assertSame(value, ex.getErrorObject());
+            }
+            assertNotSame(ex1, ex2);
+            assertTrue(interop.isIdentical(ex2, value, interop));
+            assertTrue(interop.isIdentical(value, ex2, interop));
+            assertTrue(interop.isIdentical(ex1, ex2, interop));
+
+            Object jserror = testHelper.runNoPolyglot("try { throw new Error('expected'); } catch (e) { e }");
+            assertFalse(interop.isIdentical(jserror, ex1, interop));
+
+            testHelper.getPolyglotContext().leave();
+        }
+    }
 }

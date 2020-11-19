@@ -167,4 +167,8 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
     public static ExportValueNode create() {
         return ExportValueNodeGen.create();
     }
+
+    public static ExportValueNode getUncached() {
+        return ExportValueNodeGen.getUncached();
+    }
 }
