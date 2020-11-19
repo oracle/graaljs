@@ -60,5 +60,8 @@ private:
     void* value_;
 };
 
+inline GraalExternal::GraalExternal(GraalIsolate* isolate, void* value, jobject java_external) : GraalValue(isolate, java_external), value_(value) {
+}
+
 #endif /* GRAAL_EXTERNAL_H_ */
 

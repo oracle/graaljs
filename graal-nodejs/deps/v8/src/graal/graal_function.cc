@@ -43,9 +43,6 @@
 #include "graal_isolate.h"
 #include "graal_string.h"
 
-GraalFunction::GraalFunction(GraalIsolate* isolate, jobject java_function) : GraalObject(isolate, java_function) {
-}
-
 GraalHandleContent* GraalFunction::CopyImpl(jobject java_object_copy) {
     return new GraalFunction(Isolate(), java_object_copy);
 }

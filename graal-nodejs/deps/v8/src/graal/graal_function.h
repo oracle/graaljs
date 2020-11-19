@@ -77,5 +77,8 @@ private:
     jobjectArray CreateJavaObjectArray(int argc, v8::Local<v8::Value> argv[]) const;
 };
 
+inline GraalFunction::GraalFunction(GraalIsolate* isolate, jobject java_function) : GraalObject(isolate, java_function) {
+}
+
 #endif /* GRAAL_FUNCTION_H_ */
 

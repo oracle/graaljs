@@ -44,9 +44,6 @@
 #include "graal_regexp.h"
 #include "graal_string.h"
 
-GraalRegExp::GraalRegExp(GraalIsolate* isolate, jobject java_regexp) : GraalObject(isolate, java_regexp) {
-}
-
 GraalHandleContent* GraalRegExp::CopyImpl(jobject java_object_copy) {
     return new GraalRegExp(Isolate(), java_object_copy);
 }

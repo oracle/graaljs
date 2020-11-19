@@ -43,9 +43,6 @@
 #include "graal_isolate.h"
 #include "include/v8.h"
 
-GraalExternal::GraalExternal(GraalIsolate* isolate, void* value, jobject java_external) : GraalValue(isolate, java_external), value_(value) {
-}
-
 GraalHandleContent* GraalExternal::CopyImpl(jobject java_object_copy) {
     return new GraalExternal(Isolate(), value_, java_object_copy);
 }

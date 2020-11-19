@@ -54,4 +54,7 @@ protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
 
+inline GraalSet::GraalSet(GraalIsolate* isolate, jobject java_set) : GraalObject(isolate, java_set) {
+}
+
 #endif /* GRAAL_SET_H_ */

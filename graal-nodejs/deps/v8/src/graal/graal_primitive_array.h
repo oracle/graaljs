@@ -57,4 +57,7 @@ protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
 
+inline GraalPrimitiveArray::GraalPrimitiveArray(GraalIsolate* isolate, jobject java_object) : GraalHandleContent(isolate, java_object) {
+}
+
 #endif /* GRAAL_PRIMITIVE_ARRAY_H_ */

@@ -123,4 +123,7 @@ public:
     v8::Local<v8::String> TypeOf(v8::Isolate* isolate);
 };
 
+inline GraalValue::GraalValue(GraalIsolate* isolate, jobject java_object) : GraalData(isolate, java_object) {
+}
+
 #endif /* GRAAL_VALUE_H_ */

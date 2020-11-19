@@ -40,6 +40,3 @@
  */
 
 #include "graal_name.h"
-
-GraalName::GraalName(GraalIsolate* isolate, jobject java_name) : GraalPrimitive(isolate, java_name) {
-}

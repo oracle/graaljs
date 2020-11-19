@@ -100,9 +100,6 @@ enum ValueType {
     BIGUINT64ARRAY_OBJECT = 33,
 };
 
-GraalValue::GraalValue(GraalIsolate* isolate, jobject java_object) : GraalData(isolate, java_object) {
-}
-
 bool GraalValue::IsObject() const {
     return false;
 }

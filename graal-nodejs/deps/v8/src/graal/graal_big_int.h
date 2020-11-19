@@ -59,4 +59,7 @@ protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
 
+inline GraalBigInt::GraalBigInt(GraalIsolate* isolate, jobject java_big_int) : GraalPrimitive(isolate, java_big_int) {
+}
+
 #endif /* GRAAL_BIG_INT_H_ */

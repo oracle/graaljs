@@ -43,9 +43,6 @@
 #include "graal_primitive_array.h"
 #include "graal_value.h"
 
-GraalPrimitiveArray::GraalPrimitiveArray(GraalIsolate* isolate, jobject java_object) : GraalHandleContent(isolate, java_object) {
-}
-
 GraalHandleContent* GraalPrimitiveArray::CopyImpl(jobject java_object_copy) {
     return new GraalPrimitiveArray(Isolate(), java_object_copy);
 }

@@ -46,9 +46,6 @@
 #include "graal_string.h"
 #include "graal_unbound_script.h"
 
-GraalModule::GraalModule(GraalIsolate* isolate, jobject java_module) : GraalHandleContent(isolate, java_module) {
-}
-
 GraalHandleContent* GraalModule::CopyImpl(jobject java_object_copy) {
     return new GraalModule(Isolate(), java_object_copy);
 }

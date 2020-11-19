@@ -59,4 +59,7 @@ protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy);
 };
 
+inline GraalMessage::GraalMessage(GraalIsolate* isolate, jobject exception) : GraalHandleContent(isolate, exception) {
+}
+
 #endif /* GRAAL_MESSAGE_H_ */

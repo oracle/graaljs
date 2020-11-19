@@ -54,4 +54,7 @@ protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
 
+inline GraalMap::GraalMap(GraalIsolate* isolate, jobject java_map) : GraalObject(isolate, java_map) {
+}
+
 #endif /* GRAAL_MAP_H_ */

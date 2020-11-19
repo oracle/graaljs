@@ -55,4 +55,7 @@ protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
 
+inline GraalStackTrace::GraalStackTrace(GraalIsolate* isolate, jobject stack_trace) : GraalHandleContent(isolate, stack_trace) {
+}
+
 #endif /* GRAAL_STACK_TRACE_H_ */

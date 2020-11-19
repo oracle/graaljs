@@ -48,9 +48,6 @@
 #include "graal_string.h"
 #include <string>
 
-GraalObject::GraalObject(GraalIsolate* isolate, jobject java_object) : GraalValue(isolate, java_object), internal_field_count_cache_(-1) {
-}
-
 GraalHandleContent* GraalObject::CopyImpl(jobject java_object_copy) {
     return new GraalObject(Isolate(), java_object_copy);
 }
@@ -223,7 +220,7 @@ void* GraalObject::SlowGetAlignedPointerFromInternalField(int index) {
     if (index == 0) {
         JNI_CALL(jlong, result, Isolate(), GraalAccessMethod::object_slow_get_aligned_pointer_from_internal_field, Long, GetJavaObject());
         return (void *) result;
-    }    
+    }
     v8::Local<v8::Value> value = SlowGetInternalField(index);
     if (value->IsExternal()) {
         return value.As<v8::External>()->Value();

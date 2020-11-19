@@ -42,9 +42,6 @@
 #include "graal_isolate.h"
 #include "graal_map.h"
 
-GraalMap::GraalMap(GraalIsolate* isolate, jobject java_map) : GraalObject(isolate, java_map) {
-}
-
 GraalHandleContent* GraalMap::CopyImpl(jobject java_object_copy) {
     return new GraalMap(Isolate(), java_object_copy);
 }

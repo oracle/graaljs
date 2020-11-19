@@ -43,9 +43,6 @@
 #include "graal_isolate.h"
 #include "graal_promise.h"
 
-GraalPromise::GraalPromise(GraalIsolate* isolate, jobject java_promise) : GraalObject(isolate, java_promise) {
-}
-
 GraalHandleContent* GraalPromise::CopyImpl(jobject java_object_copy) {
     return new GraalPromise(Isolate(), java_object_copy);
 }

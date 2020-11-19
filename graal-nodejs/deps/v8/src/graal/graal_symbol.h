@@ -56,5 +56,8 @@ protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
 
+inline GraalSymbol::GraalSymbol(GraalIsolate* isolate, jobject java_symbol) : GraalName(isolate, java_symbol) {
+}
+
 #endif /* GRAAL_SYMBOL_H_ */
 

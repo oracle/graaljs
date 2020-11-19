@@ -43,16 +43,6 @@
 #include "graal_array_buffer.h"
 #include "graal_isolate.h"
 
-GraalArrayBufferView::GraalArrayBufferView(GraalIsolate* isolate, jobject java_array_buffer_view, int type) : GraalArrayBufferView(isolate, java_array_buffer_view, type, -1, -1) {
-}
-
-GraalArrayBufferView::GraalArrayBufferView(GraalIsolate* isolate, jobject java_array_buffer_view, int type, int byte_length, int byte_offset) :
-GraalObject(isolate, java_array_buffer_view),
-type_(type),
-byte_length_(byte_length),
-byte_offset_(byte_offset) {
-}
-
 GraalHandleContent* GraalArrayBufferView::CopyImpl(jobject java_object_copy) {
     return new GraalArrayBufferView(Isolate(), java_object_copy, type_);
 }

@@ -94,4 +94,7 @@ private:
     int internal_field_count_cache_;
 };
 
+inline GraalObject::GraalObject(GraalIsolate* isolate, jobject java_object) : GraalValue(isolate, java_object), internal_field_count_cache_(-1) {
+}
+
 #endif /* GRAAL_OBJECT_H_ */

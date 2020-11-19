@@ -76,5 +76,8 @@ protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
 
+inline GraalString::GraalString(GraalIsolate* isolate, jstring java_string) : GraalName(isolate, java_string) {
+}
+
 #endif /* GRAAL_STRING_H_ */
 

@@ -58,4 +58,7 @@ protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
 
+inline GraalPromise::GraalPromise(GraalIsolate* isolate, jobject java_promise) : GraalObject(isolate, java_promise) {
+}
+
 #endif /* GRAAL_PROMISE_H_ */

@@ -43,9 +43,6 @@
 #include "graal_date.h"
 #include "graal_isolate.h"
 
-GraalDate::GraalDate(GraalIsolate* isolate, double time, jobject java_date) : GraalObject(isolate, java_date), time_(time) {
-}
-
 GraalHandleContent* GraalDate::CopyImpl(jobject java_object_copy) {
     return new GraalDate(Isolate(), time_, java_object_copy);
 }

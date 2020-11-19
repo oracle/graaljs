@@ -43,9 +43,6 @@
 #include "graal_stack_trace.h"
 #include "graal_string.h"
 
-GraalMessage::GraalMessage(GraalIsolate* isolate, jobject exception) : GraalHandleContent(isolate, exception) {
-}
-
 GraalHandleContent* GraalMessage::CopyImpl(jobject java_object_copy) {
     return new GraalMessage(Isolate(), java_object_copy);
 }

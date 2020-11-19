@@ -40,6 +40,3 @@
  */
 
 #include "graal_data.h"
-
-GraalData::GraalData(GraalIsolate* isolate, jobject java_object) : GraalHandleContent(isolate, java_object) {
-}

@@ -42,9 +42,6 @@
 #include "graal_stack_trace.h"
 #include "graal_stack_frame.h"
 
-GraalStackTrace::GraalStackTrace(GraalIsolate* isolate, jobject stack_trace) : GraalHandleContent(isolate, stack_trace) {
-}
-
 GraalHandleContent* GraalStackTrace::CopyImpl(jobject java_object_copy) {
     return new GraalStackTrace(Isolate(), java_object_copy);
 }

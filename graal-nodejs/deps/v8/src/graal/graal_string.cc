@@ -44,9 +44,6 @@
 #include <string.h>
 #include <limits.h>
 
-GraalString::GraalString(GraalIsolate* isolate, jstring java_string) : GraalName(isolate, java_string) {
-}
-
 GraalHandleContent* GraalString::CopyImpl(jobject java_object_copy) {
     return new GraalString(Isolate(), (jstring) java_object_copy);
 }

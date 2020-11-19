@@ -42,9 +42,6 @@
 #include "graal_isolate.h"
 #include "graal_big_int.h"
 
-GraalBigInt::GraalBigInt(GraalIsolate* isolate, jobject java_big_int) : GraalPrimitive(isolate, java_big_int) {
-}
-
 GraalHandleContent* GraalBigInt::CopyImpl(jobject java_object_copy) {
     return new GraalBigInt(Isolate(), java_object_copy);
 }

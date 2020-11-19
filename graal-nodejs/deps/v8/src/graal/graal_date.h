@@ -58,4 +58,7 @@ private:
     double time_;
 };
 
+inline GraalDate::GraalDate(GraalIsolate* isolate, double time, jobject java_date) : GraalObject(isolate, java_date), time_(time) {
+}
+
 #endif /* GRAAL_DATE_H_ */

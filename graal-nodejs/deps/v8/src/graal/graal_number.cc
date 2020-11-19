@@ -43,9 +43,6 @@
 #include "graal_isolate.h"
 #include "graal_number.h"
 
-GraalNumber::GraalNumber(GraalIsolate* isolate, double value, jobject java_number) : GraalPrimitive(isolate, java_number), value_(value) {
-}
-
 GraalHandleContent* GraalNumber::CopyImpl(jobject java_object_copy) {
     return new GraalNumber(Isolate(), value_, java_object_copy);
 }

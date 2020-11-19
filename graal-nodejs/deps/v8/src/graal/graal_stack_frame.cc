@@ -42,9 +42,6 @@
 #include "graal_stack_frame.h"
 #include "graal_string.h"
 
-GraalStackFrame::GraalStackFrame(GraalIsolate* isolate, jobject stack_frame) : GraalHandleContent(isolate, stack_frame) {
-}
-
 GraalHandleContent* GraalStackFrame::CopyImpl(jobject java_object_copy) {
     return new GraalStackFrame(Isolate(), java_object_copy);
 }

@@ -57,4 +57,7 @@ protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
 
+inline GraalStackFrame::GraalStackFrame(GraalIsolate* isolate, jobject stack_frame) : GraalHandleContent(isolate, stack_frame) {
+}
+
 #endif /* GRAAL_STACK_FRAME_H_ */

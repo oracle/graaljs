@@ -55,4 +55,7 @@ protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
 
+inline GraalRegExp::GraalRegExp(GraalIsolate* isolate, jobject java_regexp) : GraalObject(isolate, java_regexp) {
+}
+
 #endif /* GRAAL_REGEXP_H_ */

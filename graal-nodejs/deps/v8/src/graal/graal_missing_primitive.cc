@@ -42,9 +42,6 @@
 #include "graal_isolate.h"
 #include "graal_missing_primitive.h"
 
-GraalMissingPrimitive::GraalMissingPrimitive(GraalIsolate* isolate, jobject java_object, bool undefined) : GraalPrimitive(isolate, java_object), undefined_(undefined) {
-}
-
 GraalHandleContent* GraalMissingPrimitive::CopyImpl(jobject java_object_copy) {
     return new GraalMissingPrimitive(Isolate(), java_object_copy, undefined_);
 }

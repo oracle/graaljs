@@ -62,5 +62,8 @@ private:
     friend class GraalIsolate;
 };
 
+inline GraalNumber::GraalNumber(GraalIsolate* isolate, double value, jobject java_number) : GraalPrimitive(isolate, java_number), value_(value) {
+}
+
 #endif /* GRAAL_NUMBER_H_ */
 

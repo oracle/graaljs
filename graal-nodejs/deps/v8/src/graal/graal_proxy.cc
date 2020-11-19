@@ -43,9 +43,6 @@
 #include "graal_proxy.h"
 #include "graal_value.h"
 
-GraalProxy::GraalProxy(GraalIsolate* isolate, jobject java_proxy) : GraalObject(isolate, java_proxy) {
-}
-
 GraalHandleContent* GraalProxy::CopyImpl(jobject java_object_copy) {
     return new GraalProxy(Isolate(), java_object_copy);
 }

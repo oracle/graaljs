@@ -55,4 +55,7 @@ private:
     bool undefined_;
 };
 
+inline GraalMissingPrimitive::GraalMissingPrimitive(GraalIsolate* isolate, jobject java_object, bool undefined) : GraalPrimitive(isolate, java_object), undefined_(undefined) {
+}
+
 #endif /* GRAAL_MISSING_PRIMITIVE_H_ */

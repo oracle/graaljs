@@ -43,9 +43,6 @@
 #include "graal_string.h"
 #include "graal_symbol.h"
 
-GraalSymbol::GraalSymbol(GraalIsolate* isolate, jobject java_symbol) : GraalName(isolate, java_symbol) {
-}
-
 GraalHandleContent* GraalSymbol::CopyImpl(jobject java_object_copy) {
     return new GraalSymbol(Isolate(), java_object_copy);
 }
