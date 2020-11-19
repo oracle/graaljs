@@ -59,6 +59,7 @@ import java.util.SplittableRandom;
 import java.util.WeakHashMap;
 
 import org.graalvm.collections.Pair;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalTime;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
@@ -267,6 +268,8 @@ public class JSRealm {
 
     private final DynamicObject temporalTimeConstructor;
     private final DynamicObject temporalTimePrototype;
+    private final DynamicObject temporalPlainDateConstructor;
+    private final DynamicObject temporalPlainDatePrototype;
 
     // ES6:
     private final DynamicObject symbolConstructor;
@@ -881,6 +884,10 @@ public class JSRealm {
         ctor = JSTemporalTime.createConstructor(this);
         this.temporalTimeConstructor = ctor.getFunctionObject();
         this.temporalTimePrototype = ctor.getPrototype();
+
+        ctor = JSTemporalPlainDate.createConstructor(this);
+        this.temporalPlainDateConstructor = ctor.getFunctionObject();
+        this.temporalPlainDatePrototype = ctor.getPrototype();
     }
 
     private void initializeTypedArrayConstructors() {
@@ -1326,6 +1333,14 @@ public class JSRealm {
         return temporalTimePrototype;
     }
 
+    public final DynamicObject getTemporalPlainDateConstructor() {
+        return temporalPlainDateConstructor;
+    }
+
+    public final DynamicObject getTemporalPlainDatePrototype() {
+        return temporalPlainDatePrototype;
+    }
+
     public final Map<Object, DynamicObject> getTemplateRegistry() {
         if (templateRegistry == null) {
             createTemplateRegistry();
@@ -1732,6 +1747,7 @@ public class JSRealm {
         DynamicObject temporalObject = JSObjectUtil.createOrdinaryPrototypeObject(this);
 
         JSObjectUtil.putDataProperty(context, temporalObject, "Time", getTemporalTimeConstructor());
+        JSObjectUtil.putDataProperty(context, temporalObject, "PlainDate", getTemporalPlainDateConstructor());
 
         putGlobalProperty("Temporal", temporalObject);
     }

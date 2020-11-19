@@ -47,7 +47,7 @@ public class JSTemporalTime extends JSNonProxy implements JSConstructorFactory.D
         return context.trackAllocation(obj);
     }
 
-    private static boolean validateTime(long hours, long minutes, long seconds, long milliseconds, long microseconds,
+    public static boolean validateTime(long hours, long minutes, long seconds, long milliseconds, long microseconds,
                                         long nanoseconds) {
         if (hours < 0 || hours > 23) {
             return false;
@@ -157,7 +157,6 @@ public class JSTemporalTime extends JSNonProxy implements JSConstructorFactory.D
     @Override
     public void fillConstructor(JSRealm realm, DynamicObject constructor) {
         WithFunctionsAndSpecies.super.fillConstructor(realm, constructor);
-
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {

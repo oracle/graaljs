@@ -105,6 +105,8 @@ import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
+import com.oracle.truffle.js.runtime.builtins.JSUncheckedProxyHandler;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalTime;
 import com.oracle.truffle.js.runtime.builtins.JSUncheckedProxyHandler;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
@@ -414,6 +416,7 @@ public class JSContext {
     private final JSObjectFactory dictionaryObjectFactory;
 
     private final JSObjectFactory temporalTimeFactory;
+    private final JSObjectFactory temporalPlainDateFactory;
 
     private final JSObjectFactory globalObjectFactory;
 
@@ -576,6 +579,7 @@ public class JSContext {
         this.javaImporterFactory = nashornCompat ? builder.create(JavaImporter.instance()) : null;
 
         this.temporalTimeFactory = builder.create(JSTemporalTime.INSTANCE);
+        this.temporalPlainDateFactory = builder.create(JSTemporalPlainDate.INSTANCE);
 
         this.dictionaryObjectFactory = JSConfig.DictionaryObject ? builder.create(objectPrototypeSupplier, JSDictionary::makeDictionaryShape) : null;
 
@@ -1016,6 +1020,10 @@ public class JSContext {
 
     public final JSObjectFactory getTemporalTimeFactory() {
         return temporalTimeFactory;
+    }
+
+    public final JSObjectFactory getTemporalPlainDateFactory() {
+        return temporalPlainDateFactory;
     }
 
     public JSObjectFactory getDictionaryObjectFactory() {

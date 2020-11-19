@@ -110,6 +110,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSegmen
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSetNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructStringNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSymbolNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalPlainDateNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalTimeNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakMapNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakRefNodeGen;
@@ -213,6 +214,7 @@ import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalTime;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
@@ -327,6 +329,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         Table(1),
 
         TemporalTime(6),
+        TemporalPlainDate(4),
 
         // --- not new.target-capable below ---
         TypedArray(0),
@@ -608,6 +611,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 if(construct) {
                     return newTarget ? ConstructTemporalTimeNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context))
                                     : ConstructTemporalTimeNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context));
+                } else {
+                    return createCallRequiresNew(context, builtin);
+                }
+            case TemporalPlainDate:
+                if (construct) {
+                    return newTarget ? ConstructTemporalPlainDateNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(3).varArgs().createArgumentNodes(context))
+                            : ConstructTemporalPlainDateNodeGen.create(context, builtin, false, args().function().fixedArgs(3).varArgs().createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
@@ -993,6 +1003,29 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return realm.getDatePrototype();
         }
 
+    }
+
+    public abstract static class ConstructTemporalPlainDateNode extends ConstructWithNewTargetNode {
+
+        protected ConstructTemporalPlainDateNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
+            super(context, builtin, isNewTargetCase);
+        }
+
+        @Specialization
+        protected DynamicObject constructTemporalPlainDate(DynamicObject newTarget, Object isoYear, Object isoMonth,
+                                                           Object isoDay, Object calendarLike,
+                                                           @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
+            final long y = toIntegerNode.executeLong(isoYear);
+            final long m = toIntegerNode.executeLong(isoMonth);
+            final long d = toIntegerNode.executeLong(isoDay);
+            // TODO: Handle calender
+            return swapPrototype(JSTemporalPlainDate.createTemporalDate(getContext(), y, m ,d), newTarget);
+        }
+
+        @Override
+        protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getTemporalTimePrototype();
+        }
     }
 
     public abstract static class ConstructTemporalTimeNode extends ConstructWithNewTargetNode {

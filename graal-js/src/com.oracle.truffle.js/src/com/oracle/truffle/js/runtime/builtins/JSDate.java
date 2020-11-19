@@ -471,7 +471,7 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
 
     // 15.9.1.11
     @TruffleBoundary
-    private static double makeTime(double hour, double min, double sec, double ms) {
+    public static double makeTime(double hour, double min, double sec, double ms) {
         if (!isFinite(hour) || !isFinite(min) || !isFinite(sec) || !isFinite(ms)) {
             return Double.NaN;
         }
@@ -484,7 +484,7 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
 
     // 15.9.1.12
     @TruffleBoundary
-    private static double makeDay(double year, double month, double date) {
+    public static double makeDay(double year, double month, double date) {
         if (!isFinite(year) || !isFinite(month) || !isFinite(date)) {
             return Double.NaN;
         }
@@ -508,7 +508,7 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
 
     // 15.9.1.13
     @TruffleBoundary
-    private static double makeDate(double day, double time) {
+    public static double makeDate(double day, double time) {
         if (!isFinite(day) || !isFinite(time)) {
             return Double.NaN;
         }
