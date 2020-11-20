@@ -39,8 +39,11 @@
  * SOFTWARE.
  */
 
+#ifndef GRAAL_FUNCTION_CALLBACK_INFO_INL_H_
+#define GRAAL_FUNCTION_CALLBACK_INFO_INL_H_
+
 #include "graal_function_callback_info.h"
-#include "graal_external.h"
+#include "graal_function_callback_arguments-inl.h"
 
 GraalFunctionCallbackInfo::GraalFunctionCallbackInfo(GraalFunctionCallbackArguments& args)
 : GraalFunctionCallbackInfo(args.implicit_args(), args.values(), args.length()) {
@@ -54,3 +57,5 @@ GraalFunctionCallbackInfo::GraalFunctionCallbackInfo(
                 reinterpret_cast<v8::internal::Address*> (values),
                 length) {
 }
+
+#endif /* GRAAL_FUNCTION_CALLBACK_INFO_INL_H_ */

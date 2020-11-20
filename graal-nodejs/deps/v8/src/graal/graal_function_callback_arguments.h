@@ -48,7 +48,7 @@
 
 class GraalFunctionCallbackArguments {
 public:
-    GraalFunctionCallbackArguments(
+    V8_INLINE GraalFunctionCallbackArguments(
             GraalIsolate* isolate,
             GraalValue* this_arg,
             GraalValue* new_target,
@@ -68,7 +68,7 @@ public:
         return argc_;
     }
 
-    ~GraalFunctionCallbackArguments();
+    V8_INLINE ~GraalFunctionCallbackArguments();
 
 private:
     GraalFunctionCallbackArguments(const GraalFunctionCallbackArguments&) = delete;

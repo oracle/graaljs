@@ -758,8 +758,6 @@
         '<(V8_ROOT)/src/graal/graal_date.cc',
         '<(V8_ROOT)/src/graal/graal_external.cc',
         '<(V8_ROOT)/src/graal/graal_function.cc',
-        '<(V8_ROOT)/src/graal/graal_function_callback_arguments.cc',
-        '<(V8_ROOT)/src/graal/graal_function_callback_info.cc',
         '<(V8_ROOT)/src/graal/graal_function_template.cc',
         '<(V8_ROOT)/src/graal/graal_handle_content.cc',
         '<(V8_ROOT)/src/graal/graal_isolate.cc',

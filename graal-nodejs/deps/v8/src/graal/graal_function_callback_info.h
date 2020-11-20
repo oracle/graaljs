@@ -49,9 +49,9 @@
 
 class GraalFunctionCallbackInfo : public v8::FunctionCallbackInfo<v8::Value> {
 public:
-    GraalFunctionCallbackInfo(GraalFunctionCallbackArguments& args);
+    V8_INLINE GraalFunctionCallbackInfo(GraalFunctionCallbackArguments& args);
 private:
-    GraalFunctionCallbackInfo(
+    V8_INLINE GraalFunctionCallbackInfo(
             void** implicit_args,
             GraalValue** values,
             int length);

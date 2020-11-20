@@ -39,10 +39,11 @@
  * SOFTWARE.
  */
 
+#ifndef GRAAL_FUNCTION_CALLBACK_ARGUMENTS_INL_H_
+#define GRAAL_FUNCTION_CALLBACK_ARGUMENTS_INL_H_
+
 #include "graal_function_callback_arguments.h"
 #include "graal_function_callback_info.h"
-#include "graal_function.h"
-#include "graal_primitive.h"
 
 GraalFunctionCallbackArguments::GraalFunctionCallbackArguments(
         GraalIsolate* isolate,
@@ -86,3 +87,5 @@ GraalFunctionCallbackArguments::~GraalFunctionCallbackArguments() {
     // method because if the reference count drops to zero then delete
     // is called automatically (which is not a good idea for an argument on stack).
 }
+
+#endif /* GRAAL_FUNCTION_CALLBACK_ARGUMENTS_INL_H_ */

@@ -49,7 +49,7 @@
 #include "graal_context.h"
 #include "graal_date.h"
 #include "graal_function.h"
-#include "graal_function_callback_info.h"
+#include "graal_function_callback_info-inl.h"
 #include "graal_isolate.h"
 #include "graal_map.h"
 #include "graal_missing_primitive.h"
