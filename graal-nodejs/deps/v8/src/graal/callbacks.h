@@ -126,6 +126,8 @@ void GraalPolyglotEngineEntered(JNIEnv* env, jclass nativeAccess, jlong function
 
 GraalIsolate* CurrentIsolateChecked();
 
+void NoCurrentIsolateError();
+
 jobject GraalGetCoreModuleBinarySnapshot(JNIEnv* env, jclass nativeAccess, jstring modulePath);
 
 void GraalNotifyPromiseHook(JNIEnv* env, jclass nativeAccess, jint changeType, jobject java_promise, jobject java_parent);

@@ -628,10 +628,14 @@ void GraalPolyglotEngineEntered(JNIEnv* env, jclass nativeAccess, jlong function
 GraalIsolate* CurrentIsolateChecked() {
     GraalIsolate* graal_isolate = CurrentIsolate();
     if (graal_isolate == nullptr) {
-        fprintf(stderr, "Unable to find GraalIsolate for this thread! This code should be executed in the main thread!");
-        exit(1);
+        NoCurrentIsolateError();
     }
     return graal_isolate;
+}
+
+void NoCurrentIsolateError() {
+    fprintf(stderr, "Unable to find GraalIsolate for this thread! This code should be executed in the main thread!");
+    exit(1);
 }
 
 jobject GraalGetCoreModuleBinarySnapshot(JNIEnv* env, jclass nativeAccess, jstring modulePath) {
