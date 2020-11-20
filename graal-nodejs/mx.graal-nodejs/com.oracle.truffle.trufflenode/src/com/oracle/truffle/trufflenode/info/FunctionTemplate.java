@@ -42,6 +42,8 @@ package com.oracle.truffle.trufflenode.info;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.trufflenode.GraalJSAccess;
 
 /**
  *
@@ -61,7 +63,6 @@ public final class FunctionTemplate {
     private final int length;
     private FunctionTemplate parent;
     private String className = "";
-    private DynamicObject functionObj;
 
     public FunctionTemplate(int id, long functionPointer, Object additionalData, FunctionTemplate signature, int length, boolean isConstructor) {
         functionObjectTemplate = new ObjectTemplate();
@@ -86,12 +87,12 @@ public final class FunctionTemplate {
         return prototypeTemplate;
     }
 
-    public void setFunctionObject(DynamicObject functionObj) {
-        this.functionObj = functionObj;
+    public void setFunctionObject(JSRealm realm, DynamicObject functionObj) {
+        GraalJSAccess.getRealmEmbedderData(realm).setFunctionTemplateObject(id, functionObj);
     }
 
-    public DynamicObject getFunctionObject() {
-        return functionObj;
+    public DynamicObject getFunctionObject(JSRealm realm) {
+        return GraalJSAccess.getRealmEmbedderData(realm).getFunctionTemplateObject(id);
     }
 
     public int getID() {

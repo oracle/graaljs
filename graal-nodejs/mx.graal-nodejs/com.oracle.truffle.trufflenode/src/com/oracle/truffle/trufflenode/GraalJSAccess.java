@@ -1598,14 +1598,14 @@ public final class GraalJSAccess {
         JSContext jsContext = jsRealm.getContext();
         FunctionTemplate template = (FunctionTemplate) templateObj;
 
-        if (template.getFunctionObject() == null) { // PENDING should be per context
+        if (template.getFunctionObject(jsRealm) == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             DynamicObject obj = functionTemplateCreateCallback(jsContext, jsRealm, template);
             objectTemplateInstantiate(jsRealm, template.getFunctionObjectTemplate(), obj);
 
             ObjectTemplate prototypeTemplate = template.getPrototypeTemplate();
             if (prototypeTemplate != null) {
-                DynamicObject proto = JSOrdinary.create(jsContext);
+                DynamicObject proto = JSOrdinary.create(jsContext, jsRealm);
                 objectTemplateInstantiate(jsRealm, prototypeTemplate, proto);
                 JSObjectUtil.putConstructorProperty(jsContext, proto, obj);
                 JSObject.set(obj, JSObject.PROTOTYPE, proto);
@@ -1619,7 +1619,7 @@ public final class GraalJSAccess {
             }
         }
 
-        return template.getFunctionObject();
+        return template.getFunctionObject(jsRealm);
     }
 
     private DynamicObject functionTemplateCreateCallback(JSContext context, JSRealm realm, FunctionTemplate template) {
@@ -1634,7 +1634,7 @@ public final class GraalJSAccess {
         functionData.setConstructTarget(constructTarget);
         functionData.setConstructNewTarget(constructNewTarget);
         DynamicObject functionObject = JSFunction.create(realm, functionData);
-        template.setFunctionObject(functionObject);
+        template.setFunctionObject(realm, functionObject);
 
         // Additional data are held weakly from C => we have to ensure that
         // they are not GCed before the corresponding function is GCed
