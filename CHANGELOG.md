@@ -4,6 +4,7 @@ This changelog summarizes major changes between GraalVM versions of the GraalVM 
 The main focus is on user-observable behavior of the engine.
 
 ## Version 21.0.0
+* ECMAScript 2021 mode/features enabled by default.
 * Updated Node.js to version 12.19.1.
 * Adopted new interop exception handling and made JS exceptions extend `AbstractTruffleException`.
 * Implemented interop identity messages.
