@@ -3436,7 +3436,7 @@ public final class GraalJSAccess {
         BigInteger result = BigInteger.ZERO;
         for (int wordIdx = 0; wordIdx < count; wordIdx++) {
             long word = sharedBuffer.getLong();
-            for (int bit = 0; bit < 63; bit++) {
+            for (int bit = 0; bit < 64; bit++) {
                 if ((word & (1L << bit)) != 0) {
                     result = result.setBit(bit + 64 * wordIdx);
                 }
