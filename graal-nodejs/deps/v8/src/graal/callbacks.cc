@@ -518,7 +518,7 @@ void GraalExecutePropertyHandlerDefiner(JNIEnv* env, jclass nativeAccess, jlong 
     GraalValue* graal_key = GraalValue::FromJavaObject(isolate, java_key);
     GraalPropertyCallbackInfo<v8::Value> info = GraalPropertyCallbackInfo<v8::Value>::New(isolate, arguments, 0, data, holder);
     bool has_configurable = flags & (1 << 0);
-    bool congigurable = flags & (1 << 1);
+    bool configurable = flags & (1 << 1);
     bool has_enumerable = flags & (1 << 2);
     bool enumerable = flags & (1 << 3);
     bool has_writable = flags & (1 << 4);
@@ -543,7 +543,7 @@ void GraalExecutePropertyHandlerDefiner(JNIEnv* env, jclass nativeAccess, jlong 
         descriptor = new v8::PropertyDescriptor();
     }
     if (has_configurable) {
-        descriptor->set_configurable(congigurable);
+        descriptor->set_configurable(configurable);
     }
     if (has_enumerable) {
         descriptor->set_enumerable(enumerable);
