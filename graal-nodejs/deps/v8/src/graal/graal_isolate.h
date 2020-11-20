@@ -569,7 +569,9 @@ public:
         return stack_check_enabled_;
     }
 
-    bool StackOverflowCheck(intptr_t stack_top);
+    V8_INLINE bool StackOverflowCheck(intptr_t stack_top);
+
+    void ThrowStackOverflowError();
 
     void FindDynamicObjectFields(jobject context);
 
@@ -724,6 +726,22 @@ private:
     v8::FatalErrorCallback fatal_error_handler_;
     v8::PrepareStackTraceCallback prepare_stack_trace_callback_;
 };
+
+// This is a poor-man's check that attempts to avoid stack-overflow
+// during invocation of an average native JavaScript function.
+// It's main purpose is to avoid stack-overflow during JNI calls
+// back to Graal.js engine, it does not handle possible large stack
+// demands of the user-implemented parts of the native function.
+// It is an experimental feature with a very naive implementation.
+// It should be replaced by more sophisticated techniques if it
+// turns out to be useful.
+bool GraalIsolate::StackOverflowCheck(intptr_t stack_top) {
+    if (labs(stack_top - stack_bottom_) > stack_size_limit_) {
+        ThrowStackOverflowError();
+        return true;
+    }
+    return false;
+}
 
 #endif /* GRAAL_ISOLATE_H_ */
 

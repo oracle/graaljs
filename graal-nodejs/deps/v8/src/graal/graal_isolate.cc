@@ -283,7 +283,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
         fprintf(stderr, "Cannot find %s. Specify JAVA_HOME so $JAVA_HOME%s exists, or specify NODE_JVM_LIB directly.\n", jvmlib_path.c_str(), LIBJVM_RELPATH);
         exit(1);
     }
-    
+
 #ifdef __POSIX__
     void* jvm_handle = dlopen(jvmlib_path.c_str(), RTLD_NOW);
     if (jvm_handle == NULL) {
@@ -402,7 +402,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
             options.push_back({const_cast<char*>("-Xnoagent"), nullptr});
             std::string debugParam = "-Xrunjdwp:transport=dt_socket";
             // do not debug child processes
-            UnsetEnv("DEBUG_PORT"); 
+            UnsetEnv("DEBUG_PORT");
             debugParam += ",server=n,suspend=y,address=";
             debugParam += debugPort;
             options.push_back({const_cast<char*>(debugParam.c_str()), nullptr});
@@ -1057,7 +1057,7 @@ void GraalIsolate::Dispose(bool exit, int status) {
     // this is executed when exit is false only
     env->ExceptionClear();
     jvm_->DetachCurrentThread();
-    
+
 #ifdef __POSIX__
     pthread_mutex_destroy(&lock_);
 #else
@@ -1149,20 +1149,8 @@ void GraalIsolate::InitStackOverflowCheck(intptr_t stack_bottom) {
     }
 }
 
-// This is a poor-man's check that attempts to avoid stack-overflow
-// during invocation of an average native JavaScript function.
-// It's main purpose is to avoid stack-overflow during JNI calls
-// back to Graal.js engine, it does not handle possible large stack
-// demands of the user-implemented parts of the native function.
-// It is an experimental feature with a very naive implementation.
-// It should be replaced by more sophisticated techniques if it
-// turns out to be useful.
-bool GraalIsolate::StackOverflowCheck(intptr_t stack_top) {
-    if (labs(stack_top - stack_bottom_) > stack_size_limit_) {
-        JNI_CALL_VOID(this, GraalAccessMethod::isolate_throw_stack_overflow_error);
-        return true;
-    }
-    return false;
+void GraalIsolate::ThrowStackOverflowError() {
+    JNI_CALL_VOID(this, GraalAccessMethod::isolate_throw_stack_overflow_error);
 }
 
 void GraalIsolate::AddGCPrologueCallback(GCCallbackType type, void* callback, void* data) {
