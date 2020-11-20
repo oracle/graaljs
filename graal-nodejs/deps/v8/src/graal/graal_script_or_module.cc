@@ -45,6 +45,8 @@
 #include "graal_script_or_module.h"
 #include "graal_value.h"
 
+#include "graal_primitive_array-inl.h"
+
 GraalScriptOrModule::GraalScriptOrModule(GraalIsolate* isolate, jobject java_module) : GraalHandleContent(isolate, java_module) {
 }
 

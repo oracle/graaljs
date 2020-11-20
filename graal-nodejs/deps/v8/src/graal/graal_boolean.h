@@ -42,15 +42,14 @@
 #ifndef GRAAL_BOOLEAN_H_
 #define GRAAL_BOOLEAN_H_
 
-#include "graal_isolate.h"
 #include "graal_primitive.h"
 
 class GraalIsolate;
 
 class GraalBoolean : public GraalPrimitive {
 public:
-    GraalBoolean(GraalIsolate* isolate, bool value);
-    GraalBoolean(GraalIsolate* isolate, bool value, jobject java_value);
+    inline GraalBoolean(GraalIsolate* isolate, bool value);
+    inline GraalBoolean(GraalIsolate* isolate, bool value, jobject java_value);
     bool IsBoolean() const;
     bool IsTrue() const;
     bool IsFalse() const;
@@ -60,14 +59,6 @@ protected:
 private:
     bool value_;
 };
-
-inline GraalBoolean::GraalBoolean(GraalIsolate* isolate, bool value) :
-GraalBoolean(isolate, value, isolate->GetJNIEnv()->NewLocalRef(value ? isolate->GetJavaTrue() : isolate->GetJavaFalse())) {
-}
-
-inline GraalBoolean::GraalBoolean(GraalIsolate* isolate, bool value, jobject java_value) :
-GraalPrimitive(isolate, java_value), value_(value) {
-}
 
 #endif /* GRAAL_BOOLEAN_H_ */
 

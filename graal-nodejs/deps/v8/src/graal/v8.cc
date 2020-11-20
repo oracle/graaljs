@@ -78,6 +78,29 @@
 #include <string.h>
 #include <string>
 
+#include "graal_array-inl.h"
+#include "graal_array_buffer-inl.h"
+#include "graal_array_buffer_view-inl.h"
+#include "graal_big_int-inl.h"
+#include "graal_boolean-inl.h"
+#include "graal_date-inl.h"
+#include "graal_external-inl.h"
+#include "graal_function-inl.h"
+#include "graal_map-inl.h"
+#include "graal_message-inl.h"
+#include "graal_module-inl.h"
+#include "graal_number-inl.h"
+#include "graal_primitive_array-inl.h"
+#include "graal_promise-inl.h"
+#include "graal_proxy-inl.h"
+#include "graal_regexp-inl.h"
+#include "graal_set-inl.h"
+#include "graal_stack_frame-inl.h"
+#include "graal_stack_trace-inl.h"
+#include "graal_string-inl.h"
+#include "graal_symbol-inl.h"
+#include "graal_value-inl.h"
+
 #define TRACE
 //#define TRACE printf("at %s line %d\n", __func__, __LINE__);
 

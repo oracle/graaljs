@@ -46,7 +46,7 @@
 
 class GraalProxy : public GraalObject {
 public:
-    GraalProxy(GraalIsolate* isolate, jobject java_proxy);
+    inline GraalProxy(GraalIsolate* isolate, jobject java_proxy);
     bool IsProxy() const override;
     bool IsFunction() const override;
     v8::Local<v8::Value> GetTarget();
@@ -55,8 +55,5 @@ public:
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
-
-inline GraalProxy::GraalProxy(GraalIsolate* isolate, jobject java_proxy) : GraalObject(isolate, java_proxy) {
-}
 
 #endif /* GRAAL_PROXY_H_ */

@@ -39,8 +39,10 @@
  * SOFTWARE.
  */
 
-#include "graal_isolate.h"
 #include "graal_map.h"
+#include "graal_isolate.h"
+
+#include "graal_map-inl.h"
 
 GraalHandleContent* GraalMap::CopyImpl(jobject java_object_copy) {
     return new GraalMap(Isolate(), java_object_copy);

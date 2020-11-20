@@ -39,12 +39,15 @@
  * SOFTWARE.
  */
 
+#include "graal_module.h"
 #include "graal_context.h"
 #include "graal_isolate.h"
-#include "graal_module.h"
 #include "graal_primitive_array.h"
 #include "graal_string.h"
 #include "graal_unbound_script.h"
+
+#include "graal_module-inl.h"
+#include "graal_string-inl.h"
 
 GraalHandleContent* GraalModule::CopyImpl(jobject java_object_copy) {
     return new GraalModule(Isolate(), java_object_copy);

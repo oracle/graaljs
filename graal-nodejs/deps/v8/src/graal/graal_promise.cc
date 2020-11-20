@@ -39,9 +39,11 @@
  * SOFTWARE.
  */
 
+#include "graal_promise.h"
 #include "graal_context.h"
 #include "graal_isolate.h"
-#include "graal_promise.h"
+
+#include "graal_promise-inl.h"
 
 GraalHandleContent* GraalPromise::CopyImpl(jobject java_object_copy) {
     return new GraalPromise(Isolate(), java_object_copy);

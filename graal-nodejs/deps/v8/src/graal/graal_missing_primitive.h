@@ -46,7 +46,7 @@
 
 class GraalMissingPrimitive : public GraalPrimitive {
 public:
-    GraalMissingPrimitive(GraalIsolate* isolate, jobject java_object, bool undefined);
+    inline GraalMissingPrimitive(GraalIsolate* isolate, jobject java_object, bool undefined);
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
     bool IsNull() const override;
@@ -54,8 +54,5 @@ protected:
 private:
     bool undefined_;
 };
-
-inline GraalMissingPrimitive::GraalMissingPrimitive(GraalIsolate* isolate, jobject java_object, bool undefined) : GraalPrimitive(isolate, java_object), undefined_(undefined) {
-}
 
 #endif /* GRAAL_MISSING_PRIMITIVE_H_ */

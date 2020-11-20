@@ -46,6 +46,8 @@
 #include "graal_unbound_script.h"
 #include <stdlib.h>
 
+#include "graal_string-inl.h"
+
 GraalUnboundScript::GraalUnboundScript(GraalIsolate* isolate, jobject java_script) : GraalHandleContent(isolate, java_script) {
 }
 

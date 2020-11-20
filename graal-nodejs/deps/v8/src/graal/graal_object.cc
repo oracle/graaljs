@@ -39,13 +39,18 @@
  * SOFTWARE.
  */
 
+#include "graal_object.h"
 #include "graal_array.h"
 #include "graal_context.h"
 #include "graal_external.h"
 #include "graal_isolate.h"
 #include "graal_number.h"
-#include "graal_object.h"
 #include "graal_string.h"
+
+#include "graal_object-inl.h"
+#include "graal_array-inl.h"
+#include "graal_string-inl.h"
+
 #include <string>
 
 GraalHandleContent* GraalObject::CopyImpl(jobject java_object_copy) {

@@ -46,11 +46,8 @@
 
 class GraalName : public GraalPrimitive {
 public:
-    GraalName(GraalIsolate* isolate, jobject java_name);
+    inline GraalName(GraalIsolate* isolate, jobject java_name);
 };
-
-inline GraalName::GraalName(GraalIsolate* isolate, jobject java_name) : GraalPrimitive(isolate, java_name) {
-}
 
 #endif /* GRAAL_NAME_H_ */
 

@@ -47,15 +47,12 @@
 
 class GraalStackTrace : public GraalHandleContent {
 public:
-    GraalStackTrace(GraalIsolate* isolate, jobject stack_trace);
+    inline GraalStackTrace(GraalIsolate* isolate, jobject stack_trace);
     int GetFrameCount() const;
     v8::Local<v8::StackFrame> GetFrame(uint32_t index) const;
     static v8::Local<v8::StackTrace> CurrentStackTrace(v8::Isolate* isolate, int frame_limit, v8::StackTrace::StackTraceOptions options);
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
-
-inline GraalStackTrace::GraalStackTrace(GraalIsolate* isolate, jobject stack_trace) : GraalHandleContent(isolate, stack_trace) {
-}
 
 #endif /* GRAAL_STACK_TRACE_H_ */

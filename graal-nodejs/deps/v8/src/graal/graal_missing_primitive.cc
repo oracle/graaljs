@@ -39,8 +39,10 @@
  * SOFTWARE.
  */
 
-#include "graal_isolate.h"
 #include "graal_missing_primitive.h"
+#include "graal_isolate.h"
+
+#include "graal_missing_primitive-inl.h"
 
 GraalHandleContent* GraalMissingPrimitive::CopyImpl(jobject java_object_copy) {
     return new GraalMissingPrimitive(Isolate(), java_object_copy, undefined_);

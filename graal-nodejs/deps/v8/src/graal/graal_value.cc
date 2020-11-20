@@ -39,6 +39,8 @@
  * SOFTWARE.
  */
 
+#include "graal_value.h"
+
 #include "graal_array.h"
 #include "graal_array_buffer.h"
 #include "graal_array_buffer_view.h"
@@ -58,10 +60,29 @@
 #include "graal_set.h"
 #include "graal_string.h"
 #include "graal_symbol.h"
-#include "graal_value.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>
+
+#include "graal_value-inl.h"
+#include "graal_array-inl.h"
+#include "graal_array_buffer-inl.h"
+#include "graal_array_buffer_view-inl.h"
+#include "graal_big_int-inl.h"
+#include "graal_boolean-inl.h"
+#include "graal_date-inl.h"
+#include "graal_external-inl.h"
+#include "graal_function-inl.h"
+#include "graal_map-inl.h"
+#include "graal_missing_primitive-inl.h"
+#include "graal_number-inl.h"
+#include "graal_object-inl.h"
+#include "graal_promise-inl.h"
+#include "graal_proxy-inl.h"
+#include "graal_regexp-inl.h"
+#include "graal_set-inl.h"
+#include "graal_string-inl.h"
+#include "graal_symbol-inl.h"
 
 // Keep in sync with ValueType.java
 enum ValueType {

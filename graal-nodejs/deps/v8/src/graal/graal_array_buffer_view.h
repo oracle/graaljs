@@ -48,8 +48,8 @@ class GraalIsolate;
 
 class GraalArrayBufferView : public GraalObject {
 public:
-    GraalArrayBufferView(GraalIsolate* isolate, jobject java_array_buffer_view, int type);
-    GraalArrayBufferView(GraalIsolate* isolate, jobject java_array_buffer_view, int type, int byte_length, int byte_offset);
+    inline GraalArrayBufferView(GraalIsolate* isolate, jobject java_array_buffer_view, int type);
+    inline GraalArrayBufferView(GraalIsolate* isolate, jobject java_array_buffer_view, int type, int byte_length, int byte_offset);
     v8::Local<v8::ArrayBuffer> Buffer();
     bool IsArrayBufferView() const override;
     bool IsUint8Array() const override;
@@ -86,16 +86,5 @@ private:
     int byte_length_;
     int byte_offset_;
 };
-
-inline GraalArrayBufferView::GraalArrayBufferView(GraalIsolate* isolate, jobject java_array_buffer_view, int type) :
-GraalArrayBufferView(isolate, java_array_buffer_view, type, -1, -1) {
-}
-
-inline GraalArrayBufferView::GraalArrayBufferView(GraalIsolate* isolate, jobject java_array_buffer_view, int type, int byte_length, int byte_offset) :
-GraalObject(isolate, java_array_buffer_view),
-type_(type),
-byte_length_(byte_length),
-byte_offset_(byte_offset) {
-}
 
 #endif /* GRAAL_ARRAY_BUFFER_VIEW_H_ */

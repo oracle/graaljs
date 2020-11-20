@@ -42,6 +42,8 @@
 #include "graal_context.h"
 #include "graal_object.h"
 
+#include "graal_object-inl.h"
+
 // keep in sync with NODE_CONTEXT_EMBEDDER_DATA_INDEX
 const int kNodeContextEmbedderDataIndex = 32;
 

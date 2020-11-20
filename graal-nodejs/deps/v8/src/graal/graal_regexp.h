@@ -46,7 +46,7 @@
 
 class GraalRegExp : public GraalObject {
 public:
-    GraalRegExp(GraalIsolate* isolate, jobject java_regexp);
+    inline GraalRegExp(GraalIsolate* isolate, jobject java_regexp);
     bool IsRegExp() const;
     v8::Local<v8::String> GetSource() const;
     v8::RegExp::Flags GetFlags() const;
@@ -54,8 +54,5 @@ public:
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
-
-inline GraalRegExp::GraalRegExp(GraalIsolate* isolate, jobject java_regexp) : GraalObject(isolate, java_regexp) {
-}
 
 #endif /* GRAAL_REGEXP_H_ */

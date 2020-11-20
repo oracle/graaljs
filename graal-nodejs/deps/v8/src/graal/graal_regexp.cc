@@ -39,10 +39,13 @@
  * SOFTWARE.
  */
 
+#include "graal_regexp.h"
 #include "graal_context.h"
 #include "graal_isolate.h"
-#include "graal_regexp.h"
 #include "graal_string.h"
+
+#include "graal_regexp-inl.h"
+#include "graal_string-inl.h"
 
 GraalHandleContent* GraalRegExp::CopyImpl(jobject java_object_copy) {
     return new GraalRegExp(Isolate(), java_object_copy);

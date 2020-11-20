@@ -43,12 +43,13 @@
 #define GRAAL_MODULE_H_
 
 #include "graal_handle_content.h"
+#include "graal_isolate.h"
 
 class GraalIsolate;
 
 class GraalModule : public GraalHandleContent {
 public:
-    GraalModule(GraalIsolate* isolate, jobject java_module);
+    inline GraalModule(GraalIsolate* isolate, jobject java_module);
     static v8::MaybeLocal<v8::Module> Compile(v8::Local<v8::String> source, v8::Local<v8::String> name, v8::Local<v8::PrimitiveArray> options);
     v8::Maybe<bool> InstantiateModule(v8::Local<v8::Context> context, v8::Module::ResolveCallback callback);
     v8::MaybeLocal<v8::Value> Evaluate(v8::Local<v8::Context> context);
@@ -67,8 +68,5 @@ public:
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
-
-inline GraalModule::GraalModule(GraalIsolate* isolate, jobject java_module) : GraalHandleContent(isolate, java_module) {
-}
 
 #endif /* GRAAL_MODULE_H_ */

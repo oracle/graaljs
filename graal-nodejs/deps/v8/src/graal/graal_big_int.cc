@@ -39,8 +39,10 @@
  * SOFTWARE.
  */
 
-#include "graal_isolate.h"
 #include "graal_big_int.h"
+#include "graal_isolate.h"
+
+#include "graal_big_int-inl.h"
 
 GraalHandleContent* GraalBigInt::CopyImpl(jobject java_object_copy) {
     return new GraalBigInt(Isolate(), java_object_copy);

@@ -48,7 +48,7 @@ class GraalIsolate;
 
 class GraalArrayBuffer : public GraalObject {
 public:
-    GraalArrayBuffer(GraalIsolate* isolate, jobject java_array_buffer);
+    inline GraalArrayBuffer(GraalIsolate* isolate, jobject java_array_buffer);
     size_t ByteLength() const;
     bool IsArrayBuffer() const;
     bool IsExternal() const;
@@ -58,9 +58,6 @@ public:
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
-
-inline GraalArrayBuffer::GraalArrayBuffer(GraalIsolate* isolate, jobject java_array_buffer) : GraalObject(isolate, java_array_buffer) {
-}
 
 #endif /* GRAAL_ARRAY_BUFFER_H_ */
 

@@ -48,16 +48,13 @@ class GraalIsolate;
 
 class GraalArray : public GraalObject {
 public:
-    GraalArray(GraalIsolate* isolate, jobject java_array);
+    inline GraalArray(GraalIsolate* isolate, jobject java_array);
     bool IsArray() const;
     static v8::Local<v8::Array> New(v8::Isolate* isolate, int length);
     uint32_t Length() const;
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
-
-inline GraalArray::GraalArray(GraalIsolate* isolate, jobject java_array) : GraalObject(isolate, java_array) {
-}
 
 #endif /* GRAAL_ARRAY_H_ */
 

@@ -39,9 +39,11 @@
  * SOFTWARE.
  */
 
-#include "graal_isolate.h"
 #include "graal_proxy.h"
+#include "graal_isolate.h"
 #include "graal_value.h"
+
+#include "graal_proxy-inl.h"
 
 GraalHandleContent* GraalProxy::CopyImpl(jobject java_object_copy) {
     return new GraalProxy(Isolate(), java_object_copy);

@@ -46,7 +46,7 @@
 
 class GraalSymbol : public GraalName {
 public:
-    GraalSymbol(GraalIsolate* isolate, jobject java_symbol);
+    inline GraalSymbol(GraalIsolate* isolate, jobject java_symbol);
     static v8::Local<v8::Symbol> New(v8::Isolate* isolate, v8::Local<v8::String> name);
     static v8::Local<v8::Symbol> GetIterator(v8::Isolate* isolate);
     v8::Local<v8::Value> Name() const;
@@ -55,9 +55,6 @@ public:
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
-
-inline GraalSymbol::GraalSymbol(GraalIsolate* isolate, jobject java_symbol) : GraalName(isolate, java_symbol) {
-}
 
 #endif /* GRAAL_SYMBOL_H_ */
 

@@ -42,6 +42,8 @@
 #include "graal_array.h"
 #include "graal_isolate.h"
 
+#include "graal_array-inl.h"
+
 GraalHandleContent* GraalArray::CopyImpl(jobject java_object_copy) {
     return new GraalArray(Isolate(), java_object_copy);
 }

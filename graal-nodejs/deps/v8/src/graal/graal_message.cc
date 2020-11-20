@@ -43,6 +43,10 @@
 #include "graal_stack_trace.h"
 #include "graal_string.h"
 
+#include "graal_message-inl.h"
+#include "graal_stack_trace-inl.h"
+#include "graal_string-inl.h"
+
 GraalHandleContent* GraalMessage::CopyImpl(jobject java_object_copy) {
     return new GraalMessage(Isolate(), java_object_copy);
 }

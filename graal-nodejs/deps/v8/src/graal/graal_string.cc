@@ -39,10 +39,12 @@
  * SOFTWARE.
  */
 
-#include "graal_isolate.h"
 #include "graal_string.h"
+#include "graal_isolate.h"
 #include <string.h>
 #include <limits.h>
+
+#include "graal_string-inl.h"
 
 GraalHandleContent* GraalString::CopyImpl(jobject java_object_copy) {
     return new GraalString(Isolate(), (jstring) java_object_copy);

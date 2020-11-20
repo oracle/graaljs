@@ -42,6 +42,8 @@
 #include "graal_array_buffer.h"
 #include "graal_isolate.h"
 
+#include "graal_array_buffer-inl.h"
+
 GraalHandleContent* GraalArrayBuffer::CopyImpl(jobject java_object_copy) {
     return new GraalArrayBuffer(Isolate(), java_object_copy);
 }

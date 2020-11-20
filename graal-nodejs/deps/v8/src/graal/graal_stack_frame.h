@@ -47,7 +47,7 @@
 
 class GraalStackFrame : public GraalHandleContent {
 public:
-    GraalStackFrame(GraalIsolate* isolate, jobject stack_frame);
+    inline GraalStackFrame(GraalIsolate* isolate, jobject stack_frame);
     int GetLineNumber() const;
     int GetColumn() const;
     v8::Local<v8::String> GetScriptName() const;
@@ -56,8 +56,5 @@ public:
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
-
-inline GraalStackFrame::GraalStackFrame(GraalIsolate* isolate, jobject stack_frame) : GraalHandleContent(isolate, stack_frame) {
-}
 
 #endif /* GRAAL_STACK_FRAME_H_ */

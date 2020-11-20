@@ -39,12 +39,14 @@
  * SOFTWARE.
  */
 
+#include "graal_function_template.h"
 #include "graal_context.h"
 #include "graal_function.h"
-#include "graal_function_template.h"
 #include "graal_isolate.h"
 #include "graal_object_template.h"
 #include "graal_string.h"
+
+#include "graal_function-inl.h"
 
 GraalFunctionTemplate::GraalFunctionTemplate(GraalIsolate* isolate, jobject java_template, int id) : GraalTemplate(isolate, java_template), id_(id) {
 }

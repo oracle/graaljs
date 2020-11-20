@@ -39,9 +39,11 @@
  * SOFTWARE.
  */
 
-#include "graal_context.h"
 #include "graal_date.h"
+#include "graal_context.h"
 #include "graal_isolate.h"
+
+#include "graal_date-inl.h"
 
 GraalHandleContent* GraalDate::CopyImpl(jobject java_object_copy) {
     return new GraalDate(Isolate(), time_, java_object_copy);

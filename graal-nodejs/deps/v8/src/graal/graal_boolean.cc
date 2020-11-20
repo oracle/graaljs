@@ -42,6 +42,8 @@
 #include "graal_boolean.h"
 #include "graal_isolate.h"
 
+#include "graal_boolean-inl.h"
+
 GraalHandleContent* GraalBoolean::CopyImpl(jobject java_object_copy) {
     return new GraalBoolean(Isolate(), value_, java_object_copy);
 }

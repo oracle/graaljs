@@ -39,9 +39,11 @@
  * SOFTWARE.
  */
 
+#include "graal_number.h"
 #include <cmath>
 #include "graal_isolate.h"
-#include "graal_number.h"
+
+#include "graal_number-inl.h"
 
 GraalHandleContent* GraalNumber::CopyImpl(jobject java_object_copy) {
     return new GraalNumber(Isolate(), value_, java_object_copy);

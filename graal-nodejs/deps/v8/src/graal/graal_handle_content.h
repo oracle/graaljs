@@ -68,7 +68,7 @@ typedef _jobject *jobject;
 
 class V8_EXPORT GraalHandleContent {
 public:
-    GraalHandleContent(GraalIsolate* isolate, jobject java_object);
+    inline GraalHandleContent(GraalIsolate* isolate, jobject java_object);
     virtual ~GraalHandleContent();
     GraalHandleContent* Copy(bool global);
     void MakeWeak();

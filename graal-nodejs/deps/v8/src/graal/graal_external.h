@@ -46,7 +46,7 @@
 
 class GraalExternal : public GraalValue {
 public:
-    GraalExternal(GraalIsolate* isolate, void* value, jobject java_external);
+    inline GraalExternal(GraalIsolate* isolate, void* value, jobject java_external);
     static v8::Local<v8::External> New(v8::Isolate* isolate, void* value);
     bool IsExternal() const;
     bool IsObject() const;
@@ -59,9 +59,6 @@ protected:
 private:
     void* value_;
 };
-
-inline GraalExternal::GraalExternal(GraalIsolate* isolate, void* value, jobject java_external) : GraalValue(isolate, java_external), value_(value) {
-}
 
 #endif /* GRAAL_EXTERNAL_H_ */
 

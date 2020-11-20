@@ -48,10 +48,7 @@ class GraalIsolate;
 
 class GraalData : public GraalHandleContent {
 public:
-    GraalData(GraalIsolate* isolate, jobject java_object);
+    inline GraalData(GraalIsolate* isolate, jobject java_object);
 };
-
-inline GraalData::GraalData(GraalIsolate* isolate, jobject java_object) : GraalHandleContent(isolate, java_object) {
-}
 
 #endif /* GRAAL_DATA_H_ */

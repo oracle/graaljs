@@ -47,7 +47,7 @@
 
 class GraalValue : public GraalData {
 public:
-    GraalValue(GraalIsolate* isolate, jobject java_object);
+    inline GraalValue(GraalIsolate* isolate, jobject java_object);
     static GraalValue* FromJavaObject(GraalIsolate* isolate, jobject java_object);
     static GraalValue* FromJavaObject(GraalIsolate* isolate, jobject java_object, bool create_new_local_ref);
     static GraalValue* FromJavaObject(GraalIsolate* isolate, jobject java_object, int type, bool use_shared_buffer);
@@ -122,8 +122,5 @@ public:
     bool InstanceOf(v8::Local<v8::Object> object);
     v8::Local<v8::String> TypeOf(v8::Isolate* isolate);
 };
-
-inline GraalValue::GraalValue(GraalIsolate* isolate, jobject java_object) : GraalData(isolate, java_object) {
-}
 
 #endif /* GRAAL_VALUE_H_ */

@@ -55,6 +55,12 @@
 #include <algorithm>
 #include <tuple>
 
+#include "graal_boolean-inl.h"
+#include "graal_missing_primitive-inl.h"
+#include "graal_number-inl.h"
+#include "graal_object-inl.h"
+#include "graal_string-inl.h"
+
 #ifdef __POSIX__
 
 #include <dlfcn.h>

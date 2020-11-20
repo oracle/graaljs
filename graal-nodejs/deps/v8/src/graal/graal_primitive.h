@@ -48,11 +48,8 @@ class GraalIsolate;
 
 class GraalPrimitive : public GraalValue {
 public:
-    GraalPrimitive(GraalIsolate* isolate, jobject java_object);
+    inline GraalPrimitive(GraalIsolate* isolate, jobject java_object);
 };
-
-inline GraalPrimitive::GraalPrimitive(GraalIsolate* isolate, jobject java_object) : GraalValue(isolate, java_object) {
-}
 
 #endif /* GRAAL_PRIMITIVE_H_ */
 

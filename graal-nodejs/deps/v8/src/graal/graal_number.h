@@ -46,7 +46,7 @@
 
 class GraalNumber : public GraalPrimitive {
 public:
-    GraalNumber(GraalIsolate* isolate, double value, jobject java_number);
+    inline GraalNumber(GraalIsolate* isolate, double value, jobject java_number);
     bool IsInt32() const;
     bool IsUint32() const;
     bool IsNumber() const;
@@ -61,9 +61,6 @@ private:
     static GraalNumber* NewNotCached(GraalIsolate* isolate, int value);
     friend class GraalIsolate;
 };
-
-inline GraalNumber::GraalNumber(GraalIsolate* isolate, double value, jobject java_number) : GraalPrimitive(isolate, java_number), value_(value) {
-}
 
 #endif /* GRAAL_NUMBER_H_ */
 

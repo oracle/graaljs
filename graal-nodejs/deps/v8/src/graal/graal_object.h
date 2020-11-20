@@ -46,7 +46,7 @@
 
 class GraalObject : public GraalValue {
 public:
-    GraalObject(GraalIsolate* isolate, jobject java_object);
+    inline GraalObject(GraalIsolate* isolate, jobject java_object);
     bool IsObject() const;
     static v8::Local<v8::Object> New(v8::Isolate* isolate);
     bool Set(v8::Local<v8::Value> key, v8::Local<v8::Value> value);
@@ -93,8 +93,5 @@ protected:
 private:
     int internal_field_count_cache_;
 };
-
-inline GraalObject::GraalObject(GraalIsolate* isolate, jobject java_object) : GraalValue(isolate, java_object), internal_field_count_cache_(-1) {
-}
 
 #endif /* GRAAL_OBJECT_H_ */

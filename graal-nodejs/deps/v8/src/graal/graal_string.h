@@ -43,11 +43,11 @@
 #define GRAAL_STRING_H_
 
 #include "graal_name.h"
-#include "include/v8.h"
+#include "graal_isolate.h"
 
 class GraalString : public GraalName {
 public:
-    GraalString(GraalIsolate* isolate, jstring java_string);
+    inline GraalString(GraalIsolate* isolate, jstring java_string);
     static v8::Local<v8::String> NewFromOneByte(v8::Isolate* isolate, unsigned char const* data, v8::String::NewStringType type, int length);
     static v8::Local<v8::String> NewFromUtf8(v8::Isolate* isolate, char const* str, v8::String::NewStringType type, int length);
     static v8::Local<v8::String> NewFromTwoByte(v8::Isolate* isolate, const uint16_t* data, v8::String::NewStringType type, int length);
@@ -75,9 +75,6 @@ public:
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
-
-inline GraalString::GraalString(GraalIsolate* isolate, jstring java_string) : GraalName(isolate, java_string) {
-}
 
 #endif /* GRAAL_STRING_H_ */
 

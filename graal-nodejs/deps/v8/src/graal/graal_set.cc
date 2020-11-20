@@ -39,8 +39,10 @@
  * SOFTWARE.
  */
 
-#include "graal_isolate.h"
 #include "graal_set.h"
+#include "graal_isolate.h"
+
+#include "graal_set-inl.h"
 
 GraalHandleContent* GraalSet::CopyImpl(jobject java_object_copy) {
     return new GraalSet(Isolate(), java_object_copy);

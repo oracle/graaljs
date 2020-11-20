@@ -44,6 +44,8 @@
 #include "graal_template.h"
 #include "graal_value.h"
 
+#include "graal_data-inl.h"
+
 GraalTemplate::GraalTemplate(GraalIsolate* isolate, jobject java_template) : GraalData(isolate, java_template) {
 }
 

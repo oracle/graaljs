@@ -43,21 +43,19 @@
 #define GRAAL_PRIMITIVE_ARRAY_H_
 
 #include "graal_handle_content.h"
+#include "graal_isolate.h"
 
 class GraalIsolate;
 
 class GraalPrimitiveArray : public GraalHandleContent {
 public:
     static v8::Local<v8::PrimitiveArray> New(v8::Isolate* isolate, int length);
-    GraalPrimitiveArray(GraalIsolate* isolate, jobject java_object);
+    inline GraalPrimitiveArray(GraalIsolate* isolate, jobject java_object);
     int Length() const;
     void Set(v8::Isolate* isolate, int index, v8::Local<v8::Primitive> item);
     v8::Local<v8::Primitive> Get(v8::Isolate* isolate, int index);
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
-
-inline GraalPrimitiveArray::GraalPrimitiveArray(GraalIsolate* isolate, jobject java_object) : GraalHandleContent(isolate, java_object) {
-}
 
 #endif /* GRAAL_PRIMITIVE_ARRAY_H_ */

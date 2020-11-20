@@ -47,7 +47,7 @@
 
 class GraalMessage : public GraalHandleContent {
 public:
-    GraalMessage(GraalIsolate* isolate, jobject exception);
+    inline GraalMessage(GraalIsolate* isolate, jobject exception);
     v8::Local<v8::StackTrace> GetStackTrace() const;
     v8::Local<v8::Value> GetScriptResourceName() const;
     v8::Local<v8::String> GetSourceLine() const;
@@ -58,8 +58,5 @@ public:
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy);
 };
-
-inline GraalMessage::GraalMessage(GraalIsolate* isolate, jobject exception) : GraalHandleContent(isolate, exception) {
-}
 
 #endif /* GRAAL_MESSAGE_H_ */

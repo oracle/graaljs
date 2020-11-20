@@ -39,9 +39,11 @@
  * SOFTWARE.
  */
 
+#include "graal_symbol.h"
 #include "graal_isolate.h"
 #include "graal_string.h"
-#include "graal_symbol.h"
+
+#include "graal_symbol-inl.h"
 
 GraalHandleContent* GraalSymbol::CopyImpl(jobject java_object_copy) {
     return new GraalSymbol(Isolate(), java_object_copy);

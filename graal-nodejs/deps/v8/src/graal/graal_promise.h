@@ -46,7 +46,7 @@
 
 class GraalPromise : public GraalObject {
 public:
-    GraalPromise(GraalIsolate* isolate, jobject java_promise);
+    inline GraalPromise(GraalIsolate* isolate, jobject java_promise);
     bool IsPromise() const override;
     v8::Local<v8::Value> Result();
     v8::Promise::PromiseState State();
@@ -57,8 +57,5 @@ public:
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
-
-inline GraalPromise::GraalPromise(GraalIsolate* isolate, jobject java_promise) : GraalObject(isolate, java_promise) {
-}
 
 #endif /* GRAAL_PROMISE_H_ */

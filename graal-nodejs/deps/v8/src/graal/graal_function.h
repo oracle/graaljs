@@ -49,7 +49,7 @@ typedef _jobjectArray *jobjectArray;
 
 class GraalFunction : public GraalObject {
 public:
-    GraalFunction(GraalIsolate* isolate, jobject java_function);
+    inline GraalFunction(GraalIsolate* isolate, jobject java_function);
     bool IsFunction() const;
     v8::Local<v8::Object> NewInstance(int argc, v8::Local<v8::Value> argv[]) const;
     void SetName(v8::Local<v8::String> name);
@@ -76,9 +76,6 @@ private:
     jobject CallResult(jobject java_object);
     jobjectArray CreateJavaObjectArray(int argc, v8::Local<v8::Value> argv[]) const;
 };
-
-inline GraalFunction::GraalFunction(GraalIsolate* isolate, jobject java_function) : GraalObject(isolate, java_function) {
-}
 
 #endif /* GRAAL_FUNCTION_H_ */
 
