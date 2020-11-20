@@ -58,7 +58,7 @@
 #include "graal_object.h"
 #include "graal_promise.h"
 #include "graal_proxy.h"
-#include "graal_property_callback_info.h"
+#include "graal_property_callback_info-inl.h"
 #include "graal_set.h"
 #include "graal_string.h"
 #include "graal_symbol.h"

@@ -49,18 +49,18 @@
 template<typename T>
 class GraalPropertyCallbackInfo : public v8::PropertyCallbackInfo<T> {
 public:
-    static GraalPropertyCallbackInfo<T> New(
+    V8_INLINE static GraalPropertyCallbackInfo<T> New(
             GraalIsolate* isolate,
             jobjectArray arguments,
             int index_of_this,
             jobject data,
             jobject holder);
-    ~GraalPropertyCallbackInfo();
+    V8_INLINE ~GraalPropertyCallbackInfo();
 
     GraalPropertyCallbackInfo(GraalPropertyCallbackInfo&&) = default;
     GraalPropertyCallbackInfo& operator=(GraalPropertyCallbackInfo&&) = default;
 private:
-    GraalPropertyCallbackInfo(
+    V8_INLINE GraalPropertyCallbackInfo(
         GraalIsolate* isolate,
         GraalValue* graal_this,
         GraalValue* graal_data,

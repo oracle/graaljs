@@ -772,7 +772,6 @@
         '<(V8_ROOT)/src/graal/graal_primitive.cc',
         '<(V8_ROOT)/src/graal/graal_primitive_array.cc',
         '<(V8_ROOT)/src/graal/graal_promise.cc',
-        '<(V8_ROOT)/src/graal/graal_property_callback_info.cc',
         '<(V8_ROOT)/src/graal/graal_proxy.cc',
         '<(V8_ROOT)/src/graal/graal_regexp.cc',
         '<(V8_ROOT)/src/graal/graal_script.cc',

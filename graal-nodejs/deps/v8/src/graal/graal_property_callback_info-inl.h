@@ -39,6 +39,9 @@
  * SOFTWARE.
  */
 
+#ifndef GRAAL_PROPERTY_CALLBACK_INFO_INL_H_
+#define GRAAL_PROPERTY_CALLBACK_INFO_INL_H_
+
 #include "graal_property_callback_info.h"
 
 template<typename T>
@@ -88,3 +91,5 @@ template class GraalPropertyCallbackInfo<v8::Integer>;
 template class GraalPropertyCallbackInfo<v8::Boolean>;
 template class GraalPropertyCallbackInfo<v8::Array>;
 template class GraalPropertyCallbackInfo<void>;
+
+#endif /* GRAAL_PROPERTY_CALLBACK_INFO_INL_H_ */
