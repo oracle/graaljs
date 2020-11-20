@@ -63,8 +63,10 @@ public final class FunctionTemplate {
     private final int length;
     private FunctionTemplate parent;
     private String className = "";
+    private DynamicObject functionObj;
+    private final boolean singleFunctionTemplate;
 
-    public FunctionTemplate(int id, long functionPointer, Object additionalData, FunctionTemplate signature, int length, boolean isConstructor) {
+    public FunctionTemplate(int id, long functionPointer, Object additionalData, FunctionTemplate signature, int length, boolean isConstructor, boolean singleFunctionTemplate) {
         functionObjectTemplate = new ObjectTemplate();
         instanceTemplate = new ObjectTemplate();
         prototypeTemplate = isConstructor ? new ObjectTemplate() : null;
@@ -73,6 +75,7 @@ public final class FunctionTemplate {
         this.additionalData = additionalData;
         this.signature = signature;
         this.length = length;
+        this.singleFunctionTemplate = singleFunctionTemplate;
     }
 
     public ObjectTemplate getFunctionObjectTemplate() {
@@ -88,11 +91,15 @@ public final class FunctionTemplate {
     }
 
     public void setFunctionObject(JSRealm realm, DynamicObject functionObj) {
-        GraalJSAccess.getRealmEmbedderData(realm).setFunctionTemplateObject(id, functionObj);
+        if (singleFunctionTemplate) {
+            this.functionObj = functionObj;
+        } else {
+            GraalJSAccess.getRealmEmbedderData(realm).setFunctionTemplateObject(id, functionObj);
+        }
     }
 
     public DynamicObject getFunctionObject(JSRealm realm) {
-        return GraalJSAccess.getRealmEmbedderData(realm).getFunctionTemplateObject(id);
+        return singleFunctionTemplate ? functionObj : GraalJSAccess.getRealmEmbedderData(realm).getFunctionTemplateObject(id);
     }
 
     public int getID() {

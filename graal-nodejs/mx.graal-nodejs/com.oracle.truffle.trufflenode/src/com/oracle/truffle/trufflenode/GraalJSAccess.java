@@ -1559,8 +1559,8 @@ public final class GraalJSAccess {
         templateSet(templateObj, name, new Pair<>(getter, setter), attributes);
     }
 
-    public Object functionTemplateNew(int id, long pointer, Object additionalData, Object signature, int length, boolean isConstructor) {
-        FunctionTemplate template = new FunctionTemplate(id, pointer, additionalData, (FunctionTemplate) signature, length, isConstructor);
+    public Object functionTemplateNew(int id, long pointer, Object additionalData, Object signature, int length, boolean isConstructor, boolean singleFunctionTemplate) {
+        FunctionTemplate template = new FunctionTemplate(id, pointer, additionalData, (FunctionTemplate) signature, length, isConstructor, singleFunctionTemplate);
         template.getInstanceTemplate().setParentFunctionTemplate(template);
         return template;
     }
@@ -1827,7 +1827,7 @@ public final class GraalJSAccess {
 
     public void objectTemplateSetCallAsFunctionHandler(Object templateObj, int id, long functionPointer, Object additionalData) {
         ObjectTemplate template = (ObjectTemplate) templateObj;
-        FunctionTemplate functionHandler = (FunctionTemplate) functionTemplateNew(id, functionPointer, additionalData, null, 0, true);
+        FunctionTemplate functionHandler = (FunctionTemplate) functionTemplateNew(id, functionPointer, additionalData, null, 0, true, false);
         template.setFunctionHandler(functionHandler);
     }
 
