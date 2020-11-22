@@ -127,7 +127,9 @@ public final class JSException extends GraalJSException {
     public static int getStackTraceLimit(JSRealm realm) {
         DynamicObject errorConstructor = realm.getErrorConstructor(JSErrorType.Error);
         Object stackTraceLimit = JSObject.get(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME);
-        return Math.max(0, (int) JSRuntime.toInteger(stackTraceLimit));
+        final long limit = JSRuntime.toInteger(stackTraceLimit);
+        final int intLimit = limit > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) limit;
+        return Math.max(0, intLimit);
     }
 
     @Override
