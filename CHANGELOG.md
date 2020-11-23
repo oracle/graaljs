@@ -5,6 +5,8 @@ The main focus is on user-observable behavior of the engine.
 
 ## Version 21.0.0
 * Updated Node.js to version 12.19.1.
+* Adopted new interop exception handling and made JS exceptions extend `AbstractTruffleException`.
+* Implemented interop identity messages.
 
 ## Version 20.3.0
 * Updated Node.js to version 12.18.4.
