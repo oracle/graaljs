@@ -50,21 +50,21 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 
 @ImportStatic({JSConfig.class})
 @ExportLibrary(value = InteropLibrary.class, delegateTo = "function")
 public final class InteropBoundFunction extends InteropFunction {
 
-    final DynamicObject function;
+    final JSFunctionObject function;
     final Object receiver;
 
-    public InteropBoundFunction(DynamicObject function, Object receiver) {
+    public InteropBoundFunction(JSFunctionObject function, Object receiver) {
         super(function);
         this.function = function;
         this.receiver = receiver;

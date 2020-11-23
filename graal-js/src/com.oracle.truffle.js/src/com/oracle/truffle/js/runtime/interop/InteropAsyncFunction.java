@@ -55,6 +55,7 @@ import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
 import com.oracle.truffle.js.nodes.promise.UnwrapPromiseNode;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -64,9 +65,9 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 @ExportLibrary(value = InteropLibrary.class, delegateTo = "function")
 public final class InteropAsyncFunction extends InteropFunction {
 
-    final DynamicObject function;
+    final JSFunctionObject function;
 
-    public InteropAsyncFunction(DynamicObject function) {
+    public InteropAsyncFunction(JSFunctionObject function) {
         super(function);
         this.function = function;
     }

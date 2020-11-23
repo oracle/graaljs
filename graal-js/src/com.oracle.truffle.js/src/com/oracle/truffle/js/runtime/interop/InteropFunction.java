@@ -47,21 +47,21 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 @ImportStatic({JSConfig.class})
 @ExportLibrary(value = InteropLibrary.class)
 public abstract class InteropFunction implements TruffleObject {
-    private final DynamicObject function;
+    private final JSFunctionObject function;
 
-    InteropFunction(DynamicObject function) {
+    InteropFunction(JSFunctionObject function) {
         this.function = function;
     }
 
-    public final DynamicObject getFunction() {
+    public final JSFunctionObject getFunction() {
         return function;
     }
 
