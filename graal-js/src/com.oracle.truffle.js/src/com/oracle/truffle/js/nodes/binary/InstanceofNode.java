@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -67,6 +68,7 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -82,6 +84,7 @@ import java.util.Set;
 /*
  * ES6, 12.9.4: Runtime Semantics: InstanceofOperator(O, C).
  */
+@ImportStatic({JSConfig.class})
 public abstract class InstanceofNode extends JSBinaryNode {
     protected final JSContext context;
     @Child private OrdinaryHasInstanceNode ordinaryHasInstanceNode;
@@ -183,7 +186,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
         return false;
     }
 
-    @Specialization(guards = {"isForeignObject(target)", "!isJSDynamicObject(instance)"}, limit = "3")
+    @Specialization(guards = {"isForeignObject(target)", "!isJSDynamicObject(instance)"}, limit = "InteropLibraryLimit")
     protected boolean doForeignTargetOther(Object instance, Object target,
                     @CachedLibrary("target") InteropLibrary interop) {
         try {

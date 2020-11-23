@@ -54,6 +54,7 @@ import com.oracle.truffle.js.nodes.array.JSArrayNextElementIndexNode;
 import com.oracle.truffle.js.nodes.array.JSArrayPreviousElementIndexNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
@@ -161,7 +162,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
     protected final InteropLibrary getInterop() {
         if (interop == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            interop = insert(InteropLibrary.getFactory().createDispatched(3));
+            interop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
         }
         return interop;
     }

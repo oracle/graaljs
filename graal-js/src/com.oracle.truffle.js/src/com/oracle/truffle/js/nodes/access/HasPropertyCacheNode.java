@@ -50,6 +50,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
@@ -231,7 +232,7 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
 
         public GenericHasPropertyCacheNode() {
             super(null);
-            this.interop = InteropLibrary.getFactory().createDispatched(3);
+            this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         @Override
@@ -260,7 +261,7 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
 
         public ForeignHasPropertyCacheNode() {
             super(new ForeignLanguageCheckNode());
-            this.interop = InteropLibrary.getFactory().createDispatched(3);
+            this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         @Override

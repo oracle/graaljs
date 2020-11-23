@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
+import static com.oracle.truffle.js.runtime.JSConfig.ECMAScript2021;
+
 import java.util.List;
 
 import com.oracle.truffle.api.CallTarget;
@@ -52,10 +54,10 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
@@ -64,6 +66,7 @@ import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
@@ -73,8 +76,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseReactionRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import static com.oracle.truffle.js.runtime.JSConfig.ECMAScript2021;
 
 public class PromiseReactionJobNode extends JavaScriptBaseNode {
     static final HiddenKey REACTION_KEY = new HiddenKey("Reaction");
@@ -115,8 +116,8 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
         @Child private JSFunctionCallNode callRejectNode;
         @Child private JSFunctionCallNode callHandlerNode;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
+        @Child private InteropLibrary exceptions;
         private final ConditionProfile handlerProf = ConditionProfile.createBinaryProfile();
-        private final ValueProfile typeProfile = ValueProfile.createClassProfile();
 
         PromiseReactionJobRootNode(JSContext context) {
             super(context.getLanguage(), null, null);
@@ -178,11 +179,12 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
         }
 
         private boolean shouldCatch(Throwable exception) {
-            if (getErrorObjectNode == null) {
+            if (getErrorObjectNode == null || exceptions == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
+                exceptions = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
             }
-            return TryCatchNode.shouldCatch(exception, typeProfile);
+            return TryCatchNode.shouldCatch(exception, exceptions);
         }
 
         private JSFunctionCallNode callResolve() {

@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -57,12 +58,14 @@ import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 
 /**
  * Implements OrdinaryToPrimitive (O, hint).
  */
+@ImportStatic({JSConfig.class})
 public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     private final Hint hint;
     private final JSContext context;
@@ -96,7 +99,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
         }
     }
 
-    @Specialization(guards = {"isForeignObject(object)"}, limit = "5")
+    @Specialization(guards = {"isForeignObject(object)"}, limit = "InteropLibraryLimit")
     protected Object doForeign(Object object,
                     @CachedLibrary("object") InteropLibrary interop) {
         if (hint == Hint.String) {

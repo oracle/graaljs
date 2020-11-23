@@ -113,7 +113,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Breakpoint;
@@ -2221,8 +2220,9 @@ public final class GraalJSAccess {
         return exceptionObject;
     }
 
+    @SuppressWarnings("deprecation")
     public boolean tryCatchHasTerminated(Object exception) {
-        return (exception instanceof GraalJSKillException) || (exception instanceof TruffleException && ((TruffleException) exception).isCancelled());
+        return (exception instanceof GraalJSKillException) || (exception instanceof com.oracle.truffle.api.TruffleException && ((com.oracle.truffle.api.TruffleException) exception).isCancelled());
     }
 
     private static GraalJSException.JSStackTraceElement messageGraalJSExceptionStackFrame(Object exception) {
@@ -2721,8 +2721,9 @@ public final class GraalJSAccess {
         return null;
     }
 
+    @SuppressWarnings("deprecation")
     public void isolateInternalErrorCheck(Object exception) {
-        boolean internalError = !(exception instanceof TruffleException) && !(exception instanceof StackOverflowError) && !(exception instanceof OutOfMemoryError) &&
+        boolean internalError = !(exception instanceof com.oracle.truffle.api.TruffleException) && !(exception instanceof StackOverflowError) && !(exception instanceof OutOfMemoryError) &&
                         !(exception instanceof ControlFlowException) && !(exception instanceof GraalJSKillException);
         if (internalError) {
             ((Throwable) exception).printStackTrace();
@@ -3214,8 +3215,11 @@ public final class GraalJSAccess {
 
     public Object moduleGetException(Object module) {
         JSModuleRecord record = (JSModuleRecord) module;
-        TruffleException evaluationError = (TruffleException) record.getEvaluationError();
-        return evaluationError.getExceptionObject();
+        Throwable evaluationError = record.getEvaluationError();
+        if (evaluationError instanceof GraalJSException) {
+            return ((GraalJSException) evaluationError).getErrorObjectEager(record.getContext());
+        }
+        return evaluationError;
     }
 
     public int moduleGetRequestsLength(Object module) {

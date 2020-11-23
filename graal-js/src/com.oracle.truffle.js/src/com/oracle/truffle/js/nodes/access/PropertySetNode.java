@@ -77,6 +77,7 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -1066,7 +1067,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             super(new ForeignLanguageCheckNode());
             this.context = context;
             this.export = ExportValueNode.create();
-            this.interop = InteropLibrary.getFactory().createDispatched(3);
+            this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         private Object nullCheck(Object truffleObject, Object key) {
@@ -1146,7 +1147,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 }
                 if (setterInterop == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    setterInterop = insert(InteropLibrary.getFactory().createDispatched(3));
+                    setterInterop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
                 }
                 if (!setterInterop.isMemberInvocable(thisObj, setterKey)) {
                     return false;

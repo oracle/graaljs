@@ -47,15 +47,25 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseAllNode.PromiseAllMarkerRootNode;
 import com.oracle.truffle.js.nodes.promise.PromiseReactionJobNode.PromiseReactionJobRootNode;
@@ -69,7 +79,9 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public abstract class GraalJSException extends RuntimeException implements TruffleException {
+@ImportStatic({JSConfig.class})
+@ExportLibrary(InteropLibrary.class)
+public abstract class GraalJSException extends AbstractTruffleException {
     private static final long serialVersionUID = -6624166672101791072L;
     private static final JSStackTraceElement[] EMPTY_STACK_TRACE = new JSStackTraceElement[0];
     private JSStackTraceElement[] jsStackTrace;
@@ -79,24 +91,28 @@ public abstract class GraalJSException extends RuntimeException implements Truff
     private static final String DYNAMIC_FUNCTION_NAME = "anonymous";
 
     protected GraalJSException(String message, Throwable cause, Node node, int stackTraceLimit) {
-        super(message, cause);
+        super(message, cause, truffleStackTraceLimit(stackTraceLimit), node);
         this.location = node;
         this.stackTraceLimit = stackTraceLimit;
         this.jsStackTrace = stackTraceLimit == 0 ? EMPTY_STACK_TRACE : null;
     }
 
     protected GraalJSException(String message, Node node, int stackTraceLimit) {
-        super(message);
+        super(message, null, truffleStackTraceLimit(stackTraceLimit), node);
         this.location = node;
         this.stackTraceLimit = stackTraceLimit;
         this.jsStackTrace = stackTraceLimit == 0 ? EMPTY_STACK_TRACE : null;
     }
 
     protected GraalJSException(String message, SourceSection location, int stackTraceLimit) {
-        super(message);
+        super(message, null, truffleStackTraceLimit(stackTraceLimit), null);
         this.location = location;
         this.stackTraceLimit = stackTraceLimit;
         this.jsStackTrace = stackTraceLimit == 0 ? EMPTY_STACK_TRACE : null;
+    }
+
+    private static int truffleStackTraceLimit(int stackTraceLimit) {
+        return stackTraceLimit <= 0 ? 0 : UNLIMITED_STACK_TRACE;
     }
 
     protected static <T extends GraalJSException> T fillInStackTrace(T exception, DynamicObject skipFramesUpTo, boolean capture) {
@@ -116,32 +132,27 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         return this;
     }
 
-    @Override
-    public Node getLocation() {
-        return location instanceof Node ? (Node) location : null;
+    @ExportMessage
+    public boolean hasSourceLocation() {
+        if (location instanceof SourceSection) {
+            return true;
+        }
+        Node locationNode = getLocation();
+        SourceSection sourceSection = locationNode != null ? locationNode.getEncapsulatingSourceSection() : null;
+        return sourceSection != null;
     }
 
-    @Override
-    public SourceSection getSourceLocation() {
+    @ExportMessage(name = "getSourceLocation")
+    public SourceSection getSourceLocationInterop() throws UnsupportedMessageException {
         if (location instanceof SourceSection) {
             return (SourceSection) location;
         }
-        return TruffleException.super.getSourceLocation();
-    }
-
-    @Override
-    public Object getExceptionObject() {
-        Object error = getErrorObject();
-        return (error == null) ? null : JSRuntime.exportValue(error);
-    }
-
-    @Override
-    public int getStackTraceElementLimit() {
-        if (stackTraceLimit <= 0) {
-            return 0;
+        Node locationNode = getLocation();
+        SourceSection sourceSection = locationNode != null ? locationNode.getEncapsulatingSourceSection() : null;
+        if (sourceSection == null) {
+            throw UnsupportedMessageException.create();
         }
-        // since we might skip stack frames, we do not know in advance how many we have to visit.
-        return -1;
+        return sourceSection;
     }
 
     /** Could still be null due to lazy initialization. */
@@ -151,20 +162,12 @@ public abstract class GraalJSException extends RuntimeException implements Truff
      * Eager access to the ErrorObject. Use only if you must get a non-null error object. Could
      * result in an error object from the wrong realm, thus non spec-compliant.
      */
-    public abstract Object getErrorObjectEager(JSContext context);
+    public Object getErrorObjectEager(@SuppressWarnings("unused") JSContext context) {
+        return getErrorObject();
+    }
 
-    /**
-     * Omit creating stack trace for JavaScript exceptions.
-     */
-    @SuppressWarnings("sync-override")
-    @Override
-    @TruffleBoundary
-    public final Throwable fillInStackTrace() {
-        if (JSConfig.FillExceptionStack) {
-            return super.fillInStackTrace();
-        } else {
-            return null;
-        }
+    public Object getErrorObjectEager() {
+        return getErrorObject();
     }
 
     public JSStackTraceElement[] getJSStackTrace() {
@@ -525,6 +528,91 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         for (JSStackTraceElement jsste : jsstes) {
             System.err.println(jsste);
         }
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public final boolean hasLanguage() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public final Class<? extends TruffleLanguage<?>> getLanguage() {
+        return JavaScriptLanguage.class;
+    }
+
+    @ExportMessage
+    public final Object toDisplayString(boolean allowSideEffects) {
+        return JSRuntime.toDisplayString(this, allowSideEffects);
+    }
+
+    @ImportStatic({JSConfig.class})
+    @ExportMessage
+    public static final class IsIdenticalOrUndefined {
+        @Specialization
+        public static TriState doException(GraalJSException receiver, GraalJSException other,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("thisLib") InteropLibrary thisLib,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("otherLib") InteropLibrary otherLib) {
+            if (receiver == other) {
+                return TriState.TRUE;
+            }
+            Object thisObj = receiver.getErrorObject();
+            if (thisObj == null) {
+                // Cannot be identical since this is a lazily allocated Error and receiver != other.
+                return TriState.FALSE;
+            }
+            Object otherObj = other.getErrorObject();
+            if (otherObj == null) {
+                return TriState.FALSE;
+            }
+            // If the values are not JS objects, we need to delegate to InteropLibrary.
+            if (thisLib.hasIdentity(thisObj) && otherLib.hasIdentity(other)) {
+                return TriState.valueOf(thisLib.isIdentical(thisObj, other, otherLib));
+            } else {
+                return TriState.UNDEFINED;
+            }
+        }
+
+        @Specialization
+        public static TriState doJSObject(GraalJSException receiver, JSDynamicObject other) {
+            Object thisObj = receiver.getErrorObject();
+            if (thisObj == null) {
+                // Cannot be identical since this is lazily allocated Error.
+                return TriState.FALSE;
+            }
+            return TriState.valueOf(thisObj == other);
+        }
+
+        @Specialization(guards = {"!isGraalJSException(other)"}, replaces = {"doJSObject"})
+        public static TriState doOther(GraalJSException receiver, Object other,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("thisLib") InteropLibrary thisLib,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("otherLib") InteropLibrary otherLib) {
+            Object thisObj = receiver.getErrorObject();
+            if (thisObj == null) {
+                // The error object cannot be identical since this is a lazily allocated Error.
+                // Note: `other` could still be an identity-preserving wrapper of the receiver,
+                // in which case we must not return FALSE but UNDEFINED.
+                return (other instanceof JSDynamicObject) ? TriState.FALSE : TriState.UNDEFINED;
+            }
+            // If the values are not JS objects, we need to delegate to InteropLibrary.
+            if (thisLib.hasIdentity(thisObj) && otherLib.hasIdentity(other)) {
+                return TriState.valueOf(thisLib.isIdentical(thisObj, other, otherLib));
+            } else {
+                return TriState.UNDEFINED;
+            }
+        }
+
+        static boolean isGraalJSException(Object value) {
+            return value instanceof GraalJSException;
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    public final int identityHashCode(
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary delegateLib) throws UnsupportedMessageException {
+        return delegateLib.identityHashCode(getErrorObjectEager());
     }
 
     public static final class JSStackTraceElement {

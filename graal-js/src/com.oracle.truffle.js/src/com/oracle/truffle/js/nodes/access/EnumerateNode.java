@@ -53,6 +53,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -68,6 +69,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
@@ -81,6 +83,7 @@ import com.oracle.truffle.js.runtime.util.IteratorUtil;
 /**
  * Returns an Iterator object iterating over the enumerable properties of an object.
  */
+@ImportStatic({JSConfig.class})
 public abstract class EnumerateNode extends JavaScriptNode {
     /** Enumerate values instead of keys (used by for-each-in loop). */
     private final boolean values;
@@ -152,10 +155,10 @@ public abstract class EnumerateNode extends JavaScriptNode {
         return create(context, true, false);
     }
 
-    @Specialization(guards = {"isForeignObject(iteratedObject)"}, limit = "3")
+    @Specialization(guards = {"isForeignObject(iteratedObject)"}, limit = "InteropLibraryLimit")
     protected DynamicObject doEnumerateTruffleObject(Object iteratedObject,
                     @CachedLibrary("iteratedObject") InteropLibrary interop,
-                    @CachedLibrary(limit = "3") InteropLibrary keysInterop,
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keysInterop,
                     @Cached("createBinaryProfile()") ConditionProfile isHostObject,
                     @Cached BranchProfile notIterable) {
         TruffleLanguage.Env env = context.getRealm().getEnv();

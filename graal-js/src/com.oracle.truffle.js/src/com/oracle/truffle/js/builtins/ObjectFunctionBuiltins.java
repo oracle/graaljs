@@ -48,6 +48,7 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -325,6 +326,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class ObjectGetOwnPropertyDescriptorNode extends ObjectOperation {
         public ObjectGetOwnPropertyDescriptorNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -341,7 +343,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return fromPropertyDescriptorNode.execute(desc, getContext());
         }
 
-        @Specialization(guards = {"isForeignObject(thisObj)"}, limit = "3")
+        @Specialization(guards = {"isForeignObject(thisObj)"}, limit = "InteropLibraryLimit")
         protected DynamicObject getForeignObject(Object thisObj, Object property,
                         @CachedLibrary("thisObj") InteropLibrary interop,
                         @Cached("create()") ImportValueNode toJSType) {
@@ -385,10 +387,11 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class ObjectGetOwnPropertyDescriptorsNode extends ObjectOperation {
 
         @Child private FromPropertyDescriptorNode fromPropertyDescriptorNode = FromPropertyDescriptorNode.create();
-        @Child private DynamicObjectLibrary putPropDescNode = DynamicObjectLibrary.getFactory().createDispatched(5);
+        @Child private DynamicObjectLibrary putPropDescNode = DynamicObjectLibrary.getFactory().createDispatched(JSConfig.PropertyCacheLimit);
 
         public ObjectGetOwnPropertyDescriptorsNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -418,10 +421,10 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return retObj;
         }
 
-        @Specialization(guards = {"isForeignObject(thisObj)"}, limit = "3")
+        @Specialization(guards = {"isForeignObject(thisObj)"}, limit = "InteropLibraryLimit")
         protected DynamicObject getForeignObject(Object thisObj,
                         @CachedLibrary("thisObj") InteropLibrary interop,
-                        @CachedLibrary(limit = "3") InteropLibrary members,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary members,
                         @Cached("create()") ImportValueNode toJSType,
                         @Cached BranchProfile errorBranch) {
             DynamicObject result = JSOrdinary.create(getContext());
@@ -483,6 +486,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class ObjectGetOwnPropertyNamesOrSymbolsNode extends ObjectOperation {
         protected final boolean symbols;
 
@@ -513,10 +517,10 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return JSArray.createConstantEmptyArray(getContext());
         }
 
-        @Specialization(guards = {"isForeignObject(thisObj)", "!symbols"}, limit = "3")
+        @Specialization(guards = {"isForeignObject(thisObj)", "!symbols"}, limit = "InteropLibraryLimit")
         protected DynamicObject getForeignObjectNames(Object thisObj,
                         @CachedLibrary("thisObj") InteropLibrary interop,
-                        @CachedLibrary(limit = "3") InteropLibrary members,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary members,
                         @Cached BranchProfile errorBranch) {
             Object[] array;
             if (interop.hasMembers(thisObj)) {
@@ -775,6 +779,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class ObjectKeysNode extends ObjectOperation {
         @Child private EnumerableOwnPropertyNamesNode enumerableOwnPropertyNamesNode;
         @Child private InteropLibrary asString;
@@ -820,10 +825,10 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return keysDynamicObject(toOrAsJSObject(thisObj));
         }
 
-        @Specialization(guards = "isForeignObject(obj)", limit = "3")
+        @Specialization(guards = "isForeignObject(obj)", limit = "InteropLibraryLimit")
         protected DynamicObject keysForeign(Object obj,
                         @CachedLibrary("obj") InteropLibrary interop,
-                        @CachedLibrary(limit = "3") InteropLibrary members,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary members,
                         @Cached BranchProfile growProfile,
                         @Cached BranchProfile errorBranch) {
             if (interop.hasMembers(obj)) {
@@ -866,7 +871,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             } else {
                 if (asString == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    asString = insert(InteropLibrary.getFactory().createDispatched(3));
+                    asString = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
                 }
                 return asString.asString(key);
             }
@@ -978,6 +983,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
+    @ImportStatic({JSConfig.class})
     abstract static class AssignPropertiesNode extends JavaScriptBaseNode {
         protected final JSContext context;
 
@@ -1007,11 +1013,11 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        @Specialization(guards = {"!isJSObject(from)"}, limit = "3")
+        @Specialization(guards = {"!isJSObject(from)"}, limit = "InteropLibraryLimit")
         protected final void doObject(Object to, Object from, WriteElementNode write,
                         @CachedLibrary("from") InteropLibrary fromInterop,
-                        @CachedLibrary(limit = "3") InteropLibrary keysInterop,
-                        @CachedLibrary(limit = "3") InteropLibrary stringInterop) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keysInterop,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary stringInterop) {
             if (fromInterop.isNull(from)) {
                 return;
             }
@@ -1030,6 +1036,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class ObjectValuesOrEntriesNode extends ObjectOperation {
         protected final boolean entries;
 
@@ -1062,10 +1069,10 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return enumerableOwnPropertyNamesNode.execute(obj);
         }
 
-        @Specialization(guards = {"isForeignObject(thisObj)"}, limit = "3")
+        @Specialization(guards = {"isForeignObject(thisObj)"}, limit = "InteropLibraryLimit")
         protected DynamicObject enumerableOwnPropertyNamesForeign(Object thisObj,
                         @CachedLibrary("thisObj") InteropLibrary interop,
-                        @CachedLibrary(limit = "3") InteropLibrary members,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary members,
                         @Cached ImportValueNode importValue,
                         @Cached BranchProfile growProfile,
                         @Cached BranchProfile errorBranch) {
@@ -1106,7 +1113,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             } else {
                 if (asString == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    asString = insert(InteropLibrary.getFactory().createDispatched(3));
+                    asString = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
                 }
                 return asString.asString(key);
             }
@@ -1183,6 +1190,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class ObjectBindPropertiesNode extends ObjectOperation {
         @Child private EnumerableOwnPropertyNamesNode enumerableOwnPropertyNamesNode;
         private final JSClassProfile sourceProfile = JSClassProfile.create();
@@ -1246,10 +1254,10 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return bindPropertiesDynamicObject(target, toJSObject(source));
         }
 
-        @Specialization(guards = {"isJSObject(target)", "isForeignObject(source)"}, limit = "3")
+        @Specialization(guards = {"isJSObject(target)", "isForeignObject(source)"}, limit = "InteropLibraryLimit")
         protected DynamicObject bindProperties(DynamicObject target, Object source,
                         @CachedLibrary("source") InteropLibrary interop,
-                        @CachedLibrary(limit = "3") InteropLibrary members) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary members) {
             if (interop.hasMembers(source)) {
                 try {
                     boolean extensible = JSObject.isExtensible(target, targetProfile);

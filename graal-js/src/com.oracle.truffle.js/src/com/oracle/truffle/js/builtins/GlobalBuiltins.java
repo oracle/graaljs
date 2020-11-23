@@ -1350,7 +1350,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
     }
 
-    @ImportStatic(value = JSInteropUtil.class)
+    @ImportStatic({JSInteropUtil.class, JSConfig.class})
     public abstract static class JSGlobalLoadNode extends JSLoadOperation {
 
         public JSGlobalLoadNode(JSContext context, JSBuiltin builtin) {
@@ -1370,7 +1370,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization(guards = "isForeignObject(scriptObj)")
         protected Object loadTruffleObject(Object scriptObj, Object[] args,
-                        @CachedLibrary(limit = "3") InteropLibrary interop) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
             JSRealm realm = getContext().getRealm();
             TruffleLanguage.Env env = realm.getEnv();
             if (env.isHostObject(scriptObj)) {

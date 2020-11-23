@@ -69,6 +69,7 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.nodes.unary.TypeOfNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
@@ -77,10 +78,10 @@ import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -93,7 +94,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * @see TypeOfNode
  * @see JSRuntime#typeof(Object)
  */
-@ImportStatic({JSTypeofIdenticalNode.Type.class})
+@ImportStatic({JSTypeofIdenticalNode.Type.class, JSConfig.class})
 public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
 
     public enum Type {
@@ -306,7 +307,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
         throw Errors.shouldNotReachHere();
     }
 
-    @Specialization(guards = {"isForeignObject(value)"}, limit = "5")
+    @Specialization(guards = {"isForeignObject(value)"}, limit = "InteropLibraryLimit")
     protected final boolean doForeignObject(Object value,
                     @CachedLibrary("value") InteropLibrary interop) {
         if (type == Type.Undefined || type == Type.Symbol || type == Type.False) {

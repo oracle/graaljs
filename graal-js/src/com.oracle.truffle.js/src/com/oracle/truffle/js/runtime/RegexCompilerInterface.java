@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
 public final class RegexCompilerInterface {
@@ -59,12 +61,8 @@ public final class RegexCompilerInterface {
         validateFlags(flags, context.getEcmaScriptVersion(), context.isOptionNashornCompatibilityMode());
         try {
             return compileRegexNode.execute(context.getRegexEngine(), pattern, flags);
-        } catch (RuntimeException e) {
-            CompilerDirectives.transferToInterpreter();
-            if (e instanceof TruffleException && ((TruffleException) e).isSyntaxError()) {
-                throw Errors.createSyntaxError(e.getMessage());
-            }
-            throw e;
+        } catch (AbstractTruffleException e) {
+            throw rethrowAsSyntaxError(e);
         }
     }
 
@@ -75,11 +73,8 @@ public final class RegexCompilerInterface {
         }
         try {
             TRegexUtil.ValidateRegexNode.getUncached().execute(context.getRegexEngine(), pattern, flags);
-        } catch (RuntimeException e) {
-            if (e instanceof TruffleException && ((TruffleException) e).isSyntaxError()) {
-                throw Errors.createSyntaxError(e.getMessage());
-            }
-            throw e;
+        } catch (AbstractTruffleException e) {
+            throw rethrowAsSyntaxError(e);
         }
     }
 
@@ -151,5 +146,19 @@ public final class RegexCompilerInterface {
     @TruffleBoundary
     private static RuntimeException throwFlagError(String msg) {
         throw Errors.createSyntaxError(msg);
+    }
+
+    @TruffleBoundary
+    private static AbstractTruffleException rethrowAsSyntaxError(AbstractTruffleException e) {
+        ExceptionType exceptionType;
+        try {
+            exceptionType = InteropLibrary.getUncached().getExceptionType(e);
+        } catch (UnsupportedMessageException ume) {
+            throw Errors.shouldNotReachHere();
+        }
+        if (exceptionType == ExceptionType.PARSE_ERROR) {
+            throw Errors.createSyntaxError(e.getMessage());
+        }
+        throw e;
     }
 }

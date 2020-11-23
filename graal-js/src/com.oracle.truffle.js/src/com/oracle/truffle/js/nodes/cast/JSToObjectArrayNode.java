@@ -48,6 +48,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -64,6 +65,7 @@ import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -77,6 +79,7 @@ import com.oracle.truffle.js.runtime.array.ScriptArray;
  *
  * @see #nullOrUndefinedAsEmptyArray
  */
+@ImportStatic({JSConfig.class})
 public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
 
     protected final JSContext context;
@@ -208,7 +211,7 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
         return list.toArray();
     }
 
-    @Specialization(guards = {"isForeignObject(obj)"}, limit = "5")
+    @Specialization(guards = {"isForeignObject(obj)"}, limit = "InteropLibraryLimit")
     protected Object[] doForeignObject(Object obj,
                     @CachedLibrary("obj") InteropLibrary interop,
                     @Cached("create()") BranchProfile hasPropertiesBranch,

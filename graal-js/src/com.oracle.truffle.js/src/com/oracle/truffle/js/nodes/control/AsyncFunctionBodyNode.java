@@ -55,12 +55,12 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
@@ -71,6 +71,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.promise.AsyncRootNode;
 import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -95,7 +96,7 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
         @Child private JSFunctionCallNode callResolveNode;
         @Child private JSFunctionCallNode callRejectNode;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
-        private final ValueProfile typeProfile = ValueProfile.createClassProfile();
+        @Child private InteropLibrary exceptions;
 
         AsyncFunctionRootNode(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode asyncResult, JSReadFrameSlotNode readAsyncContext, SourceSection functionSourceSection,
                         String functionName) {
@@ -159,12 +160,13 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
         }
 
         private boolean shouldCatch(Throwable exception) {
-            if (getErrorObjectNode == null || callRejectNode == null) {
+            if (getErrorObjectNode == null || callRejectNode == null || exceptions == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
                 callRejectNode = insert(JSFunctionCallNode.createCall());
+                exceptions = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
             }
-            return TryCatchNode.shouldCatch(exception, typeProfile);
+            return TryCatchNode.shouldCatch(exception, exceptions);
         }
 
         @Override

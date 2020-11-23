@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.cast;
 import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -52,6 +53,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GlobalObjectNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
@@ -67,6 +69,7 @@ import com.oracle.truffle.js.runtime.objects.JSLazyString;
  * Converts the caller provided thisArg to the ThisBinding of the callee's execution context,
  * replacing null or undefined with the global object and performing ToObject on primitives.
  */
+@ImportStatic({JSConfig.class})
 public abstract class JSPrepareThisNode extends JSUnaryNode {
 
     final JSContext context;
@@ -137,7 +140,7 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
         return JSSymbol.create(context, value);
     }
 
-    @Specialization(guards = "isForeignObject(object)", limit = "5")
+    @Specialization(guards = "isForeignObject(object)", limit = "InteropLibraryLimit")
     protected Object doForeignObject(Object object,
                     @CachedLibrary("object") InteropLibrary interop) {
         if (interop.isNull(object)) {

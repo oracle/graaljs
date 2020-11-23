@@ -72,6 +72,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -92,7 +93,7 @@ import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 /**
  * The %TypedArray% intrinsic constructor function object (ES6 22.2.1).
  */
-@ImportStatic({JSArrayBuffer.class, JSRuntime.class})
+@ImportStatic({JSArrayBuffer.class, JSRuntime.class, JSConfig.class})
 public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     @Child private JSToIndexNode toIndexNode;
     // for TypedArray(factory)
@@ -376,7 +377,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         return obj;
     }
 
-    @Specialization(guards = {"!isUndefined(newTarget)", "isForeignObject(object)"}, limit = "3")
+    @Specialization(guards = {"!isUndefined(newTarget)", "isForeignObject(object)"}, limit = "InteropLibraryLimit")
     protected DynamicObject doForeignObject(DynamicObject newTarget, Object object, @SuppressWarnings("unused") Object byteOffset0, @SuppressWarnings("unused") Object length0,
                     @CachedLibrary("object") InteropLibrary interop,
                     @Cached("createWriteOwn()") WriteElementNode writeOwnNode,

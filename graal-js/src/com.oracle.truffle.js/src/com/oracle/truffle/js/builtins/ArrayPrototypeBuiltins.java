@@ -152,6 +152,7 @@ import com.oracle.truffle.js.nodes.unary.JSIsArrayNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -903,7 +904,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    @ImportStatic(JSRuntime.class)
+    @ImportStatic({JSRuntime.class, JSConfig.class})
     protected abstract static class DeleteAndSetLengthNode extends JavaScriptBaseNode {
         protected static final boolean THROW_ERROR = true;  // DeletePropertyOrThrow
 
@@ -959,7 +960,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = {"!isJSObject(object)"})
         protected static void foreignArray(Object object, long newLength,
-                        @CachedLibrary(limit = "3") InteropLibrary arrays) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary arrays) {
             try {
                 arrays.removeArrayElement(object, newLength);
             } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
@@ -1024,6 +1025,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class JSArrayShiftNode extends JSArrayOperation {
 
         public JSArrayShiftNode(JSContext context, JSBuiltin builtin) {
@@ -1148,7 +1150,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = {"isForeignObject(thisObj)"})
         protected Object shiftForeign(Object thisObj,
-                        @CachedLibrary(limit = "3") InteropLibrary arrays,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary arrays,
                         @Shared("lengthIsZero") @Cached("createBinaryProfile()") ConditionProfile lengthIsZero) {
             long len = JSInteropUtil.getArraySize(thisObj, arrays, this);
             if (lengthIsZero.profile(len == 0)) {
@@ -2034,7 +2036,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             InteropLibrary arrays = arrayInterop;
             if (arrays == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.arrayInterop = arrays = insert(InteropLibrary.getFactory().createDispatched(5));
+                this.arrayInterop = arrays = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
             }
             try {
                 if (itemCount < actualDeleteCount) {
@@ -2822,7 +2824,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             ImportValueNode importValue = importValueNode;
             if (interop == null || importValue == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                interopNode = interop = insert(InteropLibrary.getFactory().createDispatched(3));
+                interopNode = interop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
                 importValueNode = importValue = insert(ImportValueNode.create());
             }
             Object[] array = new Object[len];

@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.unary;
 import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -56,6 +57,7 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode
 import com.oracle.truffle.js.nodes.binary.JSEqualNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
@@ -65,6 +67,7 @@ import com.oracle.truffle.js.runtime.objects.JSLazyString;
  * {@link JSEqualNode} for optimizing {@code a == undefined;} and {@code a == null;}
  *
  */
+@ImportStatic({JSConfig.class})
 public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
     protected static final int MAX_CLASSES = 3;
 
@@ -160,7 +163,7 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
         return false;
     }
 
-    @Specialization(guards = "isForeignObject(operand)", limit = "5")
+    @Specialization(guards = "isForeignObject(operand)", limit = "InteropLibraryLimit")
     protected boolean doForeign(Object operand,
                     @CachedLibrary("operand") InteropLibrary interop) {
         return interop.isNull(operand);
