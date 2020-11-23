@@ -33,12 +33,12 @@ public class JSTemporalTime extends JSNonProxy implements JSConstructorFactory.D
     public static final String CLASS_NAME = "TemporalTime";
     public static final String PROTOTYPE_NAME = "TemporalTime.prototype";
 
-    private static final String HOUR = "hour";
-    private static final String MINUTE = "minute";
-    private static final String SECOND = "second";
-    private static final String MILLISECOND = "millisecond";
-    private static final String MICROSECOND = "microsecond";
-    private static final String NANOSECOND = "nanosecond";
+    public static final String HOUR = "hour";
+    public static final String MINUTE = "minute";
+    public static final String SECOND = "second";
+    public static final String MILLISECOND = "millisecond";
+    public static final String MICROSECOND = "microsecond";
+    public static final String NANOSECOND = "nanosecond";
     private static final String[] PROPERTIES = new String[]{HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND};
 
     private JSTemporalTime() {
@@ -235,6 +235,28 @@ public class JSTemporalTime extends JSNonProxy implements JSConstructorFactory.D
 
     }
 
+    // 4.5.3
+    public static DynamicObject toPartialTime(DynamicObject temporalTimeLike, JSRealm realm, IsObjectNode isObject,
+                                              DynamicObjectLibrary dol, JSToIntegerAsIntNode toInt) {
+        if (!isObject.executeBoolean(temporalTimeLike)) {
+            throw Errors.createTypeError("Temporal.Time like object expected.");
+        }
+        DynamicObject result = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        boolean any = false;
+        for(String property : PROPERTIES) {
+            Object value = dol.getOrDefault(temporalTimeLike, property, null);
+            if(value != null) {
+                any = true;
+                value = toInt.executeInt(value);
+                JSObjectUtil.putDataProperty(realm.getContext(), result, property, value);
+            }
+        }
+        if (!any) {
+            throw Errors.createTypeError("No Temporal.Time property found in given object.");
+        }
+        return result;
+    }
+
     // 4.5.4
     public static DynamicObject regulateTime(long hours, long minutes, long seconds, long milliseconds, long microseconds,
                                              long nanoseconds, String overflow, JSRealm realm) {
@@ -278,6 +300,21 @@ public class JSTemporalTime extends JSNonProxy implements JSConstructorFactory.D
         JSObjectUtil.putDataProperty(realm.getContext(), result, NANOSECOND, nanoseconds);
 
         return result;
+    }
+
+    // 4.5.9
+    public static JSTemporalTimeObject createTemporalTimeFromInstance(JSTemporalTimeObject temporalTime,
+                                                                      long hour, long minute, long second,
+                                                                      long millisecond, long microsecond,
+                                                                      long nanosecond, JSRealm realm,
+                                                                      JSFunctionCallNode callNode) {
+        assert validateTime(hour, minute, second, millisecond, microsecond, nanosecond);
+        DynamicObject constructor = realm.getTemporalTimeConstructor();
+        Object[] ctorArgs = new Object[] {hour, minute, second, millisecond, microsecond, nanosecond};
+        Object[] args = JSArguments.createInitial(JSFunction.CONSTRUCT, constructor, ctorArgs.length);
+        System.arraycopy(ctorArgs, 0, args, JSArguments.RUNTIME_ARGUMENT_COUNT, ctorArgs.length);
+        Object result = callNode.executeCall(args);
+        return (JSTemporalTimeObject) result;
     }
 
     // 4.5.10

@@ -1,14 +1,10 @@
 package com.oracle.truffle.js.runtime.util;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
-import com.oracle.truffle.js.nodes.unary.IsIdenticalUndefinedNode;
-import com.oracle.truffle.js.nodes.unary.IsIdenticalUndefinedNodeGen;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
