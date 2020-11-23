@@ -419,7 +419,7 @@ void AsyncWrap::PushAsyncContext(const FunctionCallbackInfo<Value>& args) {
   // then the checks in push_async_ids() and pop_async_id() will.
   double async_id = args[0]->NumberValue(env->context()).FromJust();
   double trigger_async_id = args[1]->NumberValue(env->context()).FromJust();
-  env->async_hooks()->push_async_context(async_id, trigger_async_id, args[2]);
+  env->async_hooks()->push_async_context(async_id, trigger_async_id, {});
 }
 
 
@@ -427,6 +427,22 @@ void AsyncWrap::PopAsyncContext(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
   double async_id = args[0]->NumberValue(env->context()).FromJust();
   args.GetReturnValue().Set(env->async_hooks()->pop_async_context(async_id));
+}
+
+
+void AsyncWrap::ExecutionAsyncResource(
+    const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
+  uint32_t index;
+  if (!args[0]->Uint32Value(env->context()).To(&index)) return;
+  args.GetReturnValue().Set(
+      env->async_hooks()->native_execution_async_resource(index));
+}
+
+
+void AsyncWrap::ClearAsyncIdStack(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
+  env->async_hooks()->clear_async_id_stack();
 }
 
 
@@ -482,6 +498,7 @@ Local<FunctionTemplate> AsyncWrap::GetConstructorTemplate(Environment* env) {
   if (tmpl.IsEmpty()) {
     tmpl = env->NewFunctionTemplate(nullptr);
     tmpl->SetClassName(FIXED_ONE_BYTE_STRING(env->isolate(), "AsyncWrap"));
+    tmpl->Inherit(BaseObject::GetConstructorTemplate(env));
     env->SetProtoMethod(tmpl, "getAsyncId", AsyncWrap::GetAsyncId);
     env->SetProtoMethod(tmpl, "asyncReset", AsyncWrap::AsyncReset);
     env->SetProtoMethod(tmpl, "getProviderType", AsyncWrap::GetProviderType);
@@ -502,6 +519,8 @@ void AsyncWrap::Initialize(Local<Object> target,
   env->SetMethod(target, "setCallbackTrampoline", SetCallbackTrampoline);
   env->SetMethod(target, "pushAsyncContext", PushAsyncContext);
   env->SetMethod(target, "popAsyncContext", PopAsyncContext);
+  env->SetMethod(target, "executionAsyncResource", ExecutionAsyncResource);
+  env->SetMethod(target, "clearAsyncIdStack", ClearAsyncIdStack);
   env->SetMethod(target, "queueDestroyAsyncId", QueueDestroyAsyncId);
   env->SetMethod(target, "enablePromiseHook", EnablePromiseHook);
   env->SetMethod(target, "disablePromiseHook", DisablePromiseHook);
@@ -540,7 +559,7 @@ void AsyncWrap::Initialize(Local<Object> target,
 
   FORCE_SET_TARGET_FIELD(target,
                          "execution_async_resources",
-                         env->async_hooks()->execution_async_resources());
+                         env->async_hooks()->js_execution_async_resources());
 
   target->Set(context,
               env->async_ids_stack_string(),
@@ -562,6 +581,7 @@ void AsyncWrap::Initialize(Local<Object> target,
   SET_HOOKS_CONSTANT(kTriggerAsyncId);
   SET_HOOKS_CONSTANT(kAsyncIdCounter);
   SET_HOOKS_CONSTANT(kDefaultTriggerAsyncId);
+  SET_HOOKS_CONSTANT(kUsesExecutionAsyncResource);
   SET_HOOKS_CONSTANT(kStackLength);
 #undef SET_HOOKS_CONSTANT
   FORCE_SET_TARGET_FIELD(target, "constants", constants);
@@ -666,7 +686,19 @@ void AsyncWrap::EmitDestroy(Environment* env, double async_id) {
   }
 
   if (env->destroy_async_id_list()->empty()) {
-    env->SetUnrefImmediate(&DestroyAsyncIdsCallback);
+    env->SetImmediate(&DestroyAsyncIdsCallback, CallbackFlags::kUnrefed);
+  }
+
+  // If the list gets very large empty it faster using a Microtask.
+  // Microtasks can't be added in GC context therefore we use an
+  // interrupt to get this Microtask scheduled as fast as possible.
+  if (env->destroy_async_id_list()->size() == 16384) {
+    env->RequestInterrupt([](Environment* env) {
+      env->isolate()->EnqueueMicrotask(
+        [](void* arg) {
+          DestroyAsyncIdsCallback(static_cast<Environment*>(arg));
+        }, env);
+      });
   }
 
   env->destroy_async_id_list()->push_back(async_id);

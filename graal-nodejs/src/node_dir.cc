@@ -108,9 +108,7 @@ inline void DirHandle::GCClose() {
   if (ret < 0) {
     // Do not unref this
     env()->SetImmediate([detail](Environment* env) {
-      char msg[70];
-      snprintf(msg, arraysize(msg),
-              "Closing directory handle on garbage collection failed");
+      const char* msg = "Closing directory handle on garbage collection failed";
       // This exception will end up being fatal for the process because
       // it is being thrown from within the SetImmediate handler and
       // there is no JS stack to bubble it to. In other words, tearing
@@ -125,10 +123,10 @@ inline void DirHandle::GCClose() {
   // to notify that the file descriptor was gc'd. We want to be noisy about
   // this because not explicitly closing the DirHandle is a bug.
 
-  env()->SetUnrefImmediate([](Environment* env) {
+  env()->SetImmediate([](Environment* env) {
     ProcessEmitWarning(env,
                        "Closing directory handle on garbage collection");
-  });
+  }, CallbackFlags::kUnrefed);
 }
 
 void AfterClose(uv_fs_t* req) {

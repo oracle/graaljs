@@ -1,4 +1,12 @@
-# Style Guide
+# Documentation style guide
+
+This style guide helps us create organized and easy-to-read documentation. It
+provides guidelines for organization, spelling, formatting, and more.
+
+These are guidelines rather than strict rules. Content is more important than
+formatting. You do not need to learn the entire style guide before contributing
+to documentation. Someone can always edit your material later to conform with
+this guide.
 
 * Documentation is in markdown files with names formatted as
   `lowercase-with-dashes.md`.
@@ -97,10 +105,13 @@
 
 See also API documentation structure overview in [doctools README][].
 
+For topics not covered here, refer to the [Microsoft Writing Style Guide][].
+
+[Javascript type]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Grammar_and_types#Data_structures_and_types
+[Microsoft Writing Style Guide]: https://docs.microsoft.com/en-us/style-guide/welcome/
+[`remark-preset-lint-node`]: https://github.com/nodejs/remark-preset-lint-node
+[doctools README]: ../../tools/doc/README.md
 [info string]: https://github.github.com/gfm/#info-string
 [language]: https://github.com/highlightjs/highlight.js/blob/master/SUPPORTED_LANGUAGES.md
-[Javascript type]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Grammar_and_types#Data_structures_and_types
-[serial commas]: https://en.wikipedia.org/wiki/Serial_comma
 [plugin]: https://editorconfig.org/#download
-[doctools README]: ../../tools/doc/README.md
-[`remark-preset-lint-node`]: https://github.com/nodejs/remark-preset-lint-node
+[serial commas]: https://en.wikipedia.org/wiki/Serial_comma

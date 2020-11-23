@@ -649,7 +649,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
 
-Node.js 12.18.4
+Node.js 12.19.1
 
 Node.js is licensed for use as follows:
 

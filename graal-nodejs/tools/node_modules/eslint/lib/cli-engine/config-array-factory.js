@@ -1,3 +1,15 @@
+/*
+ * STOP!!! DO NOT MODIFY.
+ *
+ * This file is part of the ongoing work to move the eslintrc-style config
+ * system into the @eslint/eslintrc package. This file needs to remain
+ * unchanged in order for this work to proceed.
+ *
+ * If you think you need to change this file, please contact @nzakas first.
+ *
+ * Thanks in advance for your cooperation.
+ */
+
 /**
  * @fileoverview The factory of `ConfigArray` objects.
  *
@@ -44,7 +56,7 @@ const path = require("path");
 const importFresh = require("import-fresh");
 const stripComments = require("strip-json-comments");
 const { validateConfigSchema } = require("../shared/config-validator");
-const naming = require("../shared/naming");
+const naming = require("@eslint/eslintrc/lib/shared/naming");
 const ModuleResolver = require("../shared/relative-module-resolver");
 const {
     ConfigArray,
@@ -274,14 +286,15 @@ function loadESLintIgnoreFile(filePath) {
  * Creates an error to notify about a missing config to extend from.
  * @param {string} configName The name of the missing config.
  * @param {string} importerName The name of the config that imported the missing config
+ * @param {string} messageTemplate The text template to source error strings from.
  * @returns {Error} The error object to throw
  * @private
  */
-function configMissingError(configName, importerName) {
+function configInvalidError(configName, importerName, messageTemplate) {
     return Object.assign(
         new Error(`Failed to load config "${configName}" to extend from.`),
         {
-            messageTemplate: "extend-config-missing",
+            messageTemplate,
             messageData: { configName, importerName }
         }
     );
@@ -790,7 +803,7 @@ class ConfigArrayFactory {
             });
         }
 
-        throw configMissingError(extendName, ctx.name);
+        throw configInvalidError(extendName, ctx.name, "extend-config-missing");
     }
 
     /**
@@ -802,6 +815,11 @@ class ConfigArrayFactory {
      */
     _loadExtendedPluginConfig(extendName, ctx) {
         const slashIndex = extendName.lastIndexOf("/");
+
+        if (slashIndex === -1) {
+            throw configInvalidError(extendName, ctx.filePath, "plugin-invalid");
+        }
+
         const pluginName = extendName.slice("plugin:".length, slashIndex);
         const configName = extendName.slice(slashIndex + 1);
 
@@ -822,7 +840,7 @@ class ConfigArrayFactory {
             });
         }
 
-        throw plugin.error || configMissingError(extendName, ctx.filePath);
+        throw plugin.error || configInvalidError(extendName, ctx.filePath, "extend-config-missing");
     }
 
     /**
@@ -855,7 +873,7 @@ class ConfigArrayFactory {
         } catch (error) {
             /* istanbul ignore else */
             if (error && error.code === "MODULE_NOT_FOUND") {
-                throw configMissingError(extendName, ctx.filePath);
+                throw configInvalidError(extendName, ctx.filePath, "extend-config-missing");
             }
             throw error;
         }

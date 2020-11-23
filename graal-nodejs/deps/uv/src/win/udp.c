@@ -189,6 +189,11 @@ void uv_udp_endgame(uv_loop_t* loop, uv_udp_t* handle) {
 }
 
 
+int uv_udp_using_recvmmsg(const uv_udp_t* handle) {
+  return 0;
+}
+
+
 static int uv_udp_maybe_bind(uv_udp_t* handle,
                              const struct sockaddr* addr,
                              unsigned int addrlen,
@@ -752,6 +757,9 @@ int uv__udp_set_source_membership6(uv_udp_t* handle,
   int optname;
   int err;
 
+  STATIC_ASSERT(sizeof(mreq.gsr_group) >= sizeof(*multicast_addr));
+  STATIC_ASSERT(sizeof(mreq.gsr_source) >= sizeof(*source_addr));
+
   if ((handle->flags & UV_HANDLE_BOUND) && !(handle->flags & UV_HANDLE_IPV6))
     return UV_EINVAL;
 
@@ -774,8 +782,6 @@ int uv__udp_set_source_membership6(uv_udp_t* handle,
     mreq.gsr_interface = 0;
   }
 
-  STATIC_ASSERT(sizeof(mreq.gsr_group) >= sizeof(*multicast_addr));
-  STATIC_ASSERT(sizeof(mreq.gsr_source) >= sizeof(*source_addr));
   memcpy(&mreq.gsr_group, multicast_addr, sizeof(*multicast_addr));
   memcpy(&mreq.gsr_source, source_addr, sizeof(*source_addr));
 

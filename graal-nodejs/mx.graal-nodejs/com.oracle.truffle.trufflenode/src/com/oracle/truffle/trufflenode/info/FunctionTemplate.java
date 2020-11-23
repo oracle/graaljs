@@ -42,6 +42,8 @@ package com.oracle.truffle.trufflenode.info;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.trufflenode.GraalJSAccess;
 
 /**
  *
@@ -62,8 +64,9 @@ public final class FunctionTemplate {
     private FunctionTemplate parent;
     private String className = "";
     private DynamicObject functionObj;
+    private final boolean singleFunctionTemplate;
 
-    public FunctionTemplate(int id, long functionPointer, Object additionalData, FunctionTemplate signature, int length, boolean isConstructor) {
+    public FunctionTemplate(int id, long functionPointer, Object additionalData, FunctionTemplate signature, int length, boolean isConstructor, boolean singleFunctionTemplate) {
         functionObjectTemplate = new ObjectTemplate();
         instanceTemplate = new ObjectTemplate();
         prototypeTemplate = isConstructor ? new ObjectTemplate() : null;
@@ -72,6 +75,7 @@ public final class FunctionTemplate {
         this.additionalData = additionalData;
         this.signature = signature;
         this.length = length;
+        this.singleFunctionTemplate = singleFunctionTemplate;
     }
 
     public ObjectTemplate getFunctionObjectTemplate() {
@@ -86,12 +90,16 @@ public final class FunctionTemplate {
         return prototypeTemplate;
     }
 
-    public void setFunctionObject(DynamicObject functionObj) {
-        this.functionObj = functionObj;
+    public void setFunctionObject(JSRealm realm, DynamicObject functionObj) {
+        if (singleFunctionTemplate) {
+            this.functionObj = functionObj;
+        } else {
+            GraalJSAccess.getRealmEmbedderData(realm).setFunctionTemplateObject(id, functionObj);
+        }
     }
 
-    public DynamicObject getFunctionObject() {
-        return functionObj;
+    public DynamicObject getFunctionObject(JSRealm realm) {
+        return singleFunctionTemplate ? functionObj : GraalJSAccess.getRealmEmbedderData(realm).getFunctionTemplateObject(id);
     }
 
     public int getID() {
