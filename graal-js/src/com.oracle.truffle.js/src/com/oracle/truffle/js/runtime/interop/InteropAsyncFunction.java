@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.interop;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -52,12 +53,14 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
 import com.oracle.truffle.js.nodes.promise.UnwrapPromiseNode;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Interop wrapper for async functions that unwraps the returned promise.
  */
+@ImportStatic({JSConfig.class})
 @ExportLibrary(value = InteropLibrary.class, delegateTo = "function")
 public final class InteropAsyncFunction extends InteropFunction {
 

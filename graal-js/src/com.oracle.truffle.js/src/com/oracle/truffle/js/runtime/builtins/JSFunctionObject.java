@@ -46,8 +46,6 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.CachedLanguage;
-import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -56,7 +54,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
@@ -67,7 +64,6 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.interop.InteropFunction;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -238,25 +234,6 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
             }
         }
         return false;
-    }
-
-    @ExportMessage
-    public static final class IsIdenticalOrUndefined {
-        @Specialization
-        public static TriState doHostObject(JSFunctionObject receiver, JSDynamicObject other) {
-            return TriState.valueOf(receiver == other);
-        }
-
-        @Specialization
-        public static TriState doHostObject(JSFunctionObject receiver, InteropFunction other) {
-            return TriState.valueOf(receiver == other.getFunction());
-        }
-
-        @SuppressWarnings("unused")
-        @Fallback
-        public static TriState doOther(JSFunctionObject receiver, Object other) {
-            return TriState.UNDEFINED;
-        }
     }
 
     public static JSFunctionObject create(Shape shape, JSFunctionData functionData, MaterializedFrame enclosingFrame, JSRealm realm, Object classPrototype) {
