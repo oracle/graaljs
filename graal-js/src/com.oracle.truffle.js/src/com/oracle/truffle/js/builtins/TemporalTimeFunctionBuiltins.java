@@ -1,15 +1,26 @@
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.builtins.TemporalTimeFunctionBuiltinsFactory.JSTemporalTimeCompareNodeGen;
+import com.oracle.truffle.js.builtins.TemporalTimeFunctionBuiltinsFactory.JSTemporalTimeFromNodeGen;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
+import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalTime;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalTimeObject;
+import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class TemporalTimeFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalTimeFunctionBuiltins.TemporalTimeFunction>{
 
@@ -20,6 +31,7 @@ public class TemporalTimeFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public enum TemporalTimeFunction implements BuiltinEnum<TemporalTimeFunction> {
+        from(2),
         compare(2);
 
         private final int length;
@@ -37,10 +49,43 @@ public class TemporalTimeFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, TemporalTimeFunction builtinEnum) {
         switch (builtinEnum) {
+            case from:
+                return JSTemporalTimeFromNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case compare:
                 return JSTemporalTimeCompareNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
         }
         return null;
+    }
+
+    public abstract static class JSTemporalTimeFromNode extends JSBuiltinNode {
+
+        public JSTemporalTimeFromNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(limit = "3")
+        protected Object from(DynamicObject item, DynamicObject options,
+                                     @Cached("create()") IsObjectNode isObject,
+                                     @Cached("create()") IsConstructorNode isConstructor,
+                                     @CachedLibrary("options") DynamicObjectLibrary dol,
+                                     @Cached("create()") JSToBooleanNode toBoolean,
+                                     @Cached("create()") JSToStringNode toString,
+                                     @Cached("create()") JSToIntegerAsIntNode toInt,
+                                     @Cached("createNew()") JSFunctionCallNode callNode) {
+            DynamicObject constructor = getContext().getRealm().getTemporalTimeConstructor();
+            DynamicObject normalizedOptions = TemporalUtil.normalizeOptionsObject(options,
+                    getContext().getRealm(), isObject);
+            String overflow = TemporalUtil.toTemporalOverflow(normalizedOptions, dol, isObject, toBoolean, toString);
+            if(isObject.executeBoolean(item) && JSTemporalTime.isJSTemporalTime(item)) {
+                JSTemporalTimeObject timeItem = (JSTemporalTimeObject) item;
+                return JSTemporalTime.createTemporalTimeFromStatic(constructor,
+                        timeItem.getHours(), timeItem.getMinutes(), timeItem.getSeconds(), timeItem.getMilliseconds(),
+                        timeItem.getMicroseconds(), timeItem.getNanoseconds(), isConstructor, callNode);
+            }
+            return JSTemporalTime.toTemporalTime(item, constructor, overflow, getContext().getRealm(),
+                    isObject, dol, toInt, toString, isConstructor, callNode);
+        }
+
     }
 
     public abstract static class JSTemporalTimeCompareNode extends JSBuiltinNode {
