@@ -1,15 +1,26 @@
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.builtins.TemporalTimePrototypeBuiltinsFactory.JSTemporalTimeEqualsNodeGen;
 import com.oracle.truffle.js.builtins.TemporalTimePrototypeBuiltinsFactory.JSTemporalTimeToStringNodeGen;
+import com.oracle.truffle.js.builtins.TemporalTimePrototypeBuiltinsFactory.JSTemporalTimeWithNodeGen;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
+import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalTime;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalTimeObject;
+import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class TemporalTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalTimePrototypeBuiltins.TemporalTimePrototype> {
 
@@ -20,6 +31,7 @@ public class TemporalTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     }
 
     public enum TemporalTimePrototype implements BuiltinEnum<TemporalTimePrototype> {
+        with(2),
         equals(1),
         toString(0),
         toJSON(0);
@@ -39,6 +51,8 @@ public class TemporalTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, TemporalTimePrototype builtinEnum) {
         switch (builtinEnum) {
+            case with:
+                return JSTemporalTimeWithNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case equals:
                 return JSTemporalTimeEqualsNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case toString:
@@ -46,6 +60,85 @@ public class TemporalTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSTemporalTimeToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
+    }
+
+    public abstract static class JSTemporalTimeWith extends JSBuiltinNode {
+
+        protected JSTemporalTimeWith(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(limit = "3")
+        protected JSTemporalTimeObject with(DynamicObject thisObj, DynamicObject temporalTimeLike, DynamicObject options,
+                                            @Cached("create()") IsObjectNode isObject,
+                                            @CachedLibrary("thisObj") DynamicObjectLibrary dol,
+                                            @Cached("create()") JSToIntegerAsIntNode toInt,
+                                            @Cached("create()") JSToBooleanNode toBoolean,
+                                            @Cached("create()") JSToStringNode toString,
+                                            @Cached("createNew()") JSFunctionCallNode callNode) {
+            JSTemporalTimeObject temporalTime = (JSTemporalTimeObject) thisObj;
+            if(!isObject.executeBoolean(temporalTimeLike)) {
+                throw Errors.createTypeError("Temporal.Time like object expected.");
+            }
+            // TODO: Get calendar property.
+            // TODO: Check calendar property is not undefined.
+            // TODO: Get time zone property.
+            // TODO: Check time zone property is not undefined.
+            // TODO: Get calendar value.
+            DynamicObject partialTime = JSTemporalTime.toPartialTime(temporalTimeLike, getContext().getRealm(),
+                    isObject, dol, toInt);
+            DynamicObject normalizedOptions = TemporalUtil.normalizeOptionsObject(options, getContext().getRealm(),
+                    isObject);
+            String overflow = TemporalUtil.toTemporalOverflow(normalizedOptions, dol, isObject, toBoolean, toString);
+            int hour, minute, second, millisecond, microsecond, nanosecond;
+            Object tempValue = dol.getOrDefault(partialTime, JSTemporalTime.HOUR, null);
+            if (tempValue != null) {
+                hour = toInt.executeInt(tempValue);
+            } else {
+                hour = temporalTime.getHours();
+            }
+            tempValue = dol.getOrDefault(partialTime, JSTemporalTime.MINUTE, null);
+            if(tempValue != null) {
+                minute = toInt.executeInt(tempValue);
+            } else {
+                minute = temporalTime.getMinutes();
+            }
+            tempValue = dol.getOrDefault(partialTime, JSTemporalTime.SECOND, null);
+            if(tempValue != null) {
+                second = toInt.executeInt(tempValue);
+            } else {
+                second = temporalTime.getSeconds();
+            }
+            tempValue = dol.getOrDefault(partialTime, JSTemporalTime.MILLISECOND, null);
+            if(tempValue != null) {
+                millisecond = toInt.executeInt(tempValue);
+            } else {
+                millisecond = temporalTime.getMilliseconds();
+            }
+            tempValue = dol.getOrDefault(partialTime, JSTemporalTime.MICROSECOND, null);
+            if(tempValue != null) {
+                microsecond = toInt.executeInt(tempValue);
+            } else {
+                microsecond = temporalTime.getMicroseconds();
+            }
+            tempValue = dol.getOrDefault(partialTime, JSTemporalTime.NANOSECOND, null);
+            if(tempValue != null) {
+                nanosecond = toInt.executeInt(tempValue);
+            } else {
+                nanosecond = temporalTime.getNanoseconds();
+            }
+            DynamicObject result = JSTemporalTime.regulateTime(hour, minute, second, millisecond, microsecond,
+                    nanosecond, overflow, getContext().getRealm());
+            return JSTemporalTime.createTemporalTimeFromInstance(temporalTime,
+                    toInt.executeInt(dol.getOrDefault(result, JSTemporalTime.HOUR, 0)),
+                    toInt.executeInt(dol.getOrDefault(result, JSTemporalTime.MINUTE, 0)),
+                    toInt.executeInt(dol.getOrDefault(result, JSTemporalTime.SECOND, 0)),
+                    toInt.executeInt(dol.getOrDefault(result, JSTemporalTime.MILLISECOND, 0)),
+                    toInt.executeInt(dol.getOrDefault(result, JSTemporalTime.MICROSECOND, 0)),
+                    toInt.executeInt(dol.getOrDefault(result, JSTemporalTime.NANOSECOND, 0)),
+                    getContext().getRealm(), callNode
+            );
+        }
     }
 
     public abstract static class JSTemporalTimeEquals extends JSBuiltinNode {
