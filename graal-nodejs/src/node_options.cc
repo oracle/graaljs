@@ -148,6 +148,10 @@ void EnvironmentOptions::CheckOptions(std::vector<std::string>* errors) {
     }
   }
 
+  if (cpu_prof && cpu_prof_dir.empty() && !diagnostic_dir.empty()) {
+      cpu_prof_dir = diagnostic_dir;
+    }
+
   if (!heap_prof) {
     if (!heap_prof_name.empty()) {
       errors->push_back("--heap-prof-name must be used with --heap-prof");
@@ -161,6 +165,11 @@ void EnvironmentOptions::CheckOptions(std::vector<std::string>* errors) {
       errors->push_back("--heap-prof-interval must be used with --heap-prof");
     }
   }
+
+  if (heap_prof && heap_prof_dir.empty() && !diagnostic_dir.empty()) {
+    heap_prof_dir = diagnostic_dir;
+  }
+
   debug_options_.CheckOptions(errors);
 #endif  // HAVE_INSPECTOR
 }
@@ -275,6 +284,15 @@ DebugOptionsParser::DebugOptionsParser() {
 }
 
 EnvironmentOptionsParser::EnvironmentOptionsParser() {
+  AddOption("--conditions",
+            "additional user conditions for conditional exports and imports",
+            &EnvironmentOptions::conditions,
+            kAllowedInEnvironment);
+  AddOption("--diagnostic-dir",
+            "set dir for all output files"
+            " (default: current working directory)",
+            &EnvironmentOptions::diagnostic_dir,
+            kAllowedInEnvironment);
   AddOption("--enable-source-maps",
             "experimental Source Map V3 support",
             &EnvironmentOptions::enable_source_maps,
@@ -666,11 +684,12 @@ PerProcessOptionsParser::PerProcessOptionsParser(
             "output compact single-line JSON",
             &PerProcessOptions::report_compact,
             kAllowedInEnvironment);
-  AddOption("--report-directory",
+  AddOption("--report-dir",
             "define custom report pathname."
-            " (default: current working directory of Node.js process)",
+            " (default: current working directory)",
             &PerProcessOptions::report_directory,
             kAllowedInEnvironment);
+  AddAlias("--report-directory", "--report-dir");
   AddOption("--report-filename",
             "define custom report file name."
             " (default: YYYYMMDD.HHMMSS.PID.SEQUENCE#.txt)",
@@ -981,6 +1000,12 @@ void Initialize(Local<Object> target,
   target
       ->Set(
           context, FIXED_ONE_BYTE_STRING(isolate, "envSettings"), env_settings)
+      .Check();
+
+  target
+      ->Set(context,
+            FIXED_ONE_BYTE_STRING(env->isolate(), "shouldNotRegisterESMLoader"),
+            Boolean::New(isolate, env->should_not_register_esm_loader()))
       .Check();
 
   Local<Object> types = Object::New(isolate);

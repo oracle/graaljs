@@ -1795,7 +1795,7 @@ Type: Deprecation revoked
 
 Importing assert directly was not recommended as the exposed functions use
 loose equality checks. The deprecation was revoked because use of the `assert`
-module is not discouraged, and the deprecation caused end user confusion.
+module is not discouraged, and the deprecation caused developer confusion.
 
 <a id="DEP0090"></a>
 ### DEP0090: Invalid GCM authentication tag lengths
@@ -2542,13 +2542,66 @@ accordingly instead to avoid the ambigiuty.
 To maintain existing behaviour `response.finished` should be replaced with
 `response.writableEnded`.
 
+<a id="DEP0139"></a>
+### DEP0139: `process.umask()` with no arguments
+<!-- YAML
+changes:
+  - version:
+    - v12.19.0
+    - v14.0.0
+    pr-url: https://github.com/nodejs/node/pull/32499
+    description: Documentation-only deprecation.
+-->
+
+Type: Documentation-only
+
+Calling `process.umask()` with no argument causes the process-wide umask to be
+written twice. This introduces a race condition between threads, and is a
+potential security vulnerability. There is no safe, cross-platform alternative
+API.
+
+<a id="DEP0144"></a>
+### DEP0144: `module.parent`
+<!-- YAML
+changes:
+  - version:
+    - v12.19.0
+    - v14.6.0
+    pr-url: https://github.com/nodejs/node/pull/32217
+    description: Documentation-only deprecation.
+-->
+
+Type: Documentation-only
+
+A CommonJS module can access the first module that required it using
+`module.parent`. This feature is deprecated because it does not work
+consistently in the presence of ECMAScript modules and because it gives an
+inaccurate representation of the CommonJS module graph.
+
+Some modules use it to check if they are the entry point of the current process.
+Instead, it is recommended to compare `require.main` and `module`:
+
+```js
+if (require.main === module) {
+  // Code section that will run only if current file is the entry point.
+}
+```
+
+When looking for the CommonJS modules that have required the current one,
+`require.cache` and `module.children` can be used:
+
+```js
+const moduleParents = Object.values(require.cache)
+  .filter((m) => m.children.includes(module));
+```
+
 [`--http-parser=legacy`]: cli.html#cli_http_parser_library
 [`--pending-deprecation`]: cli.html#cli_pending_deprecation
 [`--throw-deprecation`]: cli.html#cli_throw_deprecation
-[`Buffer.allocUnsafeSlow(size)`]: buffer.html#buffer_class_method_buffer_allocunsafeslow_size
-[`Buffer.from(array)`]: buffer.html#buffer_class_method_buffer_from_array
-[`Buffer.from(buffer)`]: buffer.html#buffer_class_method_buffer_from_buffer
-[`Buffer.isBuffer()`]: buffer.html#buffer_class_method_buffer_isbuffer_obj
+[`Buffer.allocUnsafeSlow(size)`]: buffer.html#buffer_static_method_buffer_allocunsafeslow_size
+[`Buffer.from(array)`]: buffer.html#buffer_static_method_buffer_from_array
+[`Buffer.from(buffer)`]: buffer.html#buffer_static_method_buffer_from_buffer
+[`Buffer.isBuffer()`]: buffer.html#buffer_static_method_buffer_isbuffer_obj
 [`Cipher`]: crypto.html#crypto_class_cipher
 [`Decipher`]: crypto.html#crypto_class_decipher
 [`EventEmitter.listenerCount(emitter, eventName)`]: events.html#events_eventemitter_listenercount_emitter_eventname
@@ -2602,18 +2655,18 @@ To maintain existing behaviour `response.finished` should be replaced with
 [`response.socket`]: http.html#http_response_socket
 [`response.connection`]: http.html#http_response_connection
 [`response.end()`]: http.html#http_response_end_data_encoding_callback
-[`response.finished`]: #http_response_finished
-[`response.writableFinished`]: #http_response_writablefinished
-[`response.writableEnded`]: #http_response_writableended
+[`response.finished`]: http.html#http_response_finished
+[`response.writableFinished`]: http.html#http_response_writablefinished
+[`response.writableEnded`]: http.html#http_response_writableended
 [`script.createCachedData()`]: vm.html#vm_script_createcacheddata
 [`setInterval()`]: timers.html#timers_setinterval_callback_delay_args
 [`setTimeout()`]: timers.html#timers_settimeout_callback_delay_args
 [`timeout.ref()`]: timers.html#timers_timeout_ref
 [`timeout.refresh()`]: timers.html#timers_timeout_refresh
 [`timeout.unref()`]: timers.html#timers_timeout_unref
-[`tls.CryptoStream`]: tls.html#tls_class_cryptostream
+[`tls.CryptoStream`]: tls.html#tls_class_tls_cryptostream
 [`tls.SecureContext`]: tls.html#tls_tls_createsecurecontext_options
-[`tls.SecurePair`]: tls.html#tls_class_securepair
+[`tls.SecurePair`]: tls.html#tls_class_tls_securepair
 [`tls.TLSSocket`]: tls.html#tls_class_tls_tlssocket
 [`tls.checkServerIdentity()`]: tls.html#tls_tls_checkserveridentity_hostname_cert
 [`tls.createSecureContext()`]: tls.html#tls_tls_createsecurecontext_options
@@ -2649,8 +2702,8 @@ To maintain existing behaviour `response.finished` should be replaced with
 [NIST SP 800-38D]: https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
 [RFC 6066]: https://tools.ietf.org/html/rfc6066#section-3
 [WHATWG URL API]: url.html#url_the_whatwg_url_api
-[alloc]: buffer.html#buffer_class_method_buffer_alloc_size_fill_encoding
-[alloc_unsafe_size]: buffer.html#buffer_class_method_buffer_allocunsafe_size
-[from_arraybuffer]: buffer.html#buffer_class_method_buffer_from_arraybuffer_byteoffset_length
-[from_string_encoding]: buffer.html#buffer_class_method_buffer_from_string_encoding
+[alloc]: buffer.html#buffer_static_method_buffer_alloc_size_fill_encoding
+[alloc_unsafe_size]: buffer.html#buffer_static_method_buffer_allocunsafe_size
+[from_arraybuffer]: buffer.html#buffer_static_method_buffer_from_arraybuffer_byteoffset_length
+[from_string_encoding]: buffer.html#buffer_static_method_buffer_from_string_encoding
 [legacy `urlObject`]: url.html#url_legacy_urlobject

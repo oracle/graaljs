@@ -48,7 +48,6 @@ const { OutgoingMessage } = require('_http_outgoing');
 const {
   kOutHeaders,
   kNeedDrain,
-  nowDate,
   emitStatistics
 } = require('internal/http');
 const {
@@ -143,6 +142,7 @@ const STATUS_CODES = {
 };
 
 const kOnExecute = HTTPParser.kOnExecute | 0;
+const kOnTimeout = HTTPParser.kOnTimeout | 0;
 
 class HTTPServerAsyncResource {
   constructor(type, socket) {
@@ -348,7 +348,7 @@ function Server(options, requestListener) {
 
   // Similar option to this. Too lazy to write my own docs.
   // http://www.squid-cache.org/Doc/config/half_closed_clients/
-  // http://wiki.squid-cache.org/SquidFaq/InnerWorkings#What_is_a_half-closed_filedescriptor.3F
+  // https://wiki.squid-cache.org/SquidFaq/InnerWorkings#What_is_a_half-closed_filedescriptor.3F
   this.httpAllowHalfOpen = false;
 
   this.on('connection', connectionListener);
@@ -422,11 +422,9 @@ function connectionListenerInternal(server, socket) {
     new HTTPServerAsyncResource('HTTPINCOMINGMESSAGE', socket),
     server.insecureHTTPParser === undefined ?
       isLenient() : server.insecureHTTPParser,
+    server.headersTimeout || 0,
   );
   parser.socket = socket;
-
-  // We are starting to wait for our headers.
-  parser.parsingHeadersStart = nowDate();
   socket.parser = parser;
 
   // Propagate headers limit from server instance to parser
@@ -477,6 +475,9 @@ function connectionListenerInternal(server, socket) {
   }
   parser[kOnExecute] =
     onParserExecute.bind(undefined, server, socket, parser, state);
+
+  parser[kOnTimeout] =
+    onParserTimeout.bind(undefined, server, socket);
 
   socket._paused = false;
 }
@@ -565,26 +566,20 @@ function socketOnData(server, socket, parser, state, d) {
 }
 
 function onParserExecute(server, socket, parser, state, ret) {
+  // When underlying `net.Socket` instance is consumed - no
+  // `data` events are emitted, and thus `socket.setTimeout` fires the
+  // callback even if the data is constantly flowing into the socket.
+  // See, https://github.com/nodejs/node/commit/ec2822adaad76b126b5cccdeaa1addf2376c9aa6
   socket._unrefTimer();
-  const start = parser.parsingHeadersStart;
   debug('SERVER socketOnParserExecute %d', ret);
-
-  // If we have not parsed the headers, destroy the socket
-  // after server.headersTimeout to protect from DoS attacks.
-  // start === 0 means that we have parsed headers, while
-  // server.headersTimeout === 0 means user disabled this check.
-  if (
-    start !== 0 && server.headersTimeout &&
-    nowDate() - start > server.headersTimeout
-  ) {
-    const serverTimeout = server.emit('timeout', socket);
-
-    if (!serverTimeout)
-      socket.destroy();
-    return;
-  }
-
   onParserExecuteCommon(server, socket, parser, state, ret, undefined);
+}
+
+function onParserTimeout(server, socket) {
+  const serverTimeout = server.emit('timeout', socket);
+
+  if (!serverTimeout)
+    socket.destroy();
 }
 
 const noop = () => {};
@@ -602,7 +597,7 @@ function socketOnError(e) {
   this.on('error', noop);
 
   if (!this.server.emit('clientError', e, this)) {
-    if (this.writable) {
+    if (this.writable && this.bytesWritten === 0) {
       const response = e.code === 'HPE_HEADER_OVERFLOW' ?
         requestHeaderFieldsTooLargeResponse : badRequestResponse;
       this.write(response);
@@ -721,13 +716,6 @@ function emitCloseNT(self) {
 function parserOnIncoming(server, socket, state, req, keepAlive) {
   resetSocketTimeout(server, socket, state);
 
-  if (server.keepAliveTimeout > 0) {
-    req.on('end', resetHeadersTimeoutOnReqEnd);
-  }
-
-  // Set to zero to communicate that we have finished parsing.
-  socket.parser.parsingHeadersStart = 0;
-
   if (req.upgrade) {
     req.upgrade = req.method === 'CONNECT' ||
                   server.listenerCount('upgrade') > 0;
@@ -752,6 +740,7 @@ function parserOnIncoming(server, socket, state, req, keepAlive) {
   }
 
   const res = new server[kServerResponse](req);
+  res._keepAliveTimeout = server.keepAliveTimeout;
   res._onPendingData = updateOutgoingData.bind(undefined, socket, state);
 
   res.shouldKeepAlive = keepAlive;
@@ -850,17 +839,6 @@ function generateSocketListenerWrapper(originalFnName) {
 
     return res;
   };
-}
-
-function resetHeadersTimeoutOnReqEnd() {
-  debug('resetHeadersTimeoutOnReqEnd');
-
-  const parser = this.socket.parser;
-  // Parser can be null if the socket was destroyed
-  // in that case, there is nothing to do.
-  if (parser) {
-    parser.parsingHeadersStart = nowDate();
-  }
 }
 
 module.exports = {

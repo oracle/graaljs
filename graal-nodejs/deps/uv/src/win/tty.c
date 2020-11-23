@@ -517,6 +517,7 @@ static DWORD CALLBACK uv_tty_line_read_thread(void* data) {
   status = InterlockedExchange(&uv__read_console_status, IN_PROGRESS);
   if (status == TRAP_REQUESTED) {
     SET_REQ_SUCCESS(req);
+    InterlockedExchange(&uv__read_console_status, COMPLETED);
     req->u.io.overlapped.InternalHigh = 0;
     POST_COMPLETION_FOR_REQ(loop, req);
     return 0;
@@ -2412,6 +2413,7 @@ static DWORD WINAPI uv__tty_console_resize_watcher_thread(void* param) {
     uv__tty_console_signal_resize();
     ResetEvent(uv__tty_console_resized);
   }
+  return 0;
 }
 
 static void uv__tty_console_signal_resize(void) {

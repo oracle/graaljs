@@ -8,8 +8,10 @@ namespace util {
 using v8::ALL_PROPERTIES;
 using v8::Array;
 using v8::ArrayBufferView;
+using v8::BigInt;
 using v8::Boolean;
 using v8::Context;
+using v8::External;
 using v8::FunctionCallbackInfo;
 using v8::FunctionTemplate;
 using v8::Global;
@@ -65,6 +67,18 @@ static void GetConstructorName(
   Local<String> name = object->GetConstructorName();
 
   args.GetReturnValue().Set(name);
+}
+
+static void GetExternalValue(
+    const FunctionCallbackInfo<Value>& args) {
+  CHECK(args[0]->IsExternal());
+  Isolate* isolate = args.GetIsolate();
+  Local<External> external = args[0].As<External>();
+
+  void* ptr = external->Value();
+  uint64_t value = reinterpret_cast<uint64_t>(ptr);
+  Local<BigInt> ret = BigInt::NewFromUnsigned(isolate, value);
+  args.GetReturnValue().Set(ret);
 }
 
 static void GetPromiseDetails(const FunctionCallbackInfo<Value>& args) {
@@ -296,6 +310,7 @@ void Initialize(Local<Object> target,
   env->SetMethodNoSideEffect(target, "getOwnNonIndexProperties",
                                      GetOwnNonIndexProperties);
   env->SetMethodNoSideEffect(target, "getConstructorName", GetConstructorName);
+  env->SetMethodNoSideEffect(target, "getExternalValue", GetExternalValue);
   env->SetMethod(target, "sleep", Sleep);
 
   env->SetMethod(target, "arrayBufferViewHasBuffer", ArrayBufferViewHasBuffer);
@@ -325,6 +340,7 @@ void Initialize(Local<Object> target,
   weak_ref->InstanceTemplate()->SetInternalFieldCount(
       WeakReference::kInternalFieldCount);
   weak_ref->SetClassName(weak_ref_string);
+  weak_ref->Inherit(BaseObject::GetConstructorTemplate(env));
   env->SetProtoMethod(weak_ref, "get", WeakReference::Get);
   env->SetProtoMethod(weak_ref, "incRef", WeakReference::IncRef);
   env->SetProtoMethod(weak_ref, "decRef", WeakReference::DecRef);

@@ -5,8 +5,8 @@
 #ifndef SRC_TRACING_TRACE_EVENT_H_
 #define SRC_TRACING_TRACE_EVENT_H_
 
-#include "node_platform.h"
 #include "v8-platform.h"
+#include "tracing/agent.h"
 #include "trace_event_common.h"
 #include <atomic>
 
@@ -310,11 +310,11 @@ const int kZeroNumArgs = 0;
 const decltype(nullptr) kGlobalScope = nullptr;
 const uint64_t kNoId = 0;
 
-// Extern (for now) because embedders need access to TraceEventHelper.
-// Refs: https://github.com/nodejs/node/pull/28724
-class NODE_EXTERN TraceEventHelper {
+class TraceEventHelper {
  public:
-  static TracingController* GetTracingController();
+  static v8::TracingController* GetTracingController();
+  static void SetTracingController(v8::TracingController* controller);
+
   static Agent* GetAgent();
   static void SetAgent(Agent* agent);
 
@@ -514,9 +514,10 @@ static V8_INLINE void AddMetadataEventImpl(
     arg_convertibles[1].reset(reinterpret_cast<v8::ConvertableToTraceFormat*>(
         static_cast<intptr_t>(arg_values[1])));
   }
-  node::tracing::TracingController* controller =
-      node::tracing::TraceEventHelper::GetTracingController();
-  return controller->AddMetadataEvent(
+  node::tracing::Agent* agent =
+      node::tracing::TraceEventHelper::GetAgent();
+  if (agent == nullptr) return;
+  return agent->GetTracingController()->AddMetadataEvent(
       category_group_enabled, name, num_args, arg_names, arg_types, arg_values,
       arg_convertibles, flags);
 }

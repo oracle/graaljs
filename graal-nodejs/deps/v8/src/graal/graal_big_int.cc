@@ -64,7 +64,13 @@ v8::Local<v8::BigInt> GraalBigInt::NewFromUnsigned(v8::Isolate* isolate, uint64_
 }
 
 v8::MaybeLocal<v8::BigInt> GraalBigInt::NewFromWords(v8::Local<v8::Context> context, int sign_bit, int word_count, const uint64_t* words) {
-    GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (context->GetIsolate());
+    v8::Isolate* isolate = context->GetIsolate();
+    if (word_count < 0 || word_count > (1 << 30) / 64) {
+        isolate->ThrowException(v8::Exception::RangeError(v8::String::NewFromUtf8(isolate, "Maximum BigInt size exceeded")));
+        return v8::MaybeLocal<v8::BigInt>();
+    }
+
+    GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     graal_isolate->ResetSharedBuffer();
     graal_isolate->WriteInt32ToSharedBuffer(sign_bit);
     graal_isolate->WriteInt32ToSharedBuffer(word_count);
