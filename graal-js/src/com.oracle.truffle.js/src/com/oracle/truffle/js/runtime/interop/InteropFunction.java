@@ -41,16 +41,18 @@
 package com.oracle.truffle.js.runtime.interop;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.utilities.TriState;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
+@ImportStatic({JSConfig.class})
 @ExportLibrary(value = InteropLibrary.class)
 public abstract class InteropFunction implements TruffleObject {
     private final DynamicObject function;
@@ -64,20 +66,19 @@ public abstract class InteropFunction implements TruffleObject {
     }
 
     @ExportMessage
-    public static final class IsIdenticalOrUndefined {
-        @Specialization
-        public static TriState doInteropFunction(InteropFunction receiver, InteropFunction other) {
-            return TriState.valueOf(receiver == other);
+    @TruffleBoundary
+    public final TriState isIdenticalOrUndefined(Object other,
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary thisLib,
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary otherLib) {
+        if (this == other) {
+            return TriState.TRUE;
+        } else if (other instanceof JSDynamicObject) {
+            return TriState.valueOf(this.function == other);
         }
 
-        @Specialization
-        public static TriState doJSFunction(InteropFunction receiver, JSDynamicObject other) {
-            return TriState.valueOf(receiver.function == other);
-        }
-
-        @SuppressWarnings("unused")
-        @Fallback
-        public static TriState doOther(InteropFunction receiver, Object other) {
+        if (otherLib.hasIdentity(other)) {
+            return TriState.valueOf(thisLib.isIdentical(this.function, other, otherLib));
+        } else {
             return TriState.UNDEFINED;
         }
     }
