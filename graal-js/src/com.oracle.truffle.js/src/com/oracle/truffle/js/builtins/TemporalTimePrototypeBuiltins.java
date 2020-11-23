@@ -7,6 +7,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.builtins.TemporalTimePrototypeBuiltinsFactory.JSTemporalTimeEqualsNodeGen;
 import com.oracle.truffle.js.builtins.TemporalTimePrototypeBuiltinsFactory.JSTemporalTimeToStringNodeGen;
+import com.oracle.truffle.js.builtins.TemporalTimePrototypeBuiltinsFactory.JSTemporalTimeValueOfNodeGen;
 import com.oracle.truffle.js.builtins.TemporalTimePrototypeBuiltinsFactory.JSTemporalTimeWithNodeGen;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -34,7 +35,8 @@ public class TemporalTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         with(2),
         equals(1),
         toString(0),
-        toJSON(0);
+        toJSON(0),
+        valueOf(0);
 
         private final int length;
 
@@ -58,10 +60,13 @@ public class TemporalTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             case toString:
             case toJSON:
                 return JSTemporalTimeToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case valueOf:
+                return JSTemporalTimeValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
 
+    // 4.3.12
     public abstract static class JSTemporalTimeWith extends JSBuiltinNode {
 
         protected JSTemporalTimeWith(JSContext context, JSBuiltin builtin) {
@@ -141,6 +146,7 @@ public class TemporalTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
     }
 
+    // 4.3.16
     public abstract static class JSTemporalTimeEquals extends JSBuiltinNode {
 
         protected JSTemporalTimeEquals(JSContext context, JSBuiltin builtin) {
@@ -178,6 +184,7 @@ public class TemporalTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
     }
 
+    // 4.3.21
     public abstract static class JSTemporalTimeToStringNode extends JSBuiltinNode {
 
         protected JSTemporalTimeToStringNode(JSContext context, JSBuiltin builtin) {
@@ -221,6 +228,19 @@ public class TemporalTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 result = String.format("%s.%s", result, decimal);
             }
             return String.format(":%s", result);
+        }
+    }
+
+    // 4.3.24
+    public abstract static class JSTemporalTimeValueOf extends JSBuiltinNode {
+
+        protected JSTemporalTimeValueOf(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object valueOf(DynamicObject thisObj) {
+            throw Errors.createTypeError("Not supported.");
         }
     }
 }
