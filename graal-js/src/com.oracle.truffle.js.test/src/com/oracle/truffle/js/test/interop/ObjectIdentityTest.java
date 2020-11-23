@@ -43,6 +43,7 @@ package com.oracle.truffle.js.test.interop;
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -55,8 +56,16 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.interop.InteropBoundFunction;
 import com.oracle.truffle.js.test.JSTest;
@@ -262,6 +271,61 @@ public class ObjectIdentityTest {
             assertFalse(interop.isIdentical(jserror, ex1, interop));
 
             testHelper.getPolyglotContext().leave();
+        }
+    }
+
+    @Test
+    public void testIdentityPreservingWrapper() {
+        InteropLibrary interop = InteropLibrary.getUncached();
+        try (TestHelper testHelper = new TestHelper()) {
+            testHelper.getPolyglotContext().enter();
+
+            JSException err = null;
+            try {
+                testHelper.runNoPolyglot("undefined.error");
+                fail("should have thrown");
+            } catch (JSException ex) {
+                err = ex;
+            }
+            // We want to explicitly test the lazy error object case.
+            assertNull(err.getErrorObject());
+
+            Object wrapper = new IdentityPreservingWrapper(err);
+            assertTrue(interop.isIdentical(err, wrapper, interop));
+            assertTrue(interop.hasIdentity(err));
+            assertTrue(interop.isIdentical(wrapper, err, interop));
+            assertTrue(interop.hasIdentity(wrapper));
+
+            testHelper.getPolyglotContext().leave();
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class IdentityPreservingWrapper implements TruffleObject {
+        final Object original;
+
+        IdentityPreservingWrapper(Object original) {
+            this.original = original;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        TriState isIdenticalOrUndefined(Object other,
+                        @CachedLibrary("this.original") InteropLibrary thisLib,
+                        @CachedLibrary(limit = "3") InteropLibrary otherLib) {
+            if (this == other) {
+                return TriState.TRUE;
+            } else if (otherLib.hasIdentity(other)) {
+                return TriState.valueOf(thisLib.isIdentical(original, other, otherLib));
+            } else {
+                return TriState.UNDEFINED;
+            }
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        int identityHashCode(@CachedLibrary("this.original") InteropLibrary thisLib) throws UnsupportedMessageException {
+            return thisLib.identityHashCode(original);
         }
     }
 }

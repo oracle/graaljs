@@ -590,8 +590,10 @@ public abstract class GraalJSException extends AbstractTruffleException {
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("otherLib") InteropLibrary otherLib) {
             Object thisObj = receiver.getErrorObject();
             if (thisObj == null) {
-                // Cannot be identical since this is a lazily allocated Error.
-                return TriState.FALSE;
+                // The error object cannot be identical since this is a lazily allocated Error.
+                // Note: `other` could still be an identity-preserving wrapper of the receiver,
+                // in which case we must not return FALSE but UNDEFINED.
+                return (other instanceof JSDynamicObject) ? TriState.FALSE : TriState.UNDEFINED;
             }
             // If the values are not JS objects, we need to delegate to InteropLibrary.
             if (thisLib.hasIdentity(thisObj) && otherLib.hasIdentity(other)) {
