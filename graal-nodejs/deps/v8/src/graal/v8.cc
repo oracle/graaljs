@@ -301,7 +301,7 @@ namespace v8 {
             Isolate* isolate, FunctionCallback callback,
             Local<Value> data, Local<Signature> signature, int length,
             ConstructorBehavior behavior, SideEffectType side_effect_type) {
-        return GraalFunctionTemplate::New(isolate, callback, data, signature, length, behavior);
+        return GraalFunctionTemplate::New(isolate, callback, data, signature, length, behavior, false);
     }
 
     Local<ObjectTemplate> FunctionTemplate::PrototypeTemplate() {
@@ -1408,7 +1408,7 @@ namespace v8 {
             int length,
             ConstructorBehavior behavior,
             SideEffectType side_effect_type) {
-        return FunctionTemplate::New(context->GetIsolate(), callback, data, Local<Signature>(), length)->GetFunction(context);
+        return GraalFunctionTemplate::New(context->GetIsolate(), callback, data, Local<Signature>(), length, behavior, true)->GetFunction(context);
     }
 
     size_t ArrayBufferView::ByteLength() {

@@ -5,17 +5,18 @@
 
 <!--introduced_in=v0.10.0-->
 
-* [About these docs](documentation.html)
+* [About this documentation](documentation.html)
 * [Usage and example](synopsis.html)
 
-<div class="line"></div>
+<hr class="line"/>
 
 * [Assertion testing](assert.html)
 * [Async hooks](async_hooks.html)
 * [Buffer](buffer.html)
-* [C++ addons](addons.html)
-* [C/C++ addons with N-API](n-api.html)
-* [Child processes](child_process.html)
+* [C++ Addons](addons.html)
+* [C/C++ Addons with N-API](n-api.html)
+* [C++ Embedder API](embedding.html)
+* [Child Processes](child_process.html)
 * [Cluster](cluster.html)
 * [Command line options](cli.html)
 * [Console](console.html)
@@ -61,6 +62,6 @@
 * [Worker threads](worker_threads.html)
 * [Zlib](zlib.html)
 
-<div class="line"></div>
+<hr class="line"/>
 
 * [Code repository and issue tracker](https://github.com/nodejs/node)

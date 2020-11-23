@@ -42,7 +42,7 @@ const {
   ReadableWorkerStdio,
   WritableWorkerStdio
 } = workerIo;
-const { deserializeError } = require('internal/error-serdes');
+const { deserializeError } = require('internal/error_serdes');
 const { fileURLToPath, isURLInstance, pathToFileURL } = require('internal/url');
 
 const {
@@ -54,6 +54,7 @@ const {
   kMaxYoungGenerationSizeMb,
   kMaxOldGenerationSizeMb,
   kCodeRangeSizeMb,
+  kStackSizeMb,
   kTotalResourceLimitCount
 } = internalBinding('worker');
 
@@ -67,7 +68,9 @@ const kOnErrorMessage = Symbol('kOnErrorMessage');
 const kParentSideStdio = Symbol('kParentSideStdio');
 
 const SHARE_ENV = SymbolFor('nodejs.worker_threads.SHARE_ENV');
-const debug = require('internal/util/debuglog').debuglog('worker');
+let debug = require('internal/util/debuglog').debuglog('worker', (fn) => {
+  debug = fn;
+});
 
 let cwdCounter;
 
@@ -148,7 +151,8 @@ class Worker extends EventEmitter {
     this[kHandle] = new WorkerImpl(url,
                                    env === process.env ? null : env,
                                    options.execArgv,
-                                   parseResourceLimits(options.resourceLimits));
+                                   parseResourceLimits(options.resourceLimits),
+                                   !!options.trackUnmanagedFds);
     if (this[kHandle].invalidExecArgv) {
       throw new ERR_WORKER_INVALID_EXEC_ARGV(this[kHandle].invalidExecArgv);
     }
@@ -189,7 +193,9 @@ class Worker extends EventEmitter {
       transferList.push(...options.transferList);
 
     this[kPublicPort] = port1;
-    this[kPublicPort].on('message', (message) => this.emit('message', message));
+    for (const event of ['message', 'messageerror']) {
+      this[kPublicPort].on(event, (message) => this.emit(event, message));
+    }
     setupPortReferencing(this[kPublicPort], this, 'message');
     this[kPort].postMessage({
       argv,
@@ -199,6 +205,9 @@ class Worker extends EventEmitter {
       cwdCounter: cwdCounter || workerIo.sharedCwdCounter,
       workerData: options.workerData,
       publicPort: port2,
+      manifestURL: getOptionValue('--experimental-policy') ?
+        require('internal/process/policy').url :
+        null,
       manifestSrc: getOptionValue('--experimental-policy') ?
         require('internal/process/policy').src :
         null,
@@ -382,6 +391,8 @@ function parseResourceLimits(obj) {
     ret[kMaxYoungGenerationSizeMb] = obj.maxYoungGenerationSizeMb;
   if (typeof obj.codeRangeSizeMb === 'number')
     ret[kCodeRangeSizeMb] = obj.codeRangeSizeMb;
+  if (typeof obj.stackSizeMb === 'number')
+    ret[kStackSizeMb] = obj.stackSizeMb;
   return ret;
 }
 
@@ -389,7 +400,8 @@ function makeResourceLimits(float64arr) {
   return {
     maxYoungGenerationSizeMb: float64arr[kMaxYoungGenerationSizeMb],
     maxOldGenerationSizeMb: float64arr[kMaxOldGenerationSizeMb],
-    codeRangeSizeMb: float64arr[kCodeRangeSizeMb]
+    codeRangeSizeMb: float64arr[kCodeRangeSizeMb],
+    stackSizeMb: float64arr[kStackSizeMb]
   };
 }
 

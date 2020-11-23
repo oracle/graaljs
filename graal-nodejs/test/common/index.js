@@ -114,8 +114,6 @@ const isOSX = process.platform === 'darwin';
 
 const isDumbTerminal = process.env.TERM === 'dumb';
 
-const rootDir = isWindows ? 'c:\\' : '/';
-
 const buildType = process.config.target_defaults ?
   process.config.target_defaults.default_configuration :
   'Release';
@@ -675,6 +673,30 @@ function skipIfDumbTerminal() {
   }
 }
 
+function gcUntil(name, condition) {
+  if (typeof name === 'function') {
+    condition = name;
+    name = undefined;
+  }
+  return new Promise((resolve, reject) => {
+    let count = 0;
+    function gcAndCheck() {
+      setImmediate(() => {
+        count++;
+        global.gc();
+        if (condition()) {
+          resolve();
+        } else if (count < 10) {
+          gcAndCheck();
+        } else {
+          reject(name === undefined ? undefined : 'Test ' + name + ' failed');
+        }
+      });
+    }
+    gcAndCheck();
+  });
+}
+
 const common = {
   allowGlobals,
   buildType,
@@ -685,6 +707,7 @@ const common = {
   expectsError,
   expectsInternalAssertion,
   expectWarning,
+  gcUntil,
   getArrayBufferViews,
   getBufferSources,
   getCallSite,
@@ -712,7 +735,6 @@ const common = {
   platformTimeout,
   printSkipMessage,
   pwdCommand,
-  rootDir,
   runWithInvalidFD,
   skip,
   skipIf32Bits,
@@ -786,8 +808,6 @@ const common = {
 
     return localhostIPv4;
   },
-
-  get localhostIPv6() { return '::1'; },
 
   // opensslCli defined lazily to reduce overhead of spawnSync
   get opensslCli() {

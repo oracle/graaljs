@@ -174,6 +174,8 @@ void WASI::New(const FunctionCallbackInfo<Value>& args) {
   const uint32_t argc = argv->Length();
   uvwasi_options_t options;
 
+  uvwasi_options_init(&options);
+
   Local<Array> stdio = args[3].As<Array>();
   CHECK_EQ(stdio->Length(), 3);
   options.in = stdio->Get(context, 0).ToLocalChecked()->
@@ -243,8 +245,8 @@ void WASI::New(const FunctionCallbackInfo<Value>& args) {
 
   if (options.preopens != nullptr) {
     for (uint32_t i = 0; i < options.preopenc; i++) {
-      free(options.preopens[i].mapped_path);
-      free(options.preopens[i].real_path);
+      free(const_cast<char*>(options.preopens[i].mapped_path));
+      free(const_cast<char*>(options.preopens[i].real_path));
     }
 
     free(options.preopens);
@@ -1678,6 +1680,7 @@ static void Initialize(Local<Object> target,
   auto wasi_wrap_string = FIXED_ONE_BYTE_STRING(env->isolate(), "WASI");
   tmpl->InstanceTemplate()->SetInternalFieldCount(WASI::kInternalFieldCount);
   tmpl->SetClassName(wasi_wrap_string);
+  tmpl->Inherit(BaseObject::GetConstructorTemplate(env));
 
   env->SetProtoMethod(tmpl, "args_get", WASI::ArgsGet);
   env->SetProtoMethod(tmpl, "args_sizes_get", WASI::ArgsSizesGet);

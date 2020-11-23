@@ -12011,6 +12011,48 @@ THREADED_TEST(VariousGetPropertiesAndThrowingCallbacks) {
   CHECK(result.IsEmpty());
 }
 
+THREADED_TEST(GetRealNamedPropertyAttributes_With_Proxy) {
+  LocalContext context;
+  HandleScope scope(context->GetIsolate());
+
+  {
+    Local<Object> proxy =
+        CompileRun(
+            "new Proxy({ p: 1 }, { getOwnPropertyDescriptor: _ => { "
+            "  throw new Error('xyz'); } });")
+            .As<Object>();
+    TryCatch try_catch(context->GetIsolate());
+    v8::Maybe<v8::PropertyAttribute> result =
+        proxy->GetRealNamedPropertyAttributes(context.local(), v8_str("p"));
+    CHECK(result.IsNothing());
+    CHECK(try_catch.HasCaught());
+    CHECK(try_catch.Exception()
+              .As<Object>()
+              ->Get(context.local(), v8_str("message"))
+              .ToLocalChecked()
+              ->StrictEquals(v8_str("xyz")));
+  }
+
+  {
+    Local<Object> proxy =
+        CompileRun(
+            "Object.create("
+            "  new Proxy({ p: 1 }, { getOwnPropertyDescriptor: _ => { "
+            "    throw new Error('abc'); } }))")
+            .As<Object>();
+    TryCatch try_catch(context->GetIsolate());
+    v8::Maybe<v8::PropertyAttribute> result =
+        proxy->GetRealNamedPropertyAttributesInPrototypeChain(context.local(),
+                                                              v8_str("p"));
+    CHECK(result.IsNothing());
+    CHECK(try_catch.HasCaught());
+    CHECK(try_catch.Exception()
+              .As<Object>()
+              ->Get(context.local(), v8_str("message"))
+              .ToLocalChecked()
+              ->StrictEquals(v8_str("abc")));
+  }
+}
 
 static void ThrowingCallbackWithTryCatch(
     const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -16350,7 +16392,18 @@ TEST(PromiseHook) {
   CHECK_EQ(v8::Promise::kPending, GetPromise("p")->State());
   CompileRun("resolve(Promise.resolve(value));\n");
   CHECK_EQ(v8::Promise::kFulfilled, GetPromise("p")->State());
-  CHECK_EQ(9, promise_hook_data->promise_hook_count);
+  CHECK_EQ(11, promise_hook_data->promise_hook_count);
+
+  promise_hook_data->Reset();
+  source =
+      "var p = Promise.resolve({\n"
+      "  then(r) {\n"
+      "    r();\n"
+      "  }\n"
+      "});";
+  CompileRun(source);
+  CHECK_EQ(GetPromise("p")->State(), v8::Promise::kFulfilled);
+  CHECK_EQ(promise_hook_data->promise_hook_count, 5);
 
   delete promise_hook_data;
   isolate->SetPromiseHook(nullptr);

@@ -94,13 +94,13 @@ function unescapeBuffer(s, decodeSpaces) {
       hexHigh = unhexTable[currentChar];
       if (!(hexHigh >= 0)) {
         out[outIndex++] = 37; // '%'
+        continue;
       } else {
         nextChar = s.charCodeAt(++index);
         hexLow = unhexTable[nextChar];
         if (!(hexLow >= 0)) {
           out[outIndex++] = 37; // '%'
-          out[outIndex++] = currentChar;
-          currentChar = nextChar;
+          index--;
         } else {
           hasHex = true;
           currentChar = hexHigh * 16 + hexLow;
@@ -140,7 +140,7 @@ const noEscape = [
   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0  // 112 - 127
 ];
 // QueryString.escape() replaces encodeURIComponent()
-// http://www.ecma-international.org/ecma-262/5.1/#sec-15.1.3.4
+// https://www.ecma-international.org/ecma-262/5.1/#sec-15.1.3.4
 function qsEscape(str) {
   if (typeof str !== 'string') {
     if (typeof str === 'object')
