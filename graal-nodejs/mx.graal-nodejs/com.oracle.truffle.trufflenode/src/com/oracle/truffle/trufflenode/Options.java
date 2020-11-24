@@ -132,6 +132,7 @@ public final class Options {
                         "harmony-import-meta",
                         "harmony-proxies",
                         "harmony-shipping",
+                        "harmony-weak-refs",
                         "lazy",
                         "log-timer-events",
                         "nolazy",
