@@ -2060,6 +2060,27 @@
     "status" : "FAIL",
     "comment" : "GR-27664"
   }, {
+    "filePath" : "language/eval-code/direct/arrow-fn-body-cntns-arguments-func-decl-arrow-func-declare-arguments-assign-incl-def-param-arrow-arguments.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "LAZY_TRANSLATION" : "FAIL"
+    },
+    "comment" : "GR-27672"
+  }, {
+    "filePath" : "language/eval-code/direct/arrow-fn-body-cntns-arguments-lex-bind-arrow-func-declare-arguments-assign-incl-def-param-arrow-arguments.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "LAZY_TRANSLATION" : "FAIL"
+    },
+    "comment" : "GR-27672"
+  }, {
+    "filePath" : "language/eval-code/direct/arrow-fn-body-cntns-arguments-var-bind-arrow-func-declare-arguments-assign-incl-def-param-arrow-arguments.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "LAZY_TRANSLATION" : "FAIL"
+    },
+    "comment" : "GR-27672"
+  }, {
     "filePath" : "language/eval-code/direct/async-gen-func-decl-fn-body-cntns-arguments-func-decl-declare-arguments-and-assign.js",
     "status" : "FAIL",
     "comment" : "GR-27665"
