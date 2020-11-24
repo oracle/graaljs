@@ -603,7 +603,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                     if (snippetRun.getException() == null) {
                         TypeDescriptor numericTypes = TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.BOOLEAN, TypeDescriptor.NULL);
                         for (Value actualParameter : snippetRun.getParameters()) {
-                            allNumeric &= numericTypes.isAssignable(TypeDescriptor.forValue(actualParameter));
+                            allNumeric &= numericTypes.isAssignable(TypeDescriptor.forValue(actualParameter)) || actualParameter.isInstant();
                         }
                         if (allNumeric) {
                             TypeDescriptor resultType = TypeDescriptor.forValue(snippetRun.getResult());
