@@ -40,12 +40,15 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.interop.JSMetaType;
 import com.oracle.truffle.js.runtime.objects.JSClassObject;
 
+@ExportLibrary(InteropLibrary.class)
 public final class JSAdapterObject extends JSClassObject {
     private final DynamicObject adaptee;
     private final DynamicObject overrides;
