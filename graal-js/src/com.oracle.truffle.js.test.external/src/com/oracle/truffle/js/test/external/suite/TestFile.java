@@ -376,7 +376,8 @@ public final class TestFile {
         AMD64(cfg -> System.getProperty("os.arch").equals("amd64") || System.getProperty("os.arch").equals("x86_64")),
         AARCH64(cfg -> System.getProperty("os.arch").equals("aarch64")),
         WINDOWS(cfg -> System.getProperty("os.name").startsWith("Windows")),
-        JDK15(cfg -> TestFileUtil.JAVA_SPEC >= 15);
+        JDK15(cfg -> TestFileUtil.JAVA_SPEC >= 15),
+        LAZY_TRANSLATION(cfg -> "true".equals(System.getProperty("polyglot.js.lazy-translation")));
 
         private final Predicate<SuiteConfig> condition;
 
