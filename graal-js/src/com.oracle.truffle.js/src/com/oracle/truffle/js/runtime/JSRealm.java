@@ -1409,10 +1409,12 @@ public class JSRealm {
     private void putGraalObject() {
         DynamicObject graalObject = JSOrdinary.createInit(this);
         int flags = JSAttributes.notConfigurableEnumerableNotWritable();
+        int esVersion = getContext().getContextOptions().getEcmaScriptVersion();
+        esVersion = (esVersion > JSConfig.ECMAScript6 ? esVersion + JSConfig.ECMAScriptNumberYearDelta : esVersion);
         JSObjectUtil.putDataProperty(context, graalObject, "language", JavaScriptLanguage.NAME, flags);
         assert GRAALVM_VERSION != null;
         JSObjectUtil.putDataProperty(context, graalObject, "versionGraalVM", GRAALVM_VERSION, flags);
-        JSObjectUtil.putDataProperty(context, graalObject, "versionJS", GRAALVM_VERSION, flags);
+        JSObjectUtil.putDataProperty(context, graalObject, "versionECMAScript", esVersion, flags);
         JSObjectUtil.putDataProperty(context, graalObject, "isGraalRuntime", JSFunction.create(this, isGraalRuntimeFunction(context)), flags);
         putGlobalProperty("Graal", graalObject);
     }
