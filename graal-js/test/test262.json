@@ -2433,12 +2433,6 @@
     "status" : "FAIL",
     "comment" : "GR-27665"
   }, {
-    "filePath" : "language/expressions/arrow-function/scope-param-rest-elem-var-close.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/arrow-function/scope-param-rest-elem-var-open.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/expressions/assignment/assignment-operator-calls-putvalue-lref--rval-.js",
     "status" : "FAIL",
     "comment" : "new failures 2020-11-23"
