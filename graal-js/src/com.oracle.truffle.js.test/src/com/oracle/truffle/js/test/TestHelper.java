@@ -158,6 +158,7 @@ public class TestHelper implements AutoCloseable {
         return fnCheckUndefined.execute(result).asBoolean();
     }
 
+    @SuppressWarnings("deprecation")
     public void runExpectSyntaxError(String sourceCode) {
         enterContext();
         try {
