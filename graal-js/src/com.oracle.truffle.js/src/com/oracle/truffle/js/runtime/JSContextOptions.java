@@ -481,6 +481,12 @@ public final class JSContextOptions {
     public static final OptionKey<Integer> FUNCTION_CACHE_LIMIT = new OptionKey<>(JSConfig.FunctionCacheLimit);
     @CompilationFinal private int functionCacheLimit;
 
+    public static final String TOP_LEVEL_AWAIT_NAME = JS_OPTION_PREFIX + "top-level-await";
+    @Option(name = TOP_LEVEL_AWAIT_NAME, category = OptionCategory.EXPERT, help = "Enable top-level-await.")
+    // defaulting to ecmascript-version>=2022
+    protected static final OptionKey<Boolean> TOP_LEVEL_AWAIT = new OptionKey<>(false);
+    @CompilationFinal private boolean topLevelAwait;
+
     JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
         this.optionValues = optionValues;
@@ -515,7 +521,7 @@ public final class JSContextOptions {
             regexpStaticResultCyclicAssumption.invalidate(msg);
             regexpStaticResultCurrentAssumption = regexpStaticResultCyclicAssumption.getAssumption();
         });
-        this.regexpMatchIndices = REGEXP_MATCH_INDICES.hasBeenSet(optionValues) ? readBooleanOption(REGEXP_MATCH_INDICES) : getEcmaScriptVersion() >= JSConfig.ECMAScript2021;
+        this.regexpMatchIndices = REGEXP_MATCH_INDICES.hasBeenSet(optionValues) ? readBooleanOption(REGEXP_MATCH_INDICES) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
         this.arraySortInherited = patchBooleanOption(ARRAY_SORT_INHERITED, ARRAY_SORT_INHERITED_NAME, arraySortInherited, msg -> {
             arraySortInheritedCyclicAssumption.invalidate(msg);
             arraySortInheritedCurrentAssumption = arraySortInheritedCyclicAssumption.getAssumption();
@@ -564,6 +570,7 @@ public final class JSContextOptions {
         this.maxApplyArgumentLength = readIntegerOption(MAX_APPLY_ARGUMENT_LENGTH);
         this.maxPrototypeChainLength = readIntegerOption(MAX_PROTOTYPE_CHAIN_LENGTH);
         this.asyncStackTraces = readBooleanOption(ASYNC_STACK_TRACES);
+        this.topLevelAwait = TOP_LEVEL_AWAIT.hasBeenSet(optionValues) ? readBooleanOption(TOP_LEVEL_AWAIT) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
 
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
@@ -712,6 +719,10 @@ public final class JSContextOptions {
 
     public boolean isAwaitOptimization() {
         return awaitOptimization;
+    }
+
+    public boolean isTopLevelAwait() {
+        return topLevelAwait;
     }
 
     public boolean isDisableEval() {
@@ -961,6 +972,7 @@ public final class JSContextOptions {
         hash = 53 * hash + this.maxPrototypeChainLength;
         hash = 53 * hash + this.propertyCacheLimit;
         hash = 53 * hash + this.functionCacheLimit;
+        hash = 53 * hash + (this.topLevelAwait ? 1 : 0);
         return hash;
     }
 
@@ -1103,6 +1115,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.functionCacheLimit != other.functionCacheLimit) {
+            return false;
+        }
+        if (this.topLevelAwait != other.topLevelAwait) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);
