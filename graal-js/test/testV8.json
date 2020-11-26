@@ -790,10 +790,6 @@
     "status" : "SKIP",
     "comment" : "Unstable on native-image / when compiled (GR-23663)"
   }, {
-    "filePath" : "mjsunit/harmony/weakrefs/stress-finalizationregistry-dirty-enqueue.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
-  }, {
     "filePath" : "mjsunit/harmony/weakrefs/two-weakrefs.js",
     "status" : "SKIP",
     "comment" : "Unstable on native-image / when compiled (GR-23663)"
