@@ -57,7 +57,7 @@ describe('Other', function () {
             var point = new Point();
             // just make sure that it does not throw an error
             util.inspect(Point);
-            util.inspect(point);
+            assert.match(util.inspect(point), /Point/);
         });
     }
     it('should not regress in ExecuteNativeFunctionNode', function () {
