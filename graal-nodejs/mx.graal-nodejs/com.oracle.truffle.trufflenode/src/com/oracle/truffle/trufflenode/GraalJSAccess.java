@@ -932,11 +932,22 @@ public final class GraalJSAccess {
 
     public String objectGetConstructorName(Object object) {
         String name = "Object";
-        if (object instanceof DynamicObject) {
+        if (JSDynamicObject.isJSDynamicObject(object)) {
             DynamicObject dynamicObject = (DynamicObject) object;
             Object constructor = JSObject.get(dynamicObject, JSObject.CONSTRUCTOR);
             if (JSFunction.isJSFunction(constructor)) {
                 name = JSFunction.getName((DynamicObject) constructor);
+            }
+        } else {
+            InteropLibrary interop = InteropLibrary.getUncached(object);
+            if (interop.hasMetaObject(object)) {
+                try {
+                    Object metaObject = interop.getMetaObject(object);
+                    Object interopName = InteropLibrary.getUncached(metaObject).getMetaSimpleName(metaObject);
+                    name = InteropLibrary.getUncached(interopName).asString(interopName);
+                } catch (UnsupportedMessageException ex) {
+                    throw Errors.shouldNotReachHere(ex);
+                }
             }
         }
         return name;
