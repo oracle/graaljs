@@ -48,6 +48,7 @@
 
 #include "graal_module-inl.h"
 #include "graal_string-inl.h"
+#include "graal_unbound_script-inl.h"
 
 GraalHandleContent* GraalModule::CopyImpl(jobject java_object_copy) {
     return new GraalModule(Isolate(), java_object_copy);

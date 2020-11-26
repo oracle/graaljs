@@ -43,12 +43,13 @@
 #define GRAAL_SCRIPT_OR_MODULE_H_
 
 #include "graal_handle_content.h"
+#include "graal_isolate.h"
 
 class GraalIsolate;
 
 class GraalScriptOrModule : public GraalHandleContent {
 public:
-    GraalScriptOrModule(GraalIsolate* isolate, jobject java_object);
+    inline GraalScriptOrModule(GraalIsolate* isolate, jobject java_object);
 
     v8::Local<v8::Value> GetResourceName();
     v8::Local<v8::PrimitiveArray> GetHostDefinedOptions();

@@ -46,7 +46,7 @@
 
 class GraalFunctionTemplate : public GraalTemplate {
 public:
-    GraalFunctionTemplate(GraalIsolate* isolate, jobject java_template, int id);
+    inline GraalFunctionTemplate(GraalIsolate* isolate, jobject java_template, int id);
     static v8::Local<v8::FunctionTemplate> New(
             v8::Isolate* isolate, v8::FunctionCallback callback,
             v8::Local<v8::Value> data,

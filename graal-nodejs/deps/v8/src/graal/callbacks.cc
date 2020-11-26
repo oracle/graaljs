@@ -71,12 +71,14 @@
 #include <string.h>
 #include <array>
 
+#include "graal_context-inl.h"
 #include "graal_function_callback_info-inl.h"
 #include "graal_missing_primitive-inl.h"
 #include "graal_module-inl.h"
 #include "graal_promise-inl.h"
 #include "graal_property_callback_info-inl.h"
 #include "graal_string-inl.h"
+#include "graal_script_or_module-inl.h"
 
 #define CALLBACK(name, signature, pointer) {const_cast<char*>(name), const_cast<char*>(signature), reinterpret_cast<void*>(pointer)}
 

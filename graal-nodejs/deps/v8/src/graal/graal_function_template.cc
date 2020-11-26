@@ -46,10 +46,9 @@
 #include "graal_object_template.h"
 #include "graal_string.h"
 
+#include "graal_function_template-inl.h"
 #include "graal_function-inl.h"
-
-GraalFunctionTemplate::GraalFunctionTemplate(GraalIsolate* isolate, jobject java_template, int id) : GraalTemplate(isolate, java_template), id_(id) {
-}
+#include "graal_object_template-inl.h"
 
 GraalHandleContent* GraalFunctionTemplate::CopyImpl(jobject java_object_copy) {
     return new GraalFunctionTemplate(Isolate(), java_object_copy, id_);

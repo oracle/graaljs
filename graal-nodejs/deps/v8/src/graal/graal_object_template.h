@@ -47,7 +47,7 @@
 class GraalObjectTemplate : public GraalTemplate {
 public:
     static v8::Local<v8::ObjectTemplate> New(v8::Isolate* isolate, v8::Local<v8::FunctionTemplate> constructor);
-    GraalObjectTemplate(GraalIsolate* isolate, jobject java_template);
+    inline GraalObjectTemplate(GraalIsolate* isolate, jobject java_template);
     v8::Local<v8::Object> NewInstance(v8::Local<v8::Context> context);
     void SetInternalFieldCount(int);
     void SetAccessor(

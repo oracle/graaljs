@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,26 +39,14 @@
  * SOFTWARE.
  */
 
-#include "graal_template.h"
-#include "graal_function_template.h"
-#include "graal_isolate.h"
-#include "graal_value.h"
+#ifndef GRAAL_SCRIPT_OR_MODULE_INL_H_
+#define GRAAL_SCRIPT_OR_MODULE_INL_H_
 
-void GraalTemplate::Set(v8::Local<v8::Value> key, v8::Local<v8::Data> value, v8::PropertyAttribute attributes) {
-    jobject java_key = reinterpret_cast<GraalValue*> (*key)->GetJavaObject();
-    jobject java_value = reinterpret_cast<GraalValue*> (*value)->GetJavaObject();
-    jint java_attributes = static_cast<jint> (attributes);
-    JNI_CALL_VOID(Isolate(), GraalAccessMethod::template_set, GetJavaObject(), java_key, java_value, java_attributes);
+#include "graal_script_or_module.h"
+
+#include "graal_handle_content-inl.h"
+
+inline GraalScriptOrModule::GraalScriptOrModule(GraalIsolate* isolate, jobject java_module) : GraalHandleContent(isolate, java_module) {
 }
 
-void GraalTemplate::SetAccessorProperty(
-        v8::Local<v8::Name> name,
-        v8::Local<v8::FunctionTemplate> getter,
-        v8::Local<v8::FunctionTemplate> setter,
-        v8::PropertyAttribute attributes) {
-    jobject java_name = reinterpret_cast<GraalValue*> (*name)->GetJavaObject();
-    jobject java_getter = getter.IsEmpty() ? nullptr : reinterpret_cast<GraalFunctionTemplate*> (*getter)->GetJavaObject();
-    jobject java_setter = setter.IsEmpty() ? nullptr : reinterpret_cast<GraalFunctionTemplate*> (*setter)->GetJavaObject();
-    jint java_attributes = static_cast<jint> (attributes);
-    JNI_CALL_VOID(Isolate(), GraalAccessMethod::template_set_accessor_property, GetJavaObject(), java_name, java_getter, java_setter, java_attributes);
-}
+#endif /* GRAAL_SCRIPT_OR_MODULE_INL_H_ */

@@ -49,7 +49,7 @@
 
 class GraalContext : public GraalHandleContent {
 public:
-    GraalContext(GraalIsolate* isolate, jobject java_context, void* cached_context_embedder_data = nullptr);
+    inline GraalContext(GraalIsolate* isolate, jobject java_context, void* cached_context_embedder_data = nullptr);
     v8::Local<v8::Object> Global();
     void SetAlignedPointerInEmbedderData(int index, void* value);
     void* SlowGetAlignedPointerFromEmbedderData(int index);

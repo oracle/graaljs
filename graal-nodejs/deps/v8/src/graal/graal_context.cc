@@ -42,15 +42,11 @@
 #include "graal_context.h"
 #include "graal_object.h"
 
+#include "graal_context-inl.h"
 #include "graal_object-inl.h"
 
 // keep in sync with NODE_CONTEXT_EMBEDDER_DATA_INDEX
 const int kNodeContextEmbedderDataIndex = 32;
-
-GraalContext::GraalContext(GraalIsolate* isolate, jobject java_context, void* cached_context_embedder_data) :
-GraalHandleContent(isolate, java_context), cached_context_embedder_data_(cached_context_embedder_data) {
-    UseDefaultSecurityToken();
-}
 
 GraalHandleContent* GraalContext::CopyImpl(jobject java_object_copy) {
     return new GraalContext(Isolate(), java_object_copy, cached_context_embedder_data_);

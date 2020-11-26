@@ -39,14 +39,15 @@
  * SOFTWARE.
  */
 
+#include "graal_script.h"
 #include "graal_isolate.h"
 #include "graal_primitive_array.h"
-#include "graal_script.h"
 #include "graal_string.h"
 #include "graal_unbound_script.h"
 #include "graal_value.h"
 
-#include "graal_handle_content-inl.h"
+#include "graal_script-inl.h"
+#include "graal_unbound_script-inl.h"
 
 v8::Local<v8::Script> GraalScript::Compile(v8::Local<v8::String> source_code, v8::ScriptOrigin* origin) {
     v8::Local<v8::String> file_name = origin == nullptr ? v8::Local<v8::String>() : origin->ResourceName().As<v8::String>();
@@ -64,9 +65,6 @@ v8::Local<v8::Script> GraalScript::Compile(v8::Local<v8::String> source_code, v8
         GraalScript* graal_script = new GraalScript(graal_isolate, java_script);
         return reinterpret_cast<v8::Script*> (graal_script);
     }
-}
-
-GraalScript::GraalScript(GraalIsolate* isolate, jobject java_script) : GraalHandleContent(isolate, java_script) {
 }
 
 GraalHandleContent* GraalScript::CopyImpl(jobject java_object_copy) {

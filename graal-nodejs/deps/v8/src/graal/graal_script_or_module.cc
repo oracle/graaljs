@@ -39,16 +39,14 @@
  * SOFTWARE.
  */
 
+#include "graal_script_or_module.h"
 #include "graal_context.h"
 #include "graal_isolate.h"
 #include "graal_primitive_array.h"
-#include "graal_script_or_module.h"
 #include "graal_value.h"
 
+#include "graal_script_or_module-inl.h"
 #include "graal_primitive_array-inl.h"
-
-GraalScriptOrModule::GraalScriptOrModule(GraalIsolate* isolate, jobject java_module) : GraalHandleContent(isolate, java_module) {
-}
 
 GraalHandleContent* GraalScriptOrModule::CopyImpl(jobject java_object_copy) {
     return new GraalScriptOrModule(Isolate(), java_object_copy);

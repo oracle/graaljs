@@ -49,6 +49,7 @@
 
 #include "graal_object-inl.h"
 #include "graal_array-inl.h"
+#include "graal_context-inl.h"
 #include "graal_string-inl.h"
 
 #include <string>
