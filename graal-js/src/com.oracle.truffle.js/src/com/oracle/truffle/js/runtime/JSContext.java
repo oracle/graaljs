@@ -1659,4 +1659,8 @@ public class JSContext {
             super.insert(node);
         }
     }
+
+    public boolean isOptionTopLevelAwait() {
+        return getContextOptions().isTopLevelAwait();
+    }
 }

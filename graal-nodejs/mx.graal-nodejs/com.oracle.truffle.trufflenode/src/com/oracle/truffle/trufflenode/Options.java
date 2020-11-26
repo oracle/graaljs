@@ -132,6 +132,7 @@ public final class Options {
                         "harmony-import-meta",
                         "harmony-proxies",
                         "harmony-shipping",
+                        "harmony-weak-refs",
                         "lazy",
                         "log-timer-events",
                         "nolazy",
@@ -192,10 +193,6 @@ public final class Options {
                 // Convert --harmony-sharedarraybuffer of V8 to --js.shared-array-buffer of Graal.js
                 if ("harmony-sharedarraybuffer".equals(normalizedKey)) {
                     polyglotOptions.put("js.shared-array-buffer", "true");
-                    continue;
-                }
-                if ("harmony-weak-refs".equals(normalizedKey)) {
-                    polyglotOptions.put("js.ecmascript-version", "2021");
                     continue;
                 }
                 // Convert -h to --help

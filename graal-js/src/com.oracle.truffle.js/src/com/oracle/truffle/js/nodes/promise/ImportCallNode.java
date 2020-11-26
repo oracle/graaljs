@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
-import static com.oracle.truffle.js.runtime.JSConfig.ECMAScript2021;
-
 import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
@@ -184,7 +182,7 @@ public class ImportCallNode extends JavaScriptNode {
      * Returns a promise job that performs both HostImportModuleDynamically and FinishDynamicImport.
      */
     public DynamicObject createImportModuleDynamicallyJob(ScriptOrModule referencingScriptOrModule, String specifier, PromiseCapabilityRecord promiseCapability) {
-        if (context.getEcmaScriptVersion() >= ECMAScript2021) {
+        if (context.isOptionTopLevelAwait()) {
             Triple<ScriptOrModule, String, PromiseCapabilityRecord> request = new Triple<>(referencingScriptOrModule, specifier, promiseCapability);
             PromiseCapabilityRecord startModuleLoadCapability = newPromiseCapability();
             PromiseReactionRecord startModuleLoad = PromiseReactionRecord.create(startModuleLoadCapability, createImportModuleDynamicallyHandler(), true);
@@ -285,7 +283,7 @@ public class ImportCallNode extends JavaScriptNode {
             }
         }
 
-        JavaScriptRootNode root = context.getEcmaScriptVersion() >= ECMAScript2021 ? new TopLevelAwaitImportModuleDynamicallyRootNode() : new ImportModuleDynamicallyRootNode();
+        JavaScriptRootNode root = context.isOptionTopLevelAwait() ? new TopLevelAwaitImportModuleDynamicallyRootNode() : new ImportModuleDynamicallyRootNode();
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(root);
         return JSFunctionData.createCallOnly(context, callTarget, 0, "");
     }

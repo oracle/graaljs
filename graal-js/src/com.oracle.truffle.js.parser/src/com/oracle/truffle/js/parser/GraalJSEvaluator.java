@@ -42,7 +42,6 @@ package com.oracle.truffle.js.parser;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_MIME_TYPE;
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
-import static com.oracle.truffle.js.runtime.JSConfig.ECMAScript2021;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
@@ -283,7 +282,7 @@ public final class GraalJSEvaluator implements JSParser {
                 JSModuleRecord moduleRecord = realm.getModuleLoader().loadModule(source);
                 moduleInstantiation(realm, moduleRecord);
                 Object promise = moduleEvaluation(realm, moduleRecord);
-                if (context.getEcmaScriptVersion() >= ECMAScript2021 && JSPromise.isJSPromise(promise)) {
+                if (context.isOptionTopLevelAwait() && JSPromise.isJSPromise(promise)) {
                     DynamicObject onRejected = createTopLevelAwaitReject(context);
                     DynamicObject onAccepted = createTopLevelAwaitResolve(context);
                     performPromiseThenNode.execute((DynamicObject) promise, onAccepted, onRejected, null);
@@ -597,9 +596,8 @@ public final class GraalJSEvaluator implements JSParser {
     public Object moduleEvaluation(JSRealm realm, JSModuleRecord moduleRecord) {
         // Evaluate ( ) Concrete Method
         JSModuleRecord module = moduleRecord;
-        int ecmaScriptVersion = realm.getContext().getEcmaScriptVersion();
         Deque<JSModuleRecord> stack = new ArrayDeque<>(4);
-        if (ecmaScriptVersion >= ECMAScript2021) {
+        if (realm.getContext().isOptionTopLevelAwait()) {
             assert module.getStatus() == Status.Linked || module.getStatus() == Status.Evaluated;
             if (module.getStatus() == Status.Evaluated) {
                 module = getAsyncCycleRoot(module);

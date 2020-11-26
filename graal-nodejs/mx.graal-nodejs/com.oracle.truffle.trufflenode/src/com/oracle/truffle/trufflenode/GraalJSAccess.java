@@ -3188,7 +3188,14 @@ public final class GraalJSAccess {
         if (moduleRecord.isEvaluated() && moduleRecord.getEvaluationError() == null) {
             return Undefined.instance;
         }
-        return jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord);
+        jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord);
+
+        Throwable evaluationError = moduleRecord.getEvaluationError();
+        if (evaluationError == null) {
+            return moduleRecord.getExecutionResult();
+        } else {
+            throw JSRuntime.rethrow(evaluationError);
+        }
     }
 
     public int moduleGetStatus(Object module) {

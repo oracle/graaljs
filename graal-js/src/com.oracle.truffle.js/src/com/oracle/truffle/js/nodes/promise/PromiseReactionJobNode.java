@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
-import static com.oracle.truffle.js.runtime.JSConfig.ECMAScript2021;
-
 import java.util.List;
 
 import com.oracle.truffle.api.CallTarget;
@@ -154,7 +152,7 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
                     }
                     fulfill = true;
                 } catch (Throwable ex) {
-                    if (promiseCapability == null && context.getEcmaScriptVersion() >= ECMAScript2021) {
+                    if (promiseCapability == null && context.isOptionTopLevelAwait()) {
                         // top-level-await evaluation: throw exception when error is generated but
                         // no capability is found in chain
                         throw ex;

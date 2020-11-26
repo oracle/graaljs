@@ -232,22 +232,13 @@ public class Test262Runnable extends TestRunnable {
                     "arbitrary-module-namespace-names",
                     "tail-call-optimization",
     }));
-    private static final Set<String> ES2021_FEATURES = new HashSet<>(Arrays.asList(new String[]{
-                    "AggregateError",
-                    "FinalizationRegistry",
-                    "FinalizationRegistry.prototype.cleanupSome",
-                    "Promise.any",
-                    "String.prototype.replaceAll",
-                    "WeakRef",
+    private static final Set<String> ES2022_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "class-fields-private",
                     "class-fields-public",
                     "class-methods-private",
                     "class-static-fields-private",
                     "class-static-fields-public",
                     "class-static-methods-private",
-                    "cleanupSome",
-                    "host-gc-required",
-                    "logical-assignment-operators",
                     "regexp-match-indices",
                     "top-level-await",
     }));
@@ -294,8 +285,8 @@ public class Test262Runnable extends TestRunnable {
         for (String feature : features) {
             if (SUPPORTED_FEATURES.contains(feature)) {
                 assert !UNSUPPORTED_FEATURES.contains(feature) : feature;
-                if (ES2021_FEATURES.contains(feature)) {
-                    featureVersion = JSConfig.ECMAScript2021;
+                if (ES2022_FEATURES.contains(feature)) {
+                    featureVersion = JSConfig.ECMAScript2022;
                 }
             } else {
                 assert UNSUPPORTED_FEATURES.contains(feature) : feature;
