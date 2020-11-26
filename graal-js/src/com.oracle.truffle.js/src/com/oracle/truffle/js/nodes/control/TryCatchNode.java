@@ -267,6 +267,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
         private final ConditionProfile isJSError = ConditionProfile.createBinaryProfile();
         private final ConditionProfile isJSException = ConditionProfile.createBinaryProfile();
         private final BranchProfile truffleExceptionBranch = BranchProfile.create();
+        private final BranchProfile legacyTruffleExceptionBranch = BranchProfile.create();
         private final JSContext context;
 
         private GetErrorObjectNode(JSContext context) {
@@ -294,7 +295,18 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
             } else {
                 truffleExceptionBranch.enter();
                 assert !(ex instanceof GraalJSException) && (ex instanceof AbstractTruffleException || ex instanceof com.oracle.truffle.api.TruffleException) : ex;
-                return ex;
+                if (ex instanceof AbstractTruffleException) {
+                    return ex;
+                } else {
+                    legacyTruffleExceptionBranch.enter();
+                    Object exceptionObject = ((com.oracle.truffle.api.TruffleException) ex).getExceptionObject();
+                    if (exceptionObject != null) {
+                        return exceptionObject;
+                    }
+                    // This should not happen in practice but if it does, we do not want to expose
+                    // the exception itself, so we convert it to a best-effort JS Error.
+                    return Errors.createErrorFromException(ex);
+                }
             }
         }
 
