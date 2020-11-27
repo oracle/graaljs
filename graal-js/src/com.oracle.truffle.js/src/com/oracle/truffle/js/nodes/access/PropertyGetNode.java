@@ -915,8 +915,9 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     public static final class ForeignPropertyGetNode extends LinkedPropertyGetNode {
 
         @Child private ImportValueNode importValueNode;
+        @Child private JSToObjectNode toObjectNode;
         @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
-        @Child private PropertyGetNode getFromPrototypeNode;
+        @Child private PropertyGetNode getFromJSObjectNode;
         private final boolean isLength;
         private final boolean isMethod;
         private final boolean isGlobal;
@@ -931,6 +932,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             super(new ForeignLanguageCheckNode());
             this.context = context;
             this.importValueNode = ImportValueNode.create();
+            this.toObjectNode = JSToObjectNode.createToObject(context);
             this.isLength = key.equals(JSAbstractArray.LENGTH);
             this.isMethod = isMethod;
             this.isGlobal = isGlobal;
@@ -942,6 +944,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             if (interop.isNull(thisObj)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorCannotGetProperty(context, key, thisObj, isMethod, this);
+            }
+            Object object = toObjectNode.execute(thisObj);
+            if (thisObj != object) {
+                // thisObj is foreign boxed primitive => object is JS object
+                assert JSObject.isJSObject(object);
+                return getFromJSObject(object, key);
             }
             if (!(key instanceof String)) {
                 return Undefined.instance;
@@ -978,16 +986,24 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         private Object maybeGetFromPrototype(Object thisObj, Object key) {
             if (context.getContextOptions().hasForeignObjectPrototype()) {
-                if (getFromPrototypeNode == null || foreignObjectPrototypeNode == null) {
+                if (foreignObjectPrototypeNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    getFromPrototypeNode = insert(PropertyGetNode.create(key, context));
                     foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
                 }
-                assert key.equals(getFromPrototypeNode.getKey());
                 DynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(thisObj);
-                return getFromPrototypeNode.getValue(prototype);
+                return getFromJSObject(prototype, key);
             }
             return Undefined.instance;
+        }
+
+        private Object getFromJSObject(Object object, Object key) {
+            assert JSObject.isJSObject(object);
+            if (getFromJSObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getFromJSObjectNode = insert(PropertyGetNode.create(key, context));
+            }
+            assert key.equals(getFromJSObjectNode.getKey());
+            return getFromJSObjectNode.getValue(object);
         }
 
         // in nashorn-compat mode, `javaObj.xyz` can mean `javaObj.getXyz()` or `javaObj.isXyz()`.
