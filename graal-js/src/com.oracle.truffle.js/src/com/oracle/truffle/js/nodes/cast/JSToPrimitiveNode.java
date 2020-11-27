@@ -71,6 +71,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -224,6 +225,8 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
                 return JSRuntime.doubleValueVirtual((Number) javaObject);
             } else if (JSGuards.isJavaArray(javaObject)) {
                 return JSRuntime.javaArrayToString(javaObject);
+            } else if (interop.isInstant(object)) {
+                return JSDate.getDateValueFromInstant(object, interop);
             } else {
                 return hostToPrimitive(object, interop, javaObject);
             }
