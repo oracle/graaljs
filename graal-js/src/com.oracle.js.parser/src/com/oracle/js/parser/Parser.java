@@ -46,6 +46,7 @@ import static com.oracle.js.parser.TokenType.AS;
 import static com.oracle.js.parser.TokenType.ASSIGN;
 import static com.oracle.js.parser.TokenType.ASSIGN_INIT;
 import static com.oracle.js.parser.TokenType.ASYNC;
+import static com.oracle.js.parser.TokenType.AT;
 import static com.oracle.js.parser.TokenType.AWAIT;
 import static com.oracle.js.parser.TokenType.CASE;
 import static com.oracle.js.parser.TokenType.CATCH;
@@ -1413,6 +1414,7 @@ public class Parser extends AbstractParser {
                 }
                 break;
             case CLASS:
+            case AT:
                 if (ES6_CLASS && isES6()) {
                     if (singleStatement) {
                         throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "class declaration"), token);
@@ -1485,14 +1487,19 @@ public class Parser extends AbstractParser {
      *
      * <pre>
      * ClassDeclaration[Yield, Await, Default] :
-     *   class BindingIdentifier[?Yield, ?Await] ClassTail[?Yield, ?Await]
-     *   [+Default] class ClassTail[?Yield, ?Await]
+     *   DecoratorList[?Yield, ?Await]opt class BindingIdentifier[?Yield, ?Await] ClassTail[?Yield, ?Await]
+     *   [+Default] DecoratorList[?Yield, ?Await]opt class ClassTail[?Yield, ?Await]
      * </pre>
      *
      * @return Class expression node.
      */
     private ClassNode classDeclaration(boolean yield, boolean await, boolean defaultExport) {
-        assert type == CLASS;
+        assert type == CLASS || type == AT;
+        List<Expression> classDecorators = null;
+        if (type == AT) {
+            classDecorators = decoratorList(yield, await);
+        }
+
         int classLineNumber = line;
         long classToken = token;
         next();
@@ -1523,13 +1530,18 @@ public class Parser extends AbstractParser {
      *
      * <pre>
      * ClassExpression[Yield, Await] :
-     *   class BindingIdentifier[?Yield, ?Await]opt ClassTail[?Yield, ?Await]
+     *   DecoratorList[?Yield, ?Await]opt class BindingIdentifier[?Yield, ?Await]opt ClassTail[?Yield, ?Await]
      * </pre>
      *
      * @return Class expression node.
      */
     private ClassNode classExpression(boolean yield, boolean await) {
-        assert type == CLASS;
+        assert type == CLASS || type == AT;
+        List<Expression> classDecorators = null;
+        if (type == AT) {
+            classDecorators = decoratorList(yield, await);
+        }
+
         int classLineNumber = line;
         long classToken = token;
         next();
@@ -1561,8 +1573,10 @@ public class Parser extends AbstractParser {
      *      ClassElement[?Yield]
      *      ClassElementList[?Yield] ClassElement[?Yield]
      * ClassElement[Yield] :
-     *      MethodDefinition[?Yield]
-     *      static MethodDefinition[?Yield]
+     *      DecoratorList[?Yield, ?Await]opt MethodDefinition[?Yield]
+     *      DecoratorList[?Yield, ?Await]opt static MethodDefinition[?Yield]
+     *      DecoratorList[?Yield, ?Await]opt FieldDefinition[?Yield]
+     *      DecoratorList[?Yield, ?Await]opt static FieldDefinition[?Yield]
      *      ;
      * </pre>
      */
@@ -1607,6 +1621,11 @@ public class Parser extends AbstractParser {
                 if (type == RBRACE) {
                     break;
                 }
+                List<Expression> classElementDecorators = null;
+                if(type == AT) {
+                    classElementDecorators = decoratorList(yield, await);
+                }
+
                 boolean isStatic = false;
                 if (type == STATIC) {
                     TokenType nextToken = lookahead();
@@ -4552,6 +4571,7 @@ public class Parser extends AbstractParser {
                 break;
 
             case CLASS:
+            case AT:
                 if (ES6_CLASS && isES6()) {
                     lhs = classExpression(yield, await);
                     break;
@@ -6670,6 +6690,7 @@ public class Parser extends AbstractParser {
                         hoistableDeclaration = true;
                         break;
                     case CLASS:
+                    case AT:
                         assignmentExpression = classDeclaration(false, isES2021() && ES2021_TOP_LEVEL_AWAIT, true);
                         ident = ((ClassNode) assignmentExpression).getIdent();
                         break;
@@ -6722,7 +6743,8 @@ public class Parser extends AbstractParser {
                 }
                 break;
             }
-            case CLASS: {
+            case CLASS:
+            case AT:{
                 ClassNode classDeclaration = classDeclaration(false, isES2021() && ES2021_TOP_LEVEL_AWAIT, false);
                 module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, classDeclaration.getIdent(), classDeclaration, false));
                 break;
@@ -6801,6 +6823,56 @@ public class Parser extends AbstractParser {
 
     private static boolean isReservedWord(TokenType type) {
         return type.getKind() == TokenKind.KEYWORD || type.getKind() == TokenKind.FUTURE || type.getKind() == TokenKind.FUTURESTRICT;
+    }
+
+    /**
+     * Parse a decorator.
+     *
+     * <pre>
+     * DecoratorList[Yield, Await] :
+     *      DecoratorList[?Yield, Await]opt Decorator[?Yield, ?Await]
+     *
+     * Decorator[Yield, Await] :
+     *      {@literal @} DecoratorMemeberExpression[?Yield, ?Await]
+     *      {@literal @} DecoratorCallExpression[?Yield, ?Await]
+     *
+     * DecoratorMemberExpression[Yield, Await] :
+     *      IdentifierReference[?Yield, ?Await]
+     *      DecoratorMemberExpression[?Yield, ?Await] . IdentifierName
+     *      ( Expression[+In, ?Yield, ?Await] )
+     *
+     * DecoratorCallExpression[Yield, Await] :
+     *      DecoratorMemberExpression[?Yield, ?Await] Arguments[?Yield, ?Await]
+     * </pre>
+     */
+    public List<Expression> decoratorList(boolean yield, boolean await) {
+        List<Expression> decoratorList = new ArrayList<>();
+        while (type == AT) {
+            next();
+            Expression decoratorExpression;
+
+            if (type == LPAREN) {
+                next();
+                decoratorExpression = expression(false, yield, await);
+                expect(RPAREN);
+            } else {
+                decoratorExpression = identifierReference(yield, await);
+            }
+            long callToken = token;
+            while (type == PERIOD) {
+                next();
+                final IdentNode property = getIdentifierName();
+                decoratorExpression = new AccessNode(callToken, finish, decoratorExpression, property.getName());
+            }
+            if (type == LPAREN) {
+                final int callLine = line;
+                callToken = token;
+                final List<Expression> arguments = argumentList(yield, await);
+                decoratorExpression = CallNode.forCall(callLine, callToken, decoratorExpression.getStart(), finish, decoratorExpression, arguments);
+            }
+            decoratorList.add(decoratorExpression);
+        }
+        return decoratorList;
     }
 
     @Override
