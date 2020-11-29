@@ -40,12 +40,19 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.BooleanPrototypeBuiltinsFactory.JSBooleanToStringNodeGen;
 import com.oracle.truffle.js.builtins.BooleanPrototypeBuiltinsFactory.JSBooleanValueOfNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -89,15 +96,11 @@ public final class BooleanPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         return null;
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class JSBooleanToStringNode extends JSBuiltinNode {
 
         public JSBooleanToStringNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-        }
-
-        @Specialization(guards = {"!isJSBoolean(thisObj)", "!isBoolean(thisObj)"})
-        protected String toString(@SuppressWarnings("unused") Object thisObj) {
-            throw JSBoolean.noBooleanError();
         }
 
         @Specialization(guards = "isJSBoolean(thisObj)")
@@ -109,17 +112,32 @@ public final class BooleanPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         protected String toStringPrimitive(Object thisObj) {
             return JSRuntime.booleanToString((boolean) thisObj);
         }
+
+        @Specialization(guards = "isForeignObject(thisObj)", limit = "InteropLibraryLimit")
+        protected String toStringForeignObject(Object thisObj,
+                        @CachedLibrary("thisObj") InteropLibrary interop) {
+            if (interop.isBoolean(thisObj)) {
+                try {
+                    return JSRuntime.booleanToString(interop.asBoolean(thisObj));
+                } catch (UnsupportedMessageException ex) {
+                    throw Errors.createTypeErrorUnboxException(thisObj, ex, this);
+                }
+            }
+            return toStringOther(thisObj);
+        }
+
+        @Fallback
+        protected String toStringOther(@SuppressWarnings("unused") Object thisObj) {
+            throw JSBoolean.noBooleanError();
+        }
+
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class JSBooleanValueOfNode extends JSBuiltinNode {
 
         public JSBooleanValueOfNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-        }
-
-        @Specialization(guards = {"!isJSBoolean(thisObj)", "!isBoolean(thisObj)"})
-        protected boolean valueOf(@SuppressWarnings("unused") Object thisObj) {
-            throw JSBoolean.noBooleanError();
         }
 
         @Specialization(guards = "isJSBoolean(thisObj)")
@@ -131,5 +149,24 @@ public final class BooleanPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         protected boolean valueOfPrimitive(Object thisObj) {
             return (boolean) thisObj;
         }
+
+        @Specialization(guards = "isForeignObject(thisObj)", limit = "InteropLibraryLimit")
+        protected boolean valueOfForeignObject(Object thisObj,
+                        @CachedLibrary("thisObj") InteropLibrary interop) {
+            if (interop.isBoolean(thisObj)) {
+                try {
+                    return interop.asBoolean(thisObj);
+                } catch (UnsupportedMessageException ex) {
+                    throw Errors.createTypeErrorUnboxException(thisObj, ex, this);
+                }
+            }
+            return valueOfOther(thisObj);
+        }
+
+        @Fallback
+        protected boolean valueOfOther(@SuppressWarnings("unused") Object thisObj) {
+            throw JSBoolean.noBooleanError();
+        }
+
     }
 }
