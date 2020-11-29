@@ -575,7 +575,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                 public void accept(SnippetRun snippetRun) throws PolyglotException {
                     if (snippetRun.getException() != null) {
                         final Value arg = snippetRun.getParameters().get(0);
-                        if (!arg.hasMembers()) {
+                        if (arg.isNull() || !arg.hasMembers()) {
                             return;
                         }
                     }
