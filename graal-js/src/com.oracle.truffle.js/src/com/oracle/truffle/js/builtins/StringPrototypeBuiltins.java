@@ -51,8 +51,13 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -1791,6 +1796,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * Implementation of the String.prototype.toString() and String.prototype.valueOf() methods as
      * specified by ECMAScript 5.1 in 15.5.4.2 and 15.5.4.3.
      */
+    @ImportStatic({JSConfig.class})
     public abstract static class JSStringToStringNode extends JSBuiltinNode {
         public JSStringToStringNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -1820,8 +1826,21 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return thisStr.toString();
         }
 
-        @Specialization(guards = {"!isString(thisObj)", "!isJSString(thisObj)"})
-        protected String toStringGeneric(@SuppressWarnings("unused") Object thisObj) {
+        @Specialization(guards = "isForeignObject(thisObj)", limit = "InteropLibraryLimit")
+        protected String toStringForeignObject(Object thisObj,
+                        @CachedLibrary("thisObj") InteropLibrary interop) {
+            if (interop.isString(thisObj)) {
+                try {
+                    return interop.asString(thisObj);
+                } catch (UnsupportedMessageException ex) {
+                    throw Errors.createTypeErrorUnboxException(thisObj, ex, this);
+                }
+            }
+            return toStringOther(thisObj);
+        }
+
+        @Fallback
+        protected String toStringOther(@SuppressWarnings("unused") Object thisObj) {
             // unlike other String.prototype.[function]s, toString is NOT generic
             throw Errors.createTypeError("string object expected");
         }
