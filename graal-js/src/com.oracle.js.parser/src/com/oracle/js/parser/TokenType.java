@@ -41,6 +41,8 @@
 
 package com.oracle.js.parser;
 
+import javax.smartcardio.ATR;
+
 import static com.oracle.js.parser.TokenKind.BINARY;
 import static com.oracle.js.parser.TokenKind.BRACKET;
 import static com.oracle.js.parser.TokenKind.CONTEXTUAL;
@@ -229,7 +231,11 @@ public enum TokenType {
     SPREAD_ARRAY   (IR,           null),
     SPREAD_OBJECT  (IR,           null),
     YIELD_STAR     (IR,           null),
-    ASSIGN_INIT    (IR,           null);
+    ASSIGN_INIT    (IR,           null),
+
+    //Decorator Proposal tokens
+    AT             (UNARY, "@", 0, true);
+
     //@formatter:on
 
     /** Next token kind in token lookup table. */
