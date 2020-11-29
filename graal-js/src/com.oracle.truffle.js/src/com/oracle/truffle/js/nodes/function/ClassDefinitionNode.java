@@ -164,12 +164,15 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         Object[][] instanceFields = instanceFieldCount == 0 ? null : new Object[instanceFieldCount][];
         Object[][] staticFields = staticFieldCount == 0 ? null : new Object[staticFieldCount][];
 
+        //TODO: DecorateClass
         initializeMembers(frame, proto, constructor, instanceFields, staticFields);
 
+        //TODO: AssignPrivateNames
         if (writeClassBindingNode != null) {
             writeClassBindingNode.executeWrite(frame, constructor);
         }
 
+        //TODO: InitializeInstanceElements
         if (setFieldsNode != null) {
             setFieldsNode.setValue(constructor, instanceFields);
         }
@@ -197,7 +200,10 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         /* For each ClassElement e in order from NonConstructorMethodDefinitions of ClassBody */
         int instanceFieldIndex = 0;
         int staticFieldIndex = 0;
+        //TODO: ClassElementEvaluation
+        //TODO: ClassFieldDefinitionEvaluation
         for (ObjectLiteralMemberNode memberNode : memberNodes) {
+            //TODO: InitializeClassElements
             DynamicObject homeObject = memberNode.isStatic() ? constructor : proto;
             memberNode.executeVoid(frame, homeObject, context);
             if (memberNode.isField()) {

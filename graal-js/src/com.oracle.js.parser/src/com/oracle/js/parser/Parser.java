@@ -1662,6 +1662,8 @@ public class Parser extends AbstractParser {
                 } else {
                     classElement = methodDefinition(classElementName, isStatic, classHeritage != null, generator, async, classElementToken, classElementLine, yield, await, nameTokenType, computed);
 
+                    //TODO: CoalesceClassElement, CoalesceGetterSetter
+
                     if (!classElement.isComputed() && classElement.isAccessor()) {
                         if (classElement.isPrivate()) {
                             // merge private accessor methods
