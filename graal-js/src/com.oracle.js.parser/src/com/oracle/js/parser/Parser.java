@@ -1698,39 +1698,6 @@ public class Parser extends AbstractParser {
                             }
                         }
                     }
-
-                    if (!classElement.hasComputedKey() && classElement.isAccessor()) {
-                        if (classElement.isPrivate()) {
-                            // merge private accessor methods
-                            String privateName = classElement.getPrivateName();
-                            Integer existing = classElementNameToElementIndexMap.get(privateName);
-                            if (existing == null) {
-                                classElementNameToElementIndexMap.put(privateName, classElements.size());
-                            } else {
-                                ClassElement otherAccessor = classElements.get(existing);
-                                if (isStatic == otherAccessor.isStatic()) {
-                                    if (otherAccessor.getGetter() == null && classElement.getGetter() != null) {
-                                        classElements.set(existing, otherAccessor.setGetter(classElement.getGetter()));
-                                        continue;
-                                    } else if (otherAccessor.getSetter() == null && classElement.getSetter() != null) {
-                                        classElements.set(existing, otherAccessor.setSetter(classElement.getSetter()));
-                                        continue;
-                                    }
-                                }
-                                // else: more than one getter or setter with the same private name
-                                // fall through: a syntax error will be thrown below
-                            }
-                        } else if (!classElements.isEmpty()) {
-                            // try to merge consecutive getter and setter pairs
-                            ClassElement lastElement = classElements.get(classElements.size() - 1);
-                            if (!lastElement.hasComputedKey() && lastElement.isAccessor() && isStatic == lastElement.isStatic() &&
-                                            !lastElement.isPrivate() && classElement.getKeyName().equals(lastElement.getKeyName())) {
-                                ClassElement merged = classElement.getGetter() != null ? lastElement.setGetter(classElement.getGetter()) : lastElement.setSetter(classElement.getSetter());
-                                classElements.set(classElements.size() - 1, merged);
-                                continue;
-                            }
-                        }
-                    }
                 }
 
                 if (classElement.isPrivate()) {
