@@ -3,15 +3,18 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.builtins.TemporalTimePrototypeBuiltinsFactory.JSTemporalTimeEqualsNodeGen;
+import com.oracle.truffle.js.builtins.TemporalTimePrototypeBuiltinsFactory.JSTemporalTimeRoundNodeGen;
 import com.oracle.truffle.js.builtins.TemporalTimePrototypeBuiltinsFactory.JSTemporalTimeToStringNodeGen;
 import com.oracle.truffle.js.builtins.TemporalTimePrototypeBuiltinsFactory.JSTemporalTimeValueOfNodeGen;
 import com.oracle.truffle.js.builtins.TemporalTimePrototypeBuiltinsFactory.JSTemporalTimeWithNodeGen;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -23,6 +26,8 @@ import com.oracle.truffle.js.runtime.builtins.JSTemporalTime;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalTimeObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
+import java.util.Collections;
+
 public class TemporalTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalTimePrototypeBuiltins.TemporalTimePrototype> {
 
     public static final JSBuiltinsContainer BUILTINS = new TemporalTimePrototypeBuiltins();
@@ -33,6 +38,7 @@ public class TemporalTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
     public enum TemporalTimePrototype implements BuiltinEnum<TemporalTimePrototype> {
         with(2),
+        round(1),
         equals(1),
         toString(0),
         toJSON(0),
@@ -55,6 +61,8 @@ public class TemporalTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         switch (builtinEnum) {
             case with:
                 return JSTemporalTimeWithNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case round:
+                return JSTemporalTimeRoundNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case equals:
                 return JSTemporalTimeEqualsNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case toString:
@@ -143,6 +151,58 @@ public class TemporalTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     toInt.executeInt(dol.getOrDefault(result, JSTemporalTime.NANOSECOND, 0)),
                     getContext().getRealm(), callNode
             );
+        }
+    }
+
+    // 4.3.15
+    public abstract static class JSTemporalTimeRound extends JSBuiltinNode {
+
+        protected JSTemporalTimeRound(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(limit = "3")
+        protected JSTemporalTimeObject round(DynamicObject thisObj, DynamicObject options,
+                                             @Cached("create()") IsObjectNode isObject,
+                                             @CachedLibrary("thisObj") DynamicObjectLibrary dol,
+                                             @Cached("create()") JSToBooleanNode toBoolean,
+                                             @Cached("create()") JSToStringNode toString,
+                                             @Cached("create()") JSToNumberNode toNumber,
+                                             @Cached("createNew()") JSFunctionCallNode callNode) {
+            try {
+                JSTemporalTimeObject temporalTime = (JSTemporalTimeObject) thisObj;
+                if (options == null) {
+                    throw Errors.createTypeError("Options should not be null.");
+                }
+                DynamicObject normalizedOptions = TemporalUtil.normalizeOptionsObject(options, getContext().getRealm(), isObject);
+                String smallestUnit = TemporalUtil.toSmallestTemporalUnit(normalizedOptions, Collections.singleton("day"),
+                        dol, isObject, toBoolean, toString);
+                String roundingMode = TemporalUtil.toTemporalRoundingMode(options, "nearest", dol, isObject, toBoolean, toString);
+                int maximum;
+                if (smallestUnit.equals("hour")) {
+                    maximum = 24;
+                } else if (smallestUnit.equals("minute") || smallestUnit.equals("second")) {
+                    maximum = 60;
+                } else {
+                    maximum = 1000;
+                }
+                double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(normalizedOptions, (double) maximum,
+                        false, dol, isObject, toNumber);
+                DynamicObject result = JSTemporalTime.roundTime(temporalTime.getHours(), temporalTime.getMinutes(),
+                        temporalTime.getSeconds(), temporalTime.getMilliseconds(), temporalTime.getMicroseconds(),
+                        temporalTime.getNanoseconds(), roundingIncrement, smallestUnit, roundingMode, null, getContext().getRealm());
+                return JSTemporalTime.createTemporalTimeFromInstance(temporalTime,
+                        dol.getLongOrDefault(result, JSTemporalTime.HOUR, 0L),
+                        dol.getLongOrDefault(result, JSTemporalTime.MINUTE, 0L),
+                        dol.getLongOrDefault(result, JSTemporalTime.SECOND, 0L),
+                        dol.getLongOrDefault(result, JSTemporalTime.MILLISECOND, 0L),
+                        dol.getLongOrDefault(result, JSTemporalTime.MICROSECOND, 0L),
+                        dol.getLongOrDefault(result, JSTemporalTime.NANOSECOND, 0L),
+                        getContext().getRealm(), callNode
+                );
+            } catch (UnexpectedResultException e) {
+                throw Errors.createTypeError("The result object of roundTime has not a long in it.");
+            }
         }
     }
 

@@ -281,6 +281,34 @@ public class JSTemporalTime extends JSNonProxy implements JSConstructorFactory.D
         }
     }
 
+    // 4.5.6
+    public static DynamicObject balanceTime(double hours, double minutes, double seconds, double milliseconds,
+                                            double microseconds, double nanoseconds, JSRealm realm) {
+        if(hours == Double.POSITIVE_INFINITY || hours == Double.NEGATIVE_INFINITY ||
+                minutes == Double.POSITIVE_INFINITY || minutes == Double.NEGATIVE_INFINITY ||
+                seconds == Double.POSITIVE_INFINITY || seconds == Double.NEGATIVE_INFINITY ||
+                milliseconds == Double.POSITIVE_INFINITY || milliseconds == Double.NEGATIVE_INFINITY ||
+                microseconds == Double.POSITIVE_INFINITY || microseconds == Double.NEGATIVE_INFINITY ||
+                nanoseconds == Double.POSITIVE_INFINITY || nanoseconds == Double.NEGATIVE_INFINITY
+        ) {
+            throw Errors.createRangeError("Time is infinite");
+        }
+        microseconds = microseconds + Math.floor(nanoseconds / 1000);
+        nanoseconds = TemporalUtil.nonNegativeModulo(nanoseconds, 1000);
+        milliseconds = milliseconds + Math.floor(microseconds / 1000);
+        microseconds = TemporalUtil.nonNegativeModulo(microseconds, 1000);
+        seconds = seconds + Math.floor(milliseconds / 1000);
+        milliseconds = TemporalUtil.nonNegativeModulo(milliseconds, 1000);
+        minutes = minutes + Math.floor(seconds / 60);
+        seconds = TemporalUtil.nonNegativeModulo(seconds, 60);
+        hours = hours + Math.floor(minutes / 60);
+        minutes = TemporalUtil.nonNegativeModulo(minutes, 60);
+        double days = Math.floor(hours / 24);
+        hours = TemporalUtil.nonNegativeModulo(hours, 24);
+        return createTimeRecord((long)days, (long)hours, (long)minutes, (long)seconds, (long)milliseconds,
+                (long)microseconds, (long)nanoseconds, realm);
+    }
+
     // 4.5.7
     public static DynamicObject constraintTime(long hours, long minutes, long seconds, long milliseconds,
                                                long microseconds, long nanoseconds, JSRealm realm) {
@@ -392,5 +420,65 @@ public class JSTemporalTime extends JSNonProxy implements JSConstructorFactory.D
         }
         return 0;
     }
+
+    // 4.5.15
+    public static DynamicObject roundTime(long hours, long minutes, long seconds, long milliseconds, long microseconds,
+                                          long nanoseconds, double increment, String unit, String roundingMode,
+                                          Long dayLengthNs, JSRealm realm) {
+        double fractionalSecond = ((double)nanoseconds / 1_000_000_000) + ((double) microseconds / 1_000_000) +
+                ((double) milliseconds / 1_000) + seconds;
+        double quantity;
+        if (unit.equals("day")) {
+            dayLengthNs = dayLengthNs == null ? 86_300_000_000_000L : dayLengthNs;
+            quantity = ((double) (((((hours * 60 + minutes) * 60 + seconds) * 1000 + milliseconds) * 1000 + microseconds) * 1000 + nanoseconds)) / dayLengthNs;
+        } else if (unit.equals("hour")) {
+            quantity = (fractionalSecond / 60 + minutes) / 60 + hours;
+        } else if (unit.equals("minute")) {
+            quantity = fractionalSecond / 60 + minutes;
+        } else if (unit.equals("second")) {
+            quantity = fractionalSecond;
+        } else if (unit.equals("millisecond")) {
+            quantity = ((double) nanoseconds / 1_000_000) + ((double) microseconds / 1_000) + milliseconds;
+        } else if (unit.equals("microsecond")) {
+            quantity = ((double) nanoseconds / 1_000) + microseconds;
+        } else {
+            assert unit.equals("nanosecond");
+            quantity = nanoseconds;
+        }
+        double result = TemporalUtil.roundNumberToIncrement(quantity, increment, roundingMode);
+        if (unit.equals("day")) {
+            return createTimeRecord((long)result, 0, 0, 0, 0, 0, 0, realm);
+        }
+        if (unit.equals("hour")) {
+            return balanceTime(result, 0, 0, 0, 0, 0, realm);
+        }
+        if (unit.equals("minute")) {
+            return balanceTime(hours, result, 0, 0, 0, 0, realm);
+        }
+        if (unit.equals("second")) {
+            return balanceTime(hours, minutes, result, 0, 0, 0, realm);
+        }
+        if (unit.equals("millisecond")) {
+            return balanceTime(hours, minutes, seconds, result, 0, 0, realm);
+        }
+        if (unit.equals("microsecond")) {
+            return balanceTime(hours, minutes, seconds, milliseconds, result, 0, realm);
+        }
+        assert unit.equals("nanosecond");
+        return balanceTime(hours, minutes, seconds, milliseconds, microseconds, result, realm);
+    }
     //endregion
+
+    private static DynamicObject createTimeRecord(long day, long hour, long minute, long second, long millisecond,
+                                                  long microsecond, long nanosecond, JSRealm realm) {
+        DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObjectUtil.putDataProperty(realm.getContext(), record, "days", day);
+        JSObjectUtil.putDataProperty(realm.getContext(), record, HOUR, hour);
+        JSObjectUtil.putDataProperty(realm.getContext(), record, MINUTE, minute);
+        JSObjectUtil.putDataProperty(realm.getContext(), record, SECOND, second);
+        JSObjectUtil.putDataProperty(realm.getContext(), record, MILLISECOND, millisecond);
+        JSObjectUtil.putDataProperty(realm.getContext(), record, MICROSECOND, microsecond);
+        JSObjectUtil.putDataProperty(realm.getContext(), record, NANOSECOND, nanosecond);
+        return record;
+    }
 }
