@@ -794,6 +794,14 @@
     "status" : "SKIP",
     "comment" : "Unstable on native-image / when compiled (GR-23663)"
   }, {
+    "filePath" : "mjsunit/harmony/weakrefs/unregister-after-cleanup.js",
+    "status" : "SKIP",
+    "comment" : "Unstable GC-based test."
+  }, {
+    "filePath" : "mjsunit/harmony/weakrefs/unregister-inside-cleanup.js",
+    "status" : "SKIP",
+    "comment" : "Unstable GC-based test."
+  }, {
     "filePath" : "mjsunit/harmony/weakrefs/weak-cell-basics.js",
     "status" : "SKIP",
     "comment" : "Unstable on native-image / when compiled (GR-23663)"
