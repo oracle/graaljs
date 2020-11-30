@@ -49,6 +49,7 @@ import com.oracle.js.parser.ir.BreakNode;
 import com.oracle.js.parser.ir.CallNode;
 import com.oracle.js.parser.ir.CaseNode;
 import com.oracle.js.parser.ir.CatchNode;
+import com.oracle.js.parser.ir.ClassElement;
 import com.oracle.js.parser.ir.ClassNode;
 import com.oracle.js.parser.ir.BlockExpression;
 import com.oracle.js.parser.ir.ContinueNode;
@@ -533,4 +534,10 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     public R enterParameterNode(final ParameterNode paramNode) {
         return enterDefault(paramNode);
     }
+
+    /**
+     * Callback for entering a ClassElement
+     * @param element the node
+     */
+    public R enterClassElement(final ClassElement element) { return enterDefault(element); }
 }

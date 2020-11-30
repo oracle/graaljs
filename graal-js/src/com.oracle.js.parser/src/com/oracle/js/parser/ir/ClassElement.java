@@ -3,6 +3,7 @@ package com.oracle.js.parser.ir;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ClassElement extends Node {
@@ -106,12 +107,29 @@ public class ClassElement extends Node {
 
     @Override
     public Node accept(NodeVisitor<? extends LexicalContext> visitor) {
-        return null;
+        if(visitor.enterClassElement(this)) {
+            ClassElement element =
+                setKey((Expression) key.accept(visitor)).
+                setValue(value == null ? null: (Expression) value.accept(visitor)).
+                setGetter(get == null ? null : (FunctionNode) get.accept(visitor)).
+                setSetter(set == null ? null : (FunctionNode) set.accept(visitor));
+            if(decorators != null) {
+                List<Expression> d = new ArrayList<>();
+                for (Expression decorator : decorators) {
+                    d.add((Expression) decorator.accept(visitor));
+                }
+                element = element.setDecorators(d);
+            } else {
+                element = element.setDecorators(null);
+            }
+            return element;
+        }
+        return this;
     }
 
     @Override
     public <R> R accept(TranslatorNodeVisitor<? extends LexicalContext, R> visitor) {
-        return null;
+        return visitor.enterClassElement(this);
     }
 
     public List<Expression> getDecorators() {
@@ -131,6 +149,17 @@ public class ClassElement extends Node {
 
     public ClassElement setGetter(FunctionNode get) {
         if(this.get == get) {
+            return this;
+        }
+        return new ClassElement(this, kind, key, value, get, set, placement, decorators, isPrivate, hasComputedKey, isAnonymousFunctionDefinition);
+    }
+
+    public Expression getKey() {
+        return key;
+    }
+
+    public ClassElement setKey(Expression key) {
+        if(this.key == key) {
             return this;
         }
         return new ClassElement(this, kind, key, value, get, set, placement, decorators, isPrivate, hasComputedKey, isAnonymousFunctionDefinition);
