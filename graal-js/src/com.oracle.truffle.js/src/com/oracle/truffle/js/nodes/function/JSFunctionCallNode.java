@@ -83,6 +83,7 @@ import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.SuperPropertyReferenceNode;
+import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
 import com.oracle.truffle.js.nodes.instrumentation.JSMaterializedInvokeTargetableNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -104,6 +105,7 @@ import com.oracle.truffle.js.runtime.JavaScriptFunctionCallNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DebugCounter;
@@ -1441,8 +1443,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         private final String functionName;
         private final ValueProfile thisClassProfile = ValueProfile.createClassProfile();
         @Child protected Node invokeNode;
+        @Child private JSToObjectNode toObjectNode;
         @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
-        @Child protected JSFunctionCallNode callOnPrototypeNode;
+        @Child protected JSFunctionCallNode callJSFunctionNode;
         @Child protected PropertyGetNode getFunctionNode;
         @CompilationFinal private LanguageReference<JavaScriptLanguage> languageRef;
         private final BranchProfile errorBranch = BranchProfile.create();
@@ -1464,6 +1467,16 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
              */
             if (JSGuards.isForeignObject(receiver)) {
                 assert JSArguments.getFunctionObject(arguments) == receiver;
+                if (interop.isNull(receiver)) {
+                    errorBranch.enter();
+                    throw Errors.createTypeErrorCannotGetProperty(getContext(), functionName, receiver, false, this);
+                }
+                Object object = toObject(receiver);
+                if (object != receiver) {
+                    // receiver is foreign boxed primitive
+                    assert JSDynamicObject.isJSDynamicObject(object);
+                    return callJSFunction(receiver, getFunction(object), arguments);
+                }
                 if (optimistic) {
                     try {
                         callReturn = interop.invokeMember(receiver, functionName, callArguments);
@@ -1505,19 +1518,41 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         private Object maybeInvokeFromPrototype(Object[] arguments, Object receiver) {
-            if (foreignObjectPrototypeNode == null || getFunctionNode == null || callOnPrototypeNode == null) {
+            if (foreignObjectPrototypeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
-                getFunctionNode = insert(PropertyGetNode.create(functionName, getContext()));
-                callOnPrototypeNode = insert(JSFunctionCallNode.createCall());
             }
             DynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(receiver);
-            Object function = getFunctionNode.getValue(prototype);
+            Object function = getFunction(prototype);
             if (function == Undefined.instance) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorInteropException(receiver, UnknownIdentifierException.create(functionName), "invokeMember", functionName, this);
             }
-            return callOnPrototypeNode.executeCall(JSArguments.create(receiver, function, JSArguments.extractUserArguments(arguments)));
+            return callJSFunction(receiver, function, arguments);
+        }
+
+        private Object getFunction(Object object) {
+            if (getFunctionNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getFunctionNode = insert(PropertyGetNode.create(functionName, getContext()));
+            }
+            return getFunctionNode.getValue(object);
+        }
+
+        private Object callJSFunction(Object receiver, Object function, Object[] arguments) {
+            if (callJSFunctionNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                callJSFunctionNode = insert(JSFunctionCallNode.createCall());
+            }
+            return callJSFunctionNode.executeCall(JSArguments.create(receiver, function, JSArguments.extractUserArguments(arguments)));
+        }
+
+        private Object toObject(Object object) {
+            if (toObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toObjectNode = insert(JSToObjectNode.createToObject(getContext()));
+            }
+            return toObjectNode.execute(object);
         }
 
         private JSContext getContext() {

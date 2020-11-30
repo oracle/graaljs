@@ -44,7 +44,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -64,6 +69,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.intl.InitializeNumberFormatNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -139,8 +145,22 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected double getDoubleValue(DynamicObject obj) {
             return JSRuntime.doubleValue(JSNumber.valueOf(obj));
         }
+
+        protected double getDoubleValue(InteropLibrary interop, Object obj) {
+            assert JSRuntime.isForeignObject(obj);
+            if (interop.fitsInDouble(obj)) {
+                try {
+                    return interop.asDouble(obj);
+                } catch (UnsupportedMessageException ex) {
+                    throw Errors.createTypeErrorUnboxException(obj, ex, this);
+                }
+            }
+            throw Errors.createTypeErrorNotANumber(obj);
+        }
+
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class JSNumberToStringNode extends JSNumberOperation {
 
         public JSNumberToStringNode(JSContext context, JSBuiltin builtin) {
@@ -207,8 +227,15 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return toStringIntl(JSRuntime.doubleValue(thisObj), radix, toIntegerNode);
         }
 
+        @Specialization(guards = "isForeignObject(thisObj)", limit = "InteropLibraryLimit")
+        protected String toStringForeignObject(Object thisObj, Object radix,
+                        @Cached("create()") JSToIntegerAsIntNode toIntegerNode,
+                        @CachedLibrary("thisObj") InteropLibrary interop) {
+            return toStringIntl(getDoubleValue(interop, thisObj), (radix == Undefined.instance) ? 10 : radix, toIntegerNode);
+        }
+
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!isJSNumber(thisObj)", "!isJavaNumber(thisObj)"})
+        @Specialization(guards = {"!isJSNumber(thisObj)", "!isJavaNumber(thisObj)", "!isForeignObject(thisObj)"})
         protected String toStringNoNumber(Object thisObj, Object radix) {
             throw Errors.createTypeErrorNotANumber(thisObj);
         }
@@ -232,6 +259,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class JSNumberToLocaleStringNode extends JSNumberOperation {
 
         public JSNumberToLocaleStringNode(JSContext context, JSBuiltin builtin) {
@@ -258,8 +286,14 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
         }
 
-        @Specialization(guards = {"!isJSNumber(thisNumber)", "!isJavaNumber(thisNumber)"})
-        protected String toLocaleString(Object thisNumber) {
+        @Specialization(guards = "isForeignObject(thisObj)", limit = "InteropLibraryLimit")
+        protected String toLocaleStringForeignObject(Object thisObj,
+                        @CachedLibrary("thisObj") InteropLibrary interop) {
+            return toLocaleStringIntl(getDoubleValue(interop, thisObj));
+        }
+
+        @Fallback
+        protected String toLocaleStringOther(Object thisNumber) {
             throw Errors.createTypeErrorNotANumber(thisNumber);
         }
     }
@@ -268,6 +302,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * Implementation of the Number.prototype.toLocaleString() method as specified by ECMAScript.
      * Internationalization API, https://tc39.github.io/ecma402/#sup-number.prototype.tolocalestring
      */
+    @ImportStatic({JSConfig.class})
     public abstract static class JSNumberToLocaleStringIntlNode extends JSNumberOperation {
 
         @Child InitializeNumberFormatNode initNumberFormatNode;
@@ -296,13 +331,22 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return JSNumberFormat.format(numberFormatObj, JSRuntime.doubleValue((Number) thisObj));
         }
 
-        @Specialization(guards = {"!isJSNumber(notANumber)", "!isJavaNumber(notANumber)"})
+        @Specialization(guards = "isForeignObject(thisObj)", limit = "InteropLibraryLimit")
+        protected String toLocaleStringForeignObject(Object thisObj, Object locales, Object options,
+                        @CachedLibrary("thisObj") InteropLibrary interop) {
+            double doubleValue = getDoubleValue(interop, thisObj);
+            DynamicObject numberFormatObj = createNumberFormat(locales, options);
+            return JSNumberFormat.format(numberFormatObj, doubleValue);
+        }
+
+        @Fallback
         @SuppressWarnings("unused")
         protected String failForNonNumbers(Object notANumber, Object locales, Object options) {
             throw Errors.createTypeErrorNotANumber(notANumber);
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class JSNumberValueOfNode extends JSNumberOperation {
 
         public JSNumberValueOfNode(JSContext context, JSBuiltin builtin) {
@@ -319,12 +363,19 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return JSRuntime.doubleValue((Number) thisNumber);
         }
 
-        @Specialization(guards = {"!isJSNumber(thisNumber)", "!isJavaNumber(thisNumber)"})
-        protected Object valueOf(Object thisNumber) {
+        @Specialization(guards = "isForeignObject(thisNumber)", limit = "InteropLibraryLimit")
+        protected double valueOfForeignObject(Object thisNumber,
+                        @CachedLibrary("thisNumber") InteropLibrary interop) {
+            return getDoubleValue(interop, thisNumber);
+        }
+
+        @Fallback
+        protected Object valueOfOther(Object thisNumber) {
             throw Errors.createTypeErrorNotANumber(thisNumber);
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class JSNumberToFixedNode extends JSNumberOperation {
         private final BranchProfile digitsErrorBranch = BranchProfile.create();
         private final BranchProfile nanBranch = BranchProfile.create();
@@ -349,8 +400,17 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return toFixedIntl(JSRuntime.doubleValue((Number) thisNumber), digits);
         }
 
+        @Specialization(guards = "isForeignObject(thisNumber)", limit = "InteropLibraryLimit")
+        protected String toFixedForeignObject(Object thisNumber, Object fractionDigits,
+                        @Cached("create()") JSToIntegerAsIntNode toIntegerNode,
+                        @CachedLibrary("thisNumber") InteropLibrary interop) {
+            double doubleValue = getDoubleValue(interop, thisNumber);
+            int digits = toIntegerNode.executeInt(fractionDigits);
+            return toFixedIntl(doubleValue, digits);
+        }
+
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!isJSNumber(thisNumber)", "!isJavaNumber(thisNumber)"})
+        @Fallback
         protected String toFixedGeneric(Object thisNumber, Object fractionDigits) {
             throw Errors.createTypeErrorNotANumber(thisNumber);
         }
@@ -380,6 +440,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class JSNumberToExponentialNode extends JSNumberOperation {
 
         public JSNumberToExponentialNode(JSContext context, JSBuiltin builtin) {
@@ -418,9 +479,26 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return toExponential(doubleValue, digits, digitsErrorBranch);
         }
 
+        @Specialization(guards = {"isForeignObject(thisNumber)", "isUndefined(fractionDigits)"}, limit = "InteropLibraryLimit")
+        protected String toExponentialForeignObjectUndefined(Object thisNumber, @SuppressWarnings("unused") Object fractionDigits,
+                        @CachedLibrary("thisNumber") InteropLibrary interop) {
+            double doubleValue = getDoubleValue(interop, thisNumber);
+            return toExponentialStandard(doubleValue);
+        }
+
+        @Specialization(guards = {"isForeignObject(thisNumber)", "!isUndefined(fractionDigits)"}, limit = "InteropLibraryLimit")
+        protected String toExponentialForeignObject(Object thisNumber, Object fractionDigits,
+                        @Cached BranchProfile digitsErrorBranch,
+                        @Cached("create()") JSToIntegerAsIntNode toIntegerNode,
+                        @CachedLibrary("thisNumber") InteropLibrary interop) {
+            double doubleValue = getDoubleValue(interop, thisNumber);
+            int digits = toIntegerNode.executeInt(fractionDigits);
+            return toExponential(doubleValue, digits, digitsErrorBranch);
+        }
+
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!isJSNumber(thisNumber)", "!isJavaNumber(thisNumber)"})
-        protected String toExponential(Object thisNumber, Object fractionDigits) {
+        @Specialization(guards = {"!isJSNumber(thisNumber)", "!isJavaNumber(thisNumber)", "!isForeignObject(thisNumber)"})
+        protected String toExponentialOther(Object thisNumber, Object fractionDigits) {
             throw Errors.createTypeErrorNotANumber(thisNumber);
         }
 
@@ -457,6 +535,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class JSNumberToPrecisionNode extends JSNumberOperation {
         private final BranchProfile precisionErrorBranch = BranchProfile.create();
 
@@ -495,8 +574,25 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!isJSNumber(thisNumber)", "!isJavaNumber(thisNumber)"})
-        protected String toPrecision(Object thisNumber, Object precision) {
+        @Specialization(guards = {"isForeignObject(thisNumber)", "isUndefined(precision)"}, limit = "InteropLibraryLimit")
+        protected String toPrecisionForeignObjectUndefined(Object thisNumber, Object precision,
+                        @Cached("create()") JSToStringNode toStringNode,
+                        @CachedLibrary("thisNumber") InteropLibrary interop) {
+            return toStringNode.executeString(getDoubleValue(interop, thisNumber));
+        }
+
+        @Specialization(guards = {"isForeignObject(thisNumber)", "!isUndefined(precision)"}, limit = "InteropLibraryLimit")
+        protected String toPrecisionForeignObject(Object thisNumber, Object precision,
+                        @Cached("create()") JSToNumberNode toNumberNode,
+                        @CachedLibrary("thisNumber") InteropLibrary interop) {
+            double thisNumberVal = getDoubleValue(interop, thisNumber);
+            long lPrecision = JSRuntime.toInteger(toNumberNode.executeNumber(precision));
+            return toPrecisionIntl(thisNumberVal, lPrecision);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"!isJSNumber(thisNumber)", "!isJavaNumber(thisNumber)", "!isForeignObject(thisNumber)"})
+        protected String toPrecisionOther(Object thisNumber, Object precision) {
             throw Errors.createTypeErrorNotANumber(thisNumber);
         }
 

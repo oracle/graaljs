@@ -43,8 +43,11 @@ package com.oracle.truffle.js.nodes.access;
 import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -52,12 +55,16 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNodeGen.RequireObjectCoercibleWrapperNodeGen;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.Symbol;
 
 /**
  * Implementation of the abstract operation RequireObjectCoercible(argument) (ES6 7.2.1).
  */
+@ImportStatic({JSConfig.class})
 public abstract class RequireObjectCoercibleNode extends JavaScriptBaseNode {
 
     protected RequireObjectCoercibleNode() {
@@ -98,14 +105,28 @@ public abstract class RequireObjectCoercibleNode extends JavaScriptBaseNode {
     protected static void doBoolean(@SuppressWarnings("unused") boolean value) {
     }
 
+    @Specialization
+    protected static void doSymbol(@SuppressWarnings("unused") Symbol value) {
+    }
+
+    @Specialization
+    protected static void doBigInt(@SuppressWarnings("unused") BigInt value) {
+    }
+
     @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "1")
     protected static void doCachedJSClass(@SuppressWarnings("unused") Object object,
                     @Cached("getClassIfJSObject(object)") @SuppressWarnings("unused") Class<?> cachedClass) {
     }
 
-    @Specialization(guards = {"!isNullOrUndefined(object)"}, replaces = "doCachedJSClass")
-    protected static void doObjectCoercible(Object object) {
-        assert object != null;
+    @Specialization(guards = {"isJSObject(object)"}, replaces = "doCachedJSClass")
+    protected static void doJSObject(@SuppressWarnings("unused") Object object) {
+    }
+
+    @Specialization(guards = {"isForeignObject(object)"}, limit = "InteropLibraryLimit")
+    protected void doForeignObject(Object object, @CachedLibrary("object") InteropLibrary interop) {
+        if (interop.isNull(object)) {
+            throw Errors.createTypeErrorNotObjectCoercible(object, this);
+        }
     }
 
     @Specialization(guards = "isNullOrUndefined(object)")

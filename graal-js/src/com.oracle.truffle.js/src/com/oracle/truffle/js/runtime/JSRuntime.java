@@ -1486,7 +1486,16 @@ public final class JSRuntime {
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, JSDynamicObject.isJSDynamicObject(value))) {
             return (DynamicObject) value;
         }
-        return toObjectFromPrimitive(ctx, value, true);
+        Object unboxedValue = value;
+        if (isForeignObject(value)) {
+            InteropLibrary interop = InteropLibrary.getUncached(value);
+            assert !interop.isNull(value);
+            unboxedValue = JSInteropUtil.toPrimitiveOrDefault(value, null, interop, null);
+            if (unboxedValue == null) {
+                return (TruffleObject) value; // not a boxed primitive value
+            }
+        }
+        return toObjectFromPrimitive(ctx, unboxedValue, true);
     }
 
     @TruffleBoundary
@@ -1683,7 +1692,7 @@ public final class JSRuntime {
      * Implementation of the abstract operation RequireObjectCoercible.
      */
     public static <T> T requireObjectCoercible(T argument, JSContext context) {
-        if (argument == Undefined.instance || argument == Null.instance) {
+        if (argument == Undefined.instance || argument == Null.instance || (isForeignObject(argument) && InteropLibrary.getUncached(argument).isNull(argument))) {
             throw Errors.createTypeErrorNotObjectCoercible(argument, null, context);
         }
         return argument;
