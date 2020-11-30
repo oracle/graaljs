@@ -53,11 +53,12 @@ import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 public class ClassNode extends LexicalContextExpression implements LexicalContextScope {
     private final IdentNode ident;
     private final Expression classHeritage;
-    private final PropertyNode constructor;
-    private final List<PropertyNode> classElements;
+    private final ClassElement constructor;
+    private final List<ClassElement> classElements;
     private final Scope scope;
-    private final int instanceFieldCount;
-    private final int staticFieldCount;
+    //TODO: remove filed count values
+    private final int instanceFieldCount = 0;
+    private final int staticFieldCount = 0;
     private final boolean hasPrivateMethods;
     private final boolean hasPrivateInstanceMethods;
 
@@ -69,7 +70,7 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
      * @param token token
      * @param finish finish
      */
-    public ClassNode(final long token, final int finish, final IdentNode ident, final Expression classHeritage, final PropertyNode constructor, final List<PropertyNode> classElements,
+    public ClassNode(final long token, final int finish, final IdentNode ident, final Expression classHeritage, final ClassElement constructor, final List<ClassElement> classElements,
                     final Scope scope, final int instanceFieldCount, final int staticFieldCount, final boolean hasPrivateMethods, final boolean hasPrivateInstanceMethods) {
         super(token, finish);
         this.ident = ident;
@@ -77,23 +78,23 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         this.constructor = constructor;
         this.classElements = classElements;
         this.scope = scope;
-        this.instanceFieldCount = instanceFieldCount;
-        this.staticFieldCount = staticFieldCount;
+        //this.instanceFieldCount = instanceFieldCount;
+        //this.staticFieldCount = staticFieldCount;
         this.hasPrivateMethods = hasPrivateMethods;
         this.hasPrivateInstanceMethods = hasPrivateInstanceMethods;
-        assert instanceFieldCount == fieldCount(classElements, false);
-        assert staticFieldCount == fieldCount(classElements, true);
+        //assert instanceFieldCount == fieldCount(classElements, false);
+        //assert staticFieldCount == fieldCount(classElements, true);
     }
 
-    private ClassNode(final ClassNode classNode, final IdentNode ident, final Expression classHeritage, final PropertyNode constructor, final List<PropertyNode> classElements) {
+    private ClassNode(final ClassNode classNode, final IdentNode ident, final Expression classHeritage, final ClassElement constructor, final List<ClassElement> classElements) {
         super(classNode);
         this.ident = ident;
         this.classHeritage = classHeritage;
         this.constructor = constructor;
         this.classElements = classElements;
         this.scope = classNode.scope;
-        this.instanceFieldCount = fieldCount(classElements, false);
-        this.staticFieldCount = fieldCount(classElements, true);
+        //this.instanceFieldCount = fieldCount(classElements, false);
+        //this.staticFieldCount = fieldCount(classElements, true);
         this.hasPrivateMethods = classNode.hasPrivateMethods;
         this.hasPrivateInstanceMethods = classNode.hasPrivateInstanceMethods;
     }
@@ -139,11 +140,11 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
     /**
      * Get the constructor method definition.
      */
-    public PropertyNode getConstructor() {
+    public ClassElement getConstructor() {
         return constructor;
     }
 
-    public ClassNode setConstructor(final PropertyNode constructor) {
+    public ClassNode setConstructor(final ClassElement constructor) {
         if (this.constructor == constructor) {
             return this;
         }
@@ -153,11 +154,11 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
     /**
      * Get method definitions except the constructor.
      */
-    public List<PropertyNode> getClassElements() {
+    public List<ClassElement> getClassElements() {
         return Collections.unmodifiableList(classElements);
     }
 
-    public ClassNode setClassElements(final List<PropertyNode> classElements) {
+    public ClassNode setClassElements(final List<ClassElement> classElements) {
         if (this.classElements == classElements) {
             return this;
         }
@@ -169,8 +170,8 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         if (visitor.enterClassNode(this)) {
             IdentNode newIdent = ident == null ? null : (IdentNode) ident.accept(visitor);
             Expression newClassHeritage = classHeritage == null ? null : (Expression) classHeritage.accept(visitor);
-            PropertyNode newConstructor = constructor == null ? null : (PropertyNode) constructor.accept(visitor);
-            List<PropertyNode> newClassElements = Node.accept(visitor, classElements);
+            ClassElement newConstructor = constructor == null ? null : (ClassElement) constructor.accept(visitor);
+            List<ClassElement> newClassElements = Node.accept(visitor, classElements);
             return visitor.leaveClassNode(setIdent(newIdent).setClassHeritage(newClassHeritage).setConstructor(newConstructor).setClassElements(newClassElements));
         }
 
@@ -187,6 +188,7 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         return scope;
     }
 
+    //TODO: remove field counts
     public boolean hasInstanceFields() {
         return instanceFieldCount != 0;
     }
@@ -230,7 +232,7 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         if (constructor != null) {
             constructor.toString(sb, printType);
         }
-        for (PropertyNode classElement : getClassElements()) {
+        for (ClassElement classElement : getClassElements()) {
             sb.append(", ");
             classElement.toString(sb, printType);
         }

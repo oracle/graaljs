@@ -113,6 +113,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import com.oracle.js.parser.ir.ClassElement;
+import jdk.internal.joptsimple.internal.Classes;
 import org.graalvm.collections.Pair;
 
 import com.oracle.js.parser.ir.AccessNode;
@@ -1607,8 +1609,8 @@ public class Parser extends AbstractParser {
 
             expect(LBRACE);
 
-            PropertyNode constructor = null;
-            ArrayList<PropertyNode> classElements = new ArrayList<>();
+            ClassElement constructor = null;
+            ArrayList<ClassElement> classElements = new ArrayList<>();
             Map<String, Integer> privateNameToAccessorIndexMap = new HashMap<>();
             int instanceFieldCount = 0;
             int staticFieldCount = 0;
@@ -1653,20 +1655,20 @@ public class Parser extends AbstractParser {
                 final boolean isPrivate = nameTokenType == PRIVATE_IDENT;
                 final Expression classElementName = classElementName(yield, await, true);
 
-                PropertyNode classElement;
+                ClassElement classElement;
                 if (!generator && !async && isClassFieldDefinition(nameTokenType)) {
-                    classElement = fieldDefinition(classElementName, isStatic, classElementToken, hasComputedKey);
+                    classElement = fieldDefinition(classElementName, classElementDecorators, isStatic, classElementToken, hasComputedKey, isPrivate);
                     if (isStatic) {
                         staticFieldCount++;
                     } else {
                         instanceFieldCount++;
                     }
                 } else {
-                    classElement = methodDefinition(classElementName, isStatic, classHeritage != null, generator, async, classElementToken, classElementLine, yield, await, nameTokenType, hasComputedKey);
+                    classElement = methodDefinition(classElementName, classElementDecorators, isStatic, classHeritage != null, generator, async, classElementToken, classElementLine, yield, await, nameTokenType, hasComputedKey, isPrivate);
 
                     //TODO: CoalesceClassElement, CoalesceGetterSetter
 
-                    if (!classElement.isComputed() && classElement.isAccessor()) {
+                    if (!classElement.hasComputedKey() && classElement.isAccessor()) {
                         if (classElement.isPrivate()) {
                             // merge private accessor methods
                             String privateName = classElement.getPrivateName();
@@ -1674,7 +1676,7 @@ public class Parser extends AbstractParser {
                             if (existing == null) {
                                 privateNameToAccessorIndexMap.put(privateName, classElements.size());
                             } else {
-                                PropertyNode otherAccessor = classElements.get(existing);
+                                ClassElement otherAccessor = classElements.get(existing);
                                 if (isStatic == otherAccessor.isStatic()) {
                                     if (otherAccessor.getGetter() == null && classElement.getGetter() != null) {
                                         classElements.set(existing, otherAccessor.setGetter(classElement.getGetter()));
@@ -1689,10 +1691,10 @@ public class Parser extends AbstractParser {
                             }
                         } else if (!classElements.isEmpty()) {
                             // try to merge consecutive getter and setter pairs
-                            PropertyNode lastElement = classElements.get(classElements.size() - 1);
-                            if (!lastElement.isComputed() && lastElement.isAccessor() && isStatic == lastElement.isStatic() &&
+                            ClassElement lastElement = classElements.get(classElements.size() - 1);
+                            if (!lastElement.hasComputedKey() && lastElement.isAccessor() && isStatic == lastElement.isStatic() &&
                                             !lastElement.isPrivate() && classElement.getKeyName().equals(lastElement.getKeyName())) {
-                                PropertyNode merged = classElement.getGetter() != null ? lastElement.setGetter(classElement.getGetter()) : lastElement.setSetter(classElement.getSetter());
+                                ClassElement merged = classElement.getGetter() != null ? lastElement.setGetter(classElement.getGetter()) : lastElement.setSetter(classElement.getSetter());
                                 classElements.set(classElements.size() - 1, merged);
                                 continue;
                             }
@@ -1701,13 +1703,13 @@ public class Parser extends AbstractParser {
                 }
 
                 if (classElement.isPrivate()) {
-                    hasPrivateMethods = hasPrivateMethods || !classElement.isClassField();
-                    hasPrivateInstanceMethods = hasPrivateInstanceMethods || (!classElement.isClassField() && !classElement.isStatic());
+                    hasPrivateMethods = hasPrivateMethods || !classElement.isField();
+                    hasPrivateInstanceMethods = hasPrivateInstanceMethods || (!classElement.isField() && !classElement.isStatic());
                     declarePrivateName(classScope, classElement);
                 }
 
-                if (!classElement.isStatic() && !classElement.isComputed() && classElement.getKeyName().equals(CONSTRUCTOR_NAME)) {
-                    assert !classElement.isClassField();
+                if (!classElement.isStatic() && !classElement.hasComputedKey() && classElement.getKeyName().equals(CONSTRUCTOR_NAME)) {
+                    assert !classElement.isField();
                     if (constructor == null) {
                         constructor = classElement;
                     } else {
@@ -1787,11 +1789,11 @@ public class Parser extends AbstractParser {
         return privateIdent;
     }
 
-    private void declarePrivateName(Scope classScope, PropertyNode classElement) {
+    private void declarePrivateName(Scope classScope, ClassElement classElement) {
         // Syntax Error if PrivateBoundIdentifiers of ClassBody contains any duplicate entries,
         // unless the name is used once for a getter and once for a setter and in no other entries.
         int privateFlags = (classElement.isStatic() ? Symbol.IS_PRIVATE_NAME_STATIC : 0);
-        if (!classElement.isClassField()) {
+        if (!classElement.isField()) {
             privateFlags |= classElement.isAccessor() ? Symbol.IS_PRIVATE_NAME_ACCESSOR : Symbol.IS_PRIVATE_NAME_METHOD;
         }
         if (!classScope.addPrivateName(classElement.getPrivateName(), privateFlags)) {
@@ -1847,7 +1849,7 @@ public class Parser extends AbstractParser {
         }
     }
 
-    private PropertyNode createDefaultClassConstructor(int classLineNumber, long classToken, long lastToken, IdentNode className, boolean derived) {
+    private ClassElement createDefaultClassConstructor(int classLineNumber, long classToken, long lastToken, IdentNode className, boolean derived) {
         final int ctorFinish = finish;
         final List<Statement> statements;
         final List<IdentNode> parameters;
@@ -1880,25 +1882,22 @@ public class Parser extends AbstractParser {
             function.setInternalName(CONSTRUCTOR_NAME);
         }
 
-        PropertyNode constructor = new PropertyNode(classToken, ctorFinish, new IdentNode(identToken, ctorFinish, CONSTRUCTOR_NAME),
-                        createFunctionNode(function, classToken, className, classLineNumber, body),
-                        null, null, false, false, false, false);
-        return constructor;
+        return ClassElement.createDefaultConstructor(classToken, ctorFinish, new IdentNode(identToken, ctorFinish, CONSTRUCTOR_NAME), createFunctionNode(function, classToken, className, classLineNumber, body));
     }
 
-    private PropertyNode methodDefinition(Expression propertyName, boolean isStatic, boolean derived, boolean generator, boolean async, long startToken, int methodLine, boolean yield,
-                    boolean await, TokenType nameTokenType, boolean computed) {
+    private ClassElement methodDefinition(Expression propertyName, List<Expression> decorators, boolean isStatic, boolean derived, boolean generator, boolean async, long startToken, int methodLine, boolean yield,
+                    boolean await, TokenType nameTokenType, boolean hasComputedKey, boolean isPrivate) {
         int flags = FunctionNode.IS_METHOD;
-        if (!computed) {
+        if (!hasComputedKey) {
             final String name = ((PropertyKey) propertyName).getPropertyName();
             if (!generator && nameTokenType == GET && type != LPAREN) {
                 PropertyFunction methodDefinition = propertyGetterFunction(startToken, methodLine, yield, await, true);
                 verifyAllowedMethodName(methodDefinition.key, isStatic, methodDefinition.computed, generator, true, async);
-                return new PropertyNode(startToken, finish, methodDefinition.key, null, methodDefinition.functionNode, null, isStatic, methodDefinition.computed, false, false);
+                return ClassElement.createAccessor(startToken, finish, methodDefinition.key, methodDefinition.functionNode, null, decorators, isPrivate, isStatic, methodDefinition.computed);
             } else if (!generator && nameTokenType == SET && type != LPAREN) {
                 PropertyFunction methodDefinition = propertySetterFunction(startToken, methodLine, yield, await, true);
                 verifyAllowedMethodName(methodDefinition.key, isStatic, methodDefinition.computed, generator, true, async);
-                return new PropertyNode(startToken, finish, methodDefinition.key, null, null, methodDefinition.functionNode, isStatic, methodDefinition.computed, false, false);
+                return ClassElement.createAccessor(startToken, finish, methodDefinition.key, null, methodDefinition.functionNode, decorators, isPrivate, isStatic, methodDefinition.computed);
             } else {
                 if (!isStatic && !generator && name.equals(CONSTRUCTOR_NAME)) {
                     flags |= FunctionNode.IS_CLASS_CONSTRUCTOR;
@@ -1906,11 +1905,11 @@ public class Parser extends AbstractParser {
                         flags |= FunctionNode.IS_DERIVED_CONSTRUCTOR;
                     }
                 }
-                verifyAllowedMethodName(propertyName, isStatic, computed, generator, false, async);
+                verifyAllowedMethodName(propertyName, isStatic, hasComputedKey, generator, false, async);
             }
         }
-        PropertyFunction methodDefinition = propertyMethodFunction(propertyName, startToken, methodLine, generator, flags, computed, async);
-        return new PropertyNode(startToken, finish, methodDefinition.key, methodDefinition.functionNode, null, null, isStatic, computed, false, false);
+        PropertyFunction methodDefinition = propertyMethodFunction(propertyName, startToken, methodLine, generator, flags, hasComputedKey, async);
+        return ClassElement.createMethod(startToken, finish, methodDefinition.key, methodDefinition.functionNode, decorators, isPrivate, isStatic, hasComputedKey);
     }
 
     /**
@@ -1937,9 +1936,9 @@ public class Parser extends AbstractParser {
         }
     }
 
-    private PropertyNode fieldDefinition(Expression propertyName, boolean isStatic, long startToken, boolean computed) {
+    private ClassElement fieldDefinition(Expression propertyName,List<Expression> decorators, boolean isStatic, long startToken, boolean hascComputedKey, boolean isPrivate) {
         // "constructor" or #constructor is not allowed as an instance field name
-        if (!computed && propertyName instanceof PropertyKey) {
+        if (!hascComputedKey && propertyName instanceof PropertyKey) {
             String name = ((PropertyKey) propertyName).getPropertyName();
             if (CONSTRUCTOR_NAME.equals(name) || PRIVATE_CONSTRUCTOR_NAME.equals(name)) {
                 throw error(AbstractParser.message("constructor.field"), startToken);
@@ -1955,13 +1954,13 @@ public class Parser extends AbstractParser {
             next();
 
             // Parse AssignmentExpression[In] in a function.
-            Pair<FunctionNode, Boolean> pair = fieldInitializer(line, startToken, propertyName, computed);
+            Pair<FunctionNode, Boolean> pair = fieldInitializer(line, startToken, propertyName, hascComputedKey);
             initializer = pair.getLeft();
             isAnonymousFunctionDefinition = pair.getRight();
 
             endOfLine(); // semicolon or end of line
         }
-        return new PropertyNode(startToken, finish, propertyName, initializer, null, null, isStatic, computed, false, false, true, isAnonymousFunctionDefinition);
+        return ClassElement.createField(startToken,finish,propertyName,initializer,decorators,isPrivate,isStatic,hascComputedKey,isAnonymousFunctionDefinition);
     }
 
     private Pair<FunctionNode, Boolean> fieldInitializer(int lineNumber, long fieldToken, Expression propertyName, boolean computed) {
