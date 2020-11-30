@@ -81,6 +81,7 @@ import static com.oracle.js.parser.TokenType.LPAREN;
 import static com.oracle.js.parser.TokenType.MUL;
 import static com.oracle.js.parser.TokenType.OF;
 import static com.oracle.js.parser.TokenType.PERIOD;
+import static com.oracle.js.parser.TokenType.PRIVATE_IDENT;
 import static com.oracle.js.parser.TokenType.RBRACE;
 import static com.oracle.js.parser.TokenType.RBRACKET;
 import static com.oracle.js.parser.TokenType.RPAREN;
@@ -1648,19 +1649,20 @@ public class Parser extends AbstractParser {
                 }
 
                 final TokenType nameTokenType = type;
-                final boolean computed = nameTokenType == LBRACKET;
+                final boolean hasComputedKey = nameTokenType == LBRACKET;
+                final boolean isPrivate = nameTokenType == PRIVATE_IDENT;
                 final Expression classElementName = classElementName(yield, await, true);
 
                 PropertyNode classElement;
                 if (!generator && !async && isClassFieldDefinition(nameTokenType)) {
-                    classElement = fieldDefinition(classElementName, isStatic, classElementToken, computed);
+                    classElement = fieldDefinition(classElementName, isStatic, classElementToken, hasComputedKey);
                     if (isStatic) {
                         staticFieldCount++;
                     } else {
                         instanceFieldCount++;
                     }
                 } else {
-                    classElement = methodDefinition(classElementName, isStatic, classHeritage != null, generator, async, classElementToken, classElementLine, yield, await, nameTokenType, computed);
+                    classElement = methodDefinition(classElementName, isStatic, classHeritage != null, generator, async, classElementToken, classElementLine, yield, await, nameTokenType, hasComputedKey);
 
                     //TODO: CoalesceClassElement, CoalesceGetterSetter
 
