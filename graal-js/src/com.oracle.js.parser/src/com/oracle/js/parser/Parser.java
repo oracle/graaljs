@@ -1611,7 +1611,7 @@ public class Parser extends AbstractParser {
 
             ClassElement constructor = null;
             ArrayList<ClassElement> classElements = new ArrayList<>();
-            Map<String, Integer> privateNameToAccessorIndexMap = new HashMap<>();
+            Map<String, Integer> classElementNameToElementIndexMap = new HashMap<>();
             int instanceFieldCount = 0;
             int staticFieldCount = 0;
             boolean hasPrivateMethods = false;
@@ -1625,6 +1625,7 @@ public class Parser extends AbstractParser {
                     break;
                 }
                 List<Expression> classElementDecorators = null;
+                long decoratorToken = token;
                 if(type == AT) {
                     classElementDecorators = decoratorList(yield, await);
                 }
@@ -1666,15 +1667,45 @@ public class Parser extends AbstractParser {
                 } else {
                     classElement = methodDefinition(classElementName, classElementDecorators, isStatic, classHeritage != null, generator, async, classElementToken, classElementLine, yield, await, nameTokenType, hasComputedKey, isPrivate);
 
-                    //TODO: CoalesceClassElement, CoalesceGetterSetter
+                    //CoalesceClassElement: Replacement for merging private accessor methods and consecutive getter and setter pairs
+                    Integer existingIndex = classElementNameToElementIndexMap.get(classElement.getKeyName());
+                    if(existingIndex == null) {
+                        classElementNameToElementIndexMap.put(classElement.getKeyName(),classElements.size());
+                    } else {
+                        ClassElement existing = classElements.get(existingIndex);
+                        if(classElement.getKind() == existing.getKind() && classElement.getPlacement() == existing.getPlacement()) {
+                            if(classElement.isMethod()) {
+                                assert !classElement.isPrivate();
+                                assert classElement.isConfigurable() && existing.isConfigurable();
+                                if(classElement.getDecorators() != null || existing.getDecorators() != null) {
+                                    throw error(ECMAErrors.getMessage("type.error.duplicate.methods.with.decorators"), decoratorToken);
+                                }
+                                existing = existing.setDecorators(classElement.getDecorators());
+                            } else {
+                                if(classElement.getDecorators() != null) {
+                                    if(existing.getDecorators() != null) {
+                                        throw error(ECMAErrors.getMessage("type.error.accessor.with.multiple.decorators"), decoratorToken);
+                                    }
+                                    //CoalesceGetterSetter
+                                    assert classElement.isAccessor() && existing.isAccessor();
+                                    if(classElement.getGetter() != null) {
+                                        existing = existing.setGetter(classElement.getGetter());
+                                    } else {
+                                        assert classElement.getSetter() != null;
+                                        existing = existing.setSetter(classElement.getSetter());
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     if (!classElement.hasComputedKey() && classElement.isAccessor()) {
                         if (classElement.isPrivate()) {
                             // merge private accessor methods
                             String privateName = classElement.getPrivateName();
-                            Integer existing = privateNameToAccessorIndexMap.get(privateName);
+                            Integer existing = classElementNameToElementIndexMap.get(privateName);
                             if (existing == null) {
-                                privateNameToAccessorIndexMap.put(privateName, classElements.size());
+                                classElementNameToElementIndexMap.put(privateName, classElements.size());
                             } else {
                                 ClassElement otherAccessor = classElements.get(existing);
                                 if (isStatic == otherAccessor.isStatic()) {
@@ -1711,6 +1742,9 @@ public class Parser extends AbstractParser {
                 if (!classElement.isStatic() && !classElement.hasComputedKey() && classElement.getKeyName().equals(CONSTRUCTOR_NAME)) {
                     assert !classElement.isField();
                     if (constructor == null) {
+                        if(classElement.getDecorators() != null) {
+                            throw error(AbstractParser.message("constructor.decorators"), decoratorToken);
+                        }
                         constructor = classElement;
                     } else {
                         throw error(AbstractParser.message("multiple.constructors"), classElementToken);
