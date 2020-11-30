@@ -243,16 +243,10 @@ public abstract class EvalNode extends JavaScriptNode {
             if (context.isOptionV8CompatibilityMode()) {
                 evalSourceName = formatEvalOrigin(this, context);
             }
-            final SourceSection section = getRootNode().getSourceSection();
-            boolean internal = section != null && section.getSource().isInternal();
             if (evalSourceName == null) {
-                if (internal) {
-                    evalSourceName = section.getSource().getName();
-                } else {
-                    evalSourceName = Evaluator.EVAL_SOURCE_NAME;
-                }
+                evalSourceName = Evaluator.EVAL_SOURCE_NAME;
             }
-            return Source.newBuilder(JavaScriptLanguage.ID, sourceCode.toString(), evalSourceName).internal(internal).build();
+            return Source.newBuilder(JavaScriptLanguage.ID, sourceCode.toString(), evalSourceName).build();
         }
 
         protected DirectEvalNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
