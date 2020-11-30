@@ -255,6 +255,13 @@ public class ClassElement extends Node {
 
     @Override
     public void toString(StringBuilder sb, boolean printType) {
+        if(decorators != null) {
+            for (Expression decorator : decorators) {
+                sb.append("@");
+                decorator.toString(sb, printType);
+                sb.append(" ");
+            }
+        }
         if(isStatic())
         {
             sb.append("static ");
