@@ -101,12 +101,11 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     private static HostAccess createNashornHostAccess() {
         HostAccess.Builder b = HostAccess.newBuilder(HostAccess.ALL);
         // Last resort conversions similar to those in NashornBottomLinker.
-        b.targetTypeMapping(Value.class, String.class, v -> !v.isNull() && v.isHostObject(), Value::toString, TargetMappingPrecedence.LOW);
-        b.targetTypeMapping(Value.class, String.class, v -> !v.isNull() && !v.isHostObject(), Value::toString, TargetMappingPrecedence.LOWEST);
-        b.targetTypeMapping(Number.class, Integer.class, n -> true, n -> n.intValue(), TargetMappingPrecedence.LOW);
-        b.targetTypeMapping(Number.class, Double.class, n -> true, n -> n.doubleValue(), TargetMappingPrecedence.LOW);
-        b.targetTypeMapping(Number.class, Long.class, n -> true, n -> n.longValue(), TargetMappingPrecedence.LOW);
-        b.targetTypeMapping(Number.class, Boolean.class, n -> true, n -> toBoolean(n.doubleValue()), TargetMappingPrecedence.LOW);
+        b.targetTypeMapping(Value.class, String.class, v -> !v.isNull(), Value::toString, TargetMappingPrecedence.LOWEST);
+        b.targetTypeMapping(Number.class, Integer.class, n -> true, n -> n.intValue(), TargetMappingPrecedence.LOWEST);
+        b.targetTypeMapping(Number.class, Double.class, n -> true, n -> n.doubleValue(), TargetMappingPrecedence.LOWEST);
+        b.targetTypeMapping(Number.class, Long.class, n -> true, n -> n.longValue(), TargetMappingPrecedence.LOWEST);
+        b.targetTypeMapping(Number.class, Boolean.class, n -> true, n -> toBoolean(n.doubleValue()), TargetMappingPrecedence.LOWEST);
         b.targetTypeMapping(String.class, Boolean.class, n -> true, n -> !n.isEmpty(), TargetMappingPrecedence.LOWEST);
         return b.build();
     }
