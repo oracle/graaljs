@@ -1071,42 +1071,6 @@ void GraalIsolate::Dispose(bool exit, int status) {
 #endif
 }
 
-double GraalIsolate::ReadDoubleFromSharedBuffer() {
-    double* result = (double*)((char*)shared_buffer_ + shared_buffer_pos_);
-    shared_buffer_pos_ += sizeof(double);
-    return *result;
-}
-
-int32_t GraalIsolate::ReadInt32FromSharedBuffer() {
-    int32_t* result = (int32_t*)((char*)shared_buffer_ + shared_buffer_pos_);
-    shared_buffer_pos_ += sizeof(int32_t);
-    return *result;
-}
-
-int64_t GraalIsolate::ReadInt64FromSharedBuffer() {
-    int64_t* result = (int64_t*)((char*)shared_buffer_ + shared_buffer_pos_);
-    shared_buffer_pos_ += sizeof(int64_t);
-    return *result;
-}
-
-void GraalIsolate::WriteInt32ToSharedBuffer(int32_t number) {
-    int32_t* result = (int32_t*) ((char*) shared_buffer_ + shared_buffer_pos_);
-    shared_buffer_pos_ += sizeof (int32_t);
-    *result = number;
-}
-
-void GraalIsolate::WriteInt64ToSharedBuffer(int64_t number) {
-    int64_t* result = (int64_t*) ((char*) shared_buffer_ + shared_buffer_pos_);
-    shared_buffer_pos_ += sizeof (int64_t);
-    *result = number;
-}
-
-void GraalIsolate::WriteDoubleToSharedBuffer(double number) {
-    double* result = (double*) ((char*) shared_buffer_ + shared_buffer_pos_);
-    shared_buffer_pos_ += sizeof (double);
-    *result = number;
-}
-
 jobject GraalIsolate::JNIGetObjectFieldOrCall(jobject java_object, GraalAccessField graal_field_id, GraalAccessMethod graal_method_id) {
     jfieldID field = GetJNIField(graal_field_id);
     jobject result;

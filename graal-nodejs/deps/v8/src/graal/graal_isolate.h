@@ -371,12 +371,12 @@ public:
     v8::Local<v8::Value> InternalFieldKey(int index);
     void Dispose();
     void Dispose(bool exit, int status);
-    double ReadDoubleFromSharedBuffer();
-    int32_t ReadInt32FromSharedBuffer();
-    int64_t ReadInt64FromSharedBuffer();
-    void WriteInt32ToSharedBuffer(int32_t number);
-    void WriteInt64ToSharedBuffer(int64_t number);
-    void WriteDoubleToSharedBuffer(double number);
+    inline double ReadDoubleFromSharedBuffer();
+    inline int32_t ReadInt32FromSharedBuffer();
+    inline int64_t ReadInt64FromSharedBuffer();
+    inline void WriteInt32ToSharedBuffer(int32_t number);
+    inline void WriteInt64ToSharedBuffer(int64_t number);
+    inline void WriteDoubleToSharedBuffer(double number);
     void InternalErrorCheck();
     static v8::Isolate* New(v8::Isolate::CreateParams const& params, v8::Isolate* placement = nullptr);
     void SetPromiseHook(v8::PromiseHook promise_hook);
@@ -741,6 +741,42 @@ bool GraalIsolate::StackOverflowCheck(intptr_t stack_top) {
         return true;
     }
     return false;
+}
+
+double GraalIsolate::ReadDoubleFromSharedBuffer() {
+    double* result = (double*)((char*)shared_buffer_ + shared_buffer_pos_);
+    shared_buffer_pos_ += sizeof(double);
+    return *result;
+}
+
+int32_t GraalIsolate::ReadInt32FromSharedBuffer() {
+    int32_t* result = (int32_t*)((char*)shared_buffer_ + shared_buffer_pos_);
+    shared_buffer_pos_ += sizeof(int32_t);
+    return *result;
+}
+
+int64_t GraalIsolate::ReadInt64FromSharedBuffer() {
+    int64_t* result = (int64_t*)((char*)shared_buffer_ + shared_buffer_pos_);
+    shared_buffer_pos_ += sizeof(int64_t);
+    return *result;
+}
+
+void GraalIsolate::WriteInt32ToSharedBuffer(int32_t number) {
+    int32_t* result = (int32_t*) ((char*) shared_buffer_ + shared_buffer_pos_);
+    shared_buffer_pos_ += sizeof (int32_t);
+    *result = number;
+}
+
+void GraalIsolate::WriteInt64ToSharedBuffer(int64_t number) {
+    int64_t* result = (int64_t*) ((char*) shared_buffer_ + shared_buffer_pos_);
+    shared_buffer_pos_ += sizeof (int64_t);
+    *result = number;
+}
+
+void GraalIsolate::WriteDoubleToSharedBuffer(double number) {
+    double* result = (double*) ((char*) shared_buffer_ + shared_buffer_pos_);
+    shared_buffer_pos_ += sizeof (double);
+    *result = number;
 }
 
 #endif /* GRAAL_ISOLATE_H_ */
