@@ -16,6 +16,7 @@ const {
   JSONStringify,
   Map,
   MathAbs,
+  MathMax,
   NumberIsInteger,
   ObjectDefineProperty,
   ObjectKeys,
@@ -669,17 +670,37 @@ const fatalExceptionStackEnhancers = {
   },
   afterInspector(error) {
     const originalStack = error.stack;
+    let useColors = true;
+    // Some consoles do not convert ANSI escape sequences to colors,
+    // rather display them directly to the stdout. On those consoles,
+    // libuv emulates colors by intercepting stdout stream and calling
+    // corresponding Windows API functions for setting console colors.
+    // However, fatal error are handled differently and we cannot easily
+    // highlight them. On Windows, detecting whether a console supports
+    // ANSI escape sequences is not reliable.
+    if (process.platform === 'win32') {
+      const info = internalBinding('os').getOSInformation();
+      const ver = info[2].split('.').map((a) => +a);
+      if (ver[0] !== 10 || ver[2] < 14393) {
+        useColors = false;
+      }
+    }
     const {
       inspect,
       inspectDefaultOptions: {
         colors: defaultColors
       }
     } = lazyInternalUtilInspect();
-    const colors = (internalBinding('util').guessHandleType(2) === 'TTY' &&
+    const colors = useColors &&
+                   ((internalBinding('util').guessHandleType(2) === 'TTY' &&
                    require('internal/tty').hasColors()) ||
-                   defaultColors;
+                   defaultColors);
     try {
-      return inspect(error, { colors });
+      return inspect(error, {
+        colors,
+        customInspect: false,
+        depth: MathMax(inspect.defaultOptions.depth, 5)
+      });
     } catch {
       return originalStack;
     }
@@ -782,6 +803,9 @@ E('ERR_CRYPTO_SIGN_KEY_REQUIRED', 'No key provided to sign', Error);
 E('ERR_CRYPTO_TIMING_SAFE_EQUAL_LENGTH',
   'Input buffers must have the same byte length', RangeError);
 E('ERR_DIR_CLOSED', 'Directory handle was closed', Error);
+E('ERR_DIR_CONCURRENT_OPERATION',
+  'Cannot do synchronous work on directory handle with concurrent ' +
+  'asynchronous operations', Error);
 E('ERR_DNS_SET_SERVERS_FAILED', 'c-ares failed to set servers: "%s" [%s]',
   Error);
 E('ERR_DOMAIN_CALLBACK_NOT_AVAILABLE',
@@ -913,6 +937,10 @@ E('ERR_INCOMPATIBLE_OPTION_PAIR',
   'Option "%s" cannot be used in combination with option "%s"', TypeError);
 E('ERR_INPUT_TYPE_NOT_ALLOWED', '--input-type can only be used with string ' +
   'input via --eval, --print, or STDIN', Error);
+E('ERR_INSPECTOR_ALREADY_ACTIVATED',
+  'Inspector is already activated. Close it with inspector.close() ' +
+  'before activating it again.',
+  Error);
 E('ERR_INSPECTOR_ALREADY_CONNECTED', '%s is already connected', Error);
 E('ERR_INSPECTOR_CLOSED', 'Session was closed', Error);
 E('ERR_INSPECTOR_COMMAND', 'Inspector error %d: %s', Error);
@@ -1078,10 +1106,9 @@ E('ERR_INVALID_MODULE_SPECIFIER', (pkgPath, subpath, base = undefined) => {
     assert(subpath !== '.');
     return `Package subpath '${subpath}' is not a valid module request for ` +
       `the "exports" resolution of ${pkgPath}${sep}package.json`;
-  } else {
-    return `Package subpath '${subpath}' is not a valid module request for ` +
-      `the "exports" resolution of ${pkgPath} imported from ${base}`;
   }
+  return `Package subpath '${subpath}' is not a valid module request for ` +
+      `the "exports" resolution of ${pkgPath} imported from ${base}`;
 }, TypeError);
 E('ERR_INVALID_OPT_VALUE', (name, value) =>
   `The value "${String(value)}" is invalid for option "${name}"`,
@@ -1092,8 +1119,7 @@ E('ERR_INVALID_OPT_VALUE_ENCODING',
 E('ERR_INVALID_PACKAGE_CONFIG', (path, message, hasMessage = true) => {
   if (hasMessage)
     return `Invalid package config ${path}${sep}package.json, ${message}`;
-  else
-    return `Invalid JSON in ${path} imported from ${message}`;
+  return `Invalid JSON in ${path} imported from ${message}`;
 }, Error);
 E('ERR_INVALID_PACKAGE_TARGET',
   (pkgPath, key, subpath, target, base = undefined) => {
@@ -1104,11 +1130,10 @@ E('ERR_INVALID_PACKAGE_TARGET',
         return `Invalid "exports" target ${JSONStringify(target)} defined ` +
         `for '${subpath}' in the package config ${pkgPath} imported from ` +
         `${base}.${relError ? '; targets must start with "./"' : ''}`;
-      } else {
-        return `Invalid "exports" main target ${target} defined in the ` +
-          `package config ${pkgPath} imported from ${base}${relError ?
-            '; targets must start with "./"' : ''}`;
       }
+      return `Invalid "exports" main target ${target} defined in the ` +
+        `package config ${pkgPath} imported from ${base}${relError ?
+          '; targets must start with "./"' : ''}`;
     } else if (key === '.') {
       return `Invalid "exports" main target ${JSONStringify(target)} defined ` +
       `in the package config ${pkgPath}${sep}package.json${relError ?
@@ -1118,11 +1143,10 @@ E('ERR_INVALID_PACKAGE_TARGET',
         StringPrototypeSlice(key, 0, -subpath.length || key.length)}' in the ` +
         `package config ${pkgPath}${sep}package.json; ` +
         'targets must start with "./"';
-    } else {
-      return `Invalid "exports" target ${JSONStringify(target)} defined for '${
-        StringPrototypeSlice(key, 0, -subpath.length || key.length)}' in the ` +
-      `package config ${pkgPath}${sep}package.json`;
     }
+    return `Invalid "exports" target ${JSONStringify(target)} defined for '${
+      StringPrototypeSlice(key, 0, -subpath.length || key.length)}' in the ` +
+    `package config ${pkgPath}${sep}package.json`;
   }, Error);
 E('ERR_INVALID_PERFORMANCE_MARK',
   'The "%s" performance mark has not been set', Error);
@@ -1277,10 +1301,9 @@ E('ERR_PACKAGE_PATH_NOT_EXPORTED', (pkgPath, subpath, base = undefined) => {
   } else if (base === undefined) {
     return `Package subpath '${subpath}' is not defined by "exports" in ${
       pkgPath}${sep}package.json`;
-  } else {
-    return `Package subpath '${subpath}' is not defined by "exports" in ${
-      pkgPath} imported from ${base}`;
   }
+  return `Package subpath '${subpath}' is not defined by "exports" in ${
+    pkgPath} imported from ${base}`;
 }, Error);
 E('ERR_REQUIRE_ESM',
   (filename, parentPath = null, packageJsonPath = null) => {
@@ -1395,6 +1418,8 @@ E('ERR_UNKNOWN_FILE_EXTENSION',
   TypeError);
 E('ERR_UNKNOWN_MODULE_FORMAT', 'Unknown module format: %s', RangeError);
 E('ERR_UNKNOWN_SIGNAL', 'Unknown signal: %s', TypeError);
+E('ERR_UNSUPPORTED_DIR_IMPORT', "Directory import '%s' is not supported " +
+'resolving ES modules, imported from %s', Error);
 E('ERR_UNSUPPORTED_ESM_URL_SCHEME', 'Only file and data URLs are supported ' +
   'by the default ESM loader', Error);
 

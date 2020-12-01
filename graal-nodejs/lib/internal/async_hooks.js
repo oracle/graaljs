@@ -1,13 +1,16 @@
 'use strict';
 
 const {
+  ArrayPrototypeUnshift,
   Error,
   FunctionPrototypeBind,
   ObjectDefineProperty,
+  ReflectApply,
   Symbol,
 } = primordials;
 
 const async_wrap = internalBinding('async_wrap');
+const { setCallbackTrampoline } = async_wrap;
 /* async_hook_fields is a Uint32Array wrapping the uint32_t array of
  * Environment::AsyncHooks::fields_[]. Each index tracks the number of active
  * hooks for each type.
@@ -36,14 +39,13 @@ const async_wrap = internalBinding('async_wrap');
 const {
   async_hook_fields,
   async_id_fields,
-  execution_async_resources,
-  owner_symbol
+  execution_async_resources
 } = async_wrap;
-// Store the pair executionAsyncId and triggerAsyncId in a std::stack on
-// Environment::AsyncHooks::async_ids_stack_ tracks the resource responsible for
-// the current execution stack. This is unwound as each resource exits. In the
-// case of a fatal exception this stack is emptied after calling each hook's
-// after() callback.
+// Store the pair executionAsyncId and triggerAsyncId in a AliasedFloat64Array
+// in Environment::AsyncHooks::async_ids_stack_ which tracks the resource
+// responsible for the current execution stack. This is unwound as each resource
+// exits. In the case of a fatal exception this stack is emptied after calling
+// each hook's after() callback.
 const {
   pushAsyncContext: pushAsyncContext_,
   popAsyncContext: popAsyncContext_
@@ -78,6 +80,7 @@ const active_hooks = {
 
 const { registerDestroyHook } = async_wrap;
 const { enqueueMicrotask } = internalBinding('task_queue');
+const { resource_symbol, owner_symbol } = internalBinding('symbols');
 
 // Each constant tracks how many callbacks there are for any given step of
 // async execution. These are tracked so if the user didn't include callbacks
@@ -100,13 +103,38 @@ const emitDestroyNative = emitHookFactory(destroy_symbol, 'emitDestroyNative');
 const emitPromiseResolveNative =
     emitHookFactory(promise_resolve_symbol, 'emitPromiseResolveNative');
 
+let domain_cb;
+function useDomainTrampoline(fn) {
+  domain_cb = fn;
+}
+
+function callbackTrampoline(asyncId, cb, ...args) {
+  if (asyncId !== 0 && hasHooks(kBefore))
+    emitBeforeNative(asyncId);
+
+  let result;
+  if (asyncId === 0 && typeof domain_cb === 'function') {
+    ArrayPrototypeUnshift(args, cb);
+    result = ReflectApply(domain_cb, this, args);
+  } else {
+    result = ReflectApply(cb, this, args);
+  }
+
+  if (asyncId !== 0 && hasHooks(kAfter))
+    emitAfterNative(asyncId);
+
+  return result;
+}
+
+setCallbackTrampoline(callbackTrampoline);
+
 const topLevelResource = {};
 
 function executionAsyncResource() {
   const index = async_hook_fields[kStackLength] - 1;
   if (index === -1) return topLevelResource;
   const resource = execution_async_resources[index];
-  return resource;
+  return lookupPublicResource(resource);
 }
 
 // Used to fatally abort the process if a callback throws.
@@ -127,6 +155,15 @@ function fatalError(e) {
   process.exit(1);
 }
 
+function lookupPublicResource(resource) {
+  if (typeof resource !== 'object' || resource === null) return resource;
+  // TODO(addaleax): Merge this with owner_symbol and use it across all
+  // AsyncWrap instances.
+  const publicResource = resource[resource_symbol];
+  if (publicResource !== undefined)
+    return publicResource;
+  return resource;
+}
 
 // Emit From Native //
 
@@ -135,6 +172,7 @@ function fatalError(e) {
 // emitInitScript.
 function emitInitNative(asyncId, type, triggerAsyncId, resource) {
   active_hooks.call_depth += 1;
+  resource = lookupPublicResource(resource);
   // Use a single try/catch for all hooks to avoid setting up one per iteration.
   try {
     // Using var here instead of let because "for (var ...)" is faster than let.
@@ -465,6 +503,7 @@ module.exports = {
   emitAfter: emitAfterScript,
   emitDestroy: emitDestroyScript,
   registerDestroyHook,
+  useDomainTrampoline,
   nativeHooks: {
     init: emitInitNative,
     before: emitBeforeNative,

@@ -14,7 +14,7 @@ into the JavaScript language. A number of additional methods are supported
 that cover additional use cases. Node.js APIs accept plain [`Uint8Array`][]s
 wherever `Buffer`s are supported as well.
 
-Instances of the `Buffer` class, and [`Uint8Array`][]s in general,
+Instances of `Buffer`, and instances of [`Uint8Array`][] in general,
 are similar to arrays of integers from `0` to `255`, but correspond to
 fixed-sized blocks of memory and cannot contain any other values.
 The size of a `Buffer` is established when it is created and cannot be changed.
@@ -53,7 +53,7 @@ const buf6 = Buffer.from('tést');
 const buf7 = Buffer.from('tést', 'latin1');
 ```
 
-## Buffers and Character Encodings
+## Buffers and character encodings
 <!-- YAML
 changes:
   - version: v6.4.0
@@ -569,7 +569,7 @@ Array entries outside that range will be truncated to fit into it.
 const buf = Buffer.from([0x62, 0x75, 0x66, 0x66, 0x65, 0x72]);
 ```
 
-A `TypeError` will be thrown if `array` is not an `Array` or other type
+A `TypeError` will be thrown if `array` is not an `Array` or another type
 appropriate for `Buffer.from()` variants.
 
 `Buffer.from(array)` and [`Buffer.from(string)`][] may also use the internal
@@ -623,7 +623,8 @@ console.log(buf.length);
 ```
 
 A `TypeError` will be thrown if `arrayBuffer` is not an [`ArrayBuffer`][] or a
-[`SharedArrayBuffer`][] or other type appropriate for `Buffer.from()` variants.
+[`SharedArrayBuffer`][] or another type appropriate for `Buffer.from()`
+variants.
 
 ### Class Method: `Buffer.from(buffer)`
 <!-- YAML
@@ -647,7 +648,7 @@ console.log(buf2.toString());
 // Prints: buffer
 ```
 
-A `TypeError` will be thrown if `buffer` is not a `Buffer` or other type
+A `TypeError` will be thrown if `buffer` is not a `Buffer` or another type
 appropriate for `Buffer.from()` variants.
 
 ### Class Method: `Buffer.from(object[, offsetOrEncoding[, length]])`
@@ -656,11 +657,8 @@ added: v8.2.0
 -->
 
 * `object` {Object} An object supporting `Symbol.toPrimitive` or `valueOf()`.
-* `offsetOrEncoding` {integer|string} A byte-offset or encoding, depending on
-  the value returned either by `object.valueOf()` or
-  `object[Symbol.toPrimitive]()`.
-* `length` {integer} A length, depending on the value returned either by
-  `object.valueOf()` or `object[Symbol.toPrimitive]()`.
+* `offsetOrEncoding` {integer|string} A byte-offset or encoding.
+* `length` {integer} A length.
 
 For objects whose `valueOf()` function returns a value not strictly equal to
 `object`, returns `Buffer.from(object.valueOf(), offsetOrEncoding, length)`.
@@ -671,7 +669,7 @@ const buf = Buffer.from(new String('this is a test'));
 ```
 
 For objects that support `Symbol.toPrimitive`, returns
-`Buffer.from(object[Symbol.toPrimitive](), offsetOrEncoding, length)`.
+`Buffer.from(object[Symbol.toPrimitive]('string'), offsetOrEncoding)`.
 
 ```js
 class Foo {
@@ -684,8 +682,8 @@ const buf = Buffer.from(new Foo(), 'utf8');
 // Prints: <Buffer 74 68 69 73 20 69 73 20 61 20 74 65 73 74>
 ```
 
-A `TypeError` will be thrown if `object` has not mentioned methods or is not of
-other type appropriate for `Buffer.from()` variants.
+A `TypeError` will be thrown if `object` does not have the mentioned methods or
+is not of another type appropriate for `Buffer.from()` variants.
 
 ### Class Method: `Buffer.from(string[, encoding])`
 <!-- YAML
@@ -710,7 +708,7 @@ console.log(buf1.toString('latin1'));
 // Prints: this is a tÃ©st
 ```
 
-A `TypeError` will be thrown if `string` is not a string or other type
+A `TypeError` will be thrown if `string` is not a string or another type
 appropriate for `Buffer.from()` variants.
 
 ### Class Method: `Buffer.isBuffer(obj)`
@@ -2520,9 +2518,7 @@ changes:
 * `size` {integer} The desired length of the new `Buffer`.
 
 See [`Buffer.alloc()`][] and [`Buffer.allocUnsafe()`][]. This variant of the
-constructor is equivalent to [`Buffer.allocUnsafe()`][], although using
-[`Buffer.alloc()`][] is recommended in code paths that are not critical to
-performance.
+constructor is equivalent to [`Buffer.alloc()`][].
 
 ### `new Buffer(string[, encoding])`
 <!-- YAML
@@ -2636,7 +2632,7 @@ deprecated: v6.0.0
 
 See [`Buffer.allocUnsafeSlow()`][].
 
-## Buffer Constants
+## Buffer constants
 <!-- YAML
 added: v8.2.0
 -->
@@ -2704,7 +2700,7 @@ it allows injection of numbers where a naively written application that does not
 validate its input sufficiently might expect to always receive a string.
 Before Node.js 8.0.0, the 100 byte buffer might contain
 arbitrary pre-existing in-memory data, so may be used to expose in-memory
-secrets to a remote attacker.  Since Node.js 8.0.0, exposure of memory cannot
+secrets to a remote attacker. Since Node.js 8.0.0, exposure of memory cannot
 occur because the data is zero-filled. However, other attacks are still
 possible, such as causing very large buffers to be allocated by the server,
 leading to performance degradation or crashing on memory exhaustion.

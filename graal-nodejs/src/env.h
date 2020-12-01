@@ -29,6 +29,7 @@
 #include "inspector_agent.h"
 #include "inspector_profiler.h"
 #endif
+#include "callback_queue.h"
 #include "debug_utils.h"
 #include "handle_wrap.h"
 #include "node.h"
@@ -166,8 +167,10 @@ constexpr size_t kFsStatsBufferLength =
   V(handle_onclose_symbol, "handle_onclose")                                   \
   V(no_message_symbol, "no_message_symbol")                                    \
   V(oninit_symbol, "oninit")                                                   \
-  V(owner_symbol, "owner")                                                     \
+  V(owner_symbol, "owner_symbol")                                              \
   V(onpskexchange_symbol, "onpskexchange")                                     \
+  V(resource_symbol, "resource_symbol")                                        \
+  V(trigger_async_id_symbol, "trigger_async_id_symbol")                        \
 
 // Strings are per-isolate primitives but Environment proxies them
 // for the sake of convenience.  Strings should be ASCII-only.
@@ -431,13 +434,13 @@ constexpr size_t kFsStatsBufferLength =
   V(as_callback_data, v8::Object)                                              \
   V(async_hooks_after_function, v8::Function)                                  \
   V(async_hooks_before_function, v8::Function)                                 \
+  V(async_hooks_callback_trampoline, v8::Function)                             \
   V(async_hooks_binding, v8::Object)                                           \
   V(async_hooks_destroy_function, v8::Function)                                \
   V(async_hooks_init_function, v8::Function)                                   \
   V(async_hooks_promise_resolve_function, v8::Function)                        \
   V(buffer_prototype_object, v8::Object)                                       \
   V(crypto_key_object_constructor, v8::Function)                               \
-  V(domain_callback, v8::Function)                                             \
   V(domexception_function, v8::Function)                                       \
   V(enhance_fatal_stack_after_inspector, v8::Function)                         \
   V(enhance_fatal_stack_before_inspector, v8::Function)                        \
@@ -1115,8 +1118,6 @@ class Environment : public MemoryRetainer {
                                          const char* name,
                                          v8::FunctionCallback callback);
 
-  void BeforeExit(void (*cb)(void* arg), void* arg);
-  void RunBeforeExitCallbacks();
   void AtExit(void (*cb)(void* arg), void* arg);
   void RunAtExitCallbacks();
 
@@ -1184,7 +1185,7 @@ class Environment : public MemoryRetainer {
   inline void SetUnrefImmediate(Fn&& cb);
   template <typename Fn>
   // This behaves like SetImmediate() but can be called from any thread.
-  inline void SetImmediateThreadsafe(Fn&& cb);
+  inline void SetImmediateThreadsafe(Fn&& cb, bool refed = true);
   // This behaves like V8's Isolate::RequestInterrupt(), but also accounts for
   // the event loop (i.e. combines the V8 function with SetImmediate()).
   // The passed callback may not throw exceptions.
@@ -1391,53 +1392,10 @@ class Environment : public MemoryRetainer {
     void (*cb_)(void* arg);
     void* arg_;
   };
-  std::list<ExitCallback> before_exit_functions_;
 
   std::list<ExitCallback> at_exit_functions_;
 
-  class NativeImmediateCallback {
-   public:
-    explicit inline NativeImmediateCallback(bool refed);
-
-    virtual ~NativeImmediateCallback() = default;
-    virtual void Call(Environment* env) = 0;
-
-    inline bool is_refed() const;
-    inline std::unique_ptr<NativeImmediateCallback> get_next();
-    inline void set_next(std::unique_ptr<NativeImmediateCallback> next);
-
-   private:
-    bool refed_;
-    std::unique_ptr<NativeImmediateCallback> next_;
-  };
-
-  template <typename Fn>
-  class NativeImmediateCallbackImpl final : public NativeImmediateCallback {
-   public:
-    NativeImmediateCallbackImpl(Fn&& callback, bool refed);
-    void Call(Environment* env) override;
-
-   private:
-    Fn callback_;
-  };
-
-  class NativeImmediateQueue {
-   public:
-    inline std::unique_ptr<NativeImmediateCallback> Shift();
-    inline void Push(std::unique_ptr<NativeImmediateCallback> cb);
-    // ConcatMove adds elements from 'other' to the end of this list, and clears
-    // 'other' afterwards.
-    inline void ConcatMove(NativeImmediateQueue&& other);
-
-    // size() is atomic and may be called from any thread.
-    inline size_t size() const;
-
-   private:
-    std::atomic<size_t> size_ {0};
-    std::unique_ptr<NativeImmediateCallback> head_;
-    NativeImmediateCallback* tail_ = nullptr;
-  };
-
+  typedef CallbackQueue<void, Environment*> NativeImmediateQueue;
   NativeImmediateQueue native_immediates_;
   Mutex native_immediates_threadsafe_mutex_;
   NativeImmediateQueue native_immediates_threadsafe_;

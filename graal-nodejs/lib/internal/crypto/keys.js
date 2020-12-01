@@ -268,23 +268,22 @@ function prepareAsymmetricKey(key, ctx) {
     // Either PEM or DER using PKCS#1 or SPKI.
     if (!isStringOrBuffer(data)) {
       throw new ERR_INVALID_ARG_TYPE(
-        'key',
+        'key.key',
         ['string', 'Buffer', 'TypedArray', 'DataView',
          ...(ctx !== kCreatePrivate ? ['KeyObject'] : [])],
-        key);
+        data);
     }
 
     const isPublic =
       (ctx === kConsumePrivate || ctx === kCreatePrivate) ? false : undefined;
     return { data, ...parseKeyEncoding(key, undefined, isPublic) };
-  } else {
-    throw new ERR_INVALID_ARG_TYPE(
-      'key',
-      ['string', 'Buffer', 'TypedArray', 'DataView',
-       ...(ctx !== kCreatePrivate ? ['KeyObject'] : [])],
-      key
-    );
   }
+  throw new ERR_INVALID_ARG_TYPE(
+    'key',
+    ['string', 'Buffer', 'TypedArray', 'DataView',
+     ...(ctx !== kCreatePrivate ? ['KeyObject'] : [])],
+    key
+  );
 }
 
 function preparePrivateKey(key) {
@@ -301,13 +300,12 @@ function prepareSecretKey(key, bufferOnly = false) {
       if (key.type !== 'secret')
         throw new ERR_CRYPTO_INVALID_KEY_OBJECT_TYPE(key.type, 'secret');
       return key[kHandle];
-    } else {
-      throw new ERR_INVALID_ARG_TYPE(
-        'key',
-        ['Buffer', 'TypedArray', 'DataView',
-         ...(bufferOnly ? [] : ['string', 'KeyObject'])],
-        key);
     }
+    throw new ERR_INVALID_ARG_TYPE(
+      'key',
+      ['Buffer', 'TypedArray', 'DataView',
+       ...(bufferOnly ? [] : ['string', 'KeyObject'])],
+      key);
   }
   return key;
 }

@@ -215,7 +215,7 @@ class Worker extends EventEmitter {
     this[kDispose]();
     if (customErr) {
       debug(`[${threadId}] failing with custom error ${customErr} \
-        and with reason {customErrReason}`);
+        and with reason ${customErrReason}`);
       this.emit('error', new errorCodes[customErr](customErrReason));
     }
     this.emit('exit', code);
@@ -242,8 +242,11 @@ class Worker extends EventEmitter {
         return this[kOnErrorMessage](message.error);
       case messageTypes.STDIO_PAYLOAD:
       {
-        const { stream, chunk, encoding } = message;
-        return this[kParentSideStdio][stream].push(chunk, encoding);
+        const { stream, chunks } = message;
+        const readable = this[kParentSideStdio][stream];
+        for (const { chunk, encoding } of chunks)
+          readable.push(chunk, encoding);
+        return;
       }
       case messageTypes.STDIO_WANTS_MORE_DATA:
       {

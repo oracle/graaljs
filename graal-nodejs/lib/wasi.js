@@ -1,5 +1,4 @@
 'use strict';
-/* global WebAssembly */
 const {
   ArrayPrototypeMap,
   ArrayPrototypePush,
@@ -12,9 +11,11 @@ const {
   ERR_WASI_ALREADY_STARTED
 } = require('internal/errors').codes;
 const { emitExperimentalWarning } = require('internal/util');
+const { isArrayBuffer } = require('internal/util/types');
 const {
   validateArray,
   validateBoolean,
+  validateInt32,
   validateObject,
 } = require('internal/validators');
 const { WASI: _WASI } = internalBinding('wasi');
@@ -50,7 +51,13 @@ class WASI {
       }
     }
 
-    const wrap = new _WASI(args, env, preopens);
+    const { stdin = 0, stdout = 1, stderr = 2 } = options;
+    validateInt32(stdin, 'options.stdin', 0);
+    validateInt32(stdout, 'options.stdout', 0);
+    validateInt32(stderr, 'options.stderr', 0);
+    const stdio = [stdin, stdout, stderr];
+
+    const wrap = new _WASI(args, env, preopens, stdio);
 
     for (const prop in wrap) {
       wrap[prop] = FunctionPrototypeBind(wrap[prop], wrap);
@@ -70,10 +77,7 @@ class WASI {
   }
 
   start(instance) {
-    if (!(instance instanceof WebAssembly.Instance)) {
-      throw new ERR_INVALID_ARG_TYPE(
-        'instance', 'WebAssembly.Instance', instance);
-    }
+    validateObject(instance, 'instance');
 
     const exports = instance.exports;
 
@@ -91,9 +95,19 @@ class WASI {
         'instance.exports._initialize', 'undefined', _initialize);
     }
 
-    if (!(memory instanceof WebAssembly.Memory)) {
+    // WASI::_SetMemory() in src/node_wasi.cc only expects that |memory| is
+    // an object. It will try to look up the .buffer property when needed
+    // and fail with UVWASI_EINVAL when the property is missing or is not
+    // an ArrayBuffer. Long story short, we don't need much validation here
+    // but we type-check anyway because it helps catch bugs in the user's
+    // code early.
+    validateObject(memory, 'instance.exports.memory');
+
+    if (!isArrayBuffer(memory.buffer)) {
       throw new ERR_INVALID_ARG_TYPE(
-        'instance.exports.memory', 'WebAssembly.Memory', memory);
+        'instance.exports.memory.buffer',
+        ['WebAssembly.Memory'],
+        memory.buffer);
     }
 
     if (this[kStarted]) {

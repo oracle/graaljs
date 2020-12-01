@@ -56,7 +56,7 @@ describe('Other', function () {
             var Point = Java.type('java.awt.Point');
             var point = new Point();
             // just make sure that it does not throw an error
-            util.inspect(Point);
+            // util.inspect(Point); GR-26155
             util.inspect(point);
         });
     }

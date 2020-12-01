@@ -493,7 +493,7 @@ _additional authenticated data_ (AAD) input parameter.
 
 The `options` argument is optional for `GCM`. When using `CCM`, the
 `plaintextLength` option must be specified and its value must match the length
-of the plaintext in bytes. See [CCM mode][].
+of the ciphertext in bytes. See [CCM mode][].
 
 The `decipher.setAAD()` method must be called before [`decipher.update()`][].
 
@@ -520,8 +520,9 @@ cipher text should be discarded due to failed authentication. If the tag length
 is invalid according to [NIST SP 800-38D][] or does not match the value of the
 `authTagLength` option, `decipher.setAuthTag()` will throw an error.
 
-The `decipher.setAuthTag()` method must be called before
-[`decipher.final()`][] and can only be called once.
+The `decipher.setAuthTag()` method must be called before [`decipher.update()`][]
+for `CCM` mode or before [`decipher.final()`][] for `GCM` and `OCB` modes.
+`decipher.setAuthTag()` can only be called once.
 
 ### `decipher.setAutoPadding([autoPadding])`
 <!-- YAML
@@ -1576,7 +1577,7 @@ added: v6.3.0
 
 * Returns: {Object} An object containing commonly used constants for crypto and
   security related operations. The specific constants currently defined are
-  described in [Crypto Constants][].
+  described in [Crypto constants][].
 
 ### `crypto.DEFAULT_ENCODING`
 <!-- YAML
@@ -2059,7 +2060,7 @@ added: v0.1.92
 * `options` {Object} [`stream.Writable` options][]
 * Returns: {Sign}
 
-Creates and returns a `Sign` object that uses the given `algorithm`.  Use
+Creates and returns a `Sign` object that uses the given `algorithm`. Use
 [`crypto.getHashes()`][] to obtain the names of the available digest algorithms.
 Optional `options` argument controls the `stream.Writable` behavior.
 
@@ -3020,7 +3021,7 @@ key may be passed for `key`.
 
 ## Notes
 
-### Legacy Streams API (pre Node.js v0.10)
+### Legacy Streams API (prior to Node.js 0.10)
 
 The Crypto module was added to Node.js before there was the concept of a
 unified Stream API, and before there were [`Buffer`][] objects for handling
@@ -3031,7 +3032,7 @@ and returned `'latin1'` encoded strings by default rather than `Buffer`s. This
 default was changed after Node.js v0.8 to use [`Buffer`][] objects by default
 instead.
 
-### Recent ECDH Changes
+### Recent ECDH changes
 
 Usage of `ECDH` with non-dynamically generated key pairs has been simplified.
 Now, [`ecdh.setPrivateKey()`][] can be called with a preselected private key
@@ -3087,7 +3088,12 @@ mode must adhere to certain restrictions when using the cipher API:
   mode might fail as CCM cannot handle more than one chunk of data per instance.
 * When passing additional authenticated data (AAD), the length of the actual
   message in bytes must be passed to `setAAD()` via the `plaintextLength`
-  option. This is not necessary if no AAD is used.
+  option.
+  Many crypto libraries include the authentication tag in the ciphertext,
+  which means that they produce ciphertexts of the length
+  `plaintextLength + authTagLength`. Node.js does not include the authentication
+  tag, so the ciphertext length is always `plaintextLength`.
+  This is not necessary if no AAD is used.
 * As CCM processes the whole message at once, `update()` can only be called
   once.
 * Even though calling `update()` is sufficient to encrypt/decrypt the message,
@@ -3134,12 +3140,12 @@ try {
 console.log(receivedPlaintext);
 ```
 
-## Crypto Constants
+## Crypto constants
 
 The following constants exported by `crypto.constants` apply to various uses of
 the `crypto`, `tls`, and `https` modules and are generally specific to OpenSSL.
 
-### OpenSSL Options
+### OpenSSL options
 
 <table>
   <tr>
@@ -3295,7 +3301,7 @@ the `crypto`, `tls`, and `https` modules and are generally specific to OpenSSL.
   </tr>
 </table>
 
-### OpenSSL Engine Constants
+### OpenSSL engine constants
 
 <table>
   <tr>
@@ -3348,7 +3354,7 @@ the `crypto`, `tls`, and `https` modules and are generally specific to OpenSSL.
   </tr>
 </table>
 
-### Other OpenSSL Constants
+### Other OpenSSL constants
 
 <table>
   <tr>
@@ -3428,7 +3434,7 @@ the `crypto`, `tls`, and `https` modules and are generally specific to OpenSSL.
   </tr>
 </table>
 
-### Node.js Crypto Constants
+### Node.js crypto constants
 
 <table>
   <tr>
@@ -3498,7 +3504,7 @@ the `crypto`, `tls`, and `https` modules and are generally specific to OpenSSL.
 [AEAD algorithms]: https://en.wikipedia.org/wiki/Authenticated_encryption
 [CCM mode]: #crypto_ccm_mode
 [Caveats]: #crypto_support_for_weak_or_compromised_algorithms
-[Crypto Constants]: #crypto_crypto_constants_1
+[Crypto constants]: #crypto_crypto_constants_1
 [HTML 5.2]: https://www.w3.org/TR/html52/changes.html#features-removed
 [HTML5's `keygen` element]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/keygen
 [NIST SP 800-131A]: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-131Ar1.pdf

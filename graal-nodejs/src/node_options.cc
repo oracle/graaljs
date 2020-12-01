@@ -18,7 +18,6 @@ using v8::Local;
 using v8::Map;
 using v8::Number;
 using v8::Object;
-using v8::String;
 using v8::Undefined;
 using v8::Value;
 
@@ -838,7 +837,8 @@ std::string GetBashCompletion() {
          "    return 0\n"
          "  fi\n"
          "}\n"
-         "complete -F _node_complete node node_g";
+         "complete -o filenames -o nospace -o bashdefault "
+         "-F _node_complete node node_g";
   return out.str();
 }
 

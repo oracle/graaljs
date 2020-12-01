@@ -78,7 +78,7 @@ Because `module` provides a `filename` property (normally equivalent to
 `__filename`), the entry point of the current application can be obtained
 by checking `require.main.filename`.
 
-## Addenda: Package Manager Tips
+## Addenda: Package manager tips
 
 <!-- type=misc -->
 
@@ -139,7 +139,7 @@ Attempting to do so will throw [an error][]. The `.mjs` extension is
 reserved for [ECMAScript Modules][] which cannot be loaded via `require()`.
 See [ECMAScript Modules][] for more details.
 
-## All Together...
+## All together...
 
 <!-- type=misc -->
 
@@ -149,7 +149,7 @@ the `require.resolve()` function.
 Putting together all of the above, here is the high-level algorithm
 in pseudocode of what `require()` does:
 
-```txt
+```text
 require(X) from module at path Y
 1. If X is a core module,
    a. return the core module
@@ -165,15 +165,15 @@ require(X) from module at path Y
 6. THROW "not found"
 
 LOAD_AS_FILE(X)
-1. If X is a file, load X as its file extension format.  STOP
-2. If X.js is a file, load X.js as JavaScript text.  STOP
-3. If X.json is a file, parse X.json to a JavaScript Object.  STOP
-4. If X.node is a file, load X.node as binary addon.  STOP
+1. If X is a file, load X as its file extension format. STOP
+2. If X.js is a file, load X.js as JavaScript text. STOP
+3. If X.json is a file, parse X.json to a JavaScript Object. STOP
+4. If X.node is a file, load X.node as binary addon. STOP
 
 LOAD_INDEX(X)
-1. If X/index.js is a file, load X/index.js as JavaScript text.  STOP
+1. If X/index.js is a file, load X/index.js as JavaScript text. STOP
 2. If X/index.json is a file, parse X/index.json to a JavaScript object. STOP
-3. If X/index.node is a file, load X/index.node as binary addon.  STOP
+3. If X/index.node is a file, load X/index.node as binary addon. STOP
 
 LOAD_AS_DIRECTORY(X)
 1. If X/package.json is a file,
@@ -208,9 +208,9 @@ LOAD_SELF_REFERENCE(X, START)
 1. Find the closest package scope to START.
 2. If no scope was found, return.
 3. If the `package.json` has no "exports", return.
-4. If the name in `package.json` isn't a prefix of X, throw "not found".
-5. Otherwise, load the remainder of X relative to this package as if it
-  was loaded via `LOAD_NODE_MODULES` with a name in `package.json`.
+4. If the name in `package.json` is a prefix of X, then
+   a. Load the remainder of X relative to this package as if it was
+      loaded via `LOAD_NODE_MODULES` with a name in `package.json`.
 
 LOAD_PACKAGE_EXPORTS(DIR, X)
 1. Try to interpret X as a combination of name and subpath where the name
@@ -234,7 +234,7 @@ LOAD_PACKAGE_EXPORTS(DIR, X)
     a. LOAD_AS_FILE(RESOLVED)
     b. LOAD_AS_DIRECTORY(RESOLVED)
 12. Otherwise
-   a. If RESOLVED is a file, load it as its file extension format.  STOP
+   a. If RESOLVED is a file, load it as its file extension format. STOP
 13. Throw "not found"
 ```
 
@@ -254,7 +254,7 @@ allowing transitive dependencies to be loaded even when they would cause cycles.
 To have a module execute code multiple times, export a function, and call that
 function.
 
-### Module Caching Caveats
+### Module caching caveats
 
 <!--type=misc-->
 
@@ -269,7 +269,7 @@ them as different modules and will reload the file multiple times. For example,
 `require('./foo')` and `require('./FOO')` return two different objects,
 irrespective of whether or not `./foo` and `./FOO` are the same file.
 
-## Core Modules
+## Core modules
 
 <!--type=misc-->
 
@@ -347,7 +347,7 @@ in main, a.done = true, b.done = true
 Careful planning is required to allow cyclic module dependencies to work
 correctly within an application.
 
-## File Modules
+## File modules
 
 <!--type=misc-->
 
@@ -373,7 +373,7 @@ either be a core module or is loaded from a `node_modules` folder.
 If the given path does not exist, `require()` will throw an [`Error`][] with its
 `code` property set to `'MODULE_NOT_FOUND'`.
 
-## Folders as Modules
+## Folders as modules
 
 <!--type=misc-->
 
@@ -409,11 +409,11 @@ example, then `require('./some-library')` would attempt to load:
 If these attempts fail, then Node.js will report the entire module as missing
 with the default error:
 
-```txt
+```console
 Error: Cannot find module 'some-library'
 ```
 
-## Loading from `node_modules` Folders
+## Loading from `node_modules` folders
 
 <!--type=misc-->
 
@@ -680,7 +680,7 @@ In `entry.js` script:
 console.log(require.main);
 ```
 
-```sh
+```bash
 node entry.js
 ```
 
@@ -688,6 +688,7 @@ node entry.js
 ```js
 Module {
   id: '.',
+  path: '/absolute/path/to',
   exports: {},
   parent: null,
   filename: '/absolute/path/to/entry.js',
@@ -736,7 +737,7 @@ Returns an array containing the paths searched during resolution of `request` or
 `null` if the `request` string references a core module, for example `http` or
 `fs`.
 
-## The `module` Object
+## The `module` object
 <!-- YAML
 added: v0.1.16
 -->
@@ -899,6 +900,16 @@ added: v0.1.16
 
 The module that first required this one.
 
+### `module.path`
+<!-- YAML
+added: v11.14.0
+-->
+
+* {string}
+
+The directory name of the module. This is usually the same as the
+[`path.dirname()`][] of the [`module.id`][].
+
 ### `module.paths`
 <!-- YAML
 added: v0.4.0
@@ -924,7 +935,7 @@ Since `require()` returns the `module.exports`, and the `module` is typically
 *only* available within a specific module's code, it must be explicitly exported
 in order to be used.
 
-## The `Module` Object
+## The `Module` object
 
 <!-- YAML
 added: v0.3.7
@@ -1024,7 +1035,7 @@ import('fs').then((esmFS) => {
 });
 ```
 
-## Source Map V3 Support
+## Source map v3 support
 <!-- YAML
 added: v12.17.0
 -->
@@ -1072,7 +1083,7 @@ added: v12.17.0
 
 Creates a new `sourceMap` instance.
 
-`payload` is an object with keys matching the [Source Map V3 format][]:
+`payload` is an object with keys matching the [Source map v3 format][]:
 
 * `file`: {string}
 * `version`: {number}
@@ -1110,6 +1121,7 @@ consists of the following keys:
 [`__filename`]: #modules_filename
 [`createRequire()`]: #modules_module_createrequire_filename
 [`module` object]: #modules_the_module_object
+[`module.id`]: #modules_module_id
 [`path.dirname()`]: path.html#path_path_dirname_path
 [ECMAScript Modules]: esm.html
 [an error]: errors.html#errors_err_require_esm
@@ -1122,4 +1134,4 @@ consists of the following keys:
 [`NODE_V8_COVERAGE=dir`]: cli.html#cli_node_v8_coverage_dir
 [`Error.prepareStackTrace(error, trace)`]: https://v8.dev/docs/stack-trace-api#customizing-stack-traces
 [`SourceMap`]: modules.html#modules_class_module_sourcemap
-[Source Map V3 format]: https://sourcemaps.info/spec.html#h.mofvlxcwqzej
+[Source map v3 format]: https://sourcemaps.info/spec.html#h.mofvlxcwqzej

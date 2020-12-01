@@ -988,6 +988,24 @@ static X509_STORE* NewRootCertStore() {
 }
 
 
+void GetRootCertificates(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
+  Local<Value> result[arraysize(root_certs)];
+
+  for (size_t i = 0; i < arraysize(root_certs); i++) {
+    if (!String::NewFromOneByte(
+            env->isolate(),
+            reinterpret_cast<const uint8_t*>(root_certs[i]),
+            NewStringType::kNormal).ToLocal(&result[i])) {
+      return;
+    }
+  }
+
+  args.GetReturnValue().Set(
+      Array::New(env->isolate(), result, arraysize(root_certs)));
+}
+
+
 void SecureContext::AddCACert(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
 
@@ -2664,21 +2682,6 @@ static inline Local<Value> BIOToStringOrBuffer(Environment* env,
   }
 }
 
-static MaybeLocal<Value> X509ToPEM(Environment* env, X509* cert) {
-  BIOPointer bio(BIO_new(BIO_s_mem()));
-  if (!bio) {
-    ThrowCryptoError(env, ERR_get_error(), "BIO_new");
-    return MaybeLocal<Value>();
-  }
-
-  if (PEM_write_bio_X509(bio.get(), cert) == 0) {
-    ThrowCryptoError(env, ERR_get_error(), "PEM_write_bio_X509");
-    return MaybeLocal<Value>();
-  }
-
-  return BIOToStringOrBuffer(env, bio.get(), kKeyFormatPEM);
-}
-
 static bool WritePublicKeyInner(EVP_PKEY* pkey,
                                 const BIOPointer& bio,
                                 const PublicKeyEncodingConfig& config) {
@@ -2903,7 +2906,7 @@ ByteSource ByteSource::NullTerminatedCopy(Environment* env,
 ByteSource ByteSource::FromSymmetricKeyObject(Local<Value> handle) {
   CHECK(handle->IsObject());
   KeyObject* key = Unwrap<KeyObject>(handle.As<Object>());
-  CHECK(key);
+  CHECK_NOT_NULL(key);
   return Foreign(key->GetSymmetricKey(), key->GetSymmetricKeySize());
 }
 
@@ -3109,7 +3112,7 @@ static ManagedEVPPKey GetPublicOrPrivateKeyFromJs(
   } else {
     CHECK(args[*offset]->IsObject());
     KeyObject* key = Unwrap<KeyObject>(args[*offset].As<Object>());
-    CHECK(key);
+    CHECK_NOT_NULL(key);
     CHECK_NE(key->GetKeyType(), kKeyTypeSecret);
     (*offset) += 4;
     return key->GetAsymmetricKey();
@@ -3251,7 +3254,7 @@ MaybeLocal<Object> KeyObject::Create(Environment* env,
   }
 
   KeyObject* key = Unwrap<KeyObject>(obj);
-  CHECK(key);
+  CHECK_NOT_NULL(key);
   if (key_type == kKeyTypePublic)
     key->InitPublic(pkey);
   else
@@ -6673,36 +6676,6 @@ void ExportChallenge(const FunctionCallbackInfo<Value>& args) {
       Encode(env->isolate(), cert.get(), strlen(cert.get()), BUFFER);
 
   args.GetReturnValue().Set(outString);
-}
-
-
-void GetRootCertificates(const FunctionCallbackInfo<Value>& args) {
-  Environment* env = Environment::GetCurrent(args);
-
-  if (root_cert_store == nullptr)
-    root_cert_store = NewRootCertStore();
-
-  stack_st_X509_OBJECT* objs = X509_STORE_get0_objects(root_cert_store);
-  int num_objs = sk_X509_OBJECT_num(objs);
-
-  std::vector<Local<Value>> result;
-  result.reserve(num_objs);
-
-  for (int i = 0; i < num_objs; i++) {
-    X509_OBJECT* obj = sk_X509_OBJECT_value(objs, i);
-    if (X509_OBJECT_get_type(obj) == X509_LU_X509) {
-      X509* cert = X509_OBJECT_get0_X509(obj);
-
-      Local<Value> value;
-      if (!X509ToPEM(env, cert).ToLocal(&value))
-        return;
-
-      result.push_back(value);
-    }
-  }
-
-  args.GetReturnValue().Set(
-      Array::New(env->isolate(), result.data(), result.size()));
 }
 
 

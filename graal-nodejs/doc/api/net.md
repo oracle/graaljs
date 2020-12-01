@@ -15,7 +15,7 @@ It can be accessed using:
 const net = require('net');
 ```
 
-## IPC Support
+## IPC support
 
 The `net` module supports IPC with named pipes on Windows, and Unix domain
 sockets on other operating systems.
@@ -600,6 +600,10 @@ the error passed to the [`'error'`][] listener.
 The last parameter `connectListener`, if supplied, will be added as a listener
 for the [`'connect'`][] event **once**.
 
+This function should only be used for reconnecting a socket after
+`'close'` has been emitted or otherwise it may lead to undefined
+behavior.
+
 #### `socket.connect(options[, connectListener])`
 <!-- YAML
 added: v0.1.90
@@ -717,7 +721,7 @@ added: v6.1.0
 If `true`,
 [`socket.connect(options[, connectListener])`][`socket.connect(options)`] was
 called and has not yet finished. It will stay `true` until the socket becomes
-connected, then it is set to `false` and the `'connect'` event is emitted.  Note
+connected, then it is set to `false` and the `'connect'` event is emitted. Note
 that the
 [`socket.connect(options[, connectListener])`][`socket.connect(options)`]
 callback is a listener for the `'connect'` event.
