@@ -77,6 +77,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.DeleteAndSetLengthNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.FlattenIntoArrayNodeGen;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayAtNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayConcatNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayCopyWithinNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayEveryNodeGen;
@@ -209,8 +210,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         splice(2),
         every(1),
         filter(1),
-        flat(0),
-        flatMap(1),
         forEach(1),
         some(1),
         map(1),
@@ -219,7 +218,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         reduceRight(1),
         reverse(0),
 
-        // ES6
+        // ES6 / ES2015
         find(1),
         findIndex(1),
         fill(1),
@@ -228,8 +227,15 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         values(0),
         entries(0),
 
-        // ES7
-        includes(1);
+        // ES2016
+        includes(1),
+
+        // ES2019
+        flat(0),
+        flatMap(1),
+
+        // ES2022
+        at(1);
 
         private final int length;
 
@@ -245,11 +251,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Override
         public int getECMAScriptVersion() {
             if (EnumSet.of(find, findIndex, fill, copyWithin, keys, values, entries).contains(this)) {
-                return 6;
+                return JSConfig.ECMAScript2015;
             } else if (this == includes) {
-                return 7;
+                return JSConfig.ECMAScript2016;
             } else if (EnumSet.of(flat, flatMap).contains(this)) {
-                return 10;
+                return JSConfig.ECMAScript2019;
+            } else if (this == at) {
+                return JSConfig.ECMAScript2022;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
@@ -323,6 +331,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return JSArrayFlatMapNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case flat:
                 return JSArrayFlatNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context));
+
+            case at:
+                return JSArrayAtNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -3197,4 +3208,26 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
+    public abstract static class JSArrayAtNode extends JSArrayOperationWithToInt {
+        public JSArrayAtNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin, false);
+        }
+
+        @Specialization
+        protected Object at(Object thisObj, Object index) {
+            final Object o = toObject(thisObj);
+            final long length = getLength(o);
+            long relativeIndex = toIntegerAsLong(index);
+            long k;
+            if (relativeIndex >= 0) {
+                k = relativeIndex;
+            } else {
+                k = length + relativeIndex;
+            }
+            if (k < 0 || k >= length) {
+                return Undefined.instance;
+            }
+            return read(o, k);
+        }
+    }
 }
