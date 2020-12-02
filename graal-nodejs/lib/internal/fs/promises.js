@@ -65,6 +65,10 @@ class FileHandle extends JSTransferable {
     super();
     this[kHandle] = filehandle;
     this[kFd] = filehandle ? filehandle.fd : -1;
+    this.close = () => {
+      this[kFd] = -1;
+      return this[kHandle].close();
+    };
   }
 
   getAsyncId() {
@@ -129,11 +133,6 @@ class FileHandle extends JSTransferable {
 
   writeFile(data, options) {
     return writeFile(this, data, options);
-  }
-
-  close = () => {
-    this[kFd] = -1;
-    return this[kHandle].close();
   }
 
   [kTransfer]() {
