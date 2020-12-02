@@ -333,7 +333,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return JSArrayFlatNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context));
 
             case at:
-                return JSArrayAtNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                return JSArrayAtNodeGen.create(context, builtin, false, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -3209,13 +3209,16 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public abstract static class JSArrayAtNode extends JSArrayOperationWithToInt {
-        public JSArrayAtNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin, false);
+        public JSArrayAtNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
+            super(context, builtin, isTypedArrayImplementation);
         }
 
         @Specialization
         protected Object at(Object thisObj, Object index) {
             final Object o = toObject(thisObj);
+            if (isTypedArrayImplementation) {
+                validateTypedArray(o);
+            }
             final long length = getLength(o);
             long relativeIndex = toIntegerAsLong(index);
             long k;
