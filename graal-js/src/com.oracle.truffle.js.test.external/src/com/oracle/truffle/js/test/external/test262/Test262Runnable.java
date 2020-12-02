@@ -89,6 +89,7 @@ public class Test262Runnable extends TestRunnable {
 
     private static final Set<String> SUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "AggregateError",
+                    "Array.prototype.at",
                     "Array.prototype.flat",
                     "Array.prototype.flatMap",
                     "Array.prototype.values",
@@ -133,6 +134,7 @@ public class Test262Runnable extends TestRunnable {
                     "Set",
                     "SharedArrayBuffer",
                     "String.fromCodePoint",
+                    "String.prototype.at",
                     "String.prototype.endsWith",
                     "String.prototype.includes",
                     "String.prototype.matchAll",
@@ -155,6 +157,7 @@ public class Test262Runnable extends TestRunnable {
                     "Symbol.toStringTag",
                     "Symbol.unscopables",
                     "TypedArray",
+                    "TypedArray.prototype.at",
                     "Uint16Array",
                     "Uint32Array",
                     "Uint8Array",
@@ -220,19 +223,19 @@ public class Test262Runnable extends TestRunnable {
                     "top-level-await",
     }));
     private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
-                    "Array.prototype.at",
                     "Atomics.waitAsync",
                     "Intl.DateTimeFormat-dayPeriod",
                     "Intl.DateTimeFormat-formatRange",
                     "Intl.DateTimeFormat-fractionalSecondDigits",
                     "IsHTMLDDA",
-                    "String.prototype.at",
-                    "TypedArray.prototype.at",
                     "align-detached-buffer-semantics-with-web-reality",
                     "arbitrary-module-namespace-names",
                     "tail-call-optimization",
     }));
     private static final Set<String> ES2022_FEATURES = new HashSet<>(Arrays.asList(new String[]{
+                    "Array.prototype.at",
+                    "String.prototype.at",
+                    "TypedArray.prototype.at",
                     "class-fields-private",
                     "class-fields-public",
                     "class-methods-private",
