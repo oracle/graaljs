@@ -176,8 +176,7 @@ public final class TRegexUtil {
             try {
                 return objs.readMember(obj, key);
             } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
 
@@ -200,8 +199,7 @@ public final class TRegexUtil {
             try {
                 return coerceNode.execute(objs.readMember(obj, key));
             } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
 
@@ -224,8 +222,7 @@ public final class TRegexUtil {
             try {
                 return coerceNode.execute(objs.readMember(obj, key));
             } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
 
@@ -248,8 +245,7 @@ public final class TRegexUtil {
             try {
                 return coerceNode.execute(objs.readMember(obj, key));
             } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
 
@@ -277,8 +273,7 @@ public final class TRegexUtil {
             try {
                 return objs.asBoolean(obj);
             } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
     }
@@ -298,8 +293,7 @@ public final class TRegexUtil {
             try {
                 return objs.asInt(obj);
             } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
     }
@@ -319,8 +313,7 @@ public final class TRegexUtil {
             try {
                 return objs.asString(obj);
             } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
     }
@@ -337,8 +330,7 @@ public final class TRegexUtil {
             try {
                 return objs.invokeMember(compiledRegex, CompiledRegex.EXEC, input, fromIndex);
             } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException | UnknownIdentifierException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
 
@@ -363,8 +355,7 @@ public final class TRegexUtil {
             try {
                 return toIntNode.execute(objs.invokeMember(regexResult, method, groupNumber));
             } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException | UnknownIdentifierException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
 
@@ -388,8 +379,7 @@ public final class TRegexUtil {
             try {
                 return objs.execute(regexCompiler, pattern, flags);
             } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
 
@@ -414,8 +404,7 @@ public final class TRegexUtil {
             try {
                 return objs.invokeMember(regexEngine, RegexEngine.VALIDATE, pattern, flags);
             } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException | UnknownIdentifierException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
 
