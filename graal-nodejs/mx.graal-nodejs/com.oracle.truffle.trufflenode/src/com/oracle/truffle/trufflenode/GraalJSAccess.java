@@ -1582,7 +1582,7 @@ public final class GraalJSAccess {
 
             ObjectTemplate prototypeTemplate = template.getPrototypeTemplate();
             if (prototypeTemplate != null) {
-                DynamicObject proto = JSOrdinary.create(jsContext, jsRealm);
+                DynamicObject proto = JSUserObject.create(jsContext, jsRealm);
                 objectTemplateInstantiate(jsRealm, prototypeTemplate, proto);
                 JSObjectUtil.putConstructorProperty(jsContext, proto, obj);
                 JSObject.set(obj, JSObject.PROTOTYPE, proto);
@@ -1622,7 +1622,7 @@ public final class GraalJSAccess {
 
     public boolean functionTemplateHasInstance(Object functionTemplate, Object instance) {
         if (instance instanceof DynamicObject) {
-            Object constructor = JSObjectUtil.getHiddenProperty((DynamicObject) instance, FunctionTemplate.CONSTRUCTOR);
+            Object constructor = ((DynamicObject) instance).get(FunctionTemplate.CONSTRUCTOR);
             if (!(constructor instanceof FunctionTemplate)) {
                 return false; // not created from FunctionTemplate
             }
