@@ -435,12 +435,6 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
 
     private static Object executeCompiledRegex(Object compiledRegex, String input, long fromIndex,
                     TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor) {
-        try {
-            return compiledRegexAccessor.exec(compiledRegex, input, fromIndex);
-        } catch (RuntimeException e) {
-            CompilerDirectives.transferToInterpreter();
-            // thrown if none of the regex engines supports the given regex
-            throw Errors.createError(e.getMessage());
-        }
+        return compiledRegexAccessor.exec(compiledRegex, input, fromIndex);
     }
 }
