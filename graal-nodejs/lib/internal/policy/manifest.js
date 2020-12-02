@@ -57,6 +57,17 @@ function REACTION_LOG(error) {
 
 class Manifest {
   /**
+   * `obj` should match the policy file format described in the docs
+   * it is expected to not have prototype pollution issues either by reassigning
+   * the prototype to `null` for values or by running prior to any user code.
+   *
+   * `manifestURL` is a URL to resolve relative locations against.
+   *
+   * @param {object} obj
+   * @param {string} manifestURL
+   */
+  constructor(obj, manifestURL) {
+  /**
    * @type {Map<string, true | string | SRI[]>}
    *
    * Used to compare a resource to the content body at the resource.
@@ -68,7 +79,7 @@ class Manifest {
    * This avoids needing to parse all SRI strings at startup even
    * if some never end up being used.
    */
-  #integrities = new SafeMap();
+    this._integrities = new SafeMap();
   /**
    * @type {Map<string, (specifier: string) => true | URL>}
    *
@@ -78,7 +89,7 @@ class Manifest {
    * `true` is used to signify that the location is not specified
    * by the manifest and default resolution should be allowed.
    */
-  #dependencies = new SafeMap();
+    this._dependencies = new SafeMap();
   /**
    * @type {(err: Error) => void}
    *
@@ -86,20 +97,6 @@ class Manifest {
    * a violation such as abort()ing or exiting the process, throwing the error,
    * or logging the error.
    */
-  #reaction = null;
-  /**
-   * `obj` should match the policy file format described in the docs
-   * it is expected to not have prototype pollution issues either by reassigning
-   * the prototype to `null` for values or by running prior to any user code.
-   *
-   * `manifestURL` is a URL to resolve relative locations against.
-   *
-   * @param {object} obj
-   * @param {string} manifestURL
-   */
-  constructor(obj, manifestURL) {
-    this._integrities = new SafeMap();
-    this._dependencies = new SafeMap();
     this._reaction = null;
     const integrities = this._integrities;
     const dependencies = this._dependencies;
@@ -221,7 +218,7 @@ class Manifest {
   assertIntegrity(url, content) {
     const href = `${url}`;
     debug('Checking integrity of %s', href);
-    const integrities = this.#integrities;
+    const integrities = this._integrities;
     const realIntegrities = new Map();
 
     if (integrities.has(href)) {
