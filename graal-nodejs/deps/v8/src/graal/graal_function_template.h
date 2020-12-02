@@ -52,7 +52,8 @@ public:
             v8::Local<v8::Value> data,
             v8::Local<v8::Signature> signature,
             int length,
-            v8::ConstructorBehavior behavior);
+            v8::ConstructorBehavior behavior,
+            bool single_function_template);
     void SetClassName(v8::Local<v8::String> name);
     v8::Local<v8::ObjectTemplate> InstanceTemplate();
     v8::Local<v8::ObjectTemplate> PrototypeTemplate();

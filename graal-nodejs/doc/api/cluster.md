@@ -4,6 +4,8 @@
 
 > Stability: 2 - Stable
 
+<!-- source_link=lib/cluster.js -->
+
 A single instance of Node.js runs in a single thread. To take advantage of
 multi-core systems, the user will sometimes want to launch a cluster of Node.js
 processes to handle the load.
@@ -434,7 +436,7 @@ If the graceful disconnect behavior is not needed, use `worker.process.kill()`.
 
 Causes `.exitedAfterDisconnect` to be set.
 
-This method is aliased as `worker.destroy()` for backwards compatibility.
+This method is aliased as `worker.destroy()` for backward compatibility.
 
 In a worker, `process.kill()` exists, but it is not this function;
 it is [`kill()`][].

@@ -6,6 +6,8 @@
 
 <!--name=vm-->
 
+<!-- source_link=lib/vm.js -->
+
 The `vm` module enables compiling and running code within V8 Virtual
 Machine contexts. **The `vm` module is not a security mechanism. Do
 not use it to run untrusted code**.
@@ -48,7 +50,7 @@ added: v0.3.1
 Instances of the `vm.Script` class contain precompiled scripts that can be
 executed in specific contexts.
 
-### Constructor: `new vm.Script(code[, options])`
+### `new vm.Script(code[, options])`
 <!-- YAML
 added: v0.3.1
 changes:
@@ -554,7 +556,7 @@ flag enabled.*
 The `vm.SourceTextModule` class provides the [Source Text Module Record][] as
 defined in the ECMAScript specification.
 
-### Constructor: `new vm.SourceTextModule(code[, options])`
+### `new vm.SourceTextModule(code[, options])`
 
 * `code` {string} JavaScript Module code to parse
 * `options`
@@ -671,7 +673,7 @@ const module = new vm.SyntheticModule(['default'], function() {
 // Use `module` in linking...
 ```
 
-### Constructor: `new vm.SyntheticModule(exportNames, evaluateCallback[, options])`
+### `new vm.SyntheticModule(exportNames, evaluateCallback[, options])`
 <!-- YAML
 added: v12.16.0
 -->

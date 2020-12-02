@@ -4,6 +4,8 @@
 
 > Stability: 2 - Stable
 
+<!-- source_link=lib/http.js -->
+
 To use the HTTP server and client one must `require('http')`.
 
 The HTTP interfaces in Node.js are designed to support many features
@@ -110,6 +112,10 @@ http.get({
 ### `new Agent([options])`
 <!-- YAML
 added: v0.3.4
+changes:
+  - version: v12.19.0
+    pr-url: https://github.com/nodejs/node/pull/33617
+    description: Add `maxTotalSockets` option to agent constructor.
 -->
 
 * `options` {Object} Set of configurable options to set on the agent.
@@ -128,6 +134,10 @@ added: v0.3.4
     `keepAlive` option is `false` or `undefined`. **Default:** `1000`.
   * `maxSockets` {number} Maximum number of sockets to allow per
     host. Each request will use a new socket until the maximum is reached.
+    **Default:** `Infinity`.
+  * `maxTotalSockets` {number} Maximum number of sockets allowed for
+    all hosts in total. Each request will use a new socket
+    until the maximum is reached.
     **Default:** `Infinity`.
   * `maxFreeSockets` {number} Maximum number of sockets to leave open
     in a free state. Only relevant if `keepAlive` is set to `true`.
@@ -282,6 +292,16 @@ added: v0.3.6
 
 By default set to `Infinity`. Determines how many concurrent sockets the agent
 can have open per origin. Origin is the returned value of [`agent.getName()`][].
+
+### `agent.maxTotalSockets`
+<!-- YAML
+added: v12.19.0
+-->
+
+* {number}
+
+By default set to `Infinity`. Determines how many concurrent sockets the agent
+can have open. Unlike `maxSockets`, this parameter applies across all origins.
 
 ### `agent.requests`
 <!-- YAML
@@ -686,6 +706,27 @@ added: v0.4.0
 
 * {string} The request path.
 
+### `request.method`
+<!-- YAML
+added: v0.1.97
+-->
+
+* {string} The request method.
+
+### `request.host`
+<!-- YAML
+added: v12.19.0
+-->
+
+* {string} The request host.
+
+### `request.protocol`
+<!-- YAML
+added: v12.19.0
+-->
+
+* {string} The request protocol.
+
 ### `request.removeHeader(name)`
 <!-- YAML
 added: v1.6.0
@@ -975,8 +1016,8 @@ type other than {net.Socket}.
 
 Default behavior is to try close the socket with a HTTP '400 Bad Request',
 or a HTTP '431 Request Header Fields Too Large' in the case of a
-[`HPE_HEADER_OVERFLOW`][] error. If the socket is not writable it is
-immediately destroyed.
+[`HPE_HEADER_OVERFLOW`][] error. If the socket is not writable or has already
+written data it is immediately destroyed.
 
 `socket` is the [`net.Socket`][] object that the error originated from.
 
@@ -1237,7 +1278,8 @@ passed as the second parameter to the [`'request'`][] event.
 added: v0.6.7
 -->
 
-Indicates that the underlying connection was terminated.
+Indicates that the the response is completed, or its underlying connection was
+terminated prematurely (before the response completion).
 
 ### Event: `'finish'`
 <!-- YAML
@@ -1809,9 +1851,15 @@ const req = http.request({
 ### `message.destroy([error])`
 <!-- YAML
 added: v0.3.0
+changes:
+  - version: v12.19.0
+    pr-url: https://github.com/nodejs/node/pull/32789
+    description: The function returns `this` for consistency with other Readable
+                 streams.
 -->
 
 * `error` {Error}
+* Returns: {this}
 
 Calls `destroy()` on the socket that received the `IncomingMessage`. If `error`
 is provided, an `'error'` event is emitted on the socket and `error` is passed
@@ -1980,13 +2028,12 @@ added: v0.1.90
 
 **Only valid for request obtained from [`http.Server`][].**
 
-Request URL string. This contains only the URL that is
-present in the actual HTTP request. If the request is:
+Request URL string. This contains only the URL that is present in the actual
+HTTP request. Take the following request:
 
 ```http
-GET /status?name=ryan HTTP/1.1\r\n
-Accept: text/plain\r\n
-\r\n
+GET /status?name=ryan HTTP/1.1
+Accept: text/plain
 ```
 
 To parse the URL into its parts:
@@ -2107,6 +2154,8 @@ http.get('http://nodejs.org/dist/index.json', (res) => {
   const contentType = res.headers['content-type'];
 
   let error;
+  // Any 2xx status code signals a successful response but
+  // here we're only checking for 200.
   if (statusCode !== 200) {
     error = new Error('Request Failed.\n' +
                       `Status Code: ${statusCode}`);
@@ -2361,7 +2410,7 @@ not abort the request or do anything besides add a `'timeout'` event.
 [`'response'`]: #http_event_response
 [`'upgrade'`]: #http_event_upgrade
 [`Agent`]: #http_class_http_agent
-[`Buffer.byteLength()`]: buffer.html#buffer_class_method_buffer_bytelength_string_encoding
+[`Buffer.byteLength()`]: buffer.html#buffer_static_method_buffer_bytelength_string_encoding
 [`Duplex`]: stream.html#stream_class_stream_duplex
 [`TypeError`]: errors.html#errors_class_typeerror
 [`URL`]: url.html#url_the_whatwg_url_api
@@ -2383,7 +2432,7 @@ not abort the request or do anything besides add a `'timeout'` event.
 [`net.Server`]: net.html#net_class_net_server
 [`net.Socket`]: net.html#net_class_net_socket
 [`net.createConnection()`]: net.html#net_net_createconnection_options_connectlistener
-[`new URL()`]: url.html#url_constructor_new_url_input_base
+[`new URL()`]: url.html#url_new_url_input_base
 [`removeHeader(name)`]: #http_request_removeheader_name
 [`request.end()`]: #http_request_end_data_encoding_callback
 [`request.flushHeaders()`]: #http_request_flushheaders

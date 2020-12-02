@@ -10,11 +10,11 @@ const {
   ObjectGetOwnPropertyNames,
   ObjectPrototypeHasOwnProperty,
   RegExp,
+  RegExpPrototypeTest,
   SafeMap,
   SafeSet,
   String,
   StringPrototypeEndsWith,
-  StringPrototypeIncludes,
   StringPrototypeIndexOf,
   StringPrototypeReplace,
   StringPrototypeSlice,
@@ -22,7 +22,6 @@ const {
   StringPrototypeStartsWith,
   StringPrototypeSubstr,
 } = primordials;
-const assert = require('internal/assert');
 const internalFS = require('internal/fs/utils');
 const { NativeModule } = require('internal/bootstrap/loaders');
 const {
@@ -32,7 +31,6 @@ const {
 } = require('fs');
 const { getOptionValue } = require('internal/options');
 const { sep, relative } = require('path');
-const { Module: CJSModule } = require('internal/modules/cjs/loader');
 const preserveSymlinks = getOptionValue('--preserve-symlinks');
 const preserveSymlinksMain = getOptionValue('--preserve-symlinks-main');
 const typeFlag = getOptionValue('--input-type');
@@ -44,14 +42,18 @@ const {
   ERR_INVALID_PACKAGE_CONFIG,
   ERR_INVALID_PACKAGE_TARGET,
   ERR_MODULE_NOT_FOUND,
+  ERR_PACKAGE_IMPORT_NOT_DEFINED,
   ERR_PACKAGE_PATH_NOT_EXPORTED,
   ERR_UNSUPPORTED_DIR_IMPORT,
   ERR_UNSUPPORTED_ESM_URL_SCHEME,
 } = require('internal/errors').codes;
+const { Module: CJSModule } = require('internal/modules/cjs/loader');
 
 const packageJsonReader = require('internal/modules/package_json_reader');
-const DEFAULT_CONDITIONS = ObjectFreeze(['node', 'import']);
+const userConditions = getOptionValue('--conditions');
+const DEFAULT_CONDITIONS = ObjectFreeze(['node', 'import', ...userConditions]);
 const DEFAULT_CONDITIONS_SET = new SafeSet(DEFAULT_CONDITIONS);
+
 
 function getConditionsSet(conditions) {
   if (conditions !== undefined && conditions !== DEFAULT_CONDITIONS) {
@@ -75,15 +77,7 @@ function tryStatSync(path) {
   }
 }
 
-/**
- *
- * '/foo/package.json' -> '/foo'
- */
-function removePackageJsonFromPath(path) {
-  return StringPrototypeSlice(path, 0, path.length - 13);
-}
-
-function getPackageConfig(path) {
+function getPackageConfig(path, specifier, base) {
   const existing = packageJSONCache.get(path);
   if (existing !== undefined) {
     return existing;
@@ -91,11 +85,13 @@ function getPackageConfig(path) {
   const source = packageJsonReader.read(path).string;
   if (source === undefined) {
     const packageConfig = {
+      pjsonPath: path,
       exists: false,
       main: undefined,
       name: undefined,
       type: 'none',
-      exports: undefined
+      exports: undefined,
+      imports: undefined,
     };
     packageJSONCache.set(path, packageConfig);
     return packageConfig;
@@ -105,35 +101,42 @@ function getPackageConfig(path) {
   try {
     packageJSON = JSONParse(source);
   } catch (error) {
-    const errorPath = removePackageJsonFromPath(path);
-    throw new ERR_INVALID_PACKAGE_CONFIG(errorPath, error.message, true);
+    throw new ERR_INVALID_PACKAGE_CONFIG(
+      path,
+      (base ? `"${specifier}" from ` : '') + fileURLToPath(base || specifier),
+      error.message
+    );
   }
 
-  let { main, name, type } = packageJSON;
+  let { imports, main, name, type } = packageJSON;
   const { exports } = packageJSON;
+  if (typeof imports !== 'object' || imports === null) imports = undefined;
   if (typeof main !== 'string') main = undefined;
   if (typeof name !== 'string') name = undefined;
   // Ignore unknown types for forwards compatibility
   if (type !== 'module' && type !== 'commonjs') type = 'none';
 
   const packageConfig = {
+    pjsonPath: path,
     exists: true,
     main,
     name,
     type,
-    exports
+    exports,
+    imports,
   };
   packageJSONCache.set(path, packageConfig);
   return packageConfig;
 }
 
-function getPackageScopeConfig(resolved, base) {
+function getPackageScopeConfig(resolved) {
   let packageJSONUrl = new URL('./package.json', resolved);
   while (true) {
     const packageJSONPath = packageJSONUrl.pathname;
     if (StringPrototypeEndsWith(packageJSONPath, 'node_modules/package.json'))
       break;
-    const packageConfig = getPackageConfig(fileURLToPath(packageJSONUrl), base);
+    const packageConfig = getPackageConfig(fileURLToPath(packageJSONUrl),
+                                           resolved);
     if (packageConfig.exists) return packageConfig;
 
     const lastPackageJSONUrl = packageJSONUrl;
@@ -143,14 +146,17 @@ function getPackageScopeConfig(resolved, base) {
     // (can't just check "/package.json" for Windows support).
     if (packageJSONUrl.pathname === lastPackageJSONUrl.pathname) break;
   }
+  const packageJSONPath = fileURLToPath(packageJSONUrl);
   const packageConfig = {
+    pjsonPath: packageJSONPath,
     exists: false,
     main: undefined,
     name: undefined,
     type: 'none',
-    exports: undefined
+    exports: undefined,
+    imports: undefined,
   };
-  packageJSONCache.set(fileURLToPath(packageJSONUrl), packageConfig);
+  packageJSONCache.set(packageJSONPath, packageConfig);
   return packageConfig;
 }
 
@@ -166,7 +172,7 @@ function fileExists(url) {
   return tryStatSync(fileURLToPath(url)).isFile();
 }
 
-function legacyMainResolve(packageJSONUrl, packageConfig) {
+function legacyMainResolve(packageJSONUrl, packageConfig, base) {
   let guess;
   if (packageConfig.main !== undefined) {
     // Note: fs check redundances will be handled by Descriptor cache here.
@@ -211,7 +217,8 @@ function legacyMainResolve(packageJSONUrl, packageConfig) {
     return guess;
   }
   // Not found.
-  return undefined;
+  throw new ERR_MODULE_NOT_FOUND(
+    fileURLToPath(new URL('.', packageJSONUrl)), fileURLToPath(base));
 }
 
 function resolveExtensionsWithTryExactName(search) {
@@ -233,85 +240,109 @@ function resolveIndex(search) {
   return resolveExtensions(new URL('index', search));
 }
 
+const encodedSepRegEx = /%2F|%2C/i;
 function finalizeResolution(resolved, base) {
+  if (RegExpPrototypeTest(encodedSepRegEx, resolved.pathname))
+    throw new ERR_INVALID_MODULE_SPECIFIER(
+      resolved.pathname, 'must not include encoded "/" or "\\" characters',
+      fileURLToPath(base));
+
+  const path = fileURLToPath(resolved);
   if (getOptionValue('--experimental-specifier-resolution') === 'node') {
     let file = resolveExtensionsWithTryExactName(resolved);
     if (file !== undefined) return file;
-    if (!StringPrototypeEndsWith(resolved.pathname, '/')) {
-      file = resolveIndex(new URL(`${resolved.pathname}/`, base));
+    if (!StringPrototypeEndsWith(path, '/')) {
+      file = resolveIndex(new URL(`${resolved}/`));
+      if (file !== undefined) return file;
     } else {
-      file = resolveIndex(resolved);
+      return resolveIndex(resolved) || resolved;
     }
-    if (file !== undefined) return file;
     throw new ERR_MODULE_NOT_FOUND(
       resolved.pathname, fileURLToPath(base), 'module');
   }
 
-  const path = fileURLToPath(resolved);
-  const stats = tryStatSync(path);
-
+  const stats = tryStatSync(StringPrototypeEndsWith(path, '/') ?
+    StringPrototypeSlice(path, -1) : path);
   if (stats.isDirectory()) {
-    const err = new ERR_UNSUPPORTED_DIR_IMPORT(
-      path || resolved.pathname, fileURLToPath(base));
+    const err = new ERR_UNSUPPORTED_DIR_IMPORT(path, fileURLToPath(base));
     err.url = String(resolved);
     throw err;
   } else if (!stats.isFile()) {
     throw new ERR_MODULE_NOT_FOUND(
-      path || resolved.pathname, fileURLToPath(base), 'module');
+      path || resolved.pathname, base && fileURLToPath(base), 'module');
   }
 
   return resolved;
 }
 
+function throwImportNotDefined(specifier, packageJSONUrl, base) {
+  throw new ERR_PACKAGE_IMPORT_NOT_DEFINED(
+    specifier, packageJSONUrl && fileURLToPath(new URL('.', packageJSONUrl)),
+    fileURLToPath(base));
+}
+
 function throwExportsNotFound(subpath, packageJSONUrl, base) {
   throw new ERR_PACKAGE_PATH_NOT_EXPORTED(
-    fileURLToPath(packageJSONUrl), subpath, fileURLToPath(base));
+    fileURLToPath(new URL('.', packageJSONUrl)), subpath,
+    base && fileURLToPath(base));
 }
 
-function throwSubpathInvalid(subpath, packageJSONUrl, base) {
-  throw new ERR_INVALID_MODULE_SPECIFIER(
-    fileURLToPath(packageJSONUrl), subpath, fileURLToPath(base));
+function throwInvalidSubpath(subpath, packageJSONUrl, internal, base) {
+  const reason = `request is not a valid subpath for the "${internal ?
+    'imports' : 'exports'}" resolution of ${fileURLToPath(packageJSONUrl)}`;
+  throw new ERR_INVALID_MODULE_SPECIFIER(subpath, reason,
+                                         base && fileURLToPath(base));
 }
 
-function throwExportsInvalid(
-  subpath, target, packageJSONUrl, base) {
+function throwInvalidPackageTarget(
+  subpath, target, packageJSONUrl, internal, base) {
   if (typeof target === 'object' && target !== null) {
     target = JSONStringify(target, null, '');
-  } else if (ArrayIsArray(target)) {
-    target = `[${target}]`;
   } else {
     target = `${target}`;
   }
   throw new ERR_INVALID_PACKAGE_TARGET(
-    fileURLToPath(packageJSONUrl), null, subpath, target, fileURLToPath(base));
+    fileURLToPath(new URL('.', packageJSONUrl)), subpath, target,
+    internal, base && fileURLToPath(base));
 }
 
-function resolveExportsTargetString(
-  target, subpath, match, packageJSONUrl, base) {
-  if (target[0] !== '.' || target[1] !== '/' ||
-      (subpath !== '' && target[target.length - 1] !== '/')) {
-    throwExportsInvalid(match, target, packageJSONUrl, base);
+const invalidSegmentRegEx = /(^|\\|\/)(\.\.?|node_modules)(\\|\/|$)/;
+
+function resolvePackageTargetString(
+  target, subpath, match, packageJSONUrl, base, internal, conditions) {
+  if (subpath !== '' && target[target.length - 1] !== '/')
+    throwInvalidPackageTarget(match, target, packageJSONUrl, internal, base);
+
+  if (!StringPrototypeStartsWith(target, './')) {
+    if (internal && !StringPrototypeStartsWith(target, '../') &&
+        !StringPrototypeStartsWith(target, '/')) {
+      let isURL = false;
+      try {
+        new URL(target);
+        isURL = true;
+      } catch {}
+      if (!isURL)
+        return packageResolve(target + subpath, packageJSONUrl, conditions);
+    }
+    throwInvalidPackageTarget(match, target, packageJSONUrl, internal, base);
   }
+
+  if (RegExpPrototypeTest(invalidSegmentRegEx, StringPrototypeSlice(target, 2)))
+    throwInvalidPackageTarget(match, target, packageJSONUrl, internal, base);
 
   const resolved = new URL(target, packageJSONUrl);
   const resolvedPath = resolved.pathname;
   const packagePath = new URL('.', packageJSONUrl).pathname;
 
-  if (!StringPrototypeStartsWith(resolvedPath, packagePath) ||
-      StringPrototypeIncludes(
-        resolvedPath, '/node_modules/', packagePath.length - 1)) {
-    throwExportsInvalid(match, target, packageJSONUrl, base);
-  }
+  if (!StringPrototypeStartsWith(resolvedPath, packagePath))
+    throwInvalidPackageTarget(match, target, packageJSONUrl, internal, base);
 
   if (subpath === '') return resolved;
-  const subpathResolved = new URL(subpath, resolved);
-  const subpathResolvedPath = subpathResolved.pathname;
-  if (!StringPrototypeStartsWith(subpathResolvedPath, resolvedPath) ||
-      StringPrototypeIncludes(subpathResolvedPath,
-                              '/node_modules/', packagePath.length - 1)) {
-    throwSubpathInvalid(match + subpath, packageJSONUrl, base);
-  }
-  return subpathResolved;
+
+  if (RegExpPrototypeTest(invalidSegmentRegEx, subpath))
+    throwInvalidSubpath(match + subpath, packageJSONUrl, internal, base);
+
+  return new URL(subpath, resolved);
 }
 
 /**
@@ -324,36 +355,40 @@ function isArrayIndex(key) {
   return keyNum >= 0 && keyNum < 0xFFFF_FFFF;
 }
 
-function resolveExportsTarget(
-  packageJSONUrl, target, subpath, packageSubpath, base, conditions) {
+function resolvePackageTarget(packageJSONUrl, target, subpath, packageSubpath,
+                              base, internal, conditions) {
   if (typeof target === 'string') {
-    const resolved = resolveExportsTargetString(
-      target, subpath, packageSubpath, packageJSONUrl, base);
-    return finalizeResolution(resolved, base);
+    return resolvePackageTargetString(
+      target, subpath, packageSubpath, packageJSONUrl, base, internal,
+      conditions);
   } else if (ArrayIsArray(target)) {
     if (target.length === 0)
-      throwExportsNotFound(packageSubpath, packageJSONUrl, base);
+      return null;
 
     let lastException;
     for (let i = 0; i < target.length; i++) {
       const targetItem = target[i];
       let resolved;
       try {
-        resolved = resolveExportsTarget(
-          packageJSONUrl, targetItem, subpath, packageSubpath, base,
+        resolved = resolvePackageTarget(
+          packageJSONUrl, targetItem, subpath, packageSubpath, base, internal,
           conditions);
       } catch (e) {
         lastException = e;
-        if (e.code === 'ERR_PACKAGE_PATH_NOT_EXPORTED' ||
-            e.code === 'ERR_INVALID_PACKAGE_TARGET') {
+        if (e.code === 'ERR_INVALID_PACKAGE_TARGET')
           continue;
-        }
         throw e;
       }
-
-      return finalizeResolution(resolved, base);
+      if (resolved === undefined)
+        continue;
+      if (resolved === null) {
+        lastException = null;
+        continue;
+      }
+      return resolved;
     }
-    assert(lastException !== undefined);
+    if (lastException === undefined || lastException === null)
+      return lastException;
     throw lastException;
   } else if (typeof target === 'object' && target !== null) {
     const keys = ObjectGetOwnPropertyNames(target);
@@ -361,29 +396,28 @@ function resolveExportsTarget(
       const key = keys[i];
       if (isArrayIndex(key)) {
         throw new ERR_INVALID_PACKAGE_CONFIG(
-          fileURLToPath(packageJSONUrl),
-          '"exports" cannot contain numeric property keys');
+          fileURLToPath(packageJSONUrl), base,
+          '"exports" cannot contain numeric property keys.');
       }
     }
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i];
       if (key === 'default' || conditions.has(key)) {
         const conditionalTarget = target[key];
-        try {
-          return resolveExportsTarget(
-            packageJSONUrl, conditionalTarget, subpath, packageSubpath, base,
-            conditions);
-        } catch (e) {
-          if (e.code === 'ERR_PACKAGE_PATH_NOT_EXPORTED') continue;
-          throw e;
-        }
+        const resolved = resolvePackageTarget(
+          packageJSONUrl, conditionalTarget, subpath, packageSubpath, base,
+          internal, conditions);
+        if (resolved === undefined)
+          continue;
+        return resolved;
       }
     }
-    throwExportsNotFound(packageSubpath, packageJSONUrl, base);
+    return undefined;
   } else if (target === null) {
-    throwExportsNotFound(packageSubpath, packageJSONUrl, base);
+    return null;
   }
-  throwExportsInvalid(packageSubpath, target, packageJSONUrl, base);
+  throwInvalidPackageTarget(packageSubpath, target, packageJSONUrl, internal,
+                            base);
 }
 
 function isConditionalExportsMainSugar(exports, packageJSONUrl, base) {
@@ -400,45 +434,13 @@ function isConditionalExportsMainSugar(exports, packageJSONUrl, base) {
       isConditionalSugar = curIsConditionalSugar;
     } else if (isConditionalSugar !== curIsConditionalSugar) {
       throw new ERR_INVALID_PACKAGE_CONFIG(
-        fileURLToPath(packageJSONUrl),
+        fileURLToPath(packageJSONUrl), base,
         '"exports" cannot contain some keys starting with \'.\' and some not.' +
         ' The exports object must either be an object of package subpath keys' +
         ' or an object of main entry condition name keys only.');
     }
   }
   return isConditionalSugar;
-}
-
-
-function packageMainResolve(packageJSONUrl, packageConfig, base, conditions) {
-  if (packageConfig.exists) {
-    const exports = packageConfig.exports;
-    if (exports !== undefined) {
-      if (isConditionalExportsMainSugar(exports, packageJSONUrl, base)) {
-        return resolveExportsTarget(packageJSONUrl, exports, '', '', base,
-                                    conditions);
-      } else if (typeof exports === 'object' && exports !== null) {
-        const target = exports['.'];
-        if (target !== undefined)
-          return resolveExportsTarget(packageJSONUrl, target, '', '', base,
-                                      conditions);
-      }
-
-      throw new ERR_PACKAGE_PATH_NOT_EXPORTED(packageJSONUrl, '.');
-    }
-    if (getOptionValue('--experimental-specifier-resolution') === 'node') {
-      if (packageConfig.main !== undefined) {
-        return finalizeResolution(
-          new URL(packageConfig.main, packageJSONUrl), base);
-      }
-      return finalizeResolution(
-        new URL('index', packageJSONUrl), base);
-    }
-    return legacyMainResolve(packageJSONUrl, packageConfig);
-  }
-
-  throw new ERR_MODULE_NOT_FOUND(
-    fileURLToPath(new URL('.', packageJSONUrl)), fileURLToPath(base));
 }
 
 /**
@@ -451,27 +453,27 @@ function packageMainResolve(packageJSONUrl, packageConfig, base, conditions) {
  */
 function packageExportsResolve(
   packageJSONUrl, packageSubpath, packageConfig, base, conditions) {
-  const exports = packageConfig.exports;
-  if (exports === undefined ||
-      isConditionalExportsMainSugar(exports, packageJSONUrl, base)) {
-    throwExportsNotFound(packageSubpath, packageJSONUrl, base);
-  }
-
+  let exports = packageConfig.exports;
+  if (isConditionalExportsMainSugar(exports, packageJSONUrl, base))
+    exports = { '.': exports };
 
   if (ObjectPrototypeHasOwnProperty(exports, packageSubpath)) {
     const target = exports[packageSubpath];
-    const resolved = resolveExportsTarget(
-      packageJSONUrl, target, '', packageSubpath, base, conditions);
-    return finalizeResolution(resolved, base);
+    const resolved = resolvePackageTarget(
+      packageJSONUrl, target, '', packageSubpath, base, false, conditions
+    );
+    if (resolved === null || resolved === undefined)
+      throwExportsNotFound(packageSubpath, packageJSONUrl, base);
+    return { resolved, exact: true };
   }
 
   let bestMatch = '';
   const keys = ObjectGetOwnPropertyNames(exports);
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i];
-    if (key[key.length - 1] !== '/') continue;
-    if (StringPrototypeStartsWith(packageSubpath, key) &&
-        key.length > bestMatch.length) {
+    if (key[key.length - 1] === '/' &&
+      StringPrototypeStartsWith(packageSubpath, key) &&
+      key.length > bestMatch.length) {
       bestMatch = key;
     }
   }
@@ -479,16 +481,61 @@ function packageExportsResolve(
   if (bestMatch) {
     const target = exports[bestMatch];
     const subpath = StringPrototypeSubstr(packageSubpath, bestMatch.length);
-    const resolved = resolveExportsTarget(
-      packageJSONUrl, target, subpath, packageSubpath, base, conditions);
-    return finalizeResolution(resolved, base);
+    const resolved = resolvePackageTarget(packageJSONUrl, target, subpath,
+                                          bestMatch, base, false, conditions);
+    if (resolved === null || resolved === undefined)
+      throwExportsNotFound(packageSubpath, packageJSONUrl, base);
+    return { resolved, exact: false };
   }
 
   throwExportsNotFound(packageSubpath, packageJSONUrl, base);
 }
 
+function packageImportsResolve(name, base, conditions) {
+  if (name === '#' || StringPrototypeStartsWith(name, '#/')) {
+    const reason = 'is not a valid internal imports specifier name';
+    throw new ERR_INVALID_MODULE_SPECIFIER(name, reason, fileURLToPath(base));
+  }
+  let packageJSONUrl;
+  const packageConfig = getPackageScopeConfig(base);
+  if (packageConfig.exists) {
+    packageJSONUrl = pathToFileURL(packageConfig.pjsonPath);
+    const imports = packageConfig.imports;
+    if (imports) {
+      if (ObjectPrototypeHasOwnProperty(imports, name)) {
+        const resolved = resolvePackageTarget(
+          packageJSONUrl, imports[name], '', name, base, true, conditions
+        );
+        if (resolved !== null)
+          return { resolved, exact: true };
+      } else {
+        let bestMatch = '';
+        const keys = ObjectGetOwnPropertyNames(imports);
+        for (let i = 0; i < keys.length; i++) {
+          const key = keys[i];
+          if (key[key.length - 1] === '/' &&
+            StringPrototypeStartsWith(name, key) &&
+            key.length > bestMatch.length) {
+            bestMatch = key;
+          }
+        }
+
+        if (bestMatch) {
+          const target = imports[bestMatch];
+          const subpath = StringPrototypeSubstr(name, bestMatch.length);
+          const resolved = resolvePackageTarget(
+            packageJSONUrl, target, subpath, bestMatch, base, true, conditions);
+          if (resolved !== null)
+            return { resolved, exact: false };
+        }
+      }
+    }
+  }
+  throwImportNotDefined(name, packageJSONUrl, base);
+}
+
 function getPackageType(url) {
-  const packageConfig = getPackageScopeConfig(url, url);
+  const packageConfig = getPackageScopeConfig(url);
   return packageConfig.type;
 }
 
@@ -526,35 +573,21 @@ function packageResolve(specifier, base, conditions) {
 
   if (!validPackageName) {
     throw new ERR_INVALID_MODULE_SPECIFIER(
-      specifier, undefined, fileURLToPath(base));
+      specifier, 'is not a valid package name', fileURLToPath(base));
   }
 
-  const packageSubpath = separatorIndex === -1 ?
-    '' : '.' + StringPrototypeSlice(specifier, separatorIndex);
+  const packageSubpath = '.' + (separatorIndex === -1 ? '' :
+    StringPrototypeSlice(specifier, separatorIndex));
 
   // ResolveSelf
-  const packageConfig = getPackageScopeConfig(base, base);
+  const packageConfig = getPackageScopeConfig(base);
   if (packageConfig.exists) {
-    // TODO(jkrems): Find a way to forward the pair/iterator already generated
-    // while executing GetPackageScopeConfig
-    let packageJSONUrl;
-    for (const [ filename, packageConfigCandidate ] of packageJSONCache) {
-      if (packageConfig === packageConfigCandidate) {
-        packageJSONUrl = pathToFileURL(filename);
-        break;
-      }
-    }
-    if (packageJSONUrl !== undefined &&
-        packageConfig.name === packageName &&
-        packageConfig.exports !== undefined) {
-      if (packageSubpath === './') {
-        return new URL('./', packageJSONUrl);
-      } else if (packageSubpath === '') {
-        return packageMainResolve(packageJSONUrl, packageConfig, base,
-                                  conditions);
-      }
+    const packageJSONUrl = pathToFileURL(packageConfig.pjsonPath);
+    if (packageConfig.name === packageName &&
+        packageConfig.exports !== undefined && packageConfig.exports !== null) {
       return packageExportsResolve(
-        packageJSONUrl, packageSubpath, packageConfig, base, conditions);
+        packageJSONUrl, packageSubpath, packageConfig, base, conditions
+      ).resolved;
     }
   }
 
@@ -563,7 +596,8 @@ function packageResolve(specifier, base, conditions) {
   let packageJSONPath = fileURLToPath(packageJSONUrl);
   let lastPath;
   do {
-    const stat = tryStatSync(removePackageJsonFromPath(packageJSONPath));
+    const stat = tryStatSync(StringPrototypeSlice(packageJSONPath, 0,
+                                                  packageJSONPath.length - 13));
     if (!stat.isDirectory()) {
       lastPath = packageJSONPath;
       packageJSONUrl = new URL((isScoped ?
@@ -574,18 +608,14 @@ function packageResolve(specifier, base, conditions) {
     }
 
     // Package match.
-    const packageConfig = getPackageConfig(packageJSONPath, base);
-    if (packageSubpath === './') {
-      return new URL('./', packageJSONUrl);
-    } else if (packageSubpath === '') {
-      return packageMainResolve(packageJSONUrl, packageConfig, base,
-                                conditions);
-    } else if (packageConfig.exports !== undefined) {
+    const packageConfig = getPackageConfig(packageJSONPath, specifier, base);
+    if (packageConfig.exports !== undefined && packageConfig.exports !== null)
       return packageExportsResolve(
-        packageJSONUrl, packageSubpath, packageConfig, base, conditions);
-    }
-    return finalizeResolution(
-      new URL(packageSubpath, packageJSONUrl), base);
+        packageJSONUrl, packageSubpath, packageConfig, base, conditions
+      ).resolved;
+    if (packageSubpath === '.')
+      return legacyMainResolve(packageJSONUrl, packageConfig, base);
+    return new URL(packageSubpath, packageJSONUrl);
     // Cross-platform root check.
   } while (packageJSONPath.length !== lastPath.length);
 
@@ -626,11 +656,13 @@ function moduleResolve(specifier, base, conditions) {
   let resolved;
   if (shouldBeTreatedAsRelativeOrAbsolutePath(specifier)) {
     resolved = new URL(specifier, base);
+  } else if (specifier[0] === '#') {
+    ({ resolved } = packageImportsResolve(specifier, base, conditions));
   } else {
     try {
       resolved = new URL(specifier);
     } catch {
-      return packageResolve(specifier, base, conditions);
+      resolved = packageResolve(specifier, base, conditions);
     }
   }
   return finalizeResolution(resolved, base);
@@ -695,7 +727,7 @@ function defaultResolve(specifier, context = {}, defaultResolveUnused) {
   if (parsed && parsed.protocol === 'nodejs:')
     return { url: specifier };
   if (parsed && parsed.protocol !== 'file:' && parsed.protocol !== 'data:')
-    throw new ERR_UNSUPPORTED_ESM_URL_SCHEME();
+    throw new ERR_UNSUPPORTED_ESM_URL_SCHEME(parsed);
   if (NativeModule.canBeRequiredByUsers(specifier)) {
     return {
       url: 'nodejs:' + specifier
@@ -764,5 +796,8 @@ function defaultResolve(specifier, context = {}, defaultResolveUnused) {
 module.exports = {
   DEFAULT_CONDITIONS,
   defaultResolve,
-  getPackageType
+  encodedSepRegEx,
+  getPackageType,
+  packageExportsResolve,
+  packageImportsResolve
 };

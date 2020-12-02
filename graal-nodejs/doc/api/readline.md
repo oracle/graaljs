@@ -4,6 +4,8 @@
 
 > Stability: 2 - Stable
 
+<!-- source_link=lib/readline.js -->
+
 The `readline` module provides an interface for reading data from a [Readable][]
 stream (such as [`process.stdin`][]) one line at a time. It can be accessed
 using:
@@ -811,7 +813,7 @@ const { createInterface } = require('readline');
   <tr>
     <td><code>ctrl</code> + <code>w</code> or <code>ctrl</code>
     + <code>backspace</code></td>
-    <td>Delete backwards to a word boundary</td>
+    <td>Delete backward to a word boundary</td>
     <td><code>ctrl</code> + <code>backspace</code> Doesn't
     work on Linux, Mac and Windows</td>
   </tr>
