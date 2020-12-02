@@ -43,6 +43,7 @@
 #define GRAAL_MESSAGE_INL_H_
 
 #include "graal_message.h"
+
 #include "graal_handle_content-inl.h"
 
 inline GraalMessage::GraalMessage(GraalIsolate* isolate, jobject exception) : GraalHandleContent(isolate, exception) {

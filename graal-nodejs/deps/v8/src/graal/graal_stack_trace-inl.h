@@ -43,6 +43,7 @@
 #define GRAAL_STACK_TRACE_INL_H_
 
 #include "graal_stack_trace.h"
+
 #include "graal_handle_content-inl.h"
 
 inline GraalStackTrace::GraalStackTrace(GraalIsolate* isolate, jobject stack_trace) : GraalHandleContent(isolate, stack_trace) {

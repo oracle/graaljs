@@ -39,9 +39,9 @@
  * SOFTWARE.
  */
 
-#include "graal_script.h"
 #include "graal_isolate.h"
 #include "graal_primitive_array.h"
+#include "graal_script.h"
 #include "graal_string.h"
 #include "graal_unbound_script.h"
 #include "graal_value.h"

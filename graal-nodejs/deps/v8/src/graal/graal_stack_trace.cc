@@ -39,11 +39,11 @@
  * SOFTWARE.
  */
 
-#include "graal_stack_trace.h"
 #include "graal_stack_frame.h"
+#include "graal_stack_trace.h"
 
-#include "graal_stack_trace-inl.h"
 #include "graal_stack_frame-inl.h"
+#include "graal_stack_trace-inl.h"
 
 GraalHandleContent* GraalStackTrace::CopyImpl(jobject java_object_copy) {
     return new GraalStackTrace(Isolate(), java_object_copy);

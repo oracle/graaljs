@@ -43,6 +43,7 @@
 #define GRAAL_REGEXP_INL_H_
 
 #include "graal_regexp.h"
+
 #include "graal_object-inl.h"
 
 inline GraalRegExp::GraalRegExp(GraalIsolate* isolate, jobject java_regexp) : GraalObject(isolate, java_regexp) {

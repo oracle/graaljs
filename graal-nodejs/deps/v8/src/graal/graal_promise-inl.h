@@ -43,6 +43,7 @@
 #define GRAAL_PROMISE_INL_H_
 
 #include "graal_promise.h"
+
 #include "graal_object-inl.h"
 
 inline GraalPromise::GraalPromise(GraalIsolate* isolate, jobject java_promise) : GraalObject(isolate, java_promise) {

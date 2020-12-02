@@ -60,6 +60,7 @@
 #include "graal_proxy.h"
 #include "graal_regexp.h"
 #include "graal_script.h"
+#include "graal_script_or_module.h"
 #include "graal_set.h"
 #include "graal_stack_frame.h"
 #include "graal_stack_trace.h"
@@ -67,7 +68,6 @@
 #include "graal_symbol.h"
 #include "graal_unbound_script.h"
 #include "graal_value.h"
-#include "graal_script_or_module.h"
 #include "v8.h"
 #include "v8-profiler.h"
 #include "v8-version-string.h"
@@ -98,6 +98,7 @@
 #include "graal_proxy-inl.h"
 #include "graal_regexp-inl.h"
 #include "graal_script-inl.h"
+#include "graal_script_or_module-inl.h"
 #include "graal_set-inl.h"
 #include "graal_stack_frame-inl.h"
 #include "graal_stack_trace-inl.h"
@@ -105,7 +106,6 @@
 #include "graal_symbol-inl.h"
 #include "graal_unbound_script-inl.h"
 #include "graal_value-inl.h"
-#include "graal_script_or_module-inl.h"
 
 #define TRACE
 //#define TRACE printf("at %s line %d\n", __func__, __LINE__);

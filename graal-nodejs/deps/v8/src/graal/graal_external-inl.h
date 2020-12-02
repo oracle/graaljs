@@ -43,6 +43,7 @@
 #define GRAAL_EXTERNAL_INL_H_
 
 #include "graal_external.h"
+
 #include "graal_value-inl.h"
 
 inline GraalExternal::GraalExternal(GraalIsolate* isolate, void* value, jobject java_external) : GraalValue(isolate, java_external), value_(value) {

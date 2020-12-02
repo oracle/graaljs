@@ -39,8 +39,8 @@
  * SOFTWARE.
  */
 
-#include "graal_proxy.h"
 #include "graal_isolate.h"
+#include "graal_proxy.h"
 #include "graal_value.h"
 
 #include "graal_proxy-inl.h"

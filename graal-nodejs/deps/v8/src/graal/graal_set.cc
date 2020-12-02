@@ -39,8 +39,8 @@
  * SOFTWARE.
  */
 
-#include "graal_set.h"
 #include "graal_isolate.h"
+#include "graal_set.h"
 
 #include "graal_set-inl.h"
 

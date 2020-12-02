@@ -43,6 +43,7 @@
 #define GRAAL_STACK_FRAME_INL_H_
 
 #include "graal_stack_frame.h"
+
 #include "graal_handle_content-inl.h"
 
 inline GraalStackFrame::GraalStackFrame(GraalIsolate* isolate, jobject stack_frame) : GraalHandleContent(isolate, stack_frame) {

@@ -43,6 +43,7 @@
 #define GRAAL_MODULE_INL_H_
 
 #include "graal_module.h"
+
 #include "graal_handle_content-inl.h"
 
 inline GraalModule::GraalModule(GraalIsolate* isolate, jobject java_module) : GraalHandleContent(isolate, java_module) {

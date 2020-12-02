@@ -42,10 +42,10 @@
 #ifndef GRAAL_FUNCTION_CALLBACK_INFO_H_
 #define GRAAL_FUNCTION_CALLBACK_INFO_H_
 
+#include "graal_function_callback_arguments.h"
 #include "graal_isolate.h"
 #include "graal_value.h"
 #include "include/v8.h"
-#include "graal_function_callback_arguments.h"
 
 class GraalFunctionCallbackInfo : public v8::FunctionCallbackInfo<v8::Value> {
 public:

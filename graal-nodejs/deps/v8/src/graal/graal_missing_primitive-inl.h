@@ -43,6 +43,7 @@
 #define GRAAL_MISSING_PRIMITIVE_INL_H_
 
 #include "graal_missing_primitive.h"
+
 #include "graal_primitive-inl.h"
 
 inline GraalMissingPrimitive::GraalMissingPrimitive(GraalIsolate* isolate, jobject java_object, bool undefined) : GraalPrimitive(isolate, java_object), undefined_(undefined) {

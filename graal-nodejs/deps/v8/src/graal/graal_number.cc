@@ -39,9 +39,9 @@
  * SOFTWARE.
  */
 
+#include "graal_isolate.h"
 #include "graal_number.h"
 #include <cmath>
-#include "graal_isolate.h"
 
 #include "graal_number-inl.h"
 

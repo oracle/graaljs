@@ -41,6 +41,7 @@
 
 #include "callbacks.h"
 #include "graal_boolean.h"
+#include "graal_context.h"
 #include "graal_function.h"
 #include "graal_isolate.h"
 #include "graal_missing_primitive.h"
@@ -48,11 +49,10 @@
 #include "graal_object.h"
 #include "graal_string.h"
 #include "uv.h"
-#include "graal_context.h"
+#include <algorithm>
 #include <stdlib.h>
 #include <string>
 #include <string.h>
-#include <algorithm>
 #include <tuple>
 
 #include "graal_boolean-inl.h"

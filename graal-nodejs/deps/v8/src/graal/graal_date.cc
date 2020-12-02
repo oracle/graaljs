@@ -39,8 +39,8 @@
  * SOFTWARE.
  */
 
-#include "graal_date.h"
 #include "graal_context.h"
+#include "graal_date.h"
 #include "graal_isolate.h"
 
 #include "graal_date-inl.h"

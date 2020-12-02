@@ -39,9 +39,9 @@
  * SOFTWARE.
  */
 
-#include "graal_regexp.h"
 #include "graal_context.h"
 #include "graal_isolate.h"
+#include "graal_regexp.h"
 #include "graal_string.h"
 
 #include "graal_regexp-inl.h"

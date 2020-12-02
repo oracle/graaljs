@@ -39,9 +39,9 @@
  * SOFTWARE.
  */
 
-#include "graal_symbol.h"
 #include "graal_isolate.h"
 #include "graal_string.h"
+#include "graal_symbol.h"
 
 #include "graal_symbol-inl.h"
 

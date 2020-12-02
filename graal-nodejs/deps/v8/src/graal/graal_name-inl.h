@@ -43,6 +43,7 @@
 #define GRAAL_NAME_INL_H_
 
 #include "graal_name.h"
+
 #include "graal_primitive-inl.h"
 
 inline GraalName::GraalName(GraalIsolate* isolate, jobject java_name) : GraalPrimitive(isolate, java_name) {

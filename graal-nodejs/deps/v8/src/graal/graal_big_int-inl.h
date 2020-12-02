@@ -43,6 +43,7 @@
 #define GRAAL_BIG_INT_INL_H_
 
 #include "graal_big_int.h"
+
 #include "graal_primitive-inl.h"
 
 inline GraalBigInt::GraalBigInt(GraalIsolate* isolate, jobject java_big_int) : GraalPrimitive(isolate, java_big_int) {

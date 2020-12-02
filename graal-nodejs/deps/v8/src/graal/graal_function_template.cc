@@ -39,15 +39,15 @@
  * SOFTWARE.
  */
 
-#include "graal_function_template.h"
 #include "graal_context.h"
 #include "graal_function.h"
+#include "graal_function_template.h"
 #include "graal_isolate.h"
 #include "graal_object_template.h"
 #include "graal_string.h"
 
-#include "graal_function_template-inl.h"
 #include "graal_function-inl.h"
+#include "graal_function_template-inl.h"
 #include "graal_object_template-inl.h"
 
 GraalHandleContent* GraalFunctionTemplate::CopyImpl(jobject java_object_copy) {

@@ -39,9 +39,9 @@
  * SOFTWARE.
  */
 
-#include "graal_promise.h"
 #include "graal_context.h"
 #include "graal_isolate.h"
+#include "graal_promise.h"
 
 #include "graal_promise-inl.h"
 

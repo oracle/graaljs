@@ -39,8 +39,8 @@
  * SOFTWARE.
  */
 
-#include "graal_primitive_array.h"
 #include "graal_isolate.h"
+#include "graal_primitive_array.h"
 #include "graal_value.h"
 
 #include "graal_primitive_array-inl.h"

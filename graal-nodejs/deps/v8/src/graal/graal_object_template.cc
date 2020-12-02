@@ -39,16 +39,16 @@
  * SOFTWARE.
  */
 
-#include "graal_object_template.h"
-#include "graal_function_template.h"
 #include "graal_context.h"
+#include "graal_function_template.h"
 #include "graal_isolate.h"
 #include "graal_object.h"
+#include "graal_object_template.h"
 #include "graal_string.h"
 #include "include/v8.h"
 
-#include "graal_object_template-inl.h"
 #include "graal_object-inl.h"
+#include "graal_object_template-inl.h"
 
 v8::Local<v8::ObjectTemplate> GraalObjectTemplate::New(v8::Isolate* isolate, v8::Local<v8::FunctionTemplate> constructor) {
     if (!constructor.IsEmpty()) {

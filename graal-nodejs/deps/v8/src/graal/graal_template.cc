@@ -39,9 +39,9 @@
  * SOFTWARE.
  */
 
-#include "graal_template.h"
 #include "graal_function_template.h"
 #include "graal_isolate.h"
+#include "graal_template.h"
 #include "graal_value.h"
 
 void GraalTemplate::Set(v8::Local<v8::Value> key, v8::Local<v8::Data> value, v8::PropertyAttribute attributes) {

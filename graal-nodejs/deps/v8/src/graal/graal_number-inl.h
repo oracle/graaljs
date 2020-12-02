@@ -43,6 +43,7 @@
 #define GRAAL_NUMBER_INL_H_
 
 #include "graal_number.h"
+
 #include "graal_primitive-inl.h"
 
 inline GraalNumber::GraalNumber(GraalIsolate* isolate, double value, jobject java_number) : GraalPrimitive(isolate, java_number), value_(value) {

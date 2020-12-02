@@ -43,6 +43,7 @@
 #define GRAAL_VALUE_INL_H_
 
 #include "graal_value.h"
+
 #include "graal_data-inl.h"
 
 inline GraalValue::GraalValue(GraalIsolate* isolate, jobject java_object) : GraalData(isolate, java_object) {

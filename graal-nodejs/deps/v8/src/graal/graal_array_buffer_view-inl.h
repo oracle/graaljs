@@ -43,6 +43,7 @@
 #define GRAAL_ARRAY_BUFFER_VIEW_INL_H_
 
 #include "graal_array_buffer_view.h"
+
 #include "graal_object-inl.h"
 
 inline GraalArrayBufferView::GraalArrayBufferView(GraalIsolate* isolate, jobject java_array_buffer_view, int type) :

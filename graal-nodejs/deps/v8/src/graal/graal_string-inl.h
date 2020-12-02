@@ -43,6 +43,7 @@
 #define GRAAL_STRING_INL_H_
 
 #include "graal_string.h"
+
 #include "graal_name-inl.h"
 
 inline GraalString::GraalString(GraalIsolate* isolate, jstring java_string) : GraalName(isolate, java_string) {

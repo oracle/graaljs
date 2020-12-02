@@ -43,6 +43,7 @@
 #define GRAAL_FUNCTION_INL_H_
 
 #include "graal_function.h"
+
 #include "graal_object-inl.h"
 
 inline GraalFunction::GraalFunction(GraalIsolate* isolate, jobject java_function) : GraalObject(isolate, java_function) {

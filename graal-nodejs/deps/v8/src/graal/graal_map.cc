@@ -39,8 +39,8 @@
  * SOFTWARE.
  */
 
-#include "graal_map.h"
 #include "graal_isolate.h"
+#include "graal_map.h"
 
 #include "graal_map-inl.h"
 

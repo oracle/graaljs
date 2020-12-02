@@ -43,6 +43,7 @@
 #define GRAAL_PROXY_INL_H_
 
 #include "graal_proxy.h"
+
 #include "graal_object-inl.h"
 
 inline GraalProxy::GraalProxy(GraalIsolate* isolate, jobject java_proxy) : GraalObject(isolate, java_proxy) {

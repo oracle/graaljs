@@ -43,6 +43,7 @@
 #define GRAAL_PRIMITIVE_ARRAY_INL_H_
 
 #include "graal_primitive_array.h"
+
 #include "graal_handle_content-inl.h"
 
 inline GraalPrimitiveArray::GraalPrimitiveArray(GraalIsolate* isolate, jobject java_object) : GraalHandleContent(isolate, java_object) {

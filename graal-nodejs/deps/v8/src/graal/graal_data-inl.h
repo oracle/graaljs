@@ -43,6 +43,7 @@
 #define GRAAL_DATA_INL_H_
 
 #include "graal_data.h"
+
 #include "graal_handle_content-inl.h"
 
 inline GraalData::GraalData(GraalIsolate* isolate, jobject java_object) : GraalHandleContent(isolate, java_object) {

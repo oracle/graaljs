@@ -39,8 +39,8 @@
  * SOFTWARE.
  */
 
-#include "graal_missing_primitive.h"
 #include "graal_isolate.h"
+#include "graal_missing_primitive.h"
 
 #include "graal_missing_primitive-inl.h"
 

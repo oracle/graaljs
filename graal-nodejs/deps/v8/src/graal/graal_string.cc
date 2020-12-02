@@ -39,10 +39,10 @@
  * SOFTWARE.
  */
 
-#include "graal_string.h"
 #include "graal_isolate.h"
-#include <string.h>
+#include "graal_string.h"
 #include <limits.h>
+#include <string.h>
 
 #include "graal_string-inl.h"
 

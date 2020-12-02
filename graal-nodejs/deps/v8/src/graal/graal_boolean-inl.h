@@ -43,6 +43,7 @@
 #define GRAAL_BOOLEAN_INL_H_
 
 #include "graal_boolean.h"
+
 #include "graal_primitive-inl.h"
 
 inline GraalBoolean::GraalBoolean(GraalIsolate* isolate, bool value) :

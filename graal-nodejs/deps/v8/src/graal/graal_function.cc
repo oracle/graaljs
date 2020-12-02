@@ -40,10 +40,10 @@
  */
 
 #include "graal_function.h"
-#include "graal_function-inl.h"
 #include "graal_isolate.h"
 #include "graal_string.h"
 
+#include "graal_function-inl.h"
 #include "graal_string-inl.h"
 
 GraalHandleContent* GraalFunction::CopyImpl(jobject java_object_copy) {

@@ -39,8 +39,6 @@
  * SOFTWARE.
  */
 
-#include "graal_value.h"
-
 #include "graal_array.h"
 #include "graal_array_buffer.h"
 #include "graal_array_buffer_view.h"
@@ -60,6 +58,7 @@
 #include "graal_set.h"
 #include "graal_string.h"
 #include "graal_symbol.h"
+#include "graal_value.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>

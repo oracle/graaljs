@@ -43,6 +43,7 @@
 #define GRAAL_FUNCTION_CALLBACK_INFO_INL_H_
 
 #include "graal_function_callback_info.h"
+
 #include "graal_function_callback_arguments-inl.h"
 
 GraalFunctionCallbackInfo::GraalFunctionCallbackInfo(GraalFunctionCallbackArguments& args)

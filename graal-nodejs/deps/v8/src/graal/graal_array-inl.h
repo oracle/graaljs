@@ -43,6 +43,7 @@
 #define GRAAL_ARRAY_INL_H_
 
 #include "graal_array.h"
+
 #include "graal_object-inl.h"
 
 inline GraalArray::GraalArray(GraalIsolate* isolate, jobject java_array) : GraalObject(isolate, java_array) {

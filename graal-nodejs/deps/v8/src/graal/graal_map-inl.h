@@ -43,6 +43,7 @@
 #define GRAAL_MAP_INL_H_
 
 #include "graal_map.h"
+
 #include "graal_object-inl.h"
 
 inline GraalMap::GraalMap(GraalIsolate* isolate, jobject java_map) : GraalObject(isolate, java_map) {

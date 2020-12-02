@@ -43,6 +43,7 @@
 #define GRAAL_SET_INL_H_
 
 #include "graal_set.h"
+
 #include "graal_object-inl.h"
 
 inline GraalSet::GraalSet(GraalIsolate* isolate, jobject java_set) : GraalObject(isolate, java_set) {

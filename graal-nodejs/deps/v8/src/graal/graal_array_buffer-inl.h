@@ -43,6 +43,7 @@
 #define GRAAL_ARRAY_BUFFER_INL_H_
 
 #include "graal_array_buffer.h"
+
 #include "graal_object-inl.h"
 
 inline GraalArrayBuffer::GraalArrayBuffer(GraalIsolate* isolate, jobject java_array_buffer) : GraalObject(isolate, java_array_buffer) {

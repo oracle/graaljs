@@ -43,6 +43,7 @@
 #define GRAAL_OBJECT_INL_H_
 
 #include "graal_object.h"
+
 #include "graal_value-inl.h"
 
 inline GraalObject::GraalObject(GraalIsolate* isolate, jobject java_object) : GraalValue(isolate, java_object), internal_field_count_cache_(-1) {

@@ -48,6 +48,7 @@
 #include "graal_boolean.h"
 #include "graal_context.h"
 #include "graal_date.h"
+#include "graal_external.h"
 #include "graal_function.h"
 #include "graal_function_callback_info.h"
 #include "graal_isolate.h"
@@ -57,19 +58,17 @@
 #include "graal_number.h"
 #include "graal_object.h"
 #include "graal_promise.h"
-#include "graal_proxy.h"
 #include "graal_property_callback_info.h"
+#include "graal_proxy.h"
+#include "graal_script_or_module.h"
 #include "graal_set.h"
 #include "graal_string.h"
 #include "graal_symbol.h"
-#include "graal_external.h"
-#include "graal_script_or_module.h"
 #include "jni.h"
-#include "../../../../out/coremodules/node_snapshots.h"
-#include <vector>
+#include <array>
 #include <stdlib.h>
 #include <string.h>
-#include <array>
+#include <vector>
 
 #include "graal_context-inl.h"
 #include "graal_function_callback_info-inl.h"
@@ -77,8 +76,10 @@
 #include "graal_module-inl.h"
 #include "graal_promise-inl.h"
 #include "graal_property_callback_info-inl.h"
-#include "graal_string-inl.h"
 #include "graal_script_or_module-inl.h"
+#include "graal_string-inl.h"
+
+#include "../../../../out/coremodules/node_snapshots.h"
 
 #define CALLBACK(name, signature, pointer) {const_cast<char*>(name), const_cast<char*>(signature), reinterpret_cast<void*>(pointer)}
 

@@ -43,6 +43,7 @@
 #define GRAAL_SYMBOL_INL_H_
 
 #include "graal_symbol.h"
+
 #include "graal_name-inl.h"
 
 inline GraalSymbol::GraalSymbol(GraalIsolate* isolate, jobject java_symbol) : GraalName(isolate, java_symbol) {
