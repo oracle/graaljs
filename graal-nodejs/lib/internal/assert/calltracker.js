@@ -19,7 +19,9 @@ const noop = () => {};
 
 class CallTracker {
 
-  #callChecks = new SafeSet()
+  constructor() {
+    this._callChecks = new SafeSet()
+  }
 
   calls(fn, exact = 1) {
     if (process._exiting)
@@ -40,7 +42,7 @@ class CallTracker {
       stackTrace: new Error(),
       name: fn.name || 'calls'
     };
-    const callChecks = this.#callChecks;
+    const callChecks = this._callChecks;
     callChecks.add(context);
 
     return function() {
@@ -61,7 +63,7 @@ class CallTracker {
 
   report() {
     const errors = [];
-    for (const context of this.#callChecks) {
+    for (const context of this._callChecks) {
       // If functions have not been called exact times
       if (context.actual !== context.exact) {
         const message = `Expected the ${context.name} function to be ` +
