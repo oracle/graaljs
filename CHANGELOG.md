@@ -9,6 +9,7 @@ The main focus is on user-observable behavior of the engine.
 * Adopted new interop exception handling and made JS exceptions extend `AbstractTruffleException`.
 * Implemented interop identity messages.
 * Expose `Graal.versionECMAScript` instead of `Graal.versionJS`.
+* Implemented the [relative indexing method](https://tc39.es/proposal-relative-indexing-method/) proposal. It is available in ECMAScript 2022 mode (`--js.ecmascript-version=2022`).
 
 ## Version 20.3.0
 * Updated Node.js to version 12.18.4.
