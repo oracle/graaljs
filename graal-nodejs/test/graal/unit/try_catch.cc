@@ -130,8 +130,42 @@ EXPORT_TO_JS(HasCaughtNestedBoth) {
 
 EXPORT_TO_JS(HasTerminatedNoException) {
     TryCatch tryCatch(args.GetIsolate());
-    //bool result = tryCatch.HasTerminated(); //TODO
-    bool result = false;
+    bool result = tryCatch.HasTerminated();
+    args.GetReturnValue().Set(result);
+}
+
+EXPORT_TO_JS(HasTerminatedNestedOuter) {
+    Isolate* isolate = args.GetIsolate();
+    bool result = true;
+    TryCatch tryCatch(isolate);
+    result &= !tryCatch.HasTerminated();
+    TryCatch_InvokeCallback(args);
+    result &= tryCatch.HasTerminated();
+    isolate->CancelTerminateExecution();
+    result &= !tryCatch.HasTerminated();
+    args.GetReturnValue().Set(result);
+}
+
+EXPORT_TO_JS(HasTerminatedNestedInner) {
+    Isolate* isolate = args.GetIsolate();
+    // The following TryCatch looks unused but we are testing
+    // that it does not swallow the termination exception
+    TryCatch tryCatch(isolate);
+    isolate->TerminateExecution();
+    TryCatch_InvokeCallback(args);
+}
+
+EXPORT_TO_JS(HasTerminatedBasic) {
+    Isolate* isolate = args.GetIsolate();
+    bool result = true;
+    TryCatch tryCatch(isolate);
+    result &= !tryCatch.HasTerminated();
+    isolate->TerminateExecution();
+    result &= !tryCatch.HasTerminated();
+    TryCatch_InvokeCallback(args);
+    result &= tryCatch.HasTerminated();
+    isolate->CancelTerminateExecution();
+    result &= !tryCatch.HasTerminated();
     args.GetReturnValue().Set(result);
 }
 
