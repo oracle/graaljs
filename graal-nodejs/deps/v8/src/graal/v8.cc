@@ -937,9 +937,9 @@ namespace v8 {
     TryCatch::~TryCatch() {
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate_);
         graal_isolate->TryCatchExit();
-        if (!rethrow_ && HasCaught()) {
+        if (!rethrow_ && HasCaught() && !HasTerminated()) {
             JNIEnv* env = graal_isolate->GetJNIEnv();
-            if (is_verbose_ && !HasTerminated()) {
+            if (is_verbose_) {
                 jthrowable java_exception = env->ExceptionOccurred();
                 Local<Value> exception = Exception();
                 Local<v8::Message> message = Message();
