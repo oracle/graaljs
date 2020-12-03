@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,9 @@
 #include "graal_unbound_script.h"
 #include "graal_value.h"
 
+#include "graal_script-inl.h"
+#include "graal_unbound_script-inl.h"
+
 v8::Local<v8::Script> GraalScript::Compile(v8::Local<v8::String> source_code, v8::ScriptOrigin* origin) {
     v8::Local<v8::String> file_name = origin == nullptr ? v8::Local<v8::String>() : origin->ResourceName().As<v8::String>();
     v8::Local<v8::PrimitiveArray> options = origin == nullptr ? v8::Local<v8::PrimitiveArray>() : origin->HostDefinedOptions();
@@ -62,9 +65,6 @@ v8::Local<v8::Script> GraalScript::Compile(v8::Local<v8::String> source_code, v8
         GraalScript* graal_script = new GraalScript(graal_isolate, java_script);
         return reinterpret_cast<v8::Script*> (graal_script);
     }
-}
-
-GraalScript::GraalScript(GraalIsolate* isolate, jobject java_script) : GraalHandleContent(isolate, java_script) {
 }
 
 GraalHandleContent* GraalScript::CopyImpl(jobject java_object_copy) {

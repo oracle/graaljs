@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,12 +43,13 @@
 #define GRAAL_MODULE_H_
 
 #include "graal_handle_content.h"
+#include "graal_isolate.h"
 
 class GraalIsolate;
 
 class GraalModule : public GraalHandleContent {
 public:
-    GraalModule(GraalIsolate* isolate, jobject java_module);
+    inline GraalModule(GraalIsolate* isolate, jobject java_module);
     static v8::MaybeLocal<v8::Module> Compile(v8::Local<v8::String> source, v8::Local<v8::String> name, v8::Local<v8::PrimitiveArray> options);
     v8::Maybe<bool> InstantiateModule(v8::Local<v8::Context> context, v8::Module::ResolveCallback callback);
     v8::MaybeLocal<v8::Value> Evaluate(v8::Local<v8::Context> context);

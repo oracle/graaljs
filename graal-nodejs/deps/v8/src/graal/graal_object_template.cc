@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,9 @@
 #include "graal_string.h"
 #include "include/v8.h"
 
+#include "graal_object-inl.h"
+#include "graal_object_template-inl.h"
+
 v8::Local<v8::ObjectTemplate> GraalObjectTemplate::New(v8::Isolate* isolate, v8::Local<v8::FunctionTemplate> constructor) {
     if (!constructor.IsEmpty()) {
         fprintf(stderr, "GraalObjectTemplate::New - constructor argument is not supported yet!\n");
@@ -55,9 +58,6 @@ v8::Local<v8::ObjectTemplate> GraalObjectTemplate::New(v8::Isolate* isolate, v8:
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     GraalObjectTemplate* graal_object_template = new GraalObjectTemplate(graal_isolate, java_object_template);
     return reinterpret_cast<v8::ObjectTemplate*> (graal_object_template);
-}
-
-GraalObjectTemplate::GraalObjectTemplate(GraalIsolate* isolate, jobject java_template) : GraalTemplate(isolate, java_template), internal_field_count_(0) {
 }
 
 GraalHandleContent* GraalObjectTemplate::CopyImpl(jobject java_object_copy) {

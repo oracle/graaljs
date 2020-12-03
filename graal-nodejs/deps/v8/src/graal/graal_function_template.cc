@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,8 +46,9 @@
 #include "graal_object_template.h"
 #include "graal_string.h"
 
-GraalFunctionTemplate::GraalFunctionTemplate(GraalIsolate* isolate, jobject java_template, int id) : GraalTemplate(isolate, java_template), id_(id) {
-}
+#include "graal_function-inl.h"
+#include "graal_function_template-inl.h"
+#include "graal_object_template-inl.h"
 
 GraalHandleContent* GraalFunctionTemplate::CopyImpl(jobject java_object_copy) {
     return new GraalFunctionTemplate(Isolate(), java_object_copy, id_);

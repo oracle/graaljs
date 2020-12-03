@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,8 +43,9 @@
 #include "graal_stack_trace.h"
 #include "graal_string.h"
 
-GraalMessage::GraalMessage(GraalIsolate* isolate, jobject exception) : GraalHandleContent(isolate, exception) {
-}
+#include "graal_message-inl.h"
+#include "graal_stack_trace-inl.h"
+#include "graal_string-inl.h"
 
 GraalHandleContent* GraalMessage::CopyImpl(jobject java_object_copy) {
     return new GraalMessage(Isolate(), java_object_copy);

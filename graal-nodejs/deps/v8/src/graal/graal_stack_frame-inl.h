@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,8 +39,14 @@
  * SOFTWARE.
  */
 
-#include "graal_primitive.h"
+#ifndef GRAAL_STACK_FRAME_INL_H_
+#define GRAAL_STACK_FRAME_INL_H_
 
-GraalPrimitive::GraalPrimitive(GraalIsolate* isolate, jobject java_object) : GraalValue(isolate, java_object) {
+#include "graal_stack_frame.h"
+
+#include "graal_handle_content-inl.h"
+
+inline GraalStackFrame::GraalStackFrame(GraalIsolate* isolate, jobject stack_frame) : GraalHandleContent(isolate, stack_frame) {
 }
 
+#endif /* GRAAL_STACK_FRAME_INL_H_ */

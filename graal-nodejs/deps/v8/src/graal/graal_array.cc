@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,8 +42,7 @@
 #include "graal_array.h"
 #include "graal_isolate.h"
 
-GraalArray::GraalArray(GraalIsolate* isolate, jobject java_array) : GraalObject(isolate, java_array) {
-}
+#include "graal_array-inl.h"
 
 GraalHandleContent* GraalArray::CopyImpl(jobject java_object_copy) {
     return new GraalArray(Isolate(), java_object_copy);

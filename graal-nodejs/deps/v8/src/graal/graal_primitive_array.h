@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,13 +43,14 @@
 #define GRAAL_PRIMITIVE_ARRAY_H_
 
 #include "graal_handle_content.h"
+#include "graal_isolate.h"
 
 class GraalIsolate;
 
 class GraalPrimitiveArray : public GraalHandleContent {
 public:
     static v8::Local<v8::PrimitiveArray> New(v8::Isolate* isolate, int length);
-    GraalPrimitiveArray(GraalIsolate* isolate, jobject java_object);
+    inline GraalPrimitiveArray(GraalIsolate* isolate, jobject java_object);
     int Length() const;
     void Set(v8::Isolate* isolate, int index, v8::Local<v8::Primitive> item);
     v8::Local<v8::Primitive> Get(v8::Isolate* isolate, int index);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,8 +46,9 @@
 #include "graal_string.h"
 #include "graal_unbound_script.h"
 
-GraalModule::GraalModule(GraalIsolate* isolate, jobject java_module) : GraalHandleContent(isolate, java_module) {
-}
+#include "graal_module-inl.h"
+#include "graal_string-inl.h"
+#include "graal_unbound_script-inl.h"
 
 GraalHandleContent* GraalModule::CopyImpl(jobject java_object_copy) {
     return new GraalModule(Isolate(), java_object_copy);

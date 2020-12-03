@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,8 +42,7 @@
 #include "graal_isolate.h"
 #include "graal_map.h"
 
-GraalMap::GraalMap(GraalIsolate* isolate, jobject java_map) : GraalObject(isolate, java_map) {
-}
+#include "graal_map-inl.h"
 
 GraalHandleContent* GraalMap::CopyImpl(jobject java_object_copy) {
     return new GraalMap(Isolate(), java_object_copy);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,6 +60,7 @@
 #include "graal_proxy.h"
 #include "graal_regexp.h"
 #include "graal_script.h"
+#include "graal_script_or_module.h"
 #include "graal_set.h"
 #include "graal_stack_frame.h"
 #include "graal_stack_trace.h"
@@ -67,7 +68,6 @@
 #include "graal_symbol.h"
 #include "graal_unbound_script.h"
 #include "graal_value.h"
-#include "graal_script_or_module.h"
 #include "v8.h"
 #include "v8-profiler.h"
 #include "v8-version-string.h"
@@ -77,6 +77,35 @@
 #include "stdlib.h"
 #include <string.h>
 #include <string>
+
+#include "graal_array-inl.h"
+#include "graal_array_buffer-inl.h"
+#include "graal_array_buffer_view-inl.h"
+#include "graal_big_int-inl.h"
+#include "graal_boolean-inl.h"
+#include "graal_context-inl.h"
+#include "graal_date-inl.h"
+#include "graal_external-inl.h"
+#include "graal_function-inl.h"
+#include "graal_function_template-inl.h"
+#include "graal_map-inl.h"
+#include "graal_message-inl.h"
+#include "graal_module-inl.h"
+#include "graal_number-inl.h"
+#include "graal_object_template-inl.h"
+#include "graal_primitive_array-inl.h"
+#include "graal_promise-inl.h"
+#include "graal_proxy-inl.h"
+#include "graal_regexp-inl.h"
+#include "graal_script-inl.h"
+#include "graal_script_or_module-inl.h"
+#include "graal_set-inl.h"
+#include "graal_stack_frame-inl.h"
+#include "graal_stack_trace-inl.h"
+#include "graal_string-inl.h"
+#include "graal_symbol-inl.h"
+#include "graal_unbound_script-inl.h"
+#include "graal_value-inl.h"
 
 #define TRACE
 //#define TRACE printf("at %s line %d\n", __func__, __LINE__);

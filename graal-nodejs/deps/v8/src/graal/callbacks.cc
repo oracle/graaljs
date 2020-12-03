@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@
 #include "graal_boolean.h"
 #include "graal_context.h"
 #include "graal_date.h"
+#include "graal_external.h"
 #include "graal_function.h"
 #include "graal_function_callback_info.h"
 #include "graal_isolate.h"
@@ -57,19 +58,28 @@
 #include "graal_number.h"
 #include "graal_object.h"
 #include "graal_promise.h"
-#include "graal_proxy.h"
 #include "graal_property_callback_info.h"
+#include "graal_proxy.h"
+#include "graal_script_or_module.h"
 #include "graal_set.h"
 #include "graal_string.h"
 #include "graal_symbol.h"
-#include "graal_external.h"
-#include "graal_script_or_module.h"
 #include "jni.h"
-#include "../../../../out/coremodules/node_snapshots.h"
-#include <vector>
+#include <array>
 #include <stdlib.h>
 #include <string.h>
-#include <array>
+#include <vector>
+
+#include "graal_context-inl.h"
+#include "graal_function_callback_info-inl.h"
+#include "graal_missing_primitive-inl.h"
+#include "graal_module-inl.h"
+#include "graal_promise-inl.h"
+#include "graal_property_callback_info-inl.h"
+#include "graal_script_or_module-inl.h"
+#include "graal_string-inl.h"
+
+#include "../../../../out/coremodules/node_snapshots.h"
 
 #define CALLBACK(name, signature, pointer) {const_cast<char*>(name), const_cast<char*>(signature), reinterpret_cast<void*>(pointer)}
 
@@ -518,7 +528,7 @@ void GraalExecutePropertyHandlerDefiner(JNIEnv* env, jclass nativeAccess, jlong 
     GraalValue* graal_key = GraalValue::FromJavaObject(isolate, java_key);
     GraalPropertyCallbackInfo<v8::Value> info = GraalPropertyCallbackInfo<v8::Value>::New(isolate, arguments, 0, data, holder);
     bool has_configurable = flags & (1 << 0);
-    bool congigurable = flags & (1 << 1);
+    bool configurable = flags & (1 << 1);
     bool has_enumerable = flags & (1 << 2);
     bool enumerable = flags & (1 << 3);
     bool has_writable = flags & (1 << 4);
@@ -543,7 +553,7 @@ void GraalExecutePropertyHandlerDefiner(JNIEnv* env, jclass nativeAccess, jlong 
         descriptor = new v8::PropertyDescriptor();
     }
     if (has_configurable) {
-        descriptor->set_configurable(congigurable);
+        descriptor->set_configurable(configurable);
     }
     if (has_enumerable) {
         descriptor->set_enumerable(enumerable);
@@ -628,10 +638,14 @@ void GraalPolyglotEngineEntered(JNIEnv* env, jclass nativeAccess, jlong function
 GraalIsolate* CurrentIsolateChecked() {
     GraalIsolate* graal_isolate = CurrentIsolate();
     if (graal_isolate == nullptr) {
-        fprintf(stderr, "Unable to find GraalIsolate for this thread! This code should be executed in the main thread!");
-        exit(1);
+        NoCurrentIsolateError();
     }
     return graal_isolate;
+}
+
+void NoCurrentIsolateError() {
+    fprintf(stderr, "Unable to find GraalIsolate for this thread! This code should be executed in the main thread!");
+    exit(1);
 }
 
 jobject GraalGetCoreModuleBinarySnapshot(JNIEnv* env, jclass nativeAccess, jstring modulePath) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -371,12 +371,12 @@ public:
     v8::Local<v8::Value> InternalFieldKey(int index);
     void Dispose();
     void Dispose(bool exit, int status);
-    double ReadDoubleFromSharedBuffer();
-    int32_t ReadInt32FromSharedBuffer();
-    int64_t ReadInt64FromSharedBuffer();
-    void WriteInt32ToSharedBuffer(int32_t number);
-    void WriteInt64ToSharedBuffer(int64_t number);
-    void WriteDoubleToSharedBuffer(double number);
+    inline double ReadDoubleFromSharedBuffer();
+    inline int32_t ReadInt32FromSharedBuffer();
+    inline int64_t ReadInt64FromSharedBuffer();
+    inline void WriteInt32ToSharedBuffer(int32_t number);
+    inline void WriteInt64ToSharedBuffer(int64_t number);
+    inline void WriteDoubleToSharedBuffer(double number);
     void InternalErrorCheck();
     static v8::Isolate* New(v8::Isolate::CreateParams const& params, v8::Isolate* placement = nullptr);
     void SetPromiseHook(v8::PromiseHook promise_hook);
@@ -569,7 +569,9 @@ public:
         return stack_check_enabled_;
     }
 
-    bool StackOverflowCheck(intptr_t stack_top);
+    V8_INLINE bool StackOverflowCheck(intptr_t stack_top);
+
+    void ThrowStackOverflowError();
 
     void FindDynamicObjectFields(jobject context);
 
@@ -724,6 +726,58 @@ private:
     v8::FatalErrorCallback fatal_error_handler_;
     v8::PrepareStackTraceCallback prepare_stack_trace_callback_;
 };
+
+// This is a poor-man's check that attempts to avoid stack-overflow
+// during invocation of an average native JavaScript function.
+// It's main purpose is to avoid stack-overflow during JNI calls
+// back to Graal.js engine, it does not handle possible large stack
+// demands of the user-implemented parts of the native function.
+// It is an experimental feature with a very naive implementation.
+// It should be replaced by more sophisticated techniques if it
+// turns out to be useful.
+bool GraalIsolate::StackOverflowCheck(intptr_t stack_top) {
+    if (labs(stack_top - stack_bottom_) > stack_size_limit_) {
+        ThrowStackOverflowError();
+        return true;
+    }
+    return false;
+}
+
+double GraalIsolate::ReadDoubleFromSharedBuffer() {
+    double* result = (double*)((char*)shared_buffer_ + shared_buffer_pos_);
+    shared_buffer_pos_ += sizeof(double);
+    return *result;
+}
+
+int32_t GraalIsolate::ReadInt32FromSharedBuffer() {
+    int32_t* result = (int32_t*)((char*)shared_buffer_ + shared_buffer_pos_);
+    shared_buffer_pos_ += sizeof(int32_t);
+    return *result;
+}
+
+int64_t GraalIsolate::ReadInt64FromSharedBuffer() {
+    int64_t* result = (int64_t*)((char*)shared_buffer_ + shared_buffer_pos_);
+    shared_buffer_pos_ += sizeof(int64_t);
+    return *result;
+}
+
+void GraalIsolate::WriteInt32ToSharedBuffer(int32_t number) {
+    int32_t* result = (int32_t*) ((char*) shared_buffer_ + shared_buffer_pos_);
+    shared_buffer_pos_ += sizeof (int32_t);
+    *result = number;
+}
+
+void GraalIsolate::WriteInt64ToSharedBuffer(int64_t number) {
+    int64_t* result = (int64_t*) ((char*) shared_buffer_ + shared_buffer_pos_);
+    shared_buffer_pos_ += sizeof (int64_t);
+    *result = number;
+}
+
+void GraalIsolate::WriteDoubleToSharedBuffer(double number) {
+    double* result = (double*) ((char*) shared_buffer_ + shared_buffer_pos_);
+    shared_buffer_pos_ += sizeof (double);
+    *result = number;
+}
 
 #endif /* GRAAL_ISOLATE_H_ */
 

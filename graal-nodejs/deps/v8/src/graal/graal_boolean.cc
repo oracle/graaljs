@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,13 +42,7 @@
 #include "graal_boolean.h"
 #include "graal_isolate.h"
 
-GraalBoolean::GraalBoolean(GraalIsolate* isolate, bool value) :
-GraalBoolean(isolate, value, isolate->GetJNIEnv()->NewLocalRef(value ? isolate->GetJavaTrue() : isolate->GetJavaFalse())) {
-}
-
-GraalBoolean::GraalBoolean(GraalIsolate* isolate, bool value, jobject java_value) : GraalPrimitive(isolate, java_value),
-value_(value) {
-}
+#include "graal_boolean-inl.h"
 
 GraalHandleContent* GraalBoolean::CopyImpl(jobject java_object_copy) {
     return new GraalBoolean(Isolate(), value_, java_object_copy);

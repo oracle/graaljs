@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,18 +39,14 @@
  * SOFTWARE.
  */
 
-#include "graal_function_callback_info.h"
-#include "graal_external.h"
+#ifndef GRAAL_SYMBOL_INL_H_
+#define GRAAL_SYMBOL_INL_H_
 
-GraalFunctionCallbackInfo::GraalFunctionCallbackInfo(GraalFunctionCallbackArguments& args)
-: GraalFunctionCallbackInfo(args.implicit_args(), args.values(), args.length()) {
+#include "graal_symbol.h"
+
+#include "graal_name-inl.h"
+
+inline GraalSymbol::GraalSymbol(GraalIsolate* isolate, jobject java_symbol) : GraalName(isolate, java_symbol) {
 }
 
-GraalFunctionCallbackInfo::GraalFunctionCallbackInfo(
-        void** implicit_args,
-        GraalValue** values,
-        int length) : v8::FunctionCallbackInfo<v8::Value>(
-                reinterpret_cast<v8::internal::Address*> (implicit_args),
-                reinterpret_cast<v8::internal::Address*> (values),
-                length) {
-}
+#endif /* GRAAL_SYMBOL_INL_H_ */

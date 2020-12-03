@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,8 +43,8 @@
 #include "graal_isolate.h"
 #include "graal_string.h"
 
-GraalFunction::GraalFunction(GraalIsolate* isolate, jobject java_function) : GraalObject(isolate, java_function) {
-}
+#include "graal_function-inl.h"
+#include "graal_string-inl.h"
 
 GraalHandleContent* GraalFunction::CopyImpl(jobject java_object_copy) {
     return new GraalFunction(Isolate(), java_object_copy);

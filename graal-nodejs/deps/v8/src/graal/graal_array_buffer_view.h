@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,8 +48,8 @@ class GraalIsolate;
 
 class GraalArrayBufferView : public GraalObject {
 public:
-    GraalArrayBufferView(GraalIsolate* isolate, jobject java_array_buffer_view, int type);
-    GraalArrayBufferView(GraalIsolate* isolate, jobject java_array_buffer_view, int type, int byte_length, int byte_offset);
+    inline GraalArrayBufferView(GraalIsolate* isolate, jobject java_array_buffer_view, int type);
+    inline GraalArrayBufferView(GraalIsolate* isolate, jobject java_array_buffer_view, int type, int byte_length, int byte_offset);
     v8::Local<v8::ArrayBuffer> Buffer();
     bool IsArrayBufferView() const override;
     bool IsUint8Array() const override;

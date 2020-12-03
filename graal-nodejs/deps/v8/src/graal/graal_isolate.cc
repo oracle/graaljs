@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 
 #include "callbacks.h"
 #include "graal_boolean.h"
+#include "graal_context.h"
 #include "graal_function.h"
 #include "graal_isolate.h"
 #include "graal_missing_primitive.h"
@@ -48,12 +49,17 @@
 #include "graal_object.h"
 #include "graal_string.h"
 #include "uv.h"
-#include "graal_context.h"
+#include <algorithm>
 #include <stdlib.h>
 #include <string>
 #include <string.h>
-#include <algorithm>
 #include <tuple>
+
+#include "graal_boolean-inl.h"
+#include "graal_missing_primitive-inl.h"
+#include "graal_number-inl.h"
+#include "graal_object-inl.h"
+#include "graal_string-inl.h"
 
 #ifdef __POSIX__
 
@@ -283,7 +289,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
         fprintf(stderr, "Cannot find %s. Specify JAVA_HOME so $JAVA_HOME%s exists, or specify NODE_JVM_LIB directly.\n", jvmlib_path.c_str(), LIBJVM_RELPATH);
         exit(1);
     }
-    
+
 #ifdef __POSIX__
     void* jvm_handle = dlopen(jvmlib_path.c_str(), RTLD_NOW);
     if (jvm_handle == NULL) {
@@ -402,7 +408,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
             options.push_back({const_cast<char*>("-Xnoagent"), nullptr});
             std::string debugParam = "-Xrunjdwp:transport=dt_socket";
             // do not debug child processes
-            UnsetEnv("DEBUG_PORT"); 
+            UnsetEnv("DEBUG_PORT");
             debugParam += ",server=n,suspend=y,address=";
             debugParam += debugPort;
             options.push_back({const_cast<char*>(debugParam.c_str()), nullptr});
@@ -1057,48 +1063,12 @@ void GraalIsolate::Dispose(bool exit, int status) {
     // this is executed when exit is false only
     env->ExceptionClear();
     jvm_->DetachCurrentThread();
-    
+
 #ifdef __POSIX__
     pthread_mutex_destroy(&lock_);
 #else
     CloseHandle(lock_);
 #endif
-}
-
-double GraalIsolate::ReadDoubleFromSharedBuffer() {
-    double* result = (double*)((char*)shared_buffer_ + shared_buffer_pos_);
-    shared_buffer_pos_ += sizeof(double);
-    return *result;
-}
-
-int32_t GraalIsolate::ReadInt32FromSharedBuffer() {
-    int32_t* result = (int32_t*)((char*)shared_buffer_ + shared_buffer_pos_);
-    shared_buffer_pos_ += sizeof(int32_t);
-    return *result;
-}
-
-int64_t GraalIsolate::ReadInt64FromSharedBuffer() {
-    int64_t* result = (int64_t*)((char*)shared_buffer_ + shared_buffer_pos_);
-    shared_buffer_pos_ += sizeof(int64_t);
-    return *result;
-}
-
-void GraalIsolate::WriteInt32ToSharedBuffer(int32_t number) {
-    int32_t* result = (int32_t*) ((char*) shared_buffer_ + shared_buffer_pos_);
-    shared_buffer_pos_ += sizeof (int32_t);
-    *result = number;
-}
-
-void GraalIsolate::WriteInt64ToSharedBuffer(int64_t number) {
-    int64_t* result = (int64_t*) ((char*) shared_buffer_ + shared_buffer_pos_);
-    shared_buffer_pos_ += sizeof (int64_t);
-    *result = number;
-}
-
-void GraalIsolate::WriteDoubleToSharedBuffer(double number) {
-    double* result = (double*) ((char*) shared_buffer_ + shared_buffer_pos_);
-    shared_buffer_pos_ += sizeof (double);
-    *result = number;
 }
 
 jobject GraalIsolate::JNIGetObjectFieldOrCall(jobject java_object, GraalAccessField graal_field_id, GraalAccessMethod graal_method_id) {
@@ -1149,20 +1119,8 @@ void GraalIsolate::InitStackOverflowCheck(intptr_t stack_bottom) {
     }
 }
 
-// This is a poor-man's check that attempts to avoid stack-overflow
-// during invocation of an average native JavaScript function.
-// It's main purpose is to avoid stack-overflow during JNI calls
-// back to Graal.js engine, it does not handle possible large stack
-// demands of the user-implemented parts of the native function.
-// It is an experimental feature with a very naive implementation.
-// It should be replaced by more sophisticated techniques if it
-// turns out to be useful.
-bool GraalIsolate::StackOverflowCheck(intptr_t stack_top) {
-    if (labs(stack_top - stack_bottom_) > stack_size_limit_) {
-        JNI_CALL_VOID(this, GraalAccessMethod::isolate_throw_stack_overflow_error);
-        return true;
-    }
-    return false;
+void GraalIsolate::ThrowStackOverflowError() {
+    JNI_CALL_VOID(this, GraalAccessMethod::isolate_throw_stack_overflow_error);
 }
 
 void GraalIsolate::AddGCPrologueCallback(GCCallbackType type, void* callback, void* data) {

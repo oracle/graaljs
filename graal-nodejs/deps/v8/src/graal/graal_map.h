@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,7 @@
 
 class GraalMap : public GraalObject {
 public:
-    GraalMap(GraalIsolate* isolate, jobject java_map);
+    inline GraalMap(GraalIsolate* isolate, jobject java_map);
     bool IsMap() const override;
     static v8::Local<v8::Map> New(v8::Isolate* isolate);
     v8::MaybeLocal<v8::Map> Set(v8::Local<v8::Context> context, v8::Local<v8::Value> key, v8::Local<v8::Value> value);

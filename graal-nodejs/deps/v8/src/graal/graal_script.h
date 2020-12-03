@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,7 @@
 
 class GraalScript : GraalHandleContent {
 public:
-    GraalScript(GraalIsolate* isolate, jobject java_script);
+    inline GraalScript(GraalIsolate* isolate, jobject java_script);
     static v8::Local<v8::Script> Compile(v8::Local<v8::String> source, v8::ScriptOrigin* origin);
     v8::Local<v8::Value> Run();
     v8::Local<v8::UnboundScript> GetUnboundScript();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,7 +68,7 @@ typedef _jobject *jobject;
 
 class V8_EXPORT GraalHandleContent {
 public:
-    GraalHandleContent(GraalIsolate* isolate, jobject java_object);
+    inline GraalHandleContent(GraalIsolate* isolate, jobject java_object);
     virtual ~GraalHandleContent();
     GraalHandleContent* Copy(bool global);
     void MakeWeak();

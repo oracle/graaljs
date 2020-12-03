@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,18 +49,18 @@
 template<typename T>
 class GraalPropertyCallbackInfo : public v8::PropertyCallbackInfo<T> {
 public:
-    static GraalPropertyCallbackInfo<T> New(
+    V8_INLINE static GraalPropertyCallbackInfo<T> New(
             GraalIsolate* isolate,
             jobjectArray arguments,
             int index_of_this,
             jobject data,
             jobject holder);
-    ~GraalPropertyCallbackInfo();
+    V8_INLINE ~GraalPropertyCallbackInfo();
 
     GraalPropertyCallbackInfo(GraalPropertyCallbackInfo&&) = default;
     GraalPropertyCallbackInfo& operator=(GraalPropertyCallbackInfo&&) = default;
 private:
-    GraalPropertyCallbackInfo(
+    V8_INLINE GraalPropertyCallbackInfo(
         GraalIsolate* isolate,
         GraalValue* graal_this,
         GraalValue* graal_data,

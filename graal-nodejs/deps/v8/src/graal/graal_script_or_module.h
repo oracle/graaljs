@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,12 +43,13 @@
 #define GRAAL_SCRIPT_OR_MODULE_H_
 
 #include "graal_handle_content.h"
+#include "graal_isolate.h"
 
 class GraalIsolate;
 
 class GraalScriptOrModule : public GraalHandleContent {
 public:
-    GraalScriptOrModule(GraalIsolate* isolate, jobject java_object);
+    inline GraalScriptOrModule(GraalIsolate* isolate, jobject java_object);
 
     v8::Local<v8::Value> GetResourceName();
     v8::Local<v8::PrimitiveArray> GetHostDefinedOptions();
