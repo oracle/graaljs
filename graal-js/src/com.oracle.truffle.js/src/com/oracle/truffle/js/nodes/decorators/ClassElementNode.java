@@ -10,6 +10,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
 public abstract class ClassElementNode extends JavaScriptBaseNode {
@@ -76,14 +77,10 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
         public void executeVoid(VirtualFrame frame, DynamicObject homeObject, JSContext context) {
             prepareKey(frame);
             Object key = executeKey(frame);
-            Object value = null;
-            if (valueNode instanceof ObjectLiteralNode.MakeMethodNode) {
-                 value = ((ObjectLiteralNode.MakeMethodNode) valueNode).executeWithObject(frame, homeObject);
-            } else {
-                value = valueNode.execute(frame);
-            }
-            PropertyDescriptor propDesc = PropertyDescriptor.createData(value, attributes);
-            JSRuntime.definePropertyOrThrow(homeObject, key, propDesc);
+            Object value = executeValue(frame, homeObject);
+            JSObjectUtil.putDataProperty(context, homeObject, key, value, attributes);
+            //PropertyDescriptor propDesc = PropertyDescriptor.createData(value, attributes);
+            //JSRuntime.definePropertyOrThrow(homeObject, key, propDesc);
         }
 
         @Override
@@ -110,16 +107,10 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
         @Override
         public void executeVoid(VirtualFrame frame, DynamicObject homeObject, JSContext context) {
             Object key = executeKey(frame);
-            Object getter = null;
-            Object setter = null;
-            if(getterNode != null) {
-                getter = getterNode.execute(frame);
-            }
-            if(setterNode != null) {
-                setter = setterNode.execute(frame);
-            }
-            PropertyDescriptor propDesc = PropertyDescriptor.createAccessor((DynamicObject) getter,(DynamicObject) setter, attributes);
-            JSRuntime.definePropertyOrThrow(homeObject, key, propDesc);
+            Accessor value = (Accessor) executeValue(frame, homeObject);
+            JSObjectUtil.putAccessorProperty(context, homeObject, key, value, attributes);
+            //PropertyDescriptor propDesc = PropertyDescriptor.createAccessor((DynamicObject) getter,(DynamicObject) setter, attributes);
+            //JSRuntime.definePropertyOrThrow(homeObject, key, propDesc);
         }
 
         @Override

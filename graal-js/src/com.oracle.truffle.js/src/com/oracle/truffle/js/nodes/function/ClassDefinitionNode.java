@@ -165,10 +165,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         setConstructorNode.executeVoid(proto, constructor);
 
         Object[][] instanceFields = new Object[1][];//instanceFieldCount == 0 ? null : new Object[instanceFieldCount][];
-        //Object[][] staticFields = staticFieldCount == 0 ? null : new Object[staticFieldCount][];
-
-        //List<Object[]> instanceFields = new ArrayList<>();
-        List<Object[]> staticFields = new ArrayList<>();
+        Object[][] staticFields = staticFieldCount == 0 ? null : new Object[staticFieldCount][];
 
         //TODO: DecorateClass
         initializeMembers(frame, proto, constructor, instanceFields, staticFields);
@@ -195,14 +192,14 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 this.staticFieldsNode = defineStaticFields = insert(InitializeInstanceElementsNode.create(context));
             }
-            defineStaticFields.executeStaticFields(constructor, staticFields.toArray(new Object[][]{}));
+            defineStaticFields.executeStaticFields(constructor, staticFields);
         }
 
         return constructor;
     }
 
     @ExplodeLoop
-    private void initializeMembers(VirtualFrame frame, DynamicObject proto, DynamicObject constructor, Object[][] instanceFields, List<Object[]> staticFields) {
+    private void initializeMembers(VirtualFrame frame, DynamicObject proto, DynamicObject constructor, Object[][] instanceFields, Object[][] staticFields) {
         /* For each ClassElement e in order from NonConstructorMethodDefinitions of ClassBody */
         int instanceFieldIndex = 0;
         int staticFieldIndex = 0;
@@ -217,7 +214,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
                 Object value = memberNode.executeValue(frame, homeObject);
                 Object[] field = new Object[]{key, value, memberNode.isAnonymousFunctionDefinition()};
                 if (memberNode.isStatic() && staticFields != null) {
-                    staticFields.add(field);
+                    staticFields[staticFieldIndex++] = field;
                 } else if (instanceFields != null) {
                     instanceFields[instanceFieldIndex++] = field;
                 } else {
