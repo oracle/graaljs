@@ -241,6 +241,8 @@ public class ClassElement extends Node {
         return (kind & KIND_FIELD) != 0;
     }
 
+    public boolean isEnumerable() { return (propertyDescriptorValues & ENUMERABLE_TRUE) != 0; }
+
     public boolean isMethod() {
         return (kind & KIND_METHOD) != 0;
     }
@@ -252,6 +254,8 @@ public class ClassElement extends Node {
     public boolean isStatic() {
         return (placement & PLACEMENT_STATIC) != 0;
     }
+
+    public boolean isWritable() { return (propertyDescriptorValues & ENUMERABLE_TRUE) != 0; }
 
     @Override
     public void toString(StringBuilder sb, boolean printType) {
