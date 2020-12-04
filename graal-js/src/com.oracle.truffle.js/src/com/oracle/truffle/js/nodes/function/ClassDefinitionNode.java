@@ -87,18 +87,18 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
     @Child private SetFunctionNameNode setFunctionName;
 
     private final boolean hasName;
-    private final int instanceFieldCount;
-    private final int staticFieldCount;
+    //private final int instanceFieldCount;
+    //private final int staticFieldCount;
 
     protected ClassDefinitionNode(JSContext context, JSFunctionExpressionNode constructorFunctionNode, JavaScriptNode classHeritageNode, ClassElementNode[] memberNodes,
-                    JSWriteFrameSlotNode writeClassBindingNode, boolean hasName, int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods) {
+                    JSWriteFrameSlotNode writeClassBindingNode, boolean hasName, boolean hasPrivateInstanceMethods) {
         this.context = context;
         this.constructorFunctionNode = constructorFunctionNode;
         this.classHeritageNode = classHeritageNode;
         this.memberNodes = memberNodes;
         this.hasName = hasName;
-        this.instanceFieldCount = instanceFieldCount;
-        this.staticFieldCount = staticFieldCount;
+        //this.instanceFieldCount = instanceFieldCount;
+        //this.staticFieldCount = staticFieldCount;
 
         this.writeClassBindingNode = writeClassBindingNode;
         this.getPrototypeNode = PropertyGetNode.create(JSObject.PROTOTYPE, false, context);
@@ -111,8 +111,8 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
     }
 
     public static ClassDefinitionNode create(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ClassElementNode[] members,
-                    JSWriteFrameSlotNode writeClassBinding, boolean hasName, int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods) {
-        return new ClassDefinitionNode(context, constructorFunction, classHeritage, members, writeClassBinding, hasName, instanceFieldCount, staticFieldCount, hasPrivateInstanceMethods);
+                    JSWriteFrameSlotNode writeClassBinding, boolean hasName, boolean hasPrivateInstanceMethods) {
+        return new ClassDefinitionNode(context, constructorFunction, classHeritage, members, writeClassBinding, hasName, hasPrivateInstanceMethods);
     }
 
     @Override
@@ -164,11 +164,14 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         // Perform CreateMethodProperty(proto, "constructor", F).
         setConstructorNode.executeVoid(proto, constructor);
 
-        Object[][] instanceFields = instanceFieldCount == 0 ? null : new Object[instanceFieldCount][];
-        Object[][] staticFields = staticFieldCount == 0 ? null : new Object[staticFieldCount][];
+        //Object[][] instanceFields = 1 == 0 ? null : new Object[1][];
+        ArrayList<Object[]> instances = new ArrayList<>();
+        Object[][] staticFields = 0 == 0 ? null : new Object[0][];
 
         //TODO: DecorateClass
-        initializeMembers(frame, proto, constructor, instanceFields, staticFields);
+        initializeMembers(frame, proto, constructor, instances, staticFields);
+
+        Object[][] instanceFields = instances.toArray(new Object[][]{});
 
         //TODO: AssignPrivateNames
         if (writeClassBindingNode != null) {
@@ -186,7 +189,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
             setPrivateBrandNode.setValue(constructor, privateBrand);
         }
 
-        if (staticFieldCount != 0) {
+        if (0 != 0) {
             InitializeInstanceElementsNode defineStaticFields = this.staticFieldsNode;
             if (defineStaticFields == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -199,7 +202,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
     }
 
     @ExplodeLoop
-    private void initializeMembers(VirtualFrame frame, DynamicObject proto, DynamicObject constructor, Object[][] instanceFields, Object[][] staticFields) {
+    private void initializeMembers(VirtualFrame frame, DynamicObject proto, DynamicObject constructor, ArrayList<Object[]> instanceFields, Object[][] staticFields) {
         /* For each ClassElement e in order from NonConstructorMethodDefinitions of ClassBody */
         int instanceFieldIndex = 0;
         int staticFieldIndex = 0;
@@ -216,13 +219,14 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
                 if (memberNode.isStatic() && staticFields != null) {
                     staticFields[staticFieldIndex++] = field;
                 } else if (instanceFields != null) {
-                    instanceFields[instanceFieldIndex++] = field;
+                    instanceFields.add(field);
+                    //instanceFields[instanceFieldIndex++] = field;
                 } else {
                     throw Errors.shouldNotReachHere();
                 }
             }
         }
-        assert instanceFieldIndex == instanceFieldCount && staticFieldIndex == staticFieldCount;
+        //assert instanceFieldIndex == instanceFieldCount && staticFieldIndex == staticFieldCount;
     }
 
     @Override

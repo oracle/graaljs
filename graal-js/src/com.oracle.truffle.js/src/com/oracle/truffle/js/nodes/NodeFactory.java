@@ -807,8 +807,8 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createClassDefinition(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ClassElementNode[] members,
-                    JSWriteFrameSlotNode writeClassBinding, String className, int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods) {
-        return ClassDefinitionNode.create(context, constructorFunction, classHeritage, members, writeClassBinding, className != null, instanceFieldCount, staticFieldCount, hasPrivateInstanceMethods);
+                    JSWriteFrameSlotNode writeClassBinding, String className, boolean hasPrivateInstanceMethods) {
+        return ClassDefinitionNode.create(context, constructorFunction, classHeritage, members, writeClassBinding, className != null, hasPrivateInstanceMethods);
     }
 
     public JavaScriptNode createMakeMethod(JSContext context, JavaScriptNode function) {

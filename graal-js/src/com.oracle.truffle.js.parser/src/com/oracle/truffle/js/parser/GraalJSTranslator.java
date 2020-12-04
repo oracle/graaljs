@@ -3277,8 +3277,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             JSWriteFrameSlotNode writeClassBinding = className == null ? null : (JSWriteFrameSlotNode) findScopeVar(className, true).createWriteNode(null);
 
             JavaScriptNode classDefinition = factory.createClassDefinition(context, (JSFunctionExpressionNode) classFunction, classHeritage,
-                            members.toArray(ClassElementNode.EMPTY), writeClassBinding, className,
-                            classNode.getInstanceFieldCount(), classNode.getStaticFieldCount(), classNode.hasPrivateInstanceMethods());
+                            members.toArray(ClassElementNode.EMPTY), writeClassBinding, className, classNode.hasPrivateInstanceMethods());
 
             if (classNode.hasPrivateMethods()) {
                 // internal constructor binding used for private brand checks.
