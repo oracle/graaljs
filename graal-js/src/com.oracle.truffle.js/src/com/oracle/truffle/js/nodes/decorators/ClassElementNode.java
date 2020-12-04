@@ -74,14 +74,23 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
         @Override
         public void executeVoid(VirtualFrame frame, DynamicObject homeObject, JSContext context) {
             Object key = executeKey(frame);
-            Object value = valueNode.execute(frame);
+            Object value = null;
+            if (valueNode instanceof ObjectLiteralNode.MakeMethodNode) {
+                 value = ((ObjectLiteralNode.MakeMethodNode) valueNode).executeWithObject(frame, homeObject);
+            } else {
+                value = valueNode.execute(frame);
+            }
             PropertyDescriptor propDesc = PropertyDescriptor.createData(value, attributes);
             JSRuntime.definePropertyOrThrow(homeObject, key, propDesc);
         }
 
         @Override
         public Object executeValue(VirtualFrame frame, DynamicObject homeObject) {
-            return valueNode.execute(frame);
+            if (valueNode instanceof ObjectLiteralNode.MakeMethodNode) {
+                return ((ObjectLiteralNode.MakeMethodNode) valueNode).executeWithObject(frame, homeObject);
+            } else {
+                return valueNode.execute(frame);
+            }
         }
     }
 
