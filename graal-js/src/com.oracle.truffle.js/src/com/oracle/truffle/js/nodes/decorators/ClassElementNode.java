@@ -33,6 +33,7 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
         this.isAnonymousFunctionDefinition = isAnonymousFunctionDefinition;
     }
 
+    public void prepareKey(VirtualFrame frame) { key.executeVoid(frame); }
     public Object executeKey(VirtualFrame frame){
         return key.executeKey(frame);
     }
@@ -73,6 +74,7 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
 
         @Override
         public void executeVoid(VirtualFrame frame, DynamicObject homeObject, JSContext context) {
+            prepareKey(frame);
             Object key = executeKey(frame);
             Object value = null;
             if (valueNode instanceof ObjectLiteralNode.MakeMethodNode) {
