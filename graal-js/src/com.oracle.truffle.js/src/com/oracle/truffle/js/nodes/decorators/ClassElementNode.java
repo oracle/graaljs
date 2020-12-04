@@ -8,6 +8,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
@@ -21,20 +22,25 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
     @Child private ClassElementKeyNode key;
     private int placement;
     protected int attributes;
+    private boolean isField;
+    private boolean isAnonymousFunctionDefinition;
 
-    protected ClassElementNode(ClassElementKeyNode key, int placement, boolean configurable, boolean enumerable, boolean writable){
+    protected ClassElementNode(ClassElementKeyNode key, int placement, boolean configurable, boolean enumerable, boolean writable, boolean isField, boolean isAnonymousFunctionDefinition){
         this.key = key;
         this.placement = placement;
-        JSAttributes.fromConfigurableEnumerableWritable(configurable, enumerable, writable);
+        this.attributes = JSAttributes.fromConfigurableEnumerableWritable(configurable, enumerable, writable);
+        this.isField = isField;
+        this.isAnonymousFunctionDefinition = isAnonymousFunctionDefinition;
     }
 
     public Object executeKey(VirtualFrame frame){
         return key.executeKey(frame);
     }
     public abstract void executeVoid(VirtualFrame frame, DynamicObject homeObject, JSContext context);
+    public abstract Object executeValue(VirtualFrame frame, DynamicObject homeObject);
 
-    public static ClassElementNode createDataClassElement(ClassElementKeyNode key, JavaScriptNode value, int placement, boolean configurable, boolean enumerable, boolean writable){
-        return new DataClassElementNode(key, value, placement, configurable, enumerable, writable);
+    public static ClassElementNode createDataClassElement(ClassElementKeyNode key, JavaScriptNode value, int placement, boolean configurable, boolean enumerable, boolean writable, boolean isField, boolean isAnonymousFunctionDefinition){
+        return new DataClassElementNode(key, value, placement, configurable, enumerable, writable, isField, isAnonymousFunctionDefinition);
     }
 
     public static ClassElementNode createAccessorClassElement(ClassElementKeyNode key, JavaScriptNode getter, JavaScriptNode setter, int placement, boolean configurable, boolean enumerable, boolean writable){
@@ -53,11 +59,15 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
         return (placement & PLACEMENT_OWN) != 0;
     }
 
+    public boolean isField() { return isField; }
+
+    public boolean isAnonymousFunctionDefinition() { return isAnonymousFunctionDefinition; }
+
     private static class DataClassElementNode extends ClassElementNode {
         @Child JavaScriptNode valueNode;
 
-        protected DataClassElementNode(ClassElementKeyNode key, JavaScriptNode valueNode, int placement, boolean configurable, boolean enumerable, boolean writable) {
-            super(key, placement, configurable, enumerable, writable);
+        protected DataClassElementNode(ClassElementKeyNode key, JavaScriptNode valueNode, int placement, boolean configurable, boolean enumerable, boolean writable, boolean isField, boolean isAnonymousFunctionDefinition) {
+            super(key, placement, configurable, enumerable, writable, isField, isAnonymousFunctionDefinition);
             this.valueNode = valueNode;
         }
 
@@ -68,6 +78,11 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
             PropertyDescriptor propDesc = PropertyDescriptor.createData(value, attributes);
             JSRuntime.definePropertyOrThrow(homeObject, key, propDesc);
         }
+
+        @Override
+        public Object executeValue(VirtualFrame frame, DynamicObject homeObject) {
+            return valueNode.execute(frame);
+        }
     }
 
 
@@ -76,7 +91,7 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
         @Child private JavaScriptNode setterNode;
 
         protected AccessorClassElementNode(ClassElementKeyNode key, JavaScriptNode getterNode, JavaScriptNode setterNode, int placement, boolean configurable, boolean enumerable, boolean writable) {
-            super(key, placement, configurable, enumerable, writable);
+            super(key, placement, configurable, enumerable, writable, false, false);
             this.getterNode = getterNode;
             this.setterNode = setterNode;
         }
@@ -94,6 +109,19 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
             }
             PropertyDescriptor propDesc = PropertyDescriptor.createAccessor((DynamicObject) getter,(DynamicObject) setter, attributes);
             JSRuntime.definePropertyOrThrow(homeObject, key, propDesc);
+        }
+
+        @Override
+        public Object executeValue(VirtualFrame frame, DynamicObject homeObject) {
+            Object getter = null;
+            Object setter = null;
+            if(getterNode != null) {
+                getter = getterNode.execute(frame);
+            }
+            if(setterNode != null) {
+                setter = setterNode.execute(frame);
+            }
+            return new Accessor((DynamicObject) getter, (DynamicObject) setter);
         }
     }
 }

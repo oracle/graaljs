@@ -62,6 +62,8 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -103,8 +105,8 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         this.setConstructorNode = CreateMethodPropertyNode.create(context, JSObject.CONSTRUCTOR);
         this.createPrototypeNode = CreateObjectNode.createOrdinaryWithPrototype(context);
         this.defineConstructorMethodNode = DefineMethodNode.create(context, constructorFunctionNode);
-        this.setFieldsNode = instanceFieldCount != 0 ? PropertySetNode.createSetHidden(JSFunction.CLASS_FIELDS_ID, context) : null;
-        this.setPrivateBrandNode = hasPrivateInstanceMethods ? PropertySetNode.createSetHidden(JSFunction.PRIVATE_BRAND_ID, context) : null;
+        this.setFieldsNode = PropertySetNode.createSetHidden(JSFunction.CLASS_FIELDS_ID, context);//instanceFieldCount != 0 ? PropertySetNode.createSetHidden(JSFunction.CLASS_FIELDS_ID, context) : null;
+        this.setPrivateBrandNode = PropertySetNode.createSetHidden(JSFunction.PRIVATE_BRAND_ID, context);//hasPrivateInstanceMethods ? PropertySetNode.createSetHidden(JSFunction.PRIVATE_BRAND_ID, context) : null;
         this.setFunctionName = hasName ? null : SetFunctionNameNode.create();
     }
 
@@ -162,8 +164,11 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         // Perform CreateMethodProperty(proto, "constructor", F).
         setConstructorNode.executeVoid(proto, constructor);
 
-        Object[][] instanceFields = instanceFieldCount == 0 ? null : new Object[instanceFieldCount][];
-        Object[][] staticFields = staticFieldCount == 0 ? null : new Object[staticFieldCount][];
+        //Object[][] instanceFields = instanceFieldCount == 0 ? null : new Object[instanceFieldCount][];
+        //Object[][] staticFields = staticFieldCount == 0 ? null : new Object[staticFieldCount][];
+
+        List<Object[]> instanceFields = new ArrayList<>();
+        List<Object[]> staticFields = new ArrayList<>();
 
         //TODO: DecorateClass
         initializeMembers(frame, proto, constructor, instanceFields, staticFields);
@@ -175,7 +180,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
 
         //TODO: InitializeInstanceElements
         if (setFieldsNode != null) {
-            setFieldsNode.setValue(constructor, instanceFields);
+            setFieldsNode.setValue(constructor, instanceFields.toArray());
         }
 
         // If the class contains a private instance method or accessor, set F.[[PrivateBrand]].
@@ -190,14 +195,14 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 this.staticFieldsNode = defineStaticFields = insert(InitializeInstanceElementsNode.create(context));
             }
-            defineStaticFields.executeStaticFields(constructor, staticFields);
+            defineStaticFields.executeStaticFields(constructor, staticFields.toArray(new Object[][]{}));
         }
 
         return constructor;
     }
 
     @ExplodeLoop
-    private void initializeMembers(VirtualFrame frame, DynamicObject proto, DynamicObject constructor, Object[][] instanceFields, Object[][] staticFields) {
+    private void initializeMembers(VirtualFrame frame, DynamicObject proto, DynamicObject constructor, List<Object[]> instanceFields, List<Object[]> staticFields) {
         /* For each ClassElement e in order from NonConstructorMethodDefinitions of ClassBody */
         int instanceFieldIndex = 0;
         int staticFieldIndex = 0;
@@ -207,20 +212,20 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
             //TODO: InitializeClassElements
             DynamicObject homeObject = memberNode.isStatic() ? constructor : proto;
             memberNode.executeVoid(frame, homeObject, context);
-            /*if (memberNode.isField()) {
+            if (memberNode.isField()) {
                 Object key = memberNode.executeKey(frame);
                 Object value = memberNode.executeValue(frame, homeObject);
                 Object[] field = new Object[]{key, value, memberNode.isAnonymousFunctionDefinition()};
                 if (memberNode.isStatic() && staticFields != null) {
-                    staticFields[staticFieldIndex++] = field;
+                    staticFields.add(field);
                 } else if (instanceFields != null) {
-                    instanceFields[instanceFieldIndex++] = field;
+                    instanceFields.add(field);
                 } else {
                     throw Errors.shouldNotReachHere();
                 }
-            }*/
+            }
         }
-        assert instanceFieldIndex == instanceFieldCount && staticFieldIndex == staticFieldCount;
+        //assert instanceFieldIndex == instanceFieldCount && staticFieldIndex == staticFieldCount;
     }
 
     @Override

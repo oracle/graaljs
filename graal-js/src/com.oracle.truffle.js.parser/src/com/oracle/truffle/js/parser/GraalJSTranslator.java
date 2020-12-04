@@ -3307,7 +3307,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 }
                 if(e.isField() || e.isMethod()){
                     JavaScriptNode value = transformPropertyValue(e.getValue(), classNameSymbol);
-                    member = ClassElementNode.createDataClassElement(key,value,e.getPlacement(), e.isConfigurable(), e.isEnumerable(), e.isWritable());
+                    member = ClassElementNode.createDataClassElement(key,value,e.getPlacement(), e.isConfigurable(), e.isEnumerable(), e.isWritable(), e.isField(), e.isAnonymousFunctionDefinition());
                 } else {
                     assert e.isAccessor();
                     assert e.getGetter() != null || e.getSetter() != null;

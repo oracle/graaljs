@@ -233,6 +233,10 @@ public class ClassElement extends Node {
         return (kind & KIND_ACCESSOR) != 0;
     }
 
+    public boolean isAnonymousFunctionDefinition() {
+        return isAnonymousFunctionDefinition;
+    }
+
     public boolean isConfigurable() {
         return (propertyDescriptorValues & CONFIGURABLE_TRUE) != 0;
     }
