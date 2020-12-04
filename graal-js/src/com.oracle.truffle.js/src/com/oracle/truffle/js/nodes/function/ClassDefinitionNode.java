@@ -164,10 +164,10 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         // Perform CreateMethodProperty(proto, "constructor", F).
         setConstructorNode.executeVoid(proto, constructor);
 
-        //Object[][] instanceFields = instanceFieldCount == 0 ? null : new Object[instanceFieldCount][];
+        Object[][] instanceFields = new Object[1][];//instanceFieldCount == 0 ? null : new Object[instanceFieldCount][];
         //Object[][] staticFields = staticFieldCount == 0 ? null : new Object[staticFieldCount][];
 
-        List<Object[]> instanceFields = new ArrayList<>();
+        //List<Object[]> instanceFields = new ArrayList<>();
         List<Object[]> staticFields = new ArrayList<>();
 
         //TODO: DecorateClass
@@ -180,7 +180,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
 
         //TODO: InitializeInstanceElements
         if (setFieldsNode != null) {
-            setFieldsNode.setValue(constructor, instanceFields.toArray());
+            setFieldsNode.setValue(constructor, instanceFields);
         }
 
         // If the class contains a private instance method or accessor, set F.[[PrivateBrand]].
@@ -202,7 +202,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
     }
 
     @ExplodeLoop
-    private void initializeMembers(VirtualFrame frame, DynamicObject proto, DynamicObject constructor, List<Object[]> instanceFields, List<Object[]> staticFields) {
+    private void initializeMembers(VirtualFrame frame, DynamicObject proto, DynamicObject constructor, Object[][] instanceFields, List<Object[]> staticFields) {
         /* For each ClassElement e in order from NonConstructorMethodDefinitions of ClassBody */
         int instanceFieldIndex = 0;
         int staticFieldIndex = 0;
@@ -219,7 +219,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
                 if (memberNode.isStatic() && staticFields != null) {
                     staticFields.add(field);
                 } else if (instanceFields != null) {
-                    instanceFields.add(field);
+                    instanceFields[instanceFieldIndex++] = field;
                 } else {
                     throw Errors.shouldNotReachHere();
                 }

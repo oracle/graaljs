@@ -3300,8 +3300,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     key = ClassElementKeyNode.createComputedKeyNode(transform(e.getKey()));
                 } else if(e.isPrivate()){
                     VarRef privateVar = environment.findLocalVar(e.getPrivateName());
-                    JSWriteFrameSlotNode writeFrameSlotNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(factory.createNewPrivateName(e.getPrivateName()));
-                    key = ClassElementKeyNode.createPrivateKeyNode(privateVar.createReadNode(),writeFrameSlotNode);
+                    JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(factory.createNewPrivateName(e.getPrivateName()));
+                    key = ClassElementKeyNode.createPrivateKeyNode(privateVar.createReadNode(),writePrivateNode);
                 } else {
                     key = ClassElementKeyNode.createObjectKeyNode(e.getKeyName());
                 }
