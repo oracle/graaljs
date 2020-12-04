@@ -1,5 +1,6 @@
 'use strict';
 const common = require('../../common');
+
 const { Worker, isMainThread } = require('worker_threads');
 
 if (isMainThread) {

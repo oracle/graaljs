@@ -1,9 +1,12 @@
 'use strict';
 
+// This is needed to avoid cycles in esm/resolve <-> cjs/loader
+require('internal/modules/cjs/loader');
+
 const {
   FunctionPrototypeBind,
   ObjectSetPrototypeOf,
-  SafeMap,
+  SafeWeakMap,
 } = primordials;
 
 const {
@@ -49,7 +52,7 @@ class Loader {
     this.moduleMap = new ModuleMap();
 
     // Map of already-loaded CJS modules to use
-    this.cjsCache = new SafeMap();
+    this.cjsCache = new SafeWeakMap();
 
     // This hook is called before the first root module is imported. It's a
     // function that returns a piece of code that runs as a sloppy-mode script.

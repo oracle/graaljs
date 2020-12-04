@@ -4,7 +4,7 @@ This changelog summarizes major changes between GraalVM versions of the GraalVM 
 The main focus is on user-observable behavior of the engine.
 
 ## Version 19.3.5
-* Updated Node.js to version 12.18.4.
+* Updated Node.js to version 12.19.1.
 
 ## Version 19.3.3
 * Updated Node.js to version 12.18.0.

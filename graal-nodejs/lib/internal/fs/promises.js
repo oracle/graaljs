@@ -54,17 +54,21 @@ const { promisify } = require('internal/util');
 const kHandle = Symbol('kHandle');
 const kFd = Symbol('kFd');
 const { kUsePromises } = binding;
+const {
+  JSTransferable, kDeserialize, kTransfer, kTransferList
+} = require('internal/worker/js_transferable');
 
 const getDirectoryEntriesPromise = promisify(getDirents);
 
-class FileHandle {
+class FileHandle extends JSTransferable {
   constructor(filehandle) {
+    super();
     this[kHandle] = filehandle;
-    this[kFd] = filehandle.fd;
+    this[kFd] = filehandle ? filehandle.fd : -1;
     this.close = () => {
       this[kFd] = -1;
       return this[kHandle].close();
-    }
+    };
   }
 
   getAsyncId() {
@@ -131,6 +135,25 @@ class FileHandle {
     return writeFile(this, data, options);
   }
 
+  [kTransfer]() {
+    const handle = this[kHandle];
+    this[kFd] = -1;
+    this[kHandle] = null;
+
+    return {
+      data: { handle },
+      deserializeInfo: 'internal/fs/promises:FileHandle'
+    };
+  }
+
+  [kTransferList]() {
+    return [ this[kHandle] ];
+  }
+
+  [kDeserialize]({ handle }) {
+    this[kHandle] = handle;
+    this[kFd] = handle.fd;
+  }
 }
 
 function validateFileHandle(handle) {
@@ -474,6 +497,14 @@ async function futimes(handle, atime, mtime) {
   return binding.futimes(handle.fd, atime, mtime, kUsePromises);
 }
 
+async function lutimes(path, atime, mtime) {
+  path = getValidatedPath(path);
+  return binding.lutimes(pathModule.toNamespacedPath(path),
+                         toUnixTimestamp(atime),
+                         toUnixTimestamp(mtime),
+                         kUsePromises);
+}
+
 async function realpath(path, options) {
   options = getOptions(options, {});
   path = getValidatedPath(path);
@@ -541,6 +572,7 @@ module.exports = {
     lchown,
     chown,
     utimes,
+    lutimes,
     realpath,
     mkdtemp,
     writeFile,

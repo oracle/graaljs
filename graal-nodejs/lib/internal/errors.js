@@ -13,6 +13,7 @@
 const {
   ArrayIsArray,
   Error,
+  ErrorPrototypeToString,
   JSONStringify,
   Map,
   MathAbs,
@@ -20,14 +21,13 @@ const {
   NumberIsInteger,
   ObjectDefineProperty,
   ObjectKeys,
-  StringPrototypeSlice,
   StringPrototypeStartsWith,
   Symbol,
   SymbolFor,
   WeakMap,
 } = primordials;
 
-const sep = process.platform === 'win32' ? '\\' : '/';
+const isWindows = process.platform === 'win32';
 
 const messages = new Map();
 const codes = {};
@@ -50,7 +50,6 @@ const kTypes = [
 const { kMaxLength } = internalBinding('buffer');
 
 const MainContextError = Error;
-const ErrorToString = Error.prototype.toString;
 const overrideStackTrace = new WeakMap();
 const kNoOverride = Symbol('kNoOverride');
 const prepareStackTrace = (globalThis, error, trace) => {
@@ -71,7 +70,7 @@ const prepareStackTrace = (globalThis, error, trace) => {
   // Error: Message
   //     at function (file)
   //     at file
-  const errorString = ErrorToString.call(error);
+  const errorString = ErrorPrototypeToString(error);
   if (trace.length === 0) {
     return errorString;
   }
@@ -763,7 +762,7 @@ E('ERR_BUFFER_OUT_OF_BOUNDS',
     return 'Attempt to access memory outside buffer bounds';
   }, RangeError);
 E('ERR_BUFFER_TOO_LARGE',
-  `Cannot create a Buffer larger than 0x${kMaxLength.toString(16)} bytes`,
+  'Cannot create a Buffer larger than %s bytes',
   RangeError);
 E('ERR_CANNOT_WATCH_SIGINT', 'Cannot watch for SIGINT signals', Error);
 E('ERR_CHILD_CLOSED_BEFORE_REPLY',
@@ -800,8 +799,6 @@ E('ERR_CRYPTO_SCRYPT_INVALID_PARAMETER', 'Invalid scrypt parameter', Error);
 E('ERR_CRYPTO_SCRYPT_NOT_SUPPORTED', 'Scrypt algorithm not supported', Error);
 // Switch to TypeError. The current implementation does not seem right.
 E('ERR_CRYPTO_SIGN_KEY_REQUIRED', 'No key provided to sign', Error);
-E('ERR_CRYPTO_TIMING_SAFE_EQUAL_LENGTH',
-  'Input buffers must have the same byte length', RangeError);
 E('ERR_DIR_CLOSED', 'Directory handle was closed', Error);
 E('ERR_DIR_CONCURRENT_OPERATION',
   'Cannot do synchronous work on directory handle with concurrent ' +
@@ -1099,16 +1096,9 @@ E('ERR_INVALID_FILE_URL_PATH', 'File URL path %s', TypeError);
 E('ERR_INVALID_HANDLE_TYPE', 'This handle type cannot be sent', TypeError);
 E('ERR_INVALID_HTTP_TOKEN', '%s must be a valid HTTP token ["%s"]', TypeError);
 E('ERR_INVALID_IP_ADDRESS', 'Invalid IP address: %s', TypeError);
-E('ERR_INVALID_MODULE_SPECIFIER', (pkgPath, subpath, base = undefined) => {
-  if (subpath === undefined) {
-    return `Invalid package name '${pkgPath}' imported from ${base}`;
-  } else if (base === undefined) {
-    assert(subpath !== '.');
-    return `Package subpath '${subpath}' is not a valid module request for ` +
-      `the "exports" resolution of ${pkgPath}${sep}package.json`;
-  }
-  return `Package subpath '${subpath}' is not a valid module request for ` +
-      `the "exports" resolution of ${pkgPath} imported from ${base}`;
+E('ERR_INVALID_MODULE_SPECIFIER', (request, reason, base = undefined) => {
+  return `Invalid module "${request}" ${reason}${base ?
+    ` imported from ${base}` : ''}`;
 }, TypeError);
 E('ERR_INVALID_OPT_VALUE', (name, value) =>
   `The value "${String(value)}" is invalid for option "${name}"`,
@@ -1116,37 +1106,25 @@ E('ERR_INVALID_OPT_VALUE', (name, value) =>
   RangeError);
 E('ERR_INVALID_OPT_VALUE_ENCODING',
   'The value "%s" is invalid for option "encoding"', TypeError);
-E('ERR_INVALID_PACKAGE_CONFIG', (path, message, hasMessage = true) => {
-  if (hasMessage)
-    return `Invalid package config ${path}${sep}package.json, ${message}`;
-  return `Invalid JSON in ${path} imported from ${message}`;
+E('ERR_INVALID_PACKAGE_CONFIG', (path, base, message) => {
+  return `Invalid package config ${path}${base ? ` while importing ${base}` :
+    ''}${message ? `. ${message}` : ''}`;
 }, Error);
 E('ERR_INVALID_PACKAGE_TARGET',
-  (pkgPath, key, subpath, target, base = undefined) => {
-    const relError = typeof target === 'string' &&
+  (pkgPath, key, target, isImport = false, base = undefined) => {
+    const relError = typeof target === 'string' && !isImport &&
       target.length && !StringPrototypeStartsWith(target, './');
-    if (key === null) {
-      if (subpath !== '') {
-        return `Invalid "exports" target ${JSONStringify(target)} defined ` +
-        `for '${subpath}' in the package config ${pkgPath} imported from ` +
-        `${base}.${relError ? '; targets must start with "./"' : ''}`;
-      }
-      return `Invalid "exports" main target ${target} defined in the ` +
-        `package config ${pkgPath} imported from ${base}${relError ?
-          '; targets must start with "./"' : ''}`;
-    } else if (key === '.') {
+    if (key === '.') {
+      assert(isImport === false);
       return `Invalid "exports" main target ${JSONStringify(target)} defined ` +
-      `in the package config ${pkgPath}${sep}package.json${relError ?
-        '; targets must start with "./"' : ''}`;
-    } else if (relError) {
-      return `Invalid "exports" target ${JSONStringify(target)} defined for '${
-        StringPrototypeSlice(key, 0, -subpath.length || key.length)}' in the ` +
-        `package config ${pkgPath}${sep}package.json; ` +
-        'targets must start with "./"';
+        `in the package config ${pkgPath}package.json${base ?
+          ` imported from ${base}` : ''}${relError ?
+          '; targets must start with "./"' : ''}`;
     }
-    return `Invalid "exports" target ${JSONStringify(target)} defined for '${
-      StringPrototypeSlice(key, 0, -subpath.length || key.length)}' in the ` +
-    `package config ${pkgPath}${sep}package.json`;
+    return `Invalid "${isImport ? 'imports' : 'exports'}" target ${
+      JSONStringify(target)} defined for '${key}' in the package config ${
+      pkgPath}package.json${base ? ` imported from ${base}` : ''}${relError ?
+      '; targets must start with "./"' : ''}`;
   }, Error);
 E('ERR_INVALID_PERFORMANCE_MARK',
   'The "%s" performance mark has not been set', Error);
@@ -1295,15 +1273,16 @@ E('ERR_OUT_OF_RANGE',
     msg += ` It must be ${range}. Received ${received}`;
     return msg;
   }, RangeError);
+E('ERR_PACKAGE_IMPORT_NOT_DEFINED', (specifier, packagePath, base) => {
+  return `Package import specifier "${specifier}" is not defined${packagePath ?
+    ` in package ${packagePath}package.json` : ''} imported from ${base}`;
+}, TypeError);
 E('ERR_PACKAGE_PATH_NOT_EXPORTED', (pkgPath, subpath, base = undefined) => {
-  if (subpath === '.') {
-    return `No "exports" main resolved in ${pkgPath}${sep}package.json`;
-  } else if (base === undefined) {
-    return `Package subpath '${subpath}' is not defined by "exports" in ${
-      pkgPath}${sep}package.json`;
-  }
+  if (subpath === '.')
+    return `No "exports" main defined in ${pkgPath}package.json${base ?
+      ` imported from ${base}` : ''}`;
   return `Package subpath '${subpath}' is not defined by "exports" in ${
-    pkgPath} imported from ${base}`;
+    pkgPath}package.json${base ? ` imported from ${base}` : ''}`;
 }, Error);
 E('ERR_REQUIRE_ESM',
   (filename, parentPath = null, packageJsonPath = null) => {
@@ -1397,6 +1376,8 @@ E('ERR_TRANSFORM_ALREADY_TRANSFORMING',
 E('ERR_TRANSFORM_WITH_LENGTH_0',
   'Calling transform done when writableState.length != 0', Error);
 E('ERR_TTY_INIT_FAILED', 'TTY initialization failed', SystemError);
+E('ERR_UNAVAILABLE_DURING_EXIT', 'Cannot call function in process exit ' +
+  'handler', Error);
 E('ERR_UNCAUGHT_EXCEPTION_CAPTURE_ALREADY_SET',
   '`process.setupUncaughtExceptionCapture()` was called while a capture ' +
     'callback was already active',
@@ -1419,13 +1400,16 @@ E('ERR_UNKNOWN_FILE_EXTENSION',
 E('ERR_UNKNOWN_MODULE_FORMAT', 'Unknown module format: %s', RangeError);
 E('ERR_UNKNOWN_SIGNAL', 'Unknown signal: %s', TypeError);
 E('ERR_UNSUPPORTED_DIR_IMPORT', "Directory import '%s' is not supported " +
-'resolving ES modules, imported from %s', Error);
-E('ERR_UNSUPPORTED_ESM_URL_SCHEME', 'Only file and data URLs are supported ' +
-  'by the default ESM loader', Error);
-
-E('ERR_V8BREAKITERATOR',
-  'Full ICU data not installed. See https://github.com/nodejs/node/wiki/Intl',
-  Error);
+'resolving ES modules imported from %s', Error);
+E('ERR_UNSUPPORTED_ESM_URL_SCHEME', (url) => {
+  let msg = 'Only file and data URLs are supported by the default ESM loader';
+  if (isWindows && url.protocol.length === 2) {
+    msg +=
+      '. On Windows, absolute paths must be valid file:// URLs';
+  }
+  msg += `. Received protocol '${url.protocol}'`;
+  return msg;
+}, Error);
 
 // This should probably be a `TypeError`.
 E('ERR_VALID_PERFORMANCE_ENTRY_TYPE',

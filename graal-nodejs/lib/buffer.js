@@ -60,13 +60,11 @@ const {
   zeroFill: bindingZeroFill
 } = internalBinding('buffer');
 const {
-  arraybuffer_untransferable_private_symbol,
   getOwnNonIndexProperties,
   propertyFilter: {
     ALL_PROPERTIES,
     ONLY_ENUMERABLE
   },
-  setHiddenValue,
 } = internalBinding('util');
 const {
   customInspectSymbol,
@@ -83,7 +81,6 @@ const {
   inspect: utilInspect
 } = require('internal/util/inspect');
 const { encodings } = internalBinding('string_decoder');
-
 
 const {
   codes: {
@@ -105,6 +102,7 @@ const {
 
 const {
   FastBuffer,
+  markAsUntransferable,
   addBufferPrototypeMethods
 } = require('internal/buffer');
 
@@ -159,7 +157,7 @@ function createUnsafeBuffer(size) {
 function createPool() {
   poolSize = Buffer.poolSize;
   allocPool = createUnsafeBuffer(poolSize).buffer;
-  setHiddenValue(allocPool, arraybuffer_untransferable_private_symbol, true);
+  markAsUntransferable(allocPool);
   poolOffset = 0;
 }
 createPool();

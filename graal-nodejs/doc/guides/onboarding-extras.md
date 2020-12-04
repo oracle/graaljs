@@ -1,4 +1,4 @@
-# Additional Onboarding Information
+# Additional onboarding information
 
 ## Labels
 
@@ -11,20 +11,31 @@
 * `test`
 * `tools`
 
-There may be more than one subsystem valid for any particular issue or pull
-request.
+More than one subsystem may be valid for any particular issue or pull request.
 
 ### General
 
-* `confirmed-bug` - Bugs you have verified exist
-* `discuss` - Things that need larger discussion
-* `feature request` - Any issue that requests a new feature (usually not PRs)
-* `good first issue` - Issues suitable for newcomers to process
-* `meta` - For issues whose topic is governance, policies, procedures, etc.
-* `tsc-agenda` - Open issues and pull requests with this label will be added to
+* `confirmed-bug`: Bugs you have verified
+* `discuss`: Things that need larger discussion
+* `feature request`: Any issue that requests a new feature
+* `good first issue`: Issues suitable for newcomers to fix
+* `meta`: Governance, policies, procedures, etc.
+* `tsc-agenda`: Open issues and pull requests with this label will be added to
   the Technical Steering Committee meeting agenda
 
---
+---
+
+* `author-ready` - A pull request is _author ready_ when:
+  * There is a CI run in progress or completed.
+  * There is at least one Collaborator approval (or two TSC approvals for
+    semver-major PRs).
+  * There are no outstanding review comments.
+
+Please always add the `author ready` label to pull requests that qualify.
+Please always remove it again as soon as the conditions are not met anymore,
+such as if the CI run fails or a new outstanding review comment is posted.
+
+---
 
 * `semver-{minor,major}`
   * be conservative – that is, if a change has the remote *chance* of breaking
@@ -34,16 +45,8 @@ request.
     section to the docs"
   * major vs. everything else: run last versions tests against this version, if
     they pass, **probably** minor or patch
-  * A breaking change helper
-    ([full source](https://gist.github.com/chrisdickinson/ba532fa0e4e243fb7b44)):
 
-    ```bash
-    SHOW=$(git show-ref -d $(git describe --abbrev=0) | tail -n1 | awk '{print $1}')
-    git checkout $(git show -s --pretty='%T' $SHOW) -- test
-    make -j4 test
-    ```
-
-### LTS/Version labels
+### LTS/version labels
 
 We use labels to keep track of which branches a commit should land on:
 
@@ -78,11 +81,11 @@ We use labels to keep track of which branches a commit should land on:
 Once a release line enters maintenance mode, the corresponding labels do not
 need to be attached anymore, as only important bugfixes will be included.
 
-### Other Labels
+### Other labels
 
 * Operating system labels
   * `macos`, `windows`, `smartos`, `aix`
-  * No linux, linux is the implied default
+  * No `linux` label because it is the implied default
 * Architecture labels
   * `arm`, `mips`, `s390`, `ppc`
-  * No x86{_64}, since that is the implied default
+  * No `x86{_64}` label because it is the implied default

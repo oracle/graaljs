@@ -5,7 +5,7 @@ This document describes how to update `deps/openssl/`.
 ## Requirements
 * Linux environment.
 * `perl` Only Perl version 5 is tested.
-* `nasm` (<http://www.nasm.us/>) Version 2.11 or higher is needed.
+* `nasm` (<https://www.nasm.us/>) Version 2.11 or higher is needed.
 * GNU `as` in binutils. Version 2.26 or higher is needed.
 
 ## 0. Check Requirements
@@ -37,7 +37,7 @@ them.
 % mv openssl-1.1.0h openssl
 % git add --all openssl
 % git commit openssl
-````
+```
 
 The commit message can be written as (with the openssl version set
 to the relevant value):
@@ -58,6 +58,10 @@ This updates all sources in deps/openssl/openssl by:
 Use `make` to regenerate all platform dependent files in
 `deps/openssl/config/archs/`:
 ```console
+# On non-Linux machines
+% make gen-openssl
+
+# On Linux machines
 % make -C deps/openssl/config
 ```
 

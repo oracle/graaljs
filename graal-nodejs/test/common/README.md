@@ -367,12 +367,6 @@ const { spawn } = require('child_process');
 spawn(...common.pwdCommand, { stdio: ['pipe'] });
 ```
 
-### `rootDir`
-
-* [&lt;string>][]
-
-Path to the 'root' directory. either `/` or `c:\\` (windows)
-
 ### `runWithInvalidFD(func)`
 
 * `func` [&lt;Function>][]
@@ -935,6 +929,19 @@ The realpath of the testing temporary directory.
 
 Deletes and recreates the testing temporary directory.
 
+## UDP pair helper
+
+The `common/udppair` module exports a function `makeUDPPair` and a class
+`FakeUDPWrap`.
+
+`FakeUDPWrap` emits `'send'` events when data is to be sent on it, and provides
+an `emitReceived()` API for actin as if data has been received on it.
+
+`makeUDPPair` returns an object `{ clientSide, serverSide }` where each side
+is an `FakeUDPWrap` connected to the other side.
+
+There is no difference between cient or server side beyond their names.
+
 ## WPT Module
 
 ### `harness`
@@ -947,7 +954,7 @@ the original WPT harness, see [the WPT tests README][].
 
 ### Class: WPTRunner
 
-A driver class for running WPT with the WPT harness in a vm.
+A driver class for running WPT with the WPT harness in a worker thread.
 
 See [the WPT tests README][] for details.
 
