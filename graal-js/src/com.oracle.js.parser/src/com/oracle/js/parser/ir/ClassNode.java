@@ -57,8 +57,8 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
     private final List<ClassElement> classElements;
     private final Scope scope;
     //TODO: remove filed count values
-    private final int instanceFieldCount = 0;
-    private final int staticFieldCount = 0;
+    private final int instanceFieldCount;
+    private final int staticFieldCount;
     private final boolean hasPrivateMethods;
     private final boolean hasPrivateInstanceMethods;
 
@@ -80,12 +80,12 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         this.constructor = constructor;
         this.classElements = classElements;
         this.scope = scope;
-        //this.instanceFieldCount = instanceFieldCount;
-        //this.staticFieldCount = staticFieldCount;
+        this.instanceFieldCount = instanceFieldCount;
+        this.staticFieldCount = staticFieldCount;
         this.hasPrivateMethods = hasPrivateMethods;
         this.hasPrivateInstanceMethods = hasPrivateInstanceMethods;
-        //assert instanceFieldCount == fieldCount(classElements, false);
-        //assert staticFieldCount == fieldCount(classElements, true);
+        assert instanceFieldCount == fieldCount(classElements, false);
+        assert staticFieldCount == fieldCount(classElements, true);
         this.decorators = decorators;
     }
 
@@ -96,17 +96,17 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         this.constructor = constructor;
         this.classElements = classElements;
         this.scope = classNode.scope;
-        //this.instanceFieldCount = fieldCount(classElements, false);
-        //this.staticFieldCount = fieldCount(classElements, true);
+        this.instanceFieldCount = fieldCount(classElements, false);
+        this.staticFieldCount = fieldCount(classElements, true);
         this.hasPrivateMethods = classNode.hasPrivateMethods;
         this.hasPrivateInstanceMethods = classNode.hasPrivateInstanceMethods;
         this.decorators = decorators;
     }
 
-    private static int fieldCount(List<PropertyNode> classElements, boolean isStatic) {
+    private static int fieldCount(List<ClassElement> classElements, boolean isStatic) {
         int count = 0;
-        for (PropertyNode classElement : classElements) {
-            if (classElement.isClassField() && classElement.isStatic() == isStatic) {
+        for (ClassElement classElement : classElements) {
+            if (classElement.isField() && classElement.isStatic() == isStatic) {
                 count++;
             }
         }

@@ -164,7 +164,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         // Perform CreateMethodProperty(proto, "constructor", F).
         setConstructorNode.executeVoid(proto, constructor);
 
-        Object[][] instanceFields = new Object[1][];//instanceFieldCount == 0 ? null : new Object[instanceFieldCount][];
+        Object[][] instanceFields = instanceFieldCount == 0 ? null : new Object[instanceFieldCount][];
         Object[][] staticFields = staticFieldCount == 0 ? null : new Object[staticFieldCount][];
 
         //TODO: DecorateClass
@@ -222,7 +222,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
                 }
             }
         }
-        //assert instanceFieldIndex == instanceFieldCount && staticFieldIndex == staticFieldCount;
+        assert instanceFieldIndex == instanceFieldCount && staticFieldIndex == staticFieldCount;
     }
 
     @Override

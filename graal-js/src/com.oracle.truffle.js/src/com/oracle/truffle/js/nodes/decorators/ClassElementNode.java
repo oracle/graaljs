@@ -78,6 +78,9 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
             prepareKey(frame);
             Object key = executeKey(frame);
             Object value = executeValue(frame, homeObject);
+            if(isField()){
+                return;
+            }
             JSObjectUtil.putDataProperty(context, homeObject, key, value, attributes);
             //PropertyDescriptor propDesc = PropertyDescriptor.createData(value, attributes);
             //JSRuntime.definePropertyOrThrow(homeObject, key, propDesc);
