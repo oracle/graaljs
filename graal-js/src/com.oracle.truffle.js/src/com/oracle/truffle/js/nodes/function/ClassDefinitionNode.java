@@ -164,6 +164,8 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         // Perform CreateMethodProperty(proto, "constructor", F).
         setConstructorNode.executeVoid(proto, constructor);
 
+        Object[] elementDescriptors = evaluateClassElements(frame, proto, constructor);
+
         //Object[][] instanceFields = 1 == 0 ? null : new Object[1][];
         ArrayList<Object[]> instances = new ArrayList<>();
         Object[][] staticFields = 0 == 0 ? null : new Object[0][];
@@ -202,6 +204,17 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
     }
 
     @ExplodeLoop
+    private Object[] evaluateClassElements(VirtualFrame frame, DynamicObject proto, DynamicObject constructor) {
+        Object[] descriptors = new Object[memberNodes.length];
+        int descriptorIndex = 0;
+        for(ClassElementNode elementNode : memberNodes) {
+            DynamicObject homeObject = elementNode.isStatic() ? constructor : proto;
+            descriptors[descriptorIndex++] = elementNode.executeElementDescriptor(frame, homeObject);
+        }
+        return descriptors;
+    }
+
+    @ExplodeLoop
     private void initializeMembers(VirtualFrame frame, DynamicObject proto, DynamicObject constructor, ArrayList<Object[]> instanceFields, Object[][] staticFields) {
         /* For each ClassElement e in order from NonConstructorMethodDefinitions of ClassBody */
         int instanceFieldIndex = 0;
@@ -210,7 +223,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         //TODO: ClassFieldDefinitionEvaluation
         for (ClassElementNode memberNode : memberNodes) {
             //TODO: InitializeClassElements
-            DynamicObject homeObject = memberNode.isStatic() ? constructor : proto;
+            /*DynamicObject homeObject = memberNode.isStatic() ? constructor : proto;
             memberNode.executeVoid(frame, homeObject, context);
             if (memberNode.isField()) {
                 Object key = memberNode.executeKey(frame);
@@ -224,7 +237,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
                 } else {
                     throw Errors.shouldNotReachHere();
                 }
-            }
+            }*/
         }
         //assert instanceFieldIndex == instanceFieldCount && staticFieldIndex == staticFieldCount;
     }

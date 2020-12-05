@@ -8,7 +8,6 @@ import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 
 public abstract class ClassElementKeyNode extends JavaScriptBaseNode {
     public abstract Object executeKey(VirtualFrame frame);
-    public void executeVoid(VirtualFrame frame){};
 
     public static ClassElementKeyNode createComputedKeyNode(JavaScriptNode keyNode){
         return new ComputedKeyNode(keyNode);
@@ -50,13 +49,9 @@ public abstract class ClassElementKeyNode extends JavaScriptBaseNode {
 
          @Override
          public Object executeKey(VirtualFrame frame){
+             writeFrameSlotNode.execute(frame);
              return keyNode.execute(frame);
          }
-
-        @Override
-        public void executeVoid(VirtualFrame frame) {
-            writeFrameSlotNode.execute(frame);
-        }
     }
 
     private static class ObjectKeyNode extends ClassElementKeyNode {

@@ -28,27 +28,11 @@ public class ClassElement extends Node {
     private static final int PLACEMENT_PROTOTYPE = 1 << 1;
     private static final int PLACEMENT_OWN = 1 << 2;
 
-    /**
-     * PropertyDescriptor values:
-     * - writable
-     * - configurable
-     * - enumerable
-     */
-    private static final int WRITABLE_TRUE = 1 << 0;
-    private static final int WRITABLE_FALSE = 1 << 1;
-    private static final int CONFIGURABLE_TRUE = 1 << 2;
-    private static final int CONFIGURABLE_FALSE = 1 << 3;
-    private static final int ENUMERABLE_TRUE = 1 << 4;
-    private static final int ENUMERABLE_FALSE = 1 << 5;
-
     /** Class element kind. */
     private final int kind;
 
     /** Class element key. */
     private final Expression key;
-
-    /** Class element property descriptor values. These values are handled in the Parser for coalescing of class elements. */
-    private final int propertyDescriptorValues;
 
     /** Class element value. Value for method kind, Initialize for field kind.  */
     private final Expression value;
@@ -69,7 +53,7 @@ public class ClassElement extends Node {
     private final boolean hasComputedKey;
     private final boolean isAnonymousFunctionDefinition;
 
-    private ClassElement(long token, int finish, int kind, Expression key, Expression value, FunctionNode get, FunctionNode set, int placement, int propertyDescriptorValues, List<Expression> decorators,
+    private ClassElement(long token, int finish, int kind, Expression key, Expression value, FunctionNode get, FunctionNode set, int placement, List<Expression> decorators,
                          boolean isPrivate, boolean hasComputedKey, boolean isAnonymousFunctionDefinition) {
         super(token, finish);
         this.kind = kind;
@@ -78,14 +62,13 @@ public class ClassElement extends Node {
         this.get = get;
         this.set = set;
         this.placement = placement;
-        this.propertyDescriptorValues = propertyDescriptorValues;
         this.decorators = decorators;
         this.isPrivate = isPrivate;
         this.hasComputedKey = hasComputedKey;
         this.isAnonymousFunctionDefinition = isAnonymousFunctionDefinition;
     }
 
-    private ClassElement(ClassElement element, int kind,  Expression key, Expression value, FunctionNode get, FunctionNode set, int placement, int propertyDescriptorValues, List<Expression> decorators,
+    private ClassElement(ClassElement element, int kind,  Expression key, Expression value, FunctionNode get, FunctionNode set, int placement, List<Expression> decorators,
                          boolean isPrivate, boolean hasComputedKey, boolean isAnonymousFunctionDefinition) {
         super(element);
         this.kind = kind;
@@ -94,7 +77,6 @@ public class ClassElement extends Node {
         this.get = get;
         this.set = set;
         this.placement = placement;
-        this.propertyDescriptorValues = propertyDescriptorValues;
         this.decorators = decorators;
         this.isPrivate = isPrivate;
         this.hasComputedKey = hasComputedKey;
@@ -104,26 +86,23 @@ public class ClassElement extends Node {
     public static ClassElement createMethod(long token, int finish, Expression key, Expression value, List<Expression> decorators,
                                             boolean isPrivate, boolean isStatic, boolean hasComputedKey) {
         int placement = isStatic ? PLACEMENT_STATIC : isPrivate ? PLACEMENT_OWN : PLACEMENT_PROTOTYPE;
-        int propertyDescriptorValues = isPrivate ? ENUMERABLE_FALSE + CONFIGURABLE_FALSE + WRITABLE_FALSE : ENUMERABLE_TRUE + CONFIGURABLE_TRUE + WRITABLE_TRUE;
-        return new ClassElement(token, finish, KIND_METHOD, key, value, null, null, placement, propertyDescriptorValues, decorators, isPrivate, hasComputedKey, false);
+        return new ClassElement(token, finish, KIND_METHOD, key, value, null, null, placement, decorators, isPrivate, hasComputedKey, false);
     }
 
     public static ClassElement createAccessor(long token, int finish, Expression key, FunctionNode get, FunctionNode set, List<Expression> decorators,
                                               boolean isPrivate, boolean isStatic, boolean hasComputedKey) {
         int placement = isStatic ? PLACEMENT_STATIC : isPrivate ? PLACEMENT_OWN : PLACEMENT_PROTOTYPE;
-        int propertyDescriptorValues = isPrivate ? ENUMERABLE_FALSE + CONFIGURABLE_FALSE: ENUMERABLE_TRUE + CONFIGURABLE_TRUE;
-        return new ClassElement(token, finish, KIND_ACCESSOR, key, null, get, set, placement, propertyDescriptorValues, decorators, isPrivate, hasComputedKey, false);
+        return new ClassElement(token, finish, KIND_ACCESSOR, key, null, get, set, placement, decorators, isPrivate, hasComputedKey, false);
     }
 
     public static ClassElement createField(long token, int finish, Expression key, Expression initialize, List<Expression> decorators,
                                            boolean isPrivate, boolean isStatic, boolean hasComputedKey, boolean isAnonymousFunctionDefinition) {
         int placement = isStatic ? PLACEMENT_STATIC : PLACEMENT_OWN;
-        int propertyDescriptorValues = isPrivate ? ENUMERABLE_FALSE + CONFIGURABLE_FALSE + WRITABLE_FALSE : ENUMERABLE_TRUE + CONFIGURABLE_TRUE + WRITABLE_TRUE;
-        return new ClassElement(token, finish, KIND_FIELD, key, initialize, null, null, placement, propertyDescriptorValues, decorators, isPrivate, hasComputedKey, isAnonymousFunctionDefinition);
+        return new ClassElement(token, finish, KIND_FIELD, key, initialize, null, null, placement, decorators, isPrivate, hasComputedKey, isAnonymousFunctionDefinition);
     }
 
     public static ClassElement createDefaultConstructor(long token, int finish, Expression key, Expression value) {
-        return new ClassElement(token, finish, KIND_METHOD, key, value, null, null, 0, 0, null, false, false, false);
+        return new ClassElement(token, finish, KIND_METHOD, key, value, null, null, 0, null, false, false, false);
     }
 
     @Override
@@ -161,7 +140,7 @@ public class ClassElement extends Node {
         if(this.decorators == decorators) {
             return this;
         }
-        return new ClassElement(this, kind, key, value, get, set, placement, propertyDescriptorValues, decorators, isPrivate, hasComputedKey, isAnonymousFunctionDefinition);
+        return new ClassElement(this, kind, key, value, get, set, placement, decorators, isPrivate, hasComputedKey, isAnonymousFunctionDefinition);
     }
 
     public FunctionNode getGetter() {
@@ -172,7 +151,7 @@ public class ClassElement extends Node {
         if(this.get == get) {
             return this;
         }
-        return new ClassElement(this, kind, key, value, get, set, placement, propertyDescriptorValues, decorators, isPrivate, hasComputedKey, isAnonymousFunctionDefinition);
+        return new ClassElement(this, kind, key, value, get, set, placement, decorators, isPrivate, hasComputedKey, isAnonymousFunctionDefinition);
     }
 
     public Expression getKey() {
@@ -183,7 +162,7 @@ public class ClassElement extends Node {
         if(this.key == key) {
             return this;
         }
-        return new ClassElement(this, kind, key, value, get, set, placement, propertyDescriptorValues, decorators, isPrivate, hasComputedKey, isAnonymousFunctionDefinition);
+        return new ClassElement(this, kind, key, value, get, set, placement, decorators, isPrivate, hasComputedKey, isAnonymousFunctionDefinition);
     }
 
     public String getKeyName() {
@@ -211,7 +190,7 @@ public class ClassElement extends Node {
         if(this.set == set) {
             return this;
         }
-        return new ClassElement(this, kind, key, value, get, set, placement, propertyDescriptorValues, decorators, isPrivate, hasComputedKey, isAnonymousFunctionDefinition);
+        return new ClassElement(this, kind, key, value, get, set, placement, decorators, isPrivate, hasComputedKey, isAnonymousFunctionDefinition);
     }
 
     public Expression getValue() {
@@ -222,7 +201,7 @@ public class ClassElement extends Node {
         if(this.value == value) {
             return this;
         }
-        return new ClassElement(this, kind, key, value, get, set, placement, propertyDescriptorValues, decorators, isPrivate, hasComputedKey, isAnonymousFunctionDefinition);
+        return new ClassElement(this, kind, key, value, get, set, placement, decorators, isPrivate, hasComputedKey, isAnonymousFunctionDefinition);
     }
 
     public boolean hasComputedKey() {
@@ -237,15 +216,9 @@ public class ClassElement extends Node {
         return isAnonymousFunctionDefinition;
     }
 
-    public boolean isConfigurable() {
-        return (propertyDescriptorValues & CONFIGURABLE_TRUE) != 0;
-    }
-
     public boolean isField() {
         return (kind & KIND_FIELD) != 0;
     }
-
-    public boolean isEnumerable() { return (propertyDescriptorValues & ENUMERABLE_TRUE) != 0; }
 
     public boolean isMethod() {
         return (kind & KIND_METHOD) != 0;
@@ -259,7 +232,6 @@ public class ClassElement extends Node {
         return (placement & PLACEMENT_STATIC) != 0;
     }
 
-    public boolean isWritable() { return (propertyDescriptorValues & ENUMERABLE_TRUE) != 0; }
 
     @Override
     public void toString(StringBuilder sb, boolean printType) {

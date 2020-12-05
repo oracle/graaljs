@@ -7,87 +7,67 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
 public abstract class ClassElementNode extends JavaScriptBaseNode {
-    private static final int PLACEMENT_STATIC = 1 << 0;
-    private static final int PLACEMENT_PROTOTYPE = 1 << 1;
-    private static final int PLACEMENT_OWN = 1 << 2;
-
     public static final ClassElementNode[] EMPTY = {};
 
     @Child private ClassElementKeyNode key;
-    private int placement;
-    protected int attributes;
-    private boolean isField;
+
+    private boolean isStatic;
+    private boolean isPrivate;
     private boolean isAnonymousFunctionDefinition;
 
-    protected ClassElementNode(ClassElementKeyNode key, int placement, boolean configurable, boolean enumerable, boolean writable, boolean isField, boolean isAnonymousFunctionDefinition){
+    protected ClassElementNode(ClassElementKeyNode key, boolean isStatic, boolean isPrivate, boolean isAnonymousFunctionDefinition){
         this.key = key;
-        this.placement = placement;
-        this.attributes = JSAttributes.fromConfigurableEnumerableWritable(configurable, enumerable, writable);
-        this.isField = isField;
+        this.isStatic = isStatic;
+        this.isPrivate = isPrivate;
         this.isAnonymousFunctionDefinition = isAnonymousFunctionDefinition;
     }
 
-    public void prepareKey(VirtualFrame frame) { key.executeVoid(frame); }
-    public Object executeKey(VirtualFrame frame){
+    public boolean isStatic() {
+        return isStatic;
+    }
+
+    protected boolean isPrivate() {
+        return isPrivate;
+    }
+
+    protected Object executeKey(VirtualFrame frame){
         return key.executeKey(frame);
     }
-    public abstract void executeVoid(VirtualFrame frame, DynamicObject homeObject, JSContext context);
-    public abstract Object executeValue(VirtualFrame frame, DynamicObject homeObject);
+    public abstract ElementDescriptor executeElementDescriptor(VirtualFrame frame, DynamicObject homeObject);
 
-    public static ClassElementNode createDataClassElement(ClassElementKeyNode key, JavaScriptNode value, int placement, boolean configurable, boolean enumerable, boolean writable, boolean isField, boolean isAnonymousFunctionDefinition){
-        return new DataClassElementNode(key, value, placement, configurable, enumerable, writable, isField, isAnonymousFunctionDefinition);
+    public static ClassElementNode createFieldClassElement(ClassElementKeyNode key, JavaScriptNode initialize, boolean isStatic, boolean isPrivate, boolean isAnonymousFunctionDefinition){
+        return new FieldClassElementNode(key, initialize, isStatic, isPrivate, isAnonymousFunctionDefinition);
     }
 
-    public static ClassElementNode createAccessorClassElement(ClassElementKeyNode key, JavaScriptNode getter, JavaScriptNode setter, int placement, boolean configurable, boolean enumerable, boolean writable){
-        return new AccessorClassElementNode(key, getter, setter, placement, configurable, enumerable, writable);
+    public static ClassElementNode createMethodClassElement(ClassElementKeyNode key, JavaScriptNode value, boolean isStatic, boolean isPrivate) {
+        return new MethodClassElementNode(key, value, isStatic, isPrivate);
     }
 
-    public boolean isStatic() {
-        return (placement & PLACEMENT_STATIC) != 0;
+    public static ClassElementNode createAccessorClassElement(ClassElementKeyNode key, JavaScriptNode getter, JavaScriptNode setter, boolean isStatic, boolean isPrivate){
+        return new AccessorClassElementNode(key, getter, setter, isStatic, isPrivate);
     }
-
-    public boolean isPrototype(){
-        return (placement & PLACEMENT_PROTOTYPE) != 0;
-    }
-
-    public boolean isOwn() {
-        return (placement & PLACEMENT_OWN) != 0;
-    }
-
-    public boolean isField() { return isField; }
 
     public boolean isAnonymousFunctionDefinition() { return isAnonymousFunctionDefinition; }
 
-    private static class DataClassElementNode extends ClassElementNode {
+    private abstract static class DataClassElementNode extends ClassElementNode {
         @Child JavaScriptNode valueNode;
 
-        protected DataClassElementNode(ClassElementKeyNode key, JavaScriptNode valueNode, int placement, boolean configurable, boolean enumerable, boolean writable, boolean isField, boolean isAnonymousFunctionDefinition) {
-            super(key, placement, configurable, enumerable, writable, isField, isAnonymousFunctionDefinition);
+        DataClassElementNode(ClassElementKeyNode key, JavaScriptNode valueNode, boolean isStatic, boolean isPrivate, boolean isAnonymousFunctionDefinition) {
+            super(key, isStatic, isPrivate, isAnonymousFunctionDefinition);
             this.valueNode = valueNode;
         }
 
         @Override
-        public void executeVoid(VirtualFrame frame, DynamicObject homeObject, JSContext context) {
-            prepareKey(frame);
-            Object key = executeKey(frame);
-            Object value = executeValue(frame, homeObject);
-            if(isField()){
-                return;
-            }
-            JSObjectUtil.putDataProperty(context, homeObject, key, value, attributes);
-            //PropertyDescriptor propDesc = PropertyDescriptor.createData(value, attributes);
-            //JSRuntime.definePropertyOrThrow(homeObject, key, propDesc);
-        }
+        public abstract ElementDescriptor executeElementDescriptor(VirtualFrame frame, DynamicObject homeObject);
 
-        @Override
-        public Object executeValue(VirtualFrame frame, DynamicObject homeObject) {
+        protected Object executeValue(VirtualFrame frame, DynamicObject homeObject) {
+            if(valueNode == null) {
+                return null;
+            }
             if (valueNode instanceof ObjectLiteralNode.MakeMethodNode) {
                 return ((ObjectLiteralNode.MakeMethodNode) valueNode).executeWithObject(frame, homeObject);
             } else {
@@ -96,28 +76,100 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
         }
     }
 
+    private static class FieldClassElementNode extends DataClassElementNode {
+        private int attributes;
+        private int placement;
+
+        protected FieldClassElementNode(ClassElementKeyNode key, JavaScriptNode initialize, boolean isStatic, boolean isPrivate, boolean isAnonymousFunctionDefinition){
+            super(key, initialize, isStatic, isPrivate, isAnonymousFunctionDefinition);
+            //ClassFieldDefinitionEvaluation
+            if(isPrivate) {
+                attributes = JSAttributes.fromConfigurableEnumerableWritable(false,false, false);
+            } else {
+                attributes = JSAttributes.fromConfigurableEnumerableWritable(true, true, true);
+            }
+            if(isStatic) {
+                placement = JSPlacement.getStatic();
+            } else {
+                placement = JSPlacement.getOwn();
+            }
+        }
+
+        @Override
+        public ElementDescriptor executeElementDescriptor(VirtualFrame frame, DynamicObject homeObject) {
+            Object key = executeKey(frame);
+            Object value = executeValue(frame, homeObject);
+
+            PropertyDescriptor propDesc = PropertyDescriptor.createData(value, attributes);
+            return ElementDescriptor.createField(key, propDesc, placement, value, isPrivate());
+            //JSRuntime.definePropertyOrThrow(homeObject, key, propDesc);
+        }
+    }
+
+    private static class MethodClassElementNode extends DataClassElementNode {
+        private int attributes;
+        private int placement;
+
+        protected MethodClassElementNode(ClassElementKeyNode key, JavaScriptNode value, boolean isStatic, boolean isPrivate) {
+            super(key, value, isStatic, isPrivate, false);
+            //DefaultMethodDescriptor
+            if(isPrivate) {
+                attributes = JSAttributes.fromConfigurableEnumerableWritable(false, false, false);
+            } else {
+                attributes = JSAttributes.fromConfigurableEnumerableWritable(true, true, true);
+            }
+            if(isStatic) {
+                placement = JSPlacement.getStatic();
+            } else {
+                if (isPrivate) {
+                    placement = JSPlacement.getOwn();
+                } else {
+                    placement = JSPlacement.getPrototype();
+                }
+            }
+        }
+
+        @Override
+        public ElementDescriptor executeElementDescriptor(VirtualFrame frame, DynamicObject homeObject) {
+            Object key = executeKey(frame);
+            Object value = executeValue(frame, homeObject);
+
+            PropertyDescriptor propDesc = PropertyDescriptor.createData(value, attributes);
+            return ElementDescriptor.createMethod(key, propDesc, placement, isPrivate());
+        }
+    }
+
 
     private static class AccessorClassElementNode extends ClassElementNode {
         @Child private JavaScriptNode getterNode;
         @Child private JavaScriptNode setterNode;
 
-        protected AccessorClassElementNode(ClassElementKeyNode key, JavaScriptNode getterNode, JavaScriptNode setterNode, int placement, boolean configurable, boolean enumerable, boolean writable) {
-            super(key, placement, configurable, enumerable, writable, false, false);
+        private int attributes;
+        private int placement;
+
+        protected AccessorClassElementNode(ClassElementKeyNode key, JavaScriptNode getterNode, JavaScriptNode setterNode, boolean isStatic, boolean isPrivate) {
+            super(key, isStatic, isPrivate, false);
             this.getterNode = getterNode;
             this.setterNode = setterNode;
+            if(isPrivate) {
+                attributes = JSAttributes.fromConfigurableEnumerable(false, false);
+            } else {
+                attributes = JSAttributes.fromConfigurableEnumerable(true, true);
+            }
+            if(isStatic) {
+                placement = JSPlacement.getStatic();
+            } else {
+                if (isPrivate) {
+                    placement = JSPlacement.getOwn();
+                } else {
+                    placement = JSPlacement.getPrototype();
+                }
+            }
         }
 
         @Override
-        public void executeVoid(VirtualFrame frame, DynamicObject homeObject, JSContext context) {
+        public ElementDescriptor executeElementDescriptor(VirtualFrame frame, DynamicObject homeObject) {
             Object key = executeKey(frame);
-            Accessor value = (Accessor) executeValue(frame, homeObject);
-            JSObjectUtil.putAccessorProperty(context, homeObject, key, value, attributes);
-            //PropertyDescriptor propDesc = PropertyDescriptor.createAccessor((DynamicObject) getter,(DynamicObject) setter, attributes);
-            //JSRuntime.definePropertyOrThrow(homeObject, key, propDesc);
-        }
-
-        @Override
-        public Object executeValue(VirtualFrame frame, DynamicObject homeObject) {
             Object getter = null;
             Object setter = null;
             if(getterNode != null) {
@@ -126,7 +178,8 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
             if(setterNode != null) {
                 setter = setterNode.execute(frame);
             }
-            return new Accessor((DynamicObject) getter, (DynamicObject) setter);
+            PropertyDescriptor propDesc = PropertyDescriptor.createAccessor((DynamicObject) getter, (DynamicObject) setter, attributes);
+            return ElementDescriptor.createAccessor(key, propDesc, placement, isPrivate());
         }
     }
 }
