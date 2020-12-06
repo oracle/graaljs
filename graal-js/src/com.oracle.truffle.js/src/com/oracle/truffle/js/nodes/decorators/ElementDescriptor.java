@@ -15,19 +15,10 @@ public class ElementDescriptor {
     private Object finish;
     private Object[] decorators;
 
-    private static final int KIND_METHOD = 1 << 0;
-    private static final int KIND_ACCESSOR = 1 << 1;
-    private static final int KIND_FIELD = 1 << 2;
-    private static final int KIND_HOOK = 1 << 3;
-
-    private static final int PLACEMENT_STATIC = 1 << 0;
-    private static final int PLACEMENT_PROTOTYPE = 1 << 1;
-    private static final int PLACEMENT_OWN = 1 << 2;
-
     private ElementDescriptor(){}
 
     private static void checkPrivateKey(int placement, PropertyDescriptor descriptor) {
-        if(placement != PLACEMENT_OWN && placement != PLACEMENT_PROTOTYPE) {
+        if(!JSPlacement.isOwn(placement) && !JSPlacement.isPrototype(placement)) {
             //TODO: throw placement error
         }
         if(descriptor.getEnumerable()){
@@ -48,7 +39,7 @@ public class ElementDescriptor {
             //TODO: throw error
         }
         ElementDescriptor elem = new ElementDescriptor();
-        elem.setKind(KIND_METHOD);
+        elem.setKind(JSKind.getMethod());
         elem.setKey(key);
         elem.setDescriptor(descriptor);
         elem.setPlacement(placement);
@@ -63,7 +54,7 @@ public class ElementDescriptor {
             //TODO: throw error
         }
         ElementDescriptor elem = new ElementDescriptor();
-        elem.setKind(KIND_ACCESSOR);
+        elem.setKind(JSKind.getAccessor());
         elem.setKey(key);
         elem.setDescriptor(descriptor);
         elem.setPlacement(placement);
@@ -84,7 +75,7 @@ public class ElementDescriptor {
             //TODO: throw set error
         }
         ElementDescriptor elem = new ElementDescriptor();
-        elem.setKind(KIND_FIELD);
+        elem.setKind(JSKind.getField());
         elem.setKey(key);
         elem.setDescriptor(descriptor);
         elem.setPlacement(placement);
@@ -100,7 +91,7 @@ public class ElementDescriptor {
             //TODO: throw replace and finish error
         }
         ElementDescriptor elem = new ElementDescriptor();
-        elem.setKind(KIND_HOOK);
+        elem.setKind(JSKind.getHook());
         elem.setPlacement(placement);
         elem.setStart(start);
         elem.setReplace(replace);
@@ -110,6 +101,10 @@ public class ElementDescriptor {
 
     public int getKind() {
         return kind;
+    }
+
+    public String getKindString() {
+        return JSKind.toString(kind);
     }
 
     public void setKind(int kind) {
@@ -134,6 +129,10 @@ public class ElementDescriptor {
 
     public int getPlacement() {
         return placement;
+    }
+
+    public String getPlacementString() {
+        return JSPlacement.toString(placement);
     }
 
     public void setPlacement(int placement) {
@@ -180,12 +179,12 @@ public class ElementDescriptor {
         this.decorators = decorators;
     }
 
-    public boolean isMethod() { return (this.kind & KIND_METHOD) != 0; }
-    public boolean isAccessor() { return (this.kind & KIND_ACCESSOR) != 0; }
-    public boolean isField() { return (this.kind & KIND_FIELD) != 0; }
-    public boolean isHook() { return (this.kind & KIND_HOOK) !=0; }
+    public boolean isMethod() { return JSKind.isMethod(kind); }
+    public boolean isAccessor() { return JSKind.isAccessor(kind); }
+    public boolean isField() { return JSKind.isField(kind); }
+    public boolean isHook() { return JSKind.isHook(kind); }
 
-    public boolean isStatic() { return (this.placement & PLACEMENT_STATIC) != 0; }
-    public boolean isPrototype() { return (this.placement & PLACEMENT_PROTOTYPE) != 0; }
-    public boolean isOwn() { return (this.placement & PLACEMENT_OWN) != 0; }
+    public boolean isStatic() { return JSPlacement.isStatic(placement); }
+    public boolean isPrototype() { return JSPlacement.isPrototype(placement); }
+    public boolean isOwn() { return JSPlacement.isOwn(placement); }
 }

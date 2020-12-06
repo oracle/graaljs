@@ -209,7 +209,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         int descriptorIndex = 0;
         for(ClassElementNode elementNode : memberNodes) {
             DynamicObject homeObject = elementNode.isStatic() ? constructor : proto;
-            descriptors[descriptorIndex++] = elementNode.executeElementDescriptor(frame, homeObject);
+            descriptors[descriptorIndex++] = elementNode.executeElementDescriptor(frame, homeObject, context);
         }
         return descriptors;
     }

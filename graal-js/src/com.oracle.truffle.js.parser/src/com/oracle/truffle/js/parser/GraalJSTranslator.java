@@ -146,6 +146,9 @@ import com.oracle.truffle.js.nodes.control.StatementNode;
 import com.oracle.truffle.js.nodes.control.SuspendNode;
 import com.oracle.truffle.js.nodes.decorators.ClassElementKeyNode;
 import com.oracle.truffle.js.nodes.decorators.ClassElementNode;
+import com.oracle.truffle.js.nodes.decorators.ClassElementValueNode;
+import com.oracle.truffle.js.nodes.decorators.DecoratedClassElementNode;
+import com.oracle.truffle.js.nodes.decorators.ElementDecoratorNode;
 import com.oracle.truffle.js.nodes.function.AbstractFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.EvalNode;
@@ -3292,35 +3295,39 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         List<ClassElementNode> elements = new ArrayList<>(elementDefinitions.size());
         for(int i = 0; i < elementDefinitions.size(); i++){
             ClassElement e = elementDefinitions.get(i);
-            final ClassElementNode member;
-            if(e.getDecorators() == null){
-                final ClassElementKeyNode key;
-                if(e.hasComputedKey()) {
-                    key = ClassElementKeyNode.createComputedKeyNode(transform(e.getKey()));
-                } else if(e.isPrivate()){
-                    VarRef privateVar = environment.findLocalVar(e.getPrivateName());
-                    JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(factory.createNewPrivateName(e.getPrivateName()));
-                    key = ClassElementKeyNode.createPrivateKeyNode(privateVar.createReadNode(),writePrivateNode);
+            ClassElementNode member;
+            final ClassElementKeyNode key;
+            if(e.hasComputedKey()) {
+                key = ClassElementKeyNode.createComputedKeyNode(transform(e.getKey()));
+            } else if(e.isPrivate()){
+                VarRef privateVar = environment.findLocalVar(e.getPrivateName());
+                JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(factory.createNewPrivateName(e.getPrivateName()));
+                key = ClassElementKeyNode.createPrivateKeyNode(privateVar.createReadNode(),writePrivateNode);
+            } else {
+                key = ClassElementKeyNode.createObjectKeyNode(e.getKeyName());
+            }
+            if(e.isField() || e.isMethod()){
+                JavaScriptNode value = transformPropertyValue(e.getValue(), classNameSymbol);
+                if(e.isField()) {
+                    member = ClassElementValueNode.createFieldClassElement(key, value, e.isStatic(), e.isPrivate(), e.isAnonymousFunctionDefinition());
                 } else {
-                    key = ClassElementKeyNode.createObjectKeyNode(e.getKeyName());
-                }
-                if(e.isField() || e.isMethod()){
-                    JavaScriptNode value = transformPropertyValue(e.getValue(), classNameSymbol);
-                    if(e.isField()) {
-                        member = ClassElementNode.createFieldClassElement(key, value, e.isStatic(), e.isPrivate(), e.isAnonymousFunctionDefinition());
-                    } else {
-                        member = ClassElementNode.createMethodClassElement(key, value, e.isStatic(), e.isPrivate());
-                    }
-                } else {
-                    assert e.isAccessor();
-                    assert e.getGetter() != null || e.getSetter() != null;
-                    JavaScriptNode getter = getAccessor(e.getGetter());
-                    JavaScriptNode setter = getAccessor(e.getSetter());
-                    member = ClassElementNode.createAccessorClassElement(key, getter, setter,e.isStatic(), e.isPrivate());
+                    member = ClassElementValueNode.createMethodClassElement(key, value, e.isStatic(), e.isPrivate());
                 }
             } else {
-                member = null;
-                //TODO: create decorated node.
+                assert e.isAccessor();
+                assert e.getGetter() != null || e.getSetter() != null;
+                JavaScriptNode getter = getAccessor(e.getGetter());
+                JavaScriptNode setter = getAccessor(e.getSetter());
+                member = ClassElementValueNode.createAccessorClassElement(key, getter, setter,e.isStatic(), e.isPrivate());
+            }
+            if(e.getDecorators() != null) {
+                List<Expression> d = e.getDecorators();
+                ElementDecoratorNode[] decorators = new ElementDecoratorNode[d.size()];
+                for(int j = 0; j < d.size(); j++) {
+                    JavaScriptNode exp = transform(d.get(j));
+                    decorators[d.size() - j - 1] = new ElementDecoratorNode(exp);
+                }
+                member = DecoratedClassElementNode.create(member, decorators);
             }
             elements.add(member);
         }
