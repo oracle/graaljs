@@ -188,7 +188,7 @@ public class TestNashornTypeConversion {
         result = engine.eval("user.test('msg', throwable);");
         assertTrue(String.valueOf(result), "(String,Throwable)".equals(result));
         result = engine.eval("user.test('msg', {});");
-        assertTrue(String.valueOf(result), "(String,Object)".equals(result));
+        assertTrue(String.valueOf(result), "(String,Map)".equals(result));
         result = engine.eval("user.test('msg', 'str');");
         assertTrue(String.valueOf(result), "(String,String)".equals(result));
         result = engine.eval("user.test('msg', {}, {});");
