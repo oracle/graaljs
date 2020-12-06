@@ -220,8 +220,8 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
             if (obj instanceof InteropFunction) {
                 obj = ((InteropFunction) obj).getFunction();
             }
-            if (JSGuards.isJSObject(instance) && !JSProxy.isJSProxy(instance)) {
-                DynamicObject proto = JSObject.getPrototype((DynamicObject) instance);
+            if (JSGuards.isJSObject(obj) && !JSProxy.isJSProxy(obj)) {
+                DynamicObject proto = JSObject.getPrototype((DynamicObject) obj);
                 while (proto != Null.instance) {
                     if (proto == constructorPrototype) {
                         return true;
