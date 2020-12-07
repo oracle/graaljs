@@ -3,6 +3,7 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationAbsNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationNegatedNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -21,7 +22,8 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
     public enum TemporalDurationPrototype implements BuiltinEnum<TemporalDurationPrototype> {
-        negated(0);
+        negated(0),
+        abs(0);
 
         private final int length;
 
@@ -40,11 +42,13 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         switch (builtinEnum) {
             case negated:
                 return JSTemporalDurationNegatedNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case abs:
+                return JSTemporalDurationAbsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
 
-    // 4.3.16
+    // 7.3.16
     public abstract static class JSTemporalDurationNegated extends JSBuiltinNode {
 
         protected JSTemporalDurationNegated(JSContext context, JSBuiltin builtin) {
@@ -59,6 +63,26 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                     -duration.getYears(), -duration.getMonths(), -duration.getWeeks(), -duration.getDays(),
                     -duration.getHours(), -duration.getMinutes(), -duration.getSeconds(), -duration.getMilliseconds(),
                     -duration.getMicroseconds(), -duration.getNanoseconds(), getContext().getRealm(), callNode);
+        }
+    }
+
+    // 7.3.17
+    public abstract static class JSTemporalDurationAbs extends JSBuiltinNode {
+
+        protected JSTemporalDurationAbs(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected DynamicObject abs(DynamicObject thisObj,
+                                    @Cached("createNew()") JSFunctionCallNode callNode) {
+            JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
+            return JSTemporalDuration.createTemporalDurationFromInstance(duration,
+                    Math.abs(duration.getYears()), Math.abs(duration.getMonths()), Math.abs(duration.getWeeks()),
+                    Math.abs(duration.getDays()), Math.abs(duration.getHours()), Math.abs(duration.getMinutes()),
+                    Math.abs(duration.getSeconds()), Math.abs(duration.getMilliseconds()),
+                    Math.abs(duration.getMicroseconds()), Math.abs(duration.getNanoseconds()),
+                    getContext().getRealm(), callNode);
         }
     }
 }
