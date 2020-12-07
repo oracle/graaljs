@@ -11,6 +11,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -32,6 +33,8 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
     public static final String MILLISECONDS = "milliseconds";
     public static final String MICROSECONDS = "microseconds";
     public static final String NANOSECONDS = "nanoseconds";
+    public static final String SIGN = "sign";
+    public static final String BLANK = "blank";
 
     private JSTemporalDuration() {
     }
@@ -106,6 +109,63 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         return getter;
     }
 
+    private static DynamicObject createGetSignFunction(JSRealm realm) {
+        JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(
+                BuiltinFunctionKey.TemporalDurationSign, (c) -> {
+                    CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+                        private final BranchProfile errorBranch = BranchProfile.create();
+
+                        @Override
+                        public Object execute(VirtualFrame frame) {
+                            Object obj = frame.getArguments()[0];
+                            if (JSTemporalDuration.isJSTemporalDuration(obj)) {
+                                JSTemporalDurationObject temporalDuration = (JSTemporalDurationObject) obj;
+                                return durationSign(temporalDuration.getYears(), temporalDuration.getMonths(),
+                                        temporalDuration.getWeeks(), temporalDuration.getDays(),
+                                        temporalDuration.getHours(), temporalDuration.getMinutes(),
+                                        temporalDuration.getSeconds(), temporalDuration.getMilliseconds(),
+                                        temporalDuration.getMicroseconds(), temporalDuration.getNanoseconds());
+                            } else {
+                                errorBranch.enter();
+                                throw Errors.createTypeErrorTemporalDurationExpected();
+                            }
+                        }
+                    });
+                    return JSFunctionData.createCallOnly(c, callTarget, 0, "get sign");
+                });
+        DynamicObject getter = JSFunction.create(realm, getterData);
+        return getter;
+    }
+
+    private static DynamicObject createGetBlankFunction(JSRealm realm) {
+        JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(
+                BuiltinFunctionKey.TemporalDurationBlank, (c) -> {
+                    CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+                        private final BranchProfile errorBranch = BranchProfile.create();
+
+                        @Override
+                        public Object execute(VirtualFrame frame) {
+                            Object obj = frame.getArguments()[0];
+                            if (JSTemporalDuration.isJSTemporalDuration(obj)) {
+                                JSTemporalDurationObject temporalDuration = (JSTemporalDurationObject) obj;
+                                int sign = durationSign(temporalDuration.getYears(), temporalDuration.getMonths(),
+                                        temporalDuration.getWeeks(), temporalDuration.getDays(),
+                                        temporalDuration.getHours(), temporalDuration.getMinutes(),
+                                        temporalDuration.getSeconds(), temporalDuration.getMilliseconds(),
+                                        temporalDuration.getMicroseconds(), temporalDuration.getNanoseconds());
+                                return sign == 0;
+                            } else {
+                                errorBranch.enter();
+                                throw Errors.createTypeErrorTemporalDurationExpected();
+                            }
+                        }
+                    });
+                    return JSFunctionData.createCallOnly(c, callTarget, 0, "get blank");
+                });
+        DynamicObject getter = JSFunction.create(realm, getterData);
+        return getter;
+    }
+
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject constructor) {
         JSContext ctx = realm.getContext();
@@ -132,6 +192,10 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
                 createGetterFunction(realm, BuiltinFunctionKey.TemporalDurationMicroseconds, MICROSECONDS), Undefined.instance);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, NANOSECONDS,
                 createGetterFunction(realm, BuiltinFunctionKey.TemporalDurationNanoseconds, NANOSECONDS), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, SIGN,
+                createGetSignFunction(realm), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, BLANK,
+                createGetBlankFunction(realm), Undefined.instance);
         JSObjectUtil.putToStringTag(prototype, "Temporal.Duration");
 
         return prototype;
