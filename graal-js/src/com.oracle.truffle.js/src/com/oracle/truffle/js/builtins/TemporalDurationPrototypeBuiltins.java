@@ -6,9 +6,11 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationAbsNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationNegatedNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationToStringNodeGen;
+import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationValueOfNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
@@ -26,7 +28,8 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         negated(0),
         abs(0),
         toString(0),
-        toJSON(0);
+        toJSON(0),
+        valueOf(0);
 
         private final int length;
 
@@ -50,6 +53,8 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             case toString:
             case toJSON:
                 return JSTemporalDurationToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case valueOf:
+                return JSTemporalDurationValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -103,6 +108,18 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected String toString(DynamicObject thisObj) {
             JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
             return JSTemporalDuration.temporalDurationToString(duration);
+        }
+    }
+
+    public abstract static class JSTemporalDurationValueOf extends JSBuiltinNode {
+
+        protected JSTemporalDurationValueOf(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object valueOf(DynamicObject thisObj) {
+            throw Errors.createTypeError("Not supported.");
         }
     }
 }
