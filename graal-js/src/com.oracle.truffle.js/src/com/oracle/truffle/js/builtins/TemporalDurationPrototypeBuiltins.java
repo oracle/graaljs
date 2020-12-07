@@ -5,6 +5,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationAbsNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationNegatedNodeGen;
+import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationToStringNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -23,7 +24,9 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
     public enum TemporalDurationPrototype implements BuiltinEnum<TemporalDurationPrototype> {
         negated(0),
-        abs(0);
+        abs(0),
+        toString(0),
+        toJSON(0);
 
         private final int length;
 
@@ -44,6 +47,9 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return JSTemporalDurationNegatedNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case abs:
                 return JSTemporalDurationAbsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case toString:
+            case toJSON:
+                return JSTemporalDurationToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -83,6 +89,20 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                     Math.abs(duration.getSeconds()), Math.abs(duration.getMilliseconds()),
                     Math.abs(duration.getMicroseconds()), Math.abs(duration.getNanoseconds()),
                     getContext().getRealm(), callNode);
+        }
+    }
+
+    // 7.3.23
+    public abstract static class JSTemporalDurationToString extends JSBuiltinNode {
+
+        protected JSTemporalDurationToString(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected String toString(DynamicObject thisObj) {
+            JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
+            return JSTemporalDuration.temporalDurationToString(duration);
         }
     }
 }
