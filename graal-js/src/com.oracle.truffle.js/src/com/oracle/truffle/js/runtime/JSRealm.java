@@ -56,6 +56,7 @@ import java.util.SplittableRandom;
 import java.util.WeakHashMap;
 
 import org.graalvm.collections.Pair;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalTime;
 import org.graalvm.home.HomeFinder;
@@ -246,6 +247,8 @@ public class JSRealm {
     private final DynamicObject temporalTimePrototype;
     private final DynamicObject temporalPlainDateConstructor;
     private final DynamicObject temporalPlainDatePrototype;
+    private final DynamicObject temporalDurationConstructor;
+    private final DynamicObject temporalDurationPrototype;
 
     // ES6:
     private final DynamicObject symbolConstructor;
@@ -769,6 +772,10 @@ public class JSRealm {
         ctor = JSTemporalPlainDate.createConstructor(this);
         this.temporalPlainDateConstructor = ctor.getFunctionObject();
         this.temporalPlainDatePrototype = ctor.getPrototype();
+
+        ctor = JSTemporalDuration.createConstructor(this);
+        this.temporalDurationConstructor = ctor.getFunctionObject();
+        this.temporalDurationPrototype = ctor.getPrototype();
     }
 
     private void initializeTypedArrayConstructors() {
@@ -1177,6 +1184,14 @@ public class JSRealm {
         return temporalPlainDatePrototype;
     }
 
+    public final DynamicObject getTemporalDurationConstructor() {
+        return temporalDurationConstructor;
+    }
+
+    public final DynamicObject getTemporalDurationPrototype() {
+        return temporalDurationPrototype;
+    }
+
     public final Map<Object, DynamicObject> getTemplateRegistry() {
         if (templateRegistry == null) {
             createTemplateRegistry();
@@ -1573,6 +1588,7 @@ public class JSRealm {
 
         JSObjectUtil.putDataProperty(context, temporalObject, "Time", getTemporalTimeConstructor());
         JSObjectUtil.putDataProperty(context, temporalObject, "PlainDate", getTemporalPlainDateConstructor());
+        JSObjectUtil.putDataProperty(context, temporalObject, "Duration", getTemporalDurationConstructor());
 
         putGlobalProperty("Temporal", temporalObject);
     }
