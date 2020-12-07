@@ -114,6 +114,11 @@ public abstract class NewTargetRootNode extends JavaScriptRootNode {
         return doCall(frame);
     }
 
+    @Override
+    public String getName() {
+        return ((RootCallTarget) callTarget).getRootNode().getName();
+    }
+
     protected abstract Object doCall(VirtualFrame frame);
 
     public static class InsertNewTargetRootNode extends NewTargetRootNode {
