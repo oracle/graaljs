@@ -7,6 +7,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.builtins.TemporalTimePrototypeBuiltinsFactory.JSTemporalTimeEqualsNodeGen;
+import com.oracle.truffle.js.builtins.TemporalTimePrototypeBuiltinsFactory.JSTemporalTimeGetISOFieldsNodeGen;
 import com.oracle.truffle.js.builtins.TemporalTimePrototypeBuiltinsFactory.JSTemporalTimeRoundNodeGen;
 import com.oracle.truffle.js.builtins.TemporalTimePrototypeBuiltinsFactory.JSTemporalTimeToStringNodeGen;
 import com.oracle.truffle.js.builtins.TemporalTimePrototypeBuiltinsFactory.JSTemporalTimeValueOfNodeGen;
@@ -24,6 +25,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalTime;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalTimeObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 import java.util.Collections;
@@ -40,6 +42,7 @@ public class TemporalTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         with(2),
         round(1),
         equals(1),
+        getISOFields(0),
         toString(0),
         toJSON(0),
         valueOf(0);
@@ -65,6 +68,8 @@ public class TemporalTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSTemporalTimeRoundNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case equals:
                 return JSTemporalTimeEqualsNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case getISOFields:
+                return JSTemporalTimeGetISOFieldsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case toString:
             case toJSON:
                 return JSTemporalTimeToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
@@ -241,6 +246,28 @@ public class TemporalTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = {"!isJSTemporalTime(otherObj) || isJavaPrimitive(otherObj)"})
         protected static boolean otherNotTemporalTime(DynamicObject thisObj, DynamicObject otherObj) {
             return false;
+        }
+    }
+
+    // 4.3.20
+    public abstract static class JSTemporalTimeGetISOFields extends JSBuiltinNode {
+
+        protected JSTemporalTimeGetISOFields(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected DynamicObject getISOFields(DynamicObject thisObj) {
+            JSTemporalTimeObject temporalTime = (JSTemporalTimeObject) thisObj;
+            DynamicObject fields = JSObjectUtil.createOrdinaryPrototypeObject(getContext().getRealm());
+            // TODO: Add calendar
+            JSObjectUtil.putDataProperty(getContext(), fields, "isoHour", temporalTime.getHours());
+            JSObjectUtil.putDataProperty(getContext(), fields, "isoMinute", temporalTime.getMinutes());
+            JSObjectUtil.putDataProperty(getContext(), fields, "isoSecond", temporalTime.getSeconds());
+            JSObjectUtil.putDataProperty(getContext(), fields, "isoMillisecond", temporalTime.getMilliseconds());
+            JSObjectUtil.putDataProperty(getContext(), fields, "isoMicrosecond", temporalTime.getMicroseconds());
+            JSObjectUtil.putDataProperty(getContext(), fields, "isoNanosecond", temporalTime.getNanoseconds());
+            return fields;
         }
     }
 
