@@ -314,7 +314,17 @@ public class JSContext {
         TemporalTimeSecond,
         TemporalTimeMillisecond,
         TemporalTimeMicrosecond,
-        TemporalTimeNanosecond
+        TemporalTimeNanosecond,
+        TemporalDurationYears,
+        TemporalDurationMonths,
+        TemporalDurationWeeks,
+        TemporalDurationDays,
+        TemporalDurationHours,
+        TemporalDurationMinutes,
+        TemporalDurationSeconds,
+        TemporalDurationMilliseconds,
+        TemporalDurationMicroseconds,
+        TemporalDurationNanoseconds
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;

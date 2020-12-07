@@ -575,6 +575,10 @@ public final class Errors {
         return Errors.createTypeError("Temporal.Time expected");
     }
 
+    public static JSException createTypeErrorTemporalDurationExpected() {
+        return Errors.createTypeError("Temporal.Duration expected");
+    }
+
     @TruffleBoundary
     public static JSException createTypeErrorCallableExpected() {
         return Errors.createTypeError("Callable expected");
