@@ -6768,6 +6768,7 @@ public class Parser extends AbstractParser {
     private void markEval() {
         final Iterator<ParserContextFunctionNode> iter = lc.getFunctions();
         boolean flaggedCurrentFn = false;
+        boolean flagArrowParentFn = false;
         while (iter.hasNext()) {
             final ParserContextFunctionNode fn = iter.next();
             if (!flaggedCurrentFn) {
@@ -6778,11 +6779,21 @@ public class Parser extends AbstractParser {
                 // possible use of this/new.target in the eval, e.g.:
                 // function fun(){ return (() => eval("this"))(); };
                 // function fun(){ return eval("() => this")(); };
+                // (() => (() => eval("this"))())();
                 if (fn.isArrow()) {
-                    lc.getCurrentNonArrowFunction().setFlag(FunctionNode.HAS_ARROW_EVAL);
+                    flagArrowParentFn = true;
                 }
             } else {
                 fn.setFlag(FunctionNode.HAS_NESTED_EVAL);
+
+                // flag the first non-arrow and all arrow parents in between as HAS_ARROW_EVAL;
+                // this ensures that the `this` value is propagated to the eval.
+                if (flagArrowParentFn) {
+                    fn.setFlag(FunctionNode.HAS_ARROW_EVAL);
+                    if (!fn.isArrow()) {
+                        flagArrowParentFn = false;
+                    }
+                }
             }
             fn.setFlag(FunctionNode.HAS_SCOPE_BLOCK);
         }
