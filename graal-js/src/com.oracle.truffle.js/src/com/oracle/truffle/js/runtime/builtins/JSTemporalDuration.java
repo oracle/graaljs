@@ -6,7 +6,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltins;
+import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -196,6 +199,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
                 createGetSignFunction(realm), Undefined.instance);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, BLANK,
                 createGetBlankFunction(realm), Undefined.instance);
+        JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalDurationPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, "Temporal.Duration");
 
         return prototype;
@@ -354,6 +358,22 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
             return false;
         }
         return true;
+    }
+
+    // 7.5.9
+    public static JSTemporalDurationObject createTemporalDurationFromInstance(JSTemporalDurationObject duration,
+                                                                   long years, long months, long weeks, long days,
+                                                                   long hours, long minutes, long seconds,
+                                                                   long milliseconds, long microseconds,
+                                                                   long nanoseconds, JSRealm realm,
+                                                                   JSFunctionCallNode callNode) {
+        assert validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+        DynamicObject constructor = realm.getTemporalDurationConstructor();
+        Object[] ctorArgs = new Object[]{years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds};
+        Object[] args = JSArguments.createInitial(JSFunction.CONSTRUCT, constructor, ctorArgs.length);
+        System.arraycopy(ctorArgs, 0, args, JSArguments.RUNTIME_ARGUMENT_COUNT, ctorArgs.length);
+        Object result = callNode.executeCall(args);
+        return (JSTemporalDurationObject) result;
     }
     //endregion
 }
