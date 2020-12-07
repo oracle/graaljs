@@ -375,5 +375,85 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         Object result = callNode.executeCall(args);
         return (JSTemporalDurationObject) result;
     }
+
+    // 7.5.23
+    public static String temporalDurationToString(JSTemporalDurationObject duration) {
+        long years = duration.getYears();
+        long months = duration.getMonths();
+        long weeks = duration.getWeeks();
+        long days = duration.getDays();
+        long hours = duration.getHours();
+        long minutes = duration.getMinutes();
+        long seconds = duration.getSeconds();
+        long milliseconds = duration.getMilliseconds();
+        long microseconds = duration.getMicroseconds();
+        long nanoseconds = duration.getNanoseconds();
+        int sign = durationSign(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+        microseconds += nanoseconds / 1000;
+        nanoseconds = nanoseconds % 1000;
+        milliseconds += microseconds / 1000;
+        microseconds = microseconds % 1000;
+        seconds += milliseconds / 1000;
+        milliseconds = milliseconds % 1000;
+        if (years == 0 && months == 0 && weeks == 0 && days == 0 && hours == 0 && minutes == 0 && seconds == 0
+                && milliseconds == 0 && microseconds == 0 && nanoseconds == 0) {
+            return "PT0S";
+        }
+        StringBuilder datePart = new StringBuilder();
+        if (years != 0) {
+            datePart.append(Math.abs(years));
+            datePart.append("Y");
+        }
+        if (months != 0) {
+            datePart.append(Math.abs(months));
+            datePart.append("M");
+        }
+        if (weeks != 0) {
+            datePart.append(Math.abs(weeks));
+            datePart.append("W");
+        }
+        if (days != 0) {
+            datePart.append(Math.abs(days));
+            datePart.append("D");
+        }
+        StringBuilder timePart = new StringBuilder();
+        if (hours != 0) {
+            timePart.append(Math.abs(hours));
+            timePart.append("H");
+        }
+        if (minutes != 0) {
+            timePart.append(Math.abs(minutes));
+            timePart.append("M");
+        }
+        if (seconds != 0 || milliseconds != 0 || microseconds != 0 || nanoseconds != 0) {
+            String nanosecondPart = "", microsecondPart = "", millisecondPart = "";
+            if (nanoseconds != 0) {
+                nanosecondPart = String.format("%1$3d", Math.abs(nanoseconds)).replace(" ", "0");
+                microsecondPart = "000";
+                millisecondPart = "000";
+            }
+            if (microseconds != 0) {
+                microsecondPart = String.format("%1$3d", Math.abs(microseconds)).replace(" ", "0");
+                millisecondPart = "000";
+            }
+            if (milliseconds != 0) {
+                millisecondPart = String.format("%1$3d", Math.abs(milliseconds)).replace(" ", "0");
+            }
+            String decimalPart = millisecondPart + microsecondPart + nanosecondPart;
+            String secondsPart = String.format("%d", Math.abs(seconds));
+            if(!decimalPart.equals("")) {
+                secondsPart += "." + decimalPart;
+            }
+            timePart.append(secondsPart);
+            timePart.append("S");
+        }
+        String signPart = sign < 0 ? "-" : "";
+        StringBuilder result = new StringBuilder();
+        result.append(signPart).append("P").append(datePart);
+        if(!timePart.toString().equals("")) {
+            result.append("T").append(timePart);
+        }
+        return result.toString();
+    }
     //endregion
 }
