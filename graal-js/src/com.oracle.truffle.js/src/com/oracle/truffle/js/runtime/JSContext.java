@@ -324,7 +324,9 @@ public class JSContext {
         TemporalDurationSeconds,
         TemporalDurationMilliseconds,
         TemporalDurationMicroseconds,
-        TemporalDurationNanoseconds
+        TemporalDurationNanoseconds,
+        TemporalDurationSign,
+        TemporalDurationBlank
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;
