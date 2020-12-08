@@ -132,7 +132,7 @@ public class TestNashornTypeConversion {
         ScriptEngine engine = getEngineNashornCompat();
         Object result;
         result = engine.eval("var list = new java.util.ArrayList(); list.add('x'); list.add(''); list.stream().filter(function(e) { return e; }).count();");
-        assertEquals(String.valueOf(result), 1, result);
+        assertEquals(String.valueOf(result), 1, ((Number) result).doubleValue(), 0);
         result = engine.eval("java.lang.Boolean.hashCode('x');");
         assertEquals(String.valueOf(result), Boolean.hashCode(true), result);
         result = engine.eval("java.lang.Boolean.hashCode('');");
@@ -159,9 +159,9 @@ public class TestNashornTypeConversion {
         engine.eval("var Long = Java.type('java.lang.Long');");
         Object result;
         result = engine.eval("new Long(33);");
-        assertEquals(String.valueOf(result), 33, result);
+        assertEquals(String.valueOf(result), 33, ((Number) result).doubleValue(), 0);
         result = engine.eval("Long.valueOf(33);");
-        assertEquals(String.valueOf(result), 33, result);
+        assertEquals(String.valueOf(result), 33, ((Number) result).doubleValue(), 0);
     }
 
     @Test
@@ -219,7 +219,7 @@ public class TestNashornTypeConversion {
         Object result;
         result = engine.eval("user.test(33);");
         assertTrue(String.valueOf(result), "(String)".equals(result));
-        result = engine.eval("user.test({get: () => 42});");
+        result = engine.eval("user.test(function() { return 42; });");
         assertTrue(String.valueOf(result), "(Supplier)".equals(result));
     }
 
