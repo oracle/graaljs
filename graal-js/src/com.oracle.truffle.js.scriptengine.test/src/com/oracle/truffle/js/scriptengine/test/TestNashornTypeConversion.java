@@ -219,7 +219,7 @@ public class TestNashornTypeConversion {
         Object result;
         result = engine.eval("user.test(33);");
         assertTrue(String.valueOf(result), "(String)".equals(result));
-        result = engine.eval("user.test({get: () => 42});");
+        result = engine.eval("user.test(function() { return 42; });");
         assertTrue(String.valueOf(result), "(Supplier)".equals(result));
     }
 
