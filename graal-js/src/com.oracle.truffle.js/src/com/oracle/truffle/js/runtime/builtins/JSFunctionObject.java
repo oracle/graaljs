@@ -60,6 +60,7 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropInstantiateNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -220,8 +221,11 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
             if (obj instanceof InteropFunction) {
                 obj = ((InteropFunction) obj).getFunction();
             }
-            if (JSGuards.isJSObject(instance) && !JSProxy.isJSProxy(instance)) {
-                DynamicObject proto = JSObject.getPrototype((DynamicObject) instance);
+            if (obj instanceof JSException) {
+                obj = ((JSException) obj).getErrorObjectEager(JavaScriptLanguage.getCurrentLanguage().getJSContext());
+            }
+            if (JSGuards.isJSObject(obj) && !JSProxy.isJSProxy(obj)) {
+                DynamicObject proto = JSObject.getPrototype((DynamicObject) obj);
                 while (proto != Null.instance) {
                     if (proto == constructorPrototype) {
                         return true;

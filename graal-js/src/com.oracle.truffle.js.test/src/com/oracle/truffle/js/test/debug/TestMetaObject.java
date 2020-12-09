@@ -43,8 +43,11 @@ package com.oracle.truffle.js.test.debug;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
@@ -201,4 +204,43 @@ public class TestMetaObject {
         }
 
     }
+
+    @Test
+    public void memberFunctionTest() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Value math = context.eval("js", "Math");
+            Value abs = math.getMember("abs");
+            Value metaObject = abs.getMetaObject();
+            assertEquals("Function", metaObject.getMetaSimpleName());
+            assertEquals("Function", metaObject.getMetaQualifiedName());
+            assertTrue(metaObject.isMetaInstance(abs));
+        }
+    }
+
+    @Test
+    public void errorTest() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            try {
+                context.eval("js", "foo");
+                fail("ReferenceError expected");
+            } catch (PolyglotException ex) {
+                assertTrue(ex.isGuestException());
+                Value error = ex.getGuestObject();
+                Value metaObject = error.getMetaObject();
+                assertEquals("ReferenceError", metaObject.getMetaSimpleName());
+                assertEquals("ReferenceError", metaObject.getMetaQualifiedName());
+                assertTrue(metaObject.isMetaInstance(error));
+            }
+        }
+    }
+
+    @Test
+    public void customConstructorTest() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Value object = context.eval("js", "Object.create(null, { constructor: { value: Function }})");
+            Value metaObject = object.getMetaObject();
+            assertNull(metaObject);
+        }
+    }
+
 }
