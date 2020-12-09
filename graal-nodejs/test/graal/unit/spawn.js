@@ -95,7 +95,7 @@ describe('Spawn', function () {
         it('should print help when ' + option + ' option is used', function () {
             var result = spawnSync(process.execPath, [option]);
             assert.strictEqual(result.status, 0);
-            assert.match(result.stdout.toString(), /^\n?Usage:/);
+            assert.match(result.stdout.toString(), /Options:/);
         });
     });
     if (typeof java === 'object') {

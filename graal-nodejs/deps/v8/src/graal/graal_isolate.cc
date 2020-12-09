@@ -1243,8 +1243,9 @@ void GraalIsolate::CancelTerminateExecution() {
         jvm_->AttachCurrentThread((void**) &env, nullptr);
     } else {
         env = current_isolate->GetJNIEnv();
-        // The following line breaks test-vm-timeout-rethrow
-        // env->ExceptionClear(); // Clear potential KillException
+        if (current_isolate == this) {
+            env->ExceptionClear(); // Clear potential termination exception in this thread
+        }
     }
     jmethodID method_id = GetJNIMethod(GraalAccessMethod::isolate_cancel_terminate_execution);
     env->functions->CallVoidMethod(env, access_, method_id);
