@@ -66,6 +66,7 @@ import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.JSRegExpExecES5Nod
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpExecES5NodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.CreateHTMLNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.CreateStringIteratorNodeGen;
+import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringAtNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringCharAtNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringCharCodeAtNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringCodePointAtNodeGen;
@@ -193,7 +194,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         sub(0),
         sup(0),
 
-        // ES6
+        // ES6/ES2015
         startsWith(1),
         endsWith(1),
         includes(1),
@@ -202,13 +203,18 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         _iterator(0),
         normalize(0),
 
-        // ES8
+        // ES2017
         padStart(1),
         padEnd(1),
 
         // ES2020
         matchAll(1),
-        replaceAll(2);
+
+        // ES2021
+        replaceAll(2),
+
+        // ES2022
+        at(1);
 
         private final int length;
 
@@ -236,6 +242,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSConfig.ECMAScript2020;
             } else if (replaceAll == this) {
                 return JSConfig.ECMAScript2021;
+            } else if (at == this) {
+                return JSConfig.ECMAScript2022;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
@@ -364,6 +372,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return createHTMLNode(context, builtin, "sub", "");
             case sup:
                 return createHTMLNode(context, builtin, "sup", "");
+
+            case at:
+                return JSStringAtNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -2860,6 +2871,24 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private String wrapInTagWithAttribute(String string, String attrVal) {
             String escapedVal = attrVal.replace("\"", "&quot;");
             return "<" + tag + " " + attribute + "=\"" + escapedVal + "\"" + ">" + string + "</" + tag + ">";
+        }
+    }
+
+    public abstract static class JSStringAtNode extends JSStringOperation {
+        public JSStringAtNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object at(Object thisObj, Object index) {
+            requireObjectCoercible(thisObj);
+            String thisStr = toString(thisObj);
+            int relativeIndex = toIntegerAsInt(index);
+            int k = (relativeIndex >= 0) ? relativeIndex : thisStr.length() + relativeIndex;
+            if (k < 0 || k >= thisStr.length()) {
+                return Undefined.instance;
+            }
+            return String.valueOf(thisStr.charAt(k));
         }
     }
 }
