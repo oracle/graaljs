@@ -226,7 +226,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     /** Flag indicating that this function has a non-simple parameter list. */
     public static final int HAS_NON_SIMPLE_PARAMETER_LIST = 1 << 26;
 
-    /** Flag indicating that this non-arrow function has an eval nested in an arrow function. */
+    /** Flag indicating that this function has an eval nested in an arrow function. */
     public static final int HAS_ARROW_EVAL = 1 << 27;
 
     /** Does this function have nested declarations? */
