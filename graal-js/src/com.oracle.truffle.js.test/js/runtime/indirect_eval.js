@@ -22,5 +22,3 @@ assertSame(symbol, indirecteval(symbol));
 
 var obj = {foo:'bar'};
 assertSame(obj, indirecteval(obj));
-
-true;

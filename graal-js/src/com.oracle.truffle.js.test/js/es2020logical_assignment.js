@@ -24,5 +24,3 @@ assertThrows(function() {
 assertThrows(function() {
     eval("var a; a ??= 42;");
 }, SyntaxError);
-
-true;

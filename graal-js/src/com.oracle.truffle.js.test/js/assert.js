@@ -19,7 +19,7 @@ function assertThrows(fn, errorType, msg) {
                 throw new Error('Expected error message "' + ex.message + '" to contain "' + msg + '"');
             }
         }
-        return true;
+        return;
     }
     throw Error('error expected for method: ' + fn);
 }
@@ -44,5 +44,3 @@ function assertFalse(condition) {
 function fail(msg) {
     throw Error('FAILED: ' + msg);
 }
-
-true;

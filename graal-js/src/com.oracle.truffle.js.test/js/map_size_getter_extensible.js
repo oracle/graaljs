@@ -14,5 +14,3 @@ load('assert.js');
 var descriptor = Object.getOwnPropertyDescriptor(Map.prototype, 'size');
 
 assertTrue(Object.isExtensible(descriptor.get));
-
-true;

@@ -31,5 +31,3 @@ assertSame(42, fa1({x: 42}));
 assertSame(42, fa2(41, {x: 42}));
 assertSame(42, fa3(42));
 assertSame(42, fa4(41, 42, 43));
-
-true;

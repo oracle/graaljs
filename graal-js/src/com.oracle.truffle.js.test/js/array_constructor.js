@@ -86,5 +86,3 @@ class MyTypedArray extends Int8Array {
         assertEquals(4, get_prototype_count);
     }
 })();
-
-true;
