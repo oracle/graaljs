@@ -337,7 +337,8 @@ public final class ScopeVariables implements TruffleObject {
     @TruffleBoundary
     Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         if (blockOrRoot instanceof RootNode) {
-            return ((RootNode) blockOrRoot).getName();
+            String name = ((RootNode) blockOrRoot).getName();
+            return (name == null) ? "" : name;
         }
         return "block";
     }
