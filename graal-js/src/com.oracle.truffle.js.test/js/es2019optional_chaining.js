@@ -16,5 +16,3 @@ load('assert.js');
 assertThrows(function() {
     eval("Math?.PI");
 }, SyntaxError);
-
-true;

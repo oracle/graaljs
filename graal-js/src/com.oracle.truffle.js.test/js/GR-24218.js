@@ -37,5 +37,3 @@ for (let i=0; i<array.length; i++) {
     let expected = (i < 4) ? (20-5*i) : 0;
     assertSame(expected, array[i]);
 }
-
-true;

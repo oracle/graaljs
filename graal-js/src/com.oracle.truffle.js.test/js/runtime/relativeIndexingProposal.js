@@ -75,5 +75,3 @@ function typedArrayPrototypeTest() {
 arrayPrototypeTest();
 stringPrototypeTest();
 typedArrayPrototypeTest();
-
-true;

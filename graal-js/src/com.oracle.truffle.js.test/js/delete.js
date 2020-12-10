@@ -54,5 +54,3 @@ assertThrows(function() {
     "use strict";
     delete point.x;
 }, TypeError);
-
-true;

@@ -19,5 +19,3 @@ assertSame('test', array[0]);
 const object = new java.lang.Object();
 array = Array.from(object);
 assertSame(0, array.length);
-
-true;

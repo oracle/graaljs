@@ -22,4 +22,3 @@ assertThrows(()=>{Object.defineProperty(a, 'length', { value: BigInt('42') })}, 
 assertThrows(()=>{Debug.createLazyString(Symbol('42'), 'test')}, TypeError, "Cannot convert a Symbol");
 assertSame('12345678901234567890test', Debug.createLazyString(BigInt('12345678901234567890'), 'test'));
 assertTrue(Debug.createLazyString('ABC', new (Java.type('java.lang.Object'))()).indexOf('ABCjava.lang.Object@') == 0);
-true;

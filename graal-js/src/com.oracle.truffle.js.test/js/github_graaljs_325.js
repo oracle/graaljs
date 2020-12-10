@@ -13,5 +13,3 @@ load('assert.js');
 
 assertSame("42", "42".padStart(Infinity, ""));
 assertSame("211", "211".padEnd(Infinity, ""));
-
-true;

@@ -20,5 +20,3 @@ assertThrows(function () {
 }, TypeError);
 // Array should remain sealed
 assertSame(true, Object.isSealed(array));
-
-true;

@@ -62,5 +62,3 @@ load('assert.js');
     assertSame("2 or 4", output);
     assertSame(1, called);
 })();
-
-true;

@@ -13,5 +13,3 @@ assertTrue(isNaN(++undefined));
 assertTrue(isNaN(--undefined));
 assertTrue(isNaN(undefined++));
 assertTrue(isNaN(undefined--));
-
-true;
