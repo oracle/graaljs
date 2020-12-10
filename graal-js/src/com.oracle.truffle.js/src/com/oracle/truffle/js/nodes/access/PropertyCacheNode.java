@@ -1197,11 +1197,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
             if (JSConfig.MergeShapes && cachedCount > 0) {
                 // check if we're creating unnecessary polymorphism due to compatible types
-                synchronized (store.getShape().getMutex()) {
-                    if (tryMergeShapes(cacheShape, currentHead)) {
-                        DynamicObjectLibrary.getUncached().updateShape(store);
-                        return retryCache();
-                    }
+                if (tryMergeShapes(cacheShape, currentHead)) {
+                    DynamicObjectLibrary.getUncached().updateShape(store);
+                    return retryCache();
                 }
             }
 
