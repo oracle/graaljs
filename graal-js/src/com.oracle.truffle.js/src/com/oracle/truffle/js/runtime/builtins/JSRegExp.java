@@ -54,6 +54,7 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -290,7 +291,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         DynamicObject prototype;
         if (ctx.getEcmaScriptVersion() < 6) {
             Shape shape = JSShape.createPrototypeShape(realm.getContext(), INSTANCE, realm.getObjectPrototype());
-            prototype = JSRegExpObject.create(shape, compileEarly(realm, "", ""), realm);
+            prototype = JSRegExpObject.create(shape, es5GetEmptyRegexEarly(realm), realm);
             JSObjectUtil.setOrVerifyPrototype(ctx, prototype, realm.getObjectPrototype());
             JSObjectUtil.putDataProperty(ctx, prototype, LAST_INDEX, 0, JSAttributes.notConfigurableNotEnumerableWritable());
         } else {
@@ -320,8 +321,8 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         JSObjectUtil.putBuiltinAccessorProperty(prototype, name, getter, Undefined.instance);
     }
 
-    private static Object compileEarly(JSRealm realm, String pattern, String flags) {
-        return TRegexUtil.CompileRegexNode.getUncached().execute(JSContext.createTRegexEngine(realm.getEnv(), realm.getContext().getContextOptions()), pattern, flags);
+    private static Object es5GetEmptyRegexEarly(JSRealm realm) {
+        return realm.getEnv().parseInternal(Source.newBuilder("regex", "//", "//").mimeType("application/tregex").internal(true).build()).call();
     }
 
     @Override

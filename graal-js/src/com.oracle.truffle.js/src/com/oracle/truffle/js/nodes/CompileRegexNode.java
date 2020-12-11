@@ -47,12 +47,10 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.RegexCompilerInterface;
-import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
 @ImportStatic(JSConfig.class)
 public abstract class CompileRegexNode extends JavaScriptBaseNode {
 
-    @Child private TRegexUtil.CompileRegexNode executeCompilerNode = TRegexUtil.CompileRegexNode.create();
     private final JSContext context;
 
     protected CompileRegexNode(JSContext context) {
@@ -95,6 +93,6 @@ public abstract class CompileRegexNode extends JavaScriptBaseNode {
     @ReportPolymorphism.Megamorphic
     @Specialization(replaces = {"getCached"})
     protected Object doCompile(String pattern, String flags) {
-        return RegexCompilerInterface.compile(pattern, flags, context, executeCompilerNode);
+        return RegexCompilerInterface.compile(pattern, flags, context);
     }
 }

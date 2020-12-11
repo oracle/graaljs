@@ -58,18 +58,12 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
@@ -186,9 +180,10 @@ public class JSContext {
 
     private final JSObjectFactory.BoundProto moduleNamespaceFactory;
 
-    /** The TRegex engine, as obtained from RegexLanguage. */
-    @CompilationFinal private Object regexEngine;
     @CompilationFinal private Object tRegexEmptyResult;
+
+    private final String regexOptions;
+    private final String regexValidateOptions;
 
     private final Shape regExpGroupsEmptyShape;
 
@@ -550,6 +545,9 @@ public class JSContext {
         this.callerPropertyProxy = new JSFunction.CallerProxyProperty(this);
 
         this.regExpGroupsEmptyShape = JSRegExp.makeInitialGroupsObjectShape(this);
+
+        this.regexOptions = createRegexOptions(contextOptions);
+        this.regexValidateOptions = regexOptions.isEmpty() ? REGEX_OPTION_VALIDATE : REGEX_OPTION_VALIDATE + ',' + regexOptions;
     }
 
     @SuppressWarnings("deprecation")
@@ -949,10 +947,10 @@ public class JSContext {
     private static final String REGEX_OPTION_DUMP_AUTOMATA = "DumpAutomata";
     private static final String REGEX_OPTION_STEP_EXECUTION = "StepExecution";
     private static final String REGEX_OPTION_ALWAYS_EAGER = "AlwaysEager";
-    private static final String REGEX_OPTION_FEATURE_SET_TREGEX_JONI = "FeatureSet=TRegexJoni";
+    private static final String REGEX_OPTION_VALIDATE = "Validate=true";
 
-    private static String createRegexEngineOptions(JSContextOptions contextOptions) {
-        StringBuilder options = new StringBuilder(30);
+    private static String createRegexOptions(JSContextOptions contextOptions) {
+        StringBuilder options = new StringBuilder();
         if (JSConfig.U180EWhitespace) {
             options.append(REGEX_OPTION_U180E_WHITESPACE + "=true,");
         }
@@ -968,37 +966,24 @@ public class JSContext {
         if (contextOptions.isRegexAlwaysEager()) {
             options.append(REGEX_OPTION_ALWAYS_EAGER + "=true,");
         }
-        options.append(REGEX_OPTION_FEATURE_SET_TREGEX_JONI + ",");
         return options.toString();
     }
 
-    public Object getRegexEngine() {
-        if (regexEngine == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            regexEngine = createTRegexEngine(getRealm().getEnv(), getContextOptions());
-        }
-        return regexEngine;
+    public String getRegexOptions() {
+        return regexOptions;
+    }
+
+    public String getRegexValidateOptions() {
+        return regexValidateOptions;
     }
 
     public Object getTRegexEmptyResult() {
         if (tRegexEmptyResult == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            tRegexEmptyResult = TRegexUtil.InvokeExecMethodNode.getUncached().execute(TRegexUtil.CompileRegexNode.getUncached().execute(getRegexEngine(), "[]", ""), "", 0);
+            tRegexEmptyResult = TRegexUtil.InvokeExecMethodNode.getUncached().execute(RegexCompilerInterface.compile("[]", "", this), "", 0);
             assert !TRegexUtil.TRegexResultAccessor.getUncached().isMatch(tRegexEmptyResult);
         }
         return tRegexEmptyResult;
-    }
-
-    @TruffleBoundary
-    public static Object createTRegexEngine(Env env, JSContextOptions options) {
-        Source engineBuilderRequest = Source.newBuilder(REGEX_LANGUAGE_ID, "", "TRegex Engine Builder Request").internal(true).build();
-        Object regexEngineBuilder = env.parseInternal(engineBuilderRequest).call();
-        String regexOptions = createRegexEngineOptions(options);
-        try {
-            return InteropLibrary.getFactory().getUncached().execute(regexEngineBuilder, regexOptions);
-        } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
-            throw Errors.shouldNotReachHere(e);
-        }
     }
 
     public Shape getRegExpGroupsEmptyShape() {
