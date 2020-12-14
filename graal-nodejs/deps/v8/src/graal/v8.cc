@@ -3194,11 +3194,7 @@ namespace v8 {
     }
 
     Local<Array> Array::New(Isolate* isolate, Local<Value>* elements, size_t length) {
-        Local<Array> array = New(isolate, length);
-        for (int i=0; i<length; i++) {
-            array->Set(i, elements[i]);
-        }
-        return array;
+        return GraalArray::New(isolate, elements, length);
     }
 
     Local<Set> Set::New(Isolate* isolate) {

@@ -1172,6 +1172,10 @@ public final class GraalJSAccess {
         return JSArray.createConstantEmptyArray(((JSRealm) context).getContext(), length);
     }
 
+    public Object arrayNewFromElements(Object context, Object[] elements) {
+        return JSArray.createConstantObjectArray(((JSRealm) context).getContext(), elements);
+    }
+
     public long arrayLength(Object object) {
         return JSArray.arrayGetLength((DynamicObject) object);
     }

@@ -15,6 +15,7 @@
       { "name": "arrayBufferViewByteOffset" },
       { "name": "arrayLength" },
       { "name": "arrayNew" },
+      { "name": "arrayNewFromElements" },
       { "name": "bigInt64ArrayNew" },
       { "name": "bigIntInt64Value" },
       { "name": "bigIntNew" },
