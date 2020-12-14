@@ -3074,6 +3074,8 @@ namespace v8 {
         jobject java_options = host_options.IsEmpty() ? NULL : reinterpret_cast<GraalPrimitiveArray*> (*host_options)->GetJavaObject();
 
         JNI_CALL(jobject, java_array, graal_isolate, GraalAccessMethod::script_compiler_compile_function_in_context, Object, java_context, java_source_name, java_body, java_arguments, java_context_extensions, java_options);
+        env->DeleteLocalRef(java_arguments);
+        env->DeleteLocalRef(java_context_extensions);
 
         if (java_array == nullptr) {
             return MaybeLocal<Function>();
