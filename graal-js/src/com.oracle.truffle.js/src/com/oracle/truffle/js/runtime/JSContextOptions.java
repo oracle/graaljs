@@ -487,6 +487,11 @@ public final class JSContextOptions {
     protected static final OptionKey<Boolean> TOP_LEVEL_AWAIT = new OptionKey<>(false);
     @CompilationFinal private boolean topLevelAwait;
 
+    public static final String USE_UTC_FOR_LEGACY_DATES_NAME = JS_OPTION_PREFIX + "use-utc-for-legacy-dates";
+    @Option(name = USE_UTC_FOR_LEGACY_DATES_NAME, category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Determines what time zone (UTC or local time zone) should be used when UTC offset is absent in a parsed date.") //
+    public static final OptionKey<Boolean> USE_UTC_FOR_LEGACY_DATES = new OptionKey<>(true);
+    @CompilationFinal private boolean useUTCForLegacyDates;
+
     JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
         this.optionValues = optionValues;
@@ -571,6 +576,7 @@ public final class JSContextOptions {
         this.maxPrototypeChainLength = readIntegerOption(MAX_PROTOTYPE_CHAIN_LENGTH);
         this.asyncStackTraces = readBooleanOption(ASYNC_STACK_TRACES);
         this.topLevelAwait = TOP_LEVEL_AWAIT.hasBeenSet(optionValues) ? readBooleanOption(TOP_LEVEL_AWAIT) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
+        this.useUTCForLegacyDates = USE_UTC_FOR_LEGACY_DATES.hasBeenSet(optionValues) ? readBooleanOption(USE_UTC_FOR_LEGACY_DATES) : !v8CompatibilityMode;
 
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
@@ -925,6 +931,10 @@ public final class JSContextOptions {
         return asyncStackTraces;
     }
 
+    public boolean shouldUseUTCForLegacyDates() {
+        return useUTCForLegacyDates;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -973,6 +983,7 @@ public final class JSContextOptions {
         hash = 53 * hash + this.propertyCacheLimit;
         hash = 53 * hash + this.functionCacheLimit;
         hash = 53 * hash + (this.topLevelAwait ? 1 : 0);
+        hash = 53 * hash + (this.useUTCForLegacyDates ? 1 : 0);
         return hash;
     }
 
@@ -1118,6 +1129,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.topLevelAwait != other.topLevelAwait) {
+            return false;
+        }
+        if (this.useUTCForLegacyDates != other.useUTCForLegacyDates) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

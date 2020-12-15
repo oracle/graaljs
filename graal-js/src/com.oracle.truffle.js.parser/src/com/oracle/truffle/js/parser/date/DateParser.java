@@ -50,6 +50,7 @@ import static java.lang.Character.UPPERCASE_LETTER;
 import java.util.HashMap;
 import java.util.Locale;
 
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 
 // @formatter:off
@@ -679,7 +680,8 @@ public class DateParser {
         if (isSet(HOUR) && !isSet(MINUTE)) {
             return false;
         }
-        if (realm.getContext().isOptionV8CompatibilityMode()) {
+        JSContext context = realm.getContext();
+        if (context.isOptionV8CompatibilityMode()) {
             if (!isSet(YEAR) && !isSet(DAY) && !isSet(MONTH)) {
                 return false;
             }
@@ -688,7 +690,7 @@ public class DateParser {
         // fill in default values for unset fields except timezone
         for (int field = YEAR; field <= TIMEZONE; field++) {
             if (get(field) == null) {
-                if (field == TIMEZONE && !dateOnly) {
+                if (field == TIMEZONE && !isUTCDefaultTimezone(context, dateOnly, strict)) {
                     // When the UTC offset representation is absent,
                     // date-only forms are interpreted as a UTC time and
                     // date-time forms are interpreted as a local time (= empty TIMEZONE).
@@ -735,6 +737,10 @@ public class DateParser {
         // set month to 0-based
         set(MONTH, get(MONTH) - 1);
         return true;
+    }
+
+    private static boolean isUTCDefaultTimezone(JSContext context, boolean dateOnly, boolean strict) {
+        return (strict || context.getContextOptions().shouldUseUTCForLegacyDates()) && dateOnly;
     }
 
     private static void addName(final String str, final int type, final int value) {
