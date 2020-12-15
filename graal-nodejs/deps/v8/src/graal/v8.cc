@@ -3074,6 +3074,8 @@ namespace v8 {
         jobject java_options = host_options.IsEmpty() ? NULL : reinterpret_cast<GraalPrimitiveArray*> (*host_options)->GetJavaObject();
 
         JNI_CALL(jobject, java_array, graal_isolate, GraalAccessMethod::script_compiler_compile_function_in_context, Object, java_context, java_source_name, java_body, java_arguments, java_context_extensions, java_options);
+        env->DeleteLocalRef(java_arguments);
+        env->DeleteLocalRef(java_context_extensions);
 
         if (java_array == nullptr) {
             return MaybeLocal<Function>();
@@ -3194,11 +3196,7 @@ namespace v8 {
     }
 
     Local<Array> Array::New(Isolate* isolate, Local<Value>* elements, size_t length) {
-        Local<Array> array = New(isolate, length);
-        for (int i=0; i<length; i++) {
-            array->Set(i, elements[i]);
-        }
-        return array;
+        return GraalArray::New(isolate, elements, length);
     }
 
     Local<Set> Set::New(Isolate* isolate) {

@@ -51,6 +51,7 @@ public:
     inline GraalArray(GraalIsolate* isolate, jobject java_array);
     bool IsArray() const;
     static v8::Local<v8::Array> New(v8::Isolate* isolate, int length);
+    static v8::Local<v8::Array> New(v8::Isolate* isolate, v8::Local<v8::Value>* elements, size_t length);
     uint32_t Length() const;
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;

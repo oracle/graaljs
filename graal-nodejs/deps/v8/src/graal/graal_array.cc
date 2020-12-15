@@ -60,6 +60,22 @@ v8::Local<v8::Array> GraalArray::New(v8::Isolate* isolate, int length) {
     return reinterpret_cast<v8::Array*> (graal_array);
 }
 
+v8::Local<v8::Array> GraalArray::New(v8::Isolate* isolate, v8::Local<v8::Value>* elements, size_t length) {
+    GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+    JNIEnv* env = graal_isolate->GetJNIEnv();
+    jobjectArray java_elements = env->NewObjectArray(length, graal_isolate->GetObjectClass(), NULL);
+    for (int i = 0; i < length; i++) {
+        GraalValue* graal_element = reinterpret_cast<GraalValue*> (*elements[i]);
+        jobject java_element = graal_element->GetJavaObject();
+        env->SetObjectArrayElement(java_elements, i, java_element);
+    }
+    jobject java_context = graal_isolate->CurrentJavaContext();
+    JNI_CALL(jobject, java_array, isolate, GraalAccessMethod::array_new_from_elements, Object, java_context, java_elements);
+    env->DeleteLocalRef(java_elements);
+    GraalArray* graal_array = new GraalArray(graal_isolate, java_array);
+    return reinterpret_cast<v8::Array*> (graal_array);
+}
+
 uint32_t GraalArray::Length() const {
     JNI_CALL(jlong, java_length, Isolate(), GraalAccessMethod::array_length, Long, GetJavaObject());
     return java_length;
