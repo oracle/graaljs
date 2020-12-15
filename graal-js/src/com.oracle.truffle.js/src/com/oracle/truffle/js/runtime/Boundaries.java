@@ -402,4 +402,9 @@ public final class Boundaries {
         BufferUtil.asBaseBuffer(dup).position(pos).limit(limit);
         return dup.slice();
     }
+
+    @TruffleBoundary(allowInlining = true)
+    public static ByteBuffer byteBufferDuplicate(ByteBuffer buffer) {
+        return buffer.duplicate();
+    }
 }
