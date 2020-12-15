@@ -43,6 +43,8 @@ package com.oracle.truffle.js.runtime.array;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+import com.oracle.truffle.js.runtime.Boundaries;
+
 abstract class ByteBufferAccess {
 
     @SuppressWarnings("static-method")
@@ -166,7 +168,7 @@ final class NativeByteBufferAccess extends AbstractByteBufferAccess {
 
     @Override
     protected ByteBuffer wrap(ByteBuffer buffer) {
-        return buffer.duplicate().order(ByteOrder.nativeOrder());
+        return Boundaries.byteBufferDuplicate(buffer).order(ByteOrder.nativeOrder());
     }
 }
 
@@ -175,7 +177,7 @@ final class LittleEndianByteBufferAccess extends AbstractByteBufferAccess {
 
     @Override
     protected ByteBuffer wrap(ByteBuffer buffer) {
-        return buffer.duplicate().order(ByteOrder.LITTLE_ENDIAN);
+        return Boundaries.byteBufferDuplicate(buffer).order(ByteOrder.LITTLE_ENDIAN);
     }
 }
 
@@ -184,6 +186,6 @@ final class BigEndianByteBufferAccess extends AbstractByteBufferAccess {
 
     @Override
     protected ByteBuffer wrap(ByteBuffer buffer) {
-        return buffer.duplicate().order(ByteOrder.BIG_ENDIAN);
+        return Boundaries.byteBufferDuplicate(buffer).order(ByteOrder.BIG_ENDIAN);
     }
 }
