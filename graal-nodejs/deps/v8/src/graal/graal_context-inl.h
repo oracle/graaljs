@@ -48,7 +48,6 @@
 
 inline GraalContext::GraalContext(GraalIsolate* isolate, jobject java_context, void* cached_context_embedder_data) :
 GraalHandleContent(isolate, java_context), cached_context_embedder_data_(cached_context_embedder_data) {
-    UseDefaultSecurityToken();
 }
 
 #endif /* GRAAL_CONTEXT_INL_H_ */
