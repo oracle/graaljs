@@ -57,7 +57,9 @@ public class ForeignBoxedObjectTest {
     public void testForeignNull() {
         try (Context context = JSTest.newContextBuilder().build()) {
             context.getBindings("js").putMember("obj", new ForeignNull());
-            assertTrue(context.eval(ID, "try { Object(obj); false; } catch (e) { e instanceof TypeError }").asBoolean());
+            assertTrue(context.eval(ID, "Object.getPrototypeOf(Object(obj)) === Object.prototype").asBoolean());
+            assertTrue(context.eval(ID, "Object.getPrototypeOf(new Object(obj)) === Object.prototype").asBoolean());
+            assertTrue(context.eval(ID, "Object.getPrototypeOf(Object.create(obj)) === null").asBoolean());
             assertTrue(context.eval(ID, "try { obj.foo; false; } catch (e) { e instanceof TypeError }").asBoolean());
             assertTrue(context.eval(ID, "try { obj.foo(); false; } catch (e) { e instanceof TypeError }").asBoolean());
         }

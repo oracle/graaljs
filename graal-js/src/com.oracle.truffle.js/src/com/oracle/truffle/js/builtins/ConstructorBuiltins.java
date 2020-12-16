@@ -1393,6 +1393,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class ConstructObjectNode extends ConstructWithNewTargetNode {
         public ConstructObjectNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
             super(context, builtin, isNewTargetCase);
@@ -1401,6 +1402,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected static boolean arg0NullOrUndefined(Object[] args) {
             Object arg0 = args[0];
             return (arg0 == Undefined.instance) || (arg0 == Null.instance);
+        }
+
+        protected static Object firstArgument(Object[] arguments) {
+            return (arguments.length == 0) ? Undefined.instance : arguments[0];
         }
 
         @Specialization(guards = {"isNewTargetCase"})
@@ -1413,10 +1418,17 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return newObject(newTarget);
         }
 
-        @Specialization(guards = {"!isNewTargetCase", "arguments.length > 0", "!arg0NullOrUndefined(arguments)"})
+        @Specialization(guards = {"!isNewTargetCase", "arguments.length > 0", "!arg0NullOrUndefined(arguments)"}, limit = "InteropLibraryLimit")
         protected Object constructObjectJSObject(@SuppressWarnings("unused") DynamicObject newTarget, Object[] arguments,
-                        @Cached("createToObject(getContext())") JSToObjectNode toObjectNode) {
-            return toObjectNode.execute(arguments[0]);
+                        @Cached("createToObject(getContext())") JSToObjectNode toObjectNode,
+                        @CachedLibrary("firstArgument(arguments)") InteropLibrary interop,
+                        @Cached("createBinaryProfile()") ConditionProfile isNull) {
+            Object arg0 = arguments[0];
+            if (isNull.profile(interop.isNull(arg0))) {
+                return newObject(Null.instance);
+            } else {
+                return toObjectNode.execute(arg0);
+            }
         }
 
         @Specialization(guards = {"arguments.length > 0", "arg0NullOrUndefined(arguments)"})
