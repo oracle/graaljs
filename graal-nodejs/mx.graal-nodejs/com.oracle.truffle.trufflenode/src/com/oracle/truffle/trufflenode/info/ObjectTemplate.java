@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,6 +57,7 @@ public final class ObjectTemplate {
     private boolean stringKeysOnly;
     private FunctionTemplate functionHandler;
     private FunctionTemplate parentFunctionTemplate;
+    private int internalFieldCount;
 
     public List<Accessor> getAccessors() {
         return (accessors == null) ? Collections.emptyList() : accessors;
@@ -119,6 +120,14 @@ public final class ObjectTemplate {
 
     public FunctionTemplate getParentFunctionTemplate() {
         return parentFunctionTemplate;
+    }
+
+    public void setInternalFieldCount(int internalFieldCount) {
+        this.internalFieldCount = internalFieldCount;
+    }
+
+    public int getInternalFieldCount() {
+        return internalFieldCount;
     }
 
 }

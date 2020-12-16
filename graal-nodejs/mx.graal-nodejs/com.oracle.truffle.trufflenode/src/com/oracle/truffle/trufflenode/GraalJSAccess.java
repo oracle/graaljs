@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1845,6 +1845,12 @@ public final class GraalJSAccess {
         template.setFunctionHandler(functionHandler);
     }
 
+    public void objectTemplateSetInternalFieldCount(Object templateObj, int count) {
+        ObjectTemplate template = (ObjectTemplate) templateObj;
+        template.setInternalFieldCount(count);
+        template.addValue(new Value(INTERNAL_FIELD_COUNT_KEY, count, JSAttributes.NOT_ENUMERABLE));
+    }
+
     public Object scriptCompilerCompileFunctionInContext(Object context, String sourceName, String body, Object[] arguments, Object[] exts, Object hostDefinedOptions) {
         if (VERBOSE) {
             System.err.println("FUNCTION IN CONTEXT: " + sourceName);
@@ -2665,10 +2671,6 @@ public final class GraalJSAccess {
             ex.printStackTrace();
             System.exit(1);
         }
-    }
-
-    public Object isolateCreateInternalFieldCountKey() {
-        return INTERNAL_FIELD_COUNT_KEY;
     }
 
     public Object isolateCreateInternalFieldKey(int index) {

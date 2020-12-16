@@ -75,9 +75,7 @@ v8::Local<v8::Object> GraalObjectTemplate::NewInstance(v8::Local<v8::Context> co
 
 void GraalObjectTemplate::SetInternalFieldCount(int count) {
     internal_field_count_ = count;
-    v8::Isolate* isolate = reinterpret_cast<v8::Isolate*> (Isolate());
-    v8::Local<v8::Integer> value = v8::Integer::New(isolate, count);
-    Set(Isolate()->InternalFieldCountKey(), value, v8::PropertyAttribute::DontEnum);
+    JNI_CALL_VOID(Isolate(), GraalAccessMethod::object_template_set_internal_field_count, GetJavaObject(), (jint) count);
 }
 
 void GraalObjectTemplate::SetAccessor(

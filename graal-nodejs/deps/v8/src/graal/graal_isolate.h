@@ -194,7 +194,6 @@ enum GraalAccessMethod {
     exception_create_message,
     isolate_throw_exception,
     isolate_run_microtasks,
-    isolate_create_internal_field_count_key,
     isolate_create_internal_field_key,
     isolate_internal_error_check,
     isolate_throw_stack_overflow_error,
@@ -223,6 +222,7 @@ enum GraalAccessMethod {
     object_template_set_accessor,
     object_template_set_handler,
     object_template_set_call_as_function_handler,
+    object_template_set_internal_field_count,
     function_new_instance,
     function_set_name,
     function_get_name,
@@ -583,10 +583,6 @@ public:
         return (try_catch_count_ != 0);
     }
 
-    inline v8::Local<v8::Value> InternalFieldCountKey() {
-        return internal_field_count_key_;
-    }
-
     inline void ResetSharedBuffer() {
         shared_buffer_pos_ = 0;
     }
@@ -711,7 +707,6 @@ private:
     jobject int32_placeholder_;
     jobject uint32_placeholder_;
     jobject double_placeholder_;
-    v8::Value* internal_field_count_key_;
     jmethodID jni_methods_[GraalAccessMethod::count];
     jfieldID jni_fields_[static_cast<int>(GraalAccessField::count)];
     jfieldID cleanerField_;
