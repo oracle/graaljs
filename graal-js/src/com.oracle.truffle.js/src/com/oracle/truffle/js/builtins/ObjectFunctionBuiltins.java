@@ -577,6 +577,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class ObjectCreateNode extends ObjectDefineOperation {
         public ObjectCreateNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -592,12 +593,16 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return objectDefineProperties(ret, properties);
         }
 
-        @TruffleBoundary
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"!isJSNull(prototype)", "!isJSObject(prototype)"})
-        protected DynamicObject createInvalidPrototype(Object prototype, Object properties) {
+        @Specialization(guards = {"!isJSNull(prototype)", "!isJSObject(prototype)"}, limit = "InteropLibraryLimit")
+        protected DynamicObject createForeignNullOrInvalidPrototype(Object prototype, Object properties,
+                        @CachedLibrary("prototype") InteropLibrary interop,
+                        @Cached("createBinaryProfile()") ConditionProfile isNull) {
             assert prototype != null;
-            throw Errors.createTypeErrorInvalidPrototype(prototype);
+            if (isNull.profile(prototype != Undefined.instance && interop.isNull(prototype))) {
+                return createPrototypeNull(Null.instance, properties);
+            } else {
+                throw Errors.createTypeErrorInvalidPrototype(prototype);
+            }
         }
 
         @Specialization(guards = {"isJSObject(prototype)", "isJSObject(properties)"})
