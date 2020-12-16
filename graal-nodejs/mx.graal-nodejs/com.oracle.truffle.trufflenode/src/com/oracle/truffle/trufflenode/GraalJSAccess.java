@@ -2533,7 +2533,8 @@ public final class GraalJSAccess {
             context.setEmbedderData(new ContextData(context));
             createChildContext = true;
         }
-        realm.setEmbedderData(new RealmData());
+        RealmData realmData = new RealmData();
+        realm.setEmbedderData(realmData);
         DynamicObject global = realm.getGlobalObject();
         // Node.js does not have global arguments property
         JSObject.delete(global, JSRealm.ARGUMENTS_NAME);
@@ -2551,6 +2552,7 @@ public final class GraalJSAccess {
                 JSObject.setPrototype(global, prototype);
             }
         }
+        realmData.setSecurityToken(global);
         return realm;
     }
 
