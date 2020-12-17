@@ -3030,7 +3030,7 @@ public final class GraalJSAccess {
     }
 
     public static Object regexpCreate(JSContext context, String pattern, int v8Flags) {
-        Object compiledRegexp = RegexCompilerInterface.compile(pattern, regexpFlagsToString(v8Flags), context, TRegexUtil.CompileRegexNode.getUncached());
+        Object compiledRegexp = RegexCompilerInterface.compile(pattern, regexpFlagsToString(v8Flags), context);
         return JSRegExp.create(context, compiledRegexp);
     }
 

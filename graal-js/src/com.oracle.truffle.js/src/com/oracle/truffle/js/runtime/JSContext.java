@@ -941,7 +941,6 @@ public class JSContext {
         return globalObjectFactory;
     }
 
-    private static final String REGEX_LANGUAGE_ID = "regex";
     private static final String REGEX_OPTION_U180E_WHITESPACE = "U180EWhitespace";
     private static final String REGEX_OPTION_REGRESSION_TEST_MODE = "RegressionTestMode";
     private static final String REGEX_OPTION_DUMP_AUTOMATA = "DumpAutomata";
