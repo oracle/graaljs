@@ -213,9 +213,11 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -997,7 +999,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             String patternStr = getPatternToStringNode().executeString(p);
             String flagsStr = flagsToString(f);
             Object compiledRegex = getCompileRegexNode().compile(patternStr, flagsStr);
-            return getCreateRegExpNode().createRegExp(compiledRegex, legacyFeaturesEnabled);
+            DynamicObject regExp = getCreateRegExpNode().createRegExp(compiledRegex, legacyFeaturesEnabled);
+            if (getContext().getContextOptions().isTestV8Mode()) {
+                // workaround for the reference equality check at the end of mjsunit/regexp.js
+                // TODO: remove this as soon as option maps are available for TRegex Sources
+                JSObjectUtil.putDataProperty(getContext(), regExp, "source", JSRegExp.escapeRegExpPattern(patternStr), JSAttributes.configurableNotEnumerableNotWritable());
+            }
+            return regExp;
         }
 
         private JSToStringNode getPatternToStringNode() {

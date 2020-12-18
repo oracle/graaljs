@@ -45,7 +45,7 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.js.runtime.util.TRegexUtil;
+import com.oracle.truffle.api.source.Source;
 
 public final class RegexCompilerInterface {
     private static final String REPEATED_REG_EXP_FLAG_MSG = "Repeated RegExp flag: %c";
@@ -55,15 +55,21 @@ public final class RegexCompilerInterface {
     private RegexCompilerInterface() {
     }
 
-    public static Object compile(String pattern, String flags, JSContext context, TRegexUtil.CompileRegexNode compileRegexNode) {
+    public static Object compile(String pattern, String flags, JSContext context) {
         // RegexLanguage does its own validation of the flags. This call to validateFlags only
         // serves the purpose of mimicking the error messages of Nashorn and V8.
         validateFlags(flags, context.getEcmaScriptVersion(), context.isOptionNashornCompatibilityMode());
         try {
-            return compileRegexNode.execute(context.getRegexEngine(), pattern, flags);
+            return context.getRealm().getEnv().parseInternal(createRegexSource(pattern, flags, context.getRegexOptions())).call();
         } catch (AbstractTruffleException e) {
             throw rethrowAsSyntaxError(e);
         }
+    }
+
+    @TruffleBoundary
+    private static Source createRegexSource(String pattern, String flags, String options) {
+        String regexStr = options + '/' + pattern + '/' + flags;
+        return Source.newBuilder("regex", regexStr, regexStr).mimeType("application/tregex").internal(true).build();
     }
 
     @TruffleBoundary
@@ -72,7 +78,7 @@ public final class RegexCompilerInterface {
             validateFlags(flags, ecmaScriptVersion, true);
         }
         try {
-            TRegexUtil.ValidateRegexNode.getUncached().execute(context.getRegexEngine(), pattern, flags);
+            context.getRealm().getEnv().parseInternal(createRegexSource(pattern, flags, context.getRegexValidateOptions())).call();
         } catch (AbstractTruffleException e) {
             throw rethrowAsSyntaxError(e);
         }
