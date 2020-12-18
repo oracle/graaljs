@@ -6,11 +6,13 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 
-public class DescriptorTest extends JSTest {
+public class DecoratorTest extends JSTest {
     protected static final String METHOD = "'method'";
     protected static final String HOOK = "'hook'";
     protected static final String FIELD = "'field'";
     protected static final String ACCESSOR = "'accessor'";
+    protected static final String CLASS = "'class'";
+
     protected static final String OWN = "'own'";
     protected static final String PROTOTYPE = "'prototype'";
     protected static final String STATIC = "'static'";
@@ -34,8 +36,7 @@ public class DescriptorTest extends JSTest {
         }
     }
 
-    protected static String createDecoratorWithPropertyDescriptor(String kind, String key, String placement, String value, String writable, String get, String set, String body) {
-        StringBuilder builder = new StringBuilder();
+    protected static String createDecorator(StringBuilder builder,String kind, String key, String placement, String value, String writable, String get, String set, String body) {
         builder.append("decorator(d) {");
         if (kind != null) {
             builder.append("d.kind = ").append(kind).append(";");
@@ -63,19 +64,32 @@ public class DescriptorTest extends JSTest {
             builder.append(body);
         }
         builder.append("return d;}");
+        return builder.toString();
+    }
+
+    protected static String createElementDecoratorWithPropertyDescriptor(String kind, String key, String placement, String value, String writable, String get, String set, String body) {
+        StringBuilder builder = new StringBuilder();
+        createDecorator(builder, kind, key, placement, value, writable, get,set,body);
         builder.append("class C { @decorated method() {} }");
         return builder.toString();
     }
 
-    protected static String createDecorator(String kind, String key, String placement, String body) {
-        return createDecoratorWithPropertyDescriptor(kind, key, placement, null, null, null, null, body);
+    protected static String createElementDecorator(String kind, String key, String placement, String body) {
+        return createElementDecoratorWithPropertyDescriptor(kind, key, placement, null, null, null, null, body);
     }
 
-    protected static String createDecoratorWithDataDescriptor(String kind, String key, String placement, String value, String writable, String body) {
-        return createDecoratorWithPropertyDescriptor(kind, key, placement, value, writable, null,null,body);
+    protected static String createElementDecoratorWithDataDescriptor(String kind, String key, String placement, String value, String writable, String body) {
+        return createElementDecoratorWithPropertyDescriptor(kind, key, placement, value, writable, null,null,body);
     }
 
-    protected static String createDecoratorWithAccessorDescriptor(String kind, String key, String placement, String get, String set, String body) {
-        return createDecoratorWithPropertyDescriptor(kind, key, placement, null, null, get, set, body);
+    protected static String createElementDecoratorWithAccessorDescriptor(String kind, String key, String placement, String get, String set, String body) {
+        return createElementDecoratorWithPropertyDescriptor(kind, key, placement, null, null, get, set, body);
+    }
+
+    protected static String createClassDecorator(String kind, String key, String placement, String body) {
+        StringBuilder builder = new StringBuilder();
+        createDecorator(builder, kind, key, placement, null,null,null,null, body);
+        builder.append("@decorator C {}");
+        return builder.toString();
     }
 }

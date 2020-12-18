@@ -2,11 +2,11 @@ package com.oracle.truffle.js.test.decorators;
 
 import org.junit.Test;
 
-public class ToElementDescriptorsTest extends DescriptorTest{
+public class ToElementDescriptorsTest extends DecoratorTest {
 
     @Test
     public void testExtraWithExtras() {
-        String source = createDecorator(METHOD,KEY, STATIC,"d.extras = {" +
+        String source = createElementDecorator(METHOD,KEY, STATIC,"d.extras = {" +
                 "extras: {}" +
                 "}");
         testError(source, "Extra elements must not have extras themselves.");
