@@ -3325,7 +3325,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 ElementDecoratorNode[] decorators = new ElementDecoratorNode[d.size()];
                 for(int j = 0; j < d.size(); j++) {
                     JavaScriptNode exp = transform(d.get(j));
-                    decorators[d.size() - j - 1] = new ElementDecoratorNode(exp);
+                    decorators[d.size() - j - 1] = new ElementDecoratorNode(exp, context);
                 }
                 member = DecoratedClassElementNode.create(member, decorators);
             }

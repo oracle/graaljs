@@ -6,10 +6,8 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
-import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.sun.org.apache.bcel.internal.generic.JSR;
 
 import java.util.Locale;
 
@@ -29,6 +27,7 @@ public class DescriptorUtil {
     private static final String REPLACE = "replace";
     private static final String FINISH = "finish";
     private static final String ELEMENTS = "elements";
+    private static final String EXTRAS = "extras";
 
     public static Object fromElementDescriptor(ElementDescriptor element, JSContext context) {
         DynamicObject obj = JSOrdinary.create(context);
@@ -210,7 +209,7 @@ public class DescriptorUtil {
         if(desc.isDataDescriptor() && desc.isAccessorDescriptor()) {
             throw Errors.createTypeError("Property descriptor can not be both accessor and data descriptor.");
         }
-        completePropertyDescriptor(desc);
+        //completePropertyDescriptor(desc);
         return desc;
     }
 

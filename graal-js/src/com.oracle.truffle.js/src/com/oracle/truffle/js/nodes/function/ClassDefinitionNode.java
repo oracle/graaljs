@@ -245,22 +245,20 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         //assert instanceFieldIndex == instanceFieldCount && staticFieldIndex == staticFieldCount;
     }
 
-    private void decorateClass(VirtualFrame frame, DynamicObject homeObject) {
+    private List<ElementDescriptor> decorateClass(VirtualFrame frame, DynamicObject homeObject) {
         List<ElementDescriptor> elements = new ArrayList<>();
-        List<Object> staticKeys = new ArrayList<>();
-        List<Object> prototypeKeys = new ArrayList<>();
-        List<Object> ownKeys = new ArrayList<>();
+        //List<Object> staticKeys = new ArrayList<>();
+        //List<Object> prototypeKeys = new ArrayList<>();
+        //List<Object> ownKeys = new ArrayList<>();
         for (ClassElementNode member: memberNodes) {
             ElementDescriptor[] element = member.executeElementDescriptor(frame, homeObject, context);
             for (ElementDescriptor e: element)
             {
+                //addElementPlacement(e, staticKeys, prototypeKeys, ownKeys, false);
                 elements.add(e);
             }
-            //addElementPlacement(element, staticKeys, prototypeKeys, ownKeys, false);
         }
-        for(ElementDescriptor element: elements) {
-
-        }
+        return elements;
     }
 
     private void addElementPlacement(ElementDescriptor element, List<Object> staticKeys, List<Object> prototypeKeys, List<Object> ownKeys) {
