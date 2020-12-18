@@ -4,9 +4,12 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltins;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -38,6 +41,10 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
     public static final String NANOSECONDS = "nanoseconds";
     public static final String SIGN = "sign";
     public static final String BLANK = "blank";
+
+    public static final String[] PROPERTIES = new String[] {
+            DAYS, HOURS, MICROSECONDS, MILLISECONDS, MINUTES, MONTHS, NANOSECONDS, SECONDS, WEEKS, YEARS
+    };
 
     private JSTemporalDuration() {
     }
@@ -358,6 +365,28 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
             return false;
         }
         return true;
+    }
+
+    // 7.5.7
+    public static DynamicObject toPartialDuration(DynamicObject temporalDurationLike, JSRealm realm,
+                                            IsObjectNode isObjectNode, DynamicObjectLibrary dol,
+                                            JSToIntegerAsLongNode toInt) {
+        if(!isObjectNode.executeBoolean(temporalDurationLike)) {
+            throw Errors.createTypeError("Given duration like is not a object.");
+        }
+        DynamicObject result = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        boolean any = false;
+        for(String property : PROPERTIES) {
+            Object value = dol.getOrDefault(temporalDurationLike, property, null);
+            if (value != null) {
+                any = true;
+                JSObjectUtil.putDataProperty(realm.getContext(), result, property, toInt.executeLong(value));
+            }
+        }
+        if(!any) {
+            throw Errors.createTypeError("Given duration like object has no duration properties.");
+        }
+        return result;
     }
 
     // 7.5.9

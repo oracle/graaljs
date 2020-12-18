@@ -2,11 +2,17 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationAbsNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationNegatedNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationToStringNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationValueOfNodeGen;
+import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationWithNodeGen;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -25,6 +31,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
     public enum TemporalDurationPrototype implements BuiltinEnum<TemporalDurationPrototype> {
+        with(1),
         negated(0),
         abs(0),
         toString(0),
@@ -46,6 +53,8 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, TemporalDurationPrototype builtinEnum) {
         switch (builtinEnum) {
+            case with:
+                return JSTemporalDurationWithNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case negated:
                 return JSTemporalDurationNegatedNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case abs:
@@ -57,6 +66,43 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return JSTemporalDurationValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
+    }
+
+    // 7.3.15
+    public abstract static class JSTemporalDurationWith extends JSBuiltinNode {
+
+        protected JSTemporalDurationWith(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(limit = "3")
+        protected DynamicObject with(DynamicObject thisObj, DynamicObject temporalDurationLike,
+                                     @Cached("create()") IsObjectNode isObjectNode,
+                                     @CachedLibrary("temporalDurationLike") DynamicObjectLibrary dol,
+                                     @Cached("create()") JSToIntegerAsLongNode toInt,
+                                     @Cached("createNew()") JSFunctionCallNode functionCallNode) {
+            JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
+            DynamicObject durationLike = JSTemporalDuration.toPartialDuration(temporalDurationLike,
+                    getContext().getRealm(), isObjectNode, dol, toInt);
+
+            try {
+                long years = dol.getLongOrDefault(durationLike, JSTemporalDuration.YEARS, duration.getYears());
+                long months = dol.getLongOrDefault(durationLike, JSTemporalDuration.MONTHS, duration.getMonths());
+                long weeks = dol.getLongOrDefault(durationLike, JSTemporalDuration.WEEKS, duration.getWeeks());
+                long days = dol.getLongOrDefault(durationLike, JSTemporalDuration.DAYS, duration.getDays());
+                long hours = dol.getLongOrDefault(durationLike, JSTemporalDuration.HOURS, duration.getHours());
+                long minutes = dol.getLongOrDefault(durationLike, JSTemporalDuration.MINUTES, duration.getMinutes());
+                long seconds = dol.getLongOrDefault(durationLike, JSTemporalDuration.SECONDS, duration.getSeconds());
+                long milliseconds = dol.getLongOrDefault(durationLike, JSTemporalDuration.MILLISECONDS, duration.getMilliseconds());
+                long microseconds = dol.getLongOrDefault(durationLike, JSTemporalDuration.MICROSECONDS, duration.getMicroseconds());
+                long nanoseconds = dol.getLongOrDefault(durationLike, JSTemporalDuration.NANOSECONDS, duration.getNanoseconds());
+                return JSTemporalDuration.createTemporalDurationFromInstance(duration, years, months, weeks, days,
+                        hours, minutes, seconds, milliseconds, microseconds, nanoseconds, getContext().getRealm(),
+                        functionCallNode);
+            } catch (UnexpectedResultException e) {
+                throw Errors.createTypeError(e.getMessage());
+            }
+        }
     }
 
     // 7.3.16
