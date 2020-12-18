@@ -1,9 +1,6 @@
 package com.oracle.truffle.js.nodes.decorators;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node.Child;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -11,10 +8,6 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
-import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
-import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
 public class ElementDecoratorNode extends JavaScriptBaseNode {
     @Child

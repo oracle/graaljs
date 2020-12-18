@@ -8,6 +8,7 @@ import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.sun.org.apache.bcel.internal.generic.JSR;
 
 import java.util.Locale;
@@ -176,40 +177,65 @@ public class DescriptorUtil {
     public static PropertyDescriptor toDecoratorPropertyDescriptor(Object elementObject){
         PropertyDescriptor desc = PropertyDescriptor.createEmpty();
         DynamicObject obj = (DynamicObject) elementObject;
-        if(JSOrdinaryObject.hasProperty(obj, "enumerable")) {
-            desc.setEnumerable(JSRuntime.toBoolean(JSOrdinaryObject.get(obj, "enumerable")));
+        if(JSOrdinaryObject.hasProperty(obj, ENUMERABLE)) {
+            desc.setEnumerable(JSRuntime.toBoolean(JSOrdinaryObject.get(obj, ENUMERABLE)));
         }
-        if(JSOrdinaryObject.hasProperty(obj, "configurable")) {
-            desc.setConfigurable(JSRuntime.toBoolean(JSOrdinaryObject.get(obj, "configurable")));
+        if(JSOrdinaryObject.hasProperty(obj, CONFIGURABLE)) {
+            desc.setConfigurable(JSRuntime.toBoolean(JSOrdinaryObject.get(obj, CONFIGURABLE)));
         }
-        if(JSOrdinaryObject.hasProperty(obj, "method")) {
-            Object value = JSOrdinaryObject.get(obj, "method");
+        if(JSOrdinaryObject.hasProperty(obj, VALUE)) {
+            Object value = JSOrdinaryObject.get(obj, VALUE);
             if(!JSRuntime.isCallable(value)) {
-                //TODO: throw TypeError
+                throw Errors.createTypeError("Property method of property descriptor must be callable.");
             }
             desc.setValue(value);
         }
-        if(JSOrdinaryObject.hasProperty(obj, "writable")) {
-            desc.setWritable(JSRuntime.toBoolean(JSOrdinaryObject.get(obj, "writable")));
+        if(JSOrdinaryObject.hasProperty(obj, WRITABLE)) {
+            desc.setWritable(JSRuntime.toBoolean(JSOrdinaryObject.get(obj, WRITABLE)));
         }
-        if(JSOrdinaryObject.hasProperty(obj, "get")) {
-            Object getter = JSOrdinaryObject.get(obj, "get");
+        if(JSOrdinaryObject.hasProperty(obj, GET)) {
+            Object getter = JSOrdinaryObject.get(obj, GET);
             if(!JSRuntime.isCallable(getter) && !JSRuntime.isNullOrUndefined(getter)) {
-                //TODO: throw TypeError
+                throw Errors.createTypeError("Property get of property descriptor must be callable.");
             }
             desc.setGet((DynamicObject) getter);
         }
-        if(JSOrdinaryObject.hasProperty(obj, "set")) {
-            Object setter = JSOrdinaryObject.get(obj, "set");
+        if(JSOrdinaryObject.hasProperty(obj, SET)) {
+            Object setter = JSOrdinaryObject.get(obj, SET);
             if(!JSRuntime.isCallable(setter) && !JSRuntime.isNullOrUndefined(setter)) {
-                //TODO: throw TypeError
+                throw Errors.createTypeError("Property set of property descriptor must be callable.");
             }
             desc.setSet((DynamicObject) setter);
         }
         if(desc.isDataDescriptor() && desc.isAccessorDescriptor()) {
-            //TODO: throw TypeError
+            throw Errors.createTypeError("Property descriptor can not be both accessor and data descriptor.");
         }
-        //TODO: CompletePropertyDescriptor
+        completePropertyDescriptor(desc);
         return desc;
+    }
+
+    private static void completePropertyDescriptor(PropertyDescriptor desc) {
+        if(desc.isDataDescriptor() || desc.isGenericDescriptor()) {
+            if(!desc.hasValue()) {
+                desc.setValue(Undefined.instance);
+            }
+            if(!desc.hasWritable()) {
+                desc.setWritable(false);
+            }
+        } else {
+            assert desc.isAccessorDescriptor();
+            if(!desc.hasGet()) {
+                desc.setGet(Undefined.instance);
+            }
+            if(!desc.hasSet()) {
+                desc.setSet(Undefined.instance);
+            }
+        }
+        if(!desc.hasEnumerable()) {
+            desc.setEnumerable(false);
+        }
+        if(!desc.hasConfigurable()) {
+            desc.setConfigurable(false);
+        }
     }
 }
