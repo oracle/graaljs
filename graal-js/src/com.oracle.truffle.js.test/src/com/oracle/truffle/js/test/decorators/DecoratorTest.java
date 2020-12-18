@@ -21,7 +21,7 @@ public class DecoratorTest extends JSTest {
     protected static final String TRUE = "true";
     protected static final String FALSE = "false";
 
-    protected static final String[] NON_CALLABLES = {"0","'test'","true","{}","null"};
+    protected static final String[] NON_CALLABLES = {"0","'test'","true","{}","2.7"};
 
     protected static final String EMPTY_METHOD = "() => {}";
     protected static final String EMPTY_GETTER = "() => {return 0}";
@@ -29,7 +29,7 @@ public class DecoratorTest extends JSTest {
 
     protected static void testError(String sourceCode, String expectedMsg) {
         try (Context context = JSTest.newContextBuilder().build()) {
-            context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceCode, "decorator-test").buildLiteral());
+            context.eval(JavaScriptLanguage.ID, sourceCode);
             Assert.fail("should have thrown");
         } catch (Exception ex) {
             Assert.assertTrue(ex.getMessage().contains(expectedMsg));
@@ -37,7 +37,8 @@ public class DecoratorTest extends JSTest {
     }
 
     protected static String createDecorator(StringBuilder builder,String kind, String key, String placement, String value, String writable, String get, String set, String body) {
-        builder.append("decorator(d) {");
+        builder.append("function decorator(a) {");
+        builder.append("d = {};");
         if (kind != null) {
             builder.append("d.kind = ").append(kind).append(";");
         }
@@ -47,18 +48,17 @@ public class DecoratorTest extends JSTest {
         if (placement != null) {
             builder.append("d.placement = ").append(placement).append(";");
         }
-        builder.append("d.descriptor = {};");
         if(value != null) {
-            builder.append("d.descriptor.method = ").append(value).append(";");
+            builder.append("d.method = ").append(value).append(";");
         }
         if(writable != null) {
-            builder.append("d.descriptor.writable = ").append(writable).append(";");
+            builder.append("d.writable = ").append(writable).append(";");
         }
         if(get != null) {
-            builder.append("d.descriptor.get").append(get).append(";");
+            builder.append("d.get = ").append(get).append(";");
         }
         if(set != null) {
-            builder.append("d.descriptor.set").append(set).append(";");
+            builder.append("d.set = ").append(set).append(";");
         }
         if (body != null) {
             builder.append(body);
@@ -70,7 +70,7 @@ public class DecoratorTest extends JSTest {
     protected static String createElementDecoratorWithPropertyDescriptor(String kind, String key, String placement, String value, String writable, String get, String set, String body) {
         StringBuilder builder = new StringBuilder();
         createDecorator(builder, kind, key, placement, value, writable, get,set,body);
-        builder.append("class C { @decorated method() {} }");
+        builder.append("class C { @decorator method() {} }");
         return builder.toString();
     }
 

@@ -5,29 +5,35 @@ public class JSKind {
     private static final int KIND_ACCESSOR = 1 << 1;
     private static final int KIND_FIELD = 1 << 2;
     private static final int KIND_HOOK = 1 << 3;
+    private static final int KIND_CLASS = 1 << 4;
 
     private static final String METHOD_STRING = "method";
     private static final String ACCESSOR_STRING = "accessor";
     private static final String FIELD_STRING = "field";
     private static final String HOOK_STRING = "hook";
+    private static final String CLASS_STRING = "class";
 
-    public static int getMethod() { return KIND_METHOD; }
-    public static int getAccessor() { return KIND_ACCESSOR; }
-    public static int getField() { return KIND_FIELD; }
-    public static int getHook() { return KIND_HOOK; }
+    public static int getKindMethod() { return KIND_METHOD; }
+    public static int getKindAccessor() { return KIND_ACCESSOR; }
+    public static int getKindField() { return KIND_FIELD; }
+    public static int getKindHook() { return KIND_HOOK; }
+    public static int getKindClass() { return KIND_CLASS; }
 
     public static int fromString(String k) {
         if(k.equals(METHOD_STRING)) {
-            return getMethod();
+            return getKindMethod();
         }
         if(k.equals(ACCESSOR_STRING)) {
-            return  getAccessor();
+            return  getKindAccessor();
         }
         if(k.equals(FIELD_STRING)) {
-            return getField();
+            return getKindField();
         }
         if(k.equals(HOOK_STRING)) {
-            return getHook();
+            return getKindHook();
+        }
+        if(k.equals(CLASS_STRING)) {
+            return getKindClass();
         }
         return 0;
     }
@@ -44,6 +50,9 @@ public class JSKind {
         }
         if(isHook(kind)){
             return HOOK_STRING;
+        }
+        if(isClass(kind)) {
+            return CLASS_STRING;
         }
         return null;
     }
@@ -62,5 +71,9 @@ public class JSKind {
 
     public static boolean isHook(int kind) {
         return (kind & KIND_HOOK) != 0;
+    }
+
+    public static boolean isClass(int kind) {
+        return (kind & KIND_CLASS) != 0;
     }
 }

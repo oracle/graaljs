@@ -20,12 +20,12 @@ public class DecoratedClassElementNode extends ClassElementNode {
 
     @Override
     @ExplodeLoop
-    public ElementDescriptor executeElementDescriptor(VirtualFrame frame, DynamicObject homeObject, JSContext context) {
-        ElementDescriptor initial = value.executeElementDescriptor(frame, homeObject, context);
+    public ElementDescriptor[] executeElementDescriptor(VirtualFrame frame, DynamicObject homeObject, JSContext context) {
+        ElementDescriptor initial = value.executeElementDescriptor(frame, homeObject, context)[0];
         for(ElementDecoratorNode decorator : decorators) {
             initial = decorator.executeDecorator(frame,initial, context)[0];
         }
-        return initial;
+        return new ElementDescriptor[] { initial };
     }
 
     @Override

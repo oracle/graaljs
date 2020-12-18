@@ -9,7 +9,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 public abstract class ClassElementNode extends JavaScriptBaseNode {
     public static final ClassElementNode[] EMPTY = {};
 
-    public abstract ElementDescriptor executeElementDescriptor(VirtualFrame frame, DynamicObject homeObject, JSContext context);
+    public abstract ElementDescriptor[] executeElementDescriptor(VirtualFrame frame, DynamicObject homeObject, JSContext context);
 
     public abstract boolean isStatic();
 }

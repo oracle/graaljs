@@ -35,7 +35,7 @@ public abstract class ClassElementValueNode extends ClassElementNode {
     protected Object executeKey(VirtualFrame frame){
         return key.executeKey(frame);
     }
-    public abstract ElementDescriptor executeElementDescriptor(VirtualFrame frame, DynamicObject homeObject, JSContext context);
+    public abstract ElementDescriptor[] executeElementDescriptor(VirtualFrame frame, DynamicObject homeObject, JSContext context);
 
     public static ClassElementNode createFieldClassElement(ClassElementKeyNode key, JavaScriptNode initialize, boolean isStatic, boolean isPrivate, boolean isAnonymousFunctionDefinition){
         return new FieldClassElementNode(key, initialize, isStatic, isPrivate, isAnonymousFunctionDefinition);
@@ -60,7 +60,7 @@ public abstract class ClassElementValueNode extends ClassElementNode {
         }
 
         @Override
-        public abstract ElementDescriptor executeElementDescriptor(VirtualFrame frame, DynamicObject homeObject, JSContext context);
+        public abstract ElementDescriptor[] executeElementDescriptor(VirtualFrame frame, DynamicObject homeObject, JSContext context);
 
         protected Object executeValue(VirtualFrame frame, DynamicObject homeObject) {
             if(valueNode == null) {
@@ -94,12 +94,12 @@ public abstract class ClassElementValueNode extends ClassElementNode {
         }
 
         @Override
-        public ElementDescriptor executeElementDescriptor(VirtualFrame frame, DynamicObject homeObject, JSContext context) {
+        public ElementDescriptor[] executeElementDescriptor(VirtualFrame frame, DynamicObject homeObject, JSContext context) {
             Object key = executeKey(frame);
             Object value = executeValue(frame, homeObject);
 
             PropertyDescriptor propDesc = PropertyDescriptor.createData(value, attributes);
-            return ElementDescriptor.createField(key, propDesc, placement, value, isPrivate());
+            return new ElementDescriptor[] { ElementDescriptor.createField(key, propDesc, placement, value, isPrivate()) };
             //JSRuntime.definePropertyOrThrow(homeObject, key, propDesc);
         }
     }
@@ -128,12 +128,12 @@ public abstract class ClassElementValueNode extends ClassElementNode {
         }
 
         @Override
-        public ElementDescriptor executeElementDescriptor(VirtualFrame frame, DynamicObject homeObject, JSContext context) {
+        public ElementDescriptor[] executeElementDescriptor(VirtualFrame frame, DynamicObject homeObject, JSContext context) {
             Object key = executeKey(frame);
             Object value = executeValue(frame, homeObject);
 
             PropertyDescriptor propDesc = PropertyDescriptor.createData(value, attributes);
-            return ElementDescriptor.createMethod(key, propDesc, placement, isPrivate());
+            return new ElementDescriptor[] { ElementDescriptor.createMethod(key, propDesc, placement, isPrivate()) };
         }
     }
 
@@ -166,7 +166,7 @@ public abstract class ClassElementValueNode extends ClassElementNode {
         }
 
         @Override
-        public ElementDescriptor executeElementDescriptor(VirtualFrame frame, DynamicObject homeObject, JSContext context) {
+        public ElementDescriptor[] executeElementDescriptor(VirtualFrame frame, DynamicObject homeObject, JSContext context) {
             Object key = executeKey(frame);
             Object getter = null;
             Object setter = null;
@@ -177,7 +177,7 @@ public abstract class ClassElementValueNode extends ClassElementNode {
                 setter = setterNode.execute(frame);
             }
             PropertyDescriptor propDesc = PropertyDescriptor.createAccessor((DynamicObject) getter, (DynamicObject) setter, attributes);
-            return ElementDescriptor.createAccessor(key, propDesc, placement, isPrivate());
+            return new ElementDescriptor[] { ElementDescriptor.createAccessor(key, propDesc, placement, isPrivate()) };
         }
     }
 }

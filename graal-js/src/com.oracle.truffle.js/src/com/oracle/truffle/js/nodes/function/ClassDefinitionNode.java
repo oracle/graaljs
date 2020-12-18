@@ -54,6 +54,8 @@ import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberN
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.decorators.ClassElementNode;
+import com.oracle.truffle.js.nodes.decorators.ElementDescriptor;
+import com.oracle.truffle.js.nodes.decorators.JSPlacement;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -171,6 +173,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         Object[][] staticFields = 0 == 0 ? null : new Object[0][];
 
         //TODO: DecorateClass
+        decorateClass(frame, proto);
         initializeMembers(frame, proto, constructor, instances, staticFields);
 
         Object[][] instanceFields = instances.toArray(new Object[][]{});
@@ -240,6 +243,52 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
             }*/
         }
         //assert instanceFieldIndex == instanceFieldCount && staticFieldIndex == staticFieldCount;
+    }
+
+    private void decorateClass(VirtualFrame frame, DynamicObject homeObject) {
+        List<ElementDescriptor> elements = new ArrayList<>();
+        List<Object> staticKeys = new ArrayList<>();
+        List<Object> prototypeKeys = new ArrayList<>();
+        List<Object> ownKeys = new ArrayList<>();
+        for (ClassElementNode member: memberNodes) {
+            ElementDescriptor[] element = member.executeElementDescriptor(frame, homeObject, context);
+            for (ElementDescriptor e: element)
+            {
+                elements.add(e);
+            }
+            //addElementPlacement(element, staticKeys, prototypeKeys, ownKeys, false);
+        }
+        for(ElementDescriptor element: elements) {
+
+        }
+    }
+
+    private void addElementPlacement(ElementDescriptor element, List<Object> staticKeys, List<Object> prototypeKeys, List<Object> ownKeys) {
+        addElementPlacement(element, staticKeys, prototypeKeys, ownKeys, false);
+    }
+
+    private void addElementPlacement(ElementDescriptor element, List<Object> staticKeys, List<Object> prototypeKeys, List<Object> ownKeys, boolean silent) {
+        if(!element.hasKey()) {
+            return;
+        }
+        List<Object> keys;
+        if(JSPlacement.isOwn(element.getPlacement())) {
+            keys = ownKeys;
+        }
+        else if(JSPlacement.isStatic(element.getPlacement())) {
+            keys = staticKeys;
+        }
+        else {
+            assert JSPlacement.isPrototype(element.getPlacement());
+            keys = prototypeKeys;
+        }
+        if(keys.contains(element.getKey())) {
+            if(!silent) {
+                //TODO: Throw TypeError
+            }
+        } else {
+            keys.add(element.getKey());
+        }
     }
 
     @Override

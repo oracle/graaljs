@@ -1,8 +1,6 @@
 package com.oracle.truffle.js.nodes.decorators;
 
-import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class ElementDescriptor {
     private int kind;
@@ -39,7 +37,7 @@ public class ElementDescriptor {
             //TODO: throw error
         }
         ElementDescriptor elem = new ElementDescriptor();
-        elem.setKind(JSKind.getMethod());
+        elem.setKind(JSKind.getKindMethod());
         elem.setKey(key);
         elem.setDescriptor(descriptor);
         elem.setPlacement(placement);
@@ -54,7 +52,7 @@ public class ElementDescriptor {
             //TODO: throw error
         }
         ElementDescriptor elem = new ElementDescriptor();
-        elem.setKind(JSKind.getAccessor());
+        elem.setKind(JSKind.getKindAccessor());
         elem.setKey(key);
         elem.setDescriptor(descriptor);
         elem.setPlacement(placement);
@@ -75,7 +73,7 @@ public class ElementDescriptor {
             //TODO: throw set error
         }
         ElementDescriptor elem = new ElementDescriptor();
-        elem.setKind(JSKind.getField());
+        elem.setKind(JSKind.getKindField());
         elem.setKey(key);
         elem.setDescriptor(descriptor);
         elem.setPlacement(placement);
@@ -91,7 +89,7 @@ public class ElementDescriptor {
             //TODO: throw replace and finish error
         }
         ElementDescriptor elem = new ElementDescriptor();
-        elem.setKind(JSKind.getHook());
+        elem.setKind(JSKind.getKindHook());
         elem.setPlacement(placement);
         elem.setStart(start);
         elem.setReplace(replace);
@@ -111,6 +109,8 @@ public class ElementDescriptor {
         this.kind = kind;
     }
 
+    public boolean hasKey() { return key != null;}
+
     public Object getKey() {
         return key;
     }
@@ -118,6 +118,8 @@ public class ElementDescriptor {
     public void setKey(Object key) {
         this.key = key;
     }
+
+    public boolean hasDescriptor() {return descriptor != null;}
 
     public PropertyDescriptor getDescriptor() {
         return descriptor;
