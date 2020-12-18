@@ -46,15 +46,19 @@ final class ByteArraySupport {
     private ByteArraySupport() {
     }
 
+    static final ByteArrayAccess LITTLE_ENDIAN = new TruffleByteArrayAccess(com.oracle.truffle.api.memory.ByteArraySupport.littleEndian());
+    static final ByteArrayAccess BIG_ENDIAN = new TruffleByteArrayAccess(com.oracle.truffle.api.memory.ByteArraySupport.bigEndian());
+    static final ByteArrayAccess NATIVE_ORDER = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN ? LITTLE_ENDIAN : BIG_ENDIAN;
+
     static ByteArrayAccess littleEndian() {
-        return LittleEndianByteArrayAccess.INSTANCE;
+        return LITTLE_ENDIAN;
     }
 
     static ByteArrayAccess bigEndian() {
-        return BigEndianByteArrayAccess.INSTANCE;
+        return BIG_ENDIAN;
     }
 
     static ByteArrayAccess nativeOrder() {
-        return ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN ? littleEndian() : bigEndian();
+        return NATIVE_ORDER;
     }
 }
