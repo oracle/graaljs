@@ -69,6 +69,8 @@ public class DefaultESModuleLoader implements JSModuleLoader {
     }
 
     protected URI asURI(String specifier) {
+        if (specifier == null)
+            return null;
         if (specifier.indexOf(':') == -1) {
             return null;
         }

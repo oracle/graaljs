@@ -103,7 +103,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
     public JSModuleRecord resolveImportedModule(ScriptOrModule referencingModule, String specifier) {
         log("IMPORT resolve ", specifier);
         if (isCoreModule(specifier)) {
-            return loadCoreModule(specifier);
+            return loadCoreModule(referencingModule, specifier);
         }
         try {
             TruffleFile file = resolveURL(referencingModule, specifier);
@@ -114,7 +114,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
         }
     }
 
-    private JSModuleRecord loadCoreModule(String specifier) {
+    private JSModuleRecord loadCoreModule(ScriptOrModule referencingModule, String specifier) {
         log("IMPORT resolve built-in ", specifier);
         JSModuleRecord existingModule = moduleMap.get(specifier);
         if (existingModule != null) {
@@ -123,7 +123,15 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
         }
         String moduleReplacementName = realm.getContext().getContextOptions().getCommonJSRequireBuiltins().get(specifier);
         Source src;
-        if (moduleReplacementName != null && moduleReplacementName.endsWith(MODULE_SOURCE_NAME_SUFFIX)) {
+        URI maybeUri = asURI(moduleReplacementName);
+        if (maybeUri != null && moduleReplacementName != null && moduleReplacementName.endsWith(MODULE_SOURCE_NAME_SUFFIX)) {
+            TruffleFile file = resolveURL(referencingModule, moduleReplacementName);
+            try {
+                return loadModuleFromUrl(specifier, file, file.getPath());
+            } catch (IOException e) {
+                throw fail("Failed to load built-in ES module: " + specifier + ". " + e.getMessage());
+            }
+        } else if (moduleReplacementName != null && moduleReplacementName.endsWith(MODULE_SOURCE_NAME_SUFFIX)) {
             // Just load the module
             try {
                 String cwdOption = realm.getContext().getContextOptions().getRequireCwd();
