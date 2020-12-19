@@ -74,16 +74,22 @@ public abstract class ClassElementValueNode extends ClassElementNode {
     }
 
     private static class FieldClassElementNode extends DataClassElementNode {
-        private int attributes;
+        private boolean configurable;
+        private boolean enumerable;
+        private boolean writable;
         private int placement;
 
         protected FieldClassElementNode(ClassElementKeyNode key, JavaScriptNode initialize, boolean isStatic, boolean isPrivate, boolean isAnonymousFunctionDefinition){
             super(key, initialize, isStatic, isPrivate, isAnonymousFunctionDefinition);
             //ClassFieldDefinitionEvaluation
             if(isPrivate) {
-                attributes = JSAttributes.fromConfigurableEnumerableWritable(false,false, false);
+                configurable = false;
+                enumerable = false;
+                writable = false;
             } else {
-                attributes = JSAttributes.fromConfigurableEnumerableWritable(true, true, true);
+                configurable = true;
+                enumerable = true;
+                writable = true;
             }
             if(isStatic) {
                 placement = JSPlacement.getStatic();
@@ -97,7 +103,10 @@ public abstract class ClassElementValueNode extends ClassElementNode {
             Object key = executeKey(frame);
             Object value = executeValue(frame, homeObject);
 
-            PropertyDescriptor propDesc = PropertyDescriptor.createData(value, attributes);
+            PropertyDescriptor propDesc = PropertyDescriptor.createEmpty();
+            propDesc.setConfigurable(configurable);
+            propDesc.setWritable(writable);
+            propDesc.setEnumerable(enumerable);
             return new ElementDescriptor[] { ElementDescriptor.createField(key, propDesc, placement, value, isPrivate()) };
             //JSRuntime.definePropertyOrThrow(homeObject, key, propDesc);
         }

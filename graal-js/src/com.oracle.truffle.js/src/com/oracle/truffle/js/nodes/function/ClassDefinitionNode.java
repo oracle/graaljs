@@ -52,6 +52,7 @@ import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.decorators.ClassElementNode;
+import com.oracle.truffle.js.nodes.decorators.DecoratorNode;
 import com.oracle.truffle.js.nodes.decorators.ElementDescriptor;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -86,13 +87,14 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
     @Child private InitializeInstanceElementsNode staticFieldsNode;
     @Child private PropertySetNode setPrivateBrandNode;
     @Child private SetFunctionNameNode setFunctionName;
+    @Children private final DecoratorNode[] decorators;
 
     private final boolean hasName;
     //private final int instanceFieldCount;
     //private final int staticFieldCount;
 
     protected ClassDefinitionNode(JSContext context, JSFunctionExpressionNode constructorFunctionNode, JavaScriptNode classHeritageNode, ClassElementNode[] memberNodes,
-                    JSWriteFrameSlotNode writeClassBindingNode, boolean hasName, boolean hasPrivateInstanceMethods) {
+                    JSWriteFrameSlotNode writeClassBindingNode, boolean hasName, boolean hasPrivateInstanceMethods, DecoratorNode[] decorators) {
         this.context = context;
         this.constructorFunctionNode = constructorFunctionNode;
         this.classHeritageNode = classHeritageNode;
@@ -109,11 +111,12 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         this.setFieldsNode = PropertySetNode.createSetHidden(JSFunction.CLASS_FIELDS_ID, context);//instanceFieldCount != 0 ? PropertySetNode.createSetHidden(JSFunction.CLASS_FIELDS_ID, context) : null;
         this.setPrivateBrandNode = hasPrivateInstanceMethods ? PropertySetNode.createSetHidden(JSFunction.PRIVATE_BRAND_ID, context) : null;
         this.setFunctionName = hasName ? null : SetFunctionNameNode.create();
+        this.decorators = decorators;
     }
 
     public static ClassDefinitionNode create(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ClassElementNode[] members,
-                    JSWriteFrameSlotNode writeClassBinding, boolean hasName, boolean hasPrivateInstanceMethods) {
-        return new ClassDefinitionNode(context, constructorFunction, classHeritage, members, writeClassBinding, hasName, hasPrivateInstanceMethods);
+                                             JSWriteFrameSlotNode writeClassBinding, boolean hasName, boolean hasPrivateInstanceMethods, DecoratorNode[] decorators) {
+        return new ClassDefinitionNode(context, constructorFunction, classHeritage, members, writeClassBinding, hasName, hasPrivateInstanceMethods, decorators);
     }
 
     @Override
@@ -214,6 +217,9 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
             System.arraycopy(descriptors,0,concatenation,0, descriptors.length);
             System.arraycopy(e,0,concatenation, descriptors.length, e.length);
             descriptors = concatenation;
+        }
+        for(DecoratorNode d: decorators) {
+            descriptors = d.executeClassDecorator(frame,descriptors);
         }
         return descriptors;
     }

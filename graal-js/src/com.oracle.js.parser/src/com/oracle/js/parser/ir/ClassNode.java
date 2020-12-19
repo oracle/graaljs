@@ -229,6 +229,10 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         return getIdent() == null;
     }
 
+    public List<Expression> getDecorators() {
+        return decorators;
+    }
+
     @Override
     public void toString(StringBuilder sb, boolean printType) {
         if(decorators != null) {

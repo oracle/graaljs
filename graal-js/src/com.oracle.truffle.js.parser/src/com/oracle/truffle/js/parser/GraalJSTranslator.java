@@ -147,8 +147,7 @@ import com.oracle.truffle.js.nodes.control.SuspendNode;
 import com.oracle.truffle.js.nodes.decorators.ClassElementKeyNode;
 import com.oracle.truffle.js.nodes.decorators.ClassElementNode;
 import com.oracle.truffle.js.nodes.decorators.ClassElementValueNode;
-import com.oracle.truffle.js.nodes.decorators.DecoratedClassElementNode;
-import com.oracle.truffle.js.nodes.decorators.ElementDecoratorNode;
+import com.oracle.truffle.js.nodes.decorators.DecoratorNode;
 import com.oracle.truffle.js.nodes.function.AbstractFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.EvalNode;
@@ -3279,8 +3278,18 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
             JSWriteFrameSlotNode writeClassBinding = className == null ? null : (JSWriteFrameSlotNode) findScopeVar(className, true).createWriteNode(null);
 
+            DecoratorNode[] classDecorators = new DecoratorNode[0];
+
+            if(classNode.getDecorators().size() != 0) {
+                List<Expression> d = classNode.getDecorators();
+                classDecorators = new DecoratorNode[d.size()];
+                for(int i = 0; i < d.size(); i++) {
+                    classDecorators[d.size() - i - 1] = factory.createClassDecorator(transform(d.get(i)),context);
+                }
+            }
+
             JavaScriptNode classDefinition = factory.createClassDefinition(context, (JSFunctionExpressionNode) classFunction, classHeritage,
-                            members.toArray(ClassElementNode.EMPTY), writeClassBinding, className, classNode.hasPrivateInstanceMethods());
+                            members.toArray(ClassElementNode.EMPTY), writeClassBinding, className, classNode.hasPrivateInstanceMethods(), classDecorators);
 
             if (classNode.hasPrivateMethods()) {
                 // internal constructor binding used for private brand checks.
@@ -3322,12 +3331,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             }
             if(e.getDecorators() != null) {
                 List<Expression> d = e.getDecorators();
-                ElementDecoratorNode[] decorators = new ElementDecoratorNode[d.size()];
+                DecoratorNode[] decorators = new DecoratorNode[d.size()];
                 for(int j = 0; j < d.size(); j++) {
                     JavaScriptNode exp = transform(d.get(j));
-                    decorators[d.size() - j - 1] = new ElementDecoratorNode(exp, context);
+                    decorators[d.size() - j - 1] = factory.createElementDecorator(exp, context);
                 }
-                member = DecoratedClassElementNode.create(member, decorators);
+                member = factory.createDecoratedElement(member,decorators);
             }
             elements.add(member);
         }

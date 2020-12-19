@@ -4,12 +4,12 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
-import java.util.Locale;
+import java.util.Arrays;
 
 public class DescriptorUtil {
     private static final String ELEMENT_DESCRIPTOR_VALUE = "Descriptor";
@@ -27,12 +27,13 @@ public class DescriptorUtil {
     private static final String REPLACE = "replace";
     private static final String FINISH = "finish";
     private static final String ELEMENTS = "elements";
+    private static final String CLASS = "class";
     private static final String EXTRAS = "extras";
 
     public static Object fromElementDescriptor(ElementDescriptor element, JSContext context) {
         DynamicObject obj = JSOrdinary.create(context);
         PropertyDescriptor desc = PropertyDescriptor.createData(ELEMENT_DESCRIPTOR_VALUE,false, false, true);
-        JSRuntime.definePropertyOrThrow(obj,ELEMENT_DESCRIPTOR_VALUE.toLowerCase(Locale.ROOT),desc);
+        JSRuntime.definePropertyOrThrow(obj,Symbol.SYMBOL_TO_STRING_TAG,desc);
         JSRuntime.createDataPropertyOrThrow(obj, KIND, element.getKindString());
         if(element.hasDescriptor()) {
             PropertyDescriptor descriptor = element.getDescriptor();
@@ -209,32 +210,62 @@ public class DescriptorUtil {
         if(desc.isDataDescriptor() && desc.isAccessorDescriptor()) {
             throw Errors.createTypeError("Property descriptor can not be both accessor and data descriptor.");
         }
-        //completePropertyDescriptor(desc);
         return desc;
     }
 
-    private static void completePropertyDescriptor(PropertyDescriptor desc) {
-        if(desc.isDataDescriptor() || desc.isGenericDescriptor()) {
-            if(!desc.hasValue()) {
-                desc.setValue(Undefined.instance);
-            }
-            if(!desc.hasWritable()) {
-                desc.setWritable(false);
-            }
-        } else {
-            assert desc.isAccessorDescriptor();
-            if(!desc.hasGet()) {
-                desc.setGet(Undefined.instance);
-            }
-            if(!desc.hasSet()) {
-                desc.setSet(Undefined.instance);
-            }
+    public static Object fromClassDescriptor(ElementDescriptor[] elements, JSContext context) {
+        Object[] elementObjects = new Object[elements.length];
+        int index = 0;
+        for (ElementDescriptor e: elements) {
+            elementObjects[index++] = fromElementDescriptor(e,context);
         }
-        if(!desc.hasEnumerable()) {
-            desc.setEnumerable(false);
+        DynamicObject obj = JSOrdinary.create(context);
+        PropertyDescriptor desc = PropertyDescriptor.createData(ELEMENT_DESCRIPTOR_VALUE,false,false,true);
+        JSRuntime.definePropertyOrThrow(obj, Symbol.SYMBOL_TO_STRING_TAG, desc);
+        JSRuntime.createDataPropertyOrThrow(obj, KIND, CLASS);
+        //TODO: ask if correct
+        JSRuntime.createDataPropertyOrThrow(obj, ELEMENTS, JSRuntime.createArrayFromList(context, Arrays.asList(elementObjects.clone())));
+        return obj;
+    }
+
+    public static void checkClassDescriptor(Object classDescriptor) {
+        DynamicObject obj = (DynamicObject) classDescriptor;
+        int kind = JSKind.fromString(JSRuntime.toString(JSOrdinaryObject.get(obj,KIND)));
+        if(!JSKind.isClass(kind)) {
+            throw Errors.createTypeError("Class descriptor must have kind 'class'.");
         }
-        if(!desc.hasConfigurable()) {
-            desc.setConfigurable(false);
+        Object key = JSOrdinaryObject.get(obj, KEY);
+        if(!JSRuntime.isNullOrUndefined(key)) {
+            throw Errors.createTypeError("Class descriptor must not have property key.");
+        }
+        Object placement = JSOrdinaryObject.get(obj, PLACEMENT);
+        if(!JSRuntime.isNullOrUndefined(placement)) {
+            throw Errors.createTypeError("Class descriptor must not have property placement.");
+        }
+        PropertyDescriptor descriptor = JSRuntime.toPropertyDescriptor(obj);
+        //TODO: check has any fields.
+        /*if(descriptor.getFlags() != 0) {
+            throw Errors.createTypeError("Property descriptor of class descriptor must be empty.");
+        }*/
+        Object initialize = JSOrdinaryObject.get(obj, INITIALIZE);
+        if(!JSRuntime.isNullOrUndefined(initialize)) {
+            throw Errors.createTypeError("Class descriptor must not have property initialize.");
+        }
+        Object start = JSOrdinaryObject.get(obj, START);
+        if(!JSRuntime.isNullOrUndefined(start)) {
+            throw Errors.createTypeError("Class descriptor must not have property start.");
+        }
+        Object extras = JSOrdinaryObject.get(obj, EXTRAS);
+        if(!JSRuntime.isNullOrUndefined(extras)) {
+            throw Errors.createTypeError("Class descriptor must not have property extras.");
+        }
+        Object finish = JSOrdinaryObject.get(obj, FINISH);
+        if(!JSRuntime.isNullOrUndefined(finish)) {
+            throw Errors.createTypeError("Class descriptor must not have property finish.");
+        }
+        Object replace = JSOrdinaryObject.get(obj, REPLACE);
+        if(!JSRuntime.isNullOrUndefined(replace)) {
+            throw Errors.createTypeError("Class descriptor must not have property replace.");
         }
     }
 }
