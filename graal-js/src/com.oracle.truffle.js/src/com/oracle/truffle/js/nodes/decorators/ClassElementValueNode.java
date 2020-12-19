@@ -1,7 +1,6 @@
 package com.oracle.truffle.js.nodes.decorators;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode;
@@ -133,7 +132,7 @@ public abstract class ClassElementValueNode extends ClassElementNode {
             Object value = executeValue(frame, homeObject);
 
             PropertyDescriptor propDesc = PropertyDescriptor.createData(value, attributes);
-            return new ElementDescriptor[] { ElementDescriptor.createMethod(key, propDesc, placement, isPrivate()) };
+            return new ElementDescriptor[] { ElementDescriptor.createMethod(key, propDesc, placement, isPrivate())};
         }
     }
 

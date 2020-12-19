@@ -189,4 +189,9 @@ public class ElementDescriptor {
     public boolean isStatic() { return JSPlacement.isStatic(placement); }
     public boolean isPrototype() { return JSPlacement.isPrototype(placement); }
     public boolean isOwn() { return JSPlacement.isOwn(placement); }
+
+    //TODO: Private key
+    public boolean hasPrivateKey() {return false;};
+
+    public boolean hasInitialize() {return initialize != null; }
 }

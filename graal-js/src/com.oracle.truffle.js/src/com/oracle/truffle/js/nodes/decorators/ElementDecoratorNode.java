@@ -2,19 +2,13 @@ package com.oracle.truffle.js.nodes.decorators;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.builtins.ObjectFunctionBuiltins;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorNodeGen;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
-import com.oracle.truffle.js.nodes.access.IteratorCompleteNode;
-import com.oracle.truffle.js.nodes.access.IteratorGetNextValueNode;
-import com.oracle.truffle.js.nodes.access.IteratorGetNextValueNodeGen;
-import com.oracle.truffle.js.nodes.access.IteratorNextNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
-import com.oracle.truffle.js.nodes.access.IteratorValueNodeGen;
+import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -23,11 +17,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
-import com.oracle.truffle.js.runtime.util.IteratorUtil;
-import com.sun.tools.javac.util.Iterators;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class ElementDecoratorNode extends JavaScriptBaseNode {
     @Child
@@ -42,6 +31,11 @@ public class ElementDecoratorNode extends JavaScriptBaseNode {
     IteratorValueNode valueNode;
     @Child
     IteratorCloseNode closeNode;
+    @Child
+    JSGetLengthNode lengthNode;
+
+    private int instanceFields = 0;
+    private int staticFields = 0;
 
     public ElementDecoratorNode(JavaScriptNode expressionNode, JSContext context) {
         this.expressionNode = expressionNode;
@@ -50,27 +44,33 @@ public class ElementDecoratorNode extends JavaScriptBaseNode {
         this.stepNode = IteratorStepNode.create(context);
         this.valueNode = IteratorValueNode.create(context);
         this.closeNode = IteratorCloseNode.create(context);
+        this.lengthNode = JSGetLengthNode.create(context);
     }
 
     //DecorateElement
-    public List<ElementDescriptor> executeDecorator(VirtualFrame frame, ElementDescriptor element, JSContext context) {
+    public ElementDescriptor[] executeDecorator(VirtualFrame frame, ElementDescriptor element, JSContext context) {
         if(element.isHook()) {
             throw Errors.createTypeError("Property kind of element descriptor must not have value 'hook'.");
         }
-        List<ElementDescriptor> elements = new ArrayList<>();
         Object elementObject = DescriptorUtil.fromElementDescriptor(element, context);
         JSFunctionObject function = (JSFunctionObject) expressionNode.execute(frame);
         Object elementExtrasObject = functionNode.executeCall(JSArguments.createOneArg(null, function, elementObject));
         if(JSRuntime.isNullOrUndefined(elementExtrasObject))
         {
-            elements.add(element);
-            return elements;
+            return new ElementDescriptor[] { element };
         }
-        elements.add(DescriptorUtil.toElementDescriptor(elementExtrasObject));
         //ToElementExtras
+        ElementDescriptor elementExtra = DescriptorUtil.toElementDescriptor(elementExtrasObject);
         Object extras = JSOrdinaryObject.get((DynamicObject) elementExtrasObject, "extras");
-        if(!JSRuntime.isNullOrUndefined(extras)) {
+        if(JSRuntime.isNullOrUndefined(extras)) {
+            return new ElementDescriptor[] { DescriptorUtil.toElementDescriptor(elementExtrasObject) };
+        } else {
             //ToElementDescriptors
+            //TODO: cast
+            int length = (int)lengthNode.executeLong(extras);
+            ElementDescriptor[] elements = new ElementDescriptor[length + 1];
+            elements[0] = elementExtra;
+            int extrasIndex = 1;
             IteratorRecord record = getIteratorNode.execute(extras);
             try {
                 while (true) {
@@ -84,13 +84,12 @@ public class ElementDecoratorNode extends JavaScriptBaseNode {
                     if (!JSRuntime.isNullOrUndefined(JSOrdinaryObject.get((DynamicObject) elementsObject, "extras"))) {
                         throw Errors.createTypeError("Property extras of element descriptor must not have nested extras.");
                     }
-                    elements.add(e);
+                    elements[extrasIndex++] = e;
                 }
             } catch (Exception ex) {
                 closeNode.executeAbrupt(record.getIterator());
                 throw ex;
             }
         }
-        return elements;
     }
 }

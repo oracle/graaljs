@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -50,23 +49,23 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.InitializeInstanceElementsNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
-import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.decorators.ClassElementNode;
 import com.oracle.truffle.js.nodes.decorators.ElementDescriptor;
-import com.oracle.truffle.js.nodes.decorators.JSPlacement;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 /**
  * ES6 14.5.14 Runtime Semantics: ClassDefinitionEvaluation.
@@ -166,17 +165,16 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         // Perform CreateMethodProperty(proto, "constructor", F).
         setConstructorNode.executeVoid(proto, constructor);
 
-        Object[] elementDescriptors = evaluateClassElements(frame, proto, constructor);
+        ElementDescriptor[] elementDescriptors = decorateClass(frame, proto, constructor);
 
         //Object[][] instanceFields = 1 == 0 ? null : new Object[1][];
         ArrayList<Object[]> instances = new ArrayList<>();
-        Object[][] staticFields = 0 == 0 ? null : new Object[0][];
+        ArrayList<Object[]> statics = new ArrayList<>();
 
-        //TODO: DecorateClass
-        decorateClass(frame, proto);
-        initializeMembers(frame, proto, constructor, instances, staticFields);
+        initializeClassElements(frame, proto, constructor, elementDescriptors, instances, statics);
 
         Object[][] instanceFields = instances.toArray(new Object[][]{});
+        Object[][] staticFields = statics.toArray(new Object[][]{});
 
         //TODO: AssignPrivateNames
         if (writeClassBindingNode != null) {
@@ -184,7 +182,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         }
 
         //TODO: InitializeInstanceElements
-        if (setFieldsNode != null) {
+        if (instanceFields.length > 0) {
             setFieldsNode.setValue(constructor, instanceFields);
         }
 
@@ -194,7 +192,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
             setPrivateBrandNode.setValue(constructor, privateBrand);
         }
 
-        if (0 != 0) {
+        if (staticFields.length == -1) {
             InitializeInstanceElementsNode defineStaticFields = this.staticFieldsNode;
             if (defineStaticFields == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -207,14 +205,55 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
     }
 
     @ExplodeLoop
-    private Object[] evaluateClassElements(VirtualFrame frame, DynamicObject proto, DynamicObject constructor) {
-        Object[] descriptors = new Object[memberNodes.length];
-        int descriptorIndex = 0;
+    private ElementDescriptor[] decorateClass(VirtualFrame frame, DynamicObject proto, DynamicObject constructor) {
+        ElementDescriptor[] descriptors = new ElementDescriptor[]{};
         for(ClassElementNode elementNode : memberNodes) {
             DynamicObject homeObject = elementNode.isStatic() ? constructor : proto;
-            descriptors[descriptorIndex++] = elementNode.executeElementDescriptor(frame, homeObject, context);
+            ElementDescriptor[] e = elementNode.executeElementDescriptor(frame, homeObject, context);
+            ElementDescriptor[] concatenation = new ElementDescriptor[descriptors.length + e.length];
+            System.arraycopy(descriptors,0,concatenation,0, descriptors.length);
+            System.arraycopy(e,0,concatenation, descriptors.length, e.length);
+            descriptors = concatenation;
         }
         return descriptors;
+    }
+
+    @ExplodeLoop
+    private void initializeClassElements(VirtualFrame frame, DynamicObject proto, DynamicObject constructor, ElementDescriptor[] elements, List<Object[]> instanceFields, List<Object[]> staticFields) {
+        for(ElementDescriptor element: elements) {
+            if((element.isMethod() || element.isAccessor()) && !element.hasPrivateKey()) {
+                if(element.isStatic()) {
+                    JSRuntime.definePropertyOrThrow(constructor,element.getKey(),element.getDescriptor());
+                }
+                if(element.isPrototype()) {
+                    JSRuntime.definePropertyOrThrow(proto, element.getKey(), element.getDescriptor());
+                }
+            }
+            if(element.isField()) {
+                assert !element.getDescriptor().hasValue() && !element.getDescriptor().hasGet() && !element.getDescriptor().hasSet();
+                if(element.isStatic()) {
+                    defineField(constructor,element);
+                    //staticFields.add(new Object[]{element.getKey(), element.getInitialize(), true});
+                }
+                if(element.isPrototype()) {
+                    defineField(proto, element);
+                    //instanceFields.add(new Object[]{element.getKey(), element.getInitialize(), true});
+                }
+            }
+        }
+    }
+
+    private void defineField(DynamicObject receiver, ElementDescriptor descriptor) {
+        Object key = descriptor.getKey();
+        Object initValue = Undefined.instance;
+        if(descriptor.hasInitialize()) {
+            Object initialize = descriptor.getInitialize();
+            JSFunctionCallNode call = JSFunctionCallNode.createCall();
+            initValue = call.executeCall(JSArguments.createZeroArg(receiver, initialize));
+        }
+        PropertyDescriptor dataDescriptor = PropertyDescriptor.createData(initValue);
+        //TODO: Check for private
+        JSRuntime.definePropertyOrThrow(receiver, key, dataDescriptor);
     }
 
     @ExplodeLoop
@@ -245,22 +284,6 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         //assert instanceFieldIndex == instanceFieldCount && staticFieldIndex == staticFieldCount;
     }
 
-    private List<ElementDescriptor> decorateClass(VirtualFrame frame, DynamicObject homeObject) {
-        List<ElementDescriptor> elements = new ArrayList<>();
-        //List<Object> staticKeys = new ArrayList<>();
-        //List<Object> prototypeKeys = new ArrayList<>();
-        //List<Object> ownKeys = new ArrayList<>();
-        for (ClassElementNode member: memberNodes) {
-            ElementDescriptor[] element = member.executeElementDescriptor(frame, homeObject, context);
-            for (ElementDescriptor e: element)
-            {
-                //addElementPlacement(e, staticKeys, prototypeKeys, ownKeys, false);
-                elements.add(e);
-            }
-        }
-        return elements;
-    }
-
     private void addElementPlacement(ElementDescriptor element, List<Object> staticKeys, List<Object> prototypeKeys, List<Object> ownKeys) {
         addElementPlacement(element, staticKeys, prototypeKeys, ownKeys, false);
     }
@@ -270,14 +293,14 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
             return;
         }
         List<Object> keys;
-        if(JSPlacement.isOwn(element.getPlacement())) {
+        if(element.isOwn()) {
             keys = ownKeys;
         }
-        else if(JSPlacement.isStatic(element.getPlacement())) {
+        else if(element.isStatic()) {
             keys = staticKeys;
         }
         else {
-            assert JSPlacement.isPrototype(element.getPlacement());
+            assert element.isPrototype();
             keys = prototypeKeys;
         }
         if(keys.contains(element.getKey())) {

@@ -5,9 +5,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSContext;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class DecoratedClassElementNode extends ClassElementNode {
     @Child ClassElementNode value;
     @Children ElementDecoratorNode[] decorators;
@@ -24,13 +21,16 @@ public class DecoratedClassElementNode extends ClassElementNode {
     @Override
     @ExplodeLoop
     public ElementDescriptor[] executeElementDescriptor(VirtualFrame frame, DynamicObject homeObject, JSContext context) {
-        ElementDescriptor initial = value.executeElementDescriptor(frame, homeObject, context)[0];
-        List<ElementDescriptor> elements = new ArrayList<>();
+        ElementDescriptor[] elements = value.executeElementDescriptor(frame, homeObject, context);
         for(ElementDecoratorNode decorator : decorators) {
-            elements.addAll(0, decorator.executeDecorator(frame, initial, context));
-            initial = elements.get(0);
+            ElementDescriptor current = elements[0];
+            ElementDescriptor[] e = decorator.executeDecorator(frame, current,context);
+            ElementDescriptor[] concatenation = new ElementDescriptor[elements.length - 1 + e.length];
+            System.arraycopy(e,0,concatenation,0,e.length);
+            System.arraycopy(elements,1,concatenation,e.length,elements.length - 1);
+            elements = concatenation;
         }
-        return elements.toArray(new ElementDescriptor[]{});
+        return elements;
     }
 
     @Override
