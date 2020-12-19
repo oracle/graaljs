@@ -1,6 +1,8 @@
 package com.oracle.truffle.js.nodes.decorators;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.js.nodes.access.PrivateFieldGetNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -58,6 +60,7 @@ public class DescriptorUtil {
         }
         if(element.isMethod() || element.isAccessor()|| element.isField()) {
             //TODO: get private name
+            Object key = element.getKey();
             JSRuntime.createDataPropertyOrThrow(obj, KEY, element.getKey());
         }
         JSRuntime.createDataPropertyOrThrow(obj, PLACEMENT, element.getPlacementString());

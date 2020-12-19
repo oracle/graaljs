@@ -51,6 +51,8 @@ import com.oracle.truffle.js.nodes.access.InitializeInstanceElementsNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.access.WriteElementNode;
+import com.oracle.truffle.js.nodes.access.WritePropertyNode;
 import com.oracle.truffle.js.nodes.decorators.ClassElementNode;
 import com.oracle.truffle.js.nodes.decorators.DecoratorNode;
 import com.oracle.truffle.js.nodes.decorators.ElementDescriptor;
@@ -60,7 +62,9 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -207,6 +211,15 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         return constructor;
     }
 
+    private void assignPrivateNames(ElementDescriptor[] elements) {
+        for(ElementDescriptor element : elements) {
+            if(element.hasKey() && element.hasPrivateKey()) {
+                Object name = element.getKey();
+                int i = 0;
+            }
+        }
+    }
+
     @ExplodeLoop
     private ElementDescriptor[] decorateClass(VirtualFrame frame, DynamicObject proto, DynamicObject constructor) {
         ElementDescriptor[] descriptors = new ElementDescriptor[]{};
@@ -257,7 +270,8 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
             JSFunctionCallNode call = JSFunctionCallNode.createCall();
             initValue = call.executeCall(JSArguments.createZeroArg(receiver, initialize));
         }
-        PropertyDescriptor dataDescriptor = PropertyDescriptor.createData(initValue);
+        PropertyDescriptor dataDescriptor = descriptor.getDescriptor();
+        dataDescriptor.setValue(initValue);
         //TODO: Check for private
         JSRuntime.definePropertyOrThrow(receiver, key, dataDescriptor);
     }

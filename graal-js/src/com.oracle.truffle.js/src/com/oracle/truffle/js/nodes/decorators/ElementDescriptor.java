@@ -1,6 +1,8 @@
 package com.oracle.truffle.js.nodes.decorators;
 
+import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class ElementDescriptor {
     private int kind;
@@ -191,7 +193,9 @@ public class ElementDescriptor {
     public boolean isOwn() { return JSPlacement.isOwn(placement); }
 
     //TODO: Private key
-    public boolean hasPrivateKey() {return false;};
+    public boolean hasPrivateKey() {return key instanceof HiddenKey;};
 
-    public boolean hasInitialize() {return initialize != null; }
+    public boolean hasInitialize() {return initialize != Undefined.instance; }
+
+    public boolean hasDecorators() {return decorators != null && decorators.length != 0;}
 }
