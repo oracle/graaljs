@@ -126,4 +126,11 @@ public abstract class JSToIntegerAsLongNode extends JavaScriptBaseNode {
                     @Cached("create()") JSToNumberNode toNumberNode) {
         return JSRuntime.toInteger(toNumberNode.executeNumber(value));
     }
+
+    @Specialization(guards = "isForeignObject(value)")
+    protected long doForeignObject(Object value,
+                    @Cached("create()") JSToNumberNode toNumberNode) {
+        return JSRuntime.toInteger(toNumberNode.executeNumber(value));
+    }
+
 }
