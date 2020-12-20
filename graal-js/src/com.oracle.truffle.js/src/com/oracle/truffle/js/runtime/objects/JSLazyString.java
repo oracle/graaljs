@@ -135,39 +135,43 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
     }
 
     /**
-     * Only use when invariants are checked already, e.g. from specializing nodes. Converts the
-     * right int param lazily.
+     * Converts the right int param lazily.
      */
     @TruffleBoundary
     public static CharSequence createLazyInt(CharSequence left, int right) {
         assert JSRuntime.isString(left);
-        assert JSConfig.LazyStrings;
         if (left.length() == 0) {
             return String.valueOf(right); // bailout
         }
-        JSLazyString result = new JSLazyString(left, new JSLazyIntWrapper(right));
-        if (result.length() > JavaScriptLanguage.getCurrentJSRealm().getContext().getStringLengthLimit()) {
-            throw Errors.createRangeErrorInvalidStringLength();
+        if (JSConfig.LazyStrings) {
+            JSLazyString result = new JSLazyString(left, new JSLazyIntWrapper(right));
+            if (result.length() > JavaScriptLanguage.getCurrentJSRealm().getContext().getStringLengthLimit()) {
+                throw Errors.createRangeErrorInvalidStringLength();
+            }
+            return result;
+        } else {
+            return left.toString().concat(String.valueOf(right));
         }
-        return result;
     }
 
     /**
-     * Only use when invariants are checked already, e.g. from specializing nodes. Converts the left
-     * int param lazily.
+     * Converts the left int param lazily.
      */
     @TruffleBoundary
     public static CharSequence createLazyInt(int left, CharSequence right) {
         assert JSRuntime.isString(right);
-        assert JSConfig.LazyStrings;
         if (right.length() == 0) {
             return String.valueOf(left); // bailout
         }
-        JSLazyString result = new JSLazyString(new JSLazyIntWrapper(left), right);
-        if (result.length() > JavaScriptLanguage.getCurrentJSRealm().getContext().getStringLengthLimit()) {
-            throw Errors.createRangeErrorInvalidStringLength();
+        if (JSConfig.LazyStrings) {
+            JSLazyString result = new JSLazyString(new JSLazyIntWrapper(left), right);
+            if (result.length() > JavaScriptLanguage.getCurrentJSRealm().getContext().getStringLengthLimit()) {
+                throw Errors.createRangeErrorInvalidStringLength();
+            }
+            return result;
+        } else {
+            return String.valueOf(left).concat(right.toString());
         }
-        return result;
     }
 
     private CharSequence left;
@@ -295,15 +299,21 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
 
         @Override
         public int length() {
-            long absValue = Math.abs((long) value);
-            long temp = 10;
-            int count = 1;
-            while (absValue >= temp) {
-                count++;
-                temp *= 10;
-            }
-            return value >= 0 ? count : count + 1;
+            return (value < 0) ? lengthImpl(-(long) value) + 1 : lengthImpl(value);
         }
+
+        private static int lengthImpl(long value) {
+            assert value >= 0;
+            for (int i = 0;; i++) {
+                if (value <= LENGTH_TABLE[i]) {
+                    return i + 1;
+                }
+            }
+        }
+
+        private static final long[] LENGTH_TABLE = {
+                        9, 99, 999, 9999, 99999, 999999, 9999999,
+                        99999999, 999999999, 9999999999L};
 
         @Override
         public char charAt(int index) {
