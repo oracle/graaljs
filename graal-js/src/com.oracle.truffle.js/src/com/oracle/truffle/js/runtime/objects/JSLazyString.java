@@ -299,15 +299,21 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
 
         @Override
         public int length() {
-            long absValue = Math.abs((long) value);
-            long temp = 10;
-            int count = 1;
-            while (absValue >= temp) {
-                count++;
-                temp *= 10;
-            }
-            return value >= 0 ? count : count + 1;
+            return (value < 0) ? lengthImpl(-(long) value) + 1 : lengthImpl(value);
         }
+
+        private static int lengthImpl(long value) {
+            assert value >= 0;
+            for (int i = 0;; i++) {
+                if (value <= LENGTH_TABLE[i]) {
+                    return i + 1;
+                }
+            }
+        }
+
+        private static final long[] LENGTH_TABLE = {
+                        9, 99, 999, 9999, 99999, 999999, 9999999,
+                        99999999, 999999999, 9999999999L};
 
         @Override
         public char charAt(int index) {
