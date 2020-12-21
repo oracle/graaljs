@@ -51,10 +51,10 @@ import com.oracle.truffle.js.nodes.access.InitializeInstanceElementsNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
-import com.oracle.truffle.js.nodes.access.WriteElementNode;
-import com.oracle.truffle.js.nodes.access.WritePropertyNode;
 import com.oracle.truffle.js.nodes.decorators.ClassElementNode;
-import com.oracle.truffle.js.nodes.decorators.DecoratorNode;
+import com.oracle.truffle.js.nodes.decorators.CoalesceClassElementsNode;
+import com.oracle.truffle.js.nodes.decorators.DecorateConstructorNode;
+import com.oracle.truffle.js.nodes.decorators.DecorateElementNode;
 import com.oracle.truffle.js.nodes.decorators.ElementDescriptor;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -62,9 +62,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -91,14 +89,17 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
     @Child private InitializeInstanceElementsNode staticFieldsNode;
     @Child private PropertySetNode setPrivateBrandNode;
     @Child private SetFunctionNameNode setFunctionName;
-    @Children private final DecoratorNode[] decorators;
+    @Children private final JavaScriptNode[] decorators;
+    @Child private CoalesceClassElementsNode coalesceClassElementsNode;
+    @Child private DecorateElementNode decorateElementNode;
+    @Child private DecorateConstructorNode decorateConstructorNode;
 
     private final boolean hasName;
     //private final int instanceFieldCount;
     //private final int staticFieldCount;
 
     protected ClassDefinitionNode(JSContext context, JSFunctionExpressionNode constructorFunctionNode, JavaScriptNode classHeritageNode, ClassElementNode[] memberNodes,
-                    JSWriteFrameSlotNode writeClassBindingNode, boolean hasName, boolean hasPrivateInstanceMethods, DecoratorNode[] decorators) {
+                    JSWriteFrameSlotNode writeClassBindingNode, boolean hasName, boolean hasPrivateInstanceMethods, JavaScriptNode[] decorators) {
         this.context = context;
         this.constructorFunctionNode = constructorFunctionNode;
         this.classHeritageNode = classHeritageNode;
@@ -113,13 +114,16 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         this.createPrototypeNode = CreateObjectNode.createOrdinaryWithPrototype(context);
         this.defineConstructorMethodNode = DefineMethodNode.create(context, constructorFunctionNode);
         this.setFieldsNode = PropertySetNode.createSetHidden(JSFunction.CLASS_FIELDS_ID, context);//instanceFieldCount != 0 ? PropertySetNode.createSetHidden(JSFunction.CLASS_FIELDS_ID, context) : null;
-        this.setPrivateBrandNode = hasPrivateInstanceMethods ? PropertySetNode.createSetHidden(JSFunction.PRIVATE_BRAND_ID, context) : null;
+        this.setPrivateBrandNode = PropertySetNode.createSetHidden(JSFunction.PRIVATE_BRAND_ID, context);
         this.setFunctionName = hasName ? null : SetFunctionNameNode.create();
         this.decorators = decorators;
+        this.coalesceClassElementsNode = CoalesceClassElementsNode.create();
+        this.decorateElementNode = DecorateElementNode.create(context);
+        this.decorateConstructorNode = DecorateConstructorNode.create(context);
     }
 
     public static ClassDefinitionNode create(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ClassElementNode[] members,
-                                             JSWriteFrameSlotNode writeClassBinding, boolean hasName, boolean hasPrivateInstanceMethods, DecoratorNode[] decorators) {
+                                             JSWriteFrameSlotNode writeClassBinding, boolean hasName, boolean hasPrivateInstanceMethods, JavaScriptNode[] decorators) {
         return new ClassDefinitionNode(context, constructorFunction, classHeritage, members, writeClassBinding, hasName, hasPrivateInstanceMethods, decorators);
     }
 
@@ -172,13 +176,17 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         // Perform CreateMethodProperty(proto, "constructor", F).
         setConstructorNode.executeVoid(proto, constructor);
 
-        ElementDescriptor[] elementDescriptors = decorateClass(frame, proto, constructor);
+        List<ElementDescriptor> elements = classElementEvaluation(frame, proto, constructor);
+
+        elements = coalesceClassElementsNode.executeCoalition(elements);
+
+        elements = decorateClass(frame, elements);
 
         //Object[][] instanceFields = 1 == 0 ? null : new Object[1][];
         ArrayList<Object[]> instances = new ArrayList<>();
         ArrayList<Object[]> statics = new ArrayList<>();
 
-        initializeClassElements(frame, proto, constructor, elementDescriptors, instances, statics);
+        boolean hasPrivateKey = initializeClassElements(proto, constructor, elements, instances, statics);
 
         Object[][] instanceFields = instances.toArray(new Object[][]{});
         Object[][] staticFields = statics.toArray(new Object[][]{});
@@ -194,12 +202,12 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         }
 
         // If the class contains a private instance method or accessor, set F.[[PrivateBrand]].
-        if (setPrivateBrandNode != null) {
+        if (hasPrivateKey) {
             HiddenKey privateBrand = new HiddenKey("Brand");
             setPrivateBrandNode.setValue(constructor, privateBrand);
         }
 
-        if (staticFields.length == -1) {
+        if (staticFields.length > 0) {
             InitializeInstanceElementsNode defineStaticFields = this.staticFieldsNode;
             if (defineStaticFields == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -211,35 +219,36 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         return constructor;
     }
 
-    private void assignPrivateNames(ElementDescriptor[] elements) {
+    private List<ElementDescriptor> classElementEvaluation(VirtualFrame frame, DynamicObject proto, DynamicObject constructor) {
+        List<ElementDescriptor> elements = new ArrayList<>();
+        for(ClassElementNode member: memberNodes) {
+            DynamicObject homeObject = member.isStatic() ? constructor: proto;
+            elements.add(member.execute(frame, homeObject, context));
+        }
+        return elements;
+    }
+
+    @ExplodeLoop
+    private List<ElementDescriptor> decorateClass(VirtualFrame frame, List<ElementDescriptor> elements) {
+        List<ElementDescriptor> newElements = new ArrayList<>();
         for(ElementDescriptor element : elements) {
-            if(element.hasKey() && element.hasPrivateKey()) {
-                Object name = element.getKey();
-                int i = 0;
-            }
+            newElements.addAll(decorateElementNode.decorateElement(frame, element));
         }
+        Object[] d = new Object[decorators.length];
+        int index = 0;
+        for(JavaScriptNode decorator: decorators) {
+            d[index] = decorator.execute(frame);
+        }
+        return decorateConstructorNode.decorateConstructor(frame,newElements,d);
     }
 
     @ExplodeLoop
-    private ElementDescriptor[] decorateClass(VirtualFrame frame, DynamicObject proto, DynamicObject constructor) {
-        ElementDescriptor[] descriptors = new ElementDescriptor[]{};
-        for(ClassElementNode elementNode : memberNodes) {
-            DynamicObject homeObject = elementNode.isStatic() ? constructor : proto;
-            ElementDescriptor[] e = elementNode.executeElementDescriptor(frame, homeObject, context);
-            ElementDescriptor[] concatenation = new ElementDescriptor[descriptors.length + e.length];
-            System.arraycopy(descriptors,0,concatenation,0, descriptors.length);
-            System.arraycopy(e,0,concatenation, descriptors.length, e.length);
-            descriptors = concatenation;
-        }
-        for(DecoratorNode d: decorators) {
-            descriptors = d.executeClassDecorator(frame,descriptors);
-        }
-        return descriptors;
-    }
-
-    @ExplodeLoop
-    private void initializeClassElements(VirtualFrame frame, DynamicObject proto, DynamicObject constructor, ElementDescriptor[] elements, List<Object[]> instanceFields, List<Object[]> staticFields) {
+    private boolean initializeClassElements(DynamicObject proto, DynamicObject constructor, List<ElementDescriptor> elements, List<Object[]> instanceFields, List<Object[]> staticFields) {
+        boolean hasPrivateKey = false;
         for(ElementDescriptor element: elements) {
+            if(element.isStatic() && element.hasKey() && element.hasPrivateKey()) {
+                hasPrivateKey = true;
+            }
             if((element.isMethod() || element.isAccessor()) && !element.hasPrivateKey()) {
                 if(element.isStatic()) {
                     JSRuntime.definePropertyOrThrow(constructor,element.getKey(),element.getDescriptor());
@@ -251,15 +260,17 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
             if(element.isField()) {
                 assert !element.getDescriptor().hasValue() && !element.getDescriptor().hasGet() && !element.getDescriptor().hasSet();
                 if(element.isStatic()) {
-                    defineField(constructor,element);
-                    //staticFields.add(new Object[]{element.getKey(), element.getInitialize(), true});
+                    //defineField(constructor,element);
+                    //TODO: get anonymous function definition
+                    staticFields.add(new Object[]{element.getKey(), element.getInitialize(), false});
                 }
                 if(element.isPrototype()) {
-                    defineField(proto, element);
-                    //instanceFields.add(new Object[]{element.getKey(), element.getInitialize(), true});
+                    //defineField(proto, element);
+                    instanceFields.add(new Object[]{element.getKey(), element.getInitialize(), false});
                 }
             }
         }
+        return hasPrivateKey;
     }
 
     private void defineField(DynamicObject receiver, ElementDescriptor descriptor) {
@@ -302,34 +313,6 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
             }*/
         }
         //assert instanceFieldIndex == instanceFieldCount && staticFieldIndex == staticFieldCount;
-    }
-
-    private void addElementPlacement(ElementDescriptor element, List<Object> staticKeys, List<Object> prototypeKeys, List<Object> ownKeys) {
-        addElementPlacement(element, staticKeys, prototypeKeys, ownKeys, false);
-    }
-
-    private void addElementPlacement(ElementDescriptor element, List<Object> staticKeys, List<Object> prototypeKeys, List<Object> ownKeys, boolean silent) {
-        if(!element.hasKey()) {
-            return;
-        }
-        List<Object> keys;
-        if(element.isOwn()) {
-            keys = ownKeys;
-        }
-        else if(element.isStatic()) {
-            keys = staticKeys;
-        }
-        else {
-            assert element.isPrototype();
-            keys = prototypeKeys;
-        }
-        if(keys.contains(element.getKey())) {
-            if(!silent) {
-                //TODO: Throw TypeError
-            }
-        } else {
-            keys.add(element.getKey());
-        }
     }
 
     @Override

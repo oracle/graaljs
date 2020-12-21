@@ -1668,7 +1668,7 @@ public class Parser extends AbstractParser {
                     classElement = methodDefinition(classElementName, classElementDecorators, isStatic, classHeritage != null, generator, async, classElementToken, classElementLine, yield, await, nameTokenType, hasComputedKey, isPrivate);
 
                     //CoalesceClassElement: Replacement for merging private accessor methods and consecutive getter and setter pairs
-                    Integer existingIndex = classElementNameToElementIndexMap.get(classElement.getKeyName());
+                    /*Integer existingIndex = classElementNameToElementIndexMap.get(classElement.getKeyName());
                     if(existingIndex == null) {
                         classElementNameToElementIndexMap.put(classElement.getKeyName(),classElements.size());
                     } else {
@@ -1676,7 +1676,6 @@ public class Parser extends AbstractParser {
                         if(classElement.getKind() == existing.getKind() && classElement.getPlacement() == existing.getPlacement()) {
                             if(classElement.isMethod()) {
                                 assert !classElement.isPrivate();
-                                //TODO:find solution
                                 //assert classElement.isConfigurable() && existing.isConfigurable();
                                 if(classElement.getDecorators() != null || existing.getDecorators() != null) {
                                     throw error(ECMAErrors.getMessage("type.error.duplicate.method.with.decorators"), decoratorToken);
@@ -1698,7 +1697,7 @@ public class Parser extends AbstractParser {
                                 }
                             }
                         }
-                    }
+                    }*/
                 }
 
                 if (classElement.isPrivate()) {

@@ -146,8 +146,6 @@ import com.oracle.truffle.js.nodes.control.StatementNode;
 import com.oracle.truffle.js.nodes.control.SuspendNode;
 import com.oracle.truffle.js.nodes.decorators.ClassElementKeyNode;
 import com.oracle.truffle.js.nodes.decorators.ClassElementNode;
-import com.oracle.truffle.js.nodes.decorators.ClassElementValueNode;
-import com.oracle.truffle.js.nodes.decorators.DecoratorNode;
 import com.oracle.truffle.js.nodes.function.AbstractFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.EvalNode;
@@ -3276,13 +3274,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
             JSWriteFrameSlotNode writeClassBinding = className == null ? null : (JSWriteFrameSlotNode) findScopeVar(className, true).createWriteNode(null);
 
-            DecoratorNode[] classDecorators = new DecoratorNode[0];
+            JavaScriptNode[] classDecorators = new JavaScriptNode[0];
 
             if(classNode.getDecorators() != null && classNode.getDecorators().size() != 0) {
                 List<Expression> d = classNode.getDecorators();
-                classDecorators = new DecoratorNode[d.size()];
+                classDecorators = new JavaScriptNode[d.size()];
                 for(int i = 0; i < d.size(); i++) {
-                    classDecorators[d.size() - i - 1] = factory.createClassDecorator(transform(d.get(i)),context);
+                    classDecorators[d.size() - i - 1] = transform(d.get(i));
                 }
             }
 
@@ -3313,28 +3311,29 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             } else {
                 key = ClassElementKeyNode.createObjectKeyNode(e.getKeyName());
             }
+
+            JavaScriptNode[] decorators = null;
+            if(e.getDecorators() != null) {
+                List<Expression> d = e.getDecorators();
+                decorators = new JavaScriptNode[d.size()];
+                for(int j = 0; j < d.size(); j++) {
+                    decorators[d.size() - j - 1] = transform(d.get(j));
+                }
+            }
+
             if(e.isField() || e.isMethod()){
                 JavaScriptNode value = transformPropertyValue(e.getValue(), classNameSymbol);
                 if(e.isField()) {
-                    member = ClassElementValueNode.createFieldClassElement(key, value, e.isStatic(), e.isPrivate(), e.isAnonymousFunctionDefinition());
+                    member = ClassElementNode.createFieldClassElement(key, value, e.isStatic(), e.isPrivate(), e.isAnonymousFunctionDefinition(), decorators);
                 } else {
-                    member = ClassElementValueNode.createMethodClassElement(key, value, e.isStatic(), e.isPrivate());
+                    member = ClassElementNode.createMethodClassElement(key, value, e.isStatic(), e.isPrivate(), decorators);
                 }
             } else {
                 assert e.isAccessor();
                 assert e.getGetter() != null || e.getSetter() != null;
                 JavaScriptNode getter = getAccessor(e.getGetter());
                 JavaScriptNode setter = getAccessor(e.getSetter());
-                member = ClassElementValueNode.createAccessorClassElement(key, getter, setter,e.isStatic(), e.isPrivate());
-            }
-            if(e.getDecorators() != null) {
-                List<Expression> d = e.getDecorators();
-                DecoratorNode[] decorators = new DecoratorNode[d.size()];
-                for(int j = 0; j < d.size(); j++) {
-                    JavaScriptNode exp = transform(d.get(j));
-                    decorators[d.size() - j - 1] = factory.createElementDecorator(exp, context);
-                }
-                member = factory.createDecoratedElement(member,decorators);
+                member = ClassElementNode.createAccessorClassElement(key, getter, setter,e.isStatic(), e.isPrivate(), decorators);
             }
             elements.add(member);
         }

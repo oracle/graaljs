@@ -193,7 +193,7 @@ public class ElementDescriptor {
     public boolean isOwn() { return JSPlacement.isOwn(placement); }
 
     //TODO: Private key
-    public boolean hasPrivateKey() {return key instanceof HiddenKey;};
+    public boolean hasPrivateKey() {return key instanceof HiddenKey;}
 
     public boolean hasInitialize() {return initialize != Undefined.instance; }
 

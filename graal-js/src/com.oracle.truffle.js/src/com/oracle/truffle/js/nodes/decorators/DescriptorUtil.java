@@ -12,6 +12,7 @@ import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
 import java.util.Arrays;
+import java.util.List;
 
 public class DescriptorUtil {
     private static final String ELEMENT_DESCRIPTOR_VALUE = "Descriptor";
@@ -59,8 +60,6 @@ public class DescriptorUtil {
             }
         }
         if(element.isMethod() || element.isAccessor()|| element.isField()) {
-            //TODO: get private name
-            Object key = element.getKey();
             JSRuntime.createDataPropertyOrThrow(obj, KEY, element.getKey());
         }
         JSRuntime.createDataPropertyOrThrow(obj, PLACEMENT, element.getPlacementString());
@@ -89,15 +88,30 @@ public class DescriptorUtil {
             }
         }
         //TODO: check if key is private
-        //TODO: isPrivate
-        key = JSRuntime.toPropertyKey(key);
+        boolean hasPrivateKey = key instanceof HiddenKey;
+        if(!hasPrivateKey) {
+            key = JSRuntime.toPropertyKey(key);
+        }
 
         int placement = JSPlacement.fromString(JSRuntime.toString(JSOrdinaryObject.get(elementObject, PLACEMENT)));
         if(!JSPlacement.isStatic(placement) && !JSPlacement.isPrototype(placement) && !JSPlacement.isOwn(placement)) {
             throw Errors.createTypeError("Property placement of element descriptor must be one of 'static', 'prototype' or 'own'.");
         }
         PropertyDescriptor descriptor = toDecoratorPropertyDescriptor(elementObject);
-        //TODO: 11.
+        if(hasPrivateKey) {
+            if(descriptor.hasEnumerable() && descriptor.getEnumerable()) {
+                //TODO: error message
+                throw Errors.createTypeError("");
+            }
+            if(descriptor.hasConfigurable() && descriptor.getConfigurable()) {
+                //TODO: error message
+                throw Errors.createTypeError("");
+            }
+            if(JSPlacement.isPrototype(placement)) {
+                //TODO: error message
+                throw Errors.createTypeError("");
+            }
+        }
         if((JSKind.isAccessor(kind) || JSKind.isHook(kind)) && descriptor.isDataDescriptor()) {
             throw Errors.createTypeError("Property descriptor of element descriptor must not be a data descriptor of property kind is 'accessor' or 'hook'.");
         }
@@ -216,8 +230,8 @@ public class DescriptorUtil {
         return desc;
     }
 
-    public static Object fromClassDescriptor(ElementDescriptor[] elements, JSContext context) {
-        Object[] elementObjects = new Object[elements.length];
+    public static Object fromClassDescriptor(List<ElementDescriptor> elements, JSContext context) {
+        Object[] elementObjects = new Object[elements.size()];
         int index = 0;
         for (ElementDescriptor e: elements) {
             elementObjects[index++] = fromElementDescriptor(e,context);

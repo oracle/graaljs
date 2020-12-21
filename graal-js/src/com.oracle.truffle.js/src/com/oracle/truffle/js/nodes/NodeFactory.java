@@ -187,8 +187,6 @@ import com.oracle.truffle.js.nodes.control.WithNode;
 import com.oracle.truffle.js.nodes.control.YieldNode;
 import com.oracle.truffle.js.nodes.decorators.ClassElementKeyNode;
 import com.oracle.truffle.js.nodes.decorators.ClassElementNode;
-import com.oracle.truffle.js.nodes.decorators.DecoratedClassElementNode;
-import com.oracle.truffle.js.nodes.decorators.DecoratorNode;
 import com.oracle.truffle.js.nodes.function.AbstractBodyNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.CallApplyArgumentsNode;
@@ -810,7 +808,7 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createClassDefinition(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ClassElementNode[] members,
-                    JSWriteFrameSlotNode writeClassBinding, String className, boolean hasPrivateInstanceMethods, DecoratorNode[] decorators) {
+                    JSWriteFrameSlotNode writeClassBinding, String className, boolean hasPrivateInstanceMethods, JavaScriptNode[] decorators) {
         return ClassDefinitionNode.create(context, constructorFunction, classHeritage, members, writeClassBinding, className != null, hasPrivateInstanceMethods, decorators);
     }
 
@@ -1180,18 +1178,6 @@ public class NodeFactory {
 
     public static NodeFactory getInstance(JSContext context) {
         return (NodeFactory) context.getNodeFactory();
-    }
-
-    public DecoratorNode createElementDecorator(JavaScriptNode exp, JSContext context) {
-        return DecoratorNode.createElementDecorator(exp, context);
-    }
-
-    public DecoratorNode createClassDecorator(JavaScriptNode exp, JSContext context) {
-        return DecoratorNode.createClassDecorator(exp, context);
-    }
-
-    public ClassElementNode createDecoratedElement(ClassElementNode elementNode, DecoratorNode[] decorators) {
-        return DecoratedClassElementNode.create(elementNode, decorators);
     }
 
     public ClassElementKeyNode createComputedKeyNode(JavaScriptNode key) {
