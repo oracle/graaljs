@@ -1391,7 +1391,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     }
 
-    @ImportStatic({JSConfig.class})
     public abstract static class ConstructObjectNode extends ConstructWithNewTargetNode {
         public ConstructObjectNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
             super(context, builtin, isNewTargetCase);
@@ -1416,7 +1415,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return newObject(newTarget);
         }
 
-        @Specialization(guards = {"!isNewTargetCase", "arguments.length > 0", "!arg0NullOrUndefined(arguments)"}, limit = "InteropLibraryLimit")
+        @Specialization(guards = {"!isNewTargetCase", "arguments.length > 0", "!arg0NullOrUndefined(arguments)"}, limit = "5")
         protected Object constructObjectJSObject(@SuppressWarnings("unused") DynamicObject newTarget, Object[] arguments,
                         @Cached("createToObject(getContext())") JSToObjectNode toObjectNode,
                         @CachedLibrary("firstArgument(arguments)") InteropLibrary interop,

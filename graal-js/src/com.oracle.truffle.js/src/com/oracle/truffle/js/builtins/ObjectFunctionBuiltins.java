@@ -577,7 +577,6 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    @ImportStatic({JSConfig.class})
     public abstract static class ObjectCreateNode extends ObjectDefineOperation {
         public ObjectCreateNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -593,7 +592,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return objectDefineProperties(ret, properties);
         }
 
-        @Specialization(guards = {"!isJSNull(prototype)", "!isJSObject(prototype)"}, limit = "InteropLibraryLimit")
+        @Specialization(guards = {"!isJSNull(prototype)", "!isJSObject(prototype)"}, limit = "5")
         protected DynamicObject createForeignNullOrInvalidPrototype(Object prototype, Object properties,
                         @CachedLibrary("prototype") InteropLibrary interop,
                         @Cached("createBinaryProfile()") ConditionProfile isNull) {
