@@ -12,3 +12,5 @@ var javaNull = java.lang.System.getProperty("iDontExist");
 assertSame(Object.prototype, Object.getPrototypeOf(Object(javaNull)));
 assertSame(Object.prototype, Object.getPrototypeOf(new Object(javaNull)));
 assertSame(null, Object.getPrototypeOf(Object.create(javaNull)));
+
+true;
