@@ -43,8 +43,9 @@ package com.oracle.truffle.js.runtime.interop;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
@@ -63,6 +64,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.FrameDescriptorProvider;
@@ -73,6 +75,7 @@ import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -261,7 +264,7 @@ public final class ScopeVariables implements TruffleObject {
         static Object doCached(ScopeVariables receiver, @SuppressWarnings("unused") String member,
                         @Cached("member") String cachedMember,
                         // We cache the member's read node for fast-path access
-                        @Cached(value = "findReadNode(member, receiver.frame, receiver.blockOrRoot)", adopt = false) JavaScriptNode readNode) throws UnknownIdentifierException {
+                        @Cached(value = "findReadNode(member, receiver.frame, receiver.blockOrRoot)") JavaScriptNode readNode) throws UnknownIdentifierException {
             return doRead(receiver, cachedMember, readNode);
         }
 
@@ -291,7 +294,7 @@ public final class ScopeVariables implements TruffleObject {
         static void doCached(ScopeVariables receiver, @SuppressWarnings("unused") String member, Object value,
                         @Cached("member") String cachedMember,
                         // We cache the member's write node for fast-path access
-                        @Cached(value = "findWriteNode(member, receiver.frame, receiver.blockOrRoot)", adopt = false) WriteNode writeNode) throws UnknownIdentifierException {
+                        @Cached(value = "findWriteNode(member, receiver.frame, receiver.blockOrRoot)") WriteNode writeNode) throws UnknownIdentifierException {
             doWrite(receiver, cachedMember, value, writeNode);
         }
 
@@ -343,19 +346,19 @@ public final class ScopeVariables implements TruffleObject {
         return "block";
     }
 
-    static final class ResolvedSlot {
+    static class ResolvedSlot {
         final FrameSlot slot;
         final int frameLevel;
         final int scopeLevel;
         final FrameDescriptor descriptor;
-        final List<FrameSlot> parentSlotList;
+        final FrameSlot[] parentSlots;
 
         ResolvedSlot(FrameSlot slot, int frameLevel, int scopeLevel, FrameDescriptor descriptor, List<FrameSlot> parentSlotList) {
             this.slot = slot;
             this.frameLevel = frameLevel;
             this.scopeLevel = scopeLevel;
             this.descriptor = descriptor;
-            this.parentSlotList = parentSlotList;
+            this.parentSlots = parentSlotList == null ? null : parentSlotList.toArray(ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY);
         }
 
         ResolvedSlot() {
@@ -366,7 +369,6 @@ public final class ScopeVariables implements TruffleObject {
             if (slot == null) {
                 return JSConstantNode.createUndefined();
             }
-            FrameSlot[] parentSlots = parentSlotList.toArray(ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY);
             return JSReadFrameSlotNode.create(slot, frameLevel, scopeLevel, parentSlots, JSFrameUtil.hasTemporalDeadZone(slot));
         }
 
@@ -374,12 +376,84 @@ public final class ScopeVariables implements TruffleObject {
             if (slot == null) {
                 return null;
             }
-            FrameSlot[] parentSlots = parentSlotList.toArray(ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY);
             return JSWriteFrameSlotNode.create(slot, frameLevel, scopeLevel, descriptor, parentSlots, null, JSFrameUtil.hasTemporalDeadZone(slot));
         }
 
         public boolean isModifiable() {
             return slot != null && !JSFrameUtil.isConst(slot);
+        }
+    }
+
+    static class DynamicScopeResolvedSlot extends ResolvedSlot {
+        final Object key;
+
+        DynamicScopeResolvedSlot(Object key, FrameSlot slot, int frameLevel, int scopeLevel, FrameDescriptor descriptor, List<FrameSlot> parentSlotList) {
+            super(slot, frameLevel, scopeLevel, descriptor, parentSlotList);
+            this.key = key;
+        }
+
+        @Override
+        JavaScriptNode createReadNode() {
+            JavaScriptNode readDynamicScope = super.createReadNode();
+
+            class EvalRead extends JavaScriptNode {
+                @Child JavaScriptNode getDynamicScope = readDynamicScope;
+                @Child DynamicObjectLibrary objectLibrary;
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    DynamicObject scope = (DynamicObject) getDynamicScope.execute(frame);
+                    DynamicObjectLibrary lib = objectLibrary;
+                    if (lib == null) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        if (getParent() != null) {
+                            lib = insert(DynamicObjectLibrary.getFactory().createDispatched(JSConfig.PropertyCacheLimit));
+                        } else {
+                            lib = DynamicObjectLibrary.getUncached();
+                        }
+                        objectLibrary = lib;
+                    }
+                    return lib.getOrDefault(scope, key, Undefined.instance);
+                }
+            }
+            return new EvalRead();
+        }
+
+        @Override
+        WriteNode createWriteNode() {
+            JavaScriptNode readDynamicScope = super.createReadNode();
+
+            class EvalWrite extends JavaScriptNode implements WriteNode {
+                @Child JavaScriptNode getDynamicScope = readDynamicScope;
+                @Child DynamicObjectLibrary objectLibrary;
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    throw CompilerDirectives.shouldNotReachHere();
+                }
+
+                @Override
+                public Object executeWrite(VirtualFrame frame, Object value) {
+                    DynamicObject scope = (DynamicObject) getDynamicScope.execute(frame);
+                    DynamicObjectLibrary lib = objectLibrary;
+                    if (lib == null) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        if (getParent() != null) {
+                            lib = insert(DynamicObjectLibrary.getFactory().createDispatched(JSConfig.PropertyCacheLimit));
+                        } else {
+                            lib = DynamicObjectLibrary.getUncached();
+                        }
+                        objectLibrary = lib;
+                    }
+                    return lib.putIfPresent(scope, key, value);
+                }
+
+                @Override
+                public JavaScriptNode getRhs() {
+                    return null;
+                }
+            }
+            return new EvalWrite();
         }
     }
 
@@ -404,6 +478,16 @@ public final class ScopeVariables implements TruffleObject {
 
                 FrameSlot parentSlot = frameDescriptor.findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER);
                 if (parentSlot == null) {
+                    // look up direct eval scope variable
+                    FrameSlot evalScopeSlot = frameDescriptor.findFrameSlot(ScopeFrameNode.EVAL_SCOPE_IDENTIFIER);
+                    if (evalScopeSlot != null) {
+                        DynamicObject evalScope = (DynamicObject) FrameUtil.getObjectSafe(outerScope, evalScopeSlot);
+                        DynamicObjectLibrary objLib = DynamicObjectLibrary.getUncached();
+                        if (objLib.containsKey(evalScope, member)) {
+                            return new DynamicScopeResolvedSlot(member, evalScopeSlot, frameLevel, scopeLevel, frameDescriptor, parentSlotList);
+                        }
+                    }
+
                     break;
                 }
                 outerScope = (Frame) FrameUtil.getObjectSafe(outerScope, parentSlot);
