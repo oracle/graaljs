@@ -123,23 +123,26 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
         }
         String moduleReplacementName = realm.getContext().getContextOptions().getCommonJSRequireBuiltins().get(specifier);
         Source src;
-        URI maybeUri = asURI(moduleReplacementName);
-        if (maybeUri != null && moduleReplacementName != null && moduleReplacementName.endsWith(MODULE_SOURCE_NAME_SUFFIX)) {
-            TruffleFile file = resolveURL(referencingModule, moduleReplacementName);
-            try {
-                return loadModuleFromUrl(specifier, file, file.getPath());
-            } catch (IOException e) {
-                throw fail("Failed to load built-in ES module: " + specifier + ". " + e.getMessage());
-            }
-        } else if (moduleReplacementName != null && moduleReplacementName.endsWith(MODULE_SOURCE_NAME_SUFFIX)) {
-            // Just load the module
-            try {
-                String cwdOption = realm.getContext().getContextOptions().getRequireCwd();
-                TruffleFile cwd = cwdOption == null ? realm.getEnv().getCurrentWorkingDirectory() : realm.getEnv().getPublicTruffleFile(cwdOption);
-                TruffleFile modulePath = joinPaths(realm.getEnv(), cwd, moduleReplacementName);
-                src = Source.newBuilder(ID, modulePath).build();
-            } catch (IOException | SecurityException e) {
-                throw fail("Failed to load built-in ES module: " + specifier + ". " + e.getMessage());
+        if (moduleReplacementName != null && moduleReplacementName.endsWith(MODULE_SOURCE_NAME_SUFFIX)) {
+            URI maybeUri = asURI(moduleReplacementName);
+            if (maybeUri != null) {
+                // Load from URI
+                TruffleFile file = resolveURL(referencingModule, moduleReplacementName);
+                try {
+                    return loadModuleFromUrl(specifier, file, file.getPath());
+                } catch (IOException e) {
+                    throw fail("Failed to load built-in ES module: " + specifier + ". " + e.getMessage());
+                }
+            } else {
+                // Just load the module
+                try {
+                    String cwdOption = realm.getContext().getContextOptions().getRequireCwd();
+                    TruffleFile cwd = cwdOption == null ? realm.getEnv().getCurrentWorkingDirectory() : realm.getEnv().getPublicTruffleFile(cwdOption);
+                    TruffleFile modulePath = joinPaths(realm.getEnv(), cwd, moduleReplacementName);
+                    src = Source.newBuilder(ID, modulePath).build();
+                } catch (IOException | SecurityException e) {
+                    throw fail("Failed to load built-in ES module: " + specifier + ". " + e.getMessage());
+                }
             }
         } else {
             // Else, try loading as commonjs built-in module replacement
