@@ -17,6 +17,8 @@ import java.util.List;
 
 public class ToElementDescriptorsNode extends JavaScriptBaseNode {
     protected static final String EXTRAS = "extras";
+    private final JSContext context;
+
     @Child
     private GetIteratorNode getIteratorNode;
     @Child
@@ -31,6 +33,7 @@ public class ToElementDescriptorsNode extends JavaScriptBaseNode {
         this.iteratorStepNode = IteratorStepNode.create(context);
         this.iteratorValueNode = IteratorValueNode.create(context);
         this.iteratorCloseNode = IteratorCloseNode.create(context);
+        this.context = context;
     }
 
     public static ToElementDescriptorsNode create(JSContext context) {
@@ -43,12 +46,13 @@ public class ToElementDescriptorsNode extends JavaScriptBaseNode {
         }
         List<ElementDescriptor> elements = new ArrayList<>();
         IteratorRecord iterator = getIteratorNode.execute(elementObjects);
-        Object extra;
-        while ((extra = getNext(iterator)) != null) {
-            if (!JSRuntime.isNullOrUndefined(JSOrdinaryObject.get((DynamicObject) extra, EXTRAS))) {
-                throw Errors.createTypeError("Property extras of element descriptor must not have nested extras.");
+        Object next;
+        while ((next = getNext(iterator)) != null) {
+            Object elementObject = JSRuntime.toObject(context, next);
+            if (!JSRuntime.isNullOrUndefined(JSOrdinaryObject.get((DynamicObject) elementObject, EXTRAS))) {
+                throw Errors.createTypeError("Property extras of element descriptor must not have nested property extras.");
             }
-            elements.add(DescriptorUtil.toElementDescriptor(extra));
+            elements.add(DescriptorUtil.toElementDescriptor(elementObject));
         }
         return elements;
     }

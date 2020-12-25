@@ -6,9 +6,9 @@ public class ToElementDescriptorsTest extends DecoratorTest {
 
     @Test
     public void testExtraWithExtras() {
-        String source = createElementDecorator(METHOD,KEY, STATIC,"d.extras = {" +
+        String source = createElementDecorator(METHOD,KEY, STATIC,"d.extras = [{" +
                 "extras: {}" +
-                "}");
-        testError(source, "Extra elements must not have extras themselves.");
+                "}];");
+        testError(source, "Property extras of element descriptor must not have nested property extras.");
     }
 }

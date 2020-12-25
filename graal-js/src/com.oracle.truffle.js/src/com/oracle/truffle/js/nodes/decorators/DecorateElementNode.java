@@ -55,6 +55,7 @@ public class DecorateElementNode extends JavaScriptBaseNode {
                 elementExtrasObject = JSRuntime.toObject(context, elementExtrasObject);
             }
             //ToElementExtras
+            assert JSRuntime.isObject(elementExtrasObject);
             element = DescriptorUtil.toElementDescriptor(elementExtrasObject);
             Object extrasObject = JSOrdinaryObject.get((DynamicObject) elementExtrasObject, EXTRAS);
             List<ElementDescriptor> newExtras = toElementDescriptorsNode.toElementDescriptors(extrasObject);

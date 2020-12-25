@@ -47,32 +47,32 @@ public class ToElementDescriptorTest extends DecoratorTest {
     public void testPrivateKeyWithEnumerableTrue()
     {
         String source = createElementDecorator(METHOD,PRIVATE_KEY,OWN,"d.descriptor.enumerable = true;");
-        testError(source, "ElementDescriptor with private key must not be enumerable.");
+        testError(source, "Element descriptor with private key must not be enumerable.");
         source = createElementDecorator(ACCESSOR,PRIVATE_KEY,OWN,"d.descriptor.enumerable = true;");
-        testError(source, "ElementDescriptor with private key must not be enumerable.");
+        testError(source, "Element descriptor with private key must not be enumerable.");
         source = createElementDecorator(FIELD,PRIVATE_KEY,OWN,"d.descriptor.enumerable = true;");
-        testError(source, "ElementDescriptor with private key must not be enumerable.");
+        testError(source, "Element descriptor with private key must not be enumerable.");
     }
 
     @Test
     public void testPrivateKeyWithConfigurableTrue()
     {
         String source = createElementDecorator(METHOD, PRIVATE_KEY, OWN, "d.descriptor.configurable = true;");
-        testError(source, "ElementDescriptor with private key must not be configurable.");
+        testError(source, "Element descriptor with private key must not be configurable.");
         source = createElementDecorator(ACCESSOR, PRIVATE_KEY, OWN, "d.descriptor.configurable = true;");
-        testError(source, "ElementDescriptor with private key must not be configurable.");
+        testError(source, "Element descriptor with private key must not be configurable.");
         source = createElementDecorator(FIELD, PRIVATE_KEY, OWN, "d.descriptor.configurable = true;");
-        testError(source, "ElementDescriptor with private key must not be configurable.");
+        testError(source, "Element descriptor with private key must not be configurable.");
     }
 
     @Test
     public void testPrivateKeyWithPlacementPrototype(){
         String source = createElementDecorator(METHOD,PRIVATE_KEY,PROTOTYPE,null);
-        testError(source, "ElementDescriptor with private key must not have placement prototype.");
+        testError(source, "Element descriptor with private key must not have placement 'prototype'.");
         source = createElementDecorator(ACCESSOR,PRIVATE_KEY,PROTOTYPE,null);
-        testError(source, "ElementDescriptor with private key must not have placement prototype.");
+        testError(source, "Element descriptor with private key must not have placement 'prototype'.");
         source = createElementDecorator(FIELD,PRIVATE_KEY,PROTOTYPE,null);
-        testError(source, "ElementDescriptor with private key must not have placement prototype.");
+        testError(source, "Element descriptor with private key must not have placement 'prototype'.");
     }
 
     @Test

@@ -82,12 +82,9 @@ public class DescriptorUtil {
             throw Errors.createTypeError("Property kind of element descriptor must be one of 'hook', 'method', 'accessor' or 'field'.");
         }
         Object key = JSOrdinaryObject.get(elementObject, KEY);
-        if(JSKind.isHook(kind)) {
-            if(!JSRuntime.isNullOrUndefined(key)) {
+        if(JSKind.isHook(kind) && !JSRuntime.isNullOrUndefined(key)) {
                 throw Errors.createTypeError("Element descriptor with kind 'hook' must not have property key.");
-            }
         }
-        //TODO: check if key is private
         boolean hasPrivateKey = key instanceof HiddenKey;
         if(!hasPrivateKey) {
             key = JSRuntime.toPropertyKey(key);
@@ -100,16 +97,13 @@ public class DescriptorUtil {
         PropertyDescriptor descriptor = toDecoratorPropertyDescriptor(elementObject);
         if(hasPrivateKey) {
             if(descriptor.hasEnumerable() && descriptor.getEnumerable()) {
-                //TODO: error message
-                throw Errors.createTypeError("");
+                throw Errors.createTypeError("Element descriptor with private key must not be enumerable.");
             }
             if(descriptor.hasConfigurable() && descriptor.getConfigurable()) {
-                //TODO: error message
-                throw Errors.createTypeError("");
+                throw Errors.createTypeError("Element descriptor with private key must not be configurable.");
             }
             if(JSPlacement.isPrototype(placement)) {
-                //TODO: error message
-                throw Errors.createTypeError("");
+                throw Errors.createTypeError("Element descriptor with private key must not have placement 'prototype'.");
             }
         }
         if((JSKind.isAccessor(kind) || JSKind.isHook(kind)) && descriptor.isDataDescriptor()) {
