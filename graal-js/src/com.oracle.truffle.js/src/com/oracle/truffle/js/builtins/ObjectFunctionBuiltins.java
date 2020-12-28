@@ -592,12 +592,16 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return objectDefineProperties(ret, properties);
         }
 
-        @TruffleBoundary
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"!isJSNull(prototype)", "!isJSObject(prototype)"})
-        protected DynamicObject createInvalidPrototype(Object prototype, Object properties) {
+        @Specialization(guards = {"!isJSNull(prototype)", "!isJSObject(prototype)"}, limit = "5")
+        protected DynamicObject createForeignNullOrInvalidPrototype(Object prototype, Object properties,
+                        @CachedLibrary("prototype") InteropLibrary interop,
+                        @Cached("createBinaryProfile()") ConditionProfile isNull) {
             assert prototype != null;
-            throw Errors.createTypeErrorInvalidPrototype(prototype);
+            if (isNull.profile(prototype != Undefined.instance && interop.isNull(prototype))) {
+                return createPrototypeNull(Null.instance, properties);
+            } else {
+                throw Errors.createTypeErrorInvalidPrototype(prototype);
+            }
         }
 
         @Specialization(guards = {"isJSObject(prototype)", "isJSObject(properties)"})
