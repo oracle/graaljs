@@ -944,7 +944,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             if (context.isOptionNashornCompatibilityMode()) {
                 Object result = tryGetters(thisObj, root);
                 if (result != null) {
-                    return result;
+                    return importValueNode.executeWithTarget(result);
                 }
             }
             Object foreignResult;
