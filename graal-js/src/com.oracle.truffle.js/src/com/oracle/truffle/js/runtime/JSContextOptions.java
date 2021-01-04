@@ -295,7 +295,7 @@ public final class JSContextOptions {
                             }
                             String[] options = value.split(",");
                             for (String s : options) {
-                                String[] builtin = s.split(":");
+                                String[] builtin = s.split(":", 2);
                                 if (builtin.length != 2) {
                                     throw new IllegalArgumentException("Unexpected builtin arguments: " + s);
                                 }

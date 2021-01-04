@@ -680,6 +680,15 @@ public class CommonJSRequireTest {
     }
 
     @Test
+    public void importBuiltinModuleEsURL() throws IOException {
+        final String src = "import assert from 'assert'; assert.equal(42, 42); console.log('OK!');";
+        Map<String, String> options = getDefaultOptions();
+        Path path = getTestRootFolder().resolve("builtin-assert-mockup.mjs");
+        options.put(COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, "assert:" + path.toUri().toString());
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "OK!\n", options);
+    }
+
+    @Test
     public void importNestedBuiltinModuleEs() throws IOException {
         Path root = getTestRootFolder();
         Path dirFile = Paths.get(root.toAbsolutePath().toString(), "nested_imports.js");
