@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -2660,6 +2660,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             Object[] array = jsobjectToArray(thisJSObj, len, keys);
 
             Comparator<Object> comparator = getComparator(thisJSObj, comparefn);
+            if (isTypedArrayImplementation && comparefn == Undefined.instance) {
+                assert comparator == null;
+                prepareForDefaultComparator(array);
+            }
             sortIntl(comparator, array);
             reportLoopCount(len);
 
@@ -2761,6 +2765,26 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 // If "comparefn" is not undefined and is not a consistent
                 // comparison function for the elements of this array, the
                 // behaviour of sort is implementation-defined.
+            }
+        }
+
+        private static void prepareForDefaultComparator(Object[] array) {
+            // Default comparator (based on Comparable.compareTo) cannot be used
+            // for elements of different type (for example, Integer.compareTo()
+            // accepts Integers only, not Doubles).
+            boolean needsConversion = false;
+            Class<?> clazz = array[0].getClass();
+            for (Object element : array) {
+                Class<?> c = element.getClass();
+                if (clazz != c) {
+                    needsConversion = true;
+                    break;
+                }
+            }
+            if (needsConversion) {
+                for (int i = 0; i < array.length; i++) {
+                    array[i] = JSRuntime.toDouble(array[i]);
+                }
             }
         }
 
