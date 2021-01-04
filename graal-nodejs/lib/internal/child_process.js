@@ -5,6 +5,7 @@ const {
   ObjectDefineProperty,
   ObjectSetPrototypeOf,
   Symbol,
+  Uint8Array,
 } = primordials;
 
 const {
@@ -912,7 +913,7 @@ function getValidStdio(stdio, sync) {
   if (typeof stdio === 'string') {
     stdio = stdioStringToArray(stdio);
   } else if (!ArrayIsArray(stdio)) {
-    throw new ERR_INVALID_OPT_VALUE('stdio', inspect(stdio));
+    throw new ERR_INVALID_OPT_VALUE('stdio', stdio);
   }
 
   // At least 3 stdio will be created
@@ -997,7 +998,7 @@ function getValidStdio(stdio, sync) {
     } else {
       // Cleanup
       cleanup();
-      throw new ERR_INVALID_OPT_VALUE('stdio', inspect(stdio));
+      throw new ERR_INVALID_OPT_VALUE('stdio', stdio);
     }
 
     return acc;

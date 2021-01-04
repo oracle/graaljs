@@ -131,7 +131,7 @@ the native addon will also need to have a C/C++ toolchain installed.
 
 For Linux developers, the necessary C/C++ toolchain packages are readily
 available. [GCC][] is widely used in the Node.js community to build and
-test across a variety of plarforms. For many developers, the [LLVM][]
+test across a variety of platforms. For many developers, the [LLVM][]
 compiler infrastructure is also a good choice.
 
 For Mac developers, [Xcode][] offers all the required compiler tools.
@@ -3643,6 +3643,12 @@ if (status != napi_ok) return status;
 
 ### Structures
 #### napi_property_attributes
+<!-- YAML
+changes:
+ - version: v12.20.0
+   pr-url: https://github.com/nodejs/node/pull/35214
+   description: added `napi_default_method` and `napi_default_property`
+-->
 
 ```c
 typedef enum {
@@ -3654,6 +3660,14 @@ typedef enum {
   // Used with napi_define_class to distinguish static properties
   // from instance properties. Ignored by napi_define_properties.
   napi_static = 1 << 10,
+
+  // Default for class methods.
+  napi_default_method = napi_writable | napi_configurable,
+
+  // Default for object properties, like in JS obj[prop].
+  napi_default_property = napi_writable |
+                          napi_enumerable |
+                          napi_configurable,
 } napi_property_attributes;
 ```
 
@@ -3672,6 +3686,10 @@ They can be one or more of the following bitflags:
 * `napi_static`: The property will be defined as a static property on a class as
   opposed to an instance property, which is the default. This is used only by
   [`napi_define_class`][]. It is ignored by `napi_define_properties`.
+* `napi_default_method`: The property is configureable, writeable but not
+  enumerable like a method in a JS class.
+* `napi_default_property`: The property is writable, enumerable and configurable
+  like a property set via JS code `obj.key = value`.
 
 #### napi_property_descriptor
 
@@ -4073,6 +4091,53 @@ object. The properties are defined using property descriptors (see
 this API will set the properties on the object one at a time, as defined by
 `DefineOwnProperty()` (described in [Section 9.1.6][] of the ECMA-262
 specification).
+
+#### napi_object_freeze
+<!-- YAML
+added: v12.20.0
+-->
+
+> Stability: 1 - Experimental
+
+```c
+napi_status napi_object_freeze(napi_env env,
+                               napi_value object);
+```
+
+* `[in] env`: The environment that the N-API call is invoked under.
+* `[in] object`: The object to freeze.
+
+Returns `napi_ok` if the API succeeded.
+
+This method freezes a given object. This prevents new properties from
+being added to it, existing properties from being removed, prevents
+changing the enumerability, configurability, or writability of existing
+properties, and prevents the values of existing properties from being changed.
+It also prevents the object's prototype from being changed. This is described
+in [Section 19.1.2.6](https://tc39.es/ecma262/#sec-object.freeze) of the
+ECMA-262 specification.
+
+#### napi_object_seal
+<!-- YAML
+added: v12.20.0
+-->
+
+> Stability: 1 - Experimental
+
+```c
+napi_status napi_object_seal(napi_env env,
+                             napi_value object);
+```
+
+* `[in] env`: The environment that the N-API call is invoked under.
+* `[in] object`: The object to seal.
+
+Returns `napi_ok` if the API succeeded.
+
+This method seals a given object. This prevents new properties from being
+added to it, as well as marking all existing properties as non-configurable.
+This is described in [Section 19.1.2.20](https://tc39.es/ecma262/#sec-object.seal)
+of the ECMA-262 specification.
 
 ## Working with JavaScript functions
 
