@@ -1,3 +1,26 @@
+## 6.14.10 (2020-12-18)
+
+### DEPENDENCIES
+
+* [`906d647e1`](https://github.com/npm/cli/commit/906d647e1cacd74243abcacba3bade80437f30f5)
+`opener@1.5.2`
+  * fixes: [`#36445`](https://github.com/nodejs/node/issues/36445) addressing
+[`GHSL-2020-145`](https://securitylab.github.com/advisories/GHSL-2020-145-domenic-opener)
+
+## 6.14.9 (2020-11-20)
+
+### BUG FIXES
+* [`4a91e48aa`](https://github.com/npm/cli/commit/4a91e48aa92be5b2739ebcdd8a9a841ff5cb6817)
+  fix: docs generation breaking builds
+
+### DEPENDDENCIES
+* [`ab80a7cf0`](https://github.com/npm/cli/commit/ab80a7cf092d52f4b055cc6d03c38b6115c4b582)
+  `npm-user-validate@1.0.1`
+  * dep update to resolve security issue [GHSA-xgh6-85xh-479p](https://github.com/advisories/GHSA-xgh6-85xh-479p)
+* [`6b2ab9d53`](https://github.com/npm/cli/commit/6b2ab9d532ef8ffce326f4caa23eb27f83765acd)
+  `har-validator@5.1.5`
+  * dep update to resolve security issue [SNYK-JS-AJV-584908](https://snyk.io/vuln/SNYK-JS-AJV-584908)
+
 ## 6.14.8 (2020-08-17)
 
 ### BUG FIXES
