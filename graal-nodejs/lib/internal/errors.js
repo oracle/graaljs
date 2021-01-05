@@ -1100,10 +1100,13 @@ E('ERR_INVALID_MODULE_SPECIFIER', (request, reason, base = undefined) => {
   return `Invalid module "${request}" ${reason}${base ?
     ` imported from ${base}` : ''}`;
 }, TypeError);
-E('ERR_INVALID_OPT_VALUE', (name, value) =>
-  `The value "${String(value)}" is invalid for option "${name}"`,
-  TypeError,
-  RangeError);
+E('ERR_INVALID_OPT_VALUE', (name, value, reason = '') => {
+  let inspected = typeof value === 'string' ?
+    value : lazyInternalUtilInspect().inspect(value);
+  if (inspected.length > 128) inspected = `${inspected.slice(0, 128)}...`;
+  if (reason) reason = '. ' + reason;
+  return `The value "${inspected}" is invalid for option "${name}"` + reason;
+}, TypeError, RangeError);
 E('ERR_INVALID_OPT_VALUE_ENCODING',
   'The value "%s" is invalid for option "encoding"', TypeError);
 E('ERR_INVALID_PACKAGE_CONFIG', (path, base, message) => {
@@ -1293,7 +1296,7 @@ E('ERR_REQUIRE_ESM',
         filename : path.basename(filename);
       msg +=
         '\nrequire() of ES modules is not supported.\nrequire() of ' +
-        `${filename} ${parentPath ? `from ${parentPath} ` : ''}` +
+        `${filename} from ${parentPath} ` +
         'is an ES module file as it is a .js file whose nearest parent ' +
         'package.json contains "type": "module" which defines all .js ' +
         'files in that package scope as ES modules.\nInstead rename ' +

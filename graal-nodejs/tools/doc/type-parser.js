@@ -82,6 +82,7 @@ const customTypesMap = {
   'fs.FSWatcher': 'fs.html#fs_class_fs_fswatcher',
   'fs.ReadStream': 'fs.html#fs_class_fs_readstream',
   'fs.Stats': 'fs.html#fs_class_fs_stats',
+  'fs.StatWatcher': 'fs.html#fs_class_fs_statwatcher',
   'fs.WriteStream': 'fs.html#fs_class_fs_writestream',
 
   'http.Agent': 'http.html#http_class_http_agent',
@@ -108,7 +109,7 @@ const customTypesMap = {
   'module': 'modules.html#modules_the_module_object',
 
   'module.SourceMap':
-    'modules.html#modules_class_module_sourcemap',
+    'modules_module.html#modules_module_class_module_sourcemap',
 
   'require': 'modules.html#modules_require_id',
 
