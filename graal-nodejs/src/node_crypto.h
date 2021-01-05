@@ -446,8 +446,7 @@ class KeyObjectData {
 
 class KeyObjectHandle : public BaseObject {
  public:
-  static v8::Local<v8::Function> Initialize(Environment* env,
-                                            v8::Local<v8::Object> target);
+  static v8::Local<v8::Function> Initialize(Environment* env);
 
   static v8::MaybeLocal<v8::Object> Create(Environment* env,
                                            std::shared_ptr<KeyObjectData> data);
@@ -519,7 +518,9 @@ class NativeKeyObject : public BaseObject {
                   v8::Local<v8::Object> wrap,
                   const std::shared_ptr<KeyObjectData>& handle_data)
     : BaseObject(env, wrap),
-      handle_data_(handle_data) {}
+      handle_data_(handle_data) {
+    MakeWeak();
+  }
 
   std::shared_ptr<KeyObjectData> handle_data_;
 };
