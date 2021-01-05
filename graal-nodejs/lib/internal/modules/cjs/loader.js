@@ -21,12 +21,6 @@
 
 'use strict';
 
-// Set first due to cycle with ESM loader functions.
-module.exports = {
-  wrapSafe, Module, toRealPath, readPackageScope,
-  get hasLoadedAnyUserCJSModule() { return hasLoadedAnyUserCJSModule; }
-};
-
 const {
   ArrayIsArray,
   ArrayPrototypeJoin,
@@ -41,6 +35,7 @@ const {
   RegExpPrototypeTest,
   SafeMap,
   SafeSet,
+  SafeWeakMap,
   StringPrototypeEndsWith,
   StringPrototypeIndexOf,
   StringPrototypeLastIndexOf,
@@ -48,6 +43,15 @@ const {
   StringPrototypeSlice,
   StringPrototypeStartsWith,
 } = primordials;
+
+// Map used to store CJS parsing data.
+const cjsParseCache = new SafeWeakMap();
+
+// Set first due to cycle with ESM loader functions.
+module.exports = {
+  wrapSafe, Module, toRealPath, readPackageScope, cjsParseCache,
+  get hasLoadedAnyUserCJSModule() { return hasLoadedAnyUserCJSModule; }
+};
 
 const { NativeModule } = require('internal/bootstrap/loaders');
 const {
@@ -101,6 +105,7 @@ const {
 } = require('internal/constants');
 
 const asyncESM = require('internal/process/esm_loader');
+const { enrichCJSError } = require('internal/modules/esm/translators');
 const { kEvaluated } = internalBinding('module_wrap');
 const {
   encodedSepRegEx,
@@ -114,31 +119,6 @@ const relativeResolveCache = ObjectCreate(null);
 
 let requireDepth = 0;
 let statCache = null;
-
-function enrichCJSError(err) {
-  const stack = err.stack.split('\n');
-
-  const lineWithErr = stack[1];
-
-  /*
-    The regular expression below targets the most common import statement
-    usage. However, some cases are not matching, cases like import statement
-    after a comment block and/or after a variable definition.
-  */
-  if (err.message.startsWith('Unexpected token \'export\'') ||
-    (RegExpPrototypeTest(/^\s*import(?=[ {'"*])\s*(?![ (])/, lineWithErr))) {
-    // Emit the warning synchronously because we are in the middle of handling
-    // a SyntaxError that will throw and likely terminate the process before an
-    // asynchronous warning would be emitted.
-    process.emitWarning(
-      'To load an ES module, set "type": "module" in the package.json or use ' +
-      'the .mjs extension.',
-      undefined,
-      undefined,
-      undefined,
-      true);
-  }
-}
 
 function stat(filename) {
   filename = path.toNamespacedPath(filename);
@@ -689,14 +669,18 @@ Module._load = function(request, parent, isMain) {
   const cachedModule = Module._cache[filename];
   if (cachedModule !== undefined) {
     updateChildren(parent, cachedModule, true);
-    return cachedModule.exports;
+    const parseCachedModule = cjsParseCache.get(cachedModule);
+    if (parseCachedModule && !parseCachedModule.loaded)
+      parseCachedModule.loaded = true;
+    else
+      return cachedModule.exports;
   }
 
   const mod = loadNativeModule(filename, request);
   if (mod && mod.canBeRequiredByUsers) return mod.exports;
 
   // Don't call updateChildren(), Module constructor already does.
-  const module = new Module(filename, parent);
+  const module = cachedModule || new Module(filename, parent);
 
   if (isMain) {
     process.mainModule = module;
@@ -1031,7 +1015,15 @@ Module._extensions['.js'] = function(module, filename) {
       throw new ERR_REQUIRE_ESM(filename, parentPath, packageJsonPath);
     }
   }
-  const content = fs.readFileSync(filename, 'utf8');
+  // If already analyzed the source, then it will be cached.
+  const cached = cjsParseCache.get(module);
+  let content;
+  if (cached && cached.source) {
+    content = cached.source;
+    cached.source = undefined;
+  } else {
+    content = fs.readFileSync(filename, 'utf8');
+  }
   module._compile(content, filename);
 };
 
