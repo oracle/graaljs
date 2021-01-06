@@ -49,7 +49,7 @@ static const unsigned char llparse_blob7[] = {
 };
 #ifdef __SSE4_2__
 static const unsigned char ALIGN(16) llparse_blob8[] = {
-  0x9, 0x9, ' ', '~', 0x80, 0xfe, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x9, 0x9, ' ', '~', 0x80, 0xff, 0x0, 0x0, 0x0, 0x0, 0x0,
   0x0, 0x0, 0x0, 0x0, 0x0
 };
 #endif  /* __SSE4_2__ */
@@ -810,6 +810,14 @@ int llhttp__internal__c_or_flags_16(
     const unsigned char* p,
     const unsigned char* endp) {
   state->flags |= 512;
+  return 0;
+}
+
+int llhttp__internal__c_and_flags(
+    llhttp__internal_t* state,
+    const unsigned char* p,
+    const unsigned char* endp) {
+  state->flags &= -9;
   return 0;
 }
 
@@ -1595,7 +1603,7 @@ static llparse_state_t llhttp__internal__run(
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
       };
       if (p == endp) {
         return s_n_llhttp__internal__n_header_value_connection_token;
@@ -1916,7 +1924,7 @@ static llparse_state_t llhttp__internal__run(
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
       };
       if (p == endp) {
         return s_n_llhttp__internal__n_header_value;
@@ -1975,7 +1983,7 @@ static llparse_state_t llhttp__internal__run(
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
       };
       if (p == endp) {
         return s_n_llhttp__internal__n_header_value_te_token;
@@ -5974,10 +5982,18 @@ static llparse_state_t llhttp__internal__run(
     /* UNREACHABLE */;
     abort();
   }
+  s_n_llhttp__internal__n_invoke_and_flags: {
+    switch (llhttp__internal__c_and_flags(state, p, endp)) {
+      default:
+        goto s_n_llhttp__internal__n_header_value_te_chunked;
+    }
+    /* UNREACHABLE */;
+    abort();
+  }
   s_n_llhttp__internal__n_invoke_or_flags_16: {
     switch (llhttp__internal__c_or_flags_16(state, p, endp)) {
       default:
-        goto s_n_llhttp__internal__n_header_value_te_chunked;
+        goto s_n_llhttp__internal__n_invoke_and_flags;
     }
     /* UNREACHABLE */;
     abort();
@@ -6863,7 +6879,7 @@ static const unsigned char llparse_blob7[] = {
 };
 #ifdef __SSE4_2__
 static const unsigned char ALIGN(16) llparse_blob8[] = {
-  0x9, 0x9, ' ', '~', 0x80, 0xfe, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x9, 0x9, ' ', '~', 0x80, 0xff, 0x0, 0x0, 0x0, 0x0, 0x0,
   0x0, 0x0, 0x0, 0x0, 0x0
 };
 #endif  /* __SSE4_2__ */
@@ -7625,6 +7641,14 @@ int llhttp__internal__c_or_flags_16(
   return 0;
 }
 
+int llhttp__internal__c_and_flags(
+    llhttp__internal_t* state,
+    const unsigned char* p,
+    const unsigned char* endp) {
+  state->flags &= -9;
+  return 0;
+}
+
 int llhttp__internal__c_update_header_state_7(
     llhttp__internal_t* state,
     const unsigned char* p,
@@ -8358,7 +8382,7 @@ static llparse_state_t llhttp__internal__run(
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
       };
       if (p == endp) {
         return s_n_llhttp__internal__n_header_value_connection_token;
@@ -8679,7 +8703,7 @@ static llparse_state_t llhttp__internal__run(
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
       };
       if (p == endp) {
         return s_n_llhttp__internal__n_header_value;
@@ -8738,7 +8762,7 @@ static llparse_state_t llhttp__internal__run(
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
       };
       if (p == endp) {
         return s_n_llhttp__internal__n_header_value_te_token;
@@ -12522,10 +12546,18 @@ static llparse_state_t llhttp__internal__run(
     /* UNREACHABLE */;
     abort();
   }
+  s_n_llhttp__internal__n_invoke_and_flags: {
+    switch (llhttp__internal__c_and_flags(state, p, endp)) {
+      default:
+        goto s_n_llhttp__internal__n_header_value_te_chunked;
+    }
+    /* UNREACHABLE */;
+    abort();
+  }
   s_n_llhttp__internal__n_invoke_or_flags_16: {
     switch (llhttp__internal__c_or_flags_16(state, p, endp)) {
       default:
-        goto s_n_llhttp__internal__n_header_value_te_chunked;
+        goto s_n_llhttp__internal__n_invoke_and_flags;
     }
     /* UNREACHABLE */;
     abort();

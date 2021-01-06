@@ -5,7 +5,7 @@ The main focus is on user-observable behavior of the engine.
 
 ## Version 21.0.0
 * ECMAScript 2021 mode/features enabled by default.
-* Updated Node.js to version 12.19.1.
+* Updated Node.js to version 12.20.1.
 * Adopted new interop exception handling and made JS exceptions extend `AbstractTruffleException`.
 * Implemented interop identity messages.
 * Expose `Graal.versionECMAScript` instead of `Graal.versionJS`.
