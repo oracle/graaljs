@@ -1135,6 +1135,15 @@ public final class GraalJSAccess {
         throw new IllegalArgumentException("Cannot get creation context for this object");
     }
 
+    public void objectSetIntegrityLevel(Object object, boolean freeze) {
+        if (JSObject.isJSObject(object)) {
+            boolean result = JSObject.setIntegrityLevel((DynamicObject) object, freeze);
+            if (!result) {
+                throw Errors.createTypeError("SetIntegrityLevel failed");
+            }
+        }
+    }
+
     public Object arrayNew(Object context, int length) {
         return JSArray.createConstantEmptyArray(((JSRealm) context).getContext(), length);
     }

@@ -228,10 +228,9 @@ class RefBase : protected Finalizer, RefTracker {
   // from one of Unwrap or napi_delete_reference.
   //
   // When it is called from Unwrap or napi_delete_reference we only
-  // want to do the delete if there is no finalizer or the finalizer has already
-  // run or cannot have been queued to run (i.e. the reference count is > 0),
+  // want to do the delete if the finalizer has already run or
+  // cannot have been queued to run (ie the reference count is > 0),
   // otherwise we may crash when the finalizer does run.
-  //
   // If the finalizer may have been queued and has not already run
   // delay the delete until the finalizer runs by not doing the delete
   // and setting _delete_self to true so that the finalizer will
@@ -243,7 +242,6 @@ class RefBase : protected Finalizer, RefTracker {
   static inline void Delete(RefBase* reference) {
     reference->Unlink();
     if ((reference->RefCount() != 0) ||
-        (reference->_finalize_callback == nullptr) ||
         (reference->_delete_self) ||
         (reference->_finalize_ran)) {
       delete reference;
@@ -1390,6 +1388,42 @@ napi_status napi_define_properties(napi_env env,
       }
     }
   }
+
+  return GET_RETURN_STATUS(env);
+}
+
+napi_status napi_object_freeze(napi_env env,
+                               napi_value object) {
+  NAPI_PREAMBLE(env);
+
+  v8::Local<v8::Context> context = env->context();
+  v8::Local<v8::Object> obj;
+
+  CHECK_TO_OBJECT(env, context, obj, object);
+
+  v8::Maybe<bool> set_frozen =
+    obj->SetIntegrityLevel(context, v8::IntegrityLevel::kFrozen);
+
+  RETURN_STATUS_IF_FALSE_WITH_PREAMBLE(env,
+    set_frozen.FromMaybe(false), napi_generic_failure);
+
+  return GET_RETURN_STATUS(env);
+}
+
+napi_status napi_object_seal(napi_env env,
+                             napi_value object) {
+  NAPI_PREAMBLE(env);
+
+  v8::Local<v8::Context> context = env->context();
+  v8::Local<v8::Object> obj;
+
+  CHECK_TO_OBJECT(env, context, obj, object);
+
+  v8::Maybe<bool> set_sealed =
+    obj->SetIntegrityLevel(context, v8::IntegrityLevel::kSealed);
+
+  RETURN_STATUS_IF_FALSE_WITH_PREAMBLE(env,
+    set_sealed.FromMaybe(false), napi_generic_failure);
 
   return GET_RETURN_STATUS(env);
 }
