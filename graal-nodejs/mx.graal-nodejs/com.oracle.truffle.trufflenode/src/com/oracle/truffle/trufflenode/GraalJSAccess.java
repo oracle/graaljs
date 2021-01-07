@@ -1137,7 +1137,10 @@ public final class GraalJSAccess {
 
     public void objectSetIntegrityLevel(Object object, boolean freeze) {
         if (JSObject.isJSObject(object)) {
-            JSObject.setIntegrityLevel((DynamicObject) object, freeze, true);
+            boolean result = JSObject.setIntegrityLevel((DynamicObject) object, freeze);
+            if (!result) {
+                throw Errors.createTypeError("SetIntegrityLevel failed");
+            }
         }
     }
 
