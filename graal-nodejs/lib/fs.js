@@ -1487,6 +1487,8 @@ function watchFile(filename, options, listener) {
     stat = new watchers.StatWatcher(options.bigint);
     stat.start(filename, options.persistent, options.interval);
     statWatchers.set(filename, stat);
+  } else {
+    stat[watchers.kFSStatWatcherAddOrCleanRef]('add');
   }
 
   stat.addListener('change', listener);
@@ -1501,9 +1503,13 @@ function unwatchFile(filename, listener) {
   if (stat === undefined) return;
 
   if (typeof listener === 'function') {
+    const beforeListenerCount = stat.listenerCount('change');
     stat.removeListener('change', listener);
+    if (stat.listenerCount('change') < beforeListenerCount)
+      stat[watchers.kFSStatWatcherAddOrCleanRef]('clean');
   } else {
     stat.removeAllListeners('change');
+    stat[watchers.kFSStatWatcherAddOrCleanRef]('cleanAll');
   }
 
   if (stat.listenerCount('change') === 0) {
@@ -1560,10 +1566,7 @@ if (isWindows) {
 
 const emptyObj = ObjectCreate(null);
 function realpathSync(p, options) {
-  if (!options)
-    options = emptyObj;
-  else
-    options = getOptions(options, emptyObj);
+  options = getOptions(options, emptyObj);
   p = toPathIfFileURL(p);
   if (typeof p !== 'string') {
     p += '';
@@ -1595,7 +1598,7 @@ function realpathSync(p, options) {
   pos = current.length;
 
   // On windows, check that the root exists. On unix there is no need.
-  if (isWindows && !knownHard[base]) {
+  if (isWindows) {
     const ctx = { path: base };
     binding.lstat(pathModule.toNamespacedPath(base), false, undefined, ctx);
     handleErrorFromBinding(ctx);
@@ -1793,7 +1796,7 @@ function realpath(p, options, callback) {
       const ino = stats.ino.toString(32);
       id = `${dev}:${ino}`;
       if (seenLinks[id]) {
-        return gotTarget(null, seenLinks[id], base);
+        return gotTarget(null, seenLinks[id]);
       }
     }
     fs.stat(base, (err) => {
@@ -1806,7 +1809,7 @@ function realpath(p, options, callback) {
     });
   }
 
-  function gotTarget(err, target, base) {
+  function gotTarget(err, target) {
     if (err) return callback(err);
 
     gotResolvedLink(pathModule.resolve(previous, target));

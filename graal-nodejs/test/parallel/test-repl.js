@@ -757,7 +757,7 @@ const errorTests = [
   {
     send: 'console',
     expect: [
-      '{',
+      'Object [console] {',
       '  log: [Function: log],',
       '  warn: [Function: warn],',
       '  dir: [Function: dir],',
@@ -805,6 +805,16 @@ const tcpTests = [
   {
     send: `require(${JSON.stringify(moduleFilename)}).number`,
     expect: '42'
+  },
+  {
+    send: 'import comeOn from \'fhqwhgads\'',
+    expect: [
+      kSource,
+      kArrow,
+      '',
+      'Uncaught:',
+      /^SyntaxError: .* dynamic import/
+    ]
   }
 ];
 
