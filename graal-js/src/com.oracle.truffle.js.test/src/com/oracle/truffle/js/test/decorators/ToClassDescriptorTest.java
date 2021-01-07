@@ -2,19 +2,20 @@ package com.oracle.truffle.js.test.decorators;
 
 import org.junit.Test;
 
+//TODO: find way to test propertydescriptor
 public class ToClassDescriptorTest extends DecoratorTest{
     @Test
     public void testKindDifferentFromClass() {
         String source = createClassDecorator(METHOD, null, null, null);
-        testError(source, "Property kind of class descriptor must be 'class'.");
+        testError(source, "Class descriptor must have kind 'class'.");
         source = createClassDecorator(FIELD, null, null, null);
-        testError(source, "Property kind of class descriptor must be 'class'.");
+        testError(source, "Class descriptor must have kind 'class'.");
         source = createClassDecorator(ACCESSOR, null, null, null);
-        testError(source, "Property kind of class descriptor must be 'class'.");
+        testError(source, "Class descriptor must have kind 'class'.");
         source = createClassDecorator(HOOK, null, null, null);
-        testError(source, "Property kind of class descriptor must be 'class'.");
+        testError(source, "Class descriptor must have kind 'class'.");
         source = createClassDecorator("'invalid'", null, null, null);
-        testError(source, "Property kind of class descriptor must be 'class'.");
+        testError(source, "Class descriptor must have kind 'class'.");
     }
 
     @Test
@@ -36,18 +37,6 @@ public class ToClassDescriptorTest extends DecoratorTest{
     }
 
     @Test
-    public void testDescriptorPresent() {
-        String source = createClassDecorator(CLASS,null,null, "d.descriptor.writable = " + TRUE + ";");
-        testError(source, "Property descriptor of class descriptor must either be empty or undefined.");
-        source = createClassDecorator(CLASS,null,null, "d.descriptor.value = " + EMPTY_METHOD + ";");
-        testError(source, "Property descriptor of class descriptor must either be empty or undefined.");
-        source = createClassDecorator(CLASS,null,null, "d.descriptor.get = " + EMPTY_GETTER + ";");
-        testError(source, "Property descriptor of class descriptor must either be empty or undefined.");
-        source = createClassDecorator(CLASS,null,null, "d.descriptor.set = " + EMPTY_SETTER + ";");
-        testError(source, "Property descriptor of class descriptor must either be empty or undefined.");
-    }
-
-    @Test
     public void testInitializePresent() {
         String source = createClassDecorator(CLASS,null,null, "d.initialize = " + EMPTY_METHOD + ";");
         testError(source, "Class descriptor must not have property initialize.");
@@ -61,7 +50,7 @@ public class ToClassDescriptorTest extends DecoratorTest{
 
     @Test
     public void testExtrasPresent() {
-        String source = createClassDecorator(CLASS, null, null, "d.extras = {}");
+        String source = createClassDecorator(CLASS, null, null, "d.extras = {};");
         testError(source, "Class descriptor must not have property extras.");
     }
 

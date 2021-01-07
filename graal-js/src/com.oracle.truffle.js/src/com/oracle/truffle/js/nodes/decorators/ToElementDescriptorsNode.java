@@ -50,7 +50,7 @@ public class ToElementDescriptorsNode extends JavaScriptBaseNode {
         while ((next = getNext(iterator)) != null) {
             Object elementObject = JSRuntime.toObject(context, next);
             if (!JSRuntime.isNullOrUndefined(JSOrdinaryObject.get((DynamicObject) elementObject, EXTRAS))) {
-                throw Errors.createTypeError("Property extras of element descriptor must not have nested property extras.");
+                throw Errors.createTypeError("Property extras of element descriptor must not have nested property extras.", this);
             }
             elements.add(DescriptorUtil.toElementDescriptor(elementObject));
         }

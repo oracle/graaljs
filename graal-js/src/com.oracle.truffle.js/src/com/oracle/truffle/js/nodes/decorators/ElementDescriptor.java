@@ -1,6 +1,7 @@
 package com.oracle.truffle.js.nodes.decorators;
 
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -18,14 +19,14 @@ public class ElementDescriptor {
     private ElementDescriptor(){}
 
     private static void checkPrivateKey(int placement, PropertyDescriptor descriptor) {
-        if(!JSPlacement.isOwn(placement) && !JSPlacement.isPrototype(placement)) {
-            //TODO: throw placement error
+        if(!JSPlacement.isOwn(placement) && !JSPlacement.isStatic(placement)) {
+            Errors.createTypeError("Class element with a private key must have placement 'own' or 'static'.");
         }
         if(descriptor.getEnumerable()){
-            //TODO: throw enumerable error
+            Errors.createTypeError("Class element with a private key must not be enumerable.");
         }
         if(descriptor.getConfigurable()) {
-            //TODO: throw configurable error
+            Errors.createTypeError("Class element with a private key must not be configurable.");
         }
     }
 
@@ -36,7 +37,7 @@ public class ElementDescriptor {
             checkPrivateKey(placement, descriptor);
         }
         if(!descriptor.isDataDescriptor()) {
-            //TODO: throw error
+            Errors.createTypeError("Property descriptor of element descriptor with kind 'method' must be a data descriptor.");
         }
         ElementDescriptor elem = new ElementDescriptor();
         elem.setKind(JSKind.getKindMethod());
@@ -51,7 +52,7 @@ public class ElementDescriptor {
             checkPrivateKey(placement, descriptor);
         }
         if(!descriptor.isAccessorDescriptor()) {
-            //TODO: throw error
+            Errors.createTypeError("Property descriptor of element descriptor with kind 'accessor' must be an accessor descriptor.");
         }
         ElementDescriptor elem = new ElementDescriptor();
         elem.setKind(JSKind.getKindAccessor());
@@ -66,13 +67,13 @@ public class ElementDescriptor {
             checkPrivateKey(placement, descriptor);
         }
         if(descriptor.hasGet()) {
-            //TODO:throw get error
+            Errors.createTypeError("Property descriptor of element descriptor with kind 'field' must not have property get.");
         }
         if(descriptor.hasSet()) {
-            //TODO: throw set error
+            Errors.createTypeError("Property descriptor of element descriptor with kind 'field' must not have property set.");
         }
         if(descriptor.hasValue()) {
-            //TODO: throw set error
+            Errors.createTypeError("Property descriptor of element descriptor with kind 'field' must not have property value.");
         }
         ElementDescriptor elem = new ElementDescriptor();
         elem.setKind(JSKind.getKindField());
@@ -85,10 +86,10 @@ public class ElementDescriptor {
 
     public static ElementDescriptor createHook(int placement, Object start, Object replace, Object finish) {
         if(start == null && replace == null && finish == null) {
-            //TODO: throw hook error
+            Errors.createTypeError("Property descriptor of element descriptor with kind 'hook' must have one of the following defined: start, replace, finish.");
         }
         if(replace != null && finish != null) {
-            //TODO: throw replace and finish error
+            Errors.createTypeError("Property descriptor of element descriptor with kind 'hook' can either have property replace or finish, not both.");
         }
         ElementDescriptor elem = new ElementDescriptor();
         elem.setKind(JSKind.getKindHook());
@@ -192,7 +193,6 @@ public class ElementDescriptor {
     public boolean isPrototype() { return JSPlacement.isPrototype(placement); }
     public boolean isOwn() { return JSPlacement.isOwn(placement); }
 
-    //TODO: Private key
     public boolean hasPrivateKey() {return key instanceof HiddenKey;}
 
     public boolean hasInitialize() {return initialize != Undefined.instance; }

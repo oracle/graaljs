@@ -1,13 +1,19 @@
 package com.oracle.truffle.js.nodes.decorators;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 
+import java.util.Set;
+
 public abstract class ClassElementKeyNode extends JavaScriptBaseNode {
+
     public abstract Object executeKey(VirtualFrame frame);
+
+    protected abstract ClassElementKeyNode copyUninitialized(Set<Class<? extends Tag>> materializedTags);
 
     public static ClassElementKeyNode createComputedKeyNode(JavaScriptNode keyNode){
         return new ComputedKeyNode(keyNode);
@@ -19,6 +25,10 @@ public abstract class ClassElementKeyNode extends JavaScriptBaseNode {
 
     public static ClassElementKeyNode createObjectKeyNode(Object key){
         return new ObjectKeyNode(key);
+    }
+
+    public static ClassElementKeyNode cloneUninitialized(ClassElementKeyNode key, Set<Class<? extends Tag>> materializedTags){
+        return key.copyUninitialized(materializedTags);
     }
 
     private static class ComputedKeyNode extends ClassElementKeyNode {
@@ -34,6 +44,11 @@ public abstract class ClassElementKeyNode extends JavaScriptBaseNode {
         public Object executeKey(VirtualFrame frame) {
             Object key = keyNode.execute(frame);
             return toPropertyKeyNode.execute(key);
+        }
+
+        @Override
+        protected ClassElementKeyNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new ComputedKeyNode(JavaScriptNode.cloneUninitialized(keyNode,materializedTags));
         }
     }
 
@@ -52,6 +67,12 @@ public abstract class ClassElementKeyNode extends JavaScriptBaseNode {
              writeFrameSlotNode.execute(frame);
              return keyNode.execute(frame);
          }
+
+        @Override
+        protected ClassElementKeyNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new PrivateKeyNode(JavaScriptNode.cloneUninitialized(keyNode, materializedTags), JSWriteFrameSlotNode.cloneUninitialized(writeFrameSlotNode, materializedTags
+            ));
+        }
     }
 
     private static class ObjectKeyNode extends ClassElementKeyNode {
@@ -64,6 +85,11 @@ public abstract class ClassElementKeyNode extends JavaScriptBaseNode {
         @Override
         public Object executeKey(VirtualFrame frame) {
             return key;
+        }
+
+        @Override
+        protected ClassElementKeyNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new ObjectKeyNode(key);
         }
     }
 }

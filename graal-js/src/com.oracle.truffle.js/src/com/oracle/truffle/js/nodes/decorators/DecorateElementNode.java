@@ -41,11 +41,11 @@ public class DecorateElementNode extends JavaScriptBaseNode {
         return new DecorateElementNode(context);
     }
 
-    public List<ElementDescriptor> decorateElement(VirtualFrame frame, ElementDescriptor element) {
+    public List<ElementDescriptor> decorateElement(ElementDescriptor element) {
         List<ElementDescriptor> extras = new ArrayList<>();
         for(Object decorator: element.getDecorators()) {
             if (element.isHook()) {
-                throw Errors.createTypeError("Property kind of element descriptor must not have value 'hook'.");
+                throw Errors.createTypeError("Property kind of element descriptor must not have value 'hook'.", this);
             }
             Object elementObject = DescriptorUtil.fromElementDescriptor(element, context);
             Object elementExtrasObject = decoratorCallNode.executeCall(JSArguments.createOneArg(null, decorator, elementObject));

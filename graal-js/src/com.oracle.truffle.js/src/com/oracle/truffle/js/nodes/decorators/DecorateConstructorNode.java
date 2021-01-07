@@ -34,7 +34,7 @@ public class DecorateConstructorNode extends JavaScriptBaseNode {
         return new DecorateConstructorNode(context);
     }
 
-    public List<ElementDescriptor> decorateConstructor(VirtualFrame frame, List<ElementDescriptor> elements, Object[] decorators) {
+    public List<ElementDescriptor> decorateConstructor(List<ElementDescriptor> elements, Object[] decorators) {
         for(Object decorator: decorators) {
             Object obj = DescriptorUtil.fromClassDescriptor(elements, context);
             Object result = decoratorCallNode.executeCall(JSArguments.createOneArg(null, decorator, obj));
@@ -57,8 +57,7 @@ public class DecorateConstructorNode extends JavaScriptBaseNode {
                         Integer index = indexMap.get(a.getKey());
                         ElementDescriptor b = elements.get(index);
                         if(!a.isHook() && !b.isHook() && a.getPlacement() == b.getPlacement()) {
-                            //TODO: Error message
-                            throw Errors.createTypeError("Error");
+                            throw Errors.createTypeError("Duplicate definition of class element " + a.getKey() + ".", this);
                         }
                     }
                 }

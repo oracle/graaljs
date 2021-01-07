@@ -78,13 +78,13 @@ public class ToElementDescriptorTest extends DecoratorTest {
     @Test
     public void testHookOrAccessorWithDataDescriptor(){
         String source = createElementDecoratorWithDataDescriptor(HOOK,null,STATIC,EMPTY_METHOD, null,null);
-        testError(source, "Property descriptor of element descriptor must not be a data descriptor of property kind is 'accessor' or 'hook'.");
+        testError(source, "Property descriptor of element descriptor must not be a data descriptor if property kind is 'accessor' or 'hook'.");
         source = createElementDecoratorWithDataDescriptor(HOOK,null,STATIC,null, TRUE,null);
-        testError(source, "Property descriptor of element descriptor must not be a data descriptor of property kind is 'accessor' or 'hook'.");
+        testError(source, "Property descriptor of element descriptor must not be a data descriptor if property kind is 'accessor' or 'hook'.");
         source = createElementDecoratorWithDataDescriptor(ACCESSOR,KEY,STATIC,EMPTY_METHOD,null,null);
-        testError(source, "Property descriptor of element descriptor must not be a data descriptor of property kind is 'accessor' or 'hook'.");
+        testError(source, "Property descriptor of element descriptor must not be a data descriptor if property kind is 'accessor' or 'hook'.");
         source = createElementDecoratorWithDataDescriptor(ACCESSOR,KEY,STATIC,null, TRUE,null);
-        testError(source, "Property descriptor of element descriptor must not be a data descriptor of property kind is 'accessor' or 'hook'.");
+        testError(source, "Property descriptor of element descriptor must not be a data descriptor if property kind is 'accessor' or 'hook'.");
     }
 
     @Test

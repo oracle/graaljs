@@ -30,16 +30,13 @@ public class CoalesceClassElementsNode extends JavaScriptBaseNode {
                             assert !element.hasPrivateKey();
                             assert element.getDescriptor().getConfigurable() && other.getDescriptor().getConfigurable();
                             if(element.hasDecorators() || other.hasDecorators()) {
-                                //TODO: error message
-                                throw Errors.createTypeError("Error");
+                                throw Errors.createTypeError("Overwritten and overwriting methods can not be decorated.", this);
                             }
                             other.setDescriptor(element.getDescriptor());
-                            continue;
                         } else {
                             if(element.hasDecorators()) {
                                 if(other.hasDecorators()) {
-                                    //TODO: error message
-                                    throw Errors.createTypeError("error");
+                                    throw Errors.createTypeError("Either getter or setter can be decorated, not both.", this);
                                 }
                                 other.setDecorators(element.getDecorators());
                             }
@@ -51,8 +48,8 @@ public class CoalesceClassElementsNode extends JavaScriptBaseNode {
                                 assert element.getDescriptor().hasSet();
                                 other.getDescriptor().setSet((DynamicObject) element.getDescriptor().getSet());
                             }
-                            continue;
                         }
+                        continue;
                     }
                 }
             }

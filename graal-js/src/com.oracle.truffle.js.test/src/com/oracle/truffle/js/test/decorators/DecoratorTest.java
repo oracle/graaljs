@@ -89,7 +89,7 @@ public class DecoratorTest extends JSTest {
     protected static String createClassDecorator(String kind, String key, String placement, String body) {
         StringBuilder builder = new StringBuilder();
         createDecorator(builder, kind, key, placement, null,null,null,null, body);
-        builder.append("@decorator C {}");
+        builder.append("@decorator class C {}");
         return builder.toString();
     }
 }

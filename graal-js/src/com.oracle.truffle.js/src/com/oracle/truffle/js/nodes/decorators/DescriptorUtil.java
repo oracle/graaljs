@@ -234,7 +234,6 @@ public class DescriptorUtil {
         PropertyDescriptor desc = PropertyDescriptor.createData(ELEMENT_DESCRIPTOR_VALUE,false,false,true);
         JSRuntime.definePropertyOrThrow(obj, Symbol.SYMBOL_TO_STRING_TAG, desc);
         JSRuntime.createDataPropertyOrThrow(obj, KIND, CLASS);
-        //TODO: ask if correct
         JSRuntime.createDataPropertyOrThrow(obj, ELEMENTS, JSRuntime.createArrayFromList(context, Arrays.asList(elementObjects.clone())));
         return obj;
     }
@@ -254,10 +253,10 @@ public class DescriptorUtil {
             throw Errors.createTypeError("Class descriptor must not have property placement.");
         }
         PropertyDescriptor descriptor = JSRuntime.toPropertyDescriptor(obj);
-        //TODO: check has any fields.
-        /*if(descriptor.getFlags() != 0) {
-            throw Errors.createTypeError("Property descriptor of class descriptor must be empty.");
-        }*/
+        if(descriptor.hasConfigurable() || descriptor.hasGet() || descriptor.hasSet() || descriptor.hasValue() ||descriptor.hasWritable() ||descriptor.hasEnumerable())
+        {
+            throw Errors.createTypeError("Property descriptor of class descriptor must either be empty or undefined.");
+        }
         Object initialize = JSOrdinaryObject.get(obj, INITIALIZE);
         if(!JSRuntime.isNullOrUndefined(initialize)) {
             throw Errors.createTypeError("Class descriptor must not have property initialize.");

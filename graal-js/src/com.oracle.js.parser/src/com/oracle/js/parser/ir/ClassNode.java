@@ -56,7 +56,6 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
     private final ClassElement constructor;
     private final List<ClassElement> classElements;
     private final Scope scope;
-    //TODO: remove filed count values
     private final int instanceFieldCount;
     private final int staticFieldCount;
     private final boolean hasPrivateMethods;
@@ -200,7 +199,6 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         return scope;
     }
 
-    //TODO: remove field counts
     public boolean hasInstanceFields() {
         return instanceFieldCount != 0;
     }

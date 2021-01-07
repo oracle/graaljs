@@ -114,7 +114,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         this.createPrototypeNode = CreateObjectNode.createOrdinaryWithPrototype(context);
         this.defineConstructorMethodNode = DefineMethodNode.create(context, constructorFunctionNode);
         this.setFieldsNode = PropertySetNode.createSetHidden(JSFunction.CLASS_FIELDS_ID, context);//instanceFieldCount != 0 ? PropertySetNode.createSetHidden(JSFunction.CLASS_FIELDS_ID, context) : null;
-        this.setPrivateBrandNode = PropertySetNode.createSetHidden(JSFunction.PRIVATE_BRAND_ID, context);
+        this.setPrivateBrandNode = PropertySetNode.createSetHidden(JSFunction.PRIVATE_BRAND_ID, context);//readd condition
         this.setFunctionName = hasName ? null : SetFunctionNameNode.create();
         this.decorators = decorators;
         this.coalesceClassElementsNode = CoalesceClassElementsNode.create();
@@ -232,14 +232,14 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
     private List<ElementDescriptor> decorateClass(VirtualFrame frame, List<ElementDescriptor> elements) {
         List<ElementDescriptor> newElements = new ArrayList<>();
         for(ElementDescriptor element : elements) {
-            newElements.addAll(decorateElementNode.decorateElement(frame, element));
+            newElements.addAll(decorateElementNode.decorateElement(element));
         }
         Object[] d = new Object[decorators.length];
         int index = 0;
         for(JavaScriptNode decorator: decorators) {
             d[index] = decorator.execute(frame);
         }
-        return decorateConstructorNode.decorateConstructor(frame,newElements,d);
+        return decorateConstructorNode.decorateConstructor(newElements,d);
     }
 
     @ExplodeLoop

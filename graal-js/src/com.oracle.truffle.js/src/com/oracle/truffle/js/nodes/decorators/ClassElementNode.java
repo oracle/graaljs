@@ -1,6 +1,7 @@
 package com.oracle.truffle.js.nodes.decorators;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -9,11 +10,13 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
+import java.util.Set;
+
 public abstract class ClassElementNode extends JavaScriptBaseNode {
     public static final ClassElementNode[] EMPTY = {};
 
-    @Child private ClassElementKeyNode key;
-    @Children private final JavaScriptNode[] decorators;
+    @Child protected ClassElementKeyNode key;
+    @Children protected final JavaScriptNode[] decorators;
 
     private boolean isStatic;
     private boolean isPrivate;
@@ -46,10 +49,12 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
         return d;
     }
 
+    protected abstract ClassElementNode copyUninitialized(Set<Class<? extends Tag>> materializedTags);
     protected Object executeKey(VirtualFrame frame){
         return key.executeKey(frame);
     }
     public abstract ElementDescriptor execute(VirtualFrame frame, DynamicObject homeObject, JSContext context);
+    public boolean isAnonymousFunctionDefinition() { return isAnonymousFunctionDefinition; }
 
     public static ClassElementNode createFieldClassElement(ClassElementKeyNode key, JavaScriptNode initialize, boolean isStatic, boolean isPrivate, boolean isAnonymousFunctionDefinition, JavaScriptNode[] decorators){
         return new FieldClassElementNode(key, initialize, isStatic, isPrivate, isAnonymousFunctionDefinition, decorators);
@@ -63,10 +68,16 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
         return new AccessorClassElementNode(key, getter, setter, isStatic, isPrivate, decorators);
     }
 
-    public boolean isAnonymousFunctionDefinition() { return isAnonymousFunctionDefinition; }
+    public static ClassElementNode[] cloneUninitialized(ClassElementNode[] elements, Set<Class<? extends Tag>> materializedTags) {
+        ClassElementNode[] copy = elements.clone();
+        for(int i = 0; i < copy.length; i++) {
+            copy[i] = copy[i].copyUninitialized(materializedTags);
+        }
+        return copy;
+    }
 
     private abstract static class DataClassElementNode extends ClassElementNode {
-        @Child JavaScriptNode valueNode;
+        @Child protected JavaScriptNode valueNode;
 
         DataClassElementNode(ClassElementKeyNode key, JavaScriptNode valueNode, boolean isStatic, boolean isPrivate, boolean isAnonymousFunctionDefinition, JavaScriptNode[] decorators) {
             super(key, isStatic, isPrivate, isAnonymousFunctionDefinition, decorators);
@@ -127,6 +138,11 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
             elemDesc.setDecorators(decorators);
             return elemDesc;
         }
+
+        @Override
+        protected ClassElementNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new FieldClassElementNode(ClassElementKeyNode.cloneUninitialized(key, materializedTags), JavaScriptNode.cloneUninitialized(valueNode,materializedTags),isStatic(),isPrivate(),isAnonymousFunctionDefinition(),JavaScriptNode.cloneUninitialized(decorators,materializedTags));
+        }
     }
 
     private static class MethodClassElementNode extends DataClassElementNode {
@@ -162,6 +178,11 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
             ElementDescriptor elemDesc = ElementDescriptor.createMethod(key, propDesc, placement, isPrivate());
             elemDesc.setDecorators(decorators);
             return elemDesc;
+        }
+
+        @Override
+        protected ClassElementNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new MethodClassElementNode(ClassElementKeyNode.cloneUninitialized(key, materializedTags), JavaScriptNode.cloneUninitialized(valueNode,materializedTags),isStatic(), isPrivate(), JavaScriptNode.cloneUninitialized(decorators, materializedTags));
         }
     }
 
@@ -209,6 +230,11 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
             ElementDescriptor elemDesc =  ElementDescriptor.createAccessor(key, propDesc, placement, isPrivate());
             elemDesc.setDecorators(decorators);
             return elemDesc;
+        }
+
+        @Override
+        protected ClassElementNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new AccessorClassElementNode(ClassElementKeyNode.cloneUninitialized(key, materializedTags),JavaScriptNode.cloneUninitialized(getterNode,materializedTags),JavaScriptNode.cloneUninitialized(setterNode, materializedTags), isStatic(), isPrivate(), JavaScriptNode.cloneUninitialized(decorators, materializedTags));
         }
     }
 }
