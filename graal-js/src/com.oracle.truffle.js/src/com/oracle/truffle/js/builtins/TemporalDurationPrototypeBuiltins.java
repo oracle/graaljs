@@ -9,6 +9,7 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationAbsNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationAddNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationNegatedNodeGen;
+import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationSubtractNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationToStringNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationValueOfNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationWithNodeGen;
@@ -40,6 +41,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         negated(0),
         abs(0),
         add(2),
+        subtract(2),
         toString(0),
         toJSON(0),
         valueOf(0);
@@ -67,6 +69,8 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return JSTemporalDurationAbsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case add:
                 return JSTemporalDurationAddNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case subtract:
+                return JSTemporalDurationSubtractNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case toString:
             case toJSON:
                 return JSTemporalDurationToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
@@ -206,6 +210,61 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
     }
 
+    // 7.3.19
+    public abstract static class JSTemporalDurationSubtract extends JSBuiltinNode {
+
+        protected JSTemporalDurationSubtract(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(limit = "3")
+        protected DynamicObject subtract(DynamicObject thisObj, DynamicObject other, DynamicObject options,
+                                    @Cached("create()") IsObjectNode isObject,
+                                    @Cached("create()") JSToStringNode toString,
+                                    @Cached("create()") JSToIntegerAsLongNode toInt,
+                                    @CachedLibrary("other") DynamicObjectLibrary dol,
+                                    @Cached("createNew()") JSFunctionCallNode callNode) {
+            try {
+                JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
+                DynamicObject otherDuration = JSTemporalDuration.toLimitedTemporalDuration(other, Collections.emptySet(),
+                        getContext().getRealm(), isObject, toString, toInt, dol);
+                DynamicObject normalizedOptions = TemporalUtil.normalizeOptionsObject(options, getContext().getRealm(), isObject);
+                DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(normalizedOptions, isObject, dol);
+                DynamicObject result = JSTemporalDuration.addDuration(duration.getYears(), duration.getMonths(),
+                        duration.getWeeks(), duration.getDays(), duration.getHours(), duration.getMinutes(),
+                        duration.getSeconds(), duration.getMilliseconds(), duration.getMicroseconds(),
+                        duration.getNanoseconds(),
+                        -dol.getLongOrDefault(otherDuration, JSTemporalDuration.YEARS, 0L),
+                        -dol.getLongOrDefault(otherDuration, JSTemporalDuration.MONTHS, 0L),
+                        -dol.getLongOrDefault(otherDuration, JSTemporalDuration.WEEKS, 0L),
+                        -dol.getLongOrDefault(otherDuration, JSTemporalDuration.DAYS, 0L),
+                        -dol.getLongOrDefault(otherDuration, JSTemporalDuration.HOURS, 0L),
+                        -dol.getLongOrDefault(otherDuration, JSTemporalDuration.MINUTES, 0L),
+                        -dol.getLongOrDefault(otherDuration, JSTemporalDuration.SECONDS, 0L),
+                        -dol.getLongOrDefault(otherDuration, JSTemporalDuration.MILLISECONDS, 0L),
+                        -dol.getLongOrDefault(otherDuration, JSTemporalDuration.MICROSECONDS, 0L),
+                        -dol.getLongOrDefault(otherDuration, JSTemporalDuration.NANOSECONDS, 0L),
+                        relativeTo, getContext().getRealm(), dol);
+                return JSTemporalDuration.createTemporalDurationFromInstance(
+                        duration,
+                        dol.getLongOrDefault(result, JSTemporalDuration.YEARS, 0L),
+                        dol.getLongOrDefault(result, JSTemporalDuration.MONTHS, 0L),
+                        dol.getLongOrDefault(result, JSTemporalDuration.WEEKS, 0L),
+                        dol.getLongOrDefault(result, JSTemporalDuration.DAYS, 0L),
+                        dol.getLongOrDefault(result, JSTemporalDuration.HOURS, 0L),
+                        dol.getLongOrDefault(result, JSTemporalDuration.MINUTES, 0L),
+                        dol.getLongOrDefault(result, JSTemporalDuration.SECONDS, 0L),
+                        dol.getLongOrDefault(result, JSTemporalDuration.MILLISECONDS, 0L),
+                        dol.getLongOrDefault(result, JSTemporalDuration.MICROSECONDS, 0L),
+                        dol.getLongOrDefault(result, JSTemporalDuration.NANOSECONDS, 0L),
+                        getContext().getRealm(), callNode
+                );
+            } catch (UnexpectedResultException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
     // 7.3.23
     public abstract static class JSTemporalDurationToString extends JSBuiltinNode {
 
@@ -220,6 +279,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
     }
 
+    // 7.3.26
     public abstract static class JSTemporalDurationValueOf extends JSBuiltinNode {
 
         protected JSTemporalDurationValueOf(JSContext context, JSBuiltin builtin) {
