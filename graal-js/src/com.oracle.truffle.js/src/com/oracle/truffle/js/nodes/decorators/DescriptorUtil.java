@@ -2,7 +2,6 @@ package com.oracle.truffle.js.nodes.decorators;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.js.nodes.access.PrivateFieldGetNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -12,7 +11,6 @@ import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
 import java.util.Arrays;
-import java.util.List;
 
 public class DescriptorUtil {
     private static final String ELEMENT_DESCRIPTOR_VALUE = "Descriptor";
@@ -224,11 +222,10 @@ public class DescriptorUtil {
         return desc;
     }
 
-    public static Object fromClassDescriptor(List<ElementDescriptor> elements, JSContext context) {
+    public static Object fromClassDescriptor(ClassElementList elements, JSContext context) {
         Object[] elementObjects = new Object[elements.size()];
-        int index = 0;
-        for (ElementDescriptor e: elements) {
-            elementObjects[index++] = fromElementDescriptor(e,context);
+        for (int i = 0; i < elements.size(); i++){
+            elementObjects[i] = fromElementDescriptor(elements.pop(),context);
         }
         DynamicObject obj = JSOrdinary.create(context);
         PropertyDescriptor desc = PropertyDescriptor.createData(ELEMENT_DESCRIPTOR_VALUE,false,false,true);
