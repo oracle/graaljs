@@ -772,8 +772,15 @@ public class TestScope {
                                 new String[]{"s", IGNORE_VALUE, "x", "10", "y", "11", "z", "12", "total", "undefined", "arguments", IGNORE_VALUE},
                                 new String[]{});
                 assertTrue(event.getTopStackFrame().eval("s").isString());
-                // TODO
-                // assertTrue(event.getTopStackFrame().eval("z").isNumber());
+                DebugValue x = event.getTopStackFrame().eval("x");
+                assertTrue(x.isNumber());
+                assertEquals(10, x.asInt());
+                DebugValue y = event.getTopStackFrame().eval("y");
+                assertTrue(y.isNumber());
+                assertEquals(11, y.asInt());
+                DebugValue z = event.getTopStackFrame().eval("z");
+                assertTrue(z.isNumber());
+                assertEquals(12, z.asInt());
                 event.prepareContinue();
             });
         }
