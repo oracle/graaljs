@@ -7,12 +7,14 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationAbsNodeGen;
+import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationAddNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationNegatedNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationToStringNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationValueOfNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationWithNodeGen;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
+import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -21,6 +23,9 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDurationObject;
+import com.oracle.truffle.js.runtime.util.TemporalUtil;
+
+import java.util.Collections;
 
 public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalDurationPrototypeBuiltins.TemporalDurationPrototype> {
 
@@ -34,6 +39,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         with(1),
         negated(0),
         abs(0),
+        add(2),
         toString(0),
         toJSON(0),
         valueOf(0);
@@ -59,6 +65,8 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return JSTemporalDurationNegatedNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case abs:
                 return JSTemporalDurationAbsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case add:
+                return JSTemporalDurationAddNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case toString:
             case toJSON:
                 return JSTemporalDurationToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
@@ -140,6 +148,61 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                     Math.abs(duration.getSeconds()), Math.abs(duration.getMilliseconds()),
                     Math.abs(duration.getMicroseconds()), Math.abs(duration.getNanoseconds()),
                     getContext().getRealm(), callNode);
+        }
+    }
+
+    // 7.3.18
+    public abstract static class JSTemporalDurationAdd extends JSBuiltinNode {
+
+        protected JSTemporalDurationAdd(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(limit = "3")
+        protected DynamicObject add(DynamicObject thisObj, DynamicObject other, DynamicObject options,
+                                    @Cached("create()") IsObjectNode isObject,
+                                    @Cached("create()") JSToStringNode toString,
+                                    @Cached("create()") JSToIntegerAsLongNode toInt,
+                                    @CachedLibrary("other") DynamicObjectLibrary dol,
+                                    @Cached("createNew()") JSFunctionCallNode callNode) {
+            try {
+                JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
+                DynamicObject otherDuration = JSTemporalDuration.toLimitedTemporalDuration(other, Collections.emptySet(),
+                        getContext().getRealm(), isObject, toString, toInt, dol);
+                DynamicObject normalizedOptions = TemporalUtil.normalizeOptionsObject(options, getContext().getRealm(), isObject);
+                DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(normalizedOptions, isObject, dol);
+                DynamicObject result = JSTemporalDuration.addDuration(duration.getYears(), duration.getMonths(),
+                        duration.getWeeks(), duration.getDays(), duration.getHours(), duration.getMinutes(),
+                        duration.getSeconds(), duration.getMilliseconds(), duration.getMicroseconds(),
+                        duration.getNanoseconds(),
+                        dol.getLongOrDefault(otherDuration, JSTemporalDuration.YEARS, 0L),
+                        dol.getLongOrDefault(otherDuration, JSTemporalDuration.MONTHS, 0L),
+                        dol.getLongOrDefault(otherDuration, JSTemporalDuration.WEEKS, 0L),
+                        dol.getLongOrDefault(otherDuration, JSTemporalDuration.DAYS, 0L),
+                        dol.getLongOrDefault(otherDuration, JSTemporalDuration.HOURS, 0L),
+                        dol.getLongOrDefault(otherDuration, JSTemporalDuration.MINUTES, 0L),
+                        dol.getLongOrDefault(otherDuration, JSTemporalDuration.SECONDS, 0L),
+                        dol.getLongOrDefault(otherDuration, JSTemporalDuration.MILLISECONDS, 0L),
+                        dol.getLongOrDefault(otherDuration, JSTemporalDuration.MICROSECONDS, 0L),
+                        dol.getLongOrDefault(otherDuration, JSTemporalDuration.NANOSECONDS, 0L),
+                        relativeTo, getContext().getRealm(), dol);
+                return JSTemporalDuration.createTemporalDurationFromInstance(
+                        duration,
+                        dol.getLongOrDefault(result, JSTemporalDuration.YEARS, 0L),
+                        dol.getLongOrDefault(result, JSTemporalDuration.MONTHS, 0L),
+                        dol.getLongOrDefault(result, JSTemporalDuration.WEEKS, 0L),
+                        dol.getLongOrDefault(result, JSTemporalDuration.DAYS, 0L),
+                        dol.getLongOrDefault(result, JSTemporalDuration.HOURS, 0L),
+                        dol.getLongOrDefault(result, JSTemporalDuration.MINUTES, 0L),
+                        dol.getLongOrDefault(result, JSTemporalDuration.SECONDS, 0L),
+                        dol.getLongOrDefault(result, JSTemporalDuration.MILLISECONDS, 0L),
+                        dol.getLongOrDefault(result, JSTemporalDuration.MICROSECONDS, 0L),
+                        dol.getLongOrDefault(result, JSTemporalDuration.NANOSECONDS, 0L),
+                        getContext().getRealm(), callNode
+                );
+            } catch (UnexpectedResultException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 

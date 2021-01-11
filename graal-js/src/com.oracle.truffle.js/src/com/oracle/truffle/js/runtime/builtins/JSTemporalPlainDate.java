@@ -54,6 +54,10 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
         return INSTANCE.createConstructorAndPrototype(realm);
     }
 
+    public static boolean isJSTemporalPlainDate(Object obj) {
+        return obj instanceof JSTemporalPlainDateObject;
+    }
+
     public static DynamicObject createTemporalDate(JSContext context, long y, long m, long d) {
         rejectDate(y, m, d);
         if(!dateTimeWithinLimits(y, m, d, 12, 0, 0, 0, 0, 0)) {

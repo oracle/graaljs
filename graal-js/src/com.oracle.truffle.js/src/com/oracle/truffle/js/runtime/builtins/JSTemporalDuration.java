@@ -3,6 +3,7 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
@@ -10,6 +11,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltins;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
+import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -17,9 +19,12 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.TemporalUtil;
+
+import java.util.Set;
 
 public class JSTemporalDuration extends JSNonProxy implements JSConstructorFactory.Default.WithSpecies,
         PrototypeSupplier {
@@ -42,7 +47,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
     public static final String SIGN = "sign";
     public static final String BLANK = "blank";
 
-    public static final String[] PROPERTIES = new String[] {
+    public static final String[] PROPERTIES = new String[]{
             DAYS, HOURS, MICROSECONDS, MILLISECONDS, MINUTES, MONTHS, NANOSECONDS, SECONDS, WEEKS, YEARS
     };
 
@@ -51,7 +56,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
 
     public static DynamicObject create(JSContext context, long years, long months, long weeks, long days, long hours,
                                        long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds) {
-        if(!validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds,
+        if (!validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds,
                 nanoseconds)) {
             throw Errors.createRangeError("Given duration outside range.");
         }
@@ -80,7 +85,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = frame.getArguments()[0];
-                    if(JSTemporalDuration.isJSTemporalDuration(obj)) {
+                    if (JSTemporalDuration.isJSTemporalDuration(obj)) {
                         JSTemporalDurationObject temporalDuration = (JSTemporalDurationObject) obj;
                         switch (property) {
                             case YEARS:
@@ -232,6 +237,41 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
     }
 
     //region Abstract methods
+    // 7.5.2
+    public static DynamicObject toTemporalDurationRecord(DynamicObject temporalDurationLike, JSRealm realm,
+                                                         IsObjectNode isObject, JSToIntegerAsLongNode toInt,
+                                                         DynamicObjectLibrary dol) {
+        assert isObject.executeBoolean(temporalDurationLike);
+        if (isJSTemporalDuration(temporalDurationLike)) {
+            JSTemporalDurationObject duration = (JSTemporalDurationObject) temporalDurationLike;
+            DynamicObject result = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+            JSObjectUtil.putDataProperty(realm.getContext(), result, YEARS, duration.getYears());
+            JSObjectUtil.putDataProperty(realm.getContext(), result, MONTHS, duration.getMonths());
+            JSObjectUtil.putDataProperty(realm.getContext(), result, WEEKS, duration.getWeeks());
+            JSObjectUtil.putDataProperty(realm.getContext(), result, DAYS, duration.getDays());
+            JSObjectUtil.putDataProperty(realm.getContext(), result, HOURS, duration.getHours());
+            JSObjectUtil.putDataProperty(realm.getContext(), result, MINUTES, duration.getMinutes());
+            JSObjectUtil.putDataProperty(realm.getContext(), result, SECONDS, duration.getSeconds());
+            JSObjectUtil.putDataProperty(realm.getContext(), result, MICROSECONDS, duration.getMicroseconds());
+            JSObjectUtil.putDataProperty(realm.getContext(), result, MILLISECONDS, duration.getMilliseconds());
+            JSObjectUtil.putDataProperty(realm.getContext(), result, NANOSECONDS, duration.getNanoseconds());
+        }
+        DynamicObject result = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        boolean any = false;
+        for (String property : PROPERTIES) {
+            Object val = dol.getOrDefault(temporalDurationLike, property, Null.instance);
+            if (!val.equals(Null.instance)) {
+                any = true;
+            }
+            val = toInt.executeLong(val);
+            JSObjectUtil.putDataProperty(realm.getContext(), result, property, val);
+        }
+        if (!any) {
+            throw Errors.createTypeError("Given duration like object has no duration properties.");
+        }
+        return result;
+    }
+
     // 7.5.3
     public static int durationSign(long years, long months, long weeks, long days, long hours, long minutes,
                                    long seconds, long milliseconds, long microseconds, long nanoseconds) {
@@ -367,35 +407,90 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         return true;
     }
 
+    // 7.5.6
+    public static String defaultTemporalLargestUnit(long years, long months, long weeks, long days, long hours,
+                                                    long minutes, long seconds, long milliseconds, long microseconds,
+                                                    long nanoseconds) {
+        if (years != 0) {
+            return YEARS;
+        }
+        if (months != 0) {
+            return MONTHS;
+        }
+        if (weeks != 0) {
+            return WEEKS;
+        }
+        if (days != 0) {
+            return DAYS;
+        }
+        if (hours != 0) {
+            return HOURS;
+        }
+        if (minutes != 0) {
+            return MINUTES;
+        }
+        if (seconds != 0) {
+            return SECONDS;
+        }
+        if (milliseconds != 0) {
+            return MILLISECONDS;
+        }
+        if (microseconds != 0) {
+            return MICROSECONDS;
+        }
+        return NANOSECONDS;
+    }
+
     // 7.5.7
     public static DynamicObject toPartialDuration(DynamicObject temporalDurationLike, JSRealm realm,
-                                            IsObjectNode isObjectNode, DynamicObjectLibrary dol,
-                                            JSToIntegerAsLongNode toInt) {
-        if(!isObjectNode.executeBoolean(temporalDurationLike)) {
+                                                  IsObjectNode isObjectNode, DynamicObjectLibrary dol,
+                                                  JSToIntegerAsLongNode toInt) {
+        if (!isObjectNode.executeBoolean(temporalDurationLike)) {
             throw Errors.createTypeError("Given duration like is not a object.");
         }
         DynamicObject result = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         boolean any = false;
-        for(String property : PROPERTIES) {
+        for (String property : PROPERTIES) {
             Object value = dol.getOrDefault(temporalDurationLike, property, null);
             if (value != null) {
                 any = true;
                 JSObjectUtil.putDataProperty(realm.getContext(), result, property, toInt.executeLong(value));
             }
         }
-        if(!any) {
+        if (!any) {
             throw Errors.createTypeError("Given duration like object has no duration properties.");
         }
         return result;
     }
 
+    // 7.5.8
+    public static DynamicObject createTemporalDuration(long years, long months, long weeks, long days, long hours,
+                                                       long minutes, long seconds, long milliseconds, long microseconds,
+                                                       long nanoseconds, JSRealm realm) {
+        if(!validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
+            throw Errors.createRangeError("Duration not valid.");
+        }
+        DynamicObject obj = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObjectUtil.putDataProperty(realm.getContext(), obj, YEARS, years);
+        JSObjectUtil.putDataProperty(realm.getContext(), obj, MONTHS, months);
+        JSObjectUtil.putDataProperty(realm.getContext(), obj, WEEKS, weeks);
+        JSObjectUtil.putDataProperty(realm.getContext(), obj, DAYS, days);
+        JSObjectUtil.putDataProperty(realm.getContext(), obj, HOURS, hours);
+        JSObjectUtil.putDataProperty(realm.getContext(), obj, MINUTES, minutes);
+        JSObjectUtil.putDataProperty(realm.getContext(), obj, SECONDS, seconds);
+        JSObjectUtil.putDataProperty(realm.getContext(), obj, MICROSECONDS, microseconds);
+        JSObjectUtil.putDataProperty(realm.getContext(), obj, MILLISECONDS, milliseconds);
+        JSObjectUtil.putDataProperty(realm.getContext(), obj, NANOSECONDS, nanoseconds);
+        return obj;
+    }
+
     // 7.5.9
     public static JSTemporalDurationObject createTemporalDurationFromInstance(JSTemporalDurationObject duration,
-                                                                   long years, long months, long weeks, long days,
-                                                                   long hours, long minutes, long seconds,
-                                                                   long milliseconds, long microseconds,
-                                                                   long nanoseconds, JSRealm realm,
-                                                                   JSFunctionCallNode callNode) {
+                                                                              long years, long months, long weeks, long days,
+                                                                              long hours, long minutes, long seconds,
+                                                                              long milliseconds, long microseconds,
+                                                                              long nanoseconds, JSRealm realm,
+                                                                              JSFunctionCallNode callNode) {
         assert validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
         DynamicObject constructor = realm.getTemporalDurationConstructor();
         Object[] ctorArgs = new Object[]{years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds};
@@ -403,6 +498,208 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         System.arraycopy(ctorArgs, 0, args, JSArguments.RUNTIME_ARGUMENT_COUNT, ctorArgs.length);
         Object result = callNode.executeCall(args);
         return (JSTemporalDurationObject) result;
+    }
+
+    // 7.5.12
+    public static long totalDurationNanoseconds(long days, long hours, long minutes, long seconds, long milliseconds,
+                                                long microseconds, long nanoseconds, long offsetShift) {
+        long ns = nanoseconds;
+        if (days != 0) {
+            ns -= offsetShift;
+        }
+        long h = hours + days * 24;
+        long min = minutes + h * 60;
+        long s = seconds + min * 60;
+        long ms = milliseconds + s * 1000;
+        long mus = microseconds + ms * 1000;
+        return  ns + mus * 1000;
+    }
+
+    // 7.5.13
+    public static DynamicObject balanceDuration(long days, long hours, long minutes, long seconds, long milliseconds,
+                                                long microseconds, long nanoseconds, String largestUnit,
+                                                DynamicObject relativeTo, JSRealm realm) {
+        long ns;
+        if(relativeTo != null) {    // TODO: Check if is temporal zoned date time
+            ns = nanoseconds;
+        } else {
+            ns = totalDurationNanoseconds(days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0);
+        }
+        long d;
+        if (largestUnit.equals(YEARS) || largestUnit.equals(MONTHS) || largestUnit.equals(WEEKS) || largestUnit.equals(DAYS)) {
+            d = days;
+        } else {
+            d = 0;
+        }
+        long h = 0, min = 0, s = 0, ms = 0, mus = 0;
+        long sign = ns < 0 ? -1 : 1;
+        ns = Math.abs(ns);
+        if (largestUnit.equals(YEARS) || largestUnit.equals(MONTHS) || largestUnit.equals(WEEKS) ||
+                largestUnit.equals(DAYS) || largestUnit.equals(HOURS)) {
+            mus = Math.floorDiv(ns, 1000);
+            ns = ns % 1000;
+            ms = Math.floorDiv(mus, 1000);
+            mus = mus % 1000;
+            s = Math.floorDiv(ms, 1000);
+            ms = ms % 1000;
+            min = Math.floorDiv(s, 60);
+            s = s % 60;
+            h = Math.floorDiv(min, 60);
+            min = min % 60;
+        } else if (largestUnit.equals(MINUTES)) {
+            mus = Math.floorDiv(ns, 1000);
+            ns = ns % 1000;
+            ms = Math.floorDiv(mus, 1000);
+            mus = mus % 1000;
+            s = Math.floorDiv(ms, 1000);
+            ms = ms % 1000;
+            min = Math.floorDiv(s, 60);
+            s = s % 60;
+        } else if (largestUnit.equals(SECONDS)) {
+            mus = Math.floorDiv(ns, 1000);
+            ns = ns % 1000;
+            ms = Math.floorDiv(mus, 1000);
+            mus = mus % 1000;
+            s = Math.floorDiv(ms, 1000);
+            ms = ms % 1000;
+        } else if (largestUnit.equals(MILLISECONDS)) {
+            mus = Math.floorDiv(ns, 1000);
+            ns = ns % 1000;
+            ms = Math.floorDiv(mus, 1000);
+            mus = mus % 1000;
+        } else if (largestUnit.equals(MICROSECONDS)) {
+            mus = Math.floorDiv(ns, 1000);
+            ns = ns % 1000;
+        } else {
+            assert largestUnit.equals(NANOSECONDS);
+        }
+        DynamicObject result = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObjectUtil.putDataProperty(realm.getContext(), result, DAYS, d);
+        JSObjectUtil.putDataProperty(realm.getContext(), result, HOURS, h * sign);
+        JSObjectUtil.putDataProperty(realm.getContext(), result, MINUTES, min * sign);
+        JSObjectUtil.putDataProperty(realm.getContext(), result, SECONDS, s * sign);
+        JSObjectUtil.putDataProperty(realm.getContext(), result, MILLISECONDS, ms * sign);
+        JSObjectUtil.putDataProperty(realm.getContext(), result, MICROSECONDS, mus * sign);
+        JSObjectUtil.putDataProperty(realm.getContext(), result, NANOSECONDS, ns * sign);
+        return result;
+    }
+
+    // 7.5.16
+    public static DynamicObject addDuration(long y1, long mon1, long w1, long d1, long h1, long min1, long s1, long ms1, long mus1, long ns1,
+                                            long y2, long mon2, long w2, long d2, long h2, long min2, long s2, long ms2, long mus2, long ns2,
+                                            DynamicObject relativeTo, JSRealm realm, DynamicObjectLibrary dol) {
+        try {
+            String largestUnit1 = defaultTemporalLargestUnit(y1, mon1, w1, d1, h1, min1, s1, ms1, mus1, ns1);
+            String largestUnit2 = defaultTemporalLargestUnit(y2, mon2, w2, d2, h2, min2, s2, ms2, mus2, ns2);
+            String largestUnit = TemporalUtil.largerOfTwoTemporalDurationUnits(largestUnit1, largestUnit2);
+            long years = 0, months = 0, weeks = 0, days = 0, hours = 0, minutes = 0, seconds = 0, milliseconds = 0, microseconds = 0, nanoseconds = 0;
+            if (relativeTo == null) {
+                if (largestUnit.equals(YEARS) || largestUnit.equals(MONTHS) || largestUnit.equals(WEEKS)) {
+                    throw Errors.createRangeError("Largest unit allowed with no relative is 'days'.");
+                }
+                DynamicObject result = balanceDuration(d1 + d2, h1 + h2, min1 + min2, s1 + s2, ms1 + ms2, mus1 + mus2,
+                        ns1 + ns2, largestUnit, null, realm);
+                years = 0;
+                months = 0;
+                weeks = 0;
+                days = dol.getLongOrDefault(result, DAYS, 0L);
+                hours = dol.getLongOrDefault(result, HOURS, 0L);
+                minutes = dol.getLongOrDefault(result, MINUTES, 0L);
+                seconds = dol.getLongOrDefault(result, SECONDS, 0L);
+                milliseconds = dol.getLongOrDefault(result, MILLISECONDS, 0L);
+                microseconds = dol.getLongOrDefault(result, MICROSECONDS, 0L);
+                nanoseconds = dol.getLongOrDefault(result, NANOSECONDS, 0L);
+            } else if (JSTemporalPlainDate.isJSTemporalPlainDate(relativeTo)) {
+                // TODO: Get calendar
+                DynamicObject datePart = JSTemporalPlainDate.createTemporalDate(realm.getContext(),
+                        dol.getLongOrDefault(relativeTo, "ISOYear", 0L),
+                        dol.getLongOrDefault(relativeTo, "ISOMonth", 0L),
+                        dol.getLongOrDefault(relativeTo, "ISODay", 0L));
+                DynamicObject dateDuration1 = JSTemporalDuration.createTemporalDuration(y1, mon1, w1, d1, 0, 0, 0, 0, 0, 0, realm);
+                DynamicObject dateDuration2 = JSTemporalDuration.createTemporalDuration(y2, mon2, w2, d2, 0, 0, 0, 0, 0, 0, realm);
+                // TODO: Get dateAdd function of calendar
+                // TODO: Call dateAdd function
+                // TODO: Call dateAdd function
+                String dateLargestUnit = TemporalUtil.largerOfTwoTemporalDurationUnits("days", largestUnit);
+                // TODO: Get dateUntil function of calendar
+                DynamicObject differenceOptions = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+                JSObjectUtil.putDataProperty(realm.getContext(), differenceOptions, "largestUnit", dateLargestUnit);
+                DynamicObject dateDifference = null; // TODO: Call dateUntil function
+                DynamicObject result = JSTemporalDuration.balanceDuration(dol.getLongOrDefault(dateDifference, DAYS, 0L),
+                        h1 + h2, min1 + min2, s1 + s2, ms1 + ms2, mus1 + mus2, ns1 + ns2, largestUnit, null, realm);
+                years = dol.getLongOrDefault(dateDifference, YEARS, 0L);
+                months = dol.getLongOrDefault(dateDifference, MONTHS, 0L);
+                weeks = dol.getLongOrDefault(dateDifference, WEEKS, 0L);
+                days = dol.getLongOrDefault(result, DAYS, 0L);
+                hours = dol.getLongOrDefault(result, HOURS, 0L);
+                minutes = dol.getLongOrDefault(result, MINUTES, 0L);
+                seconds = dol.getLongOrDefault(result, SECONDS, 0L);
+                milliseconds = dol.getLongOrDefault(result, MILLISECONDS, 0L);
+                microseconds = dol.getLongOrDefault(result, MICROSECONDS, 0L);
+                nanoseconds = dol.getLongOrDefault(result, NANOSECONDS, 0L);
+            } else {
+                // TODO: Handle ZonedDateTime
+            }
+            if(!validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds,
+                    microseconds, nanoseconds)) {
+                throw Errors.createRangeError("Duration out of range!");
+            }
+            DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, YEARS, years);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, MONTHS, months);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, WEEKS, weeks);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, DAYS, days);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, HOURS, hours);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, MINUTES, minutes);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, SECONDS, seconds);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, MICROSECONDS, microseconds);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, MILLISECONDS, milliseconds);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, NANOSECONDS, nanoseconds);
+            return record;
+        } catch (UnexpectedResultException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    // 7.5.22
+    public static DynamicObject toLimitedTemporalDuration(DynamicObject temporalDurationLike,
+                                                          Set<String> disallowedFields, JSRealm realm,
+                                                          IsObjectNode isObject, JSToStringNode toString,
+                                                          JSToIntegerAsLongNode toInt, DynamicObjectLibrary dol) {
+        DynamicObject duration;
+        if (!isObject.executeBoolean(temporalDurationLike)) {
+            String str = toString.executeString(temporalDurationLike);
+            duration = null; // TODO: parse duration of string
+        } else {
+            duration = toTemporalDurationRecord(temporalDurationLike, realm, isObject, toInt, dol);
+        }
+        try {
+            if (!validateTemporalDuration(
+                    dol.getLongOrDefault(duration, YEARS, 0L),
+                    dol.getLongOrDefault(duration, MONTHS, 0L),
+                    dol.getLongOrDefault(duration, WEEKS, 0L),
+                    dol.getLongOrDefault(duration, DAYS, 0L),
+                    dol.getLongOrDefault(duration, HOURS, 0L),
+                    dol.getLongOrDefault(duration, MINUTES, 0L),
+                    dol.getLongOrDefault(duration, SECONDS, 0L),
+                    dol.getLongOrDefault(duration, MILLISECONDS, 0L),
+                    dol.getLongOrDefault(duration, MICROSECONDS, 0L),
+                    dol.getLongOrDefault(duration, NANOSECONDS, 0L)
+            )) {
+                throw Errors.createRangeError("Given duration outside range.");
+            }
+
+            for (String property : PROPERTIES) {
+                long value = dol.getLongOrDefault(duration, property, 0L);
+                if (value > 0 && disallowedFields.contains(property)) {
+                    throw Errors.createRangeError(
+                            String.format("Property %s is a disallowed field and not 0.", property));
+                }
+            }
+            return duration;
+        } catch (UnexpectedResultException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     // 7.5.23
@@ -470,7 +767,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
             }
             String decimalPart = millisecondPart + microsecondPart + nanosecondPart;
             String secondsPart = String.format("%d", Math.abs(seconds));
-            if(!decimalPart.equals("")) {
+            if (!decimalPart.equals("")) {
                 secondsPart += "." + decimalPart;
             }
             timePart.append(secondsPart);
@@ -479,7 +776,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         String signPart = sign < 0 ? "-" : "";
         StringBuilder result = new StringBuilder();
         result.append(signPart).append("P").append(datePart);
-        if(!timePart.toString().equals("")) {
+        if (!timePart.toString().equals("")) {
             result.append("T").append(timePart);
         }
         return result.toString();
