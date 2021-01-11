@@ -20,12 +20,23 @@ import java.util.stream.Collectors;
 
 public final class TemporalUtil {
 
+    private static final String YEARS = "years";
+    private static final String MONTHS = "months";
+    private static final String WEEKS = "weeks";
+    private static final String DAYS = "days";
+    private static final String HOURS = "hours";
+    private static final String MINUTES = "minutes";
+    private static final String SECONDS = "seconds";
+    private static final String MILLISECONDS = "milliseconds";
+    private static final String MICROSECONDS = "microseconds";
+    private static final String NANOSECONDS = "nanoseconds";
+
     private static final Set<String> singularUnits = toSet("year", "month", "day", "hour", "minute", "second",
             "millisecond", "microsecond", "nanosecond");
-    private static final Set<String> pluralUnits = toSet("years", "months", "days", "hours", "minutes", "seconds",
-            "milliseconds", "microseconds", "nanoseconds");
+    private static final Set<String> pluralUnits = toSet(YEARS, MONTHS, DAYS, HOURS, MINUTES, SECONDS,
+            MILLISECONDS, MICROSECONDS, NANOSECONDS);
     private static final Map<String, String> pluralToSingular = toMap(
-            new String[] {"years", "months", "days", "hours", "minutes", "seconds", "milliseconds", "microseconds", "nanoseconds"},
+            new String[] {YEARS, MONTHS, DAYS, HOURS, MINUTES, SECONDS, MILLISECONDS, MICROSECONDS, NANOSECONDS},
             new String[] {"year", "month", "day", "hour", "minute", "second", "millisecond", "microsecond", "nanosecond"}
     );
 
@@ -147,6 +158,50 @@ public final class TemporalUtil {
             throw Errors.createRangeError("Smallest unit not allowed");
         }
         return smallestUnit;
+    }
+
+    // 15.25
+    public static DynamicObject toRelativeTemporalObject(DynamicObject options, IsObjectNode isObject,
+                                                         DynamicObjectLibrary dol) {
+        assert isObject.executeBoolean(options);
+        DynamicObject value = (DynamicObject) dol.getOrDefault(options, "relativeTo", null);
+        if (value == null) {
+            return value;
+        }
+        // TODO: https://tc39.es/proposal-temporal/#sec-temporal-torelativetemporalobject
+        return null;
+    }
+
+    // 15.27
+    public static String largerOfTwoTemporalDurationUnits(String u1, String u2) {
+        if(u1.equals(YEARS) || u2.equals(YEARS)) {
+            return YEARS;
+        }
+        if(u1.equals(MONTHS) || u2.equals(MONTHS)) {
+            return MONTHS;
+        }
+        if(u1.equals(WEEKS) || u2.equals(WEEKS)) {
+            return WEEKS;
+        }
+        if(u1.equals(DAYS) || u2.equals(DAYS)) {
+            return DAYS;
+        }
+        if(u1.equals(HOURS) || u2.equals(HOURS)) {
+            return HOURS;
+        }
+        if(u1.equals(MINUTES) || u2.equals(MINUTES)) {
+            return MINUTES;
+        }
+        if(u1.equals(SECONDS) || u2.equals(SECONDS)) {
+            return SECONDS;
+        }
+        if(u1.equals(MILLISECONDS) || u2.equals(MILLISECONDS)) {
+            return MILLISECONDS;
+        }
+        if(u1.equals(MICROSECONDS) || u2.equals(MICROSECONDS)) {
+            return MICROSECONDS;
+        }
+        return NANOSECONDS;
     }
 
     // 15.30
