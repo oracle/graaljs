@@ -278,6 +278,11 @@ public abstract class Environment {
                     scopeLevel = 0;
                 } else if (current instanceof BlockEnvironment) {
                     scopeLevel++;
+                } else if (current instanceof DebugEnvironment) {
+                    if (((DebugEnvironment) current).hasMember(name)) {
+                        wrapClosure = makeDebugWrapClosure(wrapClosure, name);
+                        wrapFrameLevel = frameLevel;
+                    }
                 }
             }
             current = current.getParent();
@@ -386,6 +391,28 @@ public abstract class Environment {
         });
     }
 
+    private WrapClosure makeDebugWrapClosure(WrapClosure wrapClosure, String name) {
+        return WrapClosure.compose(wrapClosure, new WrapClosure() {
+            @Override
+            public JavaScriptNode apply(JavaScriptNode delegateNode, WrapAccess access) {
+                JSTargetableNode scopeAccessNode;
+                if (access == WrapAccess.Delete) {
+                    scopeAccessNode = factory.createDeleteProperty(null, factory.createConstantString(name), isStrictMode(), context);
+                } else if (access == WrapAccess.Write) {
+                    assert delegateNode instanceof WriteNode : delegateNode;
+                    scopeAccessNode = factory.createWriteProperty(null, name, null, context, true);
+                } else if (access == WrapAccess.Read) {
+                    assert delegateNode instanceof ReadNode || delegateNode instanceof RepeatableNode : delegateNode;
+                    scopeAccessNode = factory.createReadProperty(context, null, name);
+                } else {
+                    throw new IllegalArgumentException();
+                }
+                JavaScriptNode debugScope = factory.createDebugScope();
+                return factory.createDebugVarWrapper(name, delegateNode, debugScope, scopeAccessNode);
+            }
+        });
+    }
+
     private VarRef wrapIn(WrapClosure wrapClosure, int wrapFrameLevel, VarRef wrappee) {
         if (wrapClosure != null) {
             ensureFrameLevelAvailable(wrapFrameLevel);
@@ -401,9 +428,7 @@ public abstract class Environment {
     }
 
     private VarRef newFrameSlotVarRef(FrameSlot slot, int scopeLevel, int frameLevel, String name, Environment current) {
-        if (current instanceof DebugEnvironment) {
-            return new LazyFrameSlotVarRef(slot, scopeLevel, frameLevel, name, current);
-        } else if (isMappedArgumentsParameter(slot, current)) {
+        if (isMappedArgumentsParameter(slot, current)) {
             return new MappedArgumentVarRef(slot, scopeLevel, frameLevel, name, current);
         } else {
             return new FrameSlotVarRef(slot, scopeLevel, frameLevel, name, current);

@@ -118,7 +118,6 @@ import com.oracle.truffle.js.nodes.access.GlobalScopeVarWrapperNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
-import com.oracle.truffle.js.nodes.access.LazyReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
 import com.oracle.truffle.js.nodes.access.OptionalChainNode;
@@ -657,7 +656,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
         String identifier = ":generatorstate:" + environment.getFunctionFrameDescriptor().getSize();
         environment.getFunctionFrameDescriptor().addFrameSlot(identifier);
-        LazyReadFrameSlotNode readState = factory.createLazyReadFrameSlot(identifier);
+        JavaScriptNode readState = factory.createLazyReadFrameSlot(identifier);
         WriteNode writeState = factory.createLazyWriteFrameSlot(identifier, null);
         return factory.createGeneratorWrapper((JavaScriptNode) resumableNode, readState, writeState);
     }
@@ -665,7 +664,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode toGeneratorBlockNode(AbstractBlockNode blockNode, BitSet suspendableIndices) {
         String identifier = ":generatorstate:" + environment.getFunctionFrameDescriptor().getSize();
         environment.getFunctionFrameDescriptor().addFrameSlot(identifier);
-        LazyReadFrameSlotNode readState = factory.createLazyReadFrameSlot(identifier);
+        JavaScriptNode readState = factory.createLazyReadFrameSlot(identifier);
         WriteNode writeState = factory.createLazyWriteFrameSlot(identifier, null);
 
         JavaScriptNode[] statements = blockNode.getStatements();
@@ -734,7 +733,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else if (child instanceof JavaScriptNode) {
             JavaScriptNode jschild = (JavaScriptNode) child;
             String identifier = ":generatorexpr:" + environment.getFunctionFrameDescriptor().getSize();
-            LazyReadFrameSlotNode readState = factory.createLazyReadFrameSlot(identifier);
+            JavaScriptNode readState = factory.createLazyReadFrameSlot(identifier);
             if (jschild.hasTag(StandardTags.ExpressionTag.class) ||
                             (jschild instanceof GeneratorWrapperNode && ((GeneratorWrapperNode) jschild).getResumableNode().hasTag(StandardTags.ExpressionTag.class))) {
                 tagHiddenExpression(readState);
