@@ -46,6 +46,7 @@ import java.util.Set;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.SuperPropertyReferenceNode;
 
 /**
  * A utility node used by the instrumentation framework to tag a given node with a specific tag. By
@@ -83,6 +84,7 @@ public final class JSTaggedExecutionNode extends JavaScriptNode {
         if (originalNode instanceof WrapperNode) {
             realOriginal = (JavaScriptNode) ((WrapperNode) originalNode).getDelegateNode();
         }
+        assert !(realOriginal instanceof SuperPropertyReferenceNode);
         if (realOriginal.hasTag(expectedTag) && (!inputTag || realOriginal.hasTag(JSTags.InputNodeTag.class))) {
             return originalNode;
         }

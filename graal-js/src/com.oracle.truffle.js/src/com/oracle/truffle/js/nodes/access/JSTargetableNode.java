@@ -44,7 +44,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Errors;
 
@@ -85,8 +84,7 @@ public abstract class JSTargetableNode extends JavaScriptNode {
         throw Errors.notImplemented("getTarget");
     }
 
-    public static Object evaluateReceiver(JavaScriptNode target, VirtualFrame frame, Object targetValue) {
-        JavaScriptNode targetNode = JSNodeUtil.getWrappedNode(target);
+    public static Object evaluateReceiver(JavaScriptNode targetNode, VirtualFrame frame, Object targetValue) {
         if (!(targetNode instanceof SuperPropertyReferenceNode)) {
             return targetValue;
         } else {
