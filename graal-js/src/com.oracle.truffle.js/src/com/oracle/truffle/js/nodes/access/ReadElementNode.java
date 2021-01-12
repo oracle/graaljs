@@ -65,7 +65,6 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.helper.ListGetNode;
-import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JSTypesGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -143,7 +142,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(ReadElementTag.class) && !alreadyMaterialized()) {
+        if (materializedTags.contains(ReadElementTag.class) && materializationNeeded()) {
             JavaScriptNode clonedTarget = targetNode == null || targetNode.hasSourceSection() ? targetNode : JSTaggedExecutionNode.createForInput(targetNode, this, materializedTags);
             JavaScriptNode clonedIndex = indexNode == null || indexNode.hasSourceSection() ? indexNode : JSTaggedExecutionNode.createForInput(indexNode, this, materializedTags);
             if (clonedTarget == targetNode && clonedIndex == indexNode) {
@@ -162,8 +161,9 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         return this;
     }
 
-    private boolean alreadyMaterialized() {
-        return JSNodeUtil.isTaggedNode(targetNode) || JSNodeUtil.isTaggedNode(indexNode);
+    private boolean materializationNeeded() {
+        // Materialization is needed when source sections are missing.
+        return (targetNode != null && !targetNode.hasSourceSection()) || (indexNode != null && !indexNode.hasSourceSection());
     }
 
     @Override

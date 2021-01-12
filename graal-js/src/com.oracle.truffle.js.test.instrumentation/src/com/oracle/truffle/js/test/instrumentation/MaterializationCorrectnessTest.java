@@ -270,7 +270,7 @@ public class MaterializationCorrectnessTest extends FineGrainedAccessTest {
         listener.checkEnteredNodes(propertyNodeList2);
         listener.checkExitedNodes(propertyNodeList2);
 
-        assertTrue(JSNodeUtil.isTaggedNode(propertyNodeList.get(0).getTarget()));
+        assertTrue(JSNodeUtil.isTaggedNodeOrExpression(propertyNodeList.get(0).getTarget()));
     }
 
     private void testNoDoubleMaterializationPropertyNodeCheck(List<PropertyNode> propertyNodeList) {

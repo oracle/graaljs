@@ -185,6 +185,12 @@ public final class JSNodeUtil {
         return node instanceof JSTaggedExecutionNode || (node instanceof WrapperNode && ((WrapperNode) node).getDelegateNode() instanceof JSTaggedExecutionNode);
     }
 
+    public static boolean isTaggedNodeOrExpression(Node node) {
+        return node instanceof JSTaggedExecutionNode ||
+                        (node instanceof JavaScriptNode && ((JavaScriptNode) node).isInstrumentable() && ((JavaScriptNode) node).hasTag(StandardTags.ExpressionTag.class)) ||
+                        (node instanceof WrapperNode && isTaggedNodeOrExpression(((WrapperNode) node).getDelegateNode()));
+    }
+
     public static boolean isInputGeneratingNode(Node node) {
         return node instanceof JSInputGeneratingNodeWrapper || (node instanceof WrapperNode && ((WrapperNode) node).getDelegateNode() instanceof JSInputGeneratingNodeWrapper);
     }
