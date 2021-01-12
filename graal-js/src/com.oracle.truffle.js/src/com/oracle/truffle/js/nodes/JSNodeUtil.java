@@ -50,8 +50,8 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.js.nodes.access.GlobalScopeVarWrapperNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableWrapperNode;
+import com.oracle.truffle.js.nodes.access.VarWrapperNode;
 import com.oracle.truffle.js.nodes.control.GeneratorWrapperNode;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
@@ -141,7 +141,7 @@ public final class JSNodeUtil {
      */
     public static boolean isWrapperNode(JavaScriptNode node) {
         return (node instanceof WrapperNode ||
-                        node instanceof GlobalScopeVarWrapperNode ||
+                        node instanceof VarWrapperNode ||
                         node instanceof JSInputGeneratingNodeWrapper ||
                         node instanceof JSTaggedExecutionNode ||
                         node instanceof JSTargetableWrapperNode);
@@ -167,8 +167,8 @@ public final class JSNodeUtil {
         if (unwrapped instanceof JSTaggedExecutionNode) {
             unwrapped = ((JSTaggedExecutionNode) unwrapped).getDelegateNode();
         }
-        if (unwrapped instanceof GlobalScopeVarWrapperNode) {
-            unwrapped = ((GlobalScopeVarWrapperNode) unwrapped).getDelegateNode();
+        if (unwrapped instanceof VarWrapperNode) {
+            unwrapped = ((VarWrapperNode) unwrapped).getDelegateNode();
         }
         if (unwrapped instanceof JSTargetableWrapperNode) {
             unwrapped = ((JSTargetableWrapperNode) unwrapped).getDelegate();

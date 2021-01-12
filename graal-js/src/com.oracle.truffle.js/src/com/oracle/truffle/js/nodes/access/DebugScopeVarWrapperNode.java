@@ -56,7 +56,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
  * Debug scope variable access wrapper that delegates to another access node if the scope does not
  * contain a variable with that name.
  */
-public final class DebugScopeVarWrapperNode extends JavaScriptNode implements ReadNode, WriteNode {
+public final class DebugScopeVarWrapperNode extends VarWrapperNode implements ReadNode, WriteNode {
 
     private final String varName;
     @Child private JavaScriptNode dynamicScopeNode;
@@ -72,12 +72,9 @@ public final class DebugScopeVarWrapperNode extends JavaScriptNode implements Re
         this.scopeInterop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
     }
 
+    @Override
     public JavaScriptNode getDelegateNode() {
         return defaultDelegate;
-    }
-
-    public String getPropertyName() {
-        return varName;
     }
 
     @Override

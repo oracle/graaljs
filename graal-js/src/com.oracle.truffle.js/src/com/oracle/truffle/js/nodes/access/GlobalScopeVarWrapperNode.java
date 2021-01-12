@@ -54,7 +54,7 @@ import com.oracle.truffle.js.runtime.Errors;
  * Wrapper around a global property access that handles potential lexical declarations shadowing
  * global properties.
  */
-public final class GlobalScopeVarWrapperNode extends JavaScriptNode implements ReadNode, WriteNode {
+public final class GlobalScopeVarWrapperNode extends VarWrapperNode implements ReadNode, WriteNode {
 
     private final String varName;
     @Child private JavaScriptNode dynamicScopeNode;
@@ -70,12 +70,9 @@ public final class GlobalScopeVarWrapperNode extends JavaScriptNode implements R
         this.scopeHasBinding = GlobalScopeLookupNode.create(varName, isWrite());
     }
 
+    @Override
     public JavaScriptNode getDelegateNode() {
         return defaultDelegate;
-    }
-
-    public String getPropertyName() {
-        return varName;
     }
 
     @Override
