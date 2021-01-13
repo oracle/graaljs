@@ -260,9 +260,11 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
     private void decorateClass(VirtualFrame frame, ClassElementList elements) {
         //DecorateElements
         for (int i = 0; i < elements.size(); i++) {
-            ElementDescriptor element = elements.peek();
+            ElementDescriptor element = elements.pop();
             if(element.hasDecorators()) {
-                decorateElementNode.decorateElement(elements.pop(), elements);
+                decorateElementNode.decorateElement(element, elements);
+            } else {
+                elements.push(element);
             }
         }
         //DecorateClass
@@ -293,13 +295,12 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
                     JSRuntime.definePropertyOrThrow(proto, element.getKey(), element.getDescriptor());
                 }
             }
-            if(element.isField() && (element.isStatic() || element.isPrototype())) {
+            if(element.isField()) {
                 assert !element.getDescriptor().hasValue() && !element.getDescriptor().hasGet() && !element.getDescriptor().hasSet();
                 if(element.isStatic()) {
                     //defineField(constructor, element);
                     staticFields[staticFieldIndex++] = new Object[]{ element.getKey(), element.getInitialize(), false };
-                }
-                if(element.isPrototype()) {
+                } else {
                     //defineField(proto, element);
                     instanceFields[instanceFieldIndex++] = new Object[]{ element.getKey(), element.getInitialize(), false };
                 }

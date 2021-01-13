@@ -11,8 +11,7 @@ public class ClassElementList {
         if(e.isField()) {
             if(e.isStatic()) {
                 staticFieldCount++;
-            }
-            if(e.isPrototype()) {
+            } else {
                 instanceFieldCount++;
             }
         }
@@ -28,8 +27,7 @@ public class ClassElementList {
         if(e.isField()) {
             if(e.isStatic()) {
                 staticFieldCount--;
-            }
-            if(e.isPrototype()) {
+            } else {
                 instanceFieldCount--;
             }
         }
