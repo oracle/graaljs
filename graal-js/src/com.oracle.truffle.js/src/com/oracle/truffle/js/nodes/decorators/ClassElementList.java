@@ -4,15 +4,16 @@ import java.util.LinkedList;
 
 public class ClassElementList {
     private LinkedList<ElementDescriptor> elements = new LinkedList<>();
-    private int instanceFieldCount = 0;
+    private int prototypeFieldCount = 0;
     private int staticFieldCount = 0;
 
     public void push(ElementDescriptor e) {
         if(e.isField()) {
             if(e.isStatic()) {
                 staticFieldCount++;
-            } else {
-                instanceFieldCount++;
+            }
+            if(e.isPrototype()){
+                prototypeFieldCount++;
             }
         }
         elements.addLast(e);
@@ -27,8 +28,9 @@ public class ClassElementList {
         if(e.isField()) {
             if(e.isStatic()) {
                 staticFieldCount--;
-            } else {
-                instanceFieldCount--;
+            }
+            if(e.isPrototype()){
+                prototypeFieldCount--;
             }
         }
         return e;
@@ -38,9 +40,13 @@ public class ClassElementList {
         return elements;
     }
 
-    public int getInstanceFieldCount() { return instanceFieldCount; }
+    public int getPrototypeFieldCount() { return prototypeFieldCount; }
 
     public int getStaticFieldCount() { return staticFieldCount; }
 
     public int size() { return elements.size(); };
+
+    public ElementDescriptor[] toArray() {
+        return elements.toArray(new ElementDescriptor[elements.size()]);
+    }
 }

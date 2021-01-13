@@ -3268,24 +3268,34 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             }
 
             JavaScriptNode classHeritage = transform(classNode.getClassHeritage());
-            JavaScriptNode classFunction = transform(classNode.getConstructor().getValue());
-
-            List<ClassElementNode> members = transformClassElementDefinitionList(classNode.getClassElements(), classNameSymbol);
+            
 
             JSWriteFrameSlotNode writeClassBinding = className == null ? null : (JSWriteFrameSlotNode) findScopeVar(className, true).createWriteNode(null);
 
-            JavaScriptNode[] classDecorators = new JavaScriptNode[0];
+            JavaScriptNode classDefinition;
 
-            if(classNode.getDecorators() != null && classNode.getDecorators().size() != 0) {
-                List<Expression> d = classNode.getDecorators();
-                classDecorators = new JavaScriptNode[d.size()];
-                for(int i = 0; i < d.size(); i++) {
-                    classDecorators[d.size() - i - 1] = transform(d.get(i));
+            if(context.getEcmaScriptVersion() <= 12){
+                JavaScriptNode classFunction = transform(classNode.getConstructor().getValue());
+                ArrayList<ObjectLiteralMemberNode> members = transformPropertyDefinitionList(classNode.getClassElements(), true, classNameSymbol);
+                classDefinition = factory.createClassDefinition(context, (JSFunctionExpressionNode) classFunction, classHeritage,
+                        members.toArray(ObjectLiteralMemberNode.EMPTY), writeClassBinding, className, classNode.getInstanceFieldCount(), classNode.getStaticFieldCount(), classNode.hasPrivateInstanceMethods());
+            } else {
+                JavaScriptNode classFunction = transform(classNode.getDecoratorConstructor().getValue());
+                List<ClassElementNode> members = transformClassElementDefinitionList(classNode.getDecoratorClassElements(), classNameSymbol);
+
+                JavaScriptNode[] classDecorators = new JavaScriptNode[0];
+
+                if(classNode.getDecorators() != null && classNode.getDecorators().size() != 0) {
+                    List<Expression> d = classNode.getDecorators();
+                    classDecorators = new JavaScriptNode[d.size()];
+                    for(int i = 0; i < d.size(); i++) {
+                        classDecorators[d.size() - i - 1] = transform(d.get(i));
+                    }
                 }
+                classDefinition = factory.createDecoratorClassDefinition(context, (JSFunctionExpressionNode) classFunction, classHeritage,
+                        members.toArray(ClassElementNode.EMPTY), writeClassBinding, className, classDecorators);
             }
 
-            JavaScriptNode classDefinition = factory.createClassDefinition(context, (JSFunctionExpressionNode) classFunction, classHeritage,
-                            members.toArray(ClassElementNode.EMPTY), writeClassBinding, className, classNode.hasPrivateInstanceMethods(), classDecorators);
 
             if (classNode.hasPrivateMethods()) {
                 // internal constructor binding used for private brand checks.

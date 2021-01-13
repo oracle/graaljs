@@ -152,6 +152,8 @@ public class ElementDescriptor {
         this.initialize = initialize;
     }
 
+    public boolean hasStart() { return start != null; }
+
     public Object getStart() {
         return start;
     }
@@ -160,6 +162,8 @@ public class ElementDescriptor {
         this.start = start;
     }
 
+    public boolean hasReplace() { return replace != null; }
+
     public Object getReplace() {
         return replace;
     }
@@ -167,6 +171,8 @@ public class ElementDescriptor {
     public void setReplace(Object replace) {
         this.replace = replace;
     }
+
+    public boolean hasFinish() { return finish != null; }
 
     public Object getFinish() {
         return finish;

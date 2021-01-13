@@ -847,6 +847,10 @@ public class Parser extends AbstractParser {
         return env.ecmaScriptVersion >= 12;
     }
 
+    private boolean isES2022() {
+        return env.ecmaScriptVersion >= 13;
+    }
+
     private boolean isClassFields() {
         return ES2020_CLASS_FIELDS && env.classFields;
     }
@@ -1499,7 +1503,7 @@ public class Parser extends AbstractParser {
     private ClassNode classDeclaration(boolean yield, boolean await, boolean defaultExport) {
         assert type == CLASS || type == AT;
         List<Expression> classDecorators = null;
-        if (type == AT) {
+        if (isES2022() && type == AT) {
             classDecorators = decoratorList(yield, await);
         }
 
@@ -1541,7 +1545,7 @@ public class Parser extends AbstractParser {
     private ClassNode classExpression(boolean yield, boolean await) {
         assert type == CLASS || type == AT;
         List<Expression> classDecorators = null;
-        if (type == AT) {
+        if (isES2022() && type == AT) {
             classDecorators = decoratorList(yield, await);
         }
 
@@ -1610,7 +1614,8 @@ public class Parser extends AbstractParser {
             expect(LBRACE);
 
             ClassElement constructor = null;
-            ArrayList<ClassElement> classElements = new ArrayList<>();
+            ArrayList<ClassElement> decoratorClassElements = new ArrayList<>();
+            ArrayList<PropertyNode> classElements = new ArrayList<>();
             Map<String, Integer> classElementNameToElementIndexMap = new HashMap<>();
             int instanceFieldCount = 0;
             int staticFieldCount = 0;
@@ -1626,7 +1631,7 @@ public class Parser extends AbstractParser {
                 }
                 List<Expression> classElementDecorators = null;
                 long decoratorToken = token;
-                if(type == AT) {
+                if(isES2022() && type == AT) {
                     classElementDecorators = decoratorList(yield, await);
                 }
 
@@ -1717,7 +1722,11 @@ public class Parser extends AbstractParser {
                         throw error(AbstractParser.message("multiple.constructors"), classElementToken);
                     }
                 } else {
-                    classElements.add(classElement);
+                    if(isES2022()) {
+                        decoratorClassElements.add(classElement);
+                    } else {
+                        classElements.add(new PropertyNode(classElement.getToken(), classElement.getFinish(), classElement.getKey(), classElement.getValue(), classElement.getGetter(), classElement.getSetter(), classElement.isStatic(), classElement.hasComputedKey(), false, false, classElement.isField(), classElement.isAnonymousFunctionDefinition()));
+                    }
                 }
             }
 
@@ -1752,8 +1761,12 @@ public class Parser extends AbstractParser {
             }
 
             classScope.close();
-            return new ClassNode(classToken, classFinish, className, classHeritage, constructor, classElements, classScope,
-                            instanceFieldCount, staticFieldCount, hasPrivateMethods, hasPrivateInstanceMethods, classDecorators);
+            if(isES2022()) {
+                return new ClassNode(classToken, classFinish, className, classHeritage, constructor, decoratorClassElements, classDecorators, classScope);
+            } else {
+                PropertyNode ctor = new PropertyNode(constructor.getToken(), constructor.getFinish(), constructor.getKey(), constructor.getValue(), constructor.getGetter(), constructor.getSetter(), constructor.isStatic(), constructor.hasComputedKey(), false, false);
+                return new ClassNode(classToken, classFinish, className, classHeritage, ctor, classElements, classScope, instanceFieldCount, staticFieldCount, hasPrivateMethods, hasPrivateInstanceMethods);
+            }
         } finally {
             lc.pop(classNode);
         }

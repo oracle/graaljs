@@ -807,9 +807,14 @@ public class NodeFactory {
         return ObjectLiteralNode.newSpreadObjectMember(isStatic, value);
     }
 
-    public JavaScriptNode createClassDefinition(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ClassElementNode[] members,
-                    JSWriteFrameSlotNode writeClassBinding, String className, boolean hasPrivateInstanceMethods, JavaScriptNode[] decorators) {
-        return ClassDefinitionNode.create(context, constructorFunction, classHeritage, members, writeClassBinding, className != null, hasPrivateInstanceMethods, decorators);
+    public JavaScriptNode createClassDefinition(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members,
+                                                JSWriteFrameSlotNode writeClassBinding, String className, int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods) {
+        return ClassDefinitionNode.create(context, constructorFunction, classHeritage, members, writeClassBinding, className != null, instanceFieldCount, staticFieldCount, hasPrivateInstanceMethods);
+    }
+
+    public JavaScriptNode createDecoratorClassDefinition(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ClassElementNode[] classElementNodes,
+                    JSWriteFrameSlotNode writeClassBinding, String className, JavaScriptNode[] decorators) {
+        return ClassDefinitionNode.createDecoratorClassDefinitionNode(context, constructorFunction, classHeritage, writeClassBinding, classElementNodes, decorators, className != null);
     }
 
     public JavaScriptNode createMakeMethod(JSContext context, JavaScriptNode function) {
