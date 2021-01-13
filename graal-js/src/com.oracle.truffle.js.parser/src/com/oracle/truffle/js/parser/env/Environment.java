@@ -168,8 +168,9 @@ public abstract class Environment {
             } else if (current instanceof BlockEnvironment) {
                 scopeLevel++;
             } else if (current instanceof DebugEnvironment) {
-                if (!allowDebug) {
-                    break;
+                if (allowDebug && ((DebugEnvironment) current).hasMember(name)) {
+                    ensureFrameLevelAvailable(frameLevel);
+                    return new DebugVarRef(name);
                 }
             }
             current = current.getParent();
@@ -1055,6 +1056,37 @@ public abstract class Environment {
         @Override
         public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
             return factory.createLazyWriteFrameSlot(frameSlot.getIdentifier(), rhs);
+        }
+    }
+
+    class DebugVarRef extends VarRef {
+        DebugVarRef(String name) {
+            super(name);
+        }
+
+        @Override
+        public JavaScriptNode createReadNode() {
+            return factory.createDebugVarWrapper(name, factory.createConstantUndefined(), factory.createDebugScope(), factory.createReadProperty(context, null, name));
+        }
+
+        @Override
+        public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
+            return factory.createWriteConstantVariable(rhs, isStrictMode());
+        }
+
+        @Override
+        public JavaScriptNode createDeleteNode() {
+            return factory.createConstantBoolean(false);
+        }
+
+        @Override
+        public boolean isFunctionLocal() {
+            return false;
+        }
+
+        @Override
+        public boolean isGlobal() {
+            return false;
         }
     }
 
