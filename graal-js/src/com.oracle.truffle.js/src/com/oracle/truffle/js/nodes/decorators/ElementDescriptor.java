@@ -199,7 +199,7 @@ public class ElementDescriptor {
     public boolean isPrototype() { return JSPlacement.isPrototype(placement); }
     public boolean isOwn() { return JSPlacement.isOwn(placement); }
 
-    public boolean hasPrivateKey() {return key instanceof HiddenKey;}
+    public boolean hasPrivateKey() {return key instanceof HiddenKey; }
 
     public boolean hasInitialize() {return initialize != Undefined.instance; }
 

@@ -133,7 +133,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
 
         this.setElementsNode = PropertySetNode.createSetHidden(JSFunction.ELEMENTS_ID, context);
         this.evaluateClassElementsNode = EvaluateClassElementsNode.create(context, classElementNodes);
-        this.assignPrivateNamesNode = AssignPrivateNamesNode.create();
+        this.assignPrivateNamesNode = AssignPrivateNamesNode.create(context);
         this.initializeClassElementsNode = InitializeClassElementsNode.create(context);
 
         this.decorateClassNode = DecorateClassNode.create(context, decoratorNodes);
@@ -236,18 +236,23 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
             //DecorateClass
             decorateClassNode.execute(frame, classElements);
 
+            HiddenKey privateBrand = new HiddenKey("Brand");
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.setPrivateBrandNode = insert(PropertySetNode.createSetHidden(JSFunction.PRIVATE_BRAND_ID, context));
+            setPrivateBrandNode.setValue(constructor, privateBrand);
+
             //AssignPrivatNames
-            assignPrivateNamesNode.execute(classElements);
+            assignPrivateNamesNode.execute(proto, constructor,classElements);
+
+            if(writeClassBindingNode != null) {
+                writeClassBindingNode.executeWrite(frame, constructor);
+            }
 
             //InitializeClassElements
             constructor = initializeClassElementsNode.execute(proto, constructor, classElements);
 
             //Only elements with kind "own" get pushed to the initialization.
-            setElementsNode.setValue(constructor, classElements.toArray());
-
-            if(writeClassBindingNode != null) {
-                writeClassBindingNode.executeWrite(frame, constructor);
-            }
+            setElementsNode.setValue(constructor, classElements);
         }
 
         return constructor;

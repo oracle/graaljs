@@ -5,8 +5,10 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
@@ -226,6 +228,7 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
             if(setterNode != null) {
                 setter = setterNode.execute(frame);
             }
+
             PropertyDescriptor propDesc = PropertyDescriptor.createAccessor((DynamicObject) getter, (DynamicObject) setter, attributes);
             ElementDescriptor elemDesc =  ElementDescriptor.createAccessor(key, propDesc, placement, isPrivate());
             elemDesc.setDecorators(decorators);

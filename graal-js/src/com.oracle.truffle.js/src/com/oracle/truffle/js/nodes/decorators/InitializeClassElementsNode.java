@@ -3,6 +3,7 @@ package com.oracle.truffle.js.nodes.decorators;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.InitializeInstanceElementsNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
@@ -19,11 +20,13 @@ public class InitializeClassElementsNode extends JavaScriptBaseNode {
     @Child private PropertySetNode privateBrandAddNode;
     @Child private JSFunctionCallNode hookCallNode;
     @Child private InitializeInstanceElementsNode initializeInstanceElementsNode;
+    @Child private PropertySetNode setPrivateBrandNode;
 
     private InitializeClassElementsNode(JSContext context) {
         this.context = context;
         this.privateBrandAddNode = PropertySetNode.createSetHidden(JSFunction.PRIVATE_BRAND_ID, context);
         this.hookCallNode = JSFunctionCallNode.createCall();
+        this.setPrivateBrandNode = PropertySetNode.createSetHidden(JSFunction.PRIVATE_BRAND_ID, context);
     }
 
     public static InitializeClassElementsNode create(JSContext context) {
@@ -36,18 +39,22 @@ public class InitializeClassElementsNode extends JavaScriptBaseNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             initializeInstanceElementsNode = insert(InitializeInstanceElementsNode.create(context));
         }
-        ElementDescriptor[] fields = new ElementDescriptor[elements.getPrototypeFieldCount() + elements.getStaticFieldCount()];
-        int fieldIndex = 0;
+        ClassElementList fields = new ClassElementList();
         ClassElementList startHooks = new ClassElementList();
         ClassElementList otherHooks = new ClassElementList();
         int size = elements.size();
+        boolean setStaticBrand = false;
+        boolean setInstanceBrand = false;
         for(int i = 0; i < size; i++) {
             ElementDescriptor element = elements.pop();
             if(element.isStatic() && element.hasKey() && element.hasPrivateKey()) {
                 //PrivateBrandAdd
-                //TODO: Perform PrivateBrandAdd
-                privateBrandAddNode.setValue(constructor, constructor);
+                setStaticBrand = true;
             }
+            if((element.isMethod() || element.isAccessor()) && element.hasKey() && element.hasPrivateKey()) {
+                setInstanceBrand = true;
+            }
+            //If the class contains a private instance method or accessor, set F.[[PrivateBrand]].
             if(element.isStatic() || element.isPrototype()) {
                 if ((element.isMethod() || element.isAccessor()) && !element.hasPrivateKey()) {
                     DynamicObject receiver = element.isStatic() ? constructor : proto;
@@ -55,7 +62,7 @@ public class InitializeClassElementsNode extends JavaScriptBaseNode {
                 }
                 if (element.isField()) {
                     assert !element.getDescriptor().hasValue() && !element.getDescriptor().hasGet() && !element.getDescriptor().hasSet();
-                    fields[fieldIndex++] = element;
+                    fields.push(element);
                 }
                 if (element.isHook()) {
                     if (element.hasStart()) {
@@ -68,6 +75,14 @@ public class InitializeClassElementsNode extends JavaScriptBaseNode {
             } else {
                 elements.push(element);
             }
+        }
+        if(setStaticBrand) {
+            //TODO: Perform PrivateBrandAdd
+            privateBrandAddNode.setValue(constructor, constructor);
+        }
+        if(setInstanceBrand) {
+            HiddenKey privateBrand = new HiddenKey("Brand");
+            setPrivateBrandNode.setValue(constructor, privateBrand);
         }
         if(initializeInstanceElementsNode != null) {
             initializeInstanceElementsNode.executeFields(proto, constructor, fields);

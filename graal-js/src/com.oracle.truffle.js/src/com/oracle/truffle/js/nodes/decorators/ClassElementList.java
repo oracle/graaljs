@@ -6,6 +6,8 @@ public class ClassElementList {
     private LinkedList<ElementDescriptor> elements = new LinkedList<>();
     private int prototypeFieldCount = 0;
     private int staticFieldCount = 0;
+    private int ownFieldCount = 0;
+    private int ownHookStartCount = 0;
 
     public void push(ElementDescriptor e) {
         if(e.isField()) {
@@ -15,6 +17,12 @@ public class ClassElementList {
             if(e.isPrototype()){
                 prototypeFieldCount++;
             }
+            if(e.isOwn()) {
+                ownFieldCount++;
+            }
+        }
+        if(e.isHook() && e.isOwn() && e.hasStart()) {
+            ownHookStartCount++;
         }
         elements.addLast(e);
     }
@@ -32,6 +40,12 @@ public class ClassElementList {
             if(e.isPrototype()){
                 prototypeFieldCount--;
             }
+            if(e.isOwn()) {
+                ownFieldCount--;
+            }
+        }
+        if(e.isHook() && e.isOwn() && e.hasStart()) {
+            ownHookStartCount--;
         }
         return e;
     }
@@ -43,6 +57,10 @@ public class ClassElementList {
     public int getPrototypeFieldCount() { return prototypeFieldCount; }
 
     public int getStaticFieldCount() { return staticFieldCount; }
+
+    public int getOwnFieldCount() { return ownFieldCount; }
+
+    public int getOwnHookStartCount() { return ownHookStartCount; }
 
     public int size() { return elements.size(); };
 
