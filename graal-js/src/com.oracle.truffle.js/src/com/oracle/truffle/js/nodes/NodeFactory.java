@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,8 @@ import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.AsyncIteratorNextNode;
 import com.oracle.truffle.js.nodes.access.CompoundWriteElementNode;
 import com.oracle.truffle.js.nodes.access.ConstantVariableWriteNode;
+import com.oracle.truffle.js.nodes.access.DebugScopeNode;
+import com.oracle.truffle.js.nodes.access.DebugScopeVarWrapperNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalFunctionNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalLexicalVariableNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalNode;
@@ -889,7 +891,7 @@ public class NodeFactory {
         return GeneratorExprBlockNode.create(statements, readState, writeState);
     }
 
-    public LazyReadFrameSlotNode createLazyReadFrameSlot(Object identifier) {
+    public JavaScriptNode createLazyReadFrameSlot(Object identifier) {
         return LazyReadFrameSlotNode.create(identifier);
     }
 
@@ -1166,6 +1168,14 @@ public class NodeFactory {
 
     public IfNode copyIfWithCondition(IfNode origIfNode, JavaScriptNode condition) {
         return IfNode.create(condition, origIfNode.getThenPart(), origIfNode.getElsePart());
+    }
+
+    public JavaScriptNode createDebugScope() {
+        return DebugScopeNode.create();
+    }
+
+    public JavaScriptNode createDebugVarWrapper(String varName, JavaScriptNode defaultDelegate, JavaScriptNode dynamicScope, JSTargetableNode scopeAccessNode) {
+        return new DebugScopeVarWrapperNode(varName, defaultDelegate, dynamicScope, scopeAccessNode);
     }
 
     // #####

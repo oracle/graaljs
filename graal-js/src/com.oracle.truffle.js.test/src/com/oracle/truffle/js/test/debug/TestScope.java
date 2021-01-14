@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -747,6 +747,43 @@ public class TestScope {
             });
         }
         assertEquals("30", tester.expectDone());
+    }
+
+    @Test
+    public void testEvalDynamicScope() throws Throwable {
+        final Source testDebugger = Source.newBuilder("js", "" +
+                        "var s = `\n" +
+                        "var x = 10;\n" +
+                        "var y = 11;\n" +
+                        "var z = 12;\n" +
+                        "debugger;\n" +
+                        "var total = x + y + z;\n" +
+                        "total;`;\n" +
+                        "var x = function(s) { return eval(s); };\n" +
+                        "x(s);\n" +
+                        "eval(s);\n", "testEvalScope.js").buildLiteral();
+
+        try (DebuggerSession session = tester.startSession()) {
+            tester.startEval(testDebugger);
+
+            tester.expectSuspended((SuspendedEvent event) -> {
+                checkScope(event, ":program", 5, "debugger;",
+                                new String[]{},
+                                new String[]{"s", IGNORE_VALUE, "x", "10", "y", "11", "z", "12", "total", "undefined", "arguments", IGNORE_VALUE},
+                                new String[]{});
+                assertTrue(event.getTopStackFrame().eval("s").isString());
+                DebugValue x = event.getTopStackFrame().eval("x");
+                assertTrue(x.isNumber());
+                assertEquals(10, x.asInt());
+                DebugValue y = event.getTopStackFrame().eval("y");
+                assertTrue(y.isNumber());
+                assertEquals(11, y.asInt());
+                DebugValue z = event.getTopStackFrame().eval("z");
+                assertTrue(z.isNumber());
+                assertEquals(12, z.asInt());
+                event.prepareContinue();
+            });
+        }
     }
 
     private static String getScopeReceiver(SuspendedEvent suspendedEvent) {

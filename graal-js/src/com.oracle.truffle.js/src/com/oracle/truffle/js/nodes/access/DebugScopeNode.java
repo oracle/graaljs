@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,52 +38,58 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.parser.env;
+package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.interop.InteropLibrary;
+import java.util.Set;
+
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.js.nodes.NodeFactory;
-import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.ReadNode;
+import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
-/**
- * Read-only environment based on a frame descriptor used to give debugger code access to the
- * lexical environment it's to be evaluated in.
- */
-public class DebugEnvironment extends Environment {
-    private final Node locationNode;
-    private final MaterializedFrame lexicalContextFrame;
-
-    public DebugEnvironment(Environment parent, NodeFactory factory, JSContext context, Node locationNode, MaterializedFrame lexicalContextFrame) {
-        super(parent, factory, context);
-        this.locationNode = locationNode;
-        this.lexicalContextFrame = lexicalContextFrame;
+@ImportStatic({JSConfig.class})
+public abstract class DebugScopeNode extends JavaScriptNode implements ReadNode {
+    protected DebugScopeNode() {
     }
 
-    @Override
-    protected FrameSlot findBlockFrameSlot(String name) {
-        return null;
+    public static DebugScopeNode create() {
+        return DebugScopeNodeGen.create();
     }
 
-    @Override
-    public FunctionEnvironment function() {
-        return null;
-    }
-
-    @Override
-    public boolean isStrictMode() {
-        return true;
-    }
-
-    public boolean hasMember(String name) {
-        try {
-            Object scope = NodeLibrary.getUncached().getScope(locationNode, lexicalContextFrame, true);
-            return InteropLibrary.getUncached().isMemberReadable(scope, name);
-        } catch (UnsupportedMessageException e) {
-            return false;
+    @ExplodeLoop
+    @Specialization
+    protected final Object getScope(VirtualFrame frame,
+                    @CachedLibrary(limit = "InteropLibraryLimit") NodeLibrary nodeLibrary) {
+        Node instrumentableParent = getParent();
+        while (true) {
+            if (instrumentableParent instanceof JavaScriptNode) {
+                if (((JavaScriptNode) instrumentableParent).isInstrumentable()) {
+                    break;
+                } else {
+                    instrumentableParent = instrumentableParent.getParent();
+                }
+            } else {
+                return Undefined.instance;
+            }
         }
+        try {
+            return nodeLibrary.getScope(instrumentableParent, frame, true);
+        } catch (UnsupportedMessageException e) {
+            return Undefined.instance;
+        }
+    }
+
+    @Override
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return create();
     }
 }

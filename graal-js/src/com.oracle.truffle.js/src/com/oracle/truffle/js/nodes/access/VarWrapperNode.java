@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,52 +38,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.parser.env;
+package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.NodeLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.js.nodes.NodeFactory;
-import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
 
-/**
- * Read-only environment based on a frame descriptor used to give debugger code access to the
- * lexical environment it's to be evaluated in.
- */
-public class DebugEnvironment extends Environment {
-    private final Node locationNode;
-    private final MaterializedFrame lexicalContextFrame;
-
-    public DebugEnvironment(Environment parent, NodeFactory factory, JSContext context, Node locationNode, MaterializedFrame lexicalContextFrame) {
-        super(parent, factory, context);
-        this.locationNode = locationNode;
-        this.lexicalContextFrame = lexicalContextFrame;
+public abstract class VarWrapperNode extends JavaScriptNode {
+    protected VarWrapperNode() {
     }
 
-    @Override
-    protected FrameSlot findBlockFrameSlot(String name) {
-        return null;
-    }
-
-    @Override
-    public FunctionEnvironment function() {
-        return null;
-    }
-
-    @Override
-    public boolean isStrictMode() {
-        return true;
-    }
-
-    public boolean hasMember(String name) {
-        try {
-            Object scope = NodeLibrary.getUncached().getScope(locationNode, lexicalContextFrame, true);
-            return InteropLibrary.getUncached().isMemberReadable(scope, name);
-        } catch (UnsupportedMessageException e) {
-            return false;
-        }
-    }
+    public abstract JavaScriptNode getDelegateNode();
 }
