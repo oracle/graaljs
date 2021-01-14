@@ -170,9 +170,6 @@
     "status" : "SKIP",
     "comment" : "Fails randomly with OutOfMemoryError"
   }, {
-    "filePath" : "mjsunit/array-join.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/array-literal-feedback.js",
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
@@ -180,10 +177,6 @@
     "filePath" : "mjsunit/array-sort.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "mjsunit/array-tolocalestring.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
     "filePath" : "mjsunit/asm/asm-heap.js",
     "runInIsolation" : true,
@@ -385,11 +378,6 @@
   }, {
     "filePath" : "mjsunit/error-tostring-omit.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/error-tostring.js",
-    "status" : "FAIL",
-    "runInIsolation" : true,
-    "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
     "filePath" : "mjsunit/es6/block-const-assign-sloppy.js",
     "status" : "FAIL"
@@ -2092,10 +2080,6 @@
     "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-769637.js",
-    "status" : "SKIP",
-    "comment" : "WASM (GR-6494)"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-769846.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
   }, {
