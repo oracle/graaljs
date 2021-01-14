@@ -1776,6 +1776,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     public abstract static class JSArrayToLocaleStringNode extends JSArrayOperation {
 
         private final StringBuilderProfile stringBuilderProfile;
+        private final BranchProfile stackGrowProfile = BranchProfile.create();
         @Child private PropertyGetNode getToLocaleStringNode;
         @Child private JSFunctionCallNode callToLocaleStringNode;
 
@@ -1792,22 +1793,31 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             if (len == 0) {
                 return "";
             }
-            Object[] userArguments = JSArguments.extractUserArguments(frame.getArguments());
-            long k = 0;
-            StringBuilder r = stringBuilderProfile.newStringBuilder();
-            while (k < len) {
-                if (k > 0) {
-                    stringBuilderProfile.append(r, ',');
-                }
-                Object nextElement = read(arrayObj, k);
-                if (nextElement != Null.instance && nextElement != Undefined.instance) {
-                    Object result = callToLocaleString(nextElement, userArguments);
-                    String resultString = toStringNode.executeString(result);
-                    stringBuilderProfile.append(r, resultString);
-                }
-                k++;
+            JSRealm realm = getContext().getRealm();
+            if (!realm.joinStackPush(thisObj, stackGrowProfile)) {
+                // join is in progress on thisObj already => break the cycle
+                return "";
             }
-            return stringBuilderProfile.toString(r);
+            try {
+                Object[] userArguments = JSArguments.extractUserArguments(frame.getArguments());
+                long k = 0;
+                StringBuilder r = stringBuilderProfile.newStringBuilder();
+                while (k < len) {
+                    if (k > 0) {
+                        stringBuilderProfile.append(r, ',');
+                    }
+                    Object nextElement = read(arrayObj, k);
+                    if (nextElement != Null.instance && nextElement != Undefined.instance) {
+                        Object result = callToLocaleString(nextElement, userArguments);
+                        String resultString = toStringNode.executeString(result);
+                        stringBuilderProfile.append(r, resultString);
+                    }
+                    k++;
+                }
+                return stringBuilderProfile.toString(r);
+            } finally {
+                realm.joinStackPop();
+            }
         }
 
         private Object callToLocaleString(Object nextElement, Object[] userArguments) {
