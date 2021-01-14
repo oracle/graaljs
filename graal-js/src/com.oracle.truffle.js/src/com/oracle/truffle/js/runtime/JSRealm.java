@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,9 +67,11 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.ArrayIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.AtomicsBuiltins;
 import com.oracle.truffle.js.builtins.ConsoleBuiltins;
@@ -155,6 +157,7 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.PrintWriterWrapper;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
 /**
@@ -390,6 +393,11 @@ public class JSRealm {
      * Per-realm CommonJs `require` cache.
      */
     private final Map<TruffleFile, DynamicObject> commonJSRequireCache;
+
+    /**
+     * Stack of receivers of (Typed)Array.prototype.join. Used to avoid cyclic calls.
+     */
+    private final SimpleArrayList<Object> joinStack = new SimpleArrayList<>();
 
     public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
@@ -2188,6 +2196,22 @@ public class JSRealm {
             }
             return realm;
         }
+    }
+
+    public boolean joinStackPush(Object o, BranchProfile growProfile) {
+        InteropLibrary interop = (o instanceof JSObject) ? null : InteropLibrary.getFactory().getUncached(o);
+        for (int i = 0; i < joinStack.size(); i++) {
+            Object element = joinStack.get(i);
+            if ((interop == null) ? (o == element) : interop.isIdentical(o, element, InteropLibrary.getFactory().getUncached(element))) {
+                return false;
+            }
+        }
+        joinStack.add(o, growProfile);
+        return true;
+    }
+
+    public void joinStackPop() {
+        joinStack.pop();
     }
 
     public final Map<TruffleFile, DynamicObject> getCommonJSRequireCache() {

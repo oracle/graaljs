@@ -1621,6 +1621,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private final ConditionProfile isTwo = ConditionProfile.createBinaryProfile();
         private final ConditionProfile isSparse = ConditionProfile.createBinaryProfile();
         private final BranchProfile growProfile = BranchProfile.create();
+        private final BranchProfile stackGrowProfile = BranchProfile.create();
         private final StringBuilderProfile stringBuilderProfile;
 
         public JSArrayJoinNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
@@ -1635,19 +1636,28 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             final long length = getLength(thisJSObject);
             final String joinSeparator = joinStr == Undefined.instance ? "," : getSeparatorToString().executeString(joinStr);
 
-            if (isZero.profile(length == 0)) {
+            JSRealm realm = getContext().getRealm();
+            if (!realm.joinStackPush(thisObj, stackGrowProfile)) {
+                // join is in progress on thisObj already => break the cycle
                 return "";
-            } else if (isOne.profile(length == 1)) {
-                return joinOne(thisJSObject);
-            } else {
-                final boolean appendSep = separatorNotEmpty.profile(joinSeparator.length() > 0);
-                if (isTwo.profile(length == 2)) {
-                    return joinTwo(thisJSObject, joinSeparator, appendSep);
-                } else if (isSparse.profile(JSArray.isJSArray(thisJSObject) && arrayGetArrayType((DynamicObject) thisJSObject) instanceof SparseArray)) {
-                    return joinSparse(thisJSObject, length, joinSeparator, appendSep);
+            }
+            try {
+                if (isZero.profile(length == 0)) {
+                    return "";
+                } else if (isOne.profile(length == 1)) {
+                    return joinOne(thisJSObject);
                 } else {
-                    return joinLoop(thisJSObject, length, joinSeparator, appendSep);
+                    final boolean appendSep = separatorNotEmpty.profile(joinSeparator.length() > 0);
+                    if (isTwo.profile(length == 2)) {
+                        return joinTwo(thisJSObject, joinSeparator, appendSep);
+                    } else if (isSparse.profile(JSArray.isJSArray(thisJSObject) && arrayGetArrayType((DynamicObject) thisJSObject) instanceof SparseArray)) {
+                        return joinSparse(thisJSObject, length, joinSeparator, appendSep);
+                    } else {
+                        return joinLoop(thisJSObject, length, joinSeparator, appendSep);
+                    }
                 }
+            } finally {
+                realm.joinStackPop();
             }
         }
 
@@ -1661,12 +1671,12 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         private String joinOne(Object thisObject) {
             Object value = read(thisObject, 0);
-            return toStringOrEmpty(thisObject, value);
+            return toStringOrEmpty(value);
         }
 
         private String joinTwo(Object thisObject, final String joinSeparator, final boolean appendSep) {
-            String first = toStringOrEmpty(thisObject, read(thisObject, 0));
-            String second = toStringOrEmpty(thisObject, read(thisObject, 1));
+            String first = toStringOrEmpty(read(thisObject, 0));
+            String second = toStringOrEmpty(read(thisObject, 1));
 
             long resultLength = first.length() + (appendSep ? joinSeparator.length() : 0L) + second.length();
             if (resultLength > getContext().getStringLengthLimit()) {
@@ -1691,7 +1701,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     stringBuilderProfile.append(res, joinSeparator);
                 }
                 Object value = read(thisJSObject, i);
-                String str = toStringOrEmpty(thisJSObject, value);
+                String str = toStringOrEmpty(value);
                 stringBuilderProfile.append(res, str);
 
                 if (appendSep) {
@@ -1703,18 +1713,16 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return stringBuilderProfile.toString(res);
         }
 
-        private String toStringOrEmpty(Object thisObject, Object value) {
-            if (isValidEntry(thisObject, value)) {
+        private String toStringOrEmpty(Object value) {
+            if (isValidEntry(value)) {
                 return elementToStringNode.executeString(value);
             } else {
                 return "";
             }
         }
 
-        private static boolean isValidEntry(Object thisObject, Object value) {
-            // the last check here is to avoid recursion
-            return value != Undefined.instance && value != Null.instance && (value instanceof JSObject ? value != thisObject
-                            : !InteropLibrary.getFactory().getUncached(thisObject).isIdentical(thisObject, value, InteropLibrary.getFactory().getUncached(value)));
+        private static boolean isValidEntry(Object value) {
+            return value != Undefined.instance && value != Null.instance;
         }
 
         private String joinSparse(Object thisObject, long length, String joinSeparator, final boolean appendSep) {
@@ -1723,7 +1731,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             long i = 0;
             while (i < length) {
                 Object value = read(thisObject, i);
-                if (isValidEntry(thisObject, value)) {
+                if (isValidEntry(value)) {
                     String string = elementToStringNode.executeString(value);
                     int stringLength = string.length();
                     if (stringLength > 0) {
