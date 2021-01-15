@@ -190,7 +190,7 @@ import com.oracle.truffle.js.nodes.decorators.ClassElementNode;
 import com.oracle.truffle.js.nodes.function.AbstractBodyNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.CallApplyArgumentsNode;
-import com.oracle.truffle.js.nodes.function.ClassDefinitionNode;
+import com.oracle.truffle.js.nodes.decorators.ClassDefinitionNode;
 import com.oracle.truffle.js.nodes.function.ConstructorResultNode;
 import com.oracle.truffle.js.nodes.function.ConstructorRootNode;
 import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
@@ -1127,8 +1127,8 @@ public class NodeFactory {
         return InitializeInstanceElementsNode.create(context, target, constructor);
     }
 
-    public JavaScriptNode createNewPrivateName(String description) {
-        return NewPrivateNameNode.create(description);
+    public JavaScriptNode createNewPrivateName(String description, JSContext context) {
+        return NewPrivateNameNode.create(description, context);
     }
 
     public JavaScriptNode createPrivateFieldGet(JSContext context, JavaScriptNode target, JavaScriptNode key) {

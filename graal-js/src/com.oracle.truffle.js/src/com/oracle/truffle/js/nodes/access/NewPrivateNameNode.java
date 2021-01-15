@@ -44,6 +44,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.decorators.PrivateName;
+import com.oracle.truffle.js.runtime.JSContext;
 
 import java.util.Set;
 
@@ -54,22 +56,27 @@ import java.util.Set;
  */
 public class NewPrivateNameNode extends JavaScriptNode {
     private final String description;
+    private final JSContext context;
 
-    protected NewPrivateNameNode(String description) {
+    protected NewPrivateNameNode(String description, JSContext context) {
         this.description = description;
+        this.context = context;
     }
 
-    public static JavaScriptNode create(String description) {
-        return new NewPrivateNameNode(description);
+    public static JavaScriptNode create(String description, JSContext context) {
+        return new NewPrivateNameNode(description, context);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        return new HiddenKey(description);
+        if(context.getEcmaScriptVersion() <= 12) {
+            return new HiddenKey(description);
+        }
+        return new PrivateName(new HiddenKey(description));
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(description);
+        return create(description, context);
     }
 }

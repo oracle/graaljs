@@ -2906,7 +2906,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else if (property.isPrivate()) {
             VarRef privateVar = environment.findLocalVar(property.getPrivateName());
             if (property.isClassField()) {
-                JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(factory.createNewPrivateName(property.getPrivateName()));
+                JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(factory.createNewPrivateName(property.getPrivateName(), context));
                 return factory.createPrivateFieldMember(privateVar.createReadNode(), property.isStatic(), value, writePrivateNode);
             } else {
                 JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(null);
@@ -3316,7 +3316,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 key = ClassElementKeyNode.createComputedKeyNode(transform(e.getKey()));
             } else if(e.isPrivate()){
                 VarRef privateVar = environment.findLocalVar(e.getPrivateName());
-                JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(factory.createNewPrivateName(e.getPrivateName()));
+                JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(factory.createNewPrivateName(e.getPrivateName(), context));
                 key = ClassElementKeyNode.createPrivateKeyNode(privateVar.createReadNode(),writePrivateNode);
             } else {
                 key = ClassElementKeyNode.createObjectKeyNode(e.getKeyName());

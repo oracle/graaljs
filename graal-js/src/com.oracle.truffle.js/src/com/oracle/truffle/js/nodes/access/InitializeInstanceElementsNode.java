@@ -54,6 +54,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.decorators.ClassElementList;
 import com.oracle.truffle.js.nodes.decorators.ElementDescriptor;
+import com.oracle.truffle.js.nodes.decorators.PrivateName;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.function.SetFunctionNameNode;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -257,7 +258,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
                 Object key = element.getKey();
                 Object initializer = element.getInitialize();
                 JavaScriptBaseNode writeNode = null;
-                if (key instanceof HiddenKey) {
+                if (key instanceof PrivateName) {
                     writeNode = PrivateFieldAddNode.create(context);
                 }
                 JSFunctionCallNode callNode = null;
@@ -321,14 +322,14 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
             if(callNode != null && desc.hasInitialize()) {
                 initValue = callNode.executeCall(JSArguments.createZeroArg(target, desc.getInitialize()));
             }
+            PropertyDescriptor prop = desc.getDescriptor();
+            assert prop.isDataDescriptor();
+            prop.setValue(initValue);
             if(writeNode instanceof PrivateFieldAddNode) {
-                assert key instanceof HiddenKey : key;
-                ((PrivateFieldAddNode) writeNode).execute(target, key, initValue);
+                assert key instanceof PrivateName : key;
+                ((PrivateFieldAddNode) writeNode).execute(target, ((PrivateName) key).getHiddenKey(), initValue);
             } else {
                 assert JSRuntime.isPropertyKey(key) : key;
-                PropertyDescriptor prop = desc.getDescriptor();
-                assert prop.isDataDescriptor();
-                prop.setValue(initValue);
                 JSRuntime.definePropertyOrThrow((DynamicObject) target, key, prop);
             }
         }

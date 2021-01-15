@@ -101,7 +101,7 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         this.scope = scope;
         this.instanceFieldCount = 1; //Needed for initializeInstanceElements to be called.
         this.staticFieldCount = 0;
-        this.hasPrivateMethods = false;
+        this.hasPrivateMethods = true; //Needed for private brand check
         this.hasPrivateInstanceMethods = false;
         this.classElements = null;
         this.decoratorConstructor = constructor;
@@ -181,7 +181,10 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
      * Get method definitions except the constructor.
      */
     public List<PropertyNode> getClassElements() {
-        return Collections.unmodifiableList(classElements);
+        if(classElements != null) {
+            return Collections.unmodifiableList(classElements);
+        }
+        return null;
     }
 
     public ClassNode setClassElements(final List<PropertyNode> classElements) {
@@ -203,7 +206,10 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
     }
 
     public List<ClassElement> getDecoratorClassElements() {
-        return this.decoratorClassElements;
+        if(decoratorClassElements != null) {
+            return Collections.unmodifiableList(decoratorClassElements);
+        }
+        return null;
     }
 
     public ClassNode setDecoratorClassElements(final List<ClassElement> decoratorClassElements) {

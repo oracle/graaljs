@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.access;
 import java.util.Objects;
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
@@ -56,6 +57,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
+import com.oracle.truffle.js.nodes.decorators.PrivateName;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -109,6 +111,25 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
             throw Errors.createTypeErrorCannotGetAccessorProperty(keyAsString(), target, this);
         }
         return callNode.executeCall(JSArguments.createZeroArg(target, getter));
+    }
+
+    @Specialization(guards = {"isJSObject(target)"}, limit = "3")
+    Object doDecorators(DynamicObject target, PrivateName key, @CachedLibrary("target") DynamicObjectLibrary access,@Cached("createCall()") JSFunctionCallNode callNode , @Cached BranchProfile errorBranch) {
+        if(key.isField()) {
+            return doField(target, key.getHiddenKey(), access, errorBranch);
+        }else if(key.isMethod()) {
+            if(key.getDescriptor().getWritable() && access.containsKey(target, key.getHiddenKey())) {
+                return access.getOrDefault(target, key.getHiddenKey(), Undefined.instance);
+            }
+            return key.getDescriptor().getValue();
+        } else {
+            assert key.isAccessor();
+            if(!key.getDescriptor().hasGet()) {
+                errorBranch.enter();
+                throw Errors.createTypeErrorCannotGetPrivateMember(key.getName(),this);
+            }
+            return callNode.executeCall(JSArguments.createZeroArg(target, key.getDescriptor().getGet()));
+        }
     }
 
     @TruffleBoundary

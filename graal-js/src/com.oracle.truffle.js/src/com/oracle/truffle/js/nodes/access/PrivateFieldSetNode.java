@@ -52,6 +52,7 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.decorators.PrivateName;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -103,6 +104,37 @@ public abstract class PrivateFieldSetNode extends JSTargetableNode {
             throw Errors.createTypeErrorCannotSetAccessorProperty(keyAsString(), target);
         }
         return callNode.executeCall(JSArguments.createOneArg(target, setter, value));
+    }
+
+    @Specialization(guards = {"isJSObject(target)"}, limit = "3")
+    Object doDecorators(DynamicObject target, PrivateName key, Object value,
+                        @CachedLibrary("target") DynamicObjectLibrary access,
+                        @Cached("createCall()") JSFunctionCallNode callNode,
+                        @Cached BranchProfile errorBranch) {
+        if(key.isField()) {
+            if(!key.getDescriptor().getWritable()) {
+                //TODO: error message.
+                errorBranch.enter();
+                throw Errors.createTypeErrorCannotSetPrivateMember(key.getName(), this);
+            }
+            return doField(target, key.getHiddenKey(), value, access, errorBranch);
+        } else if (key.isMethod()) {
+            if(!key.getDescriptor().getWritable()) {
+                //TODO: error message.
+                errorBranch.enter();
+                throw Errors.createTypeErrorCannotSetPrivateMember(key.getName(), this);
+            }
+            access.put(target, key.getHiddenKey(), value);
+            return value;
+        } else {
+            assert key.isAccessor();
+            if(!key.getDescriptor().hasSet()) {
+                //TODO:throw error
+                errorBranch.enter();
+                throw Errors.createTypeErrorCannotSetPrivateMember(key.getName(), this);
+            }
+            return callNode.executeCall(JSArguments.createOneArg(target, key.getDescriptor().getSet(), value));
+        }
     }
 
     @TruffleBoundary

@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.function;
+package com.oracle.truffle.js.nodes.decorators;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -52,12 +52,11 @@ import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
-import com.oracle.truffle.js.nodes.decorators.AssignPrivateNamesNode;
-import com.oracle.truffle.js.nodes.decorators.ClassElementList;
-import com.oracle.truffle.js.nodes.decorators.ClassElementNode;
-import com.oracle.truffle.js.nodes.decorators.DecorateClassNode;
-import com.oracle.truffle.js.nodes.decorators.EvaluateClassElementsNode;
-import com.oracle.truffle.js.nodes.decorators.InitializeClassElementsNode;
+import com.oracle.truffle.js.nodes.function.CreateMethodPropertyNode;
+import com.oracle.truffle.js.nodes.function.DefineMethodNode;
+import com.oracle.truffle.js.nodes.function.FunctionNameHolder;
+import com.oracle.truffle.js.nodes.function.JSFunctionExpressionNode;
+import com.oracle.truffle.js.nodes.function.SetFunctionNameNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -102,14 +101,13 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
 
     @Child private PropertySetNode setElementsNode;
     @Child private EvaluateClassElementsNode evaluateClassElementsNode;
-    @Child private AssignPrivateNamesNode assignPrivateNamesNode;
     @Child private InitializeClassElementsNode initializeClassElementsNode;
 
     //Decorator Handling
     @Child private DecorateClassNode decorateClassNode;
 
     protected ClassDefinitionNode(JSContext context, JSFunctionExpressionNode constructorFunctionNode, JavaScriptNode classHeritageNode, ObjectLiteralMemberNode[] memberNodes,
-                    JSWriteFrameSlotNode writeClassBindingNode, boolean hasName, int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods, ClassElementNode[] classElementNodes, JavaScriptNode[] decoratorNodes) {
+                                  JSWriteFrameSlotNode writeClassBindingNode, boolean hasName, int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods, ClassElementNode[] classElementNodes, JavaScriptNode[] decoratorNodes) {
         this.context = context;
         this.hasName = hasName;
         this.instanceFieldCount = instanceFieldCount;
@@ -133,7 +131,6 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
 
         this.setElementsNode = PropertySetNode.createSetHidden(JSFunction.ELEMENTS_ID, context);
         this.evaluateClassElementsNode = EvaluateClassElementsNode.create(context, classElementNodes);
-        this.assignPrivateNamesNode = AssignPrivateNamesNode.create(context);
         this.initializeClassElementsNode = InitializeClassElementsNode.create(context);
 
         this.decorateClassNode = DecorateClassNode.create(context, decoratorNodes);
@@ -236,20 +233,15 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
             //DecorateClass
             decorateClassNode.execute(frame, classElements);
 
-            HiddenKey privateBrand = new HiddenKey("Brand");
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.setPrivateBrandNode = insert(PropertySetNode.createSetHidden(JSFunction.PRIVATE_BRAND_ID, context));
-            setPrivateBrandNode.setValue(constructor, privateBrand);
-
             //AssignPrivatNames
-            assignPrivateNamesNode.execute(proto, constructor,classElements);
+            assignPrivateNames(classElements);
+
+            //InitializeClassElements
+            constructor = initializeClassElementsNode.execute(proto, constructor, classElements);
 
             if(writeClassBindingNode != null) {
                 writeClassBindingNode.executeWrite(frame, constructor);
             }
-
-            //InitializeClassElements
-            constructor = initializeClassElementsNode.execute(proto, constructor, classElements);
 
             //Only elements with kind "own" get pushed to the initialization.
             setElementsNode.setValue(constructor, classElements);
@@ -280,6 +272,22 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
             }
         }
         assert instanceFieldIndex == instanceFieldCount && staticFieldIndex == staticFieldCount;
+    }
+
+    @ExplodeLoop
+    private void assignPrivateNames(ClassElementList elements) {
+        int size = elements.size();
+        for (int i = 0; i < size; i++) {
+            ElementDescriptor element = elements.pop();
+            if(element.hasPrivateKey()) {
+                PrivateName key = element.getPrivateKey();
+                if(element.isField() || element.isMethod() || element.isAccessor()) {
+                    key.setKind(element.getKind());
+                }
+                key.setDescriptor(element.getDescriptor());
+            }
+            elements.push(element);
+        }
     }
 
     @Override

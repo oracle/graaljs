@@ -1,7 +1,6 @@
 package com.oracle.truffle.js.nodes.decorators;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -83,7 +82,7 @@ public class DescriptorUtil {
         if(JSKind.isHook(kind) && !JSRuntime.isNullOrUndefined(key)) {
                 throw Errors.createTypeError("Element descriptor with kind 'hook' must not have property key.");
         }
-        boolean hasPrivateKey = key instanceof HiddenKey;
+        boolean hasPrivateKey = key instanceof PrivateName;
         if(!hasPrivateKey) {
             key = JSRuntime.toPropertyKey(key);
         }
