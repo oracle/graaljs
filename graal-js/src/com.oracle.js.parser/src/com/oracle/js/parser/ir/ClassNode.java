@@ -93,7 +93,7 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
     }
 
     public ClassNode(final long token, final int finish, final IdentNode ident, final Expression classHeritage, final ClassElement constructor, final List<ClassElement> classElements, final List<Expression> decorators,
-                     final Scope scope) {
+                     final Scope scope, boolean hasPrivateMethods) {
         super(token, finish);
         this.ident = ident;
         this.classHeritage = classHeritage;
@@ -101,7 +101,7 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         this.scope = scope;
         this.instanceFieldCount = 1; //Needed for initializeInstanceElements to be called.
         this.staticFieldCount = 0;
-        this.hasPrivateMethods = true; //Needed for private brand check
+        this.hasPrivateMethods = hasPrivateMethods; //Needed for private brand check
         this.hasPrivateInstanceMethods = false;
         this.classElements = null;
         this.decoratorConstructor = constructor;

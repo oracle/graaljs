@@ -1673,36 +1673,38 @@ public class Parser extends AbstractParser {
                     classElement = methodDefinition(classElementName, classElementDecorators, isStatic, classHeritage != null, generator, async, classElementToken, classElementLine, yield, await, nameTokenType, hasComputedKey, isPrivate);
 
                     //CoalesceClassElement: Replacement for merging private accessor methods and consecutive getter and setter pairs
-                    /*Integer existingIndex = classElementNameToElementIndexMap.get(classElement.getKeyName());
-                    if(existingIndex == null) {
-                        classElementNameToElementIndexMap.put(classElement.getKeyName(),classElements.size());
-                    } else {
-                        ClassElement existing = classElements.get(existingIndex);
-                        if(classElement.getKind() == existing.getKind() && classElement.getPlacement() == existing.getPlacement()) {
-                            if(classElement.isMethod()) {
-                                assert !classElement.isPrivate();
-                                //assert classElement.isConfigurable() && existing.isConfigurable();
-                                if(classElement.getDecorators() != null || existing.getDecorators() != null) {
-                                    throw error(ECMAErrors.getMessage("type.error.duplicate.method.with.decorators"), decoratorToken);
-                                }
-                                existing = existing.setDecorators(classElement.getDecorators());
-                            } else {
-                                if(classElement.getDecorators() != null) {
-                                    if(existing.getDecorators() != null) {
-                                        throw error(ECMAErrors.getMessage("type.error.accessor.with.multiple.decorators"), decoratorToken);
+                    if(isES2022()) {
+                        Integer existingIndex = classElementNameToElementIndexMap.get(classElement.getKeyName());
+                        if (existingIndex == null) {
+                            classElementNameToElementIndexMap.put(classElement.getKeyName(), classElements.size());
+                        } else {
+                            ClassElement existing = decoratorClassElements.get(existingIndex);
+                            if (classElement.getKind() == existing.getKind() && classElement.getPlacement() == existing.getPlacement()) {
+                                if (classElement.isMethod()) {
+                                    assert !classElement.isPrivate();
+                                    //assert classElement.isConfigurable() && existing.isConfigurable();
+                                    if (classElement.getDecorators() != null || existing.getDecorators() != null) {
+                                        throw error(ECMAErrors.getMessage("type.error.duplicate.method.with.decorators"), decoratorToken);
                                     }
-                                    //CoalesceGetterSetter
-                                    assert classElement.isAccessor() && existing.isAccessor();
-                                    if(classElement.getGetter() != null) {
-                                        existing = existing.setGetter(classElement.getGetter());
-                                    } else {
-                                        assert classElement.getSetter() != null;
-                                        existing = existing.setSetter(classElement.getSetter());
+                                    existing = existing.setDecorators(classElement.getDecorators());
+                                } else {
+                                    if (classElement.getDecorators() != null) {
+                                        if (existing.getDecorators() != null) {
+                                            throw error(ECMAErrors.getMessage("type.error.accessor.with.multiple.decorators"), decoratorToken);
+                                        }
+                                        //CoalesceGetterSetter
+                                        assert classElement.isAccessor() && existing.isAccessor();
+                                        if (classElement.getGetter() != null) {
+                                            existing = existing.setGetter(classElement.getGetter());
+                                        } else {
+                                            assert classElement.getSetter() != null;
+                                            existing = existing.setSetter(classElement.getSetter());
+                                        }
                                     }
                                 }
                             }
                         }
-                    }*/
+                    }
                 }
 
                 if (classElement.isPrivate()) {
@@ -1762,7 +1764,7 @@ public class Parser extends AbstractParser {
 
             classScope.close();
             if(isES2022()) {
-                return new ClassNode(classToken, classFinish, className, classHeritage, constructor, decoratorClassElements, classDecorators, classScope);
+                return new ClassNode(classToken, classFinish, className, classHeritage, constructor, decoratorClassElements, classDecorators, classScope, hasPrivateMethods);
             } else {
                 PropertyNode ctor = new PropertyNode(constructor.getToken(), constructor.getFinish(), constructor.getKey(), constructor.getValue(), constructor.getGetter(), constructor.getSetter(), constructor.isStatic(), constructor.hasComputedKey(), false, false);
                 return new ClassNode(classToken, classFinish, className, classHeritage, ctor, classElements, classScope, instanceFieldCount, staticFieldCount, hasPrivateMethods, hasPrivateInstanceMethods);
