@@ -252,7 +252,9 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
 
     static DefineFieldNode[] createDecoratorFieldNodes(ClassElementList elements, JSContext context, int size) {
         DefineFieldNode[] fieldNodes = new DefineFieldNode[size];
-        for(int i = 0; i < size; i++) {
+        int fieldNodeCount = 0;
+        int elementsSize = elements.size();
+        for(int i = 0; i < elementsSize; i++) {
             ElementDescriptor element = elements.pop();
             if(element.isField()) {
                 Object key = element.getKey();
@@ -265,7 +267,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
                 if (initializer != Undefined.instance) {
                     callNode = JSFunctionCallNode.createCall();
                 }
-                fieldNodes[i] = new DefineFieldNode(writeNode, callNode, null);
+                fieldNodes[fieldNodeCount++] = new DefineFieldNode(writeNode, callNode, null);
             }
             elements.push(element);
         }
