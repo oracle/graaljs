@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,62 +38,48 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime;
+package com.oracle.truffle.js.nodes.wasm;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
+import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
+import com.oracle.truffle.js.runtime.JSRuntime;
 
-public enum JSErrorType implements PrototypeSupplier {
-    Error,
+/**
+ * Implementation of ToWebAssemblyValue() operation. See
+ * https://www.w3.org/TR/wasm-js-api/#towebassemblyvalue
+ */
+public abstract class ToWebAssemblyValueNode extends JavaScriptBaseNode {
+    @Child JSToInt32Node toInt32Node;
+    @Child JSToNumberNode toNumberNode;
 
-    /**
-     * Currently not in use, only there for compatibility with previous versions of the
-     * specification ECMA262[15.11.6.1].
-     */
-    EvalError,
-
-    /**
-     * Indicates a numeric value has exceeded the allowable range ECMA262[15.11.6.2].
-     */
-    RangeError,
-
-    /**
-     * Indicate that an invalid reference value has been detected ECMA262[15.11.6.3].
-     */
-    ReferenceError,
-
-    /**
-     * Indicates that a parsing error has occurred ECMA262[15.11.6.4].
-     */
-    SyntaxError,
-
-    /**
-     * Indicates the actual type of an operand is different than the expected type
-     * ECMA262[15.11.6.5].
-     */
-    TypeError,
-
-    /**
-     * Indicates that one of the global URI handling functions was used in a way that is
-     * incompatible with its definition ECMA262[15.11.6.6].
-     */
-    URIError,
-
-    AggregateError,
-
-    // WebAssembly
-    CompileError,
-    LinkError,
-    RuntimeError;
-
-    @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getErrorPrototype(this);
+    protected ToWebAssemblyValueNode() {
+        this.toNumberNode = JSToNumberNode.create();
+        this.toInt32Node = JSToInt32Node.create();
     }
 
-    public static JSErrorType[] errorTypes() {
-        return VALUES;
+    public static ToWebAssemblyValueNode create() {
+        return ToWebAssemblyValueNodeGen.create();
     }
 
-    private static final JSErrorType[] VALUES = JSErrorType.values();
+    public abstract Object execute(Object value, String type);
+
+    @Specialization
+    protected Object convert(Object value, String type) {
+        assert !"i64".equals(type);
+        if ("i32".equals(type)) {
+            return toInt32Node.executeInt(value);
+        } else {
+            Number numberValue = toNumberNode.executeNumber(value);
+            double doubleValue = JSRuntime.toDouble(numberValue);
+            if ("f32".equals(type)) {
+                return (float) doubleValue;
+            } else {
+                assert "f64".equals(type);
+                return doubleValue;
+            }
+        }
+    }
+
 }

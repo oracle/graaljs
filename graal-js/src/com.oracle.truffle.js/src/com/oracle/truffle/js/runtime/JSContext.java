@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -113,6 +113,11 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSPluralRules;
 import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyGlobal;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstance;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemory;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTable;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -288,6 +293,12 @@ public class JSContext {
         AsyncModuleExecutionRejected,
         TopLevelAwaitResolve,
         TopLevelAwaitReject,
+        WebAssemblyInstanceGetExports,
+        WebAssemblyMemoryGetBuffer,
+        WebAssemblyTableGetLength,
+        WebAssemblyGlobalGetValue,
+        WebAssemblyGlobalSetValue,
+        WebAssemblySourceInstantiation,
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;
@@ -389,6 +400,12 @@ public class JSContext {
     private final JSObjectFactory dictionaryObjectFactory;
 
     private final JSObjectFactory globalObjectFactory;
+
+    private final JSObjectFactory webAssemblyModuleFactory;
+    private final JSObjectFactory webAssemblyInstanceFactory;
+    private final JSObjectFactory webAssemblyMemoryFactory;
+    private final JSObjectFactory webAssemblyTableFactory;
+    private final JSObjectFactory webAssemblyGlobalFactory;
 
     private final int factoryCount;
 
@@ -538,6 +555,12 @@ public class JSContext {
         this.dictionaryObjectFactory = JSConfig.DictionaryObject ? builder.create(objectPrototypeSupplier, JSDictionary::makeDictionaryShape) : null;
 
         this.globalObjectFactory = builder.create(objectPrototypeSupplier, JSGlobal::makeGlobalObjectShape);
+
+        this.webAssemblyModuleFactory = builder.create(JSWebAssemblyModule.INSTANCE);
+        this.webAssemblyInstanceFactory = builder.create(JSWebAssemblyInstance.INSTANCE);
+        this.webAssemblyMemoryFactory = builder.create(JSWebAssemblyMemory.INSTANCE);
+        this.webAssemblyTableFactory = builder.create(JSWebAssemblyTable.INSTANCE);
+        this.webAssemblyGlobalFactory = builder.create(JSWebAssemblyGlobal.INSTANCE);
 
         this.factoryCount = builder.finish();
 
@@ -939,6 +962,26 @@ public class JSContext {
 
     public JSObjectFactory getGlobalObjectFactory() {
         return globalObjectFactory;
+    }
+
+    public JSObjectFactory getWebAssemblyModuleFactory() {
+        return webAssemblyModuleFactory;
+    }
+
+    public JSObjectFactory getWebAssemblyInstanceFactory() {
+        return webAssemblyInstanceFactory;
+    }
+
+    public JSObjectFactory getWebAssemblyMemoryFactory() {
+        return webAssemblyMemoryFactory;
+    }
+
+    public JSObjectFactory getWebAssemblyTableFactory() {
+        return webAssemblyTableFactory;
+    }
+
+    public JSObjectFactory getWebAssemblyGlobalFactory() {
+        return webAssemblyGlobalFactory;
     }
 
     private static final String REGEX_OPTION_U180E_WHITESPACE = "U180EWhitespace";

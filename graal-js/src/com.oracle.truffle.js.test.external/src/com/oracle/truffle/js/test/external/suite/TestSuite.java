@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1000,6 +1000,7 @@ public abstract class TestSuite {
                     System.out.println(" externallauncher=X     run tests by invoking a given native image of JSLauncher");
                     System.out.println(" compile                run with TruffleCompileImmediately");
                     System.out.println(" instrument             run with a dummy instrument that materializes all nodes");
+                    System.out.println(" polyglot               run with polyglot access allowed");
                     System.out.println(" shareengine            use shared Engine for all tests");
                     System.out.println(" minesversion           minimal ECMAScript version used for test execution");
                     System.exit(-2);
@@ -1025,6 +1026,9 @@ public abstract class TestSuite {
                     break;
                 case "instrument":
                     builder.setInstrument(true);
+                    break;
+                case "polyglot":
+                    builder.setPolyglot(true);
                     break;
                 case "regression":
                     builder.setVerbose(false);
