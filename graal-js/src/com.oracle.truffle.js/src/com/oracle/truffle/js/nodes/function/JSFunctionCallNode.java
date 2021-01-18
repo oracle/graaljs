@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,7 +74,6 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
-import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
@@ -447,7 +446,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     public abstract JavaScriptNode getTarget();
 
     protected final Object evaluateReceiver(VirtualFrame frame, Object target) {
-        JavaScriptNode targetNode = JSNodeUtil.getWrappedNode(getTarget());
+        JavaScriptNode targetNode = getTarget();
         if (targetNode instanceof SuperPropertyReferenceNode) {
             return ((SuperPropertyReferenceNode) targetNode).evaluateTarget(frame);
         }
