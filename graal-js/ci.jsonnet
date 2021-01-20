@@ -43,6 +43,14 @@ local common = import '../common.jsonnet';
     timelimit: '10:00',
   },
 
+  local webassemblyTest = {
+    run+: [
+      ['mx', '--dynamicimports', '/wasm', 'build'],
+      ['mx', '--dynamicimports', '/wasm', 'testv8', 'polyglot'],
+    ],
+    timelimit: '30:00',
+  },
+
   local interopJmhBenchmarks = common.buildCompiler + {
     run+: [
         ['mx', '--dynamicimports', '/compiler', '--kill-with-sigquit', 'benchmark', '--results-file', 'bench-results.json', 'js-interop-jmh:JS_INTEROP_MICRO_BENCHMARKS', '--', '-Dpolyglot.engine.TraceCompilation=true'],
@@ -63,6 +71,7 @@ local common = import '../common.jsonnet';
     graalJs + common.jdk8  + common.gate   + common.linux          + common.gateTags           + {environment+: {TAGS: 'latestversion'}}      + {name: 'js-gate-latestversion-jdk8-linux-amd64'},
     graalJs + common.jdk8  + common.gate   + common.linux          + common.gateTags           + {environment+: {TAGS: 'instrument'}}         + {name: 'js-gate-instrument-jdk8-linux-amd64'},
     graalJs + common.jdk8  + common.gate   + common.linux          + common.gateTags           + {environment+: {TAGS: 'tck'}}                + {name: 'js-gate-tck-jdk8-linux-amd64'},
+    graalJs + common.jdk8  + common.gate   + common.linux          + webassemblyTest                                                          + {name: 'js-gate-webassembly-jdk8-linux-amd64'},
     graalJs + common.jdk8  + common.gate   + common.linux          + nativeImageSmokeTest                                                     + {name: 'js-gate-native-image-smoke-test-jdk8-linux-amd64'},
     graalJs + common.jdk15 + common.gate   + common.linux          + nativeImageSmokeTest                                                     + {name: 'js-gate-native-image-smoke-test-jdk15-linux-amd64'},
 

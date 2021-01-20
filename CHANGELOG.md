@@ -3,6 +3,9 @@
 This changelog summarizes major changes between GraalVM versions of the GraalVM JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 
+## Version 21.1.0
+* Prototype of WebAssembly JavaScript Interface implemented. It is available behind the `--js.webassembly` flag.
+
 ## Version 21.0.0
 * ECMAScript 2021 mode/features enabled by default.
 * Updated Node.js to version 12.20.1.

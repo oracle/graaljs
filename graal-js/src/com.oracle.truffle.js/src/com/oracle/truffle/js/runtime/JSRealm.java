@@ -67,7 +67,9 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
@@ -142,6 +144,12 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSPluralRules;
 import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssembly;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyGlobal;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstance;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemory;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTable;
 import com.oracle.truffle.js.runtime.interop.DynamicScopeWrapper;
 import com.oracle.truffle.js.runtime.interop.TopScopeObject;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
@@ -339,6 +347,29 @@ public class JSRealm {
     private boolean staticRegexResultInvalidated;
     private long staticRegexResultFromIndex;
     private String staticRegexResultOriginalInputString;
+
+    /** WebAssembly support. */
+    private final Object wasmCompileFunction;
+    private final Object wasmInstantiateFunction;
+    private final Object wasmValidateFunction;
+    private final Object wasmModuleExportsFunction;
+    private final Object wasmModuleImportsFunction;
+    private final Object wasmModuleCustomSectionsFunction;
+    private final Object wasmGlobalConstructor;
+    private final Object wasmMemoryConstructor;
+    private final Object wasmTableConstructor;
+
+    private final DynamicObject webAssemblyObject;
+    private final DynamicObject webAssemblyGlobalConstructor;
+    private final DynamicObject webAssemblyGlobalPrototype;
+    private final DynamicObject webAssemblyInstanceConstructor;
+    private final DynamicObject webAssemblyInstancePrototype;
+    private final DynamicObject webAssemblyMemoryConstructor;
+    private final DynamicObject webAssemblyMemoryPrototype;
+    private final DynamicObject webAssemblyModuleConstructor;
+    private final DynamicObject webAssemblyModulePrototype;
+    private final DynamicObject webAssemblyTableConstructor;
+    private final DynamicObject webAssemblyTablePrototype;
 
     /**
      * Local time zone ID. Initialized lazily.
@@ -649,6 +680,71 @@ public class JSRealm {
             this.commonJSRequireCache = new HashMap<>();
         } else {
             this.commonJSRequireCache = null;
+        }
+
+        if (context.getContextOptions().isWebAssembly()) {
+            if (!isWasmAvailable()) {
+                throw new IllegalStateException("WebAssembly API enabled but wasm language cannot be accessed!");
+            }
+            LanguageInfo wasmLanguageInfo = truffleLanguageEnv.getInternalLanguages().get("wasm");
+            truffleLanguageEnv.initializeLanguage(wasmLanguageInfo);
+            Object wasmObject = truffleLanguageEnv.importSymbol("WebAssembly");
+
+            try {
+                InteropLibrary wasmInterop = InteropLibrary.getUncached(wasmObject);
+                wasmCompileFunction = wasmInterop.readMember(wasmObject, "compile");
+                wasmInstantiateFunction = wasmInterop.readMember(wasmObject, "instantiate");
+                wasmValidateFunction = wasmInterop.readMember(wasmObject, "validate");
+                wasmGlobalConstructor = wasmInterop.readMember(wasmObject, "Global");
+                wasmMemoryConstructor = wasmInterop.readMember(wasmObject, "Memory");
+                wasmTableConstructor = wasmInterop.readMember(wasmObject, "Table");
+                Object wasmModuleConstructor = wasmInterop.readMember(wasmObject, "Module");
+                InteropLibrary moduleInterop = InteropLibrary.getUncached(wasmModuleConstructor);
+                wasmModuleExportsFunction = moduleInterop.readMember(wasmModuleConstructor, "exports");
+                wasmModuleImportsFunction = moduleInterop.readMember(wasmModuleConstructor, "imports");
+                wasmModuleCustomSectionsFunction = moduleInterop.readMember(wasmModuleConstructor, "customSections");
+            } catch (InteropException ex) {
+                throw Errors.shouldNotReachHere(ex);
+            }
+
+            this.webAssemblyObject = JSWebAssembly.create(this);
+            ctor = JSWebAssemblyModule.createConstructor(this);
+            this.webAssemblyModuleConstructor = ctor.getFunctionObject();
+            this.webAssemblyModulePrototype = ctor.getPrototype();
+            ctor = JSWebAssemblyInstance.createConstructor(this);
+            this.webAssemblyInstanceConstructor = ctor.getFunctionObject();
+            this.webAssemblyInstancePrototype = ctor.getPrototype();
+            ctor = JSWebAssemblyMemory.createConstructor(this);
+            this.webAssemblyMemoryConstructor = ctor.getFunctionObject();
+            this.webAssemblyMemoryPrototype = ctor.getPrototype();
+            ctor = JSWebAssemblyTable.createConstructor(this);
+            this.webAssemblyTableConstructor = ctor.getFunctionObject();
+            this.webAssemblyTablePrototype = ctor.getPrototype();
+            ctor = JSWebAssemblyGlobal.createConstructor(this);
+            this.webAssemblyGlobalConstructor = ctor.getFunctionObject();
+            this.webAssemblyGlobalPrototype = ctor.getPrototype();
+        } else {
+            this.wasmCompileFunction = null;
+            this.wasmInstantiateFunction = null;
+            this.wasmValidateFunction = null;
+            this.wasmModuleExportsFunction = null;
+            this.wasmModuleImportsFunction = null;
+            this.wasmModuleCustomSectionsFunction = null;
+            this.wasmGlobalConstructor = null;
+            this.wasmMemoryConstructor = null;
+            this.wasmTableConstructor = null;
+
+            this.webAssemblyObject = null;
+            this.webAssemblyGlobalConstructor = null;
+            this.webAssemblyGlobalPrototype = null;
+            this.webAssemblyInstanceConstructor = null;
+            this.webAssemblyInstancePrototype = null;
+            this.webAssemblyMemoryConstructor = null;
+            this.webAssemblyMemoryPrototype = null;
+            this.webAssemblyModuleConstructor = null;
+            this.webAssemblyModulePrototype = null;
+            this.webAssemblyTableConstructor = null;
+            this.webAssemblyTablePrototype = null;
         }
     }
 
@@ -1179,9 +1275,24 @@ public class JSRealm {
         DynamicObject jsonBuiltin = (DynamicObject) JSObject.get(global, "JSON");
         this.jsonParseFunctionObject = JSObject.get(jsonBuiltin, "parse");
 
+        boolean webassembly = context.getContextOptions().isWebAssembly();
         for (JSErrorType type : JSErrorType.errorTypes()) {
-            if (type != JSErrorType.AggregateError || context.getEcmaScriptVersion() >= JSConfig.ECMAScript2021) {
-                putGlobalProperty(type.name(), getErrorConstructor(type));
+            switch (type) {
+                case CompileError:
+                case LinkError:
+                case RuntimeError:
+                    if (webassembly) {
+                        JSObjectUtil.putDataProperty(context, webAssemblyObject, type.name(), getErrorConstructor(type), JSAttributes.getDefaultNotEnumerable());
+                    }
+                    break;
+                case AggregateError:
+                    if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2021) {
+                        putGlobalProperty(type.name(), getErrorConstructor(type));
+                    }
+                    break;
+                default:
+                    putGlobalProperty(type.name(), getErrorConstructor(type));
+                    break;
             }
         }
 
@@ -1257,6 +1368,14 @@ public class JSRealm {
         }
         if (context.getContextOptions().isGraalBuiltin()) {
             putGraalObject();
+        }
+        if (webassembly) {
+            putGlobalProperty(JSWebAssembly.CLASS_NAME, webAssemblyObject);
+            JSObjectUtil.putDataProperty(context, webAssemblyObject, JSFunction.getName(webAssemblyGlobalConstructor), webAssemblyGlobalConstructor, JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(context, webAssemblyObject, JSFunction.getName(webAssemblyInstanceConstructor), webAssemblyInstanceConstructor, JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(context, webAssemblyObject, JSFunction.getName(webAssemblyMemoryConstructor), webAssemblyMemoryConstructor, JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(context, webAssemblyObject, JSFunction.getName(webAssemblyModuleConstructor), webAssemblyModuleConstructor, JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(context, webAssemblyObject, JSFunction.getName(webAssemblyTableConstructor), webAssemblyTableConstructor, JSAttributes.getDefaultNotEnumerable());
         }
         if (context.getContextOptions().isProfileTime()) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
@@ -2217,6 +2336,66 @@ public class JSRealm {
     public final Map<TruffleFile, DynamicObject> getCommonJSRequireCache() {
         assert context.getContextOptions().isCommonJSRequire();
         return commonJSRequireCache;
+    }
+
+    private boolean isWasmAvailable() {
+        return truffleLanguageEnv.isPolyglotBindingsAccessAllowed() && truffleLanguageEnv.getInternalLanguages().get("wasm") != null;
+    }
+
+    public Object getWASMCompileFunction() {
+        return wasmCompileFunction;
+    }
+
+    public Object getWASMInstantiateFunction() {
+        return wasmInstantiateFunction;
+    }
+
+    public Object getWASMValidateFunction() {
+        return wasmValidateFunction;
+    }
+
+    public Object getWASMModuleExportsFunction() {
+        return wasmModuleExportsFunction;
+    }
+
+    public Object getWASMModuleImportsFunction() {
+        return wasmModuleImportsFunction;
+    }
+
+    public Object getWASMModuleCustomSectionsFunction() {
+        return wasmModuleCustomSectionsFunction;
+    }
+
+    public Object getWASMGlobalConstructor() {
+        return wasmGlobalConstructor;
+    }
+
+    public Object getWASMMemoryConstructor() {
+        return wasmMemoryConstructor;
+    }
+
+    public Object getWASMTableConstructor() {
+        return wasmTableConstructor;
+    }
+
+    public DynamicObject getWebAssemblyModulePrototype() {
+        return webAssemblyModulePrototype;
+    }
+
+    public DynamicObject getWebAssemblyInstancePrototype() {
+        return webAssemblyInstancePrototype;
+    }
+
+    public DynamicObject getWebAssemblyMemoryPrototype() {
+        return webAssemblyMemoryPrototype;
+    }
+
+    public DynamicObject getWebAssemblyTablePrototype() {
+        return webAssemblyTablePrototype;
+    }
+
+    public DynamicObject getWebAssemblyGlobalPrototype() {
+        return webAssemblyGlobalPrototype;
     }
 
 }

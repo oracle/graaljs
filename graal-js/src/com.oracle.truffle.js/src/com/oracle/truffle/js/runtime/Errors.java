@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -803,4 +803,40 @@ public final class Errors {
     public static JSException createTypeErrorCannotAddPrivateMember(String name, Node originatingNode) {
         return createTypeError(String.format("Duplicate private member %s.", name), originatingNode);
     }
+
+    @TruffleBoundary
+    public static JSException createTypeError(Throwable cause, Node originatingNode) {
+        return JSException.create(JSErrorType.TypeError, cause.getMessage(), cause, originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeError(Throwable cause, Node originatingNode) {
+        return JSException.create(JSErrorType.RangeError, cause.getMessage(), cause, originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createCompileError(String message, Node originatingNode) {
+        return JSException.create(JSErrorType.CompileError, message, originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createCompileError(Throwable cause, Node originatingNode) {
+        return JSException.create(JSErrorType.CompileError, cause.getMessage(), cause, originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createLinkError(String message) {
+        return JSException.create(JSErrorType.LinkError, message);
+    }
+
+    @TruffleBoundary
+    public static JSException createLinkError(Throwable cause, Node originatingNode) {
+        return JSException.create(JSErrorType.LinkError, cause.getMessage(), cause, originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createRuntimeError(Throwable cause, Node originatingNode) {
+        return JSException.create(JSErrorType.RuntimeError, cause.getMessage(), cause, originatingNode);
+    }
+
 }
