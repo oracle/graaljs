@@ -63,6 +63,7 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
 
     public static final String PRIVATE_CONSTRUCTOR_BINDING_NAME = "#constructor";
 
+    //Decorator proposal
     private final ClassElement decoratorConstructor;
     private final List<ClassElement> decoratorClassElements;
     private final List<Expression> decorators;
@@ -101,7 +102,7 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         this.scope = scope;
         this.instanceFieldCount = 1; //Needed for initializeInstanceElements to be called.
         this.staticFieldCount = 0;
-        this.hasPrivateMethods = hasPrivateMethods; //Needed for private brand check
+        this.hasPrivateMethods = hasPrivateMethods;
         this.hasPrivateInstanceMethods = false;
         this.classElements = null;
         this.decoratorConstructor = constructor;
@@ -219,6 +220,8 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         return new ClassNode(this, ident, classHeritage, constructor,classElements, decoratorConstructor ,decoratorClassElements, decorators);
     }
 
+    public List<Expression> getDecorators() { return decorators; }
+
     public ClassNode setDecorators(final List<Expression> decorators) {
         if(this.decorators == decorators) {
             return this;
@@ -236,7 +239,13 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
             List<PropertyNode> newClassElements = Node.accept(visitor, classElements);
             List<ClassElement> newDecoratorClassElements = Node.accept(visitor, decoratorClassElements);
             List<Expression> newDecorators = Node.accept(visitor, decorators);
-            return visitor.leaveClassNode(setIdent(newIdent).setClassHeritage(newClassHeritage).setConstructor(newConstructor).setDecoratorConstructor(newDecoratorConstructor).setDecoratorClassElements(newDecoratorClassElements).setClassElements(newClassElements).setDecorators(newDecorators));
+            return visitor.leaveClassNode(setIdent(newIdent)
+                    .setClassHeritage(newClassHeritage)
+                    .setConstructor(newConstructor)
+                    .setDecoratorConstructor(newDecoratorConstructor)
+                    .setDecoratorClassElements(newDecoratorClassElements)
+                    .setClassElements(newClassElements)
+                    .setDecorators(newDecorators));
         }
 
         return this;
@@ -278,10 +287,6 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
 
     public boolean isAnonymous() {
         return getIdent() == null;
-    }
-
-    public List<Expression> getDecorators() {
-        return decorators;
     }
 
     @Override

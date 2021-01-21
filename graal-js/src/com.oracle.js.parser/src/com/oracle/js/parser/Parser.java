@@ -114,7 +114,6 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import com.oracle.js.parser.ir.ClassElement;
-import jdk.internal.joptsimple.internal.Classes;
 import org.graalvm.collections.Pair;
 
 import com.oracle.js.parser.ir.AccessNode;
@@ -1616,7 +1615,7 @@ public class Parser extends AbstractParser {
             ClassElement constructor = null;
             ArrayList<ClassElement> decoratorClassElements = new ArrayList<>();
             ArrayList<PropertyNode> classElements = new ArrayList<>();
-            Map<String, Integer> classElementNameToElementIndexMap = new HashMap<>();
+            Map<String, Integer> privateNameToAccessorIndexMap = new HashMap<>();
             int instanceFieldCount = 0;
             int staticFieldCount = 0;
             boolean hasPrivateMethods = false;
@@ -1672,35 +1671,37 @@ public class Parser extends AbstractParser {
                 } else {
                     classElement = methodDefinition(classElementName, classElementDecorators, isStatic, classHeritage != null, generator, async, classElementToken, classElementLine, yield, await, nameTokenType, hasComputedKey, isPrivate);
 
-                    //CoalesceClassElement: Replacement for merging private accessor methods and consecutive getter and setter pairs
-                    if(isES2022()) {
-                        Integer existingIndex = classElementNameToElementIndexMap.get(classElement.getKeyName());
-                        if (existingIndex == null) {
-                            classElementNameToElementIndexMap.put(classElement.getKeyName(), classElements.size());
-                        } else {
-                            ClassElement existing = decoratorClassElements.get(existingIndex);
-                            if (classElement.getKind() == existing.getKind() && classElement.getPlacement() == existing.getPlacement()) {
-                                if (classElement.isMethod()) {
-                                    assert !classElement.isPrivate();
-                                    //assert classElement.isConfigurable() && existing.isConfigurable();
-                                    if (classElement.getDecorators() != null || existing.getDecorators() != null) {
-                                        throw error(ECMAErrors.getMessage("type.error.duplicate.method.with.decorators"), decoratorToken);
-                                    }
-                                    existing = existing.setDecorators(classElement.getDecorators());
+                    if(!isES2022()) {
+                        // Coalescing elements is done at runtime in the decorator proposal
+                        if(!classElement.hasComputedKey() && classElement.isAccessor()) {
+                            if(classElement.isPrivate()) {
+                                // merge private accessor methods
+                                String privateName = classElement.getPrivateName();
+                                Integer existing = privateNameToAccessorIndexMap.get(privateName);
+                                if(existing == null) {
+                                    privateNameToAccessorIndexMap.put(privateName, decoratorClassElements.size());
                                 } else {
-                                    if (classElement.getDecorators() != null) {
-                                        if (existing.getDecorators() != null) {
-                                            throw error(ECMAErrors.getMessage("type.error.accessor.with.multiple.decorators"), decoratorToken);
-                                        }
-                                        //CoalesceGetterSetter
-                                        assert classElement.isAccessor() && existing.isAccessor();
-                                        if (classElement.getGetter() != null) {
-                                            existing = existing.setGetter(classElement.getGetter());
-                                        } else {
-                                            assert classElement.getSetter() != null;
-                                            existing = existing.setSetter(classElement.getSetter());
+                                    ClassElement otherAccessor = decoratorClassElements.get(existing);
+                                    if(isStatic == otherAccessor.isStatic()) {
+                                        if(otherAccessor.getGetter() == null && classElement.getGetter() != null) {
+                                            decoratorClassElements.set(existing, otherAccessor.setGetter(classElement.getGetter()));
+                                            continue;
+                                        } else if (otherAccessor.getSetter() == null && classElement.getSetter() != null) {
+                                            decoratorClassElements.set(existing, otherAccessor.setSetter(classElement.getGetter()));
+                                            continue;
                                         }
                                     }
+                                    // else: more than one getter or setter with the same private name
+                                    // fall through: a syntax error will be thrown below
+                                }
+                            } else if (!decoratorClassElements.isEmpty()) {
+                                // try to merge consecutive getter and setter pairs
+                                ClassElement lastElement = decoratorClassElements.get(decoratorClassElements.size() - 1);
+                                if(!lastElement.hasComputedKey() && lastElement.isAccessor() && isStatic == lastElement.isStatic() &&
+                                        !lastElement.isPrivate() && classElement.getKeyName().equals(lastElement.getKeyName())) {
+                                    ClassElement merged = classElement.getGetter() != null ? lastElement.setGetter(classElement.getGetter()) : lastElement.setSetter(classElement.getSetter());
+                                    decoratorClassElements.set(decoratorClassElements.size() - 1, merged);
+                                    continue;
                                 }
                             }
                         }
@@ -6845,7 +6846,7 @@ public class Parser extends AbstractParser {
     }
 
     /**
-     * Parse a decorator.
+     * Parse a decorator list.
      *
      * <pre>
      * DecoratorList[Yield, Await] :

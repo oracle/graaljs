@@ -41,8 +41,6 @@
 
 package com.oracle.js.parser;
 
-import javax.smartcardio.ATR;
-
 import static com.oracle.js.parser.TokenKind.BINARY;
 import static com.oracle.js.parser.TokenKind.BRACKET;
 import static com.oracle.js.parser.TokenKind.CONTEXTUAL;
@@ -234,7 +232,9 @@ public enum TokenType {
     ASSIGN_INIT    (IR,           null),
 
     //Decorator Proposal tokens
-    AT             (UNARY, "@", 0, true);
+    //TODO: Associate with the correct ECMAScript Version
+    //TODO: Change to KEYWORD if better suited
+    AT             (UNARY, "@", 0, true, 13);
 
     //@formatter:on
 
