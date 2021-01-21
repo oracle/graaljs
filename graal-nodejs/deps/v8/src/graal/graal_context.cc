@@ -54,7 +54,7 @@ GraalHandleContent* GraalContext::CopyImpl(jobject java_object_copy) {
 
 v8::Local<v8::Object> GraalContext::Global() {
     JNI_CALL(jobject, java_object, Isolate(), GraalAccessMethod::context_global, Object, GetJavaObject());
-    GraalObject* graal_object = new GraalObject(Isolate(), java_object);
+    GraalObject* graal_object = GraalObject::Allocate(Isolate(), java_object);
     return reinterpret_cast<v8::Object*> (graal_object);
 }
 
@@ -111,6 +111,6 @@ void GraalContext::UseDefaultSecurityToken() {
 
 v8::Local<v8::Object> GraalContext::GetExtrasBindingObject() {
     JNI_CALL(jobject, java_extras, Isolate(), GraalAccessMethod::context_get_extras_binding_object, Object, GetJavaObject());
-    GraalObject* graal_extras = new GraalObject(Isolate(), java_extras);
+    GraalObject* graal_extras = GraalObject::Allocate(Isolate(), java_extras);
     return reinterpret_cast<v8::Object*> (graal_extras);
 }

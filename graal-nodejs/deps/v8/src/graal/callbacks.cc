@@ -207,7 +207,7 @@ GraalValue* AllocateNewTarget(GraalIsolate* isolate, jobject new_target, void* p
     if (new_target == NULL) {
         return new(placement) GraalMissingPrimitive(isolate, isolate->GetUndefined()->GetJavaObject(), true);
     } else {
-        return new(placement) GraalObject(isolate, new_target);
+        return GraalObject::Allocate(isolate, new_target, placement);
     }
 }
 
@@ -691,7 +691,7 @@ void GraalNotifyPromiseRejectionTracker(JNIEnv* env, jclass nativeAccess, jobjec
 void GraalNotifyImportMetaInitializer(JNIEnv* env, jclass nativeAccess, jobject java_import_meta, jobject java_module) {
     GraalIsolate* graal_isolate = CurrentIsolateChecked();
     v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (graal_isolate));
-    GraalObject* graal_import_meta = new GraalObject(graal_isolate, java_import_meta);
+    GraalObject* graal_import_meta = GraalObject::Allocate(graal_isolate, java_import_meta);
     GraalModule* graal_module = new GraalModule(graal_isolate, java_module);
     v8::Local<v8::Object> import_meta = reinterpret_cast<v8::Object*> (graal_import_meta);
     v8::Local<v8::Module> module = reinterpret_cast<v8::Module*> (graal_module);

@@ -257,7 +257,7 @@ namespace v8 {
     jobject java_context = isolate->CurrentJavaContext(); \
     jobject java_message = graal_message->GetJavaObject(); \
     JNI_CALL(jobject, java_error, isolate, GraalAccessMethod::error_type, Object, java_context, java_message); \
-    GraalObject* graal_object = new GraalObject(isolate, java_error); \
+    GraalObject* graal_object = GraalObject::Allocate(isolate, java_error); \
     return reinterpret_cast<Value*> (graal_object);
 
     Local<Value> Exception::Error(Local<String> message) {
@@ -2024,7 +2024,7 @@ namespace v8 {
         jobject java_context = graal_isolate->CurrentJavaContext();
         jboolean java_value = value;
         JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::boolean_object_new, Object, java_context, java_value);
-        GraalObject* graal_object = new GraalObject(graal_isolate, java_object);
+        GraalObject* graal_object = GraalObject::Allocate(graal_isolate, java_object);
         return reinterpret_cast<BooleanObject*> (graal_object);
     }
 
@@ -2042,7 +2042,7 @@ namespace v8 {
         GraalString* graal_value = reinterpret_cast<GraalString*> (*value);
         jobject java_value = graal_value->GetJavaObject();
         JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::string_object_new, Object, java_context, java_value);
-        GraalObject* graal_object = new GraalObject(graal_isolate, java_object);
+        GraalObject* graal_object = GraalObject::Allocate(graal_isolate, java_object);
         return reinterpret_cast<StringObject*> (graal_object);
     }
 
@@ -2060,7 +2060,7 @@ namespace v8 {
         jobject java_context = graal_isolate->CurrentJavaContext();
         jdouble java_value = value;
         JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::number_object_new, Object, java_context, java_value);
-        GraalObject* graal_object = new GraalObject(graal_isolate, java_object);
+        GraalObject* graal_object = GraalObject::Allocate(graal_isolate, java_object);
         return reinterpret_cast<NumberObject*> (graal_object);
     }
 
@@ -3003,7 +3003,7 @@ namespace v8 {
         jobject java_context = graal_isolate->CurrentJavaContext();
         JNI_CALL(jobject, java_array_buffer, graal_isolate, GraalAccessMethod::shared_array_buffer_new, Object, java_context, java_byte_buffer, (jlong) data, externalized);
         graal_isolate->GetJNIEnv()->DeleteLocalRef(java_byte_buffer);
-        return reinterpret_cast<v8::SharedArrayBuffer*> (new GraalObject(graal_isolate, java_array_buffer));
+        return reinterpret_cast<v8::SharedArrayBuffer*> (GraalObject::Allocate(graal_isolate, java_array_buffer));
     }
 
     double Platform::SystemClockTimeMillis() {

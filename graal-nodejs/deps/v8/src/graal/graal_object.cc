@@ -54,7 +54,7 @@
 #include "graal_string-inl.h"
 
 GraalHandleContent* GraalObject::CopyImpl(jobject java_object_copy) {
-    return new GraalObject(Isolate(), java_object_copy);
+    return GraalObject::Allocate(Isolate(), java_object_copy);
 }
 
 bool GraalObject::IsObject() const {
@@ -65,7 +65,7 @@ v8::Local<v8::Object> GraalObject::New(v8::Isolate* isolate) {
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     jobject java_context = graal_isolate->CurrentJavaContext();
     JNI_CALL(jobject, java_object, isolate, GraalAccessMethod::object_new, Object, java_context);
-    GraalObject* graal_object = new GraalObject(graal_isolate, java_object);
+    GraalObject* graal_object = GraalObject::Allocate(graal_isolate, java_object);
     return reinterpret_cast<v8::Object*> (graal_object);
 }
 
@@ -362,4 +362,17 @@ v8::Maybe<bool> GraalObject::SetIntegrityLevel(v8::Local<v8::Context> context, v
     jboolean freeze = (level == v8::IntegrityLevel::kFrozen);
     JNI_CALL_VOID(graal_isolate, GraalAccessMethod::object_set_integrity_level, GetJavaObject(), freeze);
     return graal_isolate->GetJNIEnv()->ExceptionCheck() ? v8::Nothing<bool>() : v8::Just<bool>(true);
+}
+
+GraalObject* GraalObject::Allocate(GraalIsolate* isolate, jobject java_object) {
+    return new GraalObject(isolate, java_object);
+}
+
+GraalObject* GraalObject::Allocate(GraalIsolate* isolate, jobject java_object, void* placement) {
+    return new (placement) GraalObject(isolate, java_object);
+}
+
+void GraalObject::ReInitialize(jobject java_object) {
+    internal_field_count_cache_ = -1;
+    GraalHandleContent::SetJavaObject(java_object);
 }

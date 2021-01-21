@@ -114,6 +114,11 @@ public:
     }
 protected:
     virtual GraalHandleContent* CopyImpl(jobject java_object_copy) = 0;
+
+    inline void SetJavaObject(jobject java_object) {
+        java_object_ = java_object;
+    }
+
 private:
     GraalIsolate* isolate_;
     jobject java_object_;

@@ -418,7 +418,7 @@ v8::Local<v8::Object> GraalValue::ToObject(v8::Isolate* isolate) const {
     if (java_object == NULL) {
         return v8::Local<v8::Object>();
     }
-    GraalObject* graal_object = new GraalObject(graal_isolate, java_object);
+    GraalObject* graal_object = GraalObject::Allocate(graal_isolate, java_object);
     return reinterpret_cast<v8::Object*> (graal_object);
 }
 
@@ -659,9 +659,9 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
             break;
         case ORDINARY_OBJECT:
             if (placement) {
-                result = new(placement) GraalObject(isolate, java_object);
+                result = GraalObject::Allocate(isolate, java_object, placement);
             } else {
-                result = new GraalObject(isolate, java_object);
+                result = GraalObject::Allocate(isolate, java_object);
             }
             break;
         case LAZY_STRING_VALUE:

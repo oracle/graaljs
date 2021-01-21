@@ -920,7 +920,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     // InternalFieldCountKey
     JNI_CALL(jobject, internal_field_count_key, this, GraalAccessMethod::isolate_create_internal_field_count_key, Object);
     if (internal_field_count_key == NULL) EXIT_WITH_MESSAGE(env, "GraalJSAccess.isolateCreateInternalFieldCountKey() failed!\n")
-    GraalValue* internal_field_count_key_local = new GraalObject(this, internal_field_count_key);
+    GraalValue* internal_field_count_key_local = GraalObject::Allocate(this, internal_field_count_key);
     internal_field_count_key_ = reinterpret_cast<v8::Value*> (internal_field_count_key_local->Copy(true));
 
     sending_message_ = false;
@@ -1024,7 +1024,7 @@ v8::Local<v8::Value> GraalIsolate::InternalFieldKey(int index) {
     }
     if (internal_field_keys[index] == nullptr) {
         JNI_CALL(jobject, key, this, GraalAccessMethod::isolate_create_internal_field_key, Object, (jint) index);
-        GraalValue* key_local = new GraalObject(this, key);
+        GraalValue* key_local = GraalObject::Allocate(this, key);
         v8::Value* key_global = reinterpret_cast<v8::Value*> (key_local->Copy(true));
         internal_field_keys[index] = key_global;
     }
