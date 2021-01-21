@@ -20,9 +20,9 @@ const {
   ERR_INVALID_CALLBACK
 } = require('internal/errors').codes;
 
-const { hasInspector } = internalBinding('config');
-if (!hasInspector)
-  throw new ERR_INSPECTOR_NOT_AVAILABLE();
+//const { hasInspector } = internalBinding('config');
+//if (!hasInspector)
+//  throw new ERR_INSPECTOR_NOT_AVAILABLE();
 
 const EventEmitter = require('events');
 const { queueMicrotask } = require('internal/process/task_queues');
@@ -156,3 +156,6 @@ module.exports = {
   console: require('internal/util/inspector').consoleFromVM,
   Session
 };
+
+// Use the mockup provided by 'inspect' instrument
+module.exports = typeof graalExtension === 'undefined' ? arguments[arguments.length - 1] : graalExtension;

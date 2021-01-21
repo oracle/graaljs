@@ -169,6 +169,8 @@ int NodeMainInstance::Run() {
   __lsan_do_leak_check();
 #endif
 
+  env.reset(); // graal-nodejs: Trigger cleanup hooks before the process is terminated by the next line
+  isolate_->Dispose(true, exit_code);
   return exit_code;
 }
 

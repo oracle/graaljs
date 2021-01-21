@@ -1,0 +1,10 @@
+{
+  "name": "graal-nodejs-jni-profiling-unit-tests",
+  "version": "1.0.0",
+  "description": "Unit tests for the JNI native boundary profiler of graal-node.js",
+  "main": "test.js",
+  "dependencies": {},
+  "scripts": {
+    "install": "node-gyp rebuild"
+  }
+}

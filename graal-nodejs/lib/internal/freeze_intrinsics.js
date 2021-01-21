@@ -117,13 +117,6 @@ module.exports = function() {
     // Other APIs / Web Compatibility
     console.Console.prototype,
     BigInt.prototype,
-    WebAssembly.Module.prototype,
-    WebAssembly.Instance.prototype,
-    WebAssembly.Table.prototype,
-    WebAssembly.Memory.prototype,
-    WebAssembly.CompileError.prototype,
-    WebAssembly.LinkError.prototype,
-    WebAssembly.RuntimeError.prototype,
     SharedArrayBuffer.prototype
   ];
   const intrinsics = [
@@ -230,9 +223,19 @@ module.exports = function() {
     console,
     BigInt,
     Atomics,
-    WebAssembly,
     SharedArrayBuffer
   ];
+
+  if (typeof WebAssembly !== 'undefined') {
+    intrinsicPrototypes.push(WebAssembly.Module.prototype);
+    intrinsicPrototypes.push(WebAssembly.Instance.prototype);
+    intrinsicPrototypes.push(WebAssembly.Table.prototype);
+    intrinsicPrototypes.push(WebAssembly.Memory.prototype);
+    intrinsicPrototypes.push(WebAssembly.CompileError.prototype);
+    intrinsicPrototypes.push(WebAssembly.LinkError.prototype);
+    intrinsicPrototypes.push(WebAssembly.RuntimeError.prototype);
+    intrinsics.push(WebAssembly);
+  }
 
   if (typeof Intl !== 'undefined') {
     intrinsicPrototypes.push(Intl.Collator.prototype);

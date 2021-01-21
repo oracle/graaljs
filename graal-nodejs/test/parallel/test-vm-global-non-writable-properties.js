@@ -11,5 +11,5 @@ assert.strictEqual(vm.runInContext('x', ctx), 42);
 vm.runInContext('x = 0', ctx);                      // Does not throw but x...
 assert.strictEqual(vm.runInContext('x', ctx), 42);  // ...should be unaltered.
 assert.throws(() => vm.runInContext('"use strict"; x = 0', ctx),
-              /Cannot assign to read only property 'x'/);
+              vm.runInContext('TypeError', ctx));
 assert.strictEqual(vm.runInContext('x', ctx), 42);

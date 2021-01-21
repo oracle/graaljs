@@ -48,6 +48,7 @@ const expectedModules = new Set([
   'NativeModule internal/fs/utils',
   'NativeModule internal/fs/promises',
   'NativeModule internal/fs/rimraf',
+  'NativeModule internal/graal/buffer',
   'NativeModule internal/idna',
   'NativeModule internal/linkedlist',
   'NativeModule internal/modules/run_main',

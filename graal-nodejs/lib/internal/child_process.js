@@ -375,6 +375,10 @@ ChildProcess.prototype.spawn = function(options) {
   else
     throw new ERR_INVALID_ARG_TYPE('options.args', 'Array', options.args);
 
+  // (db) we extend 'options' with info for thread-based spawn
+  options.ipc = ipc;
+  options.ipcFd = ipcFd;
+
   const err = this._handle.spawn(options);
 
   // Run-time errors should emit an error, not throw an exception.

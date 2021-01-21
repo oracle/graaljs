@@ -98,6 +98,8 @@ function oninit() {
   // defineEventHandler() does not support that.
   defineEventHandler(this, 'message');
   defineEventHandler(this, 'messageerror');
+  // Graal.js: initialize support for Java objects in messages
+  this.sharedMemMessaging = SharedMemMessagingInit();
   setupPortReferencing(this, this, 'message');
 }
 
@@ -115,6 +117,14 @@ class MessagePortCloseEvent extends Event {
 
 // This is called after the underlying `uv_async_t` has been closed.
 function onclose() {
+  // Graal.js: the underlying `uv_async_t` has been closed, so we can
+  // discard all pending Java references bound to this port (if any),
+  // since the connection is lost and the other side of the channel
+  // will not process messages.
+  const messagePortData = getMessagePortDataNative.call(this);
+  if (messagePortData !== undefined) {
+    this.sharedMemMessaging.dispose(messagePortData);
+  }
   this.dispatchEvent(new MessagePortCloseEvent());
 }
 
@@ -289,3 +299,41 @@ module.exports = {
   WritableWorkerStdio,
   createWorkerStdio
 };
+
+// ##### Graal.js Java interop messages handling
+
+// Passed by Graal.js init phase during global module loading.
+const SharedMemMessagingInit = typeof graalExtension === 'undefined' ? arguments[arguments.length - 1] : graalExtension;
+if (!SharedMemMessagingInit) {
+  throw new Error("Fatal: cannot initialize Worker");
+}
+
+const getMessagePortDataNative = MessagePort.prototype.messageData;
+delete MessagePort.prototype.messageData;
+
+const originalPostMessage = MessagePort.prototype.postMessage;
+MessagePort.prototype.postMessage = function(...args) {
+  const messagePortData = getMessagePortDataNative.call(this);
+  if (messagePortData === undefined) {
+    // Cannot retrieve message internal metadata. The channel is probably
+    // closed, so we don't care about encoding Java messages.
+    originalPostMessage.apply(this, args);
+  } else {
+    try {
+      // Signal that we are ready to transfer Java objets.
+      this.sharedMemMessaging.enter(messagePortData);
+      // Post message: might encode Java objects as a side effect.
+      const enqueued = originalPostMessage.apply(this, args);
+      const encodedJavaRefs = this.sharedMemMessaging.encodedJavaRefs();
+
+      if (encodedJavaRefs === true && enqueued !== true) {
+        // The message was not delivered to any worker threads.
+        // In this case, we free any recorded Java reference, as the
+        // message will anyway be discarded.
+        this.sharedMemMessaging.free();
+      }
+    } finally {
+      this.sharedMemMessaging.leave();
+    }
+  }
+}

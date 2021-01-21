@@ -482,104 +482,21 @@
             }]
           ],
           'dependencies': [
-            'generate_bytecode_builtins_list',
-            'run_torque',
-            'mksnapshot#host',
-            'v8_maybe_icu',
-            # [GYP] added explicitly, instead of inheriting from the other deps
             'v8_base_without_compiler',
-            'v8_compiler_for_mksnapshot',
-            'v8_initializers',
-            'v8_libplatform',
           ]
         }, {
           'dependencies': [
-            'generate_bytecode_builtins_list',
-            'run_torque',
-            'mksnapshot',
-            'v8_maybe_icu',
-            # [GYP] added explicitly, instead of inheriting from the other deps
             'v8_base_without_compiler',
-            'v8_compiler_for_mksnapshot',
-            'v8_initializers',
-            'v8_libplatform',
           ]
         }],
       ],
-      'sources': [
-        '<(V8_ROOT)/src/init/setup-isolate-deserialize.cc',
-      ],
+      'sources': [],
       'xcode_settings': {
         # V8 7.4 over macOS10.11 compatibility
         # Refs: https://github.com/nodejs/node/pull/26685
         'GCC_GENERATE_DEBUGGING_SYMBOLS': 'NO',
       },
-      'actions': [
-        {
-          'action_name': 'run_mksnapshot',
-          'message': 'generating: >@(_outputs)',
-          'variables': {
-            'mksnapshot_flags': [
-              '--turbo_instruction_scheduling',
-              # In cross builds, the snapshot may be generated for both the host and
-              # target toolchains.  The same host binary is used to generate both, so
-              # mksnapshot needs to know which target OS to use at runtime.  It's weird,
-              # but the target OS is really <(OS).
-              '--target_os=<(OS)',
-              '--target_arch=<(v8_target_arch)',
-              '--startup_src', '<(INTERMEDIATE_DIR)/snapshot.cc',
-              '--embedded_variant', 'Default',
-              '--embedded_src', '<(INTERMEDIATE_DIR)/embedded.S',
-            ],
-          },
-          'inputs': [
-            '<(mksnapshot_exec)',
-          ],
-          'outputs': [
-            '<(INTERMEDIATE_DIR)/snapshot.cc',
-            '<(INTERMEDIATE_DIR)/embedded.S',
-          ],
-          'process_outputs_as_sources': 1,
-          'conditions': [
-            ['v8_random_seed', {
-              'variables': {
-                'mksnapshot_flags': ['--random-seed', '<(v8_random_seed)'],
-              },
-            }],
-            ['v8_os_page_size', {
-              'variables': {
-                'mksnapshot_flags': ['--v8_os_page_size', '<(v8_os_page_size)'],
-              },
-            }],
-            ['v8_embed_script != ""', {
-              'inputs': ['<(v8_embed_script)'],
-              'variables': {
-                'mksnapshot_flags': ['<(v8_embed_script)'],
-              },
-            }],
-            ['v8_enable_snapshot_code_comments', {
-              'variables': {
-                'mksnapshot_flags': ['--code-comments'],
-              },
-            }],
-            ['v8_enable_snapshot_native_code_counters', {
-              'variables': {
-                'mksnapshot_flags': ['--native-code-counters'],
-              },
-            }, {
-               # --native-code-counters is the default in debug mode so make sure we can
-               # unset it.
-               'variables': {
-                 'mksnapshot_flags': ['--no-native-code-counters'],
-               },
-             }],
-          ],
-          'action': [
-            '>@(_inputs)',
-            '>@(mksnapshot_flags)',
-          ],
-        },
-      ],
+      'actions': [],
     },  # v8_snapshot
     {
       'target_name': 'v8_version',
@@ -719,195 +636,141 @@
     {
       'target_name': 'v8_base_without_compiler',
       'type': 'static_library',
+      # Since this target is a static-library, but as a side effect it generates
+      # header files, it needs to be a hard dependency.
+      'hard_dependency': 1,
       'dependencies': [
-        # Code generators that only need to be build for the host.
-        'torque_generated_definitions',
-        'v8_headers',
         'v8_libbase',
         'v8_libsampler',
-        'v8_shared_internal_headers',
-        'v8_version',
-        # BUILD.gn public_deps
-        'generate_bytecode_builtins_list',
-        'run_torque',
-        'v8_maybe_icu',
-        'v8_zlib',
       ],
-      'includes': ['inspector.gypi'],
       'direct_dependent_settings': {
-        'include_dirs': [
-          '<(generate_bytecode_output_root)',
-          '<(torque_output_root)',
-        ],
+        'include_dirs': ['<(SHARED_INTERMEDIATE_DIR)'],
       },
-      'sources': [
-        # "//base/trace_event/common/trace_event_common.h",
-
-        ### gcmole(all) ###
-        '<(generate_bytecode_builtins_list_output)',
-
-        '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?sources = ")',
-
-        '<@(inspector_all_sources)',
+      'variables': {
+        'optimize': 'max',
+      },
+      'include_dirs': [
+        '../../deps/uv/include',
+        '<(java_home)/include/',
+        '<(DEPTH)',
+        '<(SHARED_INTERMEDIATE_DIR)'
       ],
       'conditions': [
-        ['v8_enable_third_party_heap==1', {
-          # TODO(targos): add values from v8_third_party_heap_files to sources
-        }, {
-          'sources': [
-            '<(V8_ROOT)/src/heap/third-party/heap-api-stub.cc',
-          ],
-        }],
-        ['want_separate_host_toolset', {
-          'toolsets': ['host', 'target'],
-        }],
-        ['v8_control_flow_integrity==1', {
-          'sources': [
-            '<(V8_ROOT)/src/execution/arm64/pointer-authentication-arm64.h',
-          ],
-        }, {
-          'sources': [
-            '<(V8_ROOT)/src/execution/pointer-authentication-dummy.h',
-          ],
-        }],
-        ['v8_target_arch=="ia32"', {
-          'sources': [  ### gcmole(arch:ia32) ###
-            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"x86.*?sources \+= ")',
-          ],
-        }],
-        ['v8_target_arch=="x64"', {
-          'sources': [  ### gcmole(arch:x64) ###
-            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"x64.*?sources \+= ")',
-          ],
-          'conditions': [
-            # iOS Xcode simulator builds run on an x64 target. iOS and macOS are both
-            # based on Darwin and thus POSIX-compliant to a similar degree.
-            ['OS=="linux" or OS=="mac" or OS=="ios" or OS=="freebsd"', {
-              'sources': [
-                '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?is_linux.*?sources \+= ")',
-              ],
-            }],
-            ['OS=="win"', {
-              'sources': [
-                '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?is_win.*?sources \+= ")',
-              ],
-            }],
-          ],
-        }],
-        ['v8_target_arch=="arm"', {
-          'sources': [  ### gcmole(arch:arm) ###
-            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"arm\\".*?sources \+= ")',
-          ],
-        }],
-        ['v8_target_arch=="arm64"', {
-          'sources': [  ### gcmole(arch:arm64) ###
-            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"arm64\\".*?sources \+= ")',
-          ],
-          'conditions': [
-            ['OS=="win"', {
-              'sources': [
-                "<(V8_ROOT)/src/diagnostics/unwinding-info-win64.cc",
-                "<(V8_ROOT)/src/diagnostics/unwinding-info-win64.h"
-              ],
-            }],
-          ],
-          'conditions': [
-            ['OS=="win"', {
-              'sources': [
-                "<(V8_ROOT)/src/diagnostics/unwinding-info-win64.cc",
-                "<(V8_ROOT)/src/diagnostics/unwinding-info-win64.h"
-              ],
-            }],
-          ],
-        }],
-        ['v8_target_arch=="mips" or v8_target_arch=="mipsel"', {
-          'sources': [  ### gcmole(arch:mipsel) ###
-            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"mips\\".*?sources \+= ")',
-          ],
-        }],
-        ['v8_target_arch=="mips64" or v8_target_arch=="mips64el"', {
-          'sources': [  ### gcmole(arch:mips64el) ###
-            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"mips64\\".*?sources \+= ")',
-          ],
-        }],
-        ['v8_target_arch=="ppc"', {
-          'sources': [  ### gcmole(arch:ppc) ###
-            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"ppc\\".*?sources \+= ")',
-          ],
-        }],
-        ['v8_target_arch=="ppc64"', {
-          'sources': [  ### gcmole(arch:ppc64) ###
-            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"ppc64\\".*?sources \+= ")',
-          ],
-        }],
-        ['v8_target_arch=="s390x"', {
-          'sources': [  ### gcmole(arch:s390) ###
-            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"s390\\".*?sources \+= ")',
+        ['OS=="linux"', {
+          'include_dirs+': [
+            '<(java_home)/include/linux/',
           ],
         }],
         ['OS=="win"', {
-          'msvs_precompiled_header': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.h',
-          'msvs_precompiled_source': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.cc',
-          'sources': [
-            '<(_msvs_precompiled_header)',
-            '<(_msvs_precompiled_source)',
-          ],
-          # This will prevent V8's .cc files conflicting with the inspector's
-          # .cpp files in the same shard.
-          'msvs_settings': {
-            'VCCLCompilerTool': {
-              'ObjectFile': '$(IntDir)%(Extension)\\',
-            },
-          },
-        }],
-        ['component=="shared_library"', {
-          'defines': [
-            'BUILDING_V8_SHARED',
+          'include_dirs+': [
+            '<(java_home)/include/win32/',
           ],
         }],
-        ['v8_enable_i18n_support', {
-          'dependencies': [
-            'run_gen-regexp-special-case',
+        ['OS=="solaris"', {
+          'include_dirs+': [
+            '<(java_home)/include/solaris/',
           ],
-          'sources': [
-            '<(SHARED_INTERMEDIATE_DIR)/src/regexp/special-case.cc',
+        }],
+        ['OS=="mac"', {
+          'include_dirs+': [
+            '<(java_home)/include/darwin/',
           ],
-          'conditions': [
-            ['icu_use_data_file_flag', {
-              'defines': ['ICU_UTIL_DATA_IMPL=ICU_UTIL_DATA_FILE'],
-            }, {
-               'conditions': [
-                 ['OS=="win"', {
-                   'defines': ['ICU_UTIL_DATA_IMPL=ICU_UTIL_DATA_SHARED'],
-                 }, {
-                    'defines': ['ICU_UTIL_DATA_IMPL=ICU_UTIL_DATA_STATIC'],
-                  }],
-               ],
-             }],
-            ['OS=="win"', {
-              'dependencies': [
-                '<(icu_gyp_path):icudata#target',
-              ],
-            }],
-          ],
-        }, {  # v8_enable_i18n_support==0
-           'sources!': [
-             '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_enable_i18n_support.*?sources -= ")',
-           ],
-         }],
-        ['v8_postmortem_support', {
-          'dependencies': ['postmortem-metadata#target'],
         }],
-        ['v8_enable_third_party_heap', {
-          # TODO(targos): add values from v8_third_party_heap_libs to link_settings.libraries
+        ['OS != "win"', {
+          'defines': [ '__POSIX__' ],
         }],
-        # Platforms that don't have Compare-And-Swap (CAS) support need to link atomic library
-        # to implement atomic memory access
-        ['v8_current_cpu in ["mips", "mipsel", "mips64", "mips64el", "ppc", "arm"]', {
-          'link_settings': {
-            'libraries': ['-latomic', ],
-          },
-        }],
+      ],
+      'link_settings': {
+        'conditions' : [
+          ['OS=="linux" or OS=="solaris"', {
+            'libraries': [
+              '-L<(java_home)/lib',
+              "-Wl,-rpath='$$ORIGIN/../../../lib/'",
+              "-Wl,-rpath='$$ORIGIN/../../../../lib/'",
+              "-Wl,-rpath='$$ORIGIN/../../../../jre/lib/'",
+              "-Wl,-rpath='$$ORIGIN/../../../../jre/languages/R/lib/'",
+            ],
+          }],
+          ['OS=="linux" and target_arch=="x64"', {
+            'libraries': [
+              '-L<(java_home)/jre/lib/amd64/server -L<(java_home)/jre/lib/amd64',
+              "-Wl,-rpath='$$ORIGIN/../../../../lib/amd64/'",
+              "-Wl,-rpath='$$ORIGIN/../../../../jre/lib/amd64/'",
+            ],
+          }],
+          ['OS=="solaris" or (OS=="linux" and target_arch=="sparcv9")', {
+            'libraries': [
+              '-L<(java_home)/jre/lib/sparcv9/server -L<(java_home)/jre/lib/sparcv9',
+              "-Wl,-rpath='$$ORIGIN/../../../../lib/sparcv9/'",
+              "-Wl,-rpath='$$ORIGIN/../../../../jre/lib/sparcv9/'",
+            ],
+          }],
+          ['OS=="mac"', {
+            'libraries': [
+              '-L<(java_home)/jre/lib/server -L<(java_home)/jre/lib -L<(java_home)/lib',
+              "-Wl,-rpath,'@loader_path/../../../lib/'",
+              "-Wl,-rpath,'@loader_path/../../../../lib/'",
+              "-Wl,-rpath,'@loader_path/../../../../jre/lib/'",
+              "-Wl,-rpath,'@loader_path/../../../../jre/languages/R/lib/'",
+            ],
+          }],
+          ['OS == "win"', {
+            'libraries': [
+              '-lDbghelp',
+            ],
+          }],
+          ['OS != "win"', {
+            'libraries': [
+              '-ljsig',
+              '-ldl',
+            ],
+          }],
+       ]},
+      'sources': [
+        '<(V8_ROOT)/include/v8-platform.h',
+        '<(V8_ROOT)/include/v8-profiler.h',
+        '<(V8_ROOT)/include/v8-testing.h',
+        '<(V8_ROOT)/include/v8-util.h',
+        '<(V8_ROOT)/include/v8-value-serializer-version.h',
+        '<(V8_ROOT)/include/v8-version-string.h',
+        '<(V8_ROOT)/include/v8-version.h',
+        '<(V8_ROOT)/include/v8.h',
+        '<(V8_ROOT)/include/v8config.h',
+        '<(V8_ROOT)/src/graal/callbacks.cc',
+        '<(V8_ROOT)/src/graal/graal_array.cc',
+        '<(V8_ROOT)/src/graal/graal_array_buffer.cc',
+        '<(V8_ROOT)/src/graal/graal_array_buffer_view.cc',
+        '<(V8_ROOT)/src/graal/graal_big_int.cc',
+        '<(V8_ROOT)/src/graal/graal_boolean.cc',
+        '<(V8_ROOT)/src/graal/graal_context.cc',
+        '<(V8_ROOT)/src/graal/graal_date.cc',
+        '<(V8_ROOT)/src/graal/graal_external.cc',
+        '<(V8_ROOT)/src/graal/graal_function.cc',
+        '<(V8_ROOT)/src/graal/graal_function_template.cc',
+        '<(V8_ROOT)/src/graal/graal_handle_content.cc',
+        '<(V8_ROOT)/src/graal/graal_isolate.cc',
+        '<(V8_ROOT)/src/graal/graal_map.cc',
+        '<(V8_ROOT)/src/graal/graal_message.cc',
+        '<(V8_ROOT)/src/graal/graal_missing_primitive.cc',
+        '<(V8_ROOT)/src/graal/graal_module.cc',
+        '<(V8_ROOT)/src/graal/graal_number.cc',
+        '<(V8_ROOT)/src/graal/graal_object.cc',
+        '<(V8_ROOT)/src/graal/graal_object_template.cc',
+        '<(V8_ROOT)/src/graal/graal_primitive_array.cc',
+        '<(V8_ROOT)/src/graal/graal_promise.cc',
+        '<(V8_ROOT)/src/graal/graal_proxy.cc',
+        '<(V8_ROOT)/src/graal/graal_regexp.cc',
+        '<(V8_ROOT)/src/graal/graal_script.cc',
+        '<(V8_ROOT)/src/graal/graal_script_or_module.cc',
+        '<(V8_ROOT)/src/graal/graal_set.cc',
+        '<(V8_ROOT)/src/graal/graal_stack_frame.cc',
+        '<(V8_ROOT)/src/graal/graal_stack_trace.cc',
+        '<(V8_ROOT)/src/graal/graal_string.cc',
+        '<(V8_ROOT)/src/graal/graal_symbol.cc',
+        '<(V8_ROOT)/src/graal/graal_template.cc',
+        '<(V8_ROOT)/src/graal/graal_unbound_script.cc',
+        '<(V8_ROOT)/src/graal/graal_value.cc',
+        '<(V8_ROOT)/src/graal/v8.cc'
       ],
     },  # v8_base_without_compiler
     {
@@ -920,7 +783,6 @@
       ],
       'dependencies': [
         'v8_base_without_compiler',
-        'v8_compiler',
       ],
     },  # v8_base
     {
@@ -986,252 +848,23 @@
     },  # torque_ls_base
     {
       'target_name': 'v8_libbase',
-      'type': 'static_library',
+      'type': 'none',
+      'toolsets': ['host', 'target'],
+      'variables': {
+        'optimize': 'max',
+      },
+      'include_dirs': [
+        '..',
+      ],
+      'direct_dependent_settings': {
+        'include_dirs': ['..'],
+      },
       'sources': [
-        '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_libbase.*?sources = ")',
-      ],
-
-      'dependencies': [
-        'v8_headers',
-      ],
-
-      'conditions': [
-        ['want_separate_host_toolset', {
-          'toolsets': ['host', 'target'],
-        }],
-        ['is_component_build', {
-          'defines': ["BUILDING_V8_BASE_SHARED"],
-        }],
-        ['is_posix or is_fuchsia', {
-          'sources': [
-            '<(V8_ROOT)/src/base/platform/platform-posix.cc',
-            '<(V8_ROOT)/src/base/platform/platform-posix.h',
-          ],
-          'conditions': [
-            ['OS != "aix" and OS != "solaris"', {
-              'sources': [
-                '<(V8_ROOT)/src/base/platform/platform-posix-time.cc',
-                '<(V8_ROOT)/src/base/platform/platform-posix-time.h',
-              ],
-            }],
-          ],
-        }],
-        ['OS=="linux"', {
-          'sources': [
-            '<(V8_ROOT)/src/base/debug/stack_trace_posix.cc',
-            '<(V8_ROOT)/src/base/platform/platform-linux.cc',
-          ],
-          'link_settings': {
-            'libraries': [
-              '-ldl',
-              '-lrt'
-            ],
-          },
-        }],
-        ['OS=="aix"', {
-          'variables': {
-            # Used to differentiate `AIX` and `OS400`(IBM i).
-            'aix_variant_name': '<!(uname -s)',
-          },
-          'sources': [
-            '<(V8_ROOT)/src/base/debug/stack_trace_posix.cc',
-            '<(V8_ROOT)/src/base/platform/platform-aix.cc',
-          ],
-          'conditions': [
-            [ '"<(aix_variant_name)"=="AIX"', { # It is `AIX`
-              'link_settings': {
-                'libraries': [
-                  '-ldl',
-                  '-lrt'
-                ],
-              },
-            }],
-          ],
-        }],
-        ['is_android', {
-          'sources': [
-            '<(V8_ROOT)/src/base/platform/platform-posix.cc',
-            '<(V8_ROOT)/src/base/platform/platform-posix.h',
-            '<(V8_ROOT)/src/base/platform/platform-posix-time.cc',
-            '<(V8_ROOT)/src/base/platform/platform-posix-time.h',
-          ],
-          'link_settings': {
-            'target_conditions': [
-              ['_toolset=="host" and host_os=="linux"', {
-                'libraries': [
-                  '-ldl',
-                  '-lrt'
-                ],
-              }],
-            ],
-          },
-          'target_conditions': [
-            ['_toolset=="host"', {
-              'sources': [
-                '<(V8_ROOT)/src/base/debug/stack_trace_posix.cc',
-                '<(V8_ROOT)/src/base/platform/platform-linux.cc',
-              ],
-            }, {
-              'sources': [
-                '<(V8_ROOT)/src/base/debug/stack_trace_android.cc',
-                '<(V8_ROOT)/src/base/platform/platform-linux.cc',
-              ],
-            }],
-          ],
-        }],
-        ['is_fuchsia', {
-          'sources': [
-            '<(V8_ROOT)/src/base/debug/stack_trace_fuchsia.cc',
-            '<(V8_ROOT)/src/base/platform/platform-fuchsia.cc',
-          ]
-        }],
-        ['OS == "mac" or OS == "ios"', {
-          'sources': [
-            '<(V8_ROOT)/src/base/debug/stack_trace_posix.cc',
-            '<(V8_ROOT)/src/base/platform/platform-macos.cc',
-          ]
-        }],
-        ['is_win', {
-          'sources': [
-            '<(V8_ROOT)/src/base/debug/stack_trace_win.cc',
-            '<(V8_ROOT)/src/base/platform/platform-win32.cc',
-            '<(V8_ROOT)/src/base/win32-headers.h',
-          ],
-          'conditions': [['target_arch == "arm64"', {
-            'defines': ['_WIN32_WINNT=0x0602'], # For GetCurrentThreadStackLimits on Windows on Arm
-          }]],
-          'defines': ['_CRT_RAND_S'], # for rand_s()
-          'direct_dependent_settings': {
-            'msvs_settings': {
-              'VCLinkerTool': {
-                'AdditionalDependencies': [
-                  'dbghelp.lib',
-                  'winmm.lib',
-                  'ws2_32.lib'
-                ]
-              }
-            },
-          },
-        }],
-        ['target_arch == "mips" or OS == "mips64"', {
-          # here just for 'BUILD.gn' sync
-          # 'data': [
-          #   '<(V8_ROOT)/tools/mips_toolchain/sysroot/usr/lib/',
-          #   '<(V8_ROOT)/tools/mips_toolchain/sysroot/usr/lib/',
-          # ],
-        }],
-        # end of conditions from 'BUILD.gn'
-
-        # Node.js validated
-        ['OS=="solaris"', {
-          'link_settings': {
-            'libraries': [
-              '-lnsl',
-              '-lrt',
-            ]
-          },
-          'sources': [
-            '<(V8_ROOT)/src/base/debug/stack_trace_posix.cc',
-            '<(V8_ROOT)/src/base/platform/platform-solaris.cc',
-          ],
-        }],
-
-        # YMMV with the following conditions
-        ['OS=="qnx"', {
-          'link_settings': {
-            'target_conditions': [
-              ['_toolset=="host" and host_os=="linux"', {
-                'libraries': [
-                  '-lrt'
-                ],
-              }],
-              ['_toolset=="target"', {
-                'libraries': [
-                  '-lbacktrace'
-                ],
-              }],
-            ],
-          },
-          'sources': [
-            '<(V8_ROOT)/src/base/debug/stack_trace_posix.cc',
-            '<(V8_ROOT)/src/base/platform/platform-posix.h',
-            '<(V8_ROOT)/src/base/platform/platform-posix.cc',
-            '<(V8_ROOT)/src/base/platform/platform-posix-time.h',
-            '<(V8_ROOT)/src/base/platform/platform-posix-time.cc',
-            '<(V8_ROOT)/src/base/qnx-math.h'
-          ],
-          'target_conditions': [
-            ['_toolset=="host" and host_os=="linux"', {
-              'sources': [
-                '<(V8_ROOT)/src/base/platform/platform-linux.cc'
-              ],
-            }],
-            ['_toolset=="host" and host_os=="mac"', {
-              'sources': [
-                '<(V8_ROOT)/src/base/platform/platform-macos.cc'
-              ],
-            }],
-            ['_toolset=="target"', {
-              'sources': [
-                '<(V8_ROOT)/src/base/platform/platform-qnx.cc'
-              ],
-            }],
-          ],
-        },
-         ],
-        ['OS=="freebsd"', {
-          'link_settings': {
-            'libraries': [
-              '-L/usr/local/lib -lexecinfo',
-            ]
-          },
-          'sources': [
-            '<(V8_ROOT)/src/base/debug/stack_trace_posix.cc',
-            '<(V8_ROOT)/src/base/platform/platform-freebsd.cc',
-            '<(V8_ROOT)/src/base/platform/platform-posix.h',
-            '<(V8_ROOT)/src/base/platform/platform-posix.cc',
-            '<(V8_ROOT)/src/base/platform/platform-posix-time.h',
-            '<(V8_ROOT)/src/base/platform/platform-posix-time.cc',
-          ],
-        }
-         ],
-        ['OS=="openbsd"', {
-          'link_settings': {
-            'libraries': [
-              '-L/usr/local/lib -lexecinfo',
-            ]
-          },
-          'sources': [
-            '<(V8_ROOT)/src/base/debug/stack_trace_posix.cc',
-            '<(V8_ROOT)/src/base/platform/platform-openbsd.cc',
-            '<(V8_ROOT)/src/base/platform/platform-posix.h',
-            '<(V8_ROOT)/src/base/platform/platform-posix.cc',
-            '<(V8_ROOT)/src/base/platform/platform-posix-time.h',
-            '<(V8_ROOT)/src/base/platform/platform-posix-time.cc',
-          ],
-        }
-         ],
-        ['OS=="netbsd"', {
-          'link_settings': {
-            'libraries': [
-              '-L/usr/pkg/lib -Wl,-R/usr/pkg/lib -lexecinfo',
-            ]
-          },
-          'sources': [
-            '<(V8_ROOT)/src/base/debug/stack_trace_posix.cc',
-            '<(V8_ROOT)/src/base/platform/platform-openbsd.cc',
-            '<(V8_ROOT)/src/base/platform/platform-posix.h',
-            '<(V8_ROOT)/src/base/platform/platform-posix.cc',
-            '<(V8_ROOT)/src/base/platform/platform-posix-time.h',
-            '<(V8_ROOT)/src/base/platform/platform-posix-time.cc',
-          ],
-        }
-         ],
       ],
     },  # v8_libbase
     {
       'target_name': 'v8_libplatform',
-      'type': 'static_library',
+      'type': 'none',
       'dependencies': [
         'v8_libbase',
       ],
@@ -1293,7 +926,7 @@
     },  # v8_libplatform
     {
       'target_name': 'v8_libsampler',
-      'type': 'static_library',
+      'type': 'none',
       'conditions': [
         ['want_separate_host_toolset', {
           'toolsets': ['host', 'target'],
@@ -1303,8 +936,6 @@
         'v8_libbase',
       ],
       'sources': [
-        '<(V8_ROOT)/src/libsampler/sampler.cc',
-        '<(V8_ROOT)/src/libsampler/sampler.h'
       ],
     },  # v8_libsampler
     {
