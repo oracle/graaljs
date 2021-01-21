@@ -57,6 +57,7 @@ import com.oracle.truffle.js.nodes.decorators.ElementDescriptor;
 import com.oracle.truffle.js.nodes.decorators.PrivateName;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.function.SetFunctionNameNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -150,10 +151,14 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
         int size = elements.size();
         for (int i = 0; i < size; i++) {
             ElementDescriptor element = elements.pop();
+            if(element.isOwn() && (element.isMethod() || element.isAccessor()) && JSRuntime.isPropertyKey(element.getKey())) {
+                JSRuntime.definePropertyOrThrow((DynamicObject) target, element.getKey(), element.getDescriptor());
+            }
+            elements.push(element);
+        }
+        for(int i = 0; i < size; i++) {
+            ElementDescriptor element = elements.pop();
             if(element.isOwn()) {
-                if ((element.isMethod() || element.isAccessor()) && JSRuntime.isPropertyKey(element.getKey())) {
-                    JSRuntime.definePropertyOrThrow((DynamicObject) target, element.getKey(), element.getDescriptor());
-                }
                 if (element.isField()) {
                     fieldNodes[fieldIndex++].defineDecoratorField(target, element);
                 }
@@ -324,15 +329,15 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
             if(callNode != null && desc.hasInitialize()) {
                 initValue = callNode.executeCall(JSArguments.createZeroArg(target, desc.getInitialize()));
             }
-            PropertyDescriptor prop = desc.getDescriptor();
-            assert prop.isDataDescriptor();
-            prop.setValue(initValue);
+            PropertyDescriptor dataDescriptor = desc.getDescriptor();
+            assert dataDescriptor.isDataDescriptor();
+            dataDescriptor.setValue(initValue);
             if(writeNode instanceof PrivateFieldAddNode) {
                 assert key instanceof PrivateName : key;
                 ((PrivateFieldAddNode) writeNode).execute(target, ((PrivateName) key).getHiddenKey(), initValue);
             } else {
                 assert JSRuntime.isPropertyKey(key) : key;
-                JSRuntime.definePropertyOrThrow((DynamicObject) target, key, prop);
+                JSRuntime.definePropertyOrThrow((DynamicObject) target, key, dataDescriptor);
             }
         }
     }
@@ -348,7 +353,8 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
             assert desc.hasStart();
             Object res = callNode.executeCall(JSArguments.createZeroArg(target, desc.getStart()));
             if(res != Undefined.instance) {
-                //TODO: throw Error
+                throw Errors.createTypeErrorHookReturnValue("Start",this);
+                //TODO: test
             }
         }
     }

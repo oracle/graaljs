@@ -23,6 +23,8 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
     private boolean isStatic;
     private boolean isPrivate;
     private boolean isAnonymousFunctionDefinition;
+    protected int attributes;
+    protected int placement;
 
     protected ClassElementNode(ClassElementKeyNode key , boolean isStatic, boolean isPrivate, boolean isAnonymousFunctionDefinition, JavaScriptNode[] decorators){
         this.key = key;
@@ -102,22 +104,13 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
     }
 
     private static class FieldClassElementNode extends DataClassElementNode {
-        private boolean configurable;
-        private boolean enumerable;
-        private boolean writable;
-        private int placement;
-
         protected FieldClassElementNode(ClassElementKeyNode key, JavaScriptNode initialize, boolean isStatic, boolean isPrivate, boolean isAnonymousFunctionDefinition, JavaScriptNode[] decorators){
             super(key, initialize, isStatic, isPrivate, isAnonymousFunctionDefinition, decorators);
             //ClassFieldDefinitionEvaluation
             if(isPrivate) {
-                configurable = false;
-                enumerable = false;
-                writable = false;
+                attributes = JSAttributes.fromConfigurableEnumerableWritable(false, false, false);
             } else {
-                configurable = true;
-                enumerable = true;
-                writable = true;
+                attributes = JSAttributes.fromConfigurableEnumerableWritable(true, true, true);
             }
             if(isStatic) {
                 placement = JSPlacement.getStatic();
@@ -133,9 +126,9 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
             Object[] decorators = executeDecorators(frame);
 
             PropertyDescriptor propDesc = PropertyDescriptor.createEmpty();
-            propDesc.setConfigurable(configurable);
-            propDesc.setWritable(writable);
-            propDesc.setEnumerable(enumerable);
+            propDesc.setEnumerable(JSAttributes.isEnumerable(attributes));
+            propDesc.setWritable(JSAttributes.isWritable(attributes));
+            propDesc.setConfigurable(JSAttributes.isConfigurable(attributes));
             ElementDescriptor elemDesc = ElementDescriptor.createField(key, propDesc, placement, value, isPrivate(), this);
             elemDesc.setDecorators(decorators);
             return elemDesc;
@@ -148,9 +141,6 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
     }
 
     private static class MethodClassElementNode extends DataClassElementNode {
-        private int attributes;
-        private int placement;
-
         protected MethodClassElementNode(ClassElementKeyNode key, JavaScriptNode value, boolean isStatic, boolean isPrivate, JavaScriptNode[] decorators) {
             super(key, value, isStatic, isPrivate, false, decorators);
             //DefaultMethodDescriptor
@@ -193,9 +183,6 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
         @Child private JavaScriptNode getterNode;
         @Child private JavaScriptNode setterNode;
 
-        private int attributes;
-        private int placement;
-
         protected AccessorClassElementNode(ClassElementKeyNode key, JavaScriptNode getterNode, JavaScriptNode setterNode, boolean isStatic, boolean isPrivate, JavaScriptNode[] decorators) {
             super(key, isStatic, isPrivate, false, decorators);
             this.getterNode = getterNode;
@@ -230,7 +217,7 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
             }
 
             PropertyDescriptor propDesc = PropertyDescriptor.createAccessor((DynamicObject) getter, (DynamicObject) setter, attributes);
-            ElementDescriptor elemDesc =  ElementDescriptor.createAccessor(key, propDesc, placement, isPrivate(), this);
+            ElementDescriptor elemDesc = ElementDescriptor.createAccessor(key, propDesc, placement, isPrivate(), this);
             elemDesc.setDecorators(decorators);
             return elemDesc;
         }

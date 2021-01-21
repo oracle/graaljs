@@ -34,18 +34,20 @@ public class EvaluateClassElementsNode extends JavaScriptBaseNode {
             } else {
                 if(element.isMethod() ||element.isAccessor()) {
                     ElementDescriptor other = elementMap.get(element.getKey());
-                    if(other.isMethod() || element.isAccessor() && element.getPlacement() == other.getPlacement()) {
+                    if(other.isMethod() || other.isAccessor() && element.getPlacement() == other.getPlacement()) {
                         if(element.getDescriptor().isDataDescriptor() || other.getDescriptor().isDataDescriptor()) {
                             assert !element.hasPrivateKey();
                             assert element.getDescriptor().getConfigurable() && other.getDescriptor().getConfigurable();
                             if(element.hasDecorators() || other.hasDecorators()) {
-                                throw Errors.createTypeError("Overwritten and overwriting methods can not be decorated.", this);
+                                throw Errors.createTypeErrorMethodDecorators(this);
+                                //TODO: test
                             }
                             other.setDescriptor(element.getDescriptor());
                         } else {
                             if(element.hasDecorators()) {
                                 if(other.hasDecorators()) {
-                                    throw Errors.createTypeError("Either getter or setter can be decorated, not both.", this);
+                                    throw Errors.createTypeErrorAccessorDecorators(this);
+                                    //TODO: test
                                 }
                                 other.setDecorators(element.getDecorators());
                             }

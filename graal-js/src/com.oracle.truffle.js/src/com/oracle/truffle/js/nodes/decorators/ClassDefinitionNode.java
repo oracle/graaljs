@@ -279,7 +279,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         int size = elements.size();
         for (int i = 0; i < size; i++) {
             ElementDescriptor element = elements.pop();
-            if(element.hasPrivateKey()) {
+            if(element.hasKey() && element.hasPrivateKey()) {
                 PrivateName key = element.getPrivateKey();
                 if(element.isField() || element.isMethod() || element.isAccessor()) {
                     key.setKind(element.getKind());

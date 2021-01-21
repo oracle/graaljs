@@ -824,4 +824,24 @@ public final class Errors {
     public static JSException createTypeErrorElementDescriptorPropertyDescriptor(String condition, String restriction, Node originatingNode) {
         return createTypeError(String.format("Property descriptor of element descriptor with %s %s.", condition, restriction), originatingNode);
     }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorMethodDecorators(Node originatingNode) {
+        return createTypeError("Overwritten and overwriting methods can not be decorated.", originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorAccessorDecorators(Node originatingNode) {
+        return createTypeError("Either getter or setter can be decorated, not both.", originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorHookReturnValue(String name, Node originatingNode) {
+        return createTypeError(String.format("%s of hook can not have a return value.", name), originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorHookReplaceValue(Node originatingNode) {
+        return createTypeError("Replace of hook must return a constructor.", originatingNode);
+    }
 }

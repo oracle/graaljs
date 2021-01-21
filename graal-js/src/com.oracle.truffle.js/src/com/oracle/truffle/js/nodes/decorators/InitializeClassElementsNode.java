@@ -8,6 +8,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.InitializeInstanceElementsNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -92,7 +93,8 @@ public class InitializeClassElementsNode extends JavaScriptBaseNode {
             DynamicObject receiver = element.isStatic() ? constructor : proto;
             Object res = hookCallNode.executeCall(JSArguments.createZeroArg(receiver, element.getStart()));
             if(res != Undefined.instance) {
-                //TODO: throw Error
+                throw Errors.createTypeErrorHookReturnValue("Start",this);
+                //TODO: test
             }
         }
         while(otherHooks.size() > 0) {
@@ -102,15 +104,17 @@ public class InitializeClassElementsNode extends JavaScriptBaseNode {
                 assert element.isStatic();
                 Object newConstructor = hookCallNode.executeCall(JSArguments.createOneArg(Undefined.instance, element.getReplace(), constructor));
                 if(!JSRuntime.isConstructor(newConstructor)) {
-                    //TODO: throw Error
+                    throw Errors.createTypeErrorHookReplaceValue(this);
+                    //TODO: test
                 }
                 constructor = (DynamicObject) newConstructor;
             } else {
                 assert element.hasFinish();
                 DynamicObject receiver = element.isStatic() ? constructor : proto;
                 Object res = hookCallNode.executeCall(JSArguments.createZeroArg(receiver, element.getFinish()));
-                if(!JSRuntime.isNullOrUndefined(res)) {
-                    //TODO: throw Error
+                if(res != Undefined.instance) {
+                    throw Errors.createTypeErrorHookReturnValue("Finish",this);
+                    //TODO: test
                 }
             }
         }
