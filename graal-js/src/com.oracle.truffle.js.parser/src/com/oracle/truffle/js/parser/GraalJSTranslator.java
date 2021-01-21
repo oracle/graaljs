@@ -3268,7 +3268,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             }
 
             JavaScriptNode classHeritage = transform(classNode.getClassHeritage());
-            
 
             JSWriteFrameSlotNode writeClassBinding = className == null ? null : (JSWriteFrameSlotNode) findScopeVar(className, true).createWriteNode(null);
 
@@ -3313,19 +3312,19 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             ClassElementNode member;
             final ClassElementKeyNode key;
             if(e.hasComputedKey()) {
-                key = ClassElementKeyNode.createComputedKeyNode(transform(e.getKey()));
+                key = factory.createComputedKeyNode(transform(e.getKey()));
             } else if(e.isPrivate()){
                 VarRef privateVar = environment.findLocalVar(e.getPrivateName());
                 JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(factory.createNewPrivateName(e.getPrivateName(), context));
-                key = ClassElementKeyNode.createPrivateKeyNode(privateVar.createReadNode(),writePrivateNode);
+                key = factory.createPrivateKeyNode(privateVar.createReadNode(), writePrivateNode);
             } else {
-                key = ClassElementKeyNode.createObjectKeyNode(e.getKeyName());
+                key = factory.createPropertyKeyNode(e.getKeyName());
             }
 
             JavaScriptNode[] decorators = null;
             if(e.getDecorators() != null) {
                 List<Expression> d = e.getDecorators();
-                decorators = new JavaScriptNode[d.size()];
+                decorators =  new JavaScriptNode[d.size()];
                 for(int j = 0; j < d.size(); j++) {
                     decorators[d.size() - j - 1] = transform(d.get(j));
                 }
@@ -3334,16 +3333,16 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             if(e.isField() || e.isMethod()){
                 JavaScriptNode value = transformPropertyValue(e.getValue(), classNameSymbol);
                 if(e.isField()) {
-                    member = ClassElementNode.createFieldClassElement(key, value, e.isStatic(), e.isPrivate(), e.isAnonymousFunctionDefinition(), decorators);
+                    member = factory.createFieldClassElement(key, value, e.isStatic(), e.isPrivate(), e.isAnonymousFunctionDefinition(), decorators);
                 } else {
-                    member = ClassElementNode.createMethodClassElement(key, value, e.isStatic(), e.isPrivate(), decorators);
+                    member = factory.createMethodClassElement(key, value, e.isStatic(), e.isPrivate(), decorators);
                 }
             } else {
                 assert e.isAccessor();
                 assert e.getGetter() != null || e.getSetter() != null;
                 JavaScriptNode getter = getAccessor(e.getGetter());
                 JavaScriptNode setter = getAccessor(e.getSetter());
-                member = ClassElementNode.createAccessorClassElement(key, getter, setter,e.isStatic(), e.isPrivate(), decorators);
+                member = factory.createAccessorClassElement(key, getter, setter,e.isStatic(), e.isPrivate(), decorators);
             }
             elements.add(member);
         }

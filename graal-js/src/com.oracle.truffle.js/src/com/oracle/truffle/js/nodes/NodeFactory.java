@@ -1188,4 +1188,24 @@ public class NodeFactory {
     public ClassElementKeyNode createComputedKeyNode(JavaScriptNode key) {
         return ClassElementKeyNode.createComputedKeyNode(key);
     }
+
+    public ClassElementKeyNode createPrivateKeyNode(JavaScriptNode key, JSWriteFrameSlotNode writePrivateNode) {
+        return ClassElementKeyNode.createPrivateKeyNode(key, writePrivateNode);
+    }
+
+    public ClassElementKeyNode createPropertyKeyNode(Object key) {
+        return ClassElementKeyNode.createObjectKeyNode(key);
+    }
+
+    public ClassElementNode createFieldClassElement(ClassElementKeyNode key, JavaScriptNode initialize, boolean isStatic, boolean isPrivate, boolean isAnonymousFunctionDefinition, JavaScriptNode[] decorators) {
+        return ClassElementNode.createFieldClassElement(key, initialize, isStatic, isPrivate, isAnonymousFunctionDefinition, decorators);
+    }
+
+    public ClassElementNode createMethodClassElement(ClassElementKeyNode key, JavaScriptNode value, boolean isStatic, boolean isPrivate, JavaScriptNode[] decorators) {
+        return ClassElementNode.createMethodClassElement(key, value, isStatic, isPrivate, decorators);
+    }
+
+    public ClassElementNode createAccessorClassElement(ClassElementKeyNode key, JavaScriptNode getter, JavaScriptNode setter, boolean isStatic, boolean isPrivate, JavaScriptNode[] decorators) {
+        return ClassElementNode.createAccessorClassElement(key, getter, setter, isStatic, isPrivate, decorators);
+    }
 }
