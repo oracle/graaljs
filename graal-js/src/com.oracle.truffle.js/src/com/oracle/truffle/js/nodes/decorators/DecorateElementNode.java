@@ -34,7 +34,7 @@ public class DecorateElementNode extends JavaScriptBaseNode {
             if (element.isHook()) {
                 throw Errors.createTypeError("Property kind of element descriptor must not have value 'hook'.", this);
             }
-            Object elementObject = DescriptorUtil.fromElementDescriptor(element, context);
+            Object elementObject = ElementDescriptorUtil.fromElementDescriptor(element, context);
             Object decoratedObject = decoratorCallNode.executeCall(JSArguments.createOneArg(null, decorator, elementObject));
             if (!JSRuntime.isNullOrUndefined(decoratedObject)) {
                 decoratedObject = elementObject;
@@ -43,7 +43,7 @@ public class DecorateElementNode extends JavaScriptBaseNode {
             }
             //ToElementExtras
             assert JSRuntime.isObject(decoratedObject);
-            elements.push(DescriptorUtil.toElementDescriptor(decoratedObject));
+            elements.push(ElementDescriptorUtil.toElementDescriptor(decoratedObject, this));
             Object extrasObject = JSOrdinaryObject.get((DynamicObject) decoratedObject, EXTRAS);
             toElementDescriptorsNode.toElementDescriptors(extrasObject, elements);
         }

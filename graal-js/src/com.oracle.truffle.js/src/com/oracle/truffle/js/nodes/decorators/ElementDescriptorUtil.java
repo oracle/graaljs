@@ -1,5 +1,6 @@
 package com.oracle.truffle.js.nodes.decorators;
 
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -8,10 +9,11 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 import java.util.Arrays;
 
-public class DescriptorUtil {
+public class ElementDescriptorUtil {
     private static final String ELEMENT_DESCRIPTOR_VALUE = "Descriptor";
     private static final String KIND = "kind";
     private static final String VALUE = "method";
@@ -71,16 +73,18 @@ public class DescriptorUtil {
         return obj;
     }
 
-    public static ElementDescriptor toElementDescriptor(Object e) {
+    public static ElementDescriptor toElementDescriptor(Object e, Node originatingNode) {
         assert JSRuntime.isObject(e);
         DynamicObject elementObject = (DynamicObject) e;
         int kind = JSKind.fromString(JSRuntime.toString(JSOrdinaryObject.get(elementObject, KIND)));
         if(!JSKind.isHook(kind) && !JSKind.isMethod(kind) && !JSKind.isAccessor(kind) && !JSKind.isField(kind)) {
-            throw Errors.createTypeError("Property kind of element descriptor must be one of 'hook', 'method', 'accessor' or 'field'.");
+            throw Errors.createTypeErrorElementDescriptorProperty("kind","'hook', 'method', 'accessor' or 'field'", originatingNode);
+            //TODO: test
         }
         Object key = JSOrdinaryObject.get(elementObject, KEY);
-        if(JSKind.isHook(kind) && !JSRuntime.isNullOrUndefined(key)) {
-                throw Errors.createTypeError("Element descriptor with kind 'hook' must not have property key.");
+        if(JSKind.isHook(kind) && key != Undefined.instance) {
+            throw Errors.createTypeErrorElementDescriptorPropertyDescriptor("kind 'hook'", "must not have property key",originatingNode);
+            //TODO: test
         }
         boolean hasPrivateKey = key instanceof PrivateName;
         if(!hasPrivateKey) {
@@ -89,28 +93,35 @@ public class DescriptorUtil {
 
         int placement = JSPlacement.fromString(JSRuntime.toString(JSOrdinaryObject.get(elementObject, PLACEMENT)));
         if(!JSPlacement.isStatic(placement) && !JSPlacement.isPrototype(placement) && !JSPlacement.isOwn(placement)) {
-            throw Errors.createTypeError("Property placement of element descriptor must be one of 'static', 'prototype' or 'own'.");
+            throw Errors.createTypeErrorElementDescriptorProperty("placement", "'static', 'prototype' or 'own'", originatingNode);
+            //TODO: test
         }
         PropertyDescriptor descriptor = toDecoratorPropertyDescriptor(elementObject);
         if(hasPrivateKey) {
             if(descriptor.hasEnumerable() && descriptor.getEnumerable()) {
-                throw Errors.createTypeError("Element descriptor with private key must not be enumerable.");
+                throw Errors.createTypeErrorElementDescriptorRestriction("private key", "must not be enumerable", originatingNode);
+                //TODO: test
             }
             if(descriptor.hasConfigurable() && descriptor.getConfigurable()) {
-                throw Errors.createTypeError("Element descriptor with private key must not be configurable.");
+                throw Errors.createTypeErrorElementDescriptorRestriction("private key" , "must not be configurable", originatingNode);
+                //TODO: test
             }
             if(JSPlacement.isPrototype(placement)) {
-                throw Errors.createTypeError("Element descriptor with private key must not have placement 'prototype'.");
+                throw Errors.createTypeErrorElementDescriptorRestriction("private key", "must not have placement 'prototype'", originatingNode);
+                //TODO: test
             }
         }
         if((JSKind.isAccessor(kind) || JSKind.isHook(kind)) && descriptor.isDataDescriptor()) {
-            throw Errors.createTypeError("Property descriptor of element descriptor must not be a data descriptor of property kind is 'accessor' or 'hook'.");
+            throw Errors.createTypeErrorElementDescriptorPropertyDescriptor("kind 'accessor' or 'hook'", "must not be a data descriptor", originatingNode);
+            //TODO: test
         }
         if((JSKind.isField(kind) || JSKind.isMethod(kind) ||JSKind.isHook(kind)) && descriptor.isAccessorDescriptor()) {
-            throw Errors.createTypeError("Property descriptor of element descriptor must not be an accessor descriptor of property kind is 'field', 'method' or 'hook'.");
+            throw Errors.createTypeErrorElementDescriptorPropertyDescriptor("kind 'field', 'method' or 'hook'", "must not be an accessor descriptor.", originatingNode);
+            //TODO: test
         }
         if(JSKind.isField(kind) && descriptor.hasValue()) {
-            throw Errors.createTypeError("Data descriptor of element descriptor must not have a value property if property kind is 'field'.");
+            throw Errors.createTypeErrorElementDescriptorPropertyDescriptor("kind 'field'","must not have a value property", originatingNode);
+            //TODO: test
         }
         Object initialize = JSOrdinaryObject.get(elementObject, INITIALIZE);
         if(!JSRuntime.isNullOrUndefined(initialize)) {
@@ -167,17 +178,18 @@ public class DescriptorUtil {
         if(!JSRuntime.isNullOrUndefined(elements)) {
             throw Errors.createTypeError("Element descriptor must not have property elements.");
         }
+        //isPrivate is false, since all checks are already performed before the call.
         if(JSKind.isMethod(kind)) {
-            return ElementDescriptor.createMethod(key,descriptor,placement,false);
+            return ElementDescriptor.createMethod(key,descriptor,placement,false, originatingNode);
         }
         if(JSKind.isField(kind)) {
-            return ElementDescriptor.createField(key, descriptor, placement,initialize, false);
+            return ElementDescriptor.createField(key, descriptor, placement,initialize, false, originatingNode);
         }
         if(JSKind.isAccessor(kind)) {
-            return ElementDescriptor.createAccessor(key, descriptor,placement, false);
+            return ElementDescriptor.createAccessor(key, descriptor,placement, false, originatingNode);
         }
         if(JSKind.isHook(kind)) {
-            return ElementDescriptor.createHook(placement,null,null,null);
+            return ElementDescriptor.createHook(placement,null,null,null, originatingNode);
         }
         return null;
     }

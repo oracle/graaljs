@@ -32,14 +32,14 @@ public class DecorateConstructorNode extends JavaScriptBaseNode {
 
     public void decorateConstructor(ClassElementList elements, Object[] decorators) {
         for(Object decorator: decorators) {
-            Object obj = DescriptorUtil.fromClassDescriptor(elements, context);
+            Object obj = ElementDescriptorUtil.fromClassDescriptor(elements, context);
             Object result = decoratorCallNode.executeCall(JSArguments.createOneArg(null, decorator, obj));
             if (JSRuntime.isNullOrUndefined(result)) {
                 result = obj;
             } else {
                 result = JSRuntime.toObject(context, result);
             }
-            DescriptorUtil.checkClassDescriptor(result);
+            ElementDescriptorUtil.checkClassDescriptor(result);
             Object elementsObject = JSOrdinaryObject.get((DynamicObject) result, ELEMENTS);
             if (toElementDescriptorsNode.toElementDescriptors(elementsObject,elements)) {
                 HashMap<Object, ElementDescriptor> elementsMap = new HashMap<>();

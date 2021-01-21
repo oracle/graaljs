@@ -803,4 +803,25 @@ public final class Errors {
     public static JSException createTypeErrorCannotAddPrivateMember(String name, Node originatingNode) {
         return createTypeError(String.format("Duplicate private member %s.", name), originatingNode);
     }
+
+    //ElementDescriptor Type Errors
+    @TruffleBoundary
+    public static JSException createTypeErrorElementDescriptorProperty(String name, String expected, Node originatingNode) {
+        return createTypeError(String.format("Element descriptor property %s %s.", name, expected), originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorElementDescriptorRestriction(String condition, String restriction, Node originatingNode) {
+        return createTypeError(String.format("Element descriptor with %s %s.", condition, restriction), originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorElementDescriptorPropertyRestriction(String name, String condition, String expected, Node originatingNode) {
+        return createTypeError(String.format("Element descriptor property %s with value %s %s.", name, condition, expected), originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorElementDescriptorPropertyDescriptor(String condition, String restriction, Node originatingNode) {
+        return createTypeError(String.format("Property descriptor of element descriptor with %s %s.", condition, restriction), originatingNode);
+    }
 }

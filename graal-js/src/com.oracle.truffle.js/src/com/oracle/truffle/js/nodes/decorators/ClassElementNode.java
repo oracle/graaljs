@@ -136,7 +136,7 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
             propDesc.setConfigurable(configurable);
             propDesc.setWritable(writable);
             propDesc.setEnumerable(enumerable);
-            ElementDescriptor elemDesc = ElementDescriptor.createField(key, propDesc, placement, value, isPrivate());
+            ElementDescriptor elemDesc = ElementDescriptor.createField(key, propDesc, placement, value, isPrivate(), this);
             elemDesc.setDecorators(decorators);
             return elemDesc;
         }
@@ -177,7 +177,7 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
             Object[] decorators = executeDecorators(frame);
 
             PropertyDescriptor propDesc = PropertyDescriptor.createData(value, attributes);
-            ElementDescriptor elemDesc = ElementDescriptor.createMethod(key, propDesc, placement, isPrivate());
+            ElementDescriptor elemDesc = ElementDescriptor.createMethod(key, propDesc, placement, isPrivate(), this);
             elemDesc.setDecorators(decorators);
             return elemDesc;
         }
@@ -230,7 +230,7 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
             }
 
             PropertyDescriptor propDesc = PropertyDescriptor.createAccessor((DynamicObject) getter, (DynamicObject) setter, attributes);
-            ElementDescriptor elemDesc =  ElementDescriptor.createAccessor(key, propDesc, placement, isPrivate());
+            ElementDescriptor elemDesc =  ElementDescriptor.createAccessor(key, propDesc, placement, isPrivate(), this);
             elemDesc.setDecorators(decorators);
             return elemDesc;
         }

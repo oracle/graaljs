@@ -48,7 +48,7 @@ public class ToElementDescriptorsNode extends JavaScriptBaseNode {
             if (!JSRuntime.isNullOrUndefined(JSOrdinaryObject.get((DynamicObject) elementObject, EXTRAS))) {
                 throw Errors.createTypeError("Property extras of element descriptor must not have nested property extras.", this);
             }
-            elements.push(DescriptorUtil.toElementDescriptor(elementObject));
+            elements.push(ElementDescriptorUtil.toElementDescriptor(elementObject, this));
         }
         return true;
     }

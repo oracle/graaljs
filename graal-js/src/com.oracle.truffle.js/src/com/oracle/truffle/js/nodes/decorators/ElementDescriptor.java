@@ -1,5 +1,6 @@
 package com.oracle.truffle.js.nodes.decorators;
 
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -17,26 +18,31 @@ public class ElementDescriptor {
 
     private ElementDescriptor(){}
 
-    private static void checkPrivateKey(int placement, PropertyDescriptor descriptor) {
+    private static void checkPrivateKey(int placement, PropertyDescriptor descriptor, Node originatingNode) {
         if(!JSPlacement.isOwn(placement) && !JSPlacement.isStatic(placement)) {
-            Errors.createTypeError("Class element with a private key must have placement 'own' or 'static'.");
+            throw Errors.createTypeErrorElementDescriptorRestriction("private key", "must have placement 'own' or 'static'", originatingNode);
+            //TODO: test
         }
         if(descriptor.getEnumerable()){
-            Errors.createTypeError("Class element with a private key must not be enumerable.");
+            throw Errors.createTypeErrorElementDescriptorRestriction("private key", "must not be enumerable", originatingNode);
+            //TODO: test
         }
         if(descriptor.getConfigurable()) {
-            Errors.createTypeError("Class element with a private key must not be configurable.");
+            throw Errors.createTypeErrorElementDescriptorRestriction("private key", "must not be configurable", originatingNode);
+            //TODO: test
         }
     }
 
     public static ElementDescriptor createEmpty() { return new ElementDescriptor(); }
 
-    public static ElementDescriptor createMethod(Object key, PropertyDescriptor descriptor, int placement, boolean isPrivate) {
+    public static ElementDescriptor createMethod(Object key, PropertyDescriptor descriptor, int placement, boolean isPrivate, Node originatingNode) {
         if(isPrivate) {
-            checkPrivateKey(placement, descriptor);
+            checkPrivateKey(placement, descriptor, originatingNode);
         }
+        //kind is "method"
         if(!descriptor.isDataDescriptor()) {
-            Errors.createTypeError("Property descriptor of element descriptor with kind 'method' must be a data descriptor.");
+            throw Errors.createTypeErrorElementDescriptorPropertyRestriction("descriptor", "kind 'method'", "must be a data descriptor", originatingNode);
+            //TODO: test
         }
         ElementDescriptor elem = new ElementDescriptor();
         elem.setKind(JSKind.getKindMethod());
@@ -46,12 +52,14 @@ public class ElementDescriptor {
         return elem;
     }
 
-    public static ElementDescriptor createAccessor(Object key, PropertyDescriptor descriptor, int placement, boolean isPrivate) {
+    public static ElementDescriptor createAccessor(Object key, PropertyDescriptor descriptor, int placement, boolean isPrivate, Node originatingNode) {
         if(isPrivate){
-            checkPrivateKey(placement, descriptor);
+            checkPrivateKey(placement, descriptor, originatingNode);
         }
+        //kind is "accessor"
         if(!descriptor.isAccessorDescriptor()) {
-            Errors.createTypeError("Property descriptor of element descriptor with kind 'accessor' must be an accessor descriptor.");
+            throw Errors.createTypeErrorElementDescriptorPropertyRestriction("descriptor", "kind 'accessor'", "must be an accessor descriptor.", originatingNode);
+            //TODO: test
         }
         ElementDescriptor elem = new ElementDescriptor();
         elem.setKind(JSKind.getKindAccessor());
@@ -61,18 +69,21 @@ public class ElementDescriptor {
         return elem;
     }
 
-    public static ElementDescriptor createField(Object key, PropertyDescriptor descriptor, int placement, Object initialize, boolean isPrivate){
+    public static ElementDescriptor createField(Object key, PropertyDescriptor descriptor, int placement, Object initialize, boolean isPrivate, Node originatingNode){
         if(isPrivate) {
-            checkPrivateKey(placement, descriptor);
+            checkPrivateKey(placement, descriptor, originatingNode);
         }
         if(descriptor.hasGet()) {
-            Errors.createTypeError("Property descriptor of element descriptor with kind 'field' must not have property get.");
+            throw Errors.createTypeErrorElementDescriptorPropertyDescriptor("kind 'field'","must not have property get", originatingNode);
+            //TODO: test
         }
         if(descriptor.hasSet()) {
-            Errors.createTypeError("Property descriptor of element descriptor with kind 'field' must not have property set.");
+            throw Errors.createTypeErrorElementDescriptorPropertyDescriptor("kind 'field'", "must not have property set", originatingNode);
+            //TODO: test
         }
         if(descriptor.hasValue()) {
-            Errors.createTypeError("Property descriptor of element descriptor with kind 'field' must not have property value.");
+            throw Errors.createTypeErrorElementDescriptorPropertyDescriptor("kind 'field'", "must not have property value", originatingNode);
+            //TODO: test
         }
         ElementDescriptor elem = new ElementDescriptor();
         elem.setKind(JSKind.getKindField());
@@ -83,12 +94,14 @@ public class ElementDescriptor {
         return elem;
     }
 
-    public static ElementDescriptor createHook(int placement, Object start, Object replace, Object finish) {
+    public static ElementDescriptor createHook(int placement, Object start, Object replace, Object finish, Node originatingNode) {
         if(start == null && replace == null && finish == null) {
-            Errors.createTypeError("Property descriptor of element descriptor with kind 'hook' must have one of the following defined: start, replace, finish.");
+            throw Errors.createTypeErrorElementDescriptorPropertyDescriptor("kind 'hook'", "must define at least one of start, replace or finish", originatingNode);
+            //TODO: test
         }
         if(replace != null && finish != null) {
-            Errors.createTypeError("Property descriptor of element descriptor with kind 'hook' can either have property replace or finish, not both.");
+            throw Errors.createTypeErrorElementDescriptorPropertyDescriptor("kind 'hook'", "can either define replace or finish, not both", originatingNode);
+            //TODO: test
         }
         ElementDescriptor elem = new ElementDescriptor();
         elem.setKind(JSKind.getKindHook());
