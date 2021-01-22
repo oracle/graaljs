@@ -3088,7 +3088,7 @@ namespace v8 {
         }
 
         jobject java_function = graal_isolate->GetJNIEnv()->GetObjectArrayElement((jobjectArray) java_array, 0);
-        GraalFunction* graal_function = new GraalFunction(graal_isolate, java_function);
+        GraalFunction* graal_function = GraalFunction::Allocate(graal_isolate, java_function);
         Local<Function> v8_function = reinterpret_cast<Function*> (graal_function);
         return v8_function;
     }

@@ -611,7 +611,9 @@ public:
     GraalHandleContent* CreateGraalString(jstring object);
     void DisposeGraalString(GraalHandleContent* graal_object);
     GraalHandleContent* CreateGraalContext(jobject graal_context, void* cached_context_embedder_data);
-    void DisposeGraalContext(GraalHandleContent* graal_object);    
+    void DisposeGraalContext(GraalHandleContent* graal_object);
+    GraalHandleContent* CreateGraalFunction(jobject graal_context);
+    void DisposeGraalFunction(GraalHandleContent* graal_object);
 
     static void SetFlags(int argc, char** argv) {
         char** old_argv = GraalIsolate::argv;
@@ -739,7 +741,9 @@ private:
     int string_pool_size_ = 0;
     GraalHandleContent** string_pool_;
     int context_pool_size_ = 0;
-    GraalHandleContent** context_pool_;    
+    GraalHandleContent** context_pool_;
+    int function_pool_size_ = 0;
+    GraalHandleContent** function_pool_;        
 };
 
 // This is a poor-man's check that attempts to avoid stack-overflow

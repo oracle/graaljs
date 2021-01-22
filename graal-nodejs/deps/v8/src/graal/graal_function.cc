@@ -46,8 +46,24 @@
 #include "graal_function-inl.h"
 #include "graal_string-inl.h"
 
+GraalFunction* GraalFunction::Allocate(GraalIsolate* isolate, jobject java_object) {
+    return (GraalFunction*) isolate->CreateGraalFunction(java_object);
+}
+
+GraalFunction* GraalFunction::Allocate(GraalIsolate* isolate, jobject java_object, void* placement) {
+    return new (placement) GraalFunction(isolate, java_object);
+}
+
+void GraalFunction::ReInitialize(jobject java_object) {
+    GraalObject::ReInitialize(java_object);
+}
+
+void GraalFunction::DisposeFromPool() {
+    Isolate()->DisposeGraalFunction(this);
+}
+
 GraalHandleContent* GraalFunction::CopyImpl(jobject java_object_copy) {
-    return new GraalFunction(Isolate(), java_object_copy);
+    return GraalFunction::Allocate(Isolate(), java_object_copy);
 }
 
 bool GraalFunction::IsFunction() const {

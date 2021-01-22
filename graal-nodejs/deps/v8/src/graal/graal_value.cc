@@ -630,9 +630,9 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
             break;
         case FUNCTION_OBJECT:
             if (placement) {
-                result = new(placement) GraalFunction(isolate, java_object);
+                result = GraalFunction::Allocate(isolate, java_object, placement);
             } else {
-                result = new GraalFunction(isolate, java_object);
+                result = GraalFunction::Allocate(isolate, java_object);
             }
             break;
         case ARRAY_OBJECT:
