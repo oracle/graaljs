@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,14 +53,15 @@ import com.oracle.truffle.js.nodes.access.IsArrayNodeGen.IsArrayWrappedNodeGen;
 import com.oracle.truffle.js.nodes.unary.JSIsArrayNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
+import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
-import com.oracle.truffle.js.runtime.builtins.JSClass;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
+import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
- * Non-standard IsArray. Checks for array exotic objects.
+ * Non-standard IsArray. Checks for array(-like) exotic objects.
  *
  * @see JSIsArrayNode
  */
@@ -68,7 +69,6 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 public abstract class IsArrayNode extends JavaScriptBaseNode {
 
     protected static final int MAX_SHAPE_COUNT = 1;
-    protected static final int MAX_JSCLASS_COUNT = 1;
 
     final Kind kind;
 
@@ -89,29 +89,40 @@ public abstract class IsArrayNode extends JavaScriptBaseNode {
 
     public abstract boolean execute(Object operand);
 
-    @Specialization(guards = {"kind == Array", "isJSArray(object)"})
-    protected static boolean doJSArray(@SuppressWarnings("unused") Object object) {
-        return true;
+    @Specialization(guards = {"kind == Array || kind == AnyArray"})
+    protected final boolean doJSArray(JSArrayObject object) {
+        return checkResult(object, true);
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = "cachedShape.check(object)", limit = "MAX_SHAPE_COUNT")
-    protected static boolean doIsArrayShape(JSDynamicObject object,
+    @Specialization(guards = {"kind == FastArray || kind == FastOrTypedArray", "object.getShape() == cachedShape"}, limit = "MAX_SHAPE_COUNT")
+    protected final boolean doJSFastArrayShape(JSArrayObject object,
                     @Cached("object.getShape()") Shape cachedShape,
                     @Cached("isArray(object)") boolean cachedResult) {
-        return cachedResult;
+        return checkResult(object, cachedResult);
     }
 
-    @SuppressWarnings("unused")
-    @Specialization(replaces = "doIsArrayShape", guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "MAX_JSCLASS_COUNT")
-    protected static boolean doIsArrayJSClass(JSDynamicObject object,
-                    @Cached("isArray(object)") boolean cachedResult,
-                    @Cached("getJSClassChecked(object)") JSClass cachedClass) {
-        return cachedResult;
+    @Specialization(guards = {"kind == FastArray || kind == FastOrTypedArray"}, replaces = "doJSFastArrayShape")
+    protected final boolean doJSFastArray(JSArrayObject object) {
+        return checkResult(object, JSArray.isJSFastArray(object));
     }
 
-    @Specialization(replaces = "doIsArrayJSClass")
-    protected final boolean isArray(JSDynamicObject object) {
+    @Specialization(guards = {"kind == AnyArray || kind == FastOrTypedArray"})
+    protected final boolean doJSTypedArray(JSTypedArrayObject object) {
+        return checkResult(object, true);
+    }
+
+    @Specialization(guards = {"kind == AnyArray || kind == FastOrTypedArray", "isJSArgumentsObject(object)"})
+    protected final boolean doJSArgumentsObject(JSArgumentsObject object) {
+        return checkResult(object, kind == Kind.AnyArray || (kind == Kind.FastOrTypedArray && JSArgumentsArray.isJSFastArgumentsObject(object)));
+    }
+
+    @Specialization(guards = {"kind == AnyArray", "isJSObjectPrototype(object)"})
+    protected final boolean doJSObjectPrototype(Object object) {
+        return checkResult(object, true);
+    }
+
+    protected final boolean isArray(Object object) {
         if (kind == Kind.FastOrTypedArray) {
             return JSArray.isJSFastArray(object) || JSArgumentsArray.isJSFastArgumentsObject(object) || JSArrayBufferView.isJSArrayBufferView(object);
         } else if (kind == Kind.FastArray) {
@@ -124,9 +135,25 @@ public abstract class IsArrayNode extends JavaScriptBaseNode {
         }
     }
 
-    @Specialization(guards = "!isJSDynamicObject(object)")
-    protected static boolean isNotDynamicObject(@SuppressWarnings("unused") Object object) {
-        return false;
+    protected final boolean checkResult(Object object, boolean result) {
+        assert isArray(object) == result;
+        return result;
+    }
+
+    @Specialization(guards = {"kind == Array || kind == FastArray", "!isJSArray(object)"})
+    protected final boolean doNotJSArray(Object object) {
+        return checkResult(object, false);
+    }
+
+    @Specialization(guards = {"cachedClass.isInstance(object)"}, limit = "1")
+    protected final boolean doOtherCached(Object object,
+                    @Cached("object.getClass()") @SuppressWarnings("unused") Class<?> cachedClass) {
+        return checkResult(object, false);
+    }
+
+    @Specialization(replaces = {"doOtherCached", "doJSArray", "doJSFastArray", "doJSTypedArray", "doJSArgumentsObject", "doJSObjectPrototype"})
+    protected final boolean doOther(Object object) {
+        return checkResult(object, isArray(object));
     }
 
     public static IsArrayNode createIsAnyArray() {

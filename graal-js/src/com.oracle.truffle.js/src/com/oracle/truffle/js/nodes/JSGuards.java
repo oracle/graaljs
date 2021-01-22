@@ -62,6 +62,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
+import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
@@ -293,8 +294,12 @@ public final class JSGuards {
         return JSProxy.isJSProxy(value);
     }
 
-    public static boolean isJSFastArguments(Object value) {
+    public static boolean isJSFastArgumentsObject(Object value) {
         return JSArgumentsArray.isJSFastArgumentsObject(value);
+    }
+
+    public static boolean isJSObjectPrototype(Object value) {
+        return JSObjectPrototype.isJSObjectPrototype(value);
     }
 
     public static boolean isJSSymbol(Object value) {
