@@ -46,8 +46,24 @@
 
 #include "graal_string-inl.h"
 
+GraalString* GraalString::Allocate(GraalIsolate* isolate, jstring java_object) {
+    return (GraalString*) isolate->CreateGraalString(java_object);
+}
+
+GraalString* GraalString::Allocate(GraalIsolate* isolate, jstring java_object, void* placement) {
+    return new (placement) GraalString(isolate, java_object);
+}
+
+void GraalString::ReInitialize(jobject java_object) {
+    GraalHandleContent::SetJavaObject(java_object);
+}
+
+void GraalString::DisposeFromPool() {
+    Isolate()->DisposeGraalString(this);
+}
+
 GraalHandleContent* GraalString::CopyImpl(jobject java_object_copy) {
-    return new GraalString(Isolate(), (jstring) java_object_copy);
+    return GraalString::Allocate(Isolate(), (jstring) java_object_copy);
 }
 
 v8::Local<v8::String> GraalString::NewFromOneByte(v8::Isolate* isolate, unsigned char const* data, v8::String::NewStringType type, int length) {
@@ -260,7 +276,7 @@ v8::Local<v8::String> GraalString::NewFromUtf8(v8::Isolate* isolate, char const*
 v8::Local<v8::String> GraalString::NewFromModifiedUtf8(v8::Isolate* isolate, const char* data) {
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     jstring java_string = graal_isolate->GetJNIEnv()->NewStringUTF(data);
-    GraalString* graal_string = new GraalString(graal_isolate, java_string);
+    GraalString* graal_string = GraalString::Allocate(graal_isolate, java_string);
     return reinterpret_cast<v8::String*> (graal_string);
 }
 
@@ -276,7 +292,7 @@ v8::Local<v8::String> GraalString::NewFromTwoByte(v8::Isolate* isolate, const ui
     }
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     jstring java_string = graal_isolate->GetJNIEnv()->NewString(data, length);
-    GraalString* graal_string = new GraalString(graal_isolate, java_string);
+    GraalString* graal_string = GraalString::Allocate(graal_isolate, java_string);
     return reinterpret_cast<v8::String*> (graal_string);
 }
 

@@ -128,7 +128,7 @@ public:
 protected:
     virtual GraalHandleContent* CopyImpl(jobject java_object_copy) = 0;
 
-    void DisposeFromPool();
+    virtual void DisposeFromPool();
 
     inline void SetJavaObject(jobject java_object) {
         java_object_ = java_object;

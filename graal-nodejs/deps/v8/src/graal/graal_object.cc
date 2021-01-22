@@ -53,6 +53,19 @@
 #include "graal_object-inl.h"
 #include "graal_string-inl.h"
 
+GraalObject* GraalObject::Allocate(GraalIsolate* isolate, jobject java_object) {
+    return (GraalObject*) isolate->CreateGraalObject(java_object);
+}
+
+GraalObject* GraalObject::Allocate(GraalIsolate* isolate, jobject java_object, void* placement) {
+    return new (placement) GraalObject(isolate, java_object);
+}
+
+void GraalObject::ReInitialize(jobject java_object) {
+    internal_field_count_cache_ = -1;    
+    GraalHandleContent::SetJavaObject(java_object);
+}
+
 GraalHandleContent* GraalObject::CopyImpl(jobject java_object_copy) {
     return GraalObject::Allocate(Isolate(), java_object_copy);
 }
@@ -255,7 +268,7 @@ bool GraalObject::SetPrototype(v8::Local<v8::Value> prototype) {
 
 v8::Local<v8::String> GraalObject::GetConstructorName() {
     JNI_CALL(jobject, java_name, Isolate(), GraalAccessMethod::object_get_constructor_name, Object, GetJavaObject());
-    GraalString* graal_name = new GraalString(Isolate(), (jstring) java_name);
+    GraalString* graal_name = GraalString::Allocate(Isolate(), (jstring) java_name);
     return reinterpret_cast<v8::String*> (graal_name);
 }
 
@@ -362,17 +375,4 @@ v8::Maybe<bool> GraalObject::SetIntegrityLevel(v8::Local<v8::Context> context, v
     jboolean freeze = (level == v8::IntegrityLevel::kFrozen);
     JNI_CALL_VOID(graal_isolate, GraalAccessMethod::object_set_integrity_level, GetJavaObject(), freeze);
     return graal_isolate->GetJNIEnv()->ExceptionCheck() ? v8::Nothing<bool>() : v8::Just<bool>(true);
-}
-
-GraalObject* GraalObject::Allocate(GraalIsolate* isolate, jobject java_object) {
-    return (GraalObject*) isolate->CreateGraalObject(java_object);
-}
-
-GraalObject* GraalObject::Allocate(GraalIsolate* isolate, jobject java_object, void* placement) {
-    return new (placement) GraalObject(isolate, java_object);
-}
-
-void GraalObject::ReInitialize(jobject java_object) {
-    internal_field_count_cache_ = -1;    
-    GraalHandleContent::SetJavaObject(java_object);
 }

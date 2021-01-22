@@ -47,7 +47,9 @@
 
 class GraalString : public GraalName {
 public:
-    inline GraalString(GraalIsolate* isolate, jstring java_string);
+    static GraalString* Allocate(GraalIsolate* isolate, jstring java_string);
+    static GraalString* Allocate(GraalIsolate* isolate, jstring java_string, void* placement);
+    void ReInitialize(jobject java_object);
     static v8::Local<v8::String> NewFromOneByte(v8::Isolate* isolate, unsigned char const* data, v8::String::NewStringType type, int length);
     static v8::Local<v8::String> NewFromUtf8(v8::Isolate* isolate, char const* str, v8::String::NewStringType type, int length);
     static v8::Local<v8::String> NewFromTwoByte(v8::Isolate* isolate, const uint16_t* data, v8::String::NewStringType type, int length);
@@ -73,6 +75,9 @@ public:
         return (c & 0xC0) == 0x80;
     }
 protected:
+    void DisposeFromPool() override;
+    friend class GraalIsolate;
+    inline GraalString(GraalIsolate* isolate, jstring java_string);
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
 

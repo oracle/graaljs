@@ -820,7 +820,7 @@ namespace v8 {
         jchar* str = new jchar[length];
         env->GetStringRegion(java_left, 0, left_length, str);
         env->GetStringRegion(java_right, 0, right_length, str + left_length);
-        GraalString* graal_concat = new GraalString(graal_isolate, env->NewString(str, length));
+        GraalString* graal_concat = GraalString::Allocate(graal_isolate, env->NewString(str, length));
         delete[] str;
         return reinterpret_cast<String*> (graal_concat);
     }
@@ -2051,7 +2051,7 @@ namespace v8 {
         GraalIsolate* graal_isolate = graal_object->Isolate();
         jobject java_object = graal_object->GetJavaObject();
         JNI_CALL(jobject, value, graal_isolate, GraalAccessMethod::string_object_value_of, Object, java_object);
-        GraalString* graal_string = new GraalString(graal_isolate, (jstring) value);
+        GraalString* graal_string = GraalString::Allocate(graal_isolate, (jstring) value);
         return reinterpret_cast<v8::String*> (graal_string);
     }
 
@@ -2129,7 +2129,7 @@ namespace v8 {
         if (java_result == nullptr) {
             return Local<String>();
         } else {
-            GraalString* graal_string = new GraalString(graal_isolate, (jstring) java_result);
+            GraalString* graal_string = GraalString::Allocate(graal_isolate, (jstring) java_result);
             return Local<String>(reinterpret_cast<String*> (graal_string));
         }
     }
