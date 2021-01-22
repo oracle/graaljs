@@ -68,6 +68,28 @@ GraalHandleContent::~GraalHandleContent() {
 #endif
 }
 
+void GraalHandleContent::FreeJavaRefs() {
+    JNIEnv* env = isolate_->GetJNIEnv();
+    // env can be nullptr during the destruction of static variables
+    // on process exit (when the isolate was disposed already)
+    if (env != nullptr) {
+        if (IsGlobal()) {
+            if (IsWeak()) {
+                env->DeleteWeakGlobalRef(java_object_);
+            } else {
+                env->DeleteGlobalRef(java_object_);
+            }
+        } else {
+            env->DeleteLocalRef(java_object_);
+        }
+    }
+#ifdef DEBUG
+    if (ref_count != 0) {
+        fprintf(stderr, "GraalHandleContent deleted while being referenced!\n");
+    }
+#endif
+}
+
 GraalHandleContent* GraalHandleContent::Copy(bool global) {
     jobject java_object = GetJavaObject();
     if (java_object != NULL) {
@@ -145,3 +167,8 @@ jobject GraalHandleContent::ToNewLocalJavaObject() {
 bool GraalHandleContent::IsWeakCollected() const {
     return isolate_->GetJNIEnv()->IsSameObject(java_object_, NULL);
 }
+
+void GraalHandleContent::DisposeFromPool() {
+    isolate_->DisposeGraalObject(this);
+}
+

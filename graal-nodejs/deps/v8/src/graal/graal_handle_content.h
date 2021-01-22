@@ -76,6 +76,7 @@ public:
     static bool SameData(GraalHandleContent* this_content, GraalHandleContent* that_content);
     virtual bool IsString() const;
     jobject ToNewLocalJavaObject();
+    void FreeJavaRefs();
 
     inline void ReferenceAdded() {
         ref_count++;
@@ -93,7 +94,11 @@ public:
         }
 #endif
         if (--ref_count == 0) {
-            delete this;
+            if (recycle_) {
+                DisposeFromPool();
+            } else {
+                delete this;
+            }
         }
     }
 
@@ -112,11 +117,24 @@ public:
     inline bool IsEmpty() const {
         return IsWeak() ? IsWeakCollected() : false;
     }
+
+    inline bool IsRecycle() const {
+        return recycle_;
+    }
+
+    inline void AllowRecycle() {
+        recycle_ = true;
+    }
 protected:
     virtual GraalHandleContent* CopyImpl(jobject java_object_copy) = 0;
 
+    void DisposeFromPool();
+
     inline void SetJavaObject(jobject java_object) {
         java_object_ = java_object;
+        ref_type_ = 0;
+        ref_count = 0;
+        recycle_ = false;
     }
 
 private:
@@ -124,6 +142,7 @@ private:
     jobject java_object_;
     int ref_type_;
     int ref_count;
+    bool recycle_;
     static const int GLOBAL_FLAG = 1;
     static const int WEAK_FLAG = 2;
 

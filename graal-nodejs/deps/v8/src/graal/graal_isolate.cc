@@ -537,6 +537,8 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     lock_ = CreateMutex(NULL, false, NULL);
 #endif
 
+    object_pool_ = new GraalHandleContent*[1024];
+
     // Object.class
     jclass object_class = env->FindClass("java/lang/Object");
     object_class_ = (jclass) env->NewGlobalRef(object_class);
@@ -1442,4 +1444,25 @@ v8::ArrayBuffer::Allocator* GraalIsolate::GetArrayBufferAllocator() {
 
 void GraalIsolate::SchedulePauseOnNextStatement() {
     JNI_CALL_VOID(this, GraalAccessMethod::isolate_schedule_pause_on_next_statement);
+}
+
+GraalHandleContent* GraalIsolate::CreateGraalObject(jobject java_object) {
+    if (object_pool_size_ == 0) {
+        GraalObject* new_object = new GraalObject(this, java_object);
+        new_object->AllowRecycle();
+        return new_object;
+    } else {
+        GraalHandleContent* an_object = object_pool_[--object_pool_size_];
+        ((GraalObject*) an_object)->ReInitialize(java_object);
+        return an_object;
+    }
+}
+
+void GraalIsolate::DisposeGraalObject(GraalHandleContent* graal_object) {
+    if (object_pool_size_ < 1024) {
+        graal_object->FreeJavaRefs();
+        object_pool_[object_pool_size_++] = graal_object;
+    } else {
+        delete graal_object;
+    }
 }

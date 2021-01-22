@@ -365,7 +365,7 @@ v8::Maybe<bool> GraalObject::SetIntegrityLevel(v8::Local<v8::Context> context, v
 }
 
 GraalObject* GraalObject::Allocate(GraalIsolate* isolate, jobject java_object) {
-    return new GraalObject(isolate, java_object);
+    return (GraalObject*) isolate->CreateGraalObject(java_object);
 }
 
 GraalObject* GraalObject::Allocate(GraalIsolate* isolate, jobject java_object, void* placement) {
@@ -373,6 +373,6 @@ GraalObject* GraalObject::Allocate(GraalIsolate* isolate, jobject java_object, v
 }
 
 void GraalObject::ReInitialize(jobject java_object) {
-    internal_field_count_cache_ = -1;
+    internal_field_count_cache_ = -1;    
     GraalHandleContent::SetJavaObject(java_object);
 }

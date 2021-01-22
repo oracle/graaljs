@@ -606,6 +606,9 @@ public:
     v8::ArrayBuffer::Allocator* GetArrayBufferAllocator();
     void SchedulePauseOnNextStatement();
 
+    GraalHandleContent* CreateGraalObject(jobject object);
+    void DisposeGraalObject(GraalHandleContent* graal_object);
+
     static void SetFlags(int argc, char** argv) {
         char** old_argv = GraalIsolate::argv;
         int old_argc = GraalIsolate::argc;
@@ -726,6 +729,9 @@ private:
     v8::HostImportModuleDynamicallyCallback import_module_dynamically;
     v8::FatalErrorCallback fatal_error_handler_;
     v8::PrepareStackTraceCallback prepare_stack_trace_callback_;
+
+    int object_pool_size_ = 0;
+    GraalHandleContent** object_pool_;
 };
 
 // This is a poor-man's check that attempts to avoid stack-overflow

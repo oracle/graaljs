@@ -60,6 +60,7 @@ ref_count(0) {
     }
 #endif
     isolate->HandleScopeReference(this);
+    recycle_ = false;
 }
 
 #endif /* GRAAL_HANDLE_CONTENT_INL_H_ */
