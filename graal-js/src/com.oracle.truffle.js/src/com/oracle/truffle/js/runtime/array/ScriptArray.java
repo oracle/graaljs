@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -539,7 +539,10 @@ public abstract class ScriptArray {
 
     public abstract ScriptArray preventExtensions();
 
-    public abstract boolean isStatelessType();
+    @SuppressWarnings("static-method")
+    public final boolean isStatelessType() {
+        return true;
+    }
 
     public final boolean isInstance(ScriptArray other) {
         CompilerAsserts.partialEvaluationConstant(this);
