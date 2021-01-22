@@ -1450,19 +1450,37 @@ GraalHandleContent* GraalIsolate::CreateGraalObject(jobject java_object) {
     if (object_pool_size_ == 0) {
         GraalObject* new_object = new GraalObject(this, java_object);
         new_object->AllowRecycle();
+
+#ifdef DEBUG
+        printf("Allocate NEW (pool:%d ref%p)\n", object_pool_size_, new_object);
+#endif
         return new_object;
     } else {
         GraalHandleContent* an_object = object_pool_[--object_pool_size_];
         ((GraalObject*) an_object)->ReInitialize(java_object);
+        HandleScopeReference(an_object);
+        ((GraalObject*) an_object)->AllowRecycle();
+
+#ifdef DEBUG        
+        printf("Allocate CACHE (pool:%d ref%p)\n", object_pool_size_, an_object);
+#endif
         return an_object;
     }
 }
 
 void GraalIsolate::DisposeGraalObject(GraalHandleContent* graal_object) {
-    if (object_pool_size_ < 1024) {
+    if (object_pool_size_ < 1024) {        
+#ifdef DEBUG
+        printf("De-allocate RECYCLE (pool:%d global:%s ref%p)\n", object_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
+#endif
+
         graal_object->FreeJavaRefs();
         object_pool_[object_pool_size_++] = graal_object;
     } else {
+#ifdef DEBUG
+        printf("De-allocate DELETE (pool:%d global:%s ref%p)\n", object_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
+#endif        
+
         delete graal_object;
     }
 }

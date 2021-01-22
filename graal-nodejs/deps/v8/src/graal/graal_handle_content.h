@@ -145,7 +145,7 @@ private:
     bool recycle_;
     static const int GLOBAL_FLAG = 1;
     static const int WEAK_FLAG = 2;
-
+public:
     inline bool IsGlobal() const {
         return ((ref_type_ & GLOBAL_FLAG) != 0);
     }
