@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.decorators;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -64,6 +65,8 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
+
+import java.util.Set;
 
 /**
  * ES6 14.5.14 Runtime Semantics: ClassDefinitionEvaluation.
@@ -129,11 +132,49 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         this.setFieldsNode = instanceFieldCount != 0 ? PropertySetNode.createSetHidden(JSFunction.CLASS_FIELDS_ID, context) : null;
         this.setPrivateBrandNode = hasPrivateInstanceMethods ? PropertySetNode.createSetHidden(JSFunction.PRIVATE_BRAND_ID, context) : null;
 
+        if(context.getEcmaScriptVersion() > 12) {
+
+            this.setElementsNode = PropertySetNode.createSetHidden(JSFunction.ELEMENTS_ID, context);
+            this.evaluateClassElementsNode = EvaluateClassElementsNode.create(context, classElementNodes);
+            this.initializeClassElementsNode = InitializeClassElementsNode.create(context);
+
+            this.decorateClassNode = DecorateClassNode.create(context, decoratorNodes);
+        } else {
+            this.setElementsNode = null;
+            this.evaluateClassElementsNode = null;
+            this.initializeClassElementsNode = null;
+
+            this.decorateClassNode = null;
+        }
+    }
+
+    private ClassDefinitionNode(JSContext context, JSFunctionExpressionNode constructorFunctionNode, JavaScriptNode classHeritageNode, JSWriteFrameSlotNode writeClassBindingNode, DecorateClassNode decoratorNode, boolean hasName, EvaluateClassElementsNode evaluateClassElementsNode) {
+        this.context = context;
+        this.hasName = hasName;
+        this.instanceFieldCount = 0;
+        this.staticFieldCount = 0;
+
+        this.constructorFunctionNode = constructorFunctionNode;
+        this.setConstructorNode = CreateMethodPropertyNode.create(context, JSObject.CONSTRUCTOR);
+        this.defineConstructorMethodNode = DefineMethodNode.create(context, constructorFunctionNode);
+
+        this.getPrototypeNode = PropertyGetNode.create(JSObject.PROTOTYPE, false, context);
+        this.createPrototypeNode = CreateObjectNode.createOrdinaryWithPrototype(context);
+
+        this.classHeritageNode = classHeritageNode;
+        this.writeClassBindingNode = writeClassBindingNode;
+        this.setFunctionName = hasName ? null : SetFunctionNameNode.create();
+
+        this.memberNodes = null;
+
+        this.setFieldsNode = null;
+        this.setPrivateBrandNode = null;
+
         this.setElementsNode = PropertySetNode.createSetHidden(JSFunction.ELEMENTS_ID, context);
-        this.evaluateClassElementsNode = EvaluateClassElementsNode.create(context, classElementNodes);
+        this.evaluateClassElementsNode = evaluateClassElementsNode;
         this.initializeClassElementsNode = InitializeClassElementsNode.create(context);
 
-        this.decorateClassNode = DecorateClassNode.create(context, decoratorNodes);
+        this.decorateClassNode = decoratorNode;
     }
 
     public static ClassDefinitionNode create(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members,
@@ -305,10 +346,16 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         ((FunctionNameHolder) constructorFunctionNode).setFunctionName(name);
     }
 
-    /*@Override
+    @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(context, (JSFunctionExpressionNode) cloneUninitialized(constructorFunctionNode, materializedTags), cloneUninitialized(classHeritageNode, materializedTags),
-                        ObjectLiteralMemberNode.cloneUninitialized(memberNodes, materializedTags),
-                        cloneUninitialized(writeClassBindingNode, materializedTags), hasName, instanceFieldCount, staticFieldCount, setPrivateBrandNode != null);
-    }*/
+        if(context.getEcmaScriptVersion() <= 12)
+        {
+            return create(context,(JSFunctionExpressionNode) cloneUninitialized(constructorFunctionNode, materializedTags), cloneUninitialized(classHeritageNode, materializedTags),
+                    ObjectLiteralMemberNode.cloneUninitialized(memberNodes, materializedTags),
+                    cloneUninitialized(writeClassBindingNode, materializedTags), hasName, instanceFieldCount, staticFieldCount, setPrivateBrandNode != null);
+        } else {
+            return new ClassDefinitionNode(context, (JSFunctionExpressionNode) cloneUninitialized(constructorFunctionNode, materializedTags), cloneUninitialized(classHeritageNode, materializedTags),
+                    cloneUninitialized(writeClassBindingNode, materializedTags), DecorateClassNode.cloneUninitialized(decorateClassNode, materializedTags), hasName, EvaluateClassElementsNode.cloneUninitialized(evaluateClassElementsNode, materializedTags));
+        }
+    }
 }

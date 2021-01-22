@@ -1,12 +1,15 @@
 package com.oracle.truffle.js.nodes.decorators;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 
 import java.util.HashMap;
+import java.util.Set;
 
 public class EvaluateClassElementsNode extends JavaScriptBaseNode {
     private final JSContext context;
@@ -20,6 +23,14 @@ public class EvaluateClassElementsNode extends JavaScriptBaseNode {
 
     public static EvaluateClassElementsNode create(JSContext context, ClassElementNode[] classElementNodes) {
         return new EvaluateClassElementsNode(context, classElementNodes);
+    }
+
+    private EvaluateClassElementsNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return create(context, ClassElementNode.cloneUninitialized(classElementNodes, materializedTags));
+    }
+
+    public static EvaluateClassElementsNode cloneUninitialized(EvaluateClassElementsNode evaluateClassElementsNode, Set<Class<? extends Tag>> materializedTags) {
+        return evaluateClassElementsNode.copyUninitialized(materializedTags);
     }
 
     public ClassElementList execute(VirtualFrame frame, DynamicObject proto, DynamicObject constructor) {
