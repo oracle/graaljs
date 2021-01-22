@@ -64,7 +64,7 @@ public class EvaluateClassElementsNode extends JavaScriptBaseNode {
                     }
                 }
             }
-            elements.push(element);
+            elements.enqueue(element);
         }
         return  elements;
     }

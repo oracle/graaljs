@@ -114,7 +114,7 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
     }
 
     @Specialization(guards = {"isJSObject(target)"}, limit = "3")
-    Object doDecorators(DynamicObject target, PrivateName key, @CachedLibrary("target") DynamicObjectLibrary access,@Cached("createCall()") JSFunctionCallNode callNode , @Cached BranchProfile errorBranch) {
+    Object doPrivateName(DynamicObject target, PrivateName key, @CachedLibrary("target") DynamicObjectLibrary access,@Cached("createCall()") JSFunctionCallNode callNode , @Cached BranchProfile errorBranch) {
         if(key.isField()) {
             return doField(target, key.getHiddenKey(), access, errorBranch);
         }else if(key.isMethod()) {
@@ -126,7 +126,8 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
             assert key.isAccessor();
             if(!key.getDescriptor().hasGet()) {
                 errorBranch.enter();
-                throw Errors.createTypeErrorCannotGetPrivateMember(key.getName(),this);
+                throw Errors.createTypeError(String.format("Accessor %s has no getter.", key.getName()), this);
+                //TODO: test
             }
             return callNode.executeCall(JSArguments.createZeroArg(target, key.getDescriptor().getGet()));
         }

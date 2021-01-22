@@ -826,6 +826,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorPropertyDescriptor(String name, String restriction, Node originatingNode) {
+        return createTypeError(String.format("Property %s of property descriptor %s", name, restriction), originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorMethodDecorators(Node originatingNode) {
         return createTypeError("Overwritten and overwriting methods can not be decorated.", originatingNode);
     }
@@ -843,5 +848,10 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createTypeErrorHookReplaceValue(Node originatingNode) {
         return createTypeError("Replace of hook must return a constructor.", originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorClassDescriptor(String name, Node originatingNode) {
+        return createTypeError(String.format("Class descriptor must not have property %s.", name), originatingNode);
     }
 }

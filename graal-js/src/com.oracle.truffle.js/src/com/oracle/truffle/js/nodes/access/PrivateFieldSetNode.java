@@ -107,31 +107,31 @@ public abstract class PrivateFieldSetNode extends JSTargetableNode {
     }
 
     @Specialization(guards = {"isJSObject(target)"}, limit = "3")
-    Object doDecorators(DynamicObject target, PrivateName key, Object value,
+    Object doPrivateName(DynamicObject target, PrivateName key, Object value,
                         @CachedLibrary("target") DynamicObjectLibrary access,
                         @Cached("createCall()") JSFunctionCallNode callNode,
                         @Cached BranchProfile errorBranch) {
         if(key.isField()) {
             if(!key.getDescriptor().getWritable()) {
-                //TODO: error message.
                 errorBranch.enter();
-                throw Errors.createTypeErrorCannotSetPrivateMember(key.getName(), this);
+                throw Errors.createTypeError(String.format("Field %s is not writable.", key.getName()), this);
+                //TODO: test
             }
             return doField(target, key.getHiddenKey(), value, access, errorBranch);
         } else if (key.isMethod()) {
             if(!key.getDescriptor().getWritable()) {
-                //TODO: error message.
                 errorBranch.enter();
-                throw Errors.createTypeErrorCannotSetPrivateMember(key.getName(), this);
+                throw Errors.createTypeError(String.format("Method %s is not writable.",key.getName()), this);
+                //TODO: test
             }
             access.put(target, key.getHiddenKey(), value);
             return value;
         } else {
             assert key.isAccessor();
             if(!key.getDescriptor().hasSet()) {
-                //TODO:throw error
                 errorBranch.enter();
-                throw Errors.createTypeErrorCannotSetPrivateMember(key.getName(), this);
+                throw Errors.createTypeError(String.format("Accessor %s has not setter.",key.getName()), this);
+                //TODO: test
             }
             return callNode.executeCall(JSArguments.createOneArg(target, key.getDescriptor().getSet(), value));
         }

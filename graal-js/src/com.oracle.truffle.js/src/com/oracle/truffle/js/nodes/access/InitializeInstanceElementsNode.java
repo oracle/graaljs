@@ -130,7 +130,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
     protected static Object withStaticAndPrototypeField(Object target, Object constructor, ClassElementList fields, Object brand, Object elements,
                     @Cached("createStaticAndPrototypeFieldNodes(fields, context)") DefineFieldNode[] fieldNodes) {
         for(int i = 0; i < fieldNodes.length; i++) {
-            ElementDescriptor element = fields.pop();
+            ElementDescriptor element = fields.dequeue();
             if(element.isField()) {
                 Object receiver = element.isStatic() ? constructor : target;
                 fieldNodes[i].defineDecoratorField(receiver, element);
@@ -150,14 +150,14 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
         int startHookIndex = 0;
         int size = elements.size();
         for (int i = 0; i < size; i++) {
-            ElementDescriptor element = elements.pop();
+            ElementDescriptor element = elements.dequeue();
             if(element.isOwn() && (element.isMethod() || element.isAccessor()) && JSRuntime.isPropertyKey(element.getKey())) {
                 JSRuntime.definePropertyOrThrow((DynamicObject) target, element.getKey(), element.getDescriptor());
             }
-            elements.push(element);
+            elements.enqueue(element);
         }
         for(int i = 0; i < size; i++) {
-            ElementDescriptor element = elements.pop();
+            ElementDescriptor element = elements.dequeue();
             if(element.isOwn()) {
                 if (element.isField()) {
                     fieldNodes[fieldIndex++].defineDecoratorField(target, element);
@@ -166,7 +166,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
                     startHookNodes[startHookIndex++].execute(target, element);
                 }
             }
-            elements.push(element);
+            elements.enqueue(element);
         }
         return target;
     }
@@ -260,7 +260,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
         int fieldNodeCount = 0;
         int elementsSize = elements.size();
         for(int i = 0; i < elementsSize; i++) {
-            ElementDescriptor element = elements.pop();
+            ElementDescriptor element = elements.dequeue();
             if(element.isField()) {
                 Object key = element.getKey();
                 Object initializer = element.getInitialize();
@@ -274,7 +274,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
                 }
                 fieldNodes[fieldNodeCount++] = new DefineFieldNode(writeNode, callNode, null);
             }
-            elements.push(element);
+            elements.enqueue(element);
         }
         return fieldNodes;
     }
@@ -284,12 +284,12 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
         int size = elements.getOwnHookStartCount();
         ExecuteStartHookNode[] startHookNodes = new ExecuteStartHookNode[size];
         for(int i = 0; i < size; i++) {
-            ElementDescriptor element = elements.pop();
+            ElementDescriptor element = elements.dequeue();
             if(element.isHook()) {
                 assert element.hasStart();
                 startHookNodes[i] = new ExecuteStartHookNode();
             }
-            elements.push(element);
+            elements.enqueue(element);
         }
         return startHookNodes;
     }

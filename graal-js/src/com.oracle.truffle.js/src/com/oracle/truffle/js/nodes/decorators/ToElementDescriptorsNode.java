@@ -11,6 +11,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class ToElementDescriptorsNode extends JavaScriptBaseNode {
     protected static final String EXTRAS = "extras";
@@ -38,17 +39,18 @@ public class ToElementDescriptorsNode extends JavaScriptBaseNode {
     }
 
     public boolean toElementDescriptors(Object elementObjects, ClassElementList elements){
-        if(JSRuntime.isNullOrUndefined(elementObjects)) {
+        if(elementObjects == Undefined.instance) {
             return false;
         }
         IteratorRecord iterator = getIteratorNode.execute(elementObjects);
         Object next;
         while ((next = getNext(iterator)) != null) {
             Object elementObject = JSRuntime.toObject(context, next);
-            if (!JSRuntime.isNullOrUndefined(JSOrdinaryObject.get((DynamicObject) elementObject, EXTRAS))) {
+            if (JSOrdinaryObject.get((DynamicObject) elementObject, EXTRAS) == Undefined.instance) {
                 throw Errors.createTypeError("Property extras of element descriptor must not have nested property extras.", this);
+                //TODO: test
             }
-            elements.push(ElementDescriptorUtil.toElementDescriptor(elementObject, this));
+            elements.enqueue(ElementDescriptorUtil.toElementDescriptor(elementObject, this), false, this);
         }
         return true;
     }

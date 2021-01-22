@@ -106,9 +106,15 @@ public class ElementDescriptor {
         ElementDescriptor elem = new ElementDescriptor();
         elem.setKind(JSKind.getKindHook());
         elem.setPlacement(placement);
-        elem.setStart(start);
-        elem.setReplace(replace);
-        elem.setFinish(finish);
+        if(start != Undefined.instance) {
+            elem.setStart(start);
+        }
+        if(replace != Undefined.instance) {
+            elem.setReplace(replace);
+        }
+        if(finish != Undefined.instance) {
+            elem.setFinish(finish);
+        }
         return elem;
     }
 

@@ -8,6 +8,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 import java.util.HashMap;
 
@@ -34,26 +35,27 @@ public class DecorateConstructorNode extends JavaScriptBaseNode {
         for(Object decorator: decorators) {
             Object obj = ElementDescriptorUtil.fromClassDescriptor(elements, context);
             Object result = decoratorCallNode.executeCall(JSArguments.createOneArg(null, decorator, obj));
-            if (JSRuntime.isNullOrUndefined(result)) {
+            if (result == Undefined.instance) {
                 result = obj;
             } else {
                 result = JSRuntime.toObject(context, result);
             }
-            ElementDescriptorUtil.checkClassDescriptor(result);
+            ElementDescriptorUtil.checkClassDescriptor(result,this);
             Object elementsObject = JSOrdinaryObject.get((DynamicObject) result, ELEMENTS);
             if (toElementDescriptorsNode.toElementDescriptors(elementsObject,elements)) {
                 HashMap<Object, ElementDescriptor> elementsMap = new HashMap<>();
                 for(int i = 0; i < elements.size(); i++) {
-                    ElementDescriptor a = elements.pop();
+                    ElementDescriptor a = elements.dequeue();
                     if(!elementsMap.containsKey(a.getKey())) {
                         elementsMap.put(a.getKey(), a);
                     } else {
                         ElementDescriptor b = elementsMap.get(a.getKey());
                         if(!a.isHook() && !b.isHook() && a.getPlacement() == b.getPlacement()) {
-                            throw Errors.createTypeError("Duplicate definition of class element " + a.getKey() + ".", this);
+                            throw Errors.createTypeError(String.format("Duplicate definition of class element %s.", a.getKey()), this);
+                            //TODO: test
                         }
                     }
-                    elements.push(a);
+                    elements.enqueue(a);
                 }
             }
         }

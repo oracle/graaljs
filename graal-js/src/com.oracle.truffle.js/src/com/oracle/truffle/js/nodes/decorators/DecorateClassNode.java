@@ -25,11 +25,11 @@ public class DecorateClassNode extends JavaScriptBaseNode {
     public void execute(VirtualFrame frame, ClassElementList elements) {
         //DecorateElements
         for (int i = 0; i < elements.size(); i++) {
-            ElementDescriptor element = elements.pop();
+            ElementDescriptor element = elements.dequeue();
             if(element.hasDecorators()) {
                 decorateElementNode.decorateElement(element, elements);
             } else {
-                elements.push(element);
+                elements.enqueue(element);
             }
         }
         //DecorateClass

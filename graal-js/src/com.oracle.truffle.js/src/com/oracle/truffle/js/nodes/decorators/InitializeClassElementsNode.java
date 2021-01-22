@@ -47,7 +47,7 @@ public class InitializeClassElementsNode extends JavaScriptBaseNode {
         boolean setStaticBrand = false;
         boolean setInstanceBrand = false;
         for(int i = 0; i < size; i++) {
-            ElementDescriptor element = elements.pop();
+            ElementDescriptor element = elements.dequeue();
             if(element.isStatic() && element.hasKey() && element.hasPrivateKey()) {
                 //PrivateBrandAdd
                 setStaticBrand = true;
@@ -63,18 +63,18 @@ public class InitializeClassElementsNode extends JavaScriptBaseNode {
                 }
                 if (element.isField()) {
                     assert !element.getDescriptor().hasValue() && !element.getDescriptor().hasGet() && !element.getDescriptor().hasSet();
-                    fields.push(element);
+                    fields.enqueue(element);
                 }
                 if (element.isHook()) {
                     if (element.hasStart()) {
-                        startHooks.push(element);
+                        startHooks.enqueue(element);
                     }
                     if (element.hasReplace() || element.hasFinish()) {
-                        otherHooks.push(element);
+                        otherHooks.enqueue(element);
                     }
                 }
             } else {
-                elements.push(element);
+                elements.enqueue(element);
             }
         }
         if(setStaticBrand) {
@@ -89,7 +89,7 @@ public class InitializeClassElementsNode extends JavaScriptBaseNode {
             initializeInstanceElementsNode.executeFields(proto, constructor, fields);
         }
         while(startHooks.size() > 0) {
-            ElementDescriptor element = startHooks.pop();
+            ElementDescriptor element = startHooks.dequeue();
             DynamicObject receiver = element.isStatic() ? constructor : proto;
             Object res = hookCallNode.executeCall(JSArguments.createZeroArg(receiver, element.getStart()));
             if(res != Undefined.instance) {
@@ -98,7 +98,7 @@ public class InitializeClassElementsNode extends JavaScriptBaseNode {
             }
         }
         while(otherHooks.size() > 0) {
-            ElementDescriptor element = otherHooks.pop();
+            ElementDescriptor element = otherHooks.dequeue();
             if(element.hasReplace()) {
                 assert !element.hasFinish();
                 assert element.isStatic();

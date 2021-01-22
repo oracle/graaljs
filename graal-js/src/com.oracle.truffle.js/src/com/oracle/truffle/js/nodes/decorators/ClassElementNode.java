@@ -43,6 +43,7 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
     }
 
     protected Object[] executeDecorators(VirtualFrame frame) {
+        //DecoratorEvaluation
         if(decorators == null) {
             return new Object[0];
         }

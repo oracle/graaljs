@@ -8,6 +8,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class DecorateElementNode extends JavaScriptBaseNode {
     protected static final String EXTRAS = "extras";
@@ -32,18 +33,19 @@ public class DecorateElementNode extends JavaScriptBaseNode {
     public void decorateElement(ElementDescriptor element, ClassElementList elements) {
         for(Object decorator: element.getDecorators()) {
             if (element.isHook()) {
-                throw Errors.createTypeError("Property kind of element descriptor must not have value 'hook'.", this);
+                throw Errors.createTypeErrorElementDescriptorProperty("kind", "must not have value 'hook'.", this);
+                //TODO: test
             }
             Object elementObject = ElementDescriptorUtil.fromElementDescriptor(element, context);
-            Object decoratedObject = decoratorCallNode.executeCall(JSArguments.createOneArg(null, decorator, elementObject));
-            if (!JSRuntime.isNullOrUndefined(decoratedObject)) {
+            Object decoratedObject = decoratorCallNode.executeCall(JSArguments.createOneArg(Undefined.instance, decorator, elementObject));
+            if (decoratedObject == Undefined.instance) {
                 decoratedObject = elementObject;
             } else {
                 decoratedObject = JSRuntime.toObject(context, decoratedObject);
             }
             //ToElementExtras
             assert JSRuntime.isObject(decoratedObject);
-            elements.push(ElementDescriptorUtil.toElementDescriptor(decoratedObject, this));
+            elements.enqueue(ElementDescriptorUtil.toElementDescriptor(decoratedObject, this), false, this);
             Object extrasObject = JSOrdinaryObject.get((DynamicObject) decoratedObject, EXTRAS);
             toElementDescriptorsNode.toElementDescriptors(extrasObject, elements);
         }

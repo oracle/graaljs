@@ -44,4 +44,9 @@ public class PrivateName {
     public PropertyDescriptor getDescriptor() {
         return this.descriptor;
     }
+
+    @Override
+    public String toString() {
+        return key.getName();
+    }
 }

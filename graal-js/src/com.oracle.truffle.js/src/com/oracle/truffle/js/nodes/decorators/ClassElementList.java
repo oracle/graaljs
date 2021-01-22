@@ -1,5 +1,9 @@
 package com.oracle.truffle.js.nodes.decorators;
 
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.js.runtime.Errors;
+
+import java.util.HashMap;
 import java.util.LinkedList;
 
 public class ClassElementList {
@@ -9,7 +13,13 @@ public class ClassElementList {
     private int ownFieldCount = 0;
     private int ownHookStartCount = 0;
 
-    public void push(ElementDescriptor e) {
+    private HashMap<Object, Integer> placementMap = new HashMap<>();
+
+    public void enqueue(ElementDescriptor e) {
+        enqueue(e, true, null);
+    }
+
+    public void enqueue(ElementDescriptor e, boolean isSilent, Node originatingNode) {
         if(e.isField()) {
             if(e.isStatic()) {
                 staticFieldCount++;
@@ -24,14 +34,22 @@ public class ClassElementList {
         if(e.isHook() && e.isOwn() && e.hasStart()) {
             ownHookStartCount++;
         }
+        //AddElementPlacement
+        if(e.hasKey()) {
+            if(placementMap.containsKey(e.getKey())) {
+                int placement = placementMap.get(e.getKey());
+                if(e.getPlacement() == placement && !isSilent) {
+                    throw Errors.createTypeError(String.format("Duplicate key %s", e.getKey()), originatingNode);
+                    //TODO: test
+                }
+            } else {
+                placementMap.put(e.getKey(), e.getPlacement());
+            }
+        }
         elements.addLast(e);
     }
 
-    public ElementDescriptor peek() {
-        return elements.getFirst();
-    }
-
-    public ElementDescriptor pop() {
+    public ElementDescriptor dequeue() {
         ElementDescriptor e = elements.removeFirst();
         if(e.isField()) {
             if(e.isStatic()) {
@@ -46,6 +64,10 @@ public class ClassElementList {
         }
         if(e.isHook() && e.isOwn() && e.hasStart()) {
             ownHookStartCount--;
+        }
+        //RemoveElementPlacement
+        if(placementMap.containsKey(e.getKey())) {
+            placementMap.remove(e.getKey());
         }
         return e;
     }
