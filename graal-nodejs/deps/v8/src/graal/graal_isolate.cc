@@ -63,6 +63,7 @@
 #include "graal_context-inl.h"
 #include "graal_function-inl.h"
 #include "graal_array-inl.h"
+#include "graal_external-inl.h"
 
 #ifdef __POSIX__
 
@@ -546,6 +547,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     function_pool_ = new GraalHandleContent*[1024];
     array_pool_ = new GraalHandleContent*[1024];
     number_pool_ = new GraalHandleContent*[1024];
+    external_pool_ = new GraalHandleContent*[1024];
 
     // Object.class
     jclass object_class = env->FindClass("java/lang/Object");
@@ -1453,7 +1455,7 @@ v8::ArrayBuffer::Allocator* GraalIsolate::GetArrayBufferAllocator() {
 void GraalIsolate::SchedulePauseOnNextStatement() {
     JNI_CALL_VOID(this, GraalAccessMethod::isolate_schedule_pause_on_next_statement);
 }
-#define DEBUG
+//#define DEBUG
 GraalHandleContent* GraalIsolate::CreateGraalObject(jobject java_object) {
     if (object_pool_size_ == 0) {
         GraalObject* new_object = new GraalObject(this, java_object);
@@ -1682,6 +1684,44 @@ void GraalIsolate::DisposeGraalNumber(GraalHandleContent* graal_object) {
     } else {
 #ifdef DEBUG
         printf("De-allocate DELETE NUM (pool:%d global:%s ref%p)\n", number_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
+#endif        
+        delete graal_object;
+    }
+}
+
+GraalHandleContent* GraalIsolate::CreateGraalExternal(jobject java_object, void* value) {
+    if (external_pool_size_ == 0) {
+        GraalExternal* new_object = new GraalExternal(this, value, java_object);
+        new_object->AllowRecycle();
+
+#ifdef DEBUG
+        printf("Allocate NEW EXT (pool:%d ref%p)\n", external_pool_size_, new_object);
+#endif
+        return new_object;
+    } else {
+        GraalHandleContent* an_object = external_pool_[--external_pool_size_];
+        ((GraalExternal*) an_object)->ReInitialize(value, java_object);
+        HandleScopeReference(an_object);
+        ((GraalExternal*) an_object)->AllowRecycle();
+
+#ifdef DEBUG        
+        printf("Allocate CACHE EXT (pool:%d ref%p)\n", external_pool_size_, an_object);
+#endif
+        return an_object;
+    }
+}
+
+void GraalIsolate::DisposeGraalExternal(GraalHandleContent* graal_object) {
+    if (external_pool_size_ < 1024) {    
+#ifdef DEBUG
+        printf("De-allocate RECYCLE EXT (pool:%d global:%s ref%p)\n", external_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
+#endif
+
+        graal_object->FreeJavaRefs();
+        external_pool_[external_pool_size_++] = graal_object;
+    } else {
+#ifdef DEBUG
+        printf("De-allocate DELETE EXT (pool:%d global:%s ref%p)\n", external_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
 #endif        
         delete graal_object;
     }

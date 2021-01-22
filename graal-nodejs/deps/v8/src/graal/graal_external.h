@@ -46,7 +46,9 @@
 
 class GraalExternal : public GraalValue {
 public:
-    inline GraalExternal(GraalIsolate* isolate, void* value, jobject java_external);
+    static GraalExternal* Allocate(GraalIsolate* isolate, void* value, jobject java_number);
+    static GraalExternal* Allocate(GraalIsolate* isolate, void* value, jobject java_number, void* placement);
+    void ReInitialize(void* value, jobject java_object);
     static v8::Local<v8::External> New(v8::Isolate* isolate, void* value);
     bool IsExternal() const;
     bool IsObject() const;
@@ -55,6 +57,9 @@ public:
         return value_;
     }
 protected:
+    friend class GraalIsolate;
+    void DisposeFromPool() override;
+    inline GraalExternal(GraalIsolate* isolate, void* value, jobject java_external);
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 private:
     void* value_;

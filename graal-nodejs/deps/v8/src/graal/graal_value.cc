@@ -623,9 +623,9 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
         case EXTERNAL_OBJECT:
             JNI_CALL(jlong, value_external, isolate, GraalAccessMethod::value_external, Long, java_object);
             if (placement) {
-                result = new(placement) GraalExternal(isolate, (void*) value_external, java_object);
+                result = GraalExternal::Allocate(isolate, (void*) value_external, java_object, placement);
             } else {
-                result = new GraalExternal(isolate, (void*) value_external, java_object);
+                result = GraalExternal::Allocate(isolate, (void*) value_external, java_object);
             }
             break;
         case FUNCTION_OBJECT:

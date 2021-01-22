@@ -45,8 +45,25 @@
 
 #include "graal_external-inl.h"
 
+GraalExternal* GraalExternal::Allocate(GraalIsolate* isolate, void* value, jobject java_object) {
+    return (GraalExternal*) isolate->CreateGraalExternal(java_object, value);
+}
+
+GraalExternal* GraalExternal::Allocate(GraalIsolate* isolate, void* value, jobject java_object, void* placement) {
+    return new (placement) GraalExternal(isolate, value, java_object);
+}
+
+void GraalExternal::ReInitialize(void* value, jobject java_object) {
+    GraalHandleContent::SetJavaObject(java_object);
+    value_ = value;
+}
+
+void GraalExternal::DisposeFromPool() {
+    Isolate()->DisposeGraalExternal(this);
+}
+
 GraalHandleContent* GraalExternal::CopyImpl(jobject java_object_copy) {
-    return new GraalExternal(Isolate(), value_, java_object_copy);
+    return GraalExternal::Allocate(Isolate(), value_, java_object_copy);
 }
 
 bool GraalExternal::IsExternal() const {
