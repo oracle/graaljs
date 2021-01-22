@@ -449,7 +449,7 @@ v8::Local<v8::Integer> GraalValue::ToInteger(v8::Isolate* isolate) const {
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     JNI_CALL(jobject, java_number, graal_isolate, GraalAccessMethod::value_to_integer, Object, GetJavaObject());
     JNI_CALL(double, value_double, isolate, GraalAccessMethod::value_double, Double, java_number);
-    GraalNumber* graal_number = new GraalNumber(graal_isolate, value_double, java_number);
+    GraalNumber* graal_number = GraalNumber::Allocate(graal_isolate, value_double, java_number);
     return reinterpret_cast<v8::Integer*> (graal_number);
 }
 
@@ -460,7 +460,7 @@ v8::Local<v8::Int32> GraalValue::ToInt32(v8::Isolate* isolate) const {
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     JNI_CALL(jobject, java_number, graal_isolate, GraalAccessMethod::value_to_int32, Object, GetJavaObject());
     JNI_CALL(double, value_double, isolate, GraalAccessMethod::value_double, Double, java_number);
-    GraalNumber* graal_number = new GraalNumber(graal_isolate, value_double, java_number);
+    GraalNumber* graal_number = GraalNumber::Allocate(graal_isolate, value_double, java_number);
     return reinterpret_cast<v8::Int32*> (graal_number);
 }
 
@@ -471,7 +471,7 @@ v8::Local<v8::Uint32> GraalValue::ToUint32(v8::Isolate* isolate) const {
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     JNI_CALL(jobject, java_number, graal_isolate, GraalAccessMethod::value_to_uint32, Object, GetJavaObject());
     JNI_CALL(double, value_double, isolate, GraalAccessMethod::value_double, Double, java_number);
-    GraalNumber* graal_number = new GraalNumber(graal_isolate, value_double, java_number);
+    GraalNumber* graal_number = GraalNumber::Allocate(graal_isolate, value_double, java_number);
     return reinterpret_cast<v8::Uint32*> (graal_number);
 }
 
@@ -486,7 +486,7 @@ v8::Local<v8::Number> GraalValue::ToNumber(v8::Isolate* isolate) const {
         graal_number = nullptr;
     } else {
         JNI_CALL(double, value_double, isolate, GraalAccessMethod::value_double, Double, java_number);
-        graal_number = new GraalNumber(graal_isolate, value_double, java_number);
+        graal_number = GraalNumber::Allocate(graal_isolate, value_double, java_number);
     }
     return reinterpret_cast<v8::Number*> (graal_number);
 }
@@ -615,9 +615,9 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
                 value_double = result;
             }
             if (placement) {
-                result = new(placement) GraalNumber(isolate, value_double, java_object);
+                result = GraalNumber::Allocate(isolate, value_double, java_object, placement);
             } else {
-                result = new GraalNumber(isolate, value_double, java_object);
+                result = GraalNumber::Allocate(isolate, value_double, java_object);
             }
             break;
         case EXTERNAL_OBJECT:

@@ -46,7 +46,9 @@
 
 class GraalNumber : public GraalPrimitive {
 public:
-    inline GraalNumber(GraalIsolate* isolate, double value, jobject java_number);
+    static GraalNumber* Allocate(GraalIsolate* isolate, double value, jobject java_number);
+    static GraalNumber* Allocate(GraalIsolate* isolate, double value, jobject java_number, void* placement);
+    void ReInitialize(jobject java_object, double value);
     bool IsInt32() const;
     bool IsUint32() const;
     bool IsNumber() const;
@@ -57,8 +59,10 @@ public:
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 private:
+    void DisposeFromPool() override;
     double value_;
     static GraalNumber* NewNotCached(GraalIsolate* isolate, int value);
+    inline GraalNumber(GraalIsolate* isolate, double value, jobject java_number);
     friend class GraalIsolate;
 };
 

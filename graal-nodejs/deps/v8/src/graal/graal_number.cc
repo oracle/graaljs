@@ -45,8 +45,25 @@
 
 #include "graal_number-inl.h"
 
+GraalNumber* GraalNumber::Allocate(GraalIsolate* isolate, double value, jobject java_object) {
+    return (GraalNumber*) isolate->CreateGraalNumber(java_object, value);
+}
+
+GraalNumber* GraalNumber::Allocate(GraalIsolate* isolate, double value, jobject java_object, void* placement) {
+    return new (placement) GraalNumber(isolate, value, java_object);
+}
+
+void GraalNumber::ReInitialize(jobject java_object, double value) {
+    GraalHandleContent::SetJavaObject(java_object);
+    value_ = value;
+}
+
+void GraalNumber::DisposeFromPool() {
+    Isolate()->DisposeGraalNumber(this);
+}
+
 GraalHandleContent* GraalNumber::CopyImpl(jobject java_object_copy) {
-    return new GraalNumber(Isolate(), value_, java_object_copy);
+    return GraalNumber::Allocate(Isolate(), value_, java_object_copy);
 }
 
 bool GraalNumber::IsInt32() const {
@@ -71,7 +88,7 @@ v8::Local<v8::Number> GraalNumber::New(v8::Isolate* isolate, double value) {
         }
     }
     JNI_CALL(jobject, java_number, graal_isolate, GraalAccessMethod::number_new, Object, (jdouble) value);
-    GraalNumber* graal_number = new GraalNumber(graal_isolate, value, java_number);
+    GraalNumber* graal_number = GraalNumber::Allocate(graal_isolate, value, java_number);
     return reinterpret_cast<v8::Number*> (graal_number);
 }
 
@@ -93,7 +110,7 @@ v8::Local<v8::Integer> GraalNumber::NewFromUnsigned(v8::Isolate* isolate, uint32
         }
     }
     JNI_CALL(jobject, java_number, graal_isolate, GraalAccessMethod::integer_new, Object, (jlong) value);
-    GraalNumber* graal_number = new GraalNumber(graal_isolate, value, java_number);
+    GraalNumber* graal_number = GraalNumber::Allocate(graal_isolate, value, java_number);
     return reinterpret_cast<v8::Integer*> (graal_number);
 }
 
@@ -104,5 +121,5 @@ double GraalNumber::Value() const {
 GraalNumber* GraalNumber::NewNotCached(GraalIsolate* isolate, int value) {
     JNI_CALL(jobject, java_number, isolate, GraalAccessMethod::integer_new, Object, (jlong) value);
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
-    return new GraalNumber(graal_isolate, value, java_number);
+    return GraalNumber::Allocate(graal_isolate, value, java_number);
 }

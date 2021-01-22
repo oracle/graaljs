@@ -545,6 +545,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     context_pool_ = new GraalHandleContent*[1024];
     function_pool_ = new GraalHandleContent*[1024];
     array_pool_ = new GraalHandleContent*[1024];
+    number_pool_ = new GraalHandleContent*[1024];
 
     // Object.class
     jclass object_class = env->FindClass("java/lang/Object");
@@ -907,21 +908,21 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
 
     // int32 placeholder
     JNI_CALL(jobject, java_int32_placeholder, this, GraalAccessMethod::isolate_get_int_placeholder, Object);
-    GraalNumber* int32_placeholder_local = new GraalNumber(this, 0, java_int32_placeholder);
+    GraalNumber* int32_placeholder_local = GraalNumber::Allocate(this, 0, java_int32_placeholder);
     GraalNumber* int32_placeholder_global = reinterpret_cast<GraalNumber*> (int32_placeholder_local->Copy(true));
     int32_placeholder_ = int32_placeholder_global->GetJavaObject();
     slot[root_offset + v8::internal::Internals::kInt32ReturnValuePlaceholderIndex] = int32_placeholder_global;
 
     // uint32 placeholder
     JNI_CALL(jobject, java_uint32_placeholder, this, GraalAccessMethod::isolate_get_safe_int_placeholder, Object);
-    GraalNumber* uint32_placeholder_local = new GraalNumber(this, 0, java_uint32_placeholder);
+    GraalNumber* uint32_placeholder_local = GraalNumber::Allocate(this, 0, java_uint32_placeholder);
     GraalNumber* uint32_placeholder_global = reinterpret_cast<GraalNumber*> (uint32_placeholder_local->Copy(true));
     uint32_placeholder_ = uint32_placeholder_global->GetJavaObject();
     slot[root_offset + v8::internal::Internals::kUint32ReturnValuePlaceholderIndex] = uint32_placeholder_global;
 
     // double placeholder
     JNI_CALL(jobject, java_double_placeholder, this, GraalAccessMethod::isolate_get_double_placeholder, Object);
-    GraalNumber* double_placeholder_local = new GraalNumber(this, 0, java_double_placeholder);
+    GraalNumber* double_placeholder_local = GraalNumber::Allocate(this, 0, java_double_placeholder);
     GraalNumber* double_placeholder_global = reinterpret_cast<GraalNumber*> (double_placeholder_local->Copy(true));
     double_placeholder_ = double_placeholder_global->GetJavaObject();
     slot[root_offset + v8::internal::Internals::kDoubleReturnValuePlaceholderIndex] = double_placeholder_global;
@@ -1642,6 +1643,45 @@ void GraalIsolate::DisposeGraalArray(GraalHandleContent* graal_object) {
     } else {
 #ifdef DEBUG
         printf("De-allocate DELETE ARR (pool:%d global:%s ref%p)\n", array_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
+#endif        
+        delete graal_object;
+    }
+}
+
+
+GraalHandleContent* GraalIsolate::CreateGraalNumber(jobject java_object, double value) {
+    if (number_pool_size_ == 0) {
+        GraalNumber* new_object = new GraalNumber(this, value, java_object);
+        new_object->AllowRecycle();
+
+#ifdef DEBUG
+        printf("Allocate NEW NUM (pool:%d ref%p)\n", number_pool_size_, new_object);
+#endif
+        return new_object;
+    } else {
+        GraalHandleContent* an_object = number_pool_[--number_pool_size_];
+        ((GraalNumber*) an_object)->ReInitialize(java_object, value);
+        HandleScopeReference(an_object);
+        ((GraalNumber*) an_object)->AllowRecycle();
+
+#ifdef DEBUG        
+        printf("Allocate CACHE NUM (pool:%d ref%p)\n", number_pool_size_, an_object);
+#endif
+        return an_object;
+    }
+}
+
+void GraalIsolate::DisposeGraalNumber(GraalHandleContent* graal_object) {
+    if (number_pool_size_ < 1024) {        
+#ifdef DEBUG
+        printf("De-allocate RECYCLE NUM (pool:%d global:%s ref%p)\n", number_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
+#endif
+
+        graal_object->FreeJavaRefs();
+        number_pool_[number_pool_size_++] = graal_object;
+    } else {
+#ifdef DEBUG
+        printf("De-allocate DELETE NUM (pool:%d global:%s ref%p)\n", number_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
 #endif        
         delete graal_object;
     }

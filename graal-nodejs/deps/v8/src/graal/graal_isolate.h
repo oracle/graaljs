@@ -616,6 +616,8 @@ public:
     void DisposeGraalFunction(GraalHandleContent* graal_object);
     GraalHandleContent* CreateGraalArray(jobject graal_context);
     void DisposeGraalArray(GraalHandleContent* graal_object);
+    GraalHandleContent* CreateGraalNumber(jobject graal_context, double value);
+    void DisposeGraalNumber(GraalHandleContent* graal_object);    
 
     static void SetFlags(int argc, char** argv) {
         char** old_argv = GraalIsolate::argv;
@@ -745,9 +747,11 @@ private:
     int context_pool_size_ = 0;
     GraalHandleContent** context_pool_;
     int function_pool_size_ = 0;
-    GraalHandleContent** function_pool_;        
+    GraalHandleContent** function_pool_;
     int array_pool_size_ = 0;
-    GraalHandleContent** array_pool_;            
+    GraalHandleContent** array_pool_;
+    int number_pool_size_ = 0;
+    GraalHandleContent** number_pool_;
 };
 
 // This is a poor-man's check that attempts to avoid stack-overflow
