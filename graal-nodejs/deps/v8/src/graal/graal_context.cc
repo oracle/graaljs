@@ -48,8 +48,21 @@
 // keep in sync with NODE_CONTEXT_EMBEDDER_DATA_INDEX
 const int kNodeContextEmbedderDataIndex = 32;
 
+GraalContext* GraalContext::Allocate(GraalIsolate* isolate, jobject java_context, void* cached_context_embedder_data) {
+    return (GraalContext*) isolate->CreateGraalContext(java_context, cached_context_embedder_data);
+}
+
+void GraalContext::ReInitialize(jobject java_context, void* cached_context_embedder_data) {
+    cached_context_embedder_data_ = cached_context_embedder_data;
+    GraalHandleContent::SetJavaObject(java_context);
+}
+
+void GraalContext::DisposeFromPool() {
+    Isolate()->DisposeGraalContext(this);
+}
+
 GraalHandleContent* GraalContext::CopyImpl(jobject java_object_copy) {
-    return new GraalContext(Isolate(), java_object_copy, cached_context_embedder_data_);
+    return GraalContext::Allocate(Isolate(), java_object_copy, cached_context_embedder_data_);
 }
 
 v8::Local<v8::Object> GraalContext::Global() {

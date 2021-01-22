@@ -49,7 +49,8 @@
 
 class GraalContext : public GraalHandleContent {
 public:
-    inline GraalContext(GraalIsolate* isolate, jobject java_context, void* cached_context_embedder_data = nullptr);
+    static GraalContext* Allocate(GraalIsolate* isolate, jobject java_context, void* cached_context_embedder_data = nullptr);
+    void ReInitialize(jobject java_context, void* cached_context_embedder_data);
     v8::Local<v8::Object> Global();
     void SetAlignedPointerInEmbedderData(int index, void* value);
     void* SlowGetAlignedPointerFromEmbedderData(int index);
@@ -73,7 +74,9 @@ public:
     }
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
-
+    void DisposeFromPool() override;
+    friend class GraalIsolate;
+    inline GraalContext(GraalIsolate* isolate, jobject java_context, void* cached_context_embedder_data = nullptr);
 private:
     void* cached_context_embedder_data_;
 };

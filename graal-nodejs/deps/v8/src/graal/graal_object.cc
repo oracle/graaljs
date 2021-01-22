@@ -296,7 +296,7 @@ v8::MaybeLocal<v8::Array> GraalObject::GetPropertyNames(v8::Local<v8::Context> c
 
 v8::Local<v8::Context> GraalObject::CreationContext() {
     JNI_CALL(jobject, java_context, Isolate(), GraalAccessMethod::object_creation_context, Object, GetJavaObject());
-    GraalContext* graal_context = new GraalContext(Isolate(), java_context);
+    GraalContext* graal_context = GraalContext::Allocate(Isolate(), java_context);
     return reinterpret_cast<v8::Context*> (graal_context);
 }
 

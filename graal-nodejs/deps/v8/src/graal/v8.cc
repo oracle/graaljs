@@ -216,7 +216,7 @@ namespace v8 {
             exit(1);
         }
         graal_isolate->FindDynamicObjectFields(java_context);
-        GraalContext* ctx = new GraalContext(graal_isolate, java_context);
+        GraalContext* ctx = GraalContext::Allocate(graal_isolate, java_context);
         return reinterpret_cast<Context*> (ctx);
     }
 

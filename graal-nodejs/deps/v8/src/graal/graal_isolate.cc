@@ -60,6 +60,7 @@
 #include "graal_number-inl.h"
 #include "graal_object-inl.h"
 #include "graal_string-inl.h"
+#include "graal_context-inl.h"
 
 #ifdef __POSIX__
 
@@ -539,6 +540,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
 
     object_pool_ = new GraalHandleContent*[1024];
     string_pool_ = new GraalHandleContent*[1024];
+    context_pool_ = new GraalHandleContent*[1024];
 
     // Object.class
     jclass object_class = env->FindClass("java/lang/Object");
@@ -1446,7 +1448,7 @@ v8::ArrayBuffer::Allocator* GraalIsolate::GetArrayBufferAllocator() {
 void GraalIsolate::SchedulePauseOnNextStatement() {
     JNI_CALL_VOID(this, GraalAccessMethod::isolate_schedule_pause_on_next_statement);
 }
-//#define DEBUG
+// #define DEBUG
 GraalHandleContent* GraalIsolate::CreateGraalObject(jobject java_object) {
     if (object_pool_size_ == 0) {
         GraalObject* new_object = new GraalObject(this, java_object);
@@ -1519,6 +1521,45 @@ void GraalIsolate::DisposeGraalString(GraalHandleContent* graal_object) {
     } else {
 #ifdef DEBUG
         printf("De-allocate DELETE STR (pool:%d global:%s ref%p)\n", string_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
+#endif        
+        delete graal_object;
+    }
+}
+
+
+GraalHandleContent* GraalIsolate::CreateGraalContext(jobject java_object, void* cached_context_embedder_data) {
+    if (context_pool_size_ == 0) {
+        GraalContext* new_object = new GraalContext(this, java_object, cached_context_embedder_data);
+        new_object->AllowRecycle();
+
+#ifdef DEBUG
+        printf("Allocate NEW CX (pool:%d ref%p)\n", context_pool_size_, new_object);
+#endif
+        return new_object;
+    } else {
+        GraalHandleContent* an_object = context_pool_[--context_pool_size_];
+        ((GraalContext*) an_object)->ReInitialize(java_object, cached_context_embedder_data);
+        HandleScopeReference(an_object);
+        ((GraalContext*) an_object)->AllowRecycle();
+
+#ifdef DEBUG        
+        printf("Allocate CACHE CX (pool:%d ref%p)\n", context_pool_size_, an_object);
+#endif
+        return an_object;
+    }
+}
+
+void GraalIsolate::DisposeGraalContext(GraalHandleContent* graal_object) {
+    if (context_pool_size_ < 1024) {        
+#ifdef DEBUG
+        printf("De-allocate RECYCLE CX (pool:%d global:%s ref%p)\n", context_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
+#endif
+
+        graal_object->FreeJavaRefs();
+        context_pool_[context_pool_size_++] = graal_object;
+    } else {
+#ifdef DEBUG
+        printf("De-allocate DELETE CX (pool:%d global:%s ref%p)\n", context_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
 #endif        
         delete graal_object;
     }
