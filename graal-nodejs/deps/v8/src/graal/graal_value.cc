@@ -637,9 +637,9 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
             break;
         case ARRAY_OBJECT:
             if (placement) {
-                result = new(placement) GraalArray(isolate, java_object);
+                result = GraalArray::Allocate(isolate, java_object, placement);
             } else {
-                result = new GraalArray(isolate, java_object);
+                result = GraalArray::Allocate(isolate, java_object);
             }
             break;
         case DATE_OBJECT:

@@ -48,12 +48,17 @@ class GraalIsolate;
 
 class GraalArray : public GraalObject {
 public:
-    inline GraalArray(GraalIsolate* isolate, jobject java_array);
+    static GraalArray* Allocate(GraalIsolate* isolate, jobject java_function);
+    static GraalArray* Allocate(GraalIsolate* isolate, jobject java_function, void* placement);
+    void ReInitialize(jobject java_object);
     bool IsArray() const;
     static v8::Local<v8::Array> New(v8::Isolate* isolate, int length);
     static v8::Local<v8::Array> New(v8::Isolate* isolate, v8::Local<v8::Value>* elements, size_t length);
     uint32_t Length() const;
 protected:
+    void DisposeFromPool() override;
+    friend class GraalIsolate;
+    inline GraalArray(GraalIsolate* isolate, jobject java_array);
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
 

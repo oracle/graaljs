@@ -62,6 +62,7 @@
 #include "graal_string-inl.h"
 #include "graal_context-inl.h"
 #include "graal_function-inl.h"
+#include "graal_array-inl.h"
 
 #ifdef __POSIX__
 
@@ -543,6 +544,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     string_pool_ = new GraalHandleContent*[1024];
     context_pool_ = new GraalHandleContent*[1024];
     function_pool_ = new GraalHandleContent*[1024];
+    array_pool_ = new GraalHandleContent*[1024];
 
     // Object.class
     jclass object_class = env->FindClass("java/lang/Object");
@@ -1601,6 +1603,45 @@ void GraalIsolate::DisposeGraalFunction(GraalHandleContent* graal_object) {
     } else {
 #ifdef DEBUG
         printf("De-allocate DELETE FUN (pool:%d global:%s ref%p)\n", function_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
+#endif        
+        delete graal_object;
+    }
+}
+
+
+GraalHandleContent* GraalIsolate::CreateGraalArray(jobject java_object) {
+    if (array_pool_size_ == 0) {
+        GraalArray* new_object = new GraalArray(this, java_object);
+        new_object->AllowRecycle();
+
+#ifdef DEBUG
+        printf("Allocate NEW ARR (pool:%d ref%p)\n", array_pool_size_, new_object);
+#endif
+        return new_object;
+    } else {
+        GraalHandleContent* an_object = array_pool_[--array_pool_size_];
+        ((GraalArray*) an_object)->ReInitialize(java_object);
+        HandleScopeReference(an_object);
+        ((GraalArray*) an_object)->AllowRecycle();
+
+#ifdef DEBUG        
+        printf("Allocate CACHE ARR (pool:%d ref%p)\n", array_pool_size_, an_object);
+#endif
+        return an_object;
+    }
+}
+
+void GraalIsolate::DisposeGraalArray(GraalHandleContent* graal_object) {
+    if (array_pool_size_ < 1024) {        
+#ifdef DEBUG
+        printf("De-allocate RECYCLE ARR (pool:%d global:%s ref%p)\n", array_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
+#endif
+
+        graal_object->FreeJavaRefs();
+        array_pool_[array_pool_size_++] = graal_object;
+    } else {
+#ifdef DEBUG
+        printf("De-allocate DELETE ARR (pool:%d global:%s ref%p)\n", array_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
 #endif        
         delete graal_object;
     }

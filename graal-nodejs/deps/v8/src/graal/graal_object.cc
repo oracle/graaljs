@@ -274,7 +274,7 @@ v8::Local<v8::String> GraalObject::GetConstructorName() {
 
 v8::Local<v8::Array> GraalObject::GetOwnPropertyNames() {
     JNI_CALL(jobject, java_names, Isolate(), GraalAccessMethod::object_get_own_property_names, Object, GetJavaObject());
-    GraalArray* graal_names = new GraalArray(Isolate(), java_names);
+    GraalArray* graal_names = GraalArray::Allocate(Isolate(), java_names);
     return reinterpret_cast<v8::Array*> (graal_names);
 }
 
@@ -289,7 +289,7 @@ v8::MaybeLocal<v8::Array> GraalObject::GetPropertyNames(v8::Local<v8::Context> c
     jboolean keepNumbers = key_conversion == v8::KeyConversionMode::kKeepNumbers;
     JNI_CALL(jobject, java_names, Isolate(), GraalAccessMethod::object_get_property_names, Object, GetJavaObject(),
             ownOnly, enumerableOnly, configurableOnly, writableOnly, skipIndices, skipSymbols, skipStrings, keepNumbers);
-    GraalArray* graal_names = new GraalArray(Isolate(), java_names);
+    GraalArray* graal_names = GraalArray::Allocate(Isolate(), java_names);
     v8::Local<v8::Array> v8_names = reinterpret_cast<v8::Array*> (graal_names);
     return v8_names;
 }
