@@ -79,7 +79,7 @@ local common = import '../common.jsonnet';
     graalJs + common.jdk8  + common.weekly + common.linux          + gateCoverage              + {environment+: {TAGS: 'build,default,tck'}}  + {name: 'js-coverage-jdk8-linux-amd64'},
 
     // jdk 8 - windows
-    graalJs + common.jdk8  + common.gate   + common.windows_vs2010 + common.gateTags           + {environment+: {TAGS: 'Test262-default'}}    + {name: 'js-gate-test262-default-jdk8-windows-amd64'},
+    graalJs + common.jdk8  + common.gate   + common.windows_jdk8   + common.gateTags           + {environment+: {TAGS: 'Test262-default'}}    + {name: 'js-gate-test262-default-jdk8-windows-amd64'},
 
     // jdk 8 - sparc
     graalJs + common.jdk8  + common.gate   + common.sparc          + common.gateTags           + {environment+: {TAGS: 'default'}}            + {name: 'js-gate-default-jdk8-solaris-sparcv9'},

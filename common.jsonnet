@@ -113,13 +113,6 @@ local common_json = (import "common.json");
     ],
   },
 
-  # Note: VS2017 is only used for Node.js
-  windows_vs2010: self.windows_jdk8 + {
-    packages+: {
-      msvc : '==10.0',
-    },
-  },
-
   local gateCmd = ['mx', '--strict-compliance', 'gate', '-B=--force-deprecation-as-warning', '--strict-mode', '--tags', '${TAGS}'],
 
   eclipse : {
