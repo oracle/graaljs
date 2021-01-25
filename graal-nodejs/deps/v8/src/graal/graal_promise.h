@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,8 @@
 
 class GraalPromise : public GraalObject {
 public:
-    inline GraalPromise(GraalIsolate* isolate, jobject java_promise);
+    inline static GraalPromise* Allocate(GraalIsolate* isolate, jobject java_promise);
+    inline static GraalPromise* Allocate(GraalIsolate* isolate, jobject java_promise, void* placement);
     bool IsPromise() const override;
     v8::Local<v8::Value> Result();
     v8::Promise::PromiseState State();
@@ -55,7 +56,11 @@ public:
     static v8::Maybe<bool> ResolverReject(v8::Promise::Resolver* resolver, v8::Local<v8::Value> value);
     static v8::Local<v8::Promise> ResolverGetPromise(v8::Promise::Resolver* resolver);
 protected:
+    inline GraalPromise(GraalIsolate* isolate, jobject java_promise);
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
+    inline void Recycle() override {
+        delete this;
+    }
 };
 
 #endif /* GRAAL_PROMISE_H_ */

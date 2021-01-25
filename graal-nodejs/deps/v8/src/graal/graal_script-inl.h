@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,10 @@
 #include "graal_handle_content-inl.h"
 
 GraalScript::GraalScript(GraalIsolate* isolate, jobject java_script) : GraalHandleContent(isolate, java_script) {
+}
+
+inline GraalScript* GraalScript::Allocate(GraalIsolate* isolate, jobject java_script) {
+    return new GraalScript(isolate, java_script);
 }
 
 #endif /* GRAAL_SCRIPT_INL_H_ */

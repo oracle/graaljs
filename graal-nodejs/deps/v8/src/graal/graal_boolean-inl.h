@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,18 @@ GraalBoolean(isolate, value, isolate->GetJNIEnv()->NewLocalRef(value ? isolate->
 
 inline GraalBoolean::GraalBoolean(GraalIsolate* isolate, bool value, jobject java_value) :
 GraalPrimitive(isolate, java_value), value_(value) {
+}
+
+inline GraalBoolean* GraalBoolean::Allocate(GraalIsolate* isolate, bool value) {
+    return new GraalBoolean(isolate, value);
+}
+
+inline GraalBoolean* GraalBoolean::Allocate(GraalIsolate* isolate, bool value, jobject java_value) {
+    return new GraalBoolean(isolate, value, java_value);
+}
+
+inline GraalBoolean* GraalBoolean::Allocate(GraalIsolate* isolate, bool value, jobject java_value, void* placement) {
+    return new(placement) GraalBoolean(isolate, value, java_value);
 }
 
 #endif /* GRAAL_BOOLEAN_INL_H_ */

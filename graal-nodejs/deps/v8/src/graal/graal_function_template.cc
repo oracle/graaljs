@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -91,13 +91,13 @@ v8::Local<v8::FunctionTemplate> GraalFunctionTemplate::New(
 
 v8::Local<v8::ObjectTemplate> GraalFunctionTemplate::InstanceTemplate() {
     JNI_CALL(jobject, java_instance_template, Isolate(), GraalAccessMethod::function_template_instance_template, Object, GetJavaObject());
-    GraalObjectTemplate* graal_object_template = new GraalObjectTemplate(Isolate(), java_instance_template);
+    GraalObjectTemplate* graal_object_template = GraalObjectTemplate::Allocate(Isolate(), java_instance_template);
     return reinterpret_cast<v8::ObjectTemplate*> (graal_object_template);
 }
 
 v8::Local<v8::ObjectTemplate> GraalFunctionTemplate::PrototypeTemplate() {
     JNI_CALL(jobject, java_prototype_template, Isolate(), GraalAccessMethod::function_template_prototype_template, Object, GetJavaObject());
-    GraalObjectTemplate* graal_object_template = new GraalObjectTemplate(Isolate(), java_prototype_template);
+    GraalObjectTemplate* graal_object_template = GraalObjectTemplate::Allocate(Isolate(), java_prototype_template);
     return reinterpret_cast<v8::ObjectTemplate*> (graal_object_template);
 }
 

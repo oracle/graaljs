@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -162,6 +162,6 @@ void GraalModule::SetSyntheticModuleExport(v8::Local<v8::String> export_name, v8
 v8::Local<v8::UnboundModuleScript> GraalModule::GetUnboundModuleScript() {
     GraalIsolate* graal_isolate = Isolate();
     JNI_CALL(jobject, java_script, graal_isolate, GraalAccessMethod::module_get_unbound_module_script, Object, GetJavaObject());
-    GraalUnboundScript* graal_script = new GraalUnboundScript(graal_isolate, java_script);
+    GraalUnboundScript* graal_script = GraalUnboundScript::Allocate(graal_isolate, java_script);
     return reinterpret_cast<v8::UnboundModuleScript*> (graal_script);
 }

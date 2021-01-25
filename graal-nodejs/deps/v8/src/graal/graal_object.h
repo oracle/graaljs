@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,9 +46,9 @@
 
 class GraalObject : public GraalValue {
 public:
-    static GraalObject* Allocate(GraalIsolate* isolate, jobject java_object);
-    static GraalObject* Allocate(GraalIsolate* isolate, jobject java_object, void* placement);
-    void ReInitialize(jobject java_object);
+    inline static GraalObject* Allocate(GraalIsolate* isolate, jobject java_object);
+    inline static GraalObject* Allocate(GraalIsolate* isolate, jobject java_object, void* placement);
+    inline void ReInitialize(jobject java_object);
     bool IsObject() const;
     static v8::Local<v8::Object> New(v8::Isolate* isolate);
     bool Set(v8::Local<v8::Value> key, v8::Local<v8::Value> value);
@@ -91,8 +91,8 @@ public:
     v8::MaybeLocal<v8::Array> PreviewEntries(bool* is_key_value);
     v8::Maybe<bool> SetIntegrityLevel(v8::Local<v8::Context> context, v8::IntegrityLevel level);
 protected:
-    friend class GraalIsolate;
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
+    inline void Recycle() override;
     inline GraalObject(GraalIsolate* isolate, jobject java_object);    
 private:
     int internal_field_count_cache_;

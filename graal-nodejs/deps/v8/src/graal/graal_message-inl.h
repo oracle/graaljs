@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,10 @@
 #include "graal_handle_content-inl.h"
 
 inline GraalMessage::GraalMessage(GraalIsolate* isolate, jobject exception) : GraalHandleContent(isolate, exception) {
+}
+
+inline GraalMessage* GraalMessage::Allocate(GraalIsolate* isolate, jobject exception) {
+    return new GraalMessage(isolate, exception);
 }
 
 #endif /* GRAAL_MESSAGE_INL_H_ */

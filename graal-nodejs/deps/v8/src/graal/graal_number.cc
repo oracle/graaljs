@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,23 +44,6 @@
 #include <cmath>
 
 #include "graal_number-inl.h"
-
-GraalNumber* GraalNumber::Allocate(GraalIsolate* isolate, double value, jobject java_object) {
-    return (GraalNumber*) isolate->CreateGraalNumber(java_object, value);
-}
-
-GraalNumber* GraalNumber::Allocate(GraalIsolate* isolate, double value, jobject java_object, void* placement) {
-    return new (placement) GraalNumber(isolate, value, java_object);
-}
-
-void GraalNumber::ReInitialize(jobject java_object, double value) {
-    GraalHandleContent::SetJavaObject(java_object);
-    value_ = value;
-}
-
-void GraalNumber::DisposeFromPool() {
-    Isolate()->DisposeGraalNumber(this);
-}
 
 GraalHandleContent* GraalNumber::CopyImpl(jobject java_object_copy) {
     return GraalNumber::Allocate(Isolate(), value_, java_object_copy);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,8 +48,10 @@ class GraalIsolate;
 
 class GraalArrayBufferView : public GraalObject {
 public:
-    inline GraalArrayBufferView(GraalIsolate* isolate, jobject java_array_buffer_view, int type);
-    inline GraalArrayBufferView(GraalIsolate* isolate, jobject java_array_buffer_view, int type, int byte_length, int byte_offset);
+    inline static GraalArrayBufferView* Allocate(GraalIsolate* isolate, jobject java_array_buffer_view, int type);
+    inline static GraalArrayBufferView* Allocate(GraalIsolate* isolate, jobject java_array_buffer_view, int type, void* placement);
+    inline static GraalArrayBufferView* Allocate(GraalIsolate* isolate, jobject java_array_buffer_view, int type, int byte_length, int byte_offset);
+    inline static GraalArrayBufferView* Allocate(GraalIsolate* isolate, jobject java_array_buffer_view, int type, int byte_length, int byte_offset, void* placement);
     v8::Local<v8::ArrayBuffer> Buffer();
     bool IsArrayBufferView() const override;
     bool IsUint8Array() const override;
@@ -80,11 +82,16 @@ public:
     static const int kBigInt64Array = 11;
     static const int kBigUint64Array = 12;
 protected:
+    inline GraalArrayBufferView(GraalIsolate* isolate, jobject java_array_buffer_view, int type);
+    inline GraalArrayBufferView(GraalIsolate* isolate, jobject java_array_buffer_view, int type, int byte_length, int byte_offset);
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 private:
     int type_;
     int byte_length_;
     int byte_offset_;
+    inline void Recycle() override {
+        delete this;
+    }
 };
 
 #endif /* GRAAL_ARRAY_BUFFER_VIEW_H_ */

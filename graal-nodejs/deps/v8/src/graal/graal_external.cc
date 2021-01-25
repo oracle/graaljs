@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,23 +44,6 @@
 #include "include/v8.h"
 
 #include "graal_external-inl.h"
-
-GraalExternal* GraalExternal::Allocate(GraalIsolate* isolate, void* value, jobject java_object) {
-    return (GraalExternal*) isolate->CreateGraalExternal(java_object, value);
-}
-
-GraalExternal* GraalExternal::Allocate(GraalIsolate* isolate, void* value, jobject java_object, void* placement) {
-    return new (placement) GraalExternal(isolate, value, java_object);
-}
-
-void GraalExternal::ReInitialize(void* value, jobject java_object) {
-    GraalHandleContent::SetJavaObject(java_object);
-    value_ = value;
-}
-
-void GraalExternal::DisposeFromPool() {
-    Isolate()->DisposeGraalExternal(this);
-}
 
 GraalHandleContent* GraalExternal::CopyImpl(jobject java_object_copy) {
     return GraalExternal::Allocate(Isolate(), value_, java_object_copy);

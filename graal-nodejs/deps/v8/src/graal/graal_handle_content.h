@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,7 +76,7 @@ public:
     static bool SameData(GraalHandleContent* this_content, GraalHandleContent* that_content);
     virtual bool IsString() const;
     jobject ToNewLocalJavaObject();
-    void FreeJavaRefs();
+    void DeleteJavaRef();
 
     inline void ReferenceAdded() {
         ref_count++;
@@ -94,11 +94,7 @@ public:
         }
 #endif
         if (--ref_count == 0) {
-            if (recycle_) {
-                DisposeFromPool();
-            } else {
-                delete this;
-            }
+            Recycle();
         }
     }
 
@@ -118,34 +114,19 @@ public:
         return IsWeak() ? IsWeakCollected() : false;
     }
 
-    inline bool IsRecycle() const {
-        return recycle_;
-    }
-
-    inline void AllowRecycle() {
-        recycle_ = true;
-    }
 protected:
     virtual GraalHandleContent* CopyImpl(jobject java_object_copy) = 0;
-
-    virtual void DisposeFromPool();
-
-    inline void SetJavaObject(jobject java_object) {
-        java_object_ = java_object;
-        ref_type_ = 0;
-        ref_count = 0;
-        recycle_ = false;
-    }
+    virtual void Recycle();
+    inline void ReInitialize(jobject java_object);
 
 private:
     GraalIsolate* isolate_;
     jobject java_object_;
     int ref_type_;
     int ref_count;
-    bool recycle_;
     static const int GLOBAL_FLAG = 1;
     static const int WEAK_FLAG = 2;
-public:
+
     inline bool IsGlobal() const {
         return ((ref_type_ & GLOBAL_FLAG) != 0);
     }

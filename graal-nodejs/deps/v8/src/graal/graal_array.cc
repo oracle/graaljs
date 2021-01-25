@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,22 +43,6 @@
 #include "graal_isolate.h"
 
 #include "graal_array-inl.h"
-
-GraalArray* GraalArray::Allocate(GraalIsolate* isolate, jobject java_object) {
-    return (GraalArray*) isolate->CreateGraalArray(java_object);
-}
-
-GraalArray* GraalArray::Allocate(GraalIsolate* isolate, jobject java_object, void* placement) {
-    return new (placement) GraalArray(isolate, java_object);
-}
-
-void GraalArray::ReInitialize(jobject java_object) {
-    GraalObject::ReInitialize(java_object);
-}
-
-void GraalArray::DisposeFromPool() {
-    Isolate()->DisposeGraalArray(this);
-}
 
 GraalHandleContent* GraalArray::CopyImpl(jobject java_object_copy) {
     return GraalArray::Allocate(Isolate(), java_object_copy);

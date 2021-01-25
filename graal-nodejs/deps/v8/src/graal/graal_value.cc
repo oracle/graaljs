@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -541,15 +541,15 @@ static inline GraalValue* CreateArrayBufferView(GraalIsolate* isolate, jobject j
         int32_t byte_length = isolate->ReadInt32FromSharedBuffer();
         int32_t byte_offset = isolate->ReadInt32FromSharedBuffer();
         if (placement) {
-            array_buffer_view = new(placement) GraalArrayBufferView(isolate, java_object, type, byte_length, byte_offset);
+            array_buffer_view = GraalArrayBufferView::Allocate(isolate, java_object, type, byte_length, byte_offset, placement);
         } else {
-            array_buffer_view = new GraalArrayBufferView(isolate, java_object, type, byte_length, byte_offset);
+            array_buffer_view = GraalArrayBufferView::Allocate(isolate, java_object, type, byte_length, byte_offset);
         }
     } else {
         if (placement) {
-            array_buffer_view = new(placement) GraalArrayBufferView(isolate, java_object, type);
+            array_buffer_view = GraalArrayBufferView::Allocate(isolate, java_object, type, placement);
         } else {
-            array_buffer_view = new GraalArrayBufferView(isolate, java_object, type);
+            array_buffer_view = GraalArrayBufferView::Allocate(isolate, java_object, type);
         }
     }
     return array_buffer_view;
@@ -569,7 +569,7 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
     switch (type) {
         case UNDEFINED_VALUE:
             if (placement) {
-                result = new(placement) GraalMissingPrimitive(isolate, java_object, true);
+                result = GraalMissingPrimitive::Allocate(isolate, java_object, true, placement);
             } else {
                 isolate->GetJNIEnv()->DeleteLocalRef(java_object);
                 result = isolate->GetUndefined();
@@ -577,7 +577,7 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
             break;
         case NULL_VALUE:
             if (placement) {
-                result = new(placement) GraalMissingPrimitive(isolate, java_object, false);
+                result = GraalMissingPrimitive::Allocate(isolate, java_object, false, placement);
             } else {
                 isolate->GetJNIEnv()->DeleteLocalRef(java_object);
                 result = isolate->GetNull();
@@ -585,7 +585,7 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
             break;
         case BOOLEAN_VALUE_TRUE:
             if (placement) {
-                result = new(placement) GraalBoolean(isolate, true, java_object);
+                result = GraalBoolean::Allocate(isolate, true, java_object, placement);
             } else {
                 isolate->GetJNIEnv()->DeleteLocalRef(java_object);
                 result = isolate->GetTrue();
@@ -593,7 +593,7 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
             break;
         case BOOLEAN_VALUE_FALSE:
             if (placement) {
-                result = new(placement) GraalBoolean(isolate, false, java_object);
+                result = GraalBoolean::Allocate(isolate, false, java_object, placement);
             } else {
                 isolate->GetJNIEnv()->DeleteLocalRef(java_object);
                 result = isolate->GetFalse();
@@ -645,16 +645,16 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
         case DATE_OBJECT:
             JNI_CALL(double, time, isolate, GraalAccessMethod::date_value_of, Double, java_object);
             if (placement) {
-                result = new(placement) GraalDate(isolate, time, java_object);
+                result = GraalDate::Allocate(isolate, time, java_object, placement);
             } else {
-                result = new GraalDate(isolate, time, java_object);
+                result = GraalDate::Allocate(isolate, time, java_object);
             }
             break;
         case REGEXP_OBJECT:
             if (placement) {
-                result = new(placement) GraalRegExp(isolate, java_object);
+                result = GraalRegExp::Allocate(isolate, java_object, placement);
             } else {
-                result = new GraalRegExp(isolate, java_object);
+                result = GraalRegExp::Allocate(isolate, java_object);
             }
             break;
         case ORDINARY_OBJECT:
@@ -714,51 +714,51 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
             break;
         case ARRAY_BUFFER_OBJECT:
             if (placement) {
-                result = new(placement) GraalArrayBuffer(isolate, java_object);
+                result = GraalArrayBuffer::Allocate(isolate, java_object, placement);
             } else {
-                result = new GraalArrayBuffer(isolate, java_object);
+                result = GraalArrayBuffer::Allocate(isolate, java_object);
             }
             break;
         case SYMBOL_VALUE:
             if (placement) {
-                result = new(placement) GraalSymbol(isolate, java_object);
+                result = GraalSymbol::Allocate(isolate, java_object, placement);
             } else {
-                result = new GraalSymbol(isolate, java_object);
+                result = GraalSymbol::Allocate(isolate, java_object);
             }
             break;
         case MAP_OBJECT:
             if (placement) {
-                result = new(placement) GraalMap(isolate, java_object);
+                result = GraalMap::Allocate(isolate, java_object, placement);
             } else {
-                result = new GraalMap(isolate, java_object);
+                result = GraalMap::Allocate(isolate, java_object);
             }
             break;
         case SET_OBJECT:
             if (placement) {
-                result = new(placement) GraalSet(isolate, java_object);
+                result = GraalSet::Allocate(isolate, java_object, placement);
             } else {
-                result = new GraalSet(isolate, java_object);
+                result = GraalSet::Allocate(isolate, java_object);
             }
             break;
         case PROMISE_OBJECT:
             if (placement) {
-                result = new(placement) GraalPromise(isolate, java_object);
+                result = GraalPromise::Allocate(isolate, java_object, placement);
             } else {
-                result = new GraalPromise(isolate, java_object);
+                result = GraalPromise::Allocate(isolate, java_object);
             }
             break;
         case PROXY_OBJECT:
             if (placement) {
-                result = new(placement) GraalProxy(isolate, java_object);
+                result = GraalProxy::Allocate(isolate, java_object, placement);
             } else {
-                result = new GraalProxy(isolate, java_object);
+                result = GraalProxy::Allocate(isolate, java_object);
             }
             break;
         case BIG_INT_VALUE:
             if (placement) {
-                result = new(placement) GraalBigInt(isolate, java_object);
+                result = GraalBigInt::Allocate(isolate, java_object, placement);
             } else {
-                result = new GraalBigInt(isolate, java_object);
+                result = GraalBigInt::Allocate(isolate, java_object);
             }
             break;
         default:

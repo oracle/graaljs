@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,22 @@ GraalObject(isolate, java_array_buffer_view),
 type_(type),
 byte_length_(byte_length),
 byte_offset_(byte_offset) {
+}
+
+inline GraalArrayBufferView* GraalArrayBufferView::Allocate(GraalIsolate* isolate, jobject java_array_buffer_view, int type) {
+    return new GraalArrayBufferView(isolate, java_array_buffer_view, type);
+}
+
+inline GraalArrayBufferView* GraalArrayBufferView::Allocate(GraalIsolate* isolate, jobject java_array_buffer_view, int type, void* placement) {
+    return new(placement) GraalArrayBufferView(isolate, java_array_buffer_view, type);
+}
+
+inline GraalArrayBufferView* GraalArrayBufferView::Allocate(GraalIsolate* isolate, jobject java_array_buffer_view, int type, int byte_length, int byte_offset) {
+    return new GraalArrayBufferView(isolate, java_array_buffer_view, type, byte_length, byte_offset);
+}
+
+inline GraalArrayBufferView* GraalArrayBufferView::Allocate(GraalIsolate* isolate, jobject java_array_buffer_view, int type, int byte_length, int byte_offset, void* placement) {
+    return new(placement) GraalArrayBufferView(isolate, java_array_buffer_view, type, byte_length, byte_offset);
 }
 
 #endif /* GRAAL_ARRAY_BUFFER_VIEW_INL_H_ */

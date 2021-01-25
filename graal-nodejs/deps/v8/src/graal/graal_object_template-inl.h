@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,10 @@
 #include "graal_template-inl.h"
 
 inline GraalObjectTemplate::GraalObjectTemplate(GraalIsolate* isolate, jobject java_template) : GraalTemplate(isolate, java_template), internal_field_count_(0) {
+}
+
+inline GraalObjectTemplate* GraalObjectTemplate::Allocate(GraalIsolate* isolate, jobject java_template) {
+    return new GraalObjectTemplate(isolate, java_template);
 }
 
 #endif /* GRAAL_OBJECT_TEMPLATE_INL_H_ */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,5 +48,36 @@
 
 inline GraalExternal::GraalExternal(GraalIsolate* isolate, void* value, jobject java_external) : GraalValue(isolate, java_external), value_(value) {
 }
+
+inline GraalExternal* GraalExternal::Allocate(GraalIsolate* isolate, void* value, jobject java_external) {
+    GraalObjectPool<GraalExternal>* pool = isolate->GetGraalExternalPool();
+    if (pool->IsEmpty()) {
+        return new GraalExternal(isolate, value, java_external);
+    } else {
+        GraalExternal* an_external = pool->Pop();
+        an_external->ReInitialize(value, java_external);
+        return an_external;
+    }
+}
+
+inline GraalExternal* GraalExternal::Allocate(GraalIsolate* isolate, void* value, jobject java_external, void* placement) {
+    return new (placement) GraalExternal(isolate, value, java_external);
+}
+
+inline void GraalExternal::ReInitialize(void* value, jobject java_external) {
+    GraalHandleContent::ReInitialize(java_external);
+    value_ = value;
+}
+
+inline void GraalExternal::Recycle() {
+    GraalObjectPool<GraalExternal>* pool = Isolate()->GetGraalExternalPool();
+    if (!pool->IsFull()) {
+        DeleteJavaRef();
+        pool->Push(this);
+    } else {
+        delete this;
+    }
+}
+
 
 #endif /* GRAAL_EXTERNAL_INL_H_ */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,14 @@
 #include "graal_object-inl.h"
 
 inline GraalArrayBuffer::GraalArrayBuffer(GraalIsolate* isolate, jobject java_array_buffer) : GraalObject(isolate, java_array_buffer) {
+}
+
+inline GraalArrayBuffer* GraalArrayBuffer::Allocate(GraalIsolate* isolate, jobject java_array_buffer) {
+    return new GraalArrayBuffer(isolate, java_array_buffer);
+}
+
+inline GraalArrayBuffer* GraalArrayBuffer::Allocate(GraalIsolate* isolate, jobject java_array_buffer, void* placement) {
+    return new(placement) GraalArrayBuffer(isolate, java_array_buffer);    
 }
 
 #endif /* GRAAL_ARRAY_BUFFER_INL_H_ */

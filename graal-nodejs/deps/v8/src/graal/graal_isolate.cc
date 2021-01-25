@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,15 +55,15 @@
 #include <string.h>
 #include <tuple>
 
+#include "graal_array-inl.h"
 #include "graal_boolean-inl.h"
+#include "graal_context-inl.h"
+#include "graal_external-inl.h"
+#include "graal_function-inl.h"
 #include "graal_missing_primitive-inl.h"
 #include "graal_number-inl.h"
 #include "graal_object-inl.h"
 #include "graal_string-inl.h"
-#include "graal_context-inl.h"
-#include "graal_function-inl.h"
-#include "graal_array-inl.h"
-#include "graal_external-inl.h"
 
 #ifdef __POSIX__
 
@@ -541,13 +541,13 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     lock_ = CreateMutex(NULL, false, NULL);
 #endif
 
-    object_pool_ = new GraalHandleContent*[1024];
-    string_pool_ = new GraalHandleContent*[1024];
-    context_pool_ = new GraalHandleContent*[1024];
-    function_pool_ = new GraalHandleContent*[1024];
-    array_pool_ = new GraalHandleContent*[1024];
-    number_pool_ = new GraalHandleContent*[1024];
-    external_pool_ = new GraalHandleContent*[1024];
+    array_pool_ =  new GraalObjectPool<GraalArray>();
+    context_pool_ = new GraalObjectPool<GraalContext>();
+    external_pool_ = new GraalObjectPool<GraalExternal>();
+    function_pool_ = new GraalObjectPool<GraalFunction>();
+    number_pool_ = new GraalObjectPool<GraalNumber>();
+    object_pool_ = new GraalObjectPool<GraalObject>();
+    string_pool_ = new GraalObjectPool<GraalString>();
 
     // Object.class
     jclass object_class = env->FindClass("java/lang/Object");
@@ -881,24 +881,24 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     // Undefined
     JNI_CALL(jobject, java_undefined, this, GraalAccessMethod::undefined_instance, Object);
     if (java_undefined == NULL) EXIT_WITH_MESSAGE(env, "GraalJSAccess.undefinedInstance() failed!\n")
-    GraalMissingPrimitive* undefined_local = new GraalMissingPrimitive(this, java_undefined, true);
+    GraalMissingPrimitive* undefined_local = GraalMissingPrimitive::Allocate(this, java_undefined, true);
     undefined_instance_ = reinterpret_cast<GraalPrimitive*> (undefined_local->Copy(true));
     slot[root_offset + v8::internal::Internals::kUndefinedValueRootIndex] = undefined_instance_;
 
     // Null
     JNI_CALL(jobject, java_null, this, GraalAccessMethod::null_instance, Object);
     if (java_null == NULL) EXIT_WITH_MESSAGE(env, "GraalJSAccess.nullInstance() failed!\n")
-    GraalMissingPrimitive* null_local = new GraalMissingPrimitive(this, java_null, false);
+    GraalMissingPrimitive* null_local = GraalMissingPrimitive::Allocate(this, java_null, false);
     null_instance_ = reinterpret_cast<GraalPrimitive*> (null_local->Copy(true));
     slot[root_offset + v8::internal::Internals::kNullValueRootIndex] = null_instance_;
 
     // True
-    GraalBoolean* true_local = new GraalBoolean(this, true);
+    GraalBoolean* true_local = GraalBoolean::Allocate(this, true);
     true_instance_ = reinterpret_cast<GraalBoolean*> (true_local->Copy(true));
     slot[root_offset + v8::internal::Internals::kTrueValueRootIndex] = true_instance_;
 
     // False
-    GraalBoolean* false_local = new GraalBoolean(this, false);
+    GraalBoolean* false_local = GraalBoolean::Allocate(this, false);
     false_instance_ = reinterpret_cast<GraalBoolean*> (false_local->Copy(true));
     slot[root_offset + v8::internal::Internals::kFalseValueRootIndex] = false_instance_;
 
@@ -1082,6 +1082,13 @@ void GraalIsolate::Dispose(bool exit, int status) {
 #else
     CloseHandle(lock_);
 #endif
+    delete array_pool_;
+    delete context_pool_;
+    delete external_pool_;
+    delete function_pool_;
+    delete number_pool_;
+    delete object_pool_;
+    delete string_pool_;
 }
 
 jobject GraalIsolate::JNIGetObjectFieldOrCall(jobject java_object, GraalAccessField graal_field_id, GraalAccessMethod graal_method_id) {
@@ -1454,275 +1461,4 @@ v8::ArrayBuffer::Allocator* GraalIsolate::GetArrayBufferAllocator() {
 
 void GraalIsolate::SchedulePauseOnNextStatement() {
     JNI_CALL_VOID(this, GraalAccessMethod::isolate_schedule_pause_on_next_statement);
-}
-//#define DEBUG
-GraalHandleContent* GraalIsolate::CreateGraalObject(jobject java_object) {
-    if (object_pool_size_ == 0) {
-        GraalObject* new_object = new GraalObject(this, java_object);
-        new_object->AllowRecycle();
-
-#ifdef DEBUG
-        printf("Allocate NEW (pool:%d ref%p)\n", object_pool_size_, new_object);
-#endif
-        return new_object;
-    } else {
-        GraalHandleContent* an_object = object_pool_[--object_pool_size_];
-        ((GraalObject*) an_object)->ReInitialize(java_object);
-        HandleScopeReference(an_object);
-        ((GraalObject*) an_object)->AllowRecycle();
-
-#ifdef DEBUG        
-        printf("Allocate CACHE (pool:%d ref%p)\n", object_pool_size_, an_object);
-#endif
-        return an_object;
-    }
-}
-
-void GraalIsolate::DisposeGraalObject(GraalHandleContent* graal_object) {
-    if (object_pool_size_ < 1024) {        
-#ifdef DEBUG
-        printf("De-allocate RECYCLE (pool:%d global:%s ref%p)\n", object_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
-#endif
-
-        graal_object->FreeJavaRefs();
-        object_pool_[object_pool_size_++] = graal_object;
-    } else {
-#ifdef DEBUG
-        printf("De-allocate DELETE (pool:%d global:%s ref%p)\n", object_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
-#endif        
-        delete graal_object;
-    }
-}
-
-
-GraalHandleContent* GraalIsolate::CreateGraalString(jstring java_object) {
-    if (string_pool_size_ == 0) {
-        GraalString* new_object = new GraalString(this, java_object);
-        new_object->AllowRecycle();
-
-#ifdef DEBUG
-        printf("Allocate NEW STR (pool:%d ref%p)\n", string_pool_size_, new_object);
-#endif
-        return new_object;
-    } else {
-        GraalHandleContent* an_object = string_pool_[--string_pool_size_];
-        ((GraalString*) an_object)->ReInitialize(java_object);
-        HandleScopeReference(an_object);
-        ((GraalString*) an_object)->AllowRecycle();
-
-#ifdef DEBUG        
-        printf("Allocate CACHE STR (pool:%d ref%p)\n", string_pool_size_, an_object);
-#endif
-        return an_object;
-    }
-}
-
-void GraalIsolate::DisposeGraalString(GraalHandleContent* graal_object) {
-    if (string_pool_size_ < 1024) {        
-#ifdef DEBUG
-        printf("De-allocate RECYCLE STR (pool:%d global:%s ref%p)\n", string_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
-#endif
-
-        graal_object->FreeJavaRefs();
-        string_pool_[string_pool_size_++] = graal_object;
-    } else {
-#ifdef DEBUG
-        printf("De-allocate DELETE STR (pool:%d global:%s ref%p)\n", string_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
-#endif        
-        delete graal_object;
-    }
-}
-
-
-GraalHandleContent* GraalIsolate::CreateGraalContext(jobject java_object, void* cached_context_embedder_data) {
-    if (context_pool_size_ == 0) {
-        GraalContext* new_object = new GraalContext(this, java_object, cached_context_embedder_data);
-        new_object->AllowRecycle();
-
-#ifdef DEBUG
-        printf("Allocate NEW CX (pool:%d ref%p)\n", context_pool_size_, new_object);
-#endif
-        return new_object;
-    } else {
-        GraalHandleContent* an_object = context_pool_[--context_pool_size_];
-        ((GraalContext*) an_object)->ReInitialize(java_object, cached_context_embedder_data);
-        HandleScopeReference(an_object);
-        ((GraalContext*) an_object)->AllowRecycle();
-
-#ifdef DEBUG        
-        printf("Allocate CACHE CX (pool:%d ref%p)\n", context_pool_size_, an_object);
-#endif
-        return an_object;
-    }
-}
-
-void GraalIsolate::DisposeGraalContext(GraalHandleContent* graal_object) {
-    if (context_pool_size_ < 1024) {        
-#ifdef DEBUG
-        printf("De-allocate RECYCLE CX (pool:%d global:%s ref%p)\n", context_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
-#endif
-
-        graal_object->FreeJavaRefs();
-        context_pool_[context_pool_size_++] = graal_object;
-    } else {
-#ifdef DEBUG
-        printf("De-allocate DELETE CX (pool:%d global:%s ref%p)\n", context_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
-#endif        
-        delete graal_object;
-    }
-}
-
-
-GraalHandleContent* GraalIsolate::CreateGraalFunction(jobject java_object) {
-    if (function_pool_size_ == 0) {
-        GraalFunction* new_object = new GraalFunction(this, java_object);
-        new_object->AllowRecycle();
-
-#ifdef DEBUG
-        printf("Allocate NEW FUN (pool:%d ref%p)\n", function_pool_size_, new_object);
-#endif
-        return new_object;
-    } else {
-        GraalHandleContent* an_object = function_pool_[--function_pool_size_];
-        ((GraalFunction*) an_object)->ReInitialize(java_object);
-        HandleScopeReference(an_object);
-        ((GraalFunction*) an_object)->AllowRecycle();
-
-#ifdef DEBUG        
-        printf("Allocate CACHE FUN (pool:%d ref%p)\n", function_pool_size_, an_object);
-#endif
-        return an_object;
-    }
-}
-
-void GraalIsolate::DisposeGraalFunction(GraalHandleContent* graal_object) {
-    if (function_pool_size_ < 1024) {        
-#ifdef DEBUG
-        printf("De-allocate RECYCLE FUN (pool:%d global:%s ref%p)\n", function_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
-#endif
-
-        graal_object->FreeJavaRefs();
-        function_pool_[function_pool_size_++] = graal_object;
-    } else {
-#ifdef DEBUG
-        printf("De-allocate DELETE FUN (pool:%d global:%s ref%p)\n", function_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
-#endif        
-        delete graal_object;
-    }
-}
-
-
-GraalHandleContent* GraalIsolate::CreateGraalArray(jobject java_object) {
-    if (array_pool_size_ == 0) {
-        GraalArray* new_object = new GraalArray(this, java_object);
-        new_object->AllowRecycle();
-
-#ifdef DEBUG
-        printf("Allocate NEW ARR (pool:%d ref%p)\n", array_pool_size_, new_object);
-#endif
-        return new_object;
-    } else {
-        GraalHandleContent* an_object = array_pool_[--array_pool_size_];
-        ((GraalArray*) an_object)->ReInitialize(java_object);
-        HandleScopeReference(an_object);
-        ((GraalArray*) an_object)->AllowRecycle();
-
-#ifdef DEBUG        
-        printf("Allocate CACHE ARR (pool:%d ref%p)\n", array_pool_size_, an_object);
-#endif
-        return an_object;
-    }
-}
-
-void GraalIsolate::DisposeGraalArray(GraalHandleContent* graal_object) {
-    if (array_pool_size_ < 1024) {        
-#ifdef DEBUG
-        printf("De-allocate RECYCLE ARR (pool:%d global:%s ref%p)\n", array_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
-#endif
-
-        graal_object->FreeJavaRefs();
-        array_pool_[array_pool_size_++] = graal_object;
-    } else {
-#ifdef DEBUG
-        printf("De-allocate DELETE ARR (pool:%d global:%s ref%p)\n", array_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
-#endif        
-        delete graal_object;
-    }
-}
-
-
-GraalHandleContent* GraalIsolate::CreateGraalNumber(jobject java_object, double value) {
-    if (number_pool_size_ == 0) {
-        GraalNumber* new_object = new GraalNumber(this, value, java_object);
-        new_object->AllowRecycle();
-
-#ifdef DEBUG
-        printf("Allocate NEW NUM (pool:%d ref%p)\n", number_pool_size_, new_object);
-#endif
-        return new_object;
-    } else {
-        GraalHandleContent* an_object = number_pool_[--number_pool_size_];
-        ((GraalNumber*) an_object)->ReInitialize(java_object, value);
-        HandleScopeReference(an_object);
-        ((GraalNumber*) an_object)->AllowRecycle();
-
-#ifdef DEBUG        
-        printf("Allocate CACHE NUM (pool:%d ref%p)\n", number_pool_size_, an_object);
-#endif
-        return an_object;
-    }
-}
-
-void GraalIsolate::DisposeGraalNumber(GraalHandleContent* graal_object) {
-    if (number_pool_size_ < 1024) {        
-#ifdef DEBUG
-        printf("De-allocate RECYCLE NUM (pool:%d global:%s ref%p)\n", number_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
-#endif
-
-        graal_object->FreeJavaRefs();
-        number_pool_[number_pool_size_++] = graal_object;
-    } else {
-#ifdef DEBUG
-        printf("De-allocate DELETE NUM (pool:%d global:%s ref%p)\n", number_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
-#endif        
-        delete graal_object;
-    }
-}
-
-GraalHandleContent* GraalIsolate::CreateGraalExternal(jobject java_object, void* value) {
-    if (external_pool_size_ == 0) {
-        GraalExternal* new_object = new GraalExternal(this, value, java_object);
-        new_object->AllowRecycle();
-
-#ifdef DEBUG
-        printf("Allocate NEW EXT (pool:%d ref%p)\n", external_pool_size_, new_object);
-#endif
-        return new_object;
-    } else {
-        GraalHandleContent* an_object = external_pool_[--external_pool_size_];
-        ((GraalExternal*) an_object)->ReInitialize(value, java_object);
-        HandleScopeReference(an_object);
-        ((GraalExternal*) an_object)->AllowRecycle();
-
-#ifdef DEBUG        
-        printf("Allocate CACHE EXT (pool:%d ref%p)\n", external_pool_size_, an_object);
-#endif
-        return an_object;
-    }
-}
-
-void GraalIsolate::DisposeGraalExternal(GraalHandleContent* graal_object) {
-    if (external_pool_size_ < 1024) {    
-#ifdef DEBUG
-        printf("De-allocate RECYCLE EXT (pool:%d global:%s ref%p)\n", external_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
-#endif
-
-        graal_object->FreeJavaRefs();
-        external_pool_[external_pool_size_++] = graal_object;
-    } else {
-#ifdef DEBUG
-        printf("De-allocate DELETE EXT (pool:%d global:%s ref%p)\n", external_pool_size_, graal_object->IsGlobal()?"true":"false", graal_object);
-#endif        
-        delete graal_object;
-    }
 }

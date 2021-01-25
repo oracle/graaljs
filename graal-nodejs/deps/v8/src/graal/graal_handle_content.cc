@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,28 +47,10 @@
 #include "graal_handle_content-inl.h"
 
 GraalHandleContent::~GraalHandleContent() {
-    JNIEnv* env = isolate_->GetJNIEnv();
-    // env can be nullptr during the destruction of static variables
-    // on process exit (when the isolate was disposed already)
-    if (env != nullptr) {
-        if (IsGlobal()) {
-            if (IsWeak()) {
-                env->DeleteWeakGlobalRef(java_object_);
-            } else {
-                env->DeleteGlobalRef(java_object_);
-            }
-        } else {
-            env->DeleteLocalRef(java_object_);
-        }
-    }
-#ifdef DEBUG
-    if (ref_count != 0) {
-        fprintf(stderr, "GraalHandleContent deleted while being referenced!\n");
-    }
-#endif
+    DeleteJavaRef();
 }
 
-void GraalHandleContent::FreeJavaRefs() {
+void GraalHandleContent::DeleteJavaRef() {
     JNIEnv* env = isolate_->GetJNIEnv();
     // env can be nullptr during the destruction of static variables
     // on process exit (when the isolate was disposed already)
@@ -168,7 +150,7 @@ bool GraalHandleContent::IsWeakCollected() const {
     return isolate_->GetJNIEnv()->IsSameObject(java_object_, NULL);
 }
 
-void GraalHandleContent::DisposeFromPool() {
-    isolate_->DisposeGraalObject(this);
+void GraalHandleContent::Recycle() {
+    // Graal types override this method to pool object instances where appropriate.
+    delete this;
 }
-

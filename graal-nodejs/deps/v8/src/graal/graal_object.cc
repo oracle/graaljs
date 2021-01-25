@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,19 +52,6 @@
 #include "graal_context-inl.h"
 #include "graal_object-inl.h"
 #include "graal_string-inl.h"
-
-GraalObject* GraalObject::Allocate(GraalIsolate* isolate, jobject java_object) {
-    return (GraalObject*) isolate->CreateGraalObject(java_object);
-}
-
-GraalObject* GraalObject::Allocate(GraalIsolate* isolate, jobject java_object, void* placement) {
-    return new (placement) GraalObject(isolate, java_object);
-}
-
-void GraalObject::ReInitialize(jobject java_object) {
-    internal_field_count_cache_ = -1;    
-    GraalHandleContent::SetJavaObject(java_object);
-}
 
 GraalHandleContent* GraalObject::CopyImpl(jobject java_object_copy) {
     return GraalObject::Allocate(Isolate(), java_object_copy);

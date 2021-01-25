@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -997,7 +997,7 @@ namespace v8 {
         jobject java_array_buffer = graal_array_buffer->GetJavaObject(); \
         GraalIsolate* graal_isolate = graal_array_buffer->Isolate(); \
         JNI_CALL(jobject, java_array_buffer_view, graal_isolate, GraalAccessMethod::graal_access_method, Object, java_array_buffer, (jint) byte_offset, (jint) length); \
-        return reinterpret_cast<view_class*> (new GraalArrayBufferView(graal_isolate, java_array_buffer_view, GraalArrayBufferView::view_type)); \
+        return reinterpret_cast<view_class*> (GraalArrayBufferView::Allocate(graal_isolate, java_array_buffer_view, GraalArrayBufferView::view_type)); \
     }
 
     ArrayBufferViewNew(Uint8Array, kUint8Array, uint8_array_new)
@@ -1606,7 +1606,7 @@ namespace v8 {
         if (HasCaught()) {
             GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate_);
             jobject java_exception = graal_isolate->GetJNIEnv()->ExceptionOccurred();
-            GraalMessage* graal_message = new GraalMessage(graal_isolate, java_exception);
+            GraalMessage* graal_message = GraalMessage::Allocate(graal_isolate, java_exception);
             return reinterpret_cast<v8::Message*> (graal_message);
         } else {
             return Local<v8::Message>();
@@ -1869,7 +1869,7 @@ namespace v8 {
         jobject exception_object = graal_exception->GetJavaObject();
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
         JNI_CALL(jobject, java_exception, graal_isolate, GraalAccessMethod::exception_create_message, Object, exception_object);
-        return reinterpret_cast<v8::Message*> (new GraalMessage(graal_isolate, java_exception));
+        return reinterpret_cast<v8::Message*> (GraalMessage::Allocate(graal_isolate, java_exception));
     }
 
     Maybe<bool> Object::Has(Local<Context> context, Local<Value> key) {
@@ -3083,7 +3083,7 @@ namespace v8 {
 
         if (script_or_module_out != nullptr) {
             jobject java_script = graal_isolate->GetJNIEnv()->GetObjectArrayElement((jobjectArray) java_array, 1);
-            GraalScriptOrModule* graal_script = new GraalScriptOrModule(graal_isolate, java_script);
+            GraalScriptOrModule* graal_script = GraalScriptOrModule::Allocate(graal_isolate, java_script);
             *script_or_module_out = reinterpret_cast<ScriptOrModule*>(graal_script);
         }
 

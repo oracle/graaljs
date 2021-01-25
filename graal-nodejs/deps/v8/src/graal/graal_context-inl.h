@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,32 @@
 
 inline GraalContext::GraalContext(GraalIsolate* isolate, jobject java_context, void* cached_context_embedder_data) :
 GraalHandleContent(isolate, java_context), cached_context_embedder_data_(cached_context_embedder_data) {
+}
+
+inline GraalContext* GraalContext::Allocate(GraalIsolate* isolate, jobject java_context, void* cached_context_embedder_data) {
+    GraalObjectPool<GraalContext>* pool = isolate->GetGraalContextPool();
+    if (pool->IsEmpty()) {
+        return new GraalContext(isolate, java_context, cached_context_embedder_data);
+    } else {
+        GraalContext* a_context = pool->Pop();
+        a_context->ReInitialize(java_context, cached_context_embedder_data);
+        return a_context;
+    }
+}
+
+inline void GraalContext::ReInitialize(jobject java_context, void* cached_context_embedder_data) {
+    cached_context_embedder_data_ = cached_context_embedder_data;
+    GraalHandleContent::ReInitialize(java_context);
+}
+
+inline void GraalContext::Recycle() {
+    GraalObjectPool<GraalContext>* pool = Isolate()->GetGraalContextPool();
+    if (!pool->IsFull()) {
+        DeleteJavaRef();
+        pool->Push(this);
+    } else {
+        delete this;
+    }
 }
 
 #endif /* GRAAL_CONTEXT_INL_H_ */

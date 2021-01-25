@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,9 +46,9 @@
 
 class GraalNumber : public GraalPrimitive {
 public:
-    static GraalNumber* Allocate(GraalIsolate* isolate, double value, jobject java_number);
-    static GraalNumber* Allocate(GraalIsolate* isolate, double value, jobject java_number, void* placement);
-    void ReInitialize(jobject java_object, double value);
+    inline static GraalNumber* Allocate(GraalIsolate* isolate, double value, jobject java_number);
+    inline static GraalNumber* Allocate(GraalIsolate* isolate, double value, jobject java_number, void* placement);
+    inline void ReInitialize(jobject java_object, double value);
     bool IsInt32() const;
     bool IsUint32() const;
     bool IsNumber() const;
@@ -59,11 +59,11 @@ public:
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 private:
-    void DisposeFromPool() override;
+    friend class GraalIsolate;
+    inline void Recycle() override;
     double value_;
     static GraalNumber* NewNotCached(GraalIsolate* isolate, int value);
     inline GraalNumber(GraalIsolate* isolate, double value, jobject java_number);
-    friend class GraalIsolate;
 };
 
 #endif /* GRAAL_NUMBER_H_ */
