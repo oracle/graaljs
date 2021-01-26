@@ -638,7 +638,7 @@ public:
 private:
     // Slots accessed by v8::Isolate::Get/SetData
     // They must be the first field of GraalIsolate
-    void* slot[22] = {};
+    void* slot[30] = {};
     std::vector<v8::Value*> eternals;
     std::vector<v8::Context*> contexts;
     std::vector<GraalHandleContent*> handles;
