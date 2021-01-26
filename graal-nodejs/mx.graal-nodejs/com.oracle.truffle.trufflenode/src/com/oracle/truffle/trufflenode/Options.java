@@ -135,6 +135,7 @@ public final class Options {
                         "harmony-weak-refs",
                         "lazy",
                         "log-timer-events",
+                        "no-harmony-top-level-await",
                         "nolazy",
                         "nouse-idle-notification",
                         "stack-size",
@@ -193,6 +194,10 @@ public final class Options {
                 // Convert --harmony-sharedarraybuffer of V8 to --js.shared-array-buffer of Graal.js
                 if ("harmony-sharedarraybuffer".equals(normalizedKey)) {
                     polyglotOptions.put("js.shared-array-buffer", "true");
+                    continue;
+                }
+                if ("harmony-top-level-await".equals(normalizedKey)) {
+                    polyglotOptions.put("js.top-level-await", "true");
                     continue;
                 }
                 // Convert -h to --help
