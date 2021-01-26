@@ -3239,6 +3239,111 @@ namespace v8 {
         return Just(true);
     }
 
+    Local<ArrayBuffer> ArrayBuffer::New(Isolate* isolate, std::shared_ptr<BackingStore> backing_store) {
+        TRACE
+        return nullptr;
+    }
+
+    std::unique_ptr<BackingStore> ArrayBuffer::NewBackingStore(Isolate* isolate, size_t byte_length) {
+        TRACE
+        return nullptr;
+    }
+
+    std::unique_ptr<BackingStore> ArrayBuffer::NewBackingStore(void* data, size_t byte_length, v8::BackingStore::DeleterCallback deleter, void* deleter_data) {
+        TRACE
+        return nullptr;
+    }
+
+    std::shared_ptr<BackingStore> ArrayBuffer::GetBackingStore() {
+        TRACE
+        return nullptr;
+    }
+
+    void* ArrayBuffer::Allocator::Reallocate(void* data, size_t old_length, size_t new_length) {
+        TRACE
+        return nullptr;
+    }
+
+    size_t BackingStore::ByteLength() const {
+        TRACE
+        return 0;
+    }
+
+    void* BackingStore::Data() const {
+        TRACE
+        return nullptr;
+    }
+
+    std::unique_ptr<BackingStore> BackingStore::Reallocate(Isolate* isolate, std::unique_ptr<BackingStore> backing_store, size_t byte_length) {
+        TRACE
+        return nullptr;
+    }
+
+    BackingStore::~BackingStore() {
+        TRACE
+    }
+
+    Local<SharedArrayBuffer> SharedArrayBuffer::New(Isolate* isolate, std::shared_ptr<BackingStore> backing_store) {
+        TRACE
+        return nullptr;
+    }
+
+    std::shared_ptr<BackingStore> SharedArrayBuffer::GetBackingStore() {
+        TRACE
+        return nullptr;
+    }
+
+    CompiledWasmModule WasmModuleObject::GetCompiledModule() {
+        TRACE
+        return CompiledWasmModule(nullptr, nullptr, 0);
+    }
+
+    CompiledWasmModule::CompiledWasmModule(std::shared_ptr<internal::wasm::NativeModule>, const char* source_url, size_t url_length) {
+        TRACE
+    }
+
+    MaybeLocal<WasmModuleObject> WasmModuleObject::FromCompiledModule(Isolate* isolate, const CompiledWasmModule&) {
+        TRACE
+        return MaybeLocal<WasmModuleObject>();
+    }
+
+    void Isolate::DateTimeConfigurationChangeNotification(TimeZoneDetection time_zone_detection) {
+        TRACE
+    }
+
+    std::unique_ptr<MicrotaskQueue> MicrotaskQueue::New(Isolate* isolate, MicrotasksPolicy policy) {
+        return nullptr;
+        TRACE
+    }
+
+    bool Isolate::MeasureMemory(std::unique_ptr<MeasureMemoryDelegate> delegate, MeasureMemoryExecution execution) {
+        TRACE
+        return false;
+    }
+
+    std::unique_ptr<MeasureMemoryDelegate> MeasureMemoryDelegate::Default(
+            Isolate* isolate, Local<Context> context,
+            Local<Promise::Resolver> promise_resolver, MeasureMemoryMode mode) {
+        TRACE
+        return nullptr;
+    }
+
+    void Isolate::SetAtomicsWaitCallback(AtomicsWaitCallback callback, void* data) {
+        TRACE
+    }
+
+    bool V8::EnableWebAssemblyTrapHandler(bool use_v8_signal_handler) {
+        TRACE
+        return false;
+    }
+
+#ifdef __POSIX__
+    bool TryHandleWebAssemblyTrapPosix(int sig_code, siginfo_t* info, void* context) {
+        TRACE
+        return false;
+    }
+#endif
+
     void Object::CheckCast(v8::Value* obj) {}
     void Promise::CheckCast(v8::Value* obj) {}
     void Function::CheckCast(v8::Value* obj) {}
