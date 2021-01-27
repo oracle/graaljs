@@ -3,6 +3,8 @@
 GraalVM can run unmodified Node.js applications.
 Applications can freely import and use NPM packages, including native ones.
 
+For the differences between running the `node` native launcher and accessing Node.js/npm modules/ECMAScript modules from a Java Context, see [NodeJSVSJavaScriptContext](NodeJSVSJavaScriptContext.md).
+
 ## Running Node.js Applications
 
 To run Node.js-based applications, use the `node` launcher in the GraalVM distribution:
