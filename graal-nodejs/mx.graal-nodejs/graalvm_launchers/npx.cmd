@@ -62,7 +62,7 @@ if "%VERBOSE_GRAALVM_LAUNCHERS%"=="true" echo on
 
 "%node_exe%" %node_args% "%parent_bin_dir%/npm/bin/npx-cli.js" %node_dir% %prog_args%
 
-@goto :eof
+exit /b %errorlevel%
 
 :dirname file output
   setlocal
