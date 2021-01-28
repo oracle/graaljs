@@ -641,35 +641,6 @@ describe('Value - *Value()', function () {
             assert.strictEqual(module.Value_BooleanValue(3.1415), true);
         });
     });
-    describe('BooleanValue(Context)', function () {
-        it('should return false for undefined', function () {
-            assert.strictEqual(module.Value_BooleanValueContext(undefined), false);
-        });
-        it('should return false for null', function () {
-            assert.strictEqual(module.Value_BooleanValueContext(null), false);
-        });
-        it('should return true for "1234"', function () {
-            assert.strictEqual(module.Value_BooleanValueContext("1234"), true);
-        });
-        it('should return true for true', function () {
-            assert.strictEqual(module.Value_BooleanValueContext(true), true);
-        });
-        it('should return false for false', function () {
-            assert.strictEqual(module.Value_BooleanValueContext(false), false);
-        });
-        it('should return false for {}', function () {
-            assert.strictEqual(isNaN(module.Value_BooleanValueContext({})), false);
-        });
-        it('should return true for "1234.5"', function () {
-            assert.strictEqual(module.Value_BooleanValueContext("1234.5"), true);
-        });
-        it('should return false for 0', function () {
-            assert.strictEqual(module.Value_BooleanValueContext(0), false);
-        });
-        it('should return true for 3.1415', function () {
-            assert.strictEqual(module.Value_BooleanValueContext(3.1415), true);
-        });
-    });
     describe('Int32Value()', function () {
         it('should return 0 for undefined', function () {
             assert.strictEqual(module.Value_Int32Value(undefined), 0);

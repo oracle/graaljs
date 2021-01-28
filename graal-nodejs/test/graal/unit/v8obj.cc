@@ -84,11 +84,11 @@ EXPORT_TO_JS(SetEntropySource) {
 EXPORT_TO_JS(ResourceConstraints) {
     ResourceConstraints* rc = new ResourceConstraints();
 
-    rc->set_max_semi_space_size_in_kb(1234);
+    rc->set_max_young_generation_size_in_bytes(1234);
     rc->set_max_old_space_size(2345);
 
-    if (rc->max_semi_space_size_in_kb() != 1234) {
-        Fail("get max_semi_space_size_in_kb");
+    if (rc->max_young_generation_size_in_bytes() != 1234) {
+        Fail("get max_young_generation_size_in_bytes");
     }
     if (rc->max_old_space_size() != 2345) {
         Fail("get max_old_space_size");

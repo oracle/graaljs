@@ -44,8 +44,10 @@
 // Persistent::New
 
 EXPORT_TO_JS(New) {
-    Persistent<Value> pers(args.GetIsolate(), args[0]);
-    args.GetReturnValue().Set(pers);
+    Isolate* isolate = args.GetIsolate();
+    Persistent<Value> pers(isolate, args[0]);
+    Local<Value> local = Local<Value>::New(isolate, pers);
+    args.GetReturnValue().Set(local);
 }
 
 // Persistent::New
