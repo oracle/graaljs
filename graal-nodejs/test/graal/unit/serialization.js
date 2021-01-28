@@ -159,5 +159,13 @@ describe('Serialization', function () {
         assert.strictEqual(deserialized.ref1, deserialized.ref2);
         assert.deepEqual(deserialized.ref1, object);
         assert.deepEqual(deserialized.ref2, object);
-    })
+    });
+    it('should refuse to serialize SharedArrayBuffer', function () {
+        assert.throws(function() {
+            v8.serialize(new SharedArrayBuffer(10))
+        }, {
+            name: 'Error',
+            message: /could not be cloned/
+        });
+    });
 });

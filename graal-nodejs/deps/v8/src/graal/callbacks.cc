@@ -791,7 +791,8 @@ jint GraalGetSharedArrayBufferId(JNIEnv* env, jclass nativeAccess, jlong delegat
     GraalValue* graal_value = GraalValue::FromJavaObject(graal_isolate, sharedArrayBuffer);
     v8::SharedArrayBuffer* object = reinterpret_cast<v8::SharedArrayBuffer*> (graal_value);
     v8::ValueSerializer::Delegate* d = reinterpret_cast<v8::ValueSerializer::Delegate*> (delegate);
-    return d->GetSharedArrayBufferId(isolate, object).FromJust();
+    v8::Maybe<uint32_t> maybe_id = d->GetSharedArrayBufferId(isolate, object);
+    return maybe_id.IsJust() ? maybe_id.FromJust() : -1;
 }
 
 jobject GraalGetSharedArrayBufferFromId(JNIEnv* env, jclass nativeAccess, jlong delegate, jint id) {
