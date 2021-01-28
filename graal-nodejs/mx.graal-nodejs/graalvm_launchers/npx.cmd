@@ -34,11 +34,25 @@ for %%a in (%*) do (
 
   rem Unfortunately, parsing of `--vm`, `--jvm`, and `--native` arguments has to be done blind:
   rem Maybe some of those arguments where not really intended for the launcher but were application arguments
-  if "!u_arg:~0,4!"=="--vm" (
+  if "!u_arg:~0,5!"=="--vm." (
     set "node_arg=true"
-  ) else  if "!u_arg:~0,5!"=="--jvm" (
+  ) else if "!u_arg:~0,5!"=="--jvm" (
     set "node_arg=true"
   ) else if "!u_arg:~0,8!"=="--native" (
+    set "node_arg=true"
+  ) else if "!u_arg:~0,9!"=="--engine." (
+    set "node_arg=true"
+  ) else if "!u_arg:~0,5!"=="--js." (
+    set "node_arg=true"
+  ) else if "!u_arg!"=="--experimental-options" (
+    set "node_arg=true"
+  ) else if "!u_arg!"=="--polyglot" (
+    set "node_arg=true"
+  ) else if "!u_arg:~0,7!"=="--help:" (
+    set "node_arg=true"
+  ) else if "!u_arg:~0,9!"=="--inspect" (
+    set "node_arg=true"
+  ) else if "!u_arg:~0,12!"=="--cpusampler" (
     set "node_arg=true"
   )
 

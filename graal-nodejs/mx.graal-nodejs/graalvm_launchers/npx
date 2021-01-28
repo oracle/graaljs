@@ -22,11 +22,25 @@ for opt in "${@:1}"; do
     case "${opt}" in
         --nodedir=*)
             NODE_DIR="${opt}" ;;
-        --vm*)
+        --vm.*)
             NODE_ARGS+=("${opt}") ;;
         --jvm*)
             NODE_ARGS+=("${opt}") ;;
         --native*)
+            NODE_ARGS+=("${opt}") ;;
+        --engine.*)
+            NODE_ARGS+=("${opt}") ;;
+        --js.*)
+            NODE_ARGS+=("${opt}") ;;
+        --experimental-options)
+            NODE_ARGS+=("${opt}") ;;
+        --polyglot)
+            NODE_ARGS+=("${opt}") ;;
+        --help:*)
+            NODE_ARGS+=("${opt}") ;;
+        --inspect*)
+            NODE_ARGS+=("${opt}") ;;
+        --cpusampler*)
             NODE_ARGS+=("${opt}") ;;
         *)
             PROGRAM_ARGS+=("${opt}") ;;
