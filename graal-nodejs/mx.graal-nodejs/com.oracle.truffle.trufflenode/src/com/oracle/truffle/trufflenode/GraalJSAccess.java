@@ -551,7 +551,7 @@ public final class GraalJSAccess {
     public Object valueToInteger(Object value) {
         if (value instanceof Double) {
             double doubleValue = (Double) value;
-            if (doubleValue < Long.MIN_VALUE || Long.MAX_VALUE < doubleValue || doubleValue == 0) {
+            if (doubleValue < Long.MIN_VALUE || Long.MAX_VALUE < doubleValue) {
                 return value; // Integer already
             }
         }

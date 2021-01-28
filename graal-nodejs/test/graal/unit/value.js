@@ -827,9 +827,11 @@ describe('Value - To*()', function () {
             assert.strictEqual(module.Value_ToInteger(NaN), 0);
             assert.strictEqual(module.Value_ToInteger(undefined), 0);
         });
-        it('should not convert corner cases', function () {
+        it('should return 0 for positive/negative zero', function () {
             assert.strictEqual(module.Value_ToInteger(0), 0);
-            assert.strictEqual(module.Value_ToInteger(-0.0), -0.0);
+            assert.strictEqual(module.Value_ToInteger(-0.0), 0);
+        });
+        it('should not convert corner cases', function () {
             assert.strictEqual(module.Value_ToInteger(Number.POSITIVE_INFINITY), Number.POSITIVE_INFINITY);
             assert.strictEqual(module.Value_ToInteger(Number.NEGATIVE_INFINITY), Number.NEGATIVE_INFINITY);
             assert.strictEqual(module.Value_ToInteger(0xFFFFFFFF), 0xFFFFFFFF);
