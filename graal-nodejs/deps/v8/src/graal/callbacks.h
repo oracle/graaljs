@@ -98,9 +98,9 @@ jobject GraalExecuteFunction6(JNIEnv* env, jclass nativeAccess, jint id,
         jobject argument6, jint argument6_type,
         jobject java_context);
 
-jobject GraalExecuteAccessorGetter(JNIEnv* env, jclass nativeAccess, jlong pointer, jobject holder, jstring name, jobjectArray arguments, jobject data);
+jobject GraalExecuteAccessorGetter(JNIEnv* env, jclass nativeAccess, jlong pointer, jobject holder, jobject name, jobjectArray arguments, jobject data);
 
-void GraalExecuteAccessorSetter(JNIEnv* env, jclass nativeAccess, jlong pointer, jobject holder, jstring name, jobjectArray arguments, jobject data);
+void GraalExecuteAccessorSetter(JNIEnv* env, jclass nativeAccess, jlong pointer, jobject holder, jobject name, jobjectArray arguments, jobject data);
 
 jobject GraalExecutePropertyHandlerGetter(JNIEnv* env, jclass nativeAccess, jlong pointer, jobject holder, jobjectArray arguments, jobject data, jboolean named);
 

@@ -92,8 +92,8 @@ static const JNINativeMethod callbacks[] = {
     CALLBACK("executeFunction4", "(ILjava/lang/Object;ILjava/lang/Object;Ljava/lang/Object;ILjava/lang/Object;ILjava/lang/Object;ILjava/lang/Object;ILjava/lang/Object;)Ljava/lang/Object;", &GraalExecuteFunction4),
     CALLBACK("executeFunction5", "(ILjava/lang/Object;ILjava/lang/Object;Ljava/lang/Object;ILjava/lang/Object;ILjava/lang/Object;ILjava/lang/Object;ILjava/lang/Object;ILjava/lang/Object;)Ljava/lang/Object;", &GraalExecuteFunction5),
     CALLBACK("executeFunction6", "(ILjava/lang/Object;ILjava/lang/Object;Ljava/lang/Object;ILjava/lang/Object;ILjava/lang/Object;ILjava/lang/Object;ILjava/lang/Object;ILjava/lang/Object;ILjava/lang/Object;)Ljava/lang/Object;", &GraalExecuteFunction6),
-    CALLBACK("executeAccessorGetter", "(JLjava/lang/Object;Ljava/lang/String;[Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecuteAccessorGetter),
-    CALLBACK("executeAccessorSetter", "(JLjava/lang/Object;Ljava/lang/String;[Ljava/lang/Object;Ljava/lang/Object;)V", &GraalExecuteAccessorSetter),
+    CALLBACK("executeAccessorGetter", "(JLjava/lang/Object;Ljava/lang/Object;[Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecuteAccessorGetter),
+    CALLBACK("executeAccessorSetter", "(JLjava/lang/Object;Ljava/lang/Object;[Ljava/lang/Object;Ljava/lang/Object;)V", &GraalExecuteAccessorSetter),
     CALLBACK("executePropertyHandlerGetter", "(JLjava/lang/Object;[Ljava/lang/Object;Ljava/lang/Object;Z)Ljava/lang/Object;", &GraalExecutePropertyHandlerGetter),
     CALLBACK("executePropertyHandlerSetter", "(JLjava/lang/Object;[Ljava/lang/Object;Ljava/lang/Object;Z)V", &GraalExecutePropertyHandlerSetter),
     CALLBACK("executePropertyHandlerQuery", "(JLjava/lang/Object;[Ljava/lang/Object;Ljava/lang/Object;Z)Ljava/lang/Object;", &GraalExecutePropertyHandlerQuery),
@@ -383,11 +383,11 @@ jobject GraalExecuteFunction6(JNIEnv* env, jclass nativeAccess, jint id,
     return GraalExecuteFunction(env, isolate, id, callbackArgs, java_context);
 }
 
-jobject GraalExecuteAccessorGetter(JNIEnv* env, jclass nativeAccess, jlong pointer, jobject holder, jstring name, jobjectArray arguments, jobject data) {
+jobject GraalExecuteAccessorGetter(JNIEnv* env, jclass nativeAccess, jlong pointer, jobject holder, jobject name, jobjectArray arguments, jobject data) {
     GraalIsolate* isolate = CurrentIsolateChecked();
     v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (isolate));
 
-    GraalString* graal_name = new GraalString(isolate, name);
+    GraalValue* graal_name = GraalValue::FromJavaObject(isolate, name);
     v8::String* property_name = reinterpret_cast<v8::String*> (graal_name);
 
     GraalPropertyCallbackInfo<v8::Value> info = GraalPropertyCallbackInfo<v8::Value>::New(isolate, arguments, 0, data, holder);
@@ -398,11 +398,11 @@ jobject GraalExecuteAccessorGetter(JNIEnv* env, jclass nativeAccess, jlong point
     return isolate->CorrectReturnValue(**reinterpret_cast<GraalValue***> (&value), isolate->GetUndefined()->GetJavaObject());
 }
 
-void GraalExecuteAccessorSetter(JNIEnv* env, jclass nativeAccess, jlong pointer, jobject holder, jstring name, jobjectArray arguments, jobject data) {
+void GraalExecuteAccessorSetter(JNIEnv* env, jclass nativeAccess, jlong pointer, jobject holder, jobject name, jobjectArray arguments, jobject data) {
     GraalIsolate* isolate = CurrentIsolateChecked();
     v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (isolate));
 
-    GraalString* graal_name = new GraalString(isolate, name);
+    GraalValue* graal_name = GraalValue::FromJavaObject(isolate, name);
     v8::String* property_name = reinterpret_cast<v8::String*> (graal_name);
 
     jobject java_value = env->GetObjectArrayElement(arguments, 2);

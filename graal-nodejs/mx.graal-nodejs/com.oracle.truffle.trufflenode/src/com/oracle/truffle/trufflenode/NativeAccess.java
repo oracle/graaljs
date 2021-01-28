@@ -109,9 +109,9 @@ public final class NativeAccess {
                     Object argument6, int argument6Type,
                     Object context);
 
-    public static native Object executeAccessorGetter(long functionPointer, Object holder, String propertyName, Object[] arguments, Object additionalData);
+    public static native Object executeAccessorGetter(long functionPointer, Object holder, Object propertyName, Object[] arguments, Object additionalData);
 
-    public static native void executeAccessorSetter(long functionPointer, Object holder, String propertyName, Object[] arguments, Object additionalData);
+    public static native void executeAccessorSetter(long functionPointer, Object holder, Object propertyName, Object[] arguments, Object additionalData);
 
     public static native Object executePropertyHandlerGetter(long functionPointer, Object holder, Object[] arguments, Object additionalData, boolean named);
 
