@@ -168,6 +168,7 @@ public final class Options {
         protected List<String> preprocessArguments(List<String> arguments, Map<String, String> polyglotOptions) {
             // Node.js-specific defaults, may be overridden by command line arguments.
             polyglotOptions.put("js.print", "false");
+            polyglotOptions.put("js.string-length-limit", Integer.toString((1 << 29) - 24)); // v8::String::kMaxLength
 
             List<String> unprocessedArguments = new ArrayList<>();
             for (String arg : arguments) {
