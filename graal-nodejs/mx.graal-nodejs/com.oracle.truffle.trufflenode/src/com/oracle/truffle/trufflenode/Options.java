@@ -135,6 +135,8 @@ public final class Options {
                         "harmony-weak-refs",
                         "lazy",
                         "log-timer-events",
+                        "no-concurrent-array-buffer-freeing",
+                        "no-concurrent-array-buffer-sweeping",
                         "no-harmony-top-level-await",
                         "nolazy",
                         "nouse-idle-notification",
