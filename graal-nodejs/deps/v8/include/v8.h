@@ -10846,7 +10846,7 @@ Local<T> Local<T>::New(Isolate* isolate, Local<T> that) {
 
 template <class T>
 Local<T> Local<T>::New(Isolate* isolate, const PersistentBase<T>& that) {
-  return New(isolate, that.val_);
+  return New(isolate, that.IsEmpty() ? nullptr : that.val_);
 }
 
 template <class T>
