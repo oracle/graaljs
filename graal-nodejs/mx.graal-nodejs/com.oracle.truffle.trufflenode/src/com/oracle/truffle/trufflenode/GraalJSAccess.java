@@ -1320,7 +1320,15 @@ public final class GraalJSAccess {
         TypedArray arrayType = factory.createArrayType(true, offset != 0);
         DynamicObject dynamicObject = (DynamicObject) arrayBuffer;
         JSContext context = JSObject.getJSContext(dynamicObject);
-        return JSArrayBufferView.createArrayBufferView(context, dynamicObject, arrayType, offset, length);
+        boolean detached = JSArrayBuffer.isDetachedBuffer(dynamicObject);
+        if (detached) {
+            dynamicObject = JSArrayBuffer.createDirectArrayBuffer(context, 0);
+        }
+        DynamicObject result = JSArrayBufferView.createArrayBufferView(context, dynamicObject, arrayType, offset, length);
+        if (detached) {
+            JSArrayBuffer.detachArrayBuffer(dynamicObject);
+        }
+        return result;
     }
 
     public Object uint8ArrayNew(Object arrayBuffer, int offset, int length) {

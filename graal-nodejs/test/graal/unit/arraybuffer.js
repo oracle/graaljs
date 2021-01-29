@@ -56,5 +56,11 @@ describe('ArrayBuffer', function () {
             module.ArrayBuffer_Detach(buffer);
             assert.strictEqual(module.ArrayBuffer_GetContentsDataPointerIsNull(buffer), true);
         });
+        it('Uint8Array::New() can be used on a detached buffer', function () {
+            var buffer = new ArrayBuffer(10);
+            module.ArrayBuffer_Detach(buffer);
+            var array = module.ArrayBuffer_NewUint8Array(buffer);
+            assert.strictEqual(array.byteLength, 0);
+        });
     });
 });
