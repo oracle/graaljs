@@ -170,6 +170,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         _mxrun(python_cmd() + [join(_suite.dir, 'configure'),
                 '--partly-static',
                 '--without-dtrace',
+                '--without-inspector',
                 '--without-node-snapshot',
                 '--without-node-code-cache',
                 '--java-home', _java_home(forBuild=True)

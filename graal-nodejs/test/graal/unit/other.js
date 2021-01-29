@@ -87,4 +87,8 @@ describe('Other', function () {
         var fn = vm.compileFunction('return a + b + c + d;', ['a', 'b'], {contextExtensions: [{c: 42}, {d: 211}]});
         assert.strictEqual(fn(1000, 20000), 21253);
     });
+    it('should be possible to use TextDecoder("utf-8", { fatal: true })', function () {
+        // should not fail (fails when Node.js is built without intl support)
+        new util.TextDecoder('utf-8', { fatal: true });
+    });
 });

@@ -486,7 +486,7 @@ parser.add_option('--use-section-ordering-file',
 intl_optgroup.add_option('--with-intl',
     action='store',
     dest='with_intl',
-    default='none',
+    default='full-icu',
     choices=valid_intl_modes,
     help='Intl mode (valid choices: {0}) [default: %default]'.format(
         ', '.join(valid_intl_modes)))
