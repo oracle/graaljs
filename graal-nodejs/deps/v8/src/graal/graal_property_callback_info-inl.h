@@ -54,7 +54,7 @@ GraalPropertyCallbackInfo<T> GraalPropertyCallbackInfo<T>::New(
     JNIEnv* env = isolate->GetJNIEnv();
     jobject java_this = env->GetObjectArrayElement(arguments, index_of_this);
     GraalValue* graal_this = GraalValue::FromJavaObject(isolate, java_this);
-    GraalValue* graal_data = GraalValue::FromJavaObject(isolate, data);
+    GraalValue* graal_data = (data == nullptr) ? nullptr : GraalValue::FromJavaObject(isolate, data);
     GraalValue* graal_holder = GraalValue::FromJavaObject(isolate, holder);
     return GraalPropertyCallbackInfo<T>(isolate, graal_this, graal_data, graal_holder);
 }
@@ -66,7 +66,9 @@ GraalPropertyCallbackInfo<T>::GraalPropertyCallbackInfo(
         GraalValue* graal_data,
         GraalValue* graal_holder) : v8::PropertyCallbackInfo<T>(reinterpret_cast<v8::internal::Address*>(values_)) {
     graal_this->ReferenceAdded();
-    graal_data->ReferenceAdded();
+    if (graal_data != nullptr) {
+        graal_data->ReferenceAdded();
+    }
     graal_holder->ReferenceAdded();
     values_[v8::PropertyCallbackInfo<T>::kHolderIndex] = graal_holder;
     values_[v8::PropertyCallbackInfo<T>::kIsolateIndex] = isolate;
@@ -77,11 +79,14 @@ GraalPropertyCallbackInfo<T>::GraalPropertyCallbackInfo(
 
 template<typename T>
 GraalPropertyCallbackInfo<T>::~GraalPropertyCallbackInfo() {
-    reinterpret_cast<GraalValue*> (values_[v8::PropertyCallbackInfo<T>::kDataIndex])->ReferenceRemoved();
+    GraalValue* graal_data = reinterpret_cast<GraalValue*> (values_[v8::PropertyCallbackInfo<T>::kDataIndex]);
+    if (graal_data != nullptr) {
+        graal_data->ReferenceRemoved();
+    }
     reinterpret_cast<GraalValue*> (values_[v8::PropertyCallbackInfo<T>::kThisIndex])->ReferenceRemoved();
     reinterpret_cast<GraalValue*> (values_[v8::PropertyCallbackInfo<T>::kHolderIndex])->ReferenceRemoved();
     GraalValue* return_value = reinterpret_cast<GraalValue*> (values_[v8::PropertyCallbackInfo<T>::kReturnValueIndex]);
-    if (return_value) {
+    if (return_value != nullptr) {
         return_value->ReferenceRemoved();
     }
 }
