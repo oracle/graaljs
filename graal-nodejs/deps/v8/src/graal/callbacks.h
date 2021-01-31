@@ -120,6 +120,8 @@ void GraalDeallocate(JNIEnv* env, jclass nativeAccess, jlong pointer);
 
 void GraalWeakCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jlong data, jint type);
 
+void GraalDeleterCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jlong data, jint length, jlong deleterData);
+
 void GraalNotifyGCCallbacks(JNIEnv* env, jclass nativeAccess, jboolean prolog);
 
 void GraalPolyglotEngineEntered(JNIEnv* env, jclass nativeAccess, jlong functionPointer, jlong isolate, jlong param1, jlong param2, jlong args, jlong exec_args);

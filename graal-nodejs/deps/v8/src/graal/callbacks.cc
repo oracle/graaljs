@@ -103,6 +103,7 @@ static const JNINativeMethod callbacks[] = {
     CALLBACK("executePropertyHandlerDescriptor", "(JLjava/lang/Object;[Ljava/lang/Object;Ljava/lang/Object;Z)Ljava/lang/Object;", &GraalExecutePropertyHandlerDescriptor),
     CALLBACK("deallocate", "(J)V", &GraalDeallocate),
     CALLBACK("weakCallback", "(JJI)V", &GraalWeakCallback),
+    CALLBACK("deleterCallback", "(JJIJ)V", &GraalDeleterCallback),
     CALLBACK("notifyGCCallbacks", "(Z)V", &GraalNotifyGCCallbacks),
     CALLBACK("polyglotEngineEntered", "(JJJJJJ)V", &GraalPolyglotEngineEntered),
     CALLBACK("getCoreModuleBinarySnapshot", "(Ljava/lang/String;)Ljava/nio/ByteBuffer;", &GraalGetCoreModuleBinarySnapshot),
@@ -622,7 +623,15 @@ void GraalWeakCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jlong d
             second_callback(callback_info);
         }
         delete internalFields; // allocated in V8::MakeWeak
+    } else {
+        fprintf(stderr, "Unknown GraalWeakCallback type: %d\n", type);
+        abort();
     }
+}
+
+void GraalDeleterCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jlong data, jint length, jlong deleterData) {
+    v8::BackingStore::DeleterCallback v8_callback = reinterpret_cast<v8::BackingStore::DeleterCallback> (callback);
+    v8_callback((void*) data, (size_t) length, (void*) deleterData);
 }
 
 void GraalNotifyGCCallbacks(JNIEnv* env, jclass nativeAccess, jboolean prolog) {

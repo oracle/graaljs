@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,26 +39,29 @@
  * SOFTWARE.
  */
 
-#ifndef GRAAL_ARRAY_BUFFER_H_
-#define GRAAL_ARRAY_BUFFER_H_
+#ifndef GRAAL_BACKING_STORE_H_
+#define GRAAL_BACKING_STORE_H_
 
-#include "graal_object.h"
+#include "current_isolate.h"
+#include "jni.h"
+#include "graal_isolate.h"
 
-class GraalIsolate;
-
-class GraalArrayBuffer : public GraalObject {
-public:
-    inline GraalArrayBuffer(GraalIsolate* isolate, jobject java_array_buffer);
-    size_t ByteLength() const;
-    bool IsArrayBuffer() const;
-    bool IsExternal() const;
-    void Detach();
-    std::shared_ptr<v8::BackingStore> GetBackingStore();
-    static v8::Local<v8::ArrayBuffer> New(v8::Isolate* isolate, size_t byte_length);
-    static v8::Local<v8::ArrayBuffer> New(v8::Isolate* isolate, void* data, size_t byte_length, v8::ArrayBufferCreationMode mode);
-    static v8::Local<v8::ArrayBuffer> New(v8::Isolate* isolate, std::shared_ptr<v8::BackingStore> backing_store);
-protected:
-    GraalHandleContent* CopyImpl(jobject java_object_copy) override;
+class GraalBackingStore : public v8::internal::BackingStoreBase {
+    public:
+        inline GraalBackingStore(jobject java_store) : java_store_(java_store) {}
+        inline jobject GetJavaStore() const {
+            return java_store_;
+        }
+        inline size_t ByteLength() const {
+            return (java_store_ == nullptr) ? 0 : CurrentIsolate()->GetJNIEnv()->GetDirectBufferCapacity(java_store_);
+        }
+        inline void* Data() const {
+            return (java_store_ == nullptr) ? nullptr : CurrentIsolate()->GetJNIEnv()->GetDirectBufferAddress(java_store_);
+        }
+    private:
+        // global JNI reference to a direct ByteBuffer
+        // or nullptr (= backing store for a detached ArrayBuffer)
+        jobject java_store_;
 };
 
-#endif /* GRAAL_ARRAY_BUFFER_H_ */
+#endif /* GRAAL_BACKING_STORE_H_ */

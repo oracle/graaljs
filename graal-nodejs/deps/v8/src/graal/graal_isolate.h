@@ -155,6 +155,7 @@ enum GraalAccessMethod {
     array_length,
     array_buffer_new,
     array_buffer_new_buffer,
+    array_buffer_new_backing_store,
     array_buffer_get_contents,
     array_buffer_view_buffer,
     array_buffer_view_byte_length,
@@ -350,6 +351,7 @@ enum GraalAccessMethod {
     shared_array_buffer_get_contents,
     shared_array_buffer_externalize,
     script_compiler_compile_function_in_context,
+    backing_store_register_callback,
 
     count // Should be the last item of GraalAccessMethod
 };

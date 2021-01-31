@@ -1194,6 +1194,10 @@ public final class GraalJSAccess {
         return JSArrayBuffer.createDirectArrayBuffer(((JSRealm) context).getContext(), byteLength);
     }
 
+    public Object arrayBufferNewBackingStore(int byteLength) {
+        return DirectByteBufferHelper.allocateDirect(byteLength);
+    }
+
     public Object arrayBufferGetContents(Object arrayBuffer) {
         return JSArrayBuffer.getDirectByteBuffer((DynamicObject) arrayBuffer);
     }
@@ -2492,7 +2496,12 @@ public final class GraalJSAccess {
     private void processWeakCallback(WeakCallback callback) {
         weakCallbacks.remove(callback);
         if (callback.callback != 0) {
-            NativeAccess.weakCallback(callback.callback, callback.data, callback.type);
+            if (callback.type == -1) {
+                DeleterCallback deleter = (DeleterCallback) callback;
+                NativeAccess.deleterCallback(deleter.callback, deleter.data, deleter.length, deleter.deleterData);
+            } else {
+                NativeAccess.weakCallback(callback.callback, callback.data, callback.type);
+            }
         }
     }
 
@@ -3510,6 +3519,10 @@ public final class GraalJSAccess {
         }
     }
 
+    public void backingStoreRegisterCallback(Object backingStore, long data, int byteLength, long deleterData, long callback) {
+        weakCallbacks.add(new DeleterCallback(backingStore, data, byteLength, deleterData, callback, weakCallbackQueue));
+    }
+
     private static class WeakCallback extends WeakReference<Object> {
 
         long data;
@@ -3523,6 +3536,18 @@ public final class GraalJSAccess {
             this.type = type;
         }
 
+    }
+
+    // v8:BackingStore::DeleterCallback
+    private static class DeleterCallback extends WeakCallback {
+        int length;
+        long deleterData;
+
+        DeleterCallback(Object backingStore, long data, int length, long deleterData, long callback, ReferenceQueue<Object> queue) {
+            super(backingStore, data, callback, -1, queue);
+            this.length = length;
+            this.deleterData = deleterData;
+        }
     }
 
     static class PropertyHandlerPrototypeNode extends JavaScriptRootNode {

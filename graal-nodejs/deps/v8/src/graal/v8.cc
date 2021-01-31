@@ -42,6 +42,7 @@
 #include "graal_array.h"
 #include "graal_array_buffer.h"
 #include "graal_array_buffer_view.h"
+#include "graal_backing_store.h"
 #include "graal_big_int.h"
 #include "graal_boolean.h"
 #include "graal_context.h"
@@ -3240,23 +3241,37 @@ namespace v8 {
     }
 
     Local<ArrayBuffer> ArrayBuffer::New(Isolate* isolate, std::shared_ptr<BackingStore> backing_store) {
-        TRACE
-        return nullptr;
+        return GraalArrayBuffer::New(isolate, backing_store);
     }
 
     std::unique_ptr<BackingStore> ArrayBuffer::NewBackingStore(Isolate* isolate, size_t byte_length) {
-        TRACE
-        return nullptr;
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+        JNI_CALL(jobject, java_buffer, graal_isolate, GraalAccessMethod::array_buffer_new_backing_store, Object, (jint) byte_length);
+        JNIEnv* env = graal_isolate->GetJNIEnv();
+        jobject java_store = env->NewGlobalRef(java_buffer);
+        env->DeleteLocalRef(java_buffer);
+        return std::unique_ptr<v8::BackingStore>(reinterpret_cast<v8::BackingStore*>(new GraalBackingStore(java_store)));
     }
 
     std::unique_ptr<BackingStore> ArrayBuffer::NewBackingStore(void* data, size_t byte_length, v8::BackingStore::DeleterCallback deleter, void* deleter_data) {
-        TRACE
-        return nullptr;
+        GraalIsolate* graal_isolate = CurrentIsolate();
+        jobject java_store;
+        if (data == nullptr) {
+            java_store = nullptr;
+        } else {
+            JNIEnv* env = graal_isolate->GetJNIEnv();
+            jobject java_buffer = env->NewDirectByteBuffer(data, byte_length);
+            java_store = env->NewGlobalRef(java_buffer);
+            env->DeleteLocalRef(java_buffer);
+
+            JNI_CALL_VOID(graal_isolate, GraalAccessMethod::backing_store_register_callback, java_store, (jlong) data, (jint) byte_length, (jlong) deleter_data, (jlong) deleter);
+        }
+
+        return std::unique_ptr<v8::BackingStore>(reinterpret_cast<v8::BackingStore*>(new GraalBackingStore(java_store)));
     }
 
     std::shared_ptr<BackingStore> ArrayBuffer::GetBackingStore() {
-        TRACE
-        return nullptr;
+        return reinterpret_cast<GraalArrayBuffer*> (this)->GetBackingStore();
     }
 
     void* ArrayBuffer::Allocator::Reallocate(void* data, size_t old_length, size_t new_length) {
@@ -3265,32 +3280,45 @@ namespace v8 {
     }
 
     size_t BackingStore::ByteLength() const {
-        TRACE
-        return 0;
+        return reinterpret_cast<const GraalBackingStore*> (this)->ByteLength();
     }
 
     void* BackingStore::Data() const {
-        TRACE
-        return nullptr;
+        return reinterpret_cast<const GraalBackingStore*> (this)->Data();
     }
 
     std::unique_ptr<BackingStore> BackingStore::Reallocate(Isolate* isolate, std::unique_ptr<BackingStore> backing_store, size_t byte_length) {
-        TRACE
-        return nullptr;
+        std::unique_ptr<BackingStore> new_store = ArrayBuffer::NewBackingStore(isolate, byte_length);
+        memcpy(new_store->Data(), backing_store->Data(), std::min(byte_length, backing_store->ByteLength()));
+        return new_store;
     }
 
     BackingStore::~BackingStore() {
-        TRACE
+        const GraalBackingStore* graal_store = reinterpret_cast<const GraalBackingStore*> (this);
+        jobject java_store = graal_store->GetJavaStore();
+        if (java_store != nullptr) {
+            CurrentIsolate()->GetJNIEnv()->DeleteGlobalRef(java_store);
+        }
     }
 
     Local<SharedArrayBuffer> SharedArrayBuffer::New(Isolate* isolate, std::shared_ptr<BackingStore> backing_store) {
-        TRACE
-        return nullptr;
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+        jobject java_context = graal_isolate->CurrentJavaContext();
+        jobject java_store = reinterpret_cast<GraalBackingStore*> (backing_store.get())->GetJavaStore();
+        void* data = backing_store->Data();
+        JNI_CALL(jobject, java_array_buffer, isolate, GraalAccessMethod::shared_array_buffer_new, Object, java_context, java_store, (jlong) data, true);
+        return reinterpret_cast<v8::SharedArrayBuffer*> (new GraalObject(graal_isolate, java_array_buffer));
     }
 
     std::shared_ptr<BackingStore> SharedArrayBuffer::GetBackingStore() {
-        TRACE
-        return nullptr;
+        GraalObject* graal_array_buffer = reinterpret_cast<GraalObject*> (this);
+        GraalIsolate* graal_isolate = graal_array_buffer->Isolate();
+        jobject java_array_buffer = graal_array_buffer->GetJavaObject();
+        JNI_CALL(jobject, java_buffer, graal_isolate, GraalAccessMethod::shared_array_buffer_get_contents, Object, java_array_buffer);
+        JNIEnv* env = graal_isolate->GetJNIEnv();
+        jobject java_store = env->NewGlobalRef(java_buffer);
+        env->DeleteLocalRef(java_buffer);
+        return std::shared_ptr<v8::BackingStore>(reinterpret_cast<v8::BackingStore*>(new GraalBackingStore(java_store)));
     }
 
     CompiledWasmModule WasmModuleObject::GetCompiledModule() {

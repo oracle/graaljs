@@ -132,6 +132,8 @@ public final class NativeAccess {
 
     public static native void weakCallback(long callback, long data, int type);
 
+    public static native void deleterCallback(long callback, long data, int length, long deleterData);
+
     public static native void notifyGCCallbacks(boolean prolog);
 
     public static native void polyglotEngineEntered(long callback, long isolate, long param1, long param2, long args, long execArgs);
