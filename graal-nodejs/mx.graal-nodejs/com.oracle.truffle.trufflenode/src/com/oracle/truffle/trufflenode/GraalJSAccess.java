@@ -724,11 +724,8 @@ public final class GraalJSAccess {
 
     public boolean objectSet(Object object, Object key, Object value) {
         DynamicObject dynamicObject = (DynamicObject) object;
-        if (key instanceof HiddenKey) {
-            JSObjectUtil.putHiddenProperty(dynamicObject, key, value);
-        } else {
-            JSObject.set(dynamicObject, JSRuntime.toPropertyKey(key), value);
-        }
+        assert !(key instanceof HiddenKey);
+        JSObject.set(dynamicObject, JSRuntime.toPropertyKey(key), value);
         return true;
     }
 
@@ -791,21 +788,8 @@ public final class GraalJSAccess {
         } else {
             truffleObject = JSRuntime.toObject(mainJSContext, object);
         }
-        Object value;
-        if (key instanceof HiddenKey) {
-            Object hiddenValue = JSObjectUtil.getHiddenProperty((DynamicObject) truffleObject, key);
-            if (hiddenValue == null) {
-                if (JSPromise.isJSPromise(object)) {
-                    value = 0;
-                } else {
-                    value = Undefined.instance;
-                }
-            } else {
-                value = hiddenValue;
-            }
-        } else {
-            value = JSObject.get(truffleObject, JSRuntime.toPropertyKey(key));
-        }
+        assert !(key instanceof HiddenKey);
+        Object value = JSObject.get(truffleObject, JSRuntime.toPropertyKey(key));
         return processReturnValue(value);
     }
 
